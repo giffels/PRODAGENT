@@ -11,10 +11,10 @@ from distutils.core import setup
 
 packages = [
     'CMSConfigTools',
-    'DBSInterface',
-    'DLSInterface',
-    'ErrorHandler',
-    'ErrorHandler.Handlers',
+    #'DBSInterface',
+    #'DLSInterface',
+    #'ErrorHandler',
+    #'ErrorHandler.Handlers',
     'FwkJobRep',
     'IMProv',
     'JobCreator',
@@ -22,7 +22,11 @@ packages = [
     'JobCreator.RuntimeTools',
     'JobSubmitter',
     'JobSubmitter.Submitters',
-    'JobTracking',
+    #'JobTracking',
+    'JobState',
+    'JobState.JobStateAPI',
+    'JobState.Database',
+    'JobState.Database.Api',
     'MB',
     'MB.commandBuilder',
     'MB.dmb_tools',
@@ -30,7 +34,7 @@ packages = [
     'MB.query',
     'MB.transport',
     'MCPayloads',
-    'MergeSensor',
+    #'MergeSensor',
     'MessageService',
     'ProdAgentDB',
     'ProdAgentCore',
@@ -47,6 +51,8 @@ packages = [
     'ShREEK.CMSPlugins',
     'ShREEK.CMSPlugins.ApMon',
     'ShREEK.CMSPlugins.JobMon',
+    'TaskObjects',
+    'TaskObjects.Tools'
     ]
 
 setup(name='ProdAgent',
