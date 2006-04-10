@@ -1,0 +1,205 @@
+#!/usr/bin/env python
+"""
+_prodAgent-config_
+
+Command line tool for generating a ProdAgentConfiguration.
+
+Requires that PRODAGENT_CONFIG be set to provide the location
+of the configuration file being created
+
+"""
+
+import os
+import sys
+import getopt
+
+from ProdAgentCore.Configuration import ProdAgentConfiguration
+
+
+def usage():
+    """print usage info"""
+    strg = "Usage: prodAgent-new-config <options>\n"
+    strg += " --config=<configFileName> : Config will be written into\n"
+    strg += "   file provided, else it will be written to $PRODAGENT_CONFIG\n"
+    strg += " --component=comp1,comp2,comp3\n"
+    strg += "  If no options are provided the default component list is used\n"
+    strg += "  If --components is supplied, the list of components is\n"
+    strg += "  taken to be a comma seperated list of components to be used\n"
+    
+    print strg
+
+valid = ['components=', "config="]
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "", valid)
+except getopt.GetoptError, ex:
+    print str(ex)
+    usage()
+    sys.exit(1)
+
+configFile = None
+componentList = []
+
+for opt, arg in opts:
+    if opt == "--components":
+        compList = arg.split(',')
+        for item in compList:
+            componentList.append(item.strip())
+    if opt == "--config":
+        configFile = arg
+
+
+
+if configFile == None:
+    configFile = os.environ.get("PRODAGENT_CONFIG", None)
+    if configFile == None:
+        print "Configfile not found:"
+        print "Must be provided either via $PRODAGENT_CONFIG env var"
+        print "Or via --config option"
+        sys.exit(1)
+
+
+coreFields = {
+    #  //
+    # // Core pieces: ProdAgent, ProdAgentDB, MessageService, JobStates
+    #//
+    "ProdAgent": {
+    "ProdAgentDir": os.getcwd(),
+    },
+    
+    "ProdAgentDB": {
+    'dbName':'ProdAgentDB',
+    'host':'localhost',
+    'user':'ProdAgentUser',
+    'passwd':'ProdAgentPass',
+    'socketFileLocation':'/var/lib/mysql/mysql.sock',
+    'portNr':'',
+    'refreshPeriod' : 4*3600 ,
+    'checkConnectionPeriod' : 3*60,
+    'maxConnectionAttempts' : 5,
+    'dbWaitingTime' : 10 ,
+    },
+    
+    "MessageService" : {
+    "pollInterval" : 5, 
+    },
+
+    "JobStates" : {
+    # no parameters yet
+    },
+    }# end core Fields
+
+
+componentFields = {
+
+    "RequestInjector" : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/RequestInjector",
+    },
+
+    "JobCreator" : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/JobCreator",
+    "CreatorName" : "testCreator",
+    },
+    "JobSubmitter" : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/JobSubmitter",
+    "SubmitterName" : "noSubmit",
+    },
+
+    "DBSInterface" : {
+    "ComponentDir" : "DBSInterface",
+    # DBSAPI etc should already be provided by DBS installation
+    # should be configured with server etc???
+
+    },
+
+    "DLSInterface" : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/DLSInterface",
+    #
+    # What is needed to configure DLS???
+    # DLS Client/Server/Port???
+    },
+
+    "JobTracking" : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/JobTracking",
+    "BOSSDIR" : None,
+    "BOSSPATH" : None,
+    "BOSSVERSION" : None,
+    "PollInterval" : 10,
+    },
+
+    'MergeSensor' : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/MergeSensor",
+    "PollInterval": 30,
+    #
+    # All DBS Settings should be supplied already
+    #
+    },
+
+    'ErrorHandler' : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/ErrorHandler",
+    'jobReportLocation' : "$PRODAGENT_WORKDIR/ErrorHandler/JobReports",
+    
+    },
+    
+    }# end componentFields
+
+if componentList == []:
+    componentList = componentFields.keys()
+
+print "Writing Config File: %s" % configFile
+print "Using Components:"
+for item in componentList:
+    print "  ",item
+
+
+
+config = ProdAgentConfiguration()
+
+
+def processField(fieldName, fieldDict):
+    """
+    _processField_
+
+    for a given field create a config component for it
+
+    """
+    cfg = config.newComponentConfig(fieldName)
+    cfg.update(fieldDict)
+    return
+
+#  //
+# // Process core fields
+#//
+for name, values in coreFields.items():
+    cfgDict = config.getConfig(name)
+    cfgDict.update(values)
+
+#  //
+# // Process components
+#//
+for component in componentList:
+    compDict = componentFields.get(component, None)
+    if compDict == None:
+        msg = "Unknown Component: %s\n" % component
+        msg += "Valid Components are:\n"
+        msg += "%s\n" % componentFields.keys()
+        print msg
+        sys.exit(1)
+
+        
+    processField(component, compDict)
+
+
+#  //
+# // Save config file
+#//
+config.saveToFile(configFile)
+
+
+
+
+
+
+
+
+
+
