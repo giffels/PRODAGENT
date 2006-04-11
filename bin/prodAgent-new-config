@@ -117,9 +117,8 @@ componentFields = {
 
     "DLSInterface" : {
     "ComponentDir" : "$PRODAGENT_WORKDIR/DLSInterface",
-    #
-    # What is needed to configure DLS???
-    # DLS Client/Server/Port???
+    "DLSAddress" : None,
+    "DLSType" : None,
     },
 
     "JobTracking" : {
