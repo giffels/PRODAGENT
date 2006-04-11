@@ -178,7 +178,7 @@ class JobSubmitterComponent:
                 msg += str(ex)
                 logging.error(msg) 
         
-        self.ms.publish("SubmissionFailed", jobSpecId)
+        self.ms.publish("JobSubmitted", jobSpecId)
         self.ms.commit()
         return
  
