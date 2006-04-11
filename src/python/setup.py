@@ -22,7 +22,7 @@ packages = [
     'JobCreator.RuntimeTools',
     'JobSubmitter',
     'JobSubmitter.Submitters',
-    #'JobTracking',
+    'JobTracking',
     'JobState',
     'JobState.JobStateAPI',
     'JobState.Database',
