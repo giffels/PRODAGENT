@@ -32,8 +32,9 @@ if os.environ.get("PRODAGENT_WORKDIR", None) == None:
     msg += "$PRODAGENT_WORKDIR is not set"
     raise RuntimeError, msg
 
+dbsConfig = config.get("LocalDBS")
+compCfg.update(dbsConfig)
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
-
 #  //
 # // Initialise and start the component
 #//

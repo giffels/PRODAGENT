@@ -11,7 +11,7 @@ from distutils.core import setup
 
 packages = [
     'CMSConfigTools',
-    #'DBSInterface',
+    'DBSInterface',
     #'DLSInterface',
     #'ErrorHandler',
     #'ErrorHandler.Handlers',
