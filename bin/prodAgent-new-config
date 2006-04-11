@@ -61,7 +61,7 @@ if configFile == None:
 coreFields = {
     #  //
     # // Core pieces: ProdAgent, ProdAgentDB, MessageService, JobStates
-    #//
+    #//               Local scope DBS
     "ProdAgent": {
     "ProdAgentDir": os.getcwd(),
     },
@@ -86,6 +86,12 @@ coreFields = {
     "JobStates" : {
     # no parameters yet
     },
+
+    'LocalDBS' :{
+    "DBSAddress": None,
+    "DBSType" : "CGI",
+    },
+    
     }# end core Fields
 
 
@@ -105,10 +111,8 @@ componentFields = {
     },
 
     "DBSInterface" : {
-    "ComponentDir" : "DBSInterface",
-    # DBSAPI etc should already be provided by DBS installation
-    # should be configured with server etc???
-
+    "ComponentDir" : "$PRODAGENT_WORKDIR/DBSInterface",
+    # Local DBS settings come from LocalDBS core block 
     },
 
     "DLSInterface" : {
@@ -129,9 +133,7 @@ componentFields = {
     'MergeSensor' : {
     "ComponentDir" : "$PRODAGENT_WORKDIR/MergeSensor",
     "PollInterval": 30,
-    #
-    # All DBS Settings should be supplied already
-    #
+    # Local DBS settings come from LocalDBS core block 
     },
 
     'ErrorHandler' : {
