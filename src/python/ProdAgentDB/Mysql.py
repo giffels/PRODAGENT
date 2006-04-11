@@ -59,8 +59,7 @@ def connect(dbName,dbHost,dbUser,dbPasswd,socketLocation,portNr="",cache=True):
    for attempt in range(__maxConnectionAttempts):
        try:
            if (portNr!=""):
-               conn=MySQLdb.Connect(unix_socket=socketLocation,\
-                                   host=dbHost,db=dbName,\
+               conn=MySQLdb.Connect(host=dbHost,db=dbName,\
                                    user=dbUser,passwd=dbPasswd, \
                                    port=int(portNr))
            else:
