@@ -12,7 +12,7 @@ from distutils.core import setup
 packages = [
     'CMSConfigTools',
     'DBSInterface',
-    #'DLSInterface',
+    'DLSInterface',
     #'ErrorHandler',
     #'ErrorHandler.Handlers',
     'FwkJobRep',
