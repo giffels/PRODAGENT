@@ -34,7 +34,7 @@ packages = [
     'MB.query',
     'MB.transport',
     'MCPayloads',
-    #'MergeSensor',
+    'MergeSensor',
     'MessageService',
     'ProdAgentDB',
     'ProdAgentCore',
