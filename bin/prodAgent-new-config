@@ -140,6 +140,11 @@ componentFields = {
     'jobReportLocation' : "$PRODAGENT_WORKDIR/ErrorHandler/JobReports",
     
     },
+    'AdminControl' : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/AdminControl",
+    "AdminControlHost" : "127.0.0.1",
+    "AdminControlPort" : 8081,
+    },
     
     }# end componentFields
 
