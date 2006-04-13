@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.1 2006/04/12 15:12:11 evansde Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.2 2006/04/13 07:40:41 ckavka Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -497,7 +497,7 @@ class MergeSensorComponent:
             self.pollDBS(dataset)
 
         # sleep for the specified time
-        time.sleep(self.args['PollInterval'])
+        time.sleep(float(self.args['PollInterval']))
         return
     
     def getFileListFromDBS(self, datasetId):
