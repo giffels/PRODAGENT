@@ -1,6 +1,3 @@
-DROP DATABASE IF EXISTS ProdAgentDB;
-CREATE DATABASE ProdAgentDB;
-USE ProdAgentDB;
 
 /* This should be the default setting for InnoDB tables; */   
 SET GLOBAL TRANSACTION ISOLATION LEVEL REPEATABLE READ;
