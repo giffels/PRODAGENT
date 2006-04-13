@@ -57,6 +57,13 @@ if configFile == None:
         print "Or via --config option"
         sys.exit(1)
 
+homeDir=os.environ.get("PRODAGENT_HOME")
+if  homeDir == None:
+    print "PRODAGENT_HOME variable not found:"
+    print "Must be provided either via $PRODAGENT_HOME env var"
+    sys.exit(1)
+
+
 
 coreFields = {
     #  //
@@ -77,6 +84,7 @@ coreFields = {
     'checkConnectionPeriod' : 3*60,
     'maxConnectionAttempts' : 5,
     'dbWaitingTime' : 10 ,
+    'schemaLocation': "$PRODAGENT_HOME/src/sql/ProdAgentDB/ProdAgentDB.sql"
     },
     
     "MessageService" : {
