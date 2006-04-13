@@ -30,8 +30,8 @@ intParamValue = int( componentSettings["SomeInteger"] )
 
 
 """
-__revision__ = "$Id: Configuration.py,v 1.1 2006/04/10 17:13:54 evansde Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: Configuration.py,v 1.2 2006/04/11 16:24:31 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -61,7 +61,7 @@ def loadProdAgentConfiguration():
         raise RuntimeError, msg
     if not os.path.exists(envVar):
         msg = "File Not Found:\n"
-        msg += "%s\n" % enVar
+        msg += "%s\n" % envVar
         msg += "PRODAGENT_CONFIG must point to a valid file\n"
         raise RuntimeError, msg
 
