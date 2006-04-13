@@ -10,6 +10,7 @@ from distutils.core import setup
 
 
 packages = [
+    'AdminControl',
     'CMSConfigTools',
     'DBSInterface',
     'DLSInterface',
