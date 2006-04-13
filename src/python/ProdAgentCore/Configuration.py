@@ -30,8 +30,8 @@ intParamValue = int( componentSettings["SomeInteger"] )
 
 
 """
-__revision__ = "$Id: Configuration.py,v 1.2 2006/04/11 16:24:31 evansde Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: Configuration.py,v 1.3 2006/04/13 14:35:09 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -249,6 +249,7 @@ class ConfigBlock(dict):
     """
     def __init__(self, name):
         self.name = name
+        self.comment = None
         dict.__init__(self)
 
     def save(self):
@@ -261,6 +262,8 @@ class ConfigBlock(dict):
         """
         result = IMProvNode("ConfigBlock", None,
                             Name = self.name)
+        if self.comment != None:
+            result.addNode(IMProvNode("Comment", self.comment))
         for key, val in self.items():
             result.addNode(IMProvNode("Parameter", None,
                                       Name = str(key), Value = str(val))
@@ -275,10 +278,14 @@ class ConfigBlock(dict):
         """
         nameQ = IMProvQuery("/ConfigBlock[attribute(\"Name\")]")
         paramQ = IMProvQuery("/ConfigBlock/Parameter")
-
+        commentQ = IMProvQuery("/ConfigBlock/Comment[text()]")
         
         self.name = str(nameQ(improvNode)[0])
-        
+        comments = commentQ(improvNode)
+        if len(comments) > 0:
+            self.comment = str(comments[0])
+        else:
+            self.comment = None
         
         params = paramQ(improvNode)
         for paramNode in params:
