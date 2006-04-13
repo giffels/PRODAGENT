@@ -73,3 +73,55 @@ def jobReports(JobSpecId, dbCur = None):
        if(dbCur==None):
           dbCur.close()
        return result
+
+def jobSpecTotal(dbCur = None):
+       if(dbCur==None):
+           conn=connect()
+           dbCur=conn.cursor()
+       dbCur.execute("START TRANSACTION")
+       sqlStr='SELECT COUNT(JobSpecID) FROM js_JobSpec;'
+       dbCur.execute(sqlStr)
+       #this query will not return many (= thousands) of results.
+       rows=dbCur.fetchall()
+       result=rows[0][0]
+       dbCur.execute("COMMIT")
+       if(dbCur==None):
+          dbCur.close()
+       return result
+
+def rangeGeneral(start = -1 , nr = -1 ,dbCur = None):
+       if(dbCur==None):
+           conn=connect()
+           dbCur=conn.cursor()
+       dbCur.execute("START TRANSACTION")
+
+       if ( (start == -1) and (nr == -1) ):
+           start=0
+           nr=jobSpecTotal()
+       if start<0:
+           raise Exception('JobStateInfoAPI: Start should be larger than 0!')
+       elif nr<0:
+           raise Exception('JobStateInfoAPI: Number should be larger than 0!')
+
+       sqlStr='SELECT JobType,MaxRetries,Retries, '+\
+              'State,CacheDirLocation, MaxRacers, Racers '+ \
+              'FROM js_JobSpec LIMIT '+str(start)+','+str(nr)+';'
+       dbCur.execute(sqlStr)
+       #NOTE: we kind off assume that we only deal with small subsets.
+       rows=dbCur.fetchall()
+       dbCur.execute("COMMIT")
+       if(dbCur==None):
+          dbCur.close()
+       result=[]
+       resultDescription=['JobType','MaxRetries','Retries','State','CacheDirLocation','MaxRacers','Racers']
+       result.append(resultDescription)
+
+       #NOTE: we change it from tuples to arrays to avoid problems with 
+       #NOTE: XMLRPC calls in the future.
+       #NOTE: is there a easier way of doing this?
+       for row in rows:
+           resultRow=[]
+           for entry in row:
+               resultRow.append(entry)
+           result.append(resultRow)
+       return result    

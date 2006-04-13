@@ -56,7 +56,7 @@ def lastLocations(jobId, dbCur = None):
 
        return JobStateInfoAPIMySQL.lastLocations(jobId, dbCur)
 
-def jobReports(jobId):
+def jobReports(jobId, dbCur = None):
        """
 
        _jobReports_
@@ -74,7 +74,12 @@ def jobReports(jobId):
        or an array
        """
 
-
-
-
        return JobStateInfoAPIMySQL.jobReports(jobId)
+
+def jobSpecTotal(dbCur = None):
+
+       return JobStateInfoAPIMySQL.jobSpecTotal(dbCur)
+
+def rangeGeneral(start = -1, nr = -1, dbCur = None):
+
+       return JobStateInfoAPIMySQL.rangeGeneral(start,nr,dbCur)
