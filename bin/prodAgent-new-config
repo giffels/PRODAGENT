@@ -143,6 +143,20 @@ componentFields = {
     
     }# end componentFields
 
+#  //
+# // Map of block names to comments for the block.
+#//  Comments get inserted into the config file as XML comments
+#  //and provide docs for people who want to poke around in there
+# //
+#//
+comments = {
+    "ProdAgentDB" : \
+"""
+You should only supply either the portNr OR socketFileLocation
+""",
+
+    }
+
 if componentList == []:
     componentList = componentFields.keys()
 
@@ -165,6 +179,8 @@ def processField(fieldName, fieldDict):
     """
     cfg = config.newComponentConfig(fieldName)
     cfg.update(fieldDict)
+    if comments.has_key(fieldName):
+        cfg.comment = comments[fieldName]
     return
 
 #  //
@@ -173,6 +189,8 @@ def processField(fieldName, fieldDict):
 for name, values in coreFields.items():
     cfgDict = config.getConfig(name)
     cfgDict.update(values)
+    if comments.has_key(name):
+        cfgDict.comment = comments[name]
 
 #  //
 # // Process components
