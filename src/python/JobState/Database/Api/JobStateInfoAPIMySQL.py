@@ -103,7 +103,7 @@ def rangeGeneral(start = -1 , nr = -1 ,dbCur = None):
        elif nr<0:
            raise Exception('JobStateInfoAPI: Number should be larger than 0!')
 
-       sqlStr='SELECT JobType,MaxRetries,Retries, '+\
+       sqlStr='SELECT JobSpecID, JobType,MaxRetries,Retries, '+\
               'State,CacheDirLocation, MaxRacers, Racers '+ \
               'FROM js_JobSpec LIMIT '+str(start)+','+str(nr)+';'
        dbCur.execute(sqlStr)
@@ -113,7 +113,7 @@ def rangeGeneral(start = -1 , nr = -1 ,dbCur = None):
        if(dbCur==None):
           dbCur.close()
        result=[]
-       resultDescription=['JobType','MaxRetries','Retries','State','CacheDirLocation','MaxRacers','Racers']
+       resultDescription=['JobSpecID','JobType','MaxRetries','Retries','State','CacheDirLocation','MaxRacers','Racers']
        result.append(resultDescription)
 
        #NOTE: we change it from tuples to arrays to avoid problems with 
