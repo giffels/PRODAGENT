@@ -31,6 +31,11 @@ if os.environ.get("PRODAGENT_WORKDIR", None) == None:
     msg = "ProdAgent environment not initialised properly"
     msg += "$PRODAGENT_WORKDIR is not set"
     raise RuntimeError, msg
+try:
+  import dbsApi
+except:
+   msg = " No DBS API found "
+   raise RuntimeError, msg
 
 dbsConfig = config.get("LocalDBS")
 compCfg.update(dbsConfig)
@@ -39,6 +44,7 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 # // Initialise and start the component
 #//
 print "Starting JobSubmitter Component..."
+
 createDaemon(compCfg['ComponentDir'])
 component = DBSComponent(**dict(compCfg))
 component.startComponent()
