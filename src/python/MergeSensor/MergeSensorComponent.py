@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.12 2006/04/12 09:22:25 ckavka Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.1 2006/04/12 15:12:11 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -106,7 +106,7 @@ class MergeSensorComponent:
         thisModule = os.path.abspath(
                           inspect.getsourcefile(MergeSensorComponent))
         baseDir = os.path.dirname(thisModule)        
-        mergeWorkflow = os.path.join(baseDir, "mergeConfig.pycfg")
+        mergeWorkflow = os.path.join(baseDir, "mergeConfig.py")
         self.mergeWorkflow = file(mergeWorkflow).read()
 
         # datasets still not initialized
