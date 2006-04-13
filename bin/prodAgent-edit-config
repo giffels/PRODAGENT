@@ -9,7 +9,16 @@ Command line tool for tweaking parameters in the config file.
 import os
 import sys
 import getopt
-from ProdAgentCore.Configuration import loadProdAgentConfiguration
+
+
+try:
+    from ProdAgentCore.Configuration import loadProdAgentConfiguration
+except ImportError, ex:
+    msg = "Unable to import ProdAgent Python modules:\n"
+    msg += "There may be a problem with your PYTHONPATH env variable\n"
+    print msg
+    sys.exit(1)
+
 
 def usage():
     print "Usage: prodAgent-edit-config --component=<comp>"
@@ -33,7 +42,15 @@ if configFile == None:
     print msg
     sys.exit(1)
 
-config = loadProdAgentConfiguration()
+try:
+    config = loadProdAgentConfiguration()
+except StandardError, ex:
+    msg = "Unable to read the configuration file:\n"
+    msg += "%s\n" % configFile
+    msg += "Error:\n"
+    msg += str(ex)
+    print msg
+    sys.exit(1)
 
 valid = ['component=', "parameter=", "value="]
 try:
