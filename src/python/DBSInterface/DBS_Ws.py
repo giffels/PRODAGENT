@@ -19,6 +19,7 @@ from dbsClientDatastructures import DbsBlock
 from dbsClientDatastructures import DbsFile
 from dbsClientDatastructures import DbsEventCollection
 
+import logging
 # ##############
 class DBS_Ws:
   """
@@ -52,6 +53,7 @@ class DBS_Ws:
     primdataset = DbsPrimaryDataset(name=PrimDatasetName)
     # Create Primary dataset
     primaryDatasetId=0
+    logging.debug(" primaryDatasetId  = self.api.createPrimaryDataset(primdataset) ")
     print " primaryDatasetId  = self.api.createPrimaryDataset(primdataset) "
     primaryDatasetId = self.api.createPrimaryDataset(primdataset)
 
@@ -91,6 +93,7 @@ class DBS_Ws:
 
     # Create Processed dataset
     procDatasetId=0
+    logging.debug(" createProcessedDataset for %s"%datasetPath)
     print " createProcessedDataset for %s"%datasetPath
     procDatasetId = self.api.createProcessedDataset(dataset)
 
@@ -110,6 +113,7 @@ class DBS_Ws:
     fileBlockList = self.api.getDatasetFileBlocks(datasetPath)
     if fileBlockList == None:
       #print "creating the fileblock since there are no fileblock for this dataset"
+      logging.debug(" createFileBlock for dataset %s"%datasetPath)
       print " createFileBlock for dataset %s"%datasetPath
       fbId = self.api.createFileBlock(datasetPath, block)
 
@@ -169,6 +173,7 @@ class DBS_Ws:
      insert an event collection/file to a dataset with DBS API insertEventCollections
     """    
     # insert evc to the dataset
+    logging.debug("inserting event collections")
     print " inserting event collections"
     self.api.insertEventCollections(evcList)
 
@@ -181,10 +186,12 @@ class DBS_Ws:
     if fileBlockList != None:
      for fileBlock in fileBlockList:
        ## get the event collections for each block
+       logging.debug("Fileblock "+fileBlock._blockName)
        print "Fileblock "+fileBlock._blockName
        eventCollectionList = fileBlock._eventCollectionList
        nevts=0
        for eventCollection in eventCollectionList:
+          logging.debug("  - eventcollection: "+eventCollection._collectionName+" nb.ofevts: %i"%eventCollection._numberOfEvents)
           print "  - eventcollection: "+eventCollection._collectionName+" nb.ofevts: %i"%eventCollection._numberOfEvents
           #print "  %s" % eventCollection
           nevts=nevts+eventCollection._numberOfEvents

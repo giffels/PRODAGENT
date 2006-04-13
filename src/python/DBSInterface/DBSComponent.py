@@ -89,7 +89,8 @@ class DBSComponent:
         #  //
         # // Set up formatting for the logger and set the 
         #//  logging level to info level
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
+        #logFormatter = logging.Formatter("%(asctime)s:%(message)s")
+        logFormatter = logging.Formatter("%(asctime)s:%(module)s:%(message)s")
         logHandler.setFormatter(logFormatter)
         logging.getLogger().addHandler(logHandler)
         logging.getLogger().setLevel(logging.INFO)

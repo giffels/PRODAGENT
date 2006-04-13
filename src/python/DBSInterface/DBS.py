@@ -19,6 +19,7 @@ from dbsProcessedDataset import DbsProcessedDataset
 from dbsProcessing import DbsProcessing
 from dbsApi import DbsApi, DbsApiException, InvalidDataTier, DBS_LOG_LEVEL_ALL_
 
+import logging
 # ##############
 class DBS:
   """
@@ -51,7 +52,9 @@ class DBS:
     # Define Primary dataset object:
     primdataset = DbsPrimaryDataset(datasetName = PrimDatasetName) 
     # Create Primary dataset
+    logging.debug(" createPrimaryDataset %s"%PrimDatasetName)
     print " createPrimaryDataset %s"%PrimDatasetName
+    #logging.debug(" createPrimaryDataset %s"%PrimDatasetName)
     try:
       self.api.createPrimaryDataset(primdataset)
     except DbsCgiObjectExists, ex:
@@ -78,6 +81,7 @@ class DBS:
                                  datasetName=procdatasetName,
                                  dataTier=tier)
        try:
+         logging.debug("createProcessedDataset %s for datatier %s"%(procdatasetName,tier))
          print " createProcessedDataset %s for datatier %s"%(procdatasetName,tier)
          self.api.createProcessedDataset(dataset)
        except DbsCgiObjectExists, ex:
@@ -115,6 +119,7 @@ class DBS:
                                 'parameterSet' : { 'hash' : PSet,
                                                    'content' : PSetcont }})
     try:
+      logging.debug(" createProcessing ")
       print " createProcessing "
       self.api.createProcessing(processing)
     except DbsCgiObjectExists, ex:
@@ -133,6 +138,7 @@ class DBS:
     if len(fileBlockList) == 0:
       #print "creating the fileblock since there are no fileblock for this dataset"
        block = DbsFileBlock (processing = processing)
+       logging.debug(" createFileBlock ")
        print " createFileBlock "
        try:
          self.api.createFileBlock(block)
@@ -159,6 +165,7 @@ class DBS:
                        guid=fileinfo['GUID'], 
                        fileType="EVD")
     fList=[outfile]
+    logging.debug(" insert files to block %s"%fileblock.getBlockName())
     print " insert files to block %s"%fileblock.getBlockName()
     try:
       self.api.insertFiles(fileblock, fList)
@@ -196,6 +203,7 @@ class DBS:
         parentList=[{ 'parent' : parent_ec, 'type' : parent_tier }]
 
     name="%s_%s"%(tier,nameLFN)
+    logging.debug(" evc name : %s"%name)
     print " evc name : %s"%name
     ec = DbsEventCollection (collectionName=name, 
                              numberOfEvents=events,
@@ -211,7 +219,7 @@ class DBS:
     """
     # dataset
     dataset= DbsProcessedDataset(datasetPath=datasetPath)
-
+    logging.debug(" insert EventCollections for dataset %s"%datasetPath)
     print " insert EventCollections for dataset %s"%datasetPath
     try:
      self.api.insertEventCollections(dataset, evcList)
@@ -233,8 +241,10 @@ class DBS:
     fileBlockList = self.api.getDatasetContents(dbspath)
 
     for fileBlock in fileBlockList:
+      logging.debug("File block name: %s" % (fileBlock.getBlockName()))
       print "File block name: %s" % (fileBlock.getBlockName())
       for eventCollection in fileBlock.getEventCollectionList():
+         logging.debug("  - eventcollection: %s nb.ofevts: %d "% (eventCollection.getCollectionName(), eventCollection.getNumberOfEvents()))
          print "  - eventcollection: %s nb.ofevts: %d " \
         % (eventCollection.getCollectionName(), eventCollection.getNumberOfEvents())
          nevts=nevts+eventCollection.getNumberOfEvents()
