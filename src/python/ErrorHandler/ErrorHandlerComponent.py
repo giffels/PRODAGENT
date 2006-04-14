@@ -51,6 +51,7 @@ class ErrorHandlerComponent:
          self.args['jobReportLocation']='/tmp/prodAgentJobReports'
          self.args['Logfile'] = None
          self.args.update(args)
+ 
 
          # the error events this components subscribes to
          # that invoke an error handler
@@ -83,7 +84,6 @@ class ErrorHandlerComponent:
          """
          logging.debug("Received event: "+ str(event)+ \
                        " with payload: "+str(payload))
-
 
          try:
               if event == "ErrorHandler:StartDebug":

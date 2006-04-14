@@ -33,6 +33,7 @@ if os.environ.get("PRODAGENT_WORKDIR", None) == None:
     raise RuntimeError, msg
 
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
+compCfg['jobReportLocation'] = os.path.expandvars(compCfg['jobReportLocation']) 
 #  //
 # // Initialise and start the component
 #//
