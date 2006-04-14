@@ -147,7 +147,7 @@ class MessageServiceStatus:
         cursor.close()
         return result
 
-    def pendingMessages(self, subscriberName):
+    def pendingMessages(self, subscriberName, offset = None, total = None):
         """
         _pendingMessages_
 
@@ -164,9 +164,16 @@ class MessageServiceStatus:
               WHERE ms_process.name="%s"
                 AND ms_type.typeid=ms_message.type
                 AND ms_subscription.procid=ms_process.procid
-                AND ms_subscription.typeid=ms_message.type;
-
+                AND ms_subscription.typeid=ms_message.type
         """ % subscriberName
+
+        
+        if (offset == None) and (total == None):
+            sqlStr += ";"
+
+        if (offset != None) and (total != None):
+            sqlStr += " LIMIT %s, %s; " % (offset, total)
+        
         
         connection = connect()
         cursor = connection.cursor(MySQLdb.cursors.DictCursor)
