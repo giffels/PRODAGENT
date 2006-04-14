@@ -8,6 +8,7 @@ Defines RPC methods for the AdminControl component to expose.
 
 """
 import operator
+import types
 from MessageService.MessageService import MessageService
 from MessageService.MessageServiceStatus import MessageServiceStatus
 import JobState.JobStateAPI.JobStateInfoAPI as JobStateStatus
@@ -138,7 +139,39 @@ class AdminControlInterface:
                 msg += "Component Named %s\n" % componentName
                 msg += str(ex)
                 return Fault(1, msg)
-        
+
+    def pendingEventsFor(self, componentName, offset = None, total = None):
+        """
+        _pendingEventsFor_
+
+        Get the details of the pending events for the component specified.
+        Optional offset and total allow large ranges to be retrieved in
+        chunks
+
+        """
+        if offset != None:
+            if ((type(offset) != types.IntType) and (offset < 0)):
+                msg = "Invalid Offset Argument to pendingEventsFor:\n"
+                msg += "For component: %s\n" % componentName
+                msg += "Offset value must be a non negative integer"
+                return Fault(2, msg)
+        if total != None:
+            if ((type(total) != types.IntType) and (offset < 0)):
+                msg = "Invalid Total Argument to pendingEventsFor:\n"
+                msg += "For component: %s\n" % componentName                
+                msg += "Total value must be a non negative integer"
+                return Fault(2, msg)
+            
+        try:
+            return self.status.pendingMessages(componentName, offset, total)   
+        except StandardError, ex:
+            msg = "Error getting pending messages for component:\n"
+            msg += "Component: %s Offset: %s Total: %s\n " % (
+                componentName, offset, total,
+                )
+            msg += str(ex)
+            return Fault(1, msg)
+                
         
     def totalJobSpecs(self):
         """
