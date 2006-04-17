@@ -90,6 +90,11 @@ if passwd=='':
     passwd="''"
 
 updateData="--user="+userName+ " --password="+str(passwd)
+socketFileLocation=dbConfig['socketFileLocation']
+if (socketFileLocation!=""):
+   updateData+="  --socket="+socketFileLocation
+else:
+   updateData+="  --port="+dbConfig['portNr']+"  --host="+dbConfig['host']
 
 # install schema.
 try:
