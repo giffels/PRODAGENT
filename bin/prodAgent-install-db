@@ -94,7 +94,13 @@ socketFileLocation=dbConfig['socketFileLocation']
 if (socketFileLocation!=""):
    updateData+="  --socket="+socketFileLocation
 else:
-   updateData+="  --port="+dbConfig['portNr']+"  --host="+dbConfig['host']
+   choice=raw_input('\nYou will be using ports and hosts settings instead of \n'+\
+                    'sockets. Are you sure you want to use this to connect \n'+\
+                    'to a database as it is a potential security risk? (Y/n)\n ')
+   if choice=='Y':
+       updateData+="  --port="+dbConfig['portNr']+"  --host="+dbConfig['host']
+   else:
+       sys.exit(1)
 
 # install schema.
 try:
