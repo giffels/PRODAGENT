@@ -84,7 +84,7 @@ coreFields = {
     'checkConnectionPeriod' : 3*60,
     'maxConnectionAttempts' : 5,
     'dbWaitingTime' : 10 ,
-    'schemaLocation': "$PRODAGENT_HOME/src/sql/ProdAgentDB/ProdAgentDB.sql"
+    'schemaLocation': "$PRODAGENT_HOME/share/ProdAgentDB.sql"
     },
     
     "MessageService" : {
