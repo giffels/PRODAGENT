@@ -5,7 +5,7 @@ PREFIX=$(shell pwd)
 # Sources
 PYTHON_SRC=$(shell pwd)/src/python
 SQL_SRC=$(shell pwd)/src/sql
-
+BIN_SRC=$(shell pwd)/bin
 
 # Targets
 LIB_DIR=$(PREFIX)/lib
@@ -21,6 +21,12 @@ build:
 	/bin/cp $(PYTHON_SRC)/ShREEK/shreek $(LIB_DIR)/ShREEK
 	/bin/cp $(SQL_SRC)/ProdAgentDB/ProdAgentDB.sql  $(SHARE_DIR)
 	/bin/chmod +x $(LIB_DIR)/JobCreator/RuntimeTools/*.py
+ifneq ($(BIN_DIR), $(BIN_SRC))
+	/bin/cp -f $(BIN_SRC)/prodAgent* $(BIN_DIR)
+	/bin/chmod +x $(BIN_DIR)/*
+endif
+
+
 
 setup:
 	/bin/mkdir -p $(SHARE_DIR)
