@@ -70,7 +70,7 @@ coreFields = {
     # // Core pieces: ProdAgent, ProdAgentDB, MessageService, JobStates
     #//               Local scope DBS
     "ProdAgent": {
-    "ProdAgentDir": os.getcwd(),
+    "ProdAgentWorkDir": os.getcwd(),
     },
     
     "ProdAgentDB": {
@@ -110,27 +110,27 @@ componentFields = {
     },
 
     "JobCreator" : {
-    "ComponentDir" : "$PRODAGENT_WORKDIR/JobCreator",
+    "ComponentDir" : None,
     "CreatorName" : "testCreator",
     },
     "JobSubmitter" : {
-    "ComponentDir" : "$PRODAGENT_WORKDIR/JobSubmitter",
+    "ComponentDir" : None,
     "SubmitterName" : "noSubmit",
     },
 
     "DBSInterface" : {
-    "ComponentDir" : "$PRODAGENT_WORKDIR/DBSInterface",
+    "ComponentDir" : None,
     # Local DBS settings come from LocalDBS core block 
     },
 
     "DLSInterface" : {
-    "ComponentDir" : "$PRODAGENT_WORKDIR/DLSInterface",
+    "ComponentDir" : None,
     "DLSAddress" : None,
     "DLSType" : None,
     },
 
     "JobTracking" : {
-    "ComponentDir" : "$PRODAGENT_WORKDIR/JobTracking",
+    "ComponentDir" : None,
     "BOSSDIR" : None,
     "BOSSPATH" : None,
     "BOSSVERSION" : None,
@@ -138,18 +138,18 @@ componentFields = {
     },
 
     'MergeSensor' : {
-    "ComponentDir" : "$PRODAGENT_WORKDIR/MergeSensor",
+    "ComponentDir" : None,
     "PollInterval": 30,
     # Local DBS settings come from LocalDBS core block 
     },
 
     'ErrorHandler' : {
-    "ComponentDir" : "$PRODAGENT_WORKDIR/ErrorHandler",
+    "ComponentDir" : None,
     'jobReportLocation' : "$PRODAGENT_WORKDIR/ErrorHandler/JobReports",
     
     },
     'AdminControl' : {
-    "ComponentDir" : "$PRODAGENT_WORKDIR/AdminControl",
+    "ComponentDir" : None,
     "AdminControlHost" : "127.0.0.1",
     "AdminControlPort" : 8081,
     },
@@ -182,6 +182,17 @@ for item in componentList:
 
 config = ProdAgentConfiguration()
 
+#  //
+# // Process core fields
+#//
+for name, values in coreFields.items():
+    cfgDict = config.getConfig(name)
+    cfgDict.update(values)
+    if comments.has_key(name):
+        cfgDict.comment = comments[name]
+
+
+prodAgentBlock = config.getConfig("ProdAgent")
 
 def processField(fieldName, fieldDict):
     """
@@ -194,16 +205,17 @@ def processField(fieldName, fieldDict):
     cfg.update(fieldDict)
     if comments.has_key(fieldName):
         cfg.comment = comments[fieldName]
-    return
 
-#  //
-# // Process core fields
-#//
-for name, values in coreFields.items():
-    cfgDict = config.getConfig(name)
-    cfgDict.update(values)
-    if comments.has_key(name):
-        cfgDict.comment = comments[name]
+    #  //
+    # // Ensure that ComponentDir param is always the unholy
+    #//  union of ProdAgent['ProdAgentWorkDir'] and the component
+    #  //name. That is it cannot be set by the user.
+    # //
+    #//
+    cfg['ComponentDir'] = os.path.join(prodAgentBlock['ProdAgentWorkDir'],
+                                       fieldName)
+    
+    return
 
 #  //
 # // Process components
