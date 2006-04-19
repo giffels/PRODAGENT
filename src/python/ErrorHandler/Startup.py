@@ -27,13 +27,8 @@ except StandardError, ex:
     msg += str(ex)
     raise RuntimeError, msg
 
-if os.environ.get("PRODAGENT_WORKDIR", None) == None:
-    msg = "ProdAgent environment not initialised properly"
-    msg += "$PRODAGENT_WORKDIR is not set"
-    raise RuntimeError, msg
-
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
-compCfg['jobReportLocation'] = os.path.expandvars(compCfg['jobReportLocation']) 
+compCfg['jobReportLocation'] = compCfg['ComponentDir']+'/JobReports' 
 #  //
 # // Initialise and start the component
 #//
