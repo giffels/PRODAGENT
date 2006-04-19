@@ -144,8 +144,7 @@ componentFields = {
     },
 
     'ErrorHandler' : {
-    "ComponentDir" : None,
-    'jobReportLocation' : "$PRODAGENT_WORKDIR/ErrorHandler/JobReports",
+    "ComponentDir" : None
     
     },
     'AdminControl' : {
