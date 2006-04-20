@@ -111,7 +111,6 @@ class TrackingComponent:
         return two lists, one of successful job Ids, one of failed
         job Ids
         """
-
 #lists containing jobs in a particular status        
         success= []
         failure = []
@@ -131,7 +130,7 @@ class TrackingComponent:
         infile,outfile=os.popen4("boss RTupdate -jobid all")
         infile,outfile=os.popen4("boss q -statusOnly -all")
         lines=outfile.readlines()
-
+        
 # fill job lists
         for j in lines:
             j=j.strip()
@@ -274,7 +273,7 @@ class TrackingComponent:
 
         
 
-        logging.info("failed Jobs "+ str( len(badJobs)))
+        #logging.info("failed Jobs "+ str( len(badJobs)))
              
         for jobId in badJobs:
             self.jobFailed(jobId,"Output not retrieved")
@@ -332,8 +331,7 @@ class TrackingComponent:
                 #del self.cmsErrorJobs[i]
 
         self.saveDict(self.cmsErrorJobs,"cmsErrorJobs")
-
-        time.sleep(self.args["PollInterval"])
+        time.sleep(float(self.args["PollInterval"]))
         return
     
      
@@ -404,13 +402,13 @@ class TrackingComponent:
     
     
     def saveDict(self,d,filename):
-        
         f=open("%s/%s"%(self.directory,filename),'w')
         for i in d:
             t="%s %s\n" % (i,d[i])
             f.write(t)
         f.close()
-            
+        return
+    
     def loadDict(self,d,filename):
         try:
             f=open("%s/%s"%(self.directory,filename),'r')
@@ -421,7 +419,7 @@ class TrackingComponent:
             k,v=(l.strip()).split(' ')
             d[k]=int(v)
         f.close()
-        
+        return
         
     
     
@@ -434,7 +432,7 @@ class TrackingComponent:
         commence polling the DB
 
         """
-       
+
         # create message server
         self.ms = MessageService()
                                                                                 
@@ -443,13 +441,13 @@ class TrackingComponent:
         self.ms.subscribeTo("TrackingComponent:StartDebug")
         self.ms.subscribeTo("TrackingComponent:EndDebug")
 
-        
         while True:
-            type, payload = self.ms.get()
-            self.ms.commit()
-            logging.debug("TrackingComponent: %s, %s" % (type, payload))
+            #type, payload = self.ms.get()
+            #self.ms.commit()
+            #ogging.debug("TrackingComponent: %s, %s" % (type, payload))
+            type="TrackingComponent:EndDebug"
+            payload=""
             self.__call__(type, payload)
             self.checkJobs()
-            
     
         
