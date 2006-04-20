@@ -53,7 +53,7 @@ class RunFailureHandler(HandlerInterface):
 
          jobReport=readJobReport(self.args['jobReportLocation']+'/'+fileName)
          #NOTE: is this the right way to extract the job id.
-         jobId=jobReport[0].name
+         jobId=jobReport[0].jobSpecId
          logging.debug(">RunFailureHandler<:Retrieving jobId from job report "+\
                        "(used to dynamically load error handler) " \
                        "jobId="+str(jobId))

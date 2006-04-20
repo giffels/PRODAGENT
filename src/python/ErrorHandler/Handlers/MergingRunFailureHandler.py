@@ -25,7 +25,7 @@ class MergingRunFailureHandler(HandlerInterface):
 
     def handleError(self,payload):
          jobReport=readJobReport(payload)
-         jobId  = jobReport[0].name
+         jobId  = jobReport[0].jobSpecId
 
          try:
               JobStateChangeAPI.runFailure(jobId,jobReportLocation= payload)
