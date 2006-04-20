@@ -84,7 +84,7 @@ cfgObject.loadFromFile(config)
 
 prodAgentConfig = cfgObject.get("ProdAgent")
 dbConfig = cfgObject.get("ProdAgentDB") # TODO: test DB connection
-workingDir = prodAgentConfig['ProdAgentDir'] # TODO: check Dirs exist
+workingDir = prodAgentConfig['ProdAgentWorkDir'] # TODO: check Dirs exist
 workingDir = os.path.expandvars(workingDir)
 components = cfgObject.listComponents()
 
