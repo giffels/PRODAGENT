@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.10 2006/03/08 12:22:58 ckavka Exp $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.1 2006/04/10 17:16:42 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -199,7 +199,7 @@ class ReqInjComponent:
         if self.iterator == None:
             msg = "RequestInjector: Attempted to set initial run number"
             msg += "without specifying a workflow first"
-            loggin.warning(msg)
+            logging.warning(msg)
             return
         self.iterator.count = run
         return
@@ -230,6 +230,7 @@ class ReqInjComponent:
         # wait for messages
         while True:
             type, payload = self.ms.get()
-            self.__call__(type, payload)
             self.ms.commit()
-                                                                                
+            logging.debug("ReqInjector: %s, %s" % (type, payload))
+            self.__call__(type, payload)
+
