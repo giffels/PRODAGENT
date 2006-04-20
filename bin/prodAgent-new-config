@@ -166,7 +166,10 @@ comments = {
 """
 You should only supply either the portNr OR socketFileLocation
 """,
-
+   "JobSubmitter" : \
+"""
+SubmitterName values you can use: condorg, condor, lcg, lsf, lxb1125, and noSubmit
+""",
     }
 
 if componentList == []:
