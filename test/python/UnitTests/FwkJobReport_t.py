@@ -7,6 +7,7 @@ import unittest
 
 from FwkJobRep.FwkJobReport import FwkJobReport
 from FwkJobRep.ReportParser import readJobReport
+from FwkJobRep.MergeReports import mergeReports
 
 
 class FwkJobReportTests(unittest.TestCase):
@@ -26,10 +27,10 @@ class FwkJobReportTests(unittest.TestCase):
         try:
            for i in [1,2,3]:
               fwkJobReport=FwkJobReport("jobClassID"+str(i))
-              fwkJobReport.newFile()
-              fwkJobReport.newFile()
               fwkJobReport.status="Failed"
+              fwkJobReport.jobSpecId="jobClassID"+str(i)
               fwkJobReport.write(self.outputPath+"/jobReportTest"+str(i)+".xml")
+              mergeReports(self.outputPath+"/jobReportTest"+str(i)+".xml",self.outputPath+"/jobReportTest"+str(i)+".xml")
               print('A file '+self.outputPath+'/jobReportTest'+str(i)+'.xml" has been created')
         except StandardError, ex:
             msg = "Failed Job Report Creation Test:\n"
@@ -39,10 +40,12 @@ class FwkJobReportTests(unittest.TestCase):
     def testB(self):
          try:
               for i in [1,2,3]:
-                 fwkJobReport=readJobReport(self.outputPath+"jobReportTest"+str(i)+".xml")
+                 fwkJobReport=readJobReport(self.outputPath+"/jobReportTest"+str(i)+".xml")
                  print('JobReport has been read')
                  self.assertEqual(fwkJobReport[0].name,"jobClassID"+str(i))
+                 self.assertEqual(fwkJobReport[0].jobSpecId,"jobClassID"+str(i))
                  fwkJobReport[0].write(self.outputPath+"/jobReportTest"+str(i)+"."+"1.xml")
+                 mergeReports(self.outputPath+"/jobReportTest"+str(i)+".1.xml",self.outputPath+"/jobReportTest"+str(i)+".1.xml")
                  print('A file '+self.outputPath+'/jobReportTest'+str(i)+'1.xml" has been created')
          except StandardError, ex:
               msg = "Failed Job Report Creation Test:\n"
