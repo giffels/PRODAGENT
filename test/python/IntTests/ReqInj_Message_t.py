@@ -19,8 +19,8 @@ ms.registerAs("TestComponent")
 ms.subscribeTo("JobSubmitted")
 ms.subscribeTo("SubmissionFailed")
 # Job Tracker generated
-#ms.subscribeTo("JobFailed")
-#ms.subscribeTo("JobSuccess")
+ms.subscribeTo("JobFailed")
+ms.subscribeTo("JobSuccess")
 
 # Error Handler generated
 ms.subscribeTo("SubmissionFailed")
