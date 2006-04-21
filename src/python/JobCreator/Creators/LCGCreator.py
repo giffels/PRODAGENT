@@ -123,8 +123,27 @@ def distributor(taskObject):
         handleStageOut(taskObject)
     else:
         return
-    
+ 
+def installMonitor(taskObject):
+    """
+    _installMonitor_
+                                                                                                                   
+    Installs shreek monitoring plugins
+                                                                                                                   
+    """
+    shreekConfig = taskObject['ShREEKConfig']
+#    shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobMonMonitor")
+#    shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
+    shreekConfig.addPluginModule("ShREEK.CMSPlugins.BOSSMonitor")
+    boss = shreekConfig.newMonitorCfg()  # new monitor config object
+    boss.setMonitorName("boss-1") # name of this instance (make it up)
+    boss.setMonitorType("boss")   # type of this instance (as registered in BOSSMonitor.py)
+    shreekConfig.addMonitorCfg(boss) # add to the shreek config
+    #shreekConfig.addPluginModule("ShREEK.CMSPlugins.CMSMetrics")  # module containing example updator plugin
+    #shreekConfig.addUpdator("ProcessToBinary")
+    #shreekConfig.addUpdator("Example")
 
+    return
 
 
 class LCGCreator:
@@ -145,6 +164,9 @@ class LCGCreator:
 
 
     def __call__(self, taskObject):
+
+        if taskObject.parent == None:
+            installMonitor(taskObject) # top object has the ShREEKConfig object in it.
 
         #taskObject(printTaskObjectDetails)
         taskObject(distributor)
