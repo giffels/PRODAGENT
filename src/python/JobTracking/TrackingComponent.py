@@ -142,41 +142,41 @@ class TrackingComponent:
                 return ""
             if st == 'E':
                 try:
-                    self.failedJobsPulished.pop(jid)
+                    self.failedJobsPublished.pop(jid)
                     self.cmsErrorJobs.pop(jid)
                 except StandardError, ex:
                     pass
             elif st == 'OR' or st == 'SD' or st == 'O?':
                 try:
-                    self.failedJobsPulished.pop(jid)                
+                    self.failedJobsPublished.pop(jid)                
                     self.cmsErrorJobs.pop(jid)
                 except StandardError, ex:
                     pass
                 success.append([jid,st])
             elif st == 'R' or st == 'SR':
                 try:
-                    self.failedJobsPulished.pop(jid)                
+                    self.failedJobsPublished.pop(jid)                
                     self.cmsErrorJobs.pop(jid)
                 except StandardError, ex:
                     pass
                 running.append([jid,st])
             elif st == 'I':
                 try:
-                    self.failedJobsPulished.pop(jid)                
+                    self.failedJobsPublished.pop(jid)                
                     self.cmsErrorJobs.pop(jid)
                 except StandardError, ex:
                     pass
                 pending.append([jid,st])
             elif st == 'SW' or st == 'W':
                 try:
-                    self.failedJobsPulished.pop(jid)                
+                    self.failedJobsPublished.pop(jid)                
                     self.cmsErrorJobs.pop(jid)
                 except StandardError, ex:
                     pass
                 waiting.append([jid,st])
             elif st == 'SS':
                 try:
-                    self.failedJobsPulished.pop(jid)                
+                    self.failedJobsPublished.pop(jid)                
                     self.cmsErrorJobs.pop(jid)
                 except StandardError, ex:
                     pass
@@ -187,28 +187,28 @@ class TrackingComponent:
                 failure.append([jid,st])
             elif st == 'SU':
                 try:
-                    self.failedJobsPulished.pop(jid)                
+                    self.failedJobsPublished.pop(jid)                
                     self.cmsErrorJobs.pop(jid)
                 except StandardError, ex:
                     pass
                 submitted.append([jid,st])
             elif st == 'SE':
                 try:
-                    self.failedJobsPulished.pop(jid)                
+                    self.failedJobsPublished.pop(jid)                
                     self.cmsErrorJobs.pop(jid)
                 except StandardError, ex:
                     pass
                 cleared.append([jid,st])
             elif st == 'SC':
                 try:
-                    self.failedJobsPulished.pop(jid)                
+                    self.failedJobsPublished.pop(jid)                
                     self.cmsErrorJobs.pop(jid)
                 except StandardError, ex:
                     pass
                 checkpointed.append([jid,st])
             else:
                 try:
-                    self.failedJobsPulished.pop(jid)                
+                    self.failedJobsPublished.pop(jid)                
                     self.cmsErrorJobs.pop(jid)
                 except StandardError, ex:
                     pass
