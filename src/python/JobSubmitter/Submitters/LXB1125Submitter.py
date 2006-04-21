@@ -22,6 +22,7 @@ bossScheduler = "fork"
 #//
 
 import os
+import logging
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
@@ -50,10 +51,11 @@ class LXB1125Submitter(SubmitterInterface):
 
 
         # BOSS supported versions (best red from configration)
-        supportedBossVersions = ["v3_6_1","v3_6_2","v4_0_0"]
-
+        supportedBossVersions = ["v3","v4"]
+        self.BossVersion=os.environ["BOSSVERSION"].split('_')[0]
+#        logging.info("Boss Version %s"% self.BossVersion)
         # test if version is in supported versions list
-        if not supportedBossVersions.__contains__(os.environ["BOSSVERSION"]):
+        if not supportedBossVersions.__contains__(self.BossVersion):
             msg = "Error: BOSS version " +  os.environ["BOSSVERSION"] + " not supported:\n"
             msg += "supported versions are " + supportedBossVersions.__str__()
             raise RuntimeError, msg
