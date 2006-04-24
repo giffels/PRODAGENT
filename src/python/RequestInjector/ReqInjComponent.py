@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.1 2006/04/10 17:16:42 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.2 2006/04/20 23:16:49 afanfani Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -31,28 +31,30 @@ class ReqInjComponent:
     def __init__(self, **args):
         self.args = {}
         self.args['ComponentDir'] = None
-        self.args['CurrentWorkflow'] = None
         self.args['Logfile'] = None
         self.args['JobState'] = True
+        self.args['WorkflowCache'] = None
         self.args.update(args)
         self.job_state = self.args['JobState']
         
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
-
         logHandler = RotatingFileHandler(self.args['Logfile'],
                                          "a", 1000000, 3)
         logFormatter = logging.Formatter("%(asctime)s:%(message)s")
         logHandler.setFormatter(logFormatter)
         logging.getLogger().addHandler(logHandler)
         logging.getLogger().setLevel(logging.INFO)
-        
-        self.iterator = None
-        if self.args['CurrentWorkflow'] != None:
-            self.iterator = RequestIterator( self.args['CurrentWorkflow'],
-                                             self.args['ComponentDir'] )
 
+        if self.args['WorkflowCache'] == None:
+            self.args['WorkflowCache'] = os.path.join(
+                self.args['ComponentDir'], "WorkflowCache")
+        os.makedirs(self.args['WorkflowCache'])
+
+        self.iterators = {}
+        self.iterator = None
+        
         logging.info("RequestInjector Component Started")
         
     def __call__(self, event, payload):
@@ -68,6 +70,10 @@ class ReqInjComponent:
         if event == "RequestInjector:SetWorkflow":
             self.newWorkflow(payload)
             return
+        if event == "RequestInjector:SelectWorkflow":
+            self.selectWorkflow(payload)
+            return
+            
         if event == "RequestInjector:NewDataset":
             self.newDataset()
 
@@ -94,7 +100,14 @@ class ReqInjComponent:
         URL of the current WorkflowSpec XML file
 
         """
-        payload = "file://%s" % self.args['CurrentWorkflow']
+        if self.iterator == None:
+            msg = "Unable to publish NewDataset Event:\n"
+            msg += "No Workflow has been specified\n"
+            msg += "Please specify a workflow with the\n"
+            msg += "RequestInjector:SelectWorkflow Event\n"
+            logging.error(msg)
+            return
+        payload = "file://%s" % self.iterator.workflow
         self.ms.publish("NewDataset", payload)
         self.ms.commit()       
         return
@@ -117,11 +130,37 @@ class ReqInjComponent:
             self.iterator = None
             return
 
-        self.args['CurrentWorkflow'] = workflowFile
-        self.iterator = RequestIterator(workflowFile,
-                                        self.args['ComponentDir'] )
+        migrateCommand = "/bin/cp %s %s" % (
+            workflowFile, self.args['WorkflowCache'],
+            )
+        os.system(migrateCommand)
+        workflowName = os.path.basename(workflowFile)
+        workflowPath = os.path.join( self.args['WorkflowCache'], workflowName)
+        newIterator = RequestIterator(workflowFile,
+                                      self.args['ComponentDir'] )
+        self.iterators[workflowName] = newIterator
+        self.iterator = newIterator
+        return
+
+    def selectWorkflow(self, workflowName):
+        """
+        _selectWorkflow_
+
+        Switch which request iterator is being used at present based
+        on the name of the workflow
+
+        """
+        if workflowName not in self.iterators.keys():
+            msg = "Error: Cannot select Workflow: %s\n" % workflowName
+            msg += "Nothing known about that workflow\n"
+            msg += "You may need to import the workflow using the\n"
+            msg += "RequestInjector:SetWorkflow event\n"
+            logging.error(msg)
+            return
+        self.iterator = self.iterators[workflowName]
         return
     
+        
         
     def newJob(self):
         """
@@ -140,7 +179,16 @@ class ReqInjComponent:
             logging.warning(msg)
             return
         jobSpec = self.iterator()
-
+        #  //
+        # // Save last known counter in WorkflowCache area for workflow
+        #//
+        workflowCount = os.path.join(
+            self.args['WorkflowCache'],
+            "%s%s"  % (os.path.basename(self.iterator.workflow), ".counter") )
+        handle = open(workflowCount, 'w')
+        handle.write("%s" % self.iterator.count)
+        handle.close()
+        
         if self.job_state:
             try: 
                 # NOTE: max retries and racers are fixed but should
@@ -221,6 +269,7 @@ class ReqInjComponent:
         # subscribe to messages
         self.ms.subscribeTo("ResourcesAvailable")
         self.ms.subscribeTo("RequestInjector:SetWorkflow")
+        self.ms.subscribeTo("RequestInjector:SelectWorkflow")
         self.ms.subscribeTo("RequestInjector:NewDataset")
         self.ms.subscribeTo("RequestInjector:SetEventsPerJob")
         self.ms.subscribeTo("RequestInjector:SetInitialRun")
