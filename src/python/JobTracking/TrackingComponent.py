@@ -25,6 +25,8 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 
+# threads
+from threading import Thread, Condition
 
 from MessageService.MessageService import MessageService
 from FwkJobRep.ReportState import checkSuccess
@@ -441,13 +443,38 @@ class TrackingComponent:
         self.ms.subscribeTo("TrackingComponent:StartDebug")
         self.ms.subscribeTo("TrackingComponent:EndDebug")
 
+        # start polling thread
+        pollingThread = Poll(self.checkJobs)
+        pollingThread.start()
+
+        # wait for messages
         while True:
-            #type, payload = self.ms.get()
-            #self.ms.commit()
-            #ogging.debug("TrackingComponent: %s, %s" % (type, payload))
-            type="TrackingComponent:EndDebug"
-            payload=""
+            type, payload = self.ms.get()
+            self.ms.commit()
+            logging.debug("TrackingComponent: %s, %s" % (type, payload))
             self.__call__(type, payload)
-            self.checkJobs()
-    
-        
+
+class Poll(Thread):
+    """
+    Thread that performs polling
+    """
+                                                                                                                            
+    def __init__(self, poll):
+        """
+        __init__
+                                                                                                                            
+        Initialize thread and set polling callback
+        """
+        Thread.__init__(self)
+        self.poll = poll;
+                                                                                                                            
+    def run(self):
+        """
+        __run__
+                                                                                                                            
+        Performs polling 
+        """
+                                                                                                                            
+        while True:
+            self.poll()
+
