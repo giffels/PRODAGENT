@@ -340,6 +340,8 @@ class DBSComponent:
           applicationfamily='Merging'
         elif ( ApplicationFamily=='GenSimDigi') or ( ApplicationFamily=='GEN-SIM-DIGI'):
           applicationfamily='GEN-SIM-DIGI'
+        elif ( ApplicationFamily=='GEN-SIM'):
+          applicationfamily='GEN-SIM'
         else:
           applicationfamily='Unknown'
 
@@ -355,6 +357,8 @@ class DBSComponent:
           datatier='DIGI'
         elif ( DataTier=='GenSimDigi') or (DataTier=='GEN-SIM-DIGI'):
           datatier='GEN-SIM-DIGI'
+        elif ( DataTier=='GEN-SIM'):
+          datatier='GEN-SIM'
         else:
           datatier='Unknown'
 
