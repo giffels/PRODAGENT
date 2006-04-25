@@ -6,13 +6,12 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.3 2006/04/24 18:42:51 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.4 2006/04/25 13:41:30 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
 import os
-import socket
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -55,7 +54,7 @@ class ReqInjComponent:
 
         self.iterators = {}
         self.iterator = None
-        
+        self.ms = None
         logging.info("RequestInjector Component Started")
         
     def __call__(self, event, payload):
@@ -77,7 +76,10 @@ class ReqInjComponent:
             
         if event == "RequestInjector:NewDataset":
             self.newDataset()
-
+            return
+        if event == "RequestInjector:LoadWorkflows":
+            self.loadWorkflows()
+            return
         if event == "RequestInjector:SetEventsPerJob":
             self.setEventsPerJob(payload)
             return
@@ -137,7 +139,7 @@ class ReqInjComponent:
         os.system(migrateCommand)
         workflowName = os.path.basename(workflowFile)
         workflowPath = os.path.join( self.args['WorkflowCache'], workflowName)
-        newIterator = RequestIterator(workflowFile,
+        newIterator = RequestIterator(workflowPath,
                                       self.args['ComponentDir'] )
         self.iterators[workflowName] = newIterator
         self.iterator = newIterator
@@ -156,6 +158,8 @@ class ReqInjComponent:
             msg += "Nothing known about that workflow\n"
             msg += "You may need to import the workflow using the\n"
             msg += "RequestInjector:SetWorkflow event\n"
+            msg += "Known Workflows Are:\n"
+            msg += "%s" % self.iterators.keys()
             logging.error(msg)
             return
         self.iterator = self.iterators[workflowName]
@@ -198,9 +202,9 @@ class ReqInjComponent:
                 # NOTE: does this component only handle processing jobs?
                 # NOTE: if not we need to differentiate between processing
                 # NOTE: and merging jobs 
-                jobSpecID=self.iterator.currentJob
-                JobStateChangeAPI.register(jobSpecID,'processing',10,1)
-            except Exception, ex:
+                jobSpecID = self.iterator.currentJob
+                JobStateChangeAPI.register(jobSpecID, 'processing', 10, 1)
+            except StandardError, ex:
                 # NOTE: this should be stored in the logger
                 # NOTE: need to handle different type of exceptions.
                 logging.error('ERROR: '+str(ex))
@@ -218,7 +222,7 @@ class ReqInjComponent:
         """
         try:
             eventsPerJob = int(numEvents)
-        except:
+        except StandardError:
             msg = "RequestInjector: Attempted to set number of events per job"
             msg += "To non integer value: %s" % numEvents
             logging.warning(msg)
@@ -229,6 +233,15 @@ class ReqInjComponent:
             logging.warning(msg)
             return
         self.iterator.eventsPerJob = eventsPerJob
+        #  //
+        # // Save last known events per job in WorkflowCache area for workflow
+        #//
+        workflowEvents = os.path.join(
+            self.args['WorkflowCache'],
+            "%s%s"  % (os.path.basename(self.iterator.workflow), ".events") )
+        handle = open(workflowEvents, 'w')
+        handle.write("%s" % self.iterator.eventsPerJob)
+        handle.close()
         return
 
     def setInitialRun(self, initialRun):
@@ -240,7 +253,7 @@ class ReqInjComponent:
         """
         try:
             run = int(initialRun)
-        except:
+        except StandardError:
             msg = "RequestInjector: Attempted to set initial run"
             msg += "To non integer value: %s" % initialRun
             logging.warning(msg)
@@ -251,8 +264,72 @@ class ReqInjComponent:
             logging.warning(msg)
             return
         self.iterator.count = run
+        #  //
+        # // Save last known counter in WorkflowCache area for workflow
+        #//
+        workflowCount = os.path.join(
+            self.args['WorkflowCache'],
+            "%s%s"  % (os.path.basename(self.iterator.workflow), ".counter") )
+        handle = open(workflowCount, 'w')
+        handle.write("%s" % self.iterator.count)
+        handle.close()
         return
-        
+
+    def loadWorkflows(self):
+        """
+        _loadWorkflows_
+
+        For all workflow files in the WorkflowCache load them and
+        their run and event counts into memory
+
+        This erases everything in memory so far.
+
+        """
+        logging.debug("Loading Workflows")
+        self.iterator = None
+        self.iterators = {}
+        fileList = os.listdir(self.args['WorkflowCache'])
+        for item in fileList:
+            if not item.endswith(".xml"):
+                continue
+            pathname = os.path.join(self.args['WorkflowCache'], item)
+            if not os.path.exists(pathname):
+                continue
+            #  //
+            # // Load Workflow Spec into iterator
+            #//
+            logging.debug("Loading Workflow: %s" % pathname)
+            try:
+                iterator = RequestIterator(pathname,
+                                           self.args['ComponentDir'] )
+                self.iterators[item] = iterator
+            except StandardError, ex:
+                logging.error("ERROR Loading Workflow: %s : %s" % (item, ex))
+                continue
+            #  //
+            # // try and load event and run count.
+            #//
+            eventsFile = os.path.join(self.args['WorkflowCache'],
+                                      "%s.events" % item)
+            counterFile = os.path.join(self.args['WorkflowCache'],
+                                       "%s.counter" % item)
+            eventsValue = readIntFromFile(eventsFile)
+            counterValue = readIntFromFile(counterFile)
+            logging.debug("EventCounter for workflow %s = %s" % (
+                item, eventsValue)
+                          )
+            logging.debug("RunCounter for workflow %s = %s" % (
+                item, counterValue)
+                          )
+            if eventsValue != None:
+                iterator.eventsPerJob = eventsValue
+
+            if counterValue != None:
+                iterator.count = counterValue
+                
+        return
+    
+            
 
     def startComponent(self):
         """
@@ -270,6 +347,7 @@ class ReqInjComponent:
         # subscribe to messages
         self.ms.subscribeTo("ResourcesAvailable")
         self.ms.subscribeTo("RequestInjector:SetWorkflow")
+        self.ms.subscribeTo("RequestInjector:LoadWorkflows")
         self.ms.subscribeTo("RequestInjector:SelectWorkflow")
         self.ms.subscribeTo("RequestInjector:NewDataset")
         self.ms.subscribeTo("RequestInjector:SetEventsPerJob")
@@ -279,8 +357,26 @@ class ReqInjComponent:
         
         # wait for messages
         while True:
-            type, payload = self.ms.get()
+            msgtype, payload = self.ms.get()
             self.ms.commit()
-            logging.debug("ReqInjector: %s, %s" % (type, payload))
-            self.__call__(type, payload)
+            logging.debug("ReqInjector: %s, %s" % (msgtype, payload))
+            self.__call__(msgtype, payload)
 
+
+
+def readIntFromFile(filename):
+    """
+    _readIntFromFile_
+
+    util to extract an int from a file
+
+    """
+    if not os.path.exists(filename):
+        return None
+    content = file(filename).read()
+    content = content.strip()
+    try:
+        return int(content)
+    except ValueError:
+        return None
+    
