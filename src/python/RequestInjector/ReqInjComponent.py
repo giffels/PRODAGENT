@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.2 2006/04/20 23:16:49 afanfani Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.3 2006/04/24 18:42:51 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -50,7 +50,8 @@ class ReqInjComponent:
         if self.args['WorkflowCache'] == None:
             self.args['WorkflowCache'] = os.path.join(
                 self.args['ComponentDir'], "WorkflowCache")
-        os.makedirs(self.args['WorkflowCache'])
+        if not os.path.exists(self.args['WorkflowCache']):
+            os.makedirs(self.args['WorkflowCache'])
 
         self.iterators = {}
         self.iterator = None
