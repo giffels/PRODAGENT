@@ -31,6 +31,9 @@ from threading import Thread, Condition
 from MessageService.MessageService import MessageService
 from FwkJobRep.ReportState import checkSuccess
 
+from JobState.JobStateAPI import JobStateChangeAPI
+from FwkJobRep.ReportParser import readJobReport
+
 
 
 class TrackingComponent:
@@ -362,6 +365,12 @@ class TrackingComponent:
         """
         
         jobReportLocation = "file://"+self.directory+"/BossJob_%s/FrameworkJobReport.xml" % jobId
+        #Retrieve jobspec id from report
+        #NOTE: uncomment for use.
+        #jobReport=readJobReport(jobReportLocation)
+        #jobSpecId=jobReport[0].jobSpecId
+        #jobStateChangeAPI.finished(jobSpecId)
+
         self.ms.publish("JobSuccess", jobReportLocation)
         self.ms.commit()
                                                                                 
@@ -387,6 +396,9 @@ class TrackingComponent:
         except StandardError:
             #errReportLocation = "file://"+self.directory+"/BossJob_%s/FrameworkJobReport.xml" % jobId[0] 
             logging.debug("JobFailed: %s" % msg)
+            #NOTE: this message should contain the job report which in turn
+            #NOTE: contains the jobSpecId used for prodagent internal auditing
+            #NOTE: purposes
             self.ms.publish("JobFailed", msg)
             self.ms.commit()
                                                                                 
