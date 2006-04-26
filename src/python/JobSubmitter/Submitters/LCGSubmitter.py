@@ -22,7 +22,8 @@ bossScheduler = "edg"
 #//
 
 import os
-
+import sys
+import logging
 from MCPayloads.JobSpec import JobSpec
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
@@ -48,28 +49,22 @@ class LCGSubmitter(SubmitterInterface):
         if not os.environ.has_key("BOSSVERSION"):
             msg = "Error: BOSS environment BOSSVERSION not set:\n"
             raise RuntimeError, msg
+        self.BossVersion=os.environ["BOSSVERSION"].split('_')[0]
 
-        #self.bossJobType=""
 
         # BOSS supported versions (best red from configration)
-        supportedBossVersions = ["v3_6_1","v3_6_2","v3_6_3","v4_0_0"]
+        supportedBossVersions = ["v3","v4"]
+
 
         # test if version is in supported versions list
-        if not supportedBossVersions.__contains__(os.environ["BOSSVERSION"]):
+        if not supportedBossVersions.__contains__(self.BossVersion):
             msg = "Error: BOSS version " +  os.environ["BOSSVERSION"] + " not supported:\n"
             msg += "supported versions are " + supportedBossVersions.__str__()
             raise RuntimeError, msg
         
-        if os.environ["BOSSVERSION"]=="v4_0_0":
-            pass
-        else:
-            inf,outf=os.popen4("boss SQL -query \"select name from JOBTYPE where name = 'cmssw'\"")
-            outp=outf.read()
-            self.bossJobType="cmssw"
-            #print outp.find("cmssw")
-            if outp.find("cmssw")<0:
-                self.bossJobType="stdjob"
-        #print bossJobType
+        self.parameters['Scheduler']="edg"
+        self.bossSubmitCommand={"v3":self.BOSS3submit,"v4":self.BOSS4submit}
+
 
     #  //
     # //  Initially start with the default wrapper script
@@ -88,7 +83,7 @@ class LCGSubmitter(SubmitterInterface):
         script.append("./run.sh \n")
         script.append("cd ..\n")
         script.append("cp %s/FrameworkJobReport.xml . \n" % jobname)
-        script.append("cp %s/*/*.root .\n" % jobname )
+##         script.append("cp %s/*/*.root .\n" % jobname )
 
         handle = open(wrapperName, 'w')
         handle.writelines(script)
@@ -109,60 +104,45 @@ class LCGSubmitter(SubmitterInterface):
         Initial tests: No FrameworkJobReport yet, stage back stdout log
         
         """
-        #print "LCGSubmitter.doSubmit: %s"  % wrapperScript
-        #print "LCGSubmitter.doSubmit: %s"  % jobTarball
-        TarballDir,JobName=os.path.split(jobTarball)
-        JobName=JobName.replace(".tar.gz",'')
-        jobSpec = JobSpec()
-        jobSpec.load(TarballDir+"/%s-JobSpec.xml"%JobName)
-        if jobSpec == None:
-           print "Unable to read JobSpec :TarballDir/%s-JobSpec.xml"%JobName
-        swversion=jobSpec.payload.application['Version']
+        bossJobId=self.isBOSSDeclared()
+        if bossJobId==None:
+            self.declareToBOSS()
+            bossJobId=self.isBOSSDeclared()
+        #bossJobId=self.getIdFromFile(TarballDir, JobName)
+        print "bossJobId = %s"%bossJobId
+        JobName=self.parameters['JobName']
+        swversion= self.parameters['AppVersions']
 
-        #  //
-        # // Build BOSS Declare command
-        #//
-        cladfile="%s.clad"%JobName
-        bossDeclare = "boss declare -classad %s "%cladfile
-        declareClad=open(cladfile,"w")
-        declareClad.write("executable = %s;\n" % os.path.basename(wrapperScript))
-        declareClad.write("jobtype = %s;\n"%self.bossJobType)
-        declareClad.write("stdout = %s.stdout;\n"%JobName)
-        declareClad.write("stderr = %s.stderr;\n"%JobName)
-        declareClad.write("infiles = %s,%s;\n" % (wrapperScript, jobTarball))
-#        declareClad.write("outfiles = *.root,stdout.log,stderr.log,FrameworkJobReport.xml;\n")
-        declareClad.write("outfiles = %s.stdout,%s.stderr,FrameworkJobReport.xml;\n"%(JobName,JobName))
-#        declareClad.write("queue = 1nh;\n")
-        declareClad.close()
-        declareClad=open("scheduler.clad","w")
+        schedulercladfile = "%s/%s_scheduler.clad" %  (self.parameters['JobCacheArea'],self.parameters['JobName'])
+        declareClad=open(schedulercladfile,"w")
         declareClad.write("Requirements = Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment);\n"%swversion)
         declareClad.write("VirtualOrganisation = \"cms\";\n")
         declareClad.close()
-        #bossDeclare += "-classad declare.clad"
-        #bossDeclare += "-infiles %s,%s " % (wrapperScript, jobTarball) 
 
-        #  //
-        # // Execute BOSS Declare command to get boss job id 
-        #//
-        
-       # print "LXB1125Submitter.doSubmit: %s" % bossDeclare
-        bossJobId = self.executeCommand(bossDeclare)
-       # print "-jobid %s " % bossJobId.split("Job ID")[1].strip()
-        #  //
-        # // Build BOSS Submit command using job id
-        #//
-        bossJobId = bossJobId.split("Job ID")[1].strip()
-        bossSubmit = "boss submit "
-        bossSubmit += "-jobid %s " % bossJobId
-        bossSubmit += "-scheduler %s -schclassad scheduler.clad" % bossScheduler
+        try:
+            output=self.executeCommand("grid-proxy-info")
+            output=output.split("timeleft :")[1].strip()
+            if output=="0:00:00":
+                #logging.info( "You need a grid-proxy-init")
+                logging.error("grid-proxy-init expired")
+                #sys.exit()
+        except StandardError,ex:
+            #print "You need a grid-proxy-init"
+            logging.error("grid-proxy-init does not exist")
+            sys.exit()
+            
+        bossSubmit = self.bossSubmitCommand[self.BossVersion](bossJobId)  
+        bossSubmit += "-scheduler %s -schclassad %s" % (self.parameters['Scheduler'],schedulercladfile)
+
         #  //
         # // Executing BOSS Submit command
         #//
         print "LCGSubmitter.doSubmit:", bossSubmit
         output = self.executeCommand(bossSubmit)
         print "LCGSubmitter.doSubmit: %s" % output
-        os.remove(cladfile)
+        #os.remove(cladfile)
         return
-    
+
+
 
 registerSubmitter(LCGSubmitter, "lcg")

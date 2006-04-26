@@ -195,26 +195,115 @@ class SubmitterInterface:
         Parameters are extracted from this instance
 
         """
+        outf=self.executeCommand("boss v")
+        version=outf.split("BOSS Version")[1].strip()
+        version=version.split('_')[0]
+                                   
+        logging.info("version = %s")
+        bossDeclare={"v3":self.BOSS3declare,"v4":self.BOSS4declare}
+
         logging.debug("SubmitterInterface:Declaring Job To BOSS")
-        if not os.environ["BOSSVERSION"]=="v4_0_0":
-            bossQuery = "boss SQL -query \"select name from JOBTYPE "
-            bossQuery += "where name = 'cmssw'\""
-            queryOut = self.executeCommand(bossQuery)
-            bossJobType = "cmssw"
-            if queryOut.find("cmssw") < 0:
-                bossJobType="stdjob"
+        bossJobId=bossDeclare[version]()
+
+        idFile = "%s/%sid" % (
+            self.parameters['JobCacheArea'], self.parameters['JobName'],
+            )
+        handle = open(idFile, 'w')
+        handle.write("JobId=%s" % bossJobId)
+        handle.close()
+        logging.debug("SubmitterInterface:BOSS JobID File:%s" % idFile)
+        #os.remove(cladfile)
+        return
+
+    def isBOSSDeclared(self):
+        """
+        _isBOSSDeclared_
+
+        If this job has been declared to BOSS, return the BOSS ID
+        from the cache area. If it has not, return None
+
+        """
+        idFile = "%s/%sid" % (
+            self.parameters['JobCacheArea'], self.parameters['JobName'],
+            )
+        if not os.path.exists(idFile):
+            #  //
+            # // No BOSS Id File ==> not declared
+            #//
+            return None
+        content = file(idFile).read().strip()
+        content=content.replace("JobId=", "")
+        try:
+            jobId = int(content)
+        except ValueError:
+            jobId = None
+        return jobId
+        
+
+        
+    def BOSS4declare(self):
+        """
+        BOSS4declare
+
+        BOSS 4 command to declare a task
+        """
+        
+        bossQuery = "bossAdmin SQL -query \"select id from PROGRAM_TYPES "
+        bossQuery += "where id = 'cmssw'\""
+        queryOut = self.executeCommand(bossQuery)
+        bossJobType = "cmssw"
+        if queryOut.find("cmssw") < 0:
+            bossJobType=""
+        
+
+        print "bossJobType = %s"%bossJobType
+        xmlfile = "%s/%sdeclare.xml" % (
+            self.parameters['JobCacheArea'], self.parameters['JobName'],
+            )
+        print "xmlfile=%s"%xmlfile
+        bossDeclare = "boss declare -xmlfile %s"%xmlfile
+        declareClad=open(xmlfile,"w")
+        declareClad.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
+        
+        declareClad.write("<task name=\"%s\">"%self.parameters['JobName'])
+        declareClad.write("<chain scheduler=\"%s\" rtupdater=\"mysql\" ch_tool_name=\"\">"%self.parameters['Scheduler'])
+        declareClad.write(" <program exec=\"%s\" args=\"\" stderr=\"stderr.log\" program_types=\"%s\" stdin=\"\" stdout=\"stdout.log\"  infiles=\"%s,%s\" outfiles=\"*.root,stdout.log,stderr.log,FrameworkJobReport.xml\"  outtopdir=\"\"/></chain></task>"% (os.path.basename(self.parameters['Wrapper']),bossJobType,self.parameters['Wrapper'],self.parameters['Tarball']))
+        declareClad.close()
+        logging.debug("SubmitterInterface:BOSS xml declare file written:%s" % xmlfile)
 
         #  //
-        # // Write classad file for boss declare in the job Cache area
+        # // Do BOSS Declare
         #//
+        bossJobId = self.executeCommand(bossDeclare)
+        print bossJobId
+        bossJobId = bossJobId.split("TASK_ID:")[1].split("\n")[0].strip()
+        logging.debug("SubmitterInterface:BOSS Job ID: %s" % bossJobId)
+        #os.remove(xmlfile)
+        return bossJobId
+        
+
+
+        
+    def BOSS3declare(self):
+        """
+        BOSS3declare
+
+        BOSS 3 command to declare a task
+        """
+        bossQuery = "boss SQL -query \"select name from JOBTYPE "
+        bossQuery += "where name = 'cmssw'\""
+        queryOut = self.executeCommand(bossQuery)
+        bossJobType = "cmssw"
+        if queryOut.find("cmssw") < 0:
+            bossJobType="stdjob"
         cladfile = "%s/%s.clad" % (
             self.parameters['JobCacheArea'], self.parameters['JobName'],
             )
+        print "cladfile=%s"%cladfile
         declareClad=open(cladfile,"w")
-        declareClad.write("executable = %s;\n" % (
-            self.parameters['ExecutableFile'],
-            )
-                          )
+        declareClad.write("executable = %s;\n" % ( os.path.basename(self.parameters['Wrapper'])))
+        declareClad.write("group = %s;\n" % self.parameters['JobName'])
+        
         declareClad.write("jobtype = %s;\n" % bossJobType)
         declareClad.write("stdout = %s.stdout;\n" % self.parameters['JobName'])
         declareClad.write("stderr = %s.stderr;\n"% self.parameters['JobName'])
@@ -235,48 +324,34 @@ class SubmitterInterface:
         #//
         bossDeclare = "boss declare -classad %s " % cladfile
         bossJobId = self.executeCommand(bossDeclare)
+        bossJobId = bossJobId.replace("Job ID","").strip()
         logging.debug("SubmitterInterface:BOSS Job ID: %s" % bossJobId)
+        #os.remove(cladfile)
+        return bossJobId
 
-        #  //
-        # // Write ID to cache
-        #//
-        idFile = "%s/%sid" % (
-            self.parameters['JobCacheArea'], self.parameters['JobName'],
-            )
-        handle = open(idFile, 'w')
-        handle.write("JobId=%s" % bossJobId)
-        handle.close()
-        logging.debug("SubmitterInterface:BOSS JobID File:%s" % idFile)
-        os.remove(cladfile)
-        return
 
-    def isBOSSDeclared(self):
+    def BOSS4submit(self,bossJobId):
         """
-        _isBOSSDeclared_
+        BOSS4submit
 
-        If this job has been declared to BOSS, return the BOSS ID
-        from the cache area. If it has not, return None
-
+        BOSS 4 command to submit a task
         """
-        idFile = "%s/%sid" % (
-            self.parameters['JobCacheArea'], self.parameters['JobName'],
-            )
-        if not os.path.exists(idFile):
-            #  //
-            # // No BOSS Id File ==> not declared
-            #//
-            return None
-        content = file(idFile).read().strip()
-        content.replace("JobId=", "")
-        try:
-            jobId = int(content)
-        except ValueError:
-            jobId = None
-        return jobId
-        
+        bossSubmit = "boss submit "
+        bossSubmit += "-taskid %s " % bossJobId
+        bossSubmit += "-scheduler %s " %  self.parameters['Scheduler']
+        return bossSubmit
+                
+    def BOSS3submit(self,bossJobId):
+        """
+        BOSS3submit
 
-        
-    
+        BOSS 3 command to submit a task
+        """
+        bossSubmit = "boss submit "
+        bossSubmit += "-jobid %s " % bossJobId
+        bossSubmit += "-scheduler %s " %  self.parameters['Scheduler']
+        return bossSubmit
+
 
 def createTarball(targetDir, sourceDir, tarballName):
     """
