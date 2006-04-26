@@ -199,7 +199,7 @@ class SubmitterInterface:
         version=outf.split("BOSS Version")[1].strip()
         version=version.split('_')[0]
                                    
-        logging.info("version = %s")
+        logging.info("version = %s"%version)
         bossDeclare={"v3":self.BOSS3declare,"v4":self.BOSS4declare}
 
         logging.debug("SubmitterInterface:Declaring Job To BOSS")

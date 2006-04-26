@@ -111,7 +111,7 @@ class LCGSubmitter(SubmitterInterface):
         #bossJobId=self.getIdFromFile(TarballDir, JobName)
         print "bossJobId = %s"%bossJobId
         JobName=self.parameters['JobName']
-        swversion= self.parameters['AppVersions']
+        swversion=self.parameters['AppVersions'][0]  # only one sw version for now
 
         schedulercladfile = "%s/%s_scheduler.clad" %  (self.parameters['JobCacheArea'],self.parameters['JobName'])
         declareClad=open(schedulercladfile,"w")
