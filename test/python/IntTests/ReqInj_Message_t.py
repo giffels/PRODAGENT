@@ -38,7 +38,7 @@ ms.publish("RequestInjector:StartDebug","none")
 ms.publish("JobCreator:StartDebug","none")
 ms.publish("JobSubmitter:StartDebug","none")
 ms.publish("ErrorHandler:StartDebug","none")
-ms.publish("JobSubmitter:SetSubmitter","boss")
+#ms.publish("JobSubmitter:SetSubmitter","boss")
 ms.publish("TrackingComponent:StartDebug","none")
 
 ms.publish("RequestInjector:SetWorkflow",dataPath+\
