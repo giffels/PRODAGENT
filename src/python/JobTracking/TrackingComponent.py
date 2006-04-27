@@ -54,8 +54,6 @@ class TrackingComponent:
         self.args.update(args)
 
         
-
-        
         os.environ["BOSSDIR"]=self.args["BOSSDIR"]
         os.environ["BOSSVERSION"]=self.args["BOSSVERSION"]
         self.BossVersion=os.environ["BOSSVERSION"].split('_')[0]
@@ -65,6 +63,11 @@ class TrackingComponent:
                 os.environ["PATH"]+=":"+self.args["BOSSPATH"]
             except StandardError, ex:
                 os.environ["PATH"]=self.args["BOSSPATH"]
+
+        ##AF: get boss version from "boss v"
+        outf=os.popen4("boss v")[1].read()
+        version=outf.split("BOSS Version")[1].strip()
+        self.BossVersion=version.split('_')[0]
            
         #number of iterations after which failed jobs are purged from DB
         self.failedJobsPublishedTTL = 180
@@ -252,9 +255,9 @@ class TrackingComponent:
             logging.debug(outp)
             if (outp.find("-force")<0 and outp.find("error")< 0):
                 self.reportfilename=self.bossReportFileName[self.BossVersion](jobId)
-                logging.debug("%s exists=%s"%(reportfilename,os.path.exists(reportfilename)))
+                logging.debug("%s exists=%s"%(self.reportfilename,os.path.exists(self.reportfilename)))
                 if os.path.exists(self.reportfilename):
-                    logging.debug("check Job Success %s"%checkSuccess(reportfilename))
+                    logging.debug("check Job Success %s"%checkSuccess(self.reportfilename))
                     
                     if checkSuccess(self.reportfilename):
                         self.jobSuccess(jobId[0])
