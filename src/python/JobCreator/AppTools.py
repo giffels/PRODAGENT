@@ -9,6 +9,11 @@ main script later on (after manipulation to customise the TaskObjects)
 The general format of the main CMS App scripts is:
 
 #!/bin/sh
+PRODAGENT_THIS_TASK_DIR=`pwd`
+function prodAgentJobFailure(){
+   Common shell function that can be used to 
+   exit the script with a specific error code.
+}
 <Local Environment: generated from TaskObject Environment attr>
 <PreTaskCommands: list of commands to issue to set up the task>
 (  # Start Application Subshell
@@ -30,6 +35,57 @@ import inspect
 import os
 import JobCreator.RuntimeTools.RuntimePSetPrep as RuntimePSetModule
 import JobCreator.RuntimeTools.RuntimeFwkJobRep as RuntimeFwkJobRep
+
+
+#  //
+# // Following script segment contains the standard script 
+#//  preamble including the default way of signalling a problem
+#  //Sub scripts should call prodAgentFailure with the appropriate
+# // exit code if there is a problem
+#//
+_StandardPreamble = \
+"""
+PRODAGENT_THIS_TASK_DIR=`pwd`
+function prodAgentFailure(){
+echo "prodAgentFailure Invoked with code $1"
+echo  "$1" > $PRODAGENT_THIS_TASK_DIR/exit.status
+}
+if [ -e \"./exit.status\" ]; then /bin/rm ./exit.status; fi
+
+"""
+
+#  //
+# // In the event that a setup script has failed, the app subshell
+#//  will check for the existence of exit.status and will
+#  //abort running the app if it exists, since this implies that 
+# // a fatal setup failure has occured.
+#//  This is inserted after the PreApp Commands and before the
+#  //Executable is invoked.
+# // If a JobReport is required for the task the runtime script
+#//  will generate a diagnostic report using the exit.status contents
+_StandardAbortCheck = \
+"""
+if [ -e ./exit.status ]; then 
+  echo "exit.status has been found"
+  echo "This indicates a setup command has failed"
+  echo "Skipping invoking the executable"
+  exit `cat exit.status`
+fi
+
+"""
+
+
+#  //
+# // Following script segment contains mapping of error conditions
+#//  from executable to CMS specific error reporting
+_StandardExitCodeCheck = \
+"""
+# Standard CMS Exit Code Remapping 
+if [ "$EXIT_STATUS" -eq "127" ]; then prodAgentFailure 50110; fi
+if [ "$EXIT_STATUS" -eq "126" ]; then prodAgentFailure 50111; fi
+
+"""
+
 
 class InsertAppDetails:
     """
@@ -109,27 +165,28 @@ class PopulateMainScript:
             if not taskObject.has_key(item):
                 return
 
-        #for item in requireKeys:
-        #    print item, taskObject[item]
 
-        
-        
         exeScript = taskObject[taskObject['Executable']]
 
+        #  //
+        # // Install standard error handling command
+        #//
+        exeScript.append(_StandardPreamble)
+        
         envScript = taskObject[taskObject["BashEnvironment"]]
         envCommand = "%s %s" % (envScript.interpreter, envScript.name)
         exeScript.append(envCommand)
 
         for item in taskObject['PreTaskCommands']:
             exeScript.append(item)
-
-        exeScript.append("if [ -e \"./exit.status\" ]; then /bin/rm ./exit.status; fi")
+            
+        
         
         exeScript.append("( # Start App Subshell")
-
         for item in taskObject['PreAppCommands']:
             exeScript.append(item)
-
+            
+        exeScript.append(_StandardAbortCheck)
         exeComm = "%s %s &" % (taskObject['CMSExecutable'],
                                taskObject['CMSCommandLineArgs'])
         exeScript.append(exeComm)
@@ -137,7 +194,9 @@ class PopulateMainScript:
         exeScript.append("echo $PROCID > process_id")
         exeScript.append("wait $PROCID")
         exeScript.append("EXIT_STATUS=$?")
-        exeScript.append("echo \"$EXIT_STATUS\" > exit.status")
+        exeScript.append(_StandardExitCodeCheck)
+        exeScript.append(
+            "if [ ! -e exit.status ]; then echo \"$EXIT_STATUS\" > exit.status; fi")
         exeScript.append("echo \"App exit status: $EXIT_STATUS\"")
         for item in taskObject['PostAppCommands']:
             exeScript.append(item)
@@ -190,7 +249,8 @@ class InsertPythonPSet:
         
         return
         
-        
+
+
         
 class InsertJobReportTools:
     """
@@ -218,6 +278,8 @@ class InsertJobReportTools:
         taskObject['PostTaskCommands'].append(
             "./RuntimeFwkJobRep.py "
             )
+        
+        
         return
     
     

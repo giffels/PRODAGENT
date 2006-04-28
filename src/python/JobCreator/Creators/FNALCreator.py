@@ -10,8 +10,10 @@ can be run interactively to test the job creation
 import os
 from JobCreator.Registry import registerCreator
 
+from JobCreator.ScramSetupTools import setupScramEnvironment
+from JobCreator.ScramSetupTools import scramProjectCommand
 
-    
+
 def handleCMSSWTaskObject(taskObject):
     """
     _handleCMSSWTaskObject_
@@ -28,24 +30,15 @@ def handleCMSSWTaskObject(taskObject):
     
     scramSetup = taskObject.addStructuredFile("scramSetup.sh")
     scramSetup.interpreter = "."
-    taskObject['PreAppCommands'].append(". /uscms/prod/sw/cms/setup/bashrc")
+    taskObject['PreAppCommands'].append(
+        setupScramEnvironment(". /uscms/prod/sw/cms/setup/bashrc"))
     taskObject['PreAppCommands'].append(". scramSetup.sh")
     
     scramSetup.append("#!/bin/bash")
-    scramSetup.append("scramv1 project %s %s" % (
-        taskObject['CMSProjectName'], taskObject['CMSProjectVersion'])
-                      )
     scramSetup.append(
-        "if [ -e \"./%s\" ]; then" % taskObject['CMSProjectVersion'])
-    scramSetup.append("   cd %s" % taskObject['CMSProjectVersion'])
-    scramSetup.append("   eval `scramv1 runtime -sh`")
-    scramSetup.append("   cd ..")
-    scramSetup.append("else")
-    scramSetup.append("   echo \"PROJECT SETUP FAILED\"")
-    scramSetup.append("   echo \"EXITING WITH STATUS: 10022\"")
-    scramSetup.append("   echo 10022 > exit.status")
-    scramSetup.append("   exit 10022")
-    scramSetup.append("fi")
+        scramProjectCommand(taskObject['CMSProjectName'],
+                            taskObject['CMSProjectVersion'])
+        )
     return
 
 def handleScriptTaskObject(taskObject):
