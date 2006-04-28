@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: TaskState.py,v 1.11 2006/03/30 22:07:42 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: TaskState.py,v 1.1 2006/04/10 16:58:25 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -198,7 +198,7 @@ class TaskState:
         _outputDatasets_
 
         Retrieve a list of output datasets from the RunResDB
-
+        
         """
         result = []
         if not self.runresLoaded:
@@ -281,23 +281,26 @@ class TaskState:
         Match each file in the job report with the parameters describing the
         dataset that it belongs to.
 
-        This is done by matching catalogs to datasets initially, pending
-        the FrameworkJobReport generating the file info directly
-
+        Matching is done by matching OutputModuleName in dataset to
+        ModuleLabel for the File entry
+        
         """
         
         datasets = self.outputDatasets()
+        datasetMap = {}
         for dataset in datasets:
-            catalogEntry = dataset.get("Catalog", None)
-            if catalogEntry == None:
+            outModName = dataset.get("OutputModuleName", None)
+            if outModName != None:
+                datasetMap[outModName] = dataset
+            
+            
+        for fileInfo in self._JobReport.files:
+            outModLabel = fileInfo.get("ModuleLabel", None)
+            if outModLabel == None:
                 continue
-            catalog = os.path.join(self.dir, catalogEntry)
-            fileList = self.listFiles(catalog)
-            for fileEntry in fileList:
-                fileEntry['PFN'] = fileEntry['PFN'][0]
-                fileInfo = self._JobReport.newFile()
-                fileInfo.dataset = dataset
-                fileInfo.update(fileEntry)
+            if datasetMap.has_key(outModLabel):
+                fileInfo.dataset = datasetMap[outModLabel]
+                
         return
         
     
@@ -309,13 +312,8 @@ class TaskState:
         For each File in the job report, if the file exists, record its
         size and cksum value
 
-        NOTE: Also sets number of events using the inputSource details
-        this is a TEMPORARY measure until the details appear in the
-        job report
-
         """
-        inpSrc = self.inputSource()
-        numEvents = int(inpSrc.get("MaxEvents", 0))
+       
         for fileInfo in self._JobReport.files:
             pfn = fileInfo['PFN']
             if pfn.startswith("file:"):
@@ -325,7 +323,6 @@ class TaskState:
             size = os.stat(pfn)[6]
             fileInfo['Size'] = size
             fileInfo['Checksum'] = readCksum(pfn)
-            fileInfo['TotalEvents'] = numEvents
         return
     
     def reportFiles(self):
