@@ -9,7 +9,6 @@ manipulating the bits and pieces of it.
 """
 
 from FwkJobRep.FileInfo import FileInfo
-from FwkJobRep.Message import Message
 
 from IMProv.IMProvNode import IMProvNode
 
@@ -27,9 +26,9 @@ class FwkJobReport:
         self.jobSpecId = None
         self.workflowSpecId = None
         self.files = []
+        self.inputFiles = []
         self.errors = []
         self.exitCode = 0
-        self.messages = []
 
 
     def wasSuccess(self):
@@ -49,35 +48,34 @@ class FwkJobReport:
         return (self.exitCode == 0) and (self.status == "Success") 
     
 
-    def newMessage(self):
-        """
-        _newMessage_
-
-        generate a new Message instance and return it, the instance
-        will be an empty message instance that is added to the list of
-        messages in this object
-
-        """
-        newMessage = Message()
-        self.messages.append(newMessage)
-        return newMessage
-        
 
     def newFile(self):
         """
         _newFile_
 
         Insert a new file into the Framework Job Report object.
-        Use an LFN to insert the file, returns a FwkJobRep.FileInfo
+        returns a FwkJobRep.FileInfo
         object by reference that can be populated with extra details of
         the file.
-
-        If LFN exists, returns None. (Should throw exception eventually)
         
         """
         fileInfo = FileInfo()
         self.files.append(fileInfo)
         return fileInfo
+
+    def newInputFile(self):
+        """
+        _newInputFile_
+
+        Insert an new Input File into this job report and return the
+        corresponding FileInfo instance so that it can be populated
+
+        """
+        fileInfo = FileInfo()
+        fileInfo.isInput = True
+        self.inputFiles.append(fileInfo)
+        return fileInfo
+
     
 
     def save(self):
@@ -109,20 +107,19 @@ class FwkJobReport:
             )
         
         
-        #  //
-        # // Save Messages
-        #//
-        for message in self.messages:
-            result.addNode(message.save())
-
+        
         #  //
         # // Save Files
         #//
         for fileInfo in self.files:
             result.addNode(fileInfo.save())
 
+        #  //
+        # // Save Input Files
+        #//
+        for fileInfo in self.inputFiles:
+            result.addNode(fileInfo.save())
         
-
         return result
 
     def write(self, filename):

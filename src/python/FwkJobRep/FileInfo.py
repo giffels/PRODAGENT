@@ -28,20 +28,41 @@ class FileInfo(dict):
         self.setdefault("Size", None)
         self.setdefault("Checksum", None)
         self.setdefault("TotalEvents", None)
+        self.setdefault("EventsRead", None)
 
         #  //
-        # // Input files is a list of LFNs each of which
-        #//  should have an associated event range.
-        self.inputFiles = {}
+        # // Is this an input or output file?
+        #//
+        self.isInput = False
+
+        #  //
+        # //  open/closed state
+        #//
+        self.state = "closed"
+
+        #  //
+        # // Output files is a list of input files which contain
+        #//  the LFN and PFN of all contributing inputs
+        self.inputFiles = []
+
+        #  //
+        # // List of Branch names
+        #//
+        self.branches = []
+
+        #  //
+        # // List of Runs
+        #//
+        self.runs = []
 
         #  //
         # // Dataset is a dictionary and will have the same key
         #//  structure as the MCPayloads.DatasetInfo object
         self.dataset = {}
         
-
         
-    def addInputFile(self, lfn, firstEvent, lastEvent):
+        
+    def addInputFile(self, pfn, lfn):
         """
         _addInputFile_
 
@@ -53,8 +74,8 @@ class FileInfo(dict):
         lists, since these will be potentially huge.
 
         """
-        self.inputFiles[lfn] = {"FirstEvent" : firstEvent,
-                                "LastEvent" : lastEvent}
+        self.inputFiles.append({"PFN" : pfn,
+                                "LFN" : lfn})
         return
     
         
@@ -67,7 +88,10 @@ class FileInfo(dict):
         of this object so it can be saved to a file
 
         """
-        improvNode = IMProvNode("File")
+        if self.isInput:
+            improvNode = IMProvNode("InputFile")
+        else:
+            improvNode = IMProvNode("File")
         #  //
         # // General keys
         #//
@@ -78,27 +102,46 @@ class FileInfo(dict):
             improvNode.addNode(node)
 
         #  //
+        # // State
+        #//
+        improvNode.addNode(IMProvNode("State", None, Value = self.state))
+
+        #  //
         # // Inputs
         #//
-        inputs = IMProvNode("Input")
-        improvNode.addNode(inputs)
-        for lfn, ranges in self.inputFiles.items():
-            inpNode = IMProvNode("InputFile")
-            inpNode.addNode(IMProvNode("LFN", str(lfn)))
-            inpNode.addNode(IMProvNode("FirstEvent",
-                                       str(ranges['FirstEvent'])))
-            inpNode.addNode(IMProvNode("LastEvent", str(ranges['LastEvent'])))
-            inputs.addNode(inpNode)
-            
-            
+        if not self.isInput:
+            inputs = IMProvNode("Inputs")
+            improvNode.addNode(inputs)
+            for inputFile in self.inputFiles:
+                inpNode = IMProvNode("Input")
+                for key, value in inputFile.items():
+                    inpNode.addNode(IMProvNode(key, value))
+                inputs.addNode(inpNode)
+
+        #  //
+        # // Branches
+        #//
+        branches = IMProvNode("Branches")
+        improvNode.addNode(branches)
+        for branch in self.branches:
+            branches.addNode(IMProvNode("Branch", branch))
+
+        #  //
+        # // Runs
+        #//
+        runs = IMProvNode("Runs")
+        improvNode.addNode(runs)
+        for run in self.runs:
+            runs.addNode(IMProvNode("Run", run))
 
         #  //
         # // Dataset info
         #//
-        dataset = IMProvNode("Dataset")
-        improvNode.addNode(dataset)
-        for key, val in self.dataset.items():
-            dataset.addNode(IMProvNode(key, str(val)))
+        if not self.isInput:
+            dataset = IMProvNode("Dataset")
+            improvNode.addNode(dataset)
+            for key, val in self.dataset.items():
+                dataset.addNode(IMProvNode(key, str(val)))
 
             
         return improvNode

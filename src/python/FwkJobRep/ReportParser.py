@@ -34,9 +34,11 @@ class FwkJobRepHandler(ContentHandler):
         # // State containers used during parsing
         #//
         self.currentReport = FwkJobReport()
-        self.currentMessage = None
         self.currentFile = None
         self.currentDict = None
+
+        self.currentInputDict = None
+        
         self._CharCache = ""
 
         #  //
@@ -50,11 +52,17 @@ class FwkJobRepHandler(ContentHandler):
         #//
         self._StartResponses = {
             "FrameworkJobReport" : self.newReport,
-            "Report" : self.newMessage,
             "File" : self.newFile,
+            "InputFile": self.newInputFile,
             "Dataset" : self.newDataset,
-            "Item" : self.newItem,
             "ExitCode" : self.exitCode,
+            "State" : self.stateHandler,
+            "Branch" : self.noResponse,
+            "Branches" : self.noResponse,
+            "Input" : self.startInput,
+            "Inputs" : self.noResponse,
+            "Runs" : self.noResponse,
+            "Run" : self.noResponse,
             }
 
         #  //
@@ -62,12 +70,18 @@ class FwkJobRepHandler(ContentHandler):
         #//
         self._EndResponses = {
             "FrameworkJobReport" : self.endReport,
-            "Report" : self.endMessage,
             "File" : self.endFile,
             "Dataset" : self.endDataset,
-            "Item" : self.endItem,
-            "Message" : self.noResponse,
             "ExitCode": self.noResponse,
+            "State" : self.noResponse,
+            "Branch" : self.endBranch,
+            "Branches" : self.noResponse,
+            "InputFile" : self.endInputFile,
+            "Input" :self.endInput,
+            "Inputs" : self.noResponse,
+            "Runs" : self.noResponse,
+            "Run" : self.endRun,
+
             }
 
     def noResponse(self, name, attrs = {}):
@@ -114,9 +128,6 @@ class FwkJobRepHandler(ContentHandler):
         self._CharCache += str(data).replace("\t", "")
         return
 
-    def inMessage(self):
-        """boolean test to see if state is in a message block"""
-        return self.currentMessage != None
 
     def inFile(self):
         """boolean test to see if state is in a file block"""
@@ -155,17 +166,6 @@ class FwkJobRepHandler(ContentHandler):
         self.currentReport = None
         return
 
-    def newMessage(self, name, attrs):
-        """ new verbose message tag"""
-        self.currentMessage = self.currentReport.newMessage()
-        self.currentDict = self.currentMessage
-        return
-
-    def endMessage(self, name):
-        """end of verbose message tag"""
-        self.currentMessage = None
-        self.currentDict = None
-        return
 
     def newFile(self, name, attrs):
         """new File tag encountered"""
@@ -177,6 +177,17 @@ class FwkJobRepHandler(ContentHandler):
         self.currentFile = None
         self.currentDict = None
 
+    def newInputFile(self, name, attrs):
+        """new InputFile tag encountered"""
+        self.currentFile = self.currentReport.newInputFile()
+        self.currentDict = self.currentFile
+        
+    def endInputFile(self, name):
+        """ end of InputFile tag encountered"""
+        self.currentFile = None
+        self.currentDict = None
+
+    
 
     def newDataset(self, name, attrs):
         """ start of Dataset tag within a File tag"""
@@ -191,17 +202,6 @@ class FwkJobRepHandler(ContentHandler):
             return
         self.currentDict = self.currentFile
 
-    def newItem(self, name, attrs):
-        """ start of Item tag in verbose message, no action to take here"""
-        return
-        
-    def endItem(self, name):
-        """end of Item tag in verbose message, accumulate char data for
-        current message"""
-        if not self.inMessage():
-            return
-        self.currentMessage['Message'].append(str(self._CharCache))
-        return
     
     def exitCode(self, name, attrs):
         """
@@ -229,8 +229,61 @@ class FwkJobRepHandler(ContentHandler):
             return
         self.currentDict[str(name)] = str(self._CharCache)
         return
-    
 
+    def stateHandler(self, name, attrs):
+        """
+        _stateHandler_
+
+        Handle a State Node
+
+        """
+        self.currentFile.state = str(attrs.get('Value', "closed"))
+   
+
+    def endBranch(self, name):
+        """
+        _endBranch_
+
+        End of Branch node
+
+        """
+        if self.currentFile != None:
+            self.currentFile.branches.append(str(self._CharCache))
+
+    def startInput(self, name, attrs):
+        """
+        _startInput_
+
+        Handle Input reference for an Output File
+
+        """
+        if self.currentFile != None:
+            if not self.currentFile.isInput:
+                self.currentInputDict = {}
+                self.currentDict = self.currentInputDict
+
+    def endInput(self, name):
+        """
+        _endInput_
+
+        end Input node
+        """
+        self.currentFile.addInputFile(self.currentInputDict['PFN'],
+                                      self.currentInputDict['LFN'])
+                                      
+        self.currentInputDict = None
+        self.currentDict = self.currentFile
+
+    def endRun(self, name):
+        """
+        _endRun_
+
+        Add Run Number chardata to current file
+        """
+        if self.currentFile != None:
+            self.currentFile.runs.append(str(self._CharCache))
+        
+        
 def readJobReport(filename):
     """
     _readJobReport_
