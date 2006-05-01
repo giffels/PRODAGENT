@@ -5,6 +5,7 @@ starting the component as an interactive process so that you can get
 stdout/stderr etc
 
 """
+__revision__ = "$Id: TrackingComponent.py,v 1.8 2006/05/01 11:45:04 elmer Exp $"
 
 import os
 import sys
