@@ -8,13 +8,10 @@ Testing Job Creator plugin that generates a job for the prodAgent Dev Node
 
 
 from JobCreator.Registry import registerCreator
-
-
-#  //
-# // TODO: Change this command to setup the scramv1 command on the 
-#//  lxplus batch system (I dont know the details of this yet...) evansde.
-#scramSetupCommand = " . /uscms/prod/sw/cms/setup/bashrc "
-scramSetupCommand = ". $VO_CMS_SW_DIR/cmsset_default.sh"
+                                                             
+from JobCreator.ScramSetupTools import setupScramEnvironment
+from JobCreator.ScramSetupTools import scramProjectCommand
+from JobCreator.ScramSetupTools import scramRuntimeCommand
 
 def printTaskObjectDetails(taskObject):
     """
@@ -60,19 +57,26 @@ def handleCMSSWTaskObject(taskObject):
     
     scramSetup = taskObject.addStructuredFile("scramSetup.sh")
     scramSetup.interpreter = "."
-    taskObject['PreAppCommands'].append(scramSetupCommand)
+    taskObject['PreAppCommands'].append(
+        setupScramEnvironment(". $VO_CMS_SW_DIR/cmsset_default.sh"))
     taskObject['PreAppCommands'].append(". scramSetup.sh")
-    
+
     scramSetup.append("#!/bin/bash")
-    scramSetup.append("scramv1 project %s %s" % (
-        taskObject['CMSProjectName'], taskObject['CMSProjectVersion'])
-                      )
-    scramSetup.append("cd %s" % taskObject['CMSProjectVersion'])
-    scramSetup.append("eval `scramv1 runtime -sh | grep -v SCRAMRT_LSB_JOBNAME\n`")
-#    scramSetup.append("scramv1 runtime -sh| grep -v SCRAMRT_LSB_JOBNAM  > scrun")
- #   scramSetup.append("cat  scrun")
-  #  scramSetup.append("source  scrun")
-    scramSetup.append("cd ..")
+    scramSetup.append(
+        scramProjectCommand(taskObject['CMSProjectName'],
+                            taskObject['CMSProjectVersion'])
+        )
+    scramSetup.append(
+        scramRuntimeCommand(taskObject['CMSProjectVersion'],"scramv1",True)
+        )    
+
+    #scramSetup.append("#!/bin/bash")
+    #scramSetup.append("scramv1 project %s %s" % (
+    #    taskObject['CMSProjectName'], taskObject['CMSProjectVersion'])
+    #                  )
+    #scramSetup.append("cd %s" % taskObject['CMSProjectVersion'])
+    #scramSetup.append("eval `scramv1 runtime -sh | grep -v SCRAMRT_LSB_JOBNAME\n`")
+    #scramSetup.append("cd ..")
     return
 
 def handleScriptTaskObject(taskObject):
