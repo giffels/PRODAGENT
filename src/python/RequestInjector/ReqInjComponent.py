@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.4 2006/04/25 13:41:30 evansde Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.5 2006/04/25 21:55:32 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -203,6 +203,9 @@ class ReqInjComponent:
                 # NOTE: if not we need to differentiate between processing
                 # NOTE: and merging jobs 
                 jobSpecID = self.iterator.currentJob
+                # NOTE: temporal fix for dealing with duplicate job spec:
+                JobStateChangeAPI.cleanout(jobSpecID)
+  
                 JobStateChangeAPI.register(jobSpecID, 'processing', 10, 1)
             except StandardError, ex:
                 # NOTE: this should be stored in the logger
