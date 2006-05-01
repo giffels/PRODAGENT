@@ -19,6 +19,8 @@ be the payload of the JobFailure event
 
 """
 
+__revision__ = "$Id: Environment.py,v 1.1 2006/04/10 17:40:38 evansde Exp $"
+
 import socket
 import time
 import os
@@ -27,7 +29,7 @@ from logging.handlers import RotatingFileHandler
 # threads
 from threading import Thread, Condition
 
-
+from ProdAgentCore.Configuration import ProdAgentConfiguration
 from MessageService.MessageService import MessageService
 from FwkJobRep.ReportState import checkSuccess
 from FwkJobRep.FwkJobReport import FwkJobReport
@@ -53,21 +55,42 @@ class TrackingComponent:
         self.args.setdefault("verbose",0)
         self.args.update(args)
 
-        
-        os.environ["BOSSDIR"]=self.args["BOSSDIR"]
-        os.environ["BOSSVERSION"]=self.args["BOSSVERSION"]
-        self.BossVersion=os.environ["BOSSVERSION"].split('_')[0]
+# Set up logging for this component
+        if self.args['Logfile'] == None:
+            self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
+                                                "ComponentLog")
+            
+        logHandler = RotatingFileHandler(self.args['Logfile'],
+                                         "a", 1000000, 3)
+        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
+        logHandler.setFormatter(logFormatter)
+        logging.getLogger().addHandler(logHandler)
+        logging.getLogger().setLevel(logging.INFO)
+        logging.info("JobTracking Component Initializing...")
 
-        if self.args["BOSSPATH"]!="":
-            try:
-                os.environ["PATH"]+=":"+self.args["BOSSPATH"]
-            except StandardError, ex:
-                os.environ["PATH"]=self.args["BOSSPATH"]
+# Determine the location of the BOSS configuration files. These is expected
+# to be in a specific location under the prodAgent workdir, i.e.
+# <prodAgentWorkDir>/bosscfg
+        config = None 
+        config = os.environ.get("PRODAGENT_CONFIG", None)
+        if config == None:
+           msg = "No ProdAgent Config file provided\n"
+           msg += "either set $PRODAGENT_CONFIG variable\n"
+           msg += "or provide the --config option"
 
+        cfgObject = ProdAgentConfiguration()
+        cfgObject.loadFromFile(config)
+        prodAgentConfig = cfgObject.get("ProdAgent")
+        workingDir = prodAgentConfig['ProdAgentWorkDir'] 
+        workingDir = os.path.expandvars(workingDir)
+        bossCfgDir = workingDir + "/bosscfg/"
+        logging.info("Using BOSS configuration from " + bossCfgDir)
+
+# The rest of the initialization
         ##AF: get boss version from "boss v"
-        outf=os.popen4("boss v")[1].read()
+        outf=os.popen4("boss v -c " + bossCfgDir)[1].read()
         version=outf.split("BOSS Version")[1].strip()
-        self.BossVersion=version.split('_')[0]
+        self.BossVersion="v"+version.split('_')[1] 
            
         #number of iterations after which failed jobs are purged from DB
         self.failedJobsPublishedTTL = 180
@@ -84,19 +107,9 @@ class TrackingComponent:
         self.loadDict(self.cmsErrorJobs,"cmsErrorJobs")
         self.verbose=(self.args["verbose"]==1)
 
-        if self.args['Logfile'] == None:
-            self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
-                                                "ComponentLog")
-            
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
         logging.info("JobTracking Component Started...")
         logging.info("BOSSDIR = %s"%os.environ["BOSSDIR"])         
-        logging.info("BOSSVERSION = %s\n"%self.BossVersion)
+        logging.info("BOSS_VERSION = %s\n"%self.BossVersion)
     def __call__(self, event, payload):
         """
         _operator()_
