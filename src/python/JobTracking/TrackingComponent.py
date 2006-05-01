@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: Environment.py,v 1.1 2006/04/10 17:40:38 evansde Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.8 2006/05/01 11:45:04 elmer Exp $"
 
 import socket
 import time
@@ -83,12 +83,12 @@ class TrackingComponent:
         prodAgentConfig = cfgObject.get("ProdAgent")
         workingDir = prodAgentConfig['ProdAgentWorkDir'] 
         workingDir = os.path.expandvars(workingDir)
-        bossCfgDir = workingDir + "/bosscfg/"
-        logging.info("Using BOSS configuration from " + bossCfgDir)
+        self.bossCfgDir = workingDir + "/bosscfg/"
+        logging.info("Using BOSS configuration from " + self.bossCfgDir)
 
 # The rest of the initialization
         ##AF: get boss version from "boss v"
-        outf=os.popen4("boss v -c " + bossCfgDir)[1].read()
+        outf=os.popen4("boss v -c " + self.bossCfgDir)[1].read()
         version=outf.split("BOSS Version")[1].strip()
         self.BossVersion="v"+version.split('_')[1] 
            
@@ -152,8 +152,8 @@ class TrackingComponent:
 
 # query boss Database to get jobs status
 
-        infile,outfile=os.popen4("boss RTupdate -jobid all")
-        infile,outfile=os.popen4("boss q -statusOnly -all")
+        infile,outfile=os.popen4("boss RTupdate -jobid all -c " + self.bossCfgDir)
+        infile,outfile=os.popen4("boss q -statusOnly -all -c " + self.bossCfgDir)
         lines=outfile.readlines()
         
 # fill job lists
@@ -485,14 +485,14 @@ class TrackingComponent:
             chainid=jobId[0].split('.')[1]
         except:
             logging.debug("Boss 4 getoutput - split error %s"%jobId)
-        infile,outfile=os.popen4("bossAdmin SQL -query \"select max(ID) ID  from JOB_HEAD where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid))
+        infile,outfile=os.popen4("bossAdmin SQL -query \"select max(ID) ID  from JOB_HEAD where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
         outp=outfile.read()
         
         try:
             resub=outp.split("ID")[1].strip()
         except:
             logging.debug(outp)
-        infile,outfile=os.popen4("boss getOutput -outdir "+self.directory+ " -taskid %s"%(taskid))
+        infile,outfile=os.popen4("boss getOutput -outdir "+self.directory+ " -taskid %s"%(taskid) + " -c " + self.bossCfgDir)
         outp=outfile.read()
         return outp
     
@@ -503,7 +503,7 @@ class TrackingComponent:
         Boss 3 command to retrieve output
         """
     
-        infile,outfile=os.popen4("boss getOutput -outdir "+self.directory+ "/BossJob_" + jobId[0] + " -jobid "+jobId[0])
+        infile,outfile=os.popen4("boss getOutput -outdir "+self.directory+ "/BossJob_" + jobId[0] + " -jobid "+jobId[0] + " -c " + self.bossCfgDir)
         outp=outfile.read()
         return outp
 
@@ -524,7 +524,7 @@ class TrackingComponent:
         
         taskid = jobId[0].split('.')[0]
         chainid=jobId[0].split('.')[1]
-        infile,outfile=os.popen4("bossAdmin SQL -query \"select max(ID) ID from JOB_HEAD where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid))
+        infile,outfile=os.popen4("bossAdmin SQL -query \"select max(ID) ID from JOB_HEAD where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
         outp=outfile.read()
         try:
             resub=outp.split("ID")[1].strip()
@@ -555,7 +555,7 @@ class TrackingComponent:
         BOSS 4 command to retrieve JobSpecID from BOSS db
         """
         
-        infile,outfile=os.popen4("bossAdmin SQL -query \"select TASK_NAME from TASK_HEAD where id='%s'\""%id.split('.')[0] )
+        infile,outfile=os.popen4("bossAdmin SQL -query \"select TASK_NAME from TASK_HEAD where id='%s'\""%id.split('.')[0] + " -c " + self.bossCfgDir)
         outp=outfile.read()
         try:
             outp=outp.split("TASK_NAME")[1].strip()
@@ -591,7 +591,7 @@ class TrackingComponent:
         """
         
         try:
-            infile,outfile=os.popen4("bossAdmin SQL -query \"select SCHEDULER from JOB where TASK_ID='%s' and ID='%s'\""%(id.split('.')[0],id.split('.')[1] ))
+            infile,outfile=os.popen4("bossAdmin SQL -query \"select SCHEDULER from JOB where TASK_ID='%s' and ID='%s'\""%(id.split('.')[0],id.split('.')[1]) + " -c " + self.bossCfgDir)
             outp=outfile.read()
         except:
             outp=""
