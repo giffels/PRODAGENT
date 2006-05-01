@@ -63,6 +63,7 @@ class FwkJobRepHandler(ContentHandler):
             "Inputs" : self.noResponse,
             "Runs" : self.noResponse,
             "Run" : self.noResponse,
+            "SkippedEvent" : self.skippedEvent,
             }
 
         #  //
@@ -81,6 +82,7 @@ class FwkJobRepHandler(ContentHandler):
             "Inputs" : self.noResponse,
             "Runs" : self.noResponse,
             "Run" : self.endRun,
+            "SkippedEvent" : self.noResponse,
 
             }
 
@@ -282,7 +284,25 @@ class FwkJobRepHandler(ContentHandler):
         """
         if self.currentFile != None:
             self.currentFile.runs.append(str(self._CharCache))
-        
+
+
+    def skippedEvent(self, name, attrs):
+        """
+        _skippedEvent_
+
+        Record a Skipped Event
+
+        """
+        if self.currentReport == None:
+            return
+        run = attrs.get("Run", None)
+        if run == None :
+            return
+        event = attrs.get("Event", None)
+        if event == None:
+            return
+        self.currentReport.addSkippedEvent(str(run), str(event))
+        return
         
 def readJobReport(filename):
     """

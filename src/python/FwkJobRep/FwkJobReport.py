@@ -28,6 +28,7 @@ class FwkJobReport:
         self.files = []
         self.inputFiles = []
         self.errors = []
+        self.skippedEvents = []
         self.exitCode = 0
 
 
@@ -76,7 +77,18 @@ class FwkJobReport:
         self.inputFiles.append(fileInfo)
         return fileInfo
 
-    
+    def addSkippedEvent(self, runNumber, eventNumber):
+        """
+        _addSkippedEvent_
+
+        Add a skipped event record run/event number pair
+        """
+        self.skippedEvents.append(
+            {"Run" : runNumber, "Event" : eventNumber}
+            )
+
+        return
+        
 
     def save(self):
         """
@@ -119,6 +131,14 @@ class FwkJobReport:
         #//
         for fileInfo in self.inputFiles:
             result.addNode(fileInfo.save())
+
+        #  //
+        # // Save Skipped Events
+        #//
+        for skipped in self.skippedEvents:
+            result.addNode(IMProvNode("SkippedEvent", None,
+                                      Run = skipped['Run'],
+                                      Event = skipped['Event']))
         
         return result
 
