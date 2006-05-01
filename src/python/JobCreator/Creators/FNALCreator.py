@@ -12,6 +12,7 @@ from JobCreator.Registry import registerCreator
 
 from JobCreator.ScramSetupTools import setupScramEnvironment
 from JobCreator.ScramSetupTools import scramProjectCommand
+from JobCreator.ScramSetupTools import scramRuntimeCommand
 
 
 def handleCMSSWTaskObject(taskObject):
@@ -39,6 +40,10 @@ def handleCMSSWTaskObject(taskObject):
         scramProjectCommand(taskObject['CMSProjectName'],
                             taskObject['CMSProjectVersion'])
         )
+    scramSetup.append(
+        scramRuntimeCommand(taskObject['CMSProjectVersion'])
+        )
+
     return
 
 def handleScriptTaskObject(taskObject):

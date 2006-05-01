@@ -119,28 +119,71 @@ def scramProjectCommand(projectName, projectVersion, scramCommand = "scramv1"):
     result.append(_StandardScramProjCheck)
     result.append("fi")
 
+    # // Format the command
+    #//
+    commandString = ""
+    for item in result:
+        if not item.endswith("\n"):
+            item += "\n"
+        commandString += item
+    return commandString
+    
+
+#  //
+# // Check Exit code of scram runtime command
+#//
+_StandardScramRuntimeCheck = \
+"""
+   # Check Scram Runtime Exit Code
+   if [ $? -ne 0 ]; then
+      echo "ERROR: Scram Runtime Command failed"
+      echo "Check on command failed"
+      prodAgentFailure 10036
+   else
+      echo "Scram Runtime Command Checked OK"
+   fi
+
+"""
+
+
+def scramRuntimeCommand(projectVersion, scramVersion = "scramv1",
+                        dodgyLCGHack = False):
+    """
+    _scramRuntimeCommand_
+
+    Generate a scram runtime command including standard exit code
+    generation in event of a problem
+
+    """
+    result = ["# Scram Runtime Command"]
     #  //
     # // Scram Runtime Command: Conditional on project directory
     #//  existing
     #  //
     # // Note: Cant check exit status of scram ru command since it exists
-    #//  in an eval. Need to add seperate non eval call as check in future??
+    #//  in an eval. Therefore call it twice: once in the shell to check it
+    #  //works, then in the eval to use it
+    # //
+    #//
     result.append("if [ -e ./exit.status ]; then ")
     result.append("   echo \"exit.status has been found\"")
     result.append("   echo \"This indicates a setup command has failed\"")
     result.append("   echo \"Skipping Scram Runtime command\"")
     result.append("else")
+    result.append("   # validate scram runtime command")
+    result.append("   cd %s" % projectVersion)
+    result.append("   %s runtime -sh" % scramVersion)
+    result.append(_StandardScramRuntimeCheck)
     result.append("   # Scram Runtime Command")
-    result.append("   if [ -e \"./%s\" ]; then" % projectVersion)
-    result.append("      cd %s" % projectVersion)
-    result.append("      eval `scramv1 runtime -sh`")
-    result.append("      cd ..")
-    result.append("   else")
-    result.append(
-        "      echo \"Scram Project Dir not found for scram runtime\"")
-    result.append("      echo \"EXITING WITH STATUS: 10036\"")
-    result.append("      prodAgentFailure 10036")
-    result.append("   fi")
+    if dodgyLCGHack:
+        #  //
+        # // Filter out conflict between SCRAM and LCG envionments
+        #//
+        result.append(
+            "   eval `scramv1 runtime -sh | grep -v SCRAMRT_LSB_JOBNAME`")
+    else:
+        result.append("   eval `scramv1 runtime -sh`")
+    result.append("   cd $PRODAGENT_THIS_TASK_DIR")
     result.append("fi")
     
 
@@ -153,4 +196,5 @@ def scramProjectCommand(projectName, projectVersion, scramCommand = "scramv1"):
             item += "\n"
         commandString += item
     return commandString
+    
     
