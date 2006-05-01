@@ -9,15 +9,12 @@ import unittest
 
 from Test import preTests
 from Test import postTests
-from UnitTests.JobState_t import JobStateUnitTests
-from UnitTests.JobState_t2 import JobStateUnitTests2
+from UnitTests.Trigger_t import TriggerUnitTests
 
 testSuite = unittest.TestSuite()
 preTests()
 # this is the order in which they will be tested
-testSuite.addTest(JobStateUnitTests2())
-testSuite.addTest(JobStateUnitTests())
-#testSuite.addTest(JobStateUnitTests2())
+testSuite.addTest(TriggerUnitTests())
 
 testResult= unittest.TestResult()
 testResult=testSuite.run(testResult)
