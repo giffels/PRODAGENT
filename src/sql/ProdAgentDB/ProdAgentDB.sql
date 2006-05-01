@@ -6,6 +6,24 @@ SET AUTOCOMMIT = 0;
 
 /*
  ***********************JOB STATE TABLES****************************
+
+-js_JobType and js_JobSpec are represented as one table
+-tr_FlagInstance and tr_TriggerInstance are represented as one table
+
+   Action
+    | 1
+    |
+    | *   *      1 
+tr_Trigger---------js_JobSpec
+                        | 1
+                        |
+                        | *
+                  js_JobInstance
+
+There is no relation between triggers and
+js_JobInstance as this deals with 
+job submission which is a seperate component and has its
+own states managed by external components.
  */
 
 /* 
@@ -37,6 +55,7 @@ CREATE TABLE js_JobSpec(
    MaxRacers INT NOT NULL,
    Retries INT NOT NULL,
    Racers INT NOT NULL,
+   Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
    State ENUM("register","create","inProgress","finished") 
        NOT NULL,
    CacheDirLocation VARCHAR(255) NULL,
@@ -61,6 +80,7 @@ CREATE TABLE js_JobInstance(
       handler stores this job report locally and registers
       the location of it in the JobReportLocation variable */
    JobReportLocation VARCHAR(255),
+   Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
    /* Not every MySQL version supports cascade or foreign keys */
    CONSTRAINT `0_1` FOREIGN KEY(JobSpecID) 
        REFERENCES js_JobSpec(JobSpecID) 
@@ -69,6 +89,50 @@ CREATE TABLE js_JobInstance(
    UNIQUE(JobInstanceID)
    ) TYPE=InnoDB;
 
+/*
+The Job(spec) state is defined by:
+(1): sequential messages and actions of the components 
+(2): states as defined in the js_JobSpec to deal with failures and 
+retries
+(3): an augmentation of (1) where parallel process perform actions
+and need to be synchronized when they all finished. 
+
+To address (3) we keep track of a set of flags associated to a 
+jobSpecId, which if all set to finished, trigger a certain action.
+We do not use the MySQL triggers as the actions are external
+to MySQL.
+*/
+
+CREATE TABLE tr_Trigger(
+   JobSpecID VARCHAR(255) NOT NULL,
+   TriggerID VARCHAR(255) NOT NULL,
+   FlagID VARCHAR(255) NOT NULL,
+   FlagValue ENUM("null","start","finished") NOT NULL,
+   Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+   /* Not every MySQL version supports cascade or foreign keys */
+   CONSTRAINT `0_2` FOREIGN KEY(JobSpecID) 
+       REFERENCES js_JobSpec(JobSpecID) 
+       ON DELETE CASCADE,
+   UNIQUE(JobSpecID,TriggerID,FlagID),
+   INDEX(TriggerID)
+   ) TYPE=InnoDB;
+
+CREATE TABLE tr_Action(
+   JobSpecID VARCHAR(255) NOT NULL,
+   TriggerID VARCHAR(255) NOT NULL,
+   /* Action name associated to this trigger. This name
+   is associated to some python code in an action registery
+   */
+   ActionName VARCHAR(255) NOT NULL,
+   /* Not every MySQL version supports cascade or foreign keys */
+   CONSTRAINT `0_3` FOREIGN KEY(TriggerID) 
+       REFERENCES tr_Trigger(TriggerID) 
+       ON DELETE CASCADE,
+   UNIQUE(JobSpecID,TriggerID,ActionName)
+   ) TYPE=InnoDB;
+
+
+   
 /*************************************************************************
 Message service tables.
 

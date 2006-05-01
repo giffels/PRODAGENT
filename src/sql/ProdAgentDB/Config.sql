@@ -1,2 +1,2 @@
-GRANT ALL ON ProdAgent.* TO 'ProdAgentUser'@'localhost' IDENTIFIED BY 'ProdAgentPass';
+GRANT ALL ON ProdAgentDB.* TO 'Proddie'@'localhost' IDENTIFIED BY 'ProddiePass';
  
