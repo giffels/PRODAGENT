@@ -16,12 +16,64 @@ class FwkJobReportTests(unittest.TestCase):
     """
 
     def setUp(self):
-        print "**************NOTE FwkJobReportTests***********"
-        print "This test module will generate several xml files."
-        print "in the data directory"
-        print ""
+        #print "**************NOTE FwkJobReportTests***********"
+        #print "This test module will generate several xml files."
+        #print "in the data directory"
+        #print ""
+        prodAgentEnv = os.environ.get('PRODAGENT_WORKDIR', None)
+        if prodAgentEnv == None:
+            proidAgentEnv = "/tmp"
+        self.outputPath = prodAgentEnv
 
-        self.outputPath=os.getenv('PRODAGENT_WORKDIR')
+
+    def testAA(self):
+        """test instantiation"""
+        try:
+            jobRep = FwkJobReport()
+        except StandardError, ex:
+            msg = "Failed to instantiate FwkJobReport:\n"
+            msg += str(ex)
+            self.fail(msg)
+
+
+    def testBB(self):
+        """test adding information"""
+        jobRep = FwkJobReport()
+        jobRep.exitCode = 0
+        jobRep.status = "Success"
+        self.assertEqual(jobRep.wasSuccess(), True)
+        jobRep.exitCode = 127
+        self.assertEqual(jobRep.wasSuccess(), False)
+        jobRep.status = "Failed"
+        self.assertEqual(jobRep.wasSuccess(), False)
+
+
+        file1 = jobRep.newFile()
+        file2 = jobRep.newFile()
+        file3 = jobRep.newFile()
+
+        self.assertEqual(len(jobRep.files), 3)
+        
+        infile1 = jobRep.newInputFile()
+        infile2 = jobRep.newInputFile()
+        infile3 = jobRep.newInputFile()
+
+        self.assertEqual(len(jobRep.inputFiles), 3)
+
+        jobRep.addSkippedEvent(10001, 1001)
+        jobRep.addSkippedEvent(20002, 2002)
+        jobRep.addSkippedEvent(30003, 3003)
+
+        self.assertEqual(len(jobRep.skippedEvents), 3)
+
+
+        try:
+            jobRep.save()
+        except StandardError, ex:
+            msg = "Error invoking FwkJobReport.save method"
+            msg += str(ex)
+            self.fail(msg)
+            
 
     def testA(self):
         try:
@@ -52,9 +104,12 @@ class FwkJobReportTests(unittest.TestCase):
               msg += str(ex)
               self.fail(msg)
 
-    def runTest(self):
-         self.testA()
-         self.testB()
+
+
+
+    #def runTest(self):
+    #     self.testA()
+    #     self.testB()
 
 if __name__ == '__main__':
     unittest.main()
