@@ -117,7 +117,7 @@ class JobStateUnitTests(unittest.TestCase):
               JobStateChangeAPI.submit("jobClassID3")
          except Exception, ex:
               print('Testing exception 2/3 in testC of JobState_t.py')
-              self.assertEqual(str(ex[1]),'reached maximum number of racers 1 wait until one of the jobs finishes  and try again. ')
+              self.assertEqual(str(ex[1]),'job with id: jobClassID3 is already submitted will not resubmit')
 
         # set the maximum number of racers higher and submit again.
          JobStateChangeAPI.setRacer("jobClassID3",50)
@@ -272,7 +272,7 @@ class JobStateUnitTests(unittest.TestCase):
              JobStateChangeAPI.submit("jobClassID10")
          except Exception, ex:
              print('Testing exception 1/1 in testH of JobState_t.py')
-             self.assertEqual(ex[1],'reached maximum number of racers 2 wait until one of the jobs finishes  and try again. ')
+             self.assertEqual(ex[1],'job with id: jobClassID10 is already submitted will not resubmit')
          JobStateChangeAPI.runFailure("jobClassID10","jobInstanceID10.1",
               "some.location10.1","job/Report/Location10.1.xml")
          #retries=5, racer=1
