@@ -167,11 +167,8 @@ def submit(jobSpecId):
                #check if we have not reach the maximum number of simulatneous 
                #jobs 
               if(int(generalState['Racers'])> (int(generalState['MaxRacers'])-1)):
-                  raise RacerException("ERROR:", "reached "+
-                                        "maximum number of racers "+
-                                        str(generalState['MaxRacers'])+
-                                        " wait until one of the jobs finishes "+
-                                        " and try again. ")
+                  raise RacerException("ERROR:", "job with id: "+str(jobSpecId)+
+                                        " is already submitted will not resubmit")
               raise Exception("ERROR","Submit failed, please try again")
            dbCur.execute("COMMIT")
            dbCur.close()
