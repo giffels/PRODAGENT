@@ -337,9 +337,6 @@ def cleanout(jobSpecId):
                       JobSpecID="%s";""" %(jobSpecId)
            rowsModified=dbCur.execute(sqlStr1)
            dbCur.execute(sqlStr2)
-           if rowsModified!=1:
-              raise Exception("ERROR","This jobspec with ID "+\
-                              str(jobSpecId)+" does not exist")
            dbCur.execute("COMMIT")
            dbCur.close()
        except:
