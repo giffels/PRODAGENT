@@ -9,11 +9,13 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
+__revision__ = "$Id:$"
+
 import os
 import logging
 from popen2 import Popen4
 
-
+from ProdAgentCore.Configuration import ProdAgentConfiguration
 
 class SubmitterInterface:
     """
@@ -27,6 +29,21 @@ class SubmitterInterface:
     """
     def __init__(self):
         self.parameters = {}
+        # Determine the location of the BOSS configuration files. These is 
+        # expected to be in a specific location under the prodAgent workdir, 
+        # i.e. <prodAgentWorkDir>/bosscfg
+        config = None 
+        config = os.environ.get("PRODAGENT_CONFIG", None)
+        if config == None:
+           msg = "No ProdAgent Config file provided\n"
+           msg += "either set $PRODAGENT_CONFIG variable\n"
+           msg += "or provide the --config option"
+        cfgObject = ProdAgentConfiguration()
+        cfgObject.loadFromFile(config)
+        prodAgentConfig = cfgObject.get("ProdAgent")
+        workingDir = prodAgentConfig['ProdAgentWorkDir'] 
+        workingDir = os.path.expandvars(workingDir)
+        self.bossCfgDir = workingDir + "/bosscfg/"
     
     def doSubmit(self, wrapperScript, jobTarball):
         """
@@ -195,9 +212,10 @@ class SubmitterInterface:
         Parameters are extracted from this instance
 
         """
-        outf=self.executeCommand("boss v")
+        outf=self.executeCommand("boss v -c " + self.bossCfgDir)
         version=outf.split("BOSS Version")[1].strip()
         version=version.split('_')[0]
+        version="v4"   
                                    
         logging.info("version = %s"%version)
         bossDeclare={"v3":self.BOSS3declare,"v4":self.BOSS4declare}
@@ -249,7 +267,7 @@ class SubmitterInterface:
         """
         
         bossQuery = "bossAdmin SQL -query \"select id from PROGRAM_TYPES "
-        bossQuery += "where id = 'cmssw'\""
+        bossQuery += "where id = 'cmssw'\" -c " + self.bossCfgDir
         queryOut = self.executeCommand(bossQuery)
         bossJobType = "cmssw"
         if queryOut.find("cmssw") < 0:
@@ -261,7 +279,7 @@ class SubmitterInterface:
             self.parameters['JobCacheArea'], self.parameters['JobName'],
             )
         print "xmlfile=%s"%xmlfile
-        bossDeclare = "boss declare -xmlfile %s"%xmlfile
+        bossDeclare = "boss declare -xmlfile %s"%xmlfile + "  -c " + self.bossCfgDir
         declareClad=open(xmlfile,"w")
         declareClad.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
         
@@ -339,6 +357,7 @@ class SubmitterInterface:
         bossSubmit = "boss submit "
         bossSubmit += "-taskid %s " % bossJobId
         bossSubmit += "-scheduler %s " %  self.parameters['Scheduler']
+        bossSubmit += " -c " + self.bossCfgDir + " "
         return bossSubmit
                 
     def BOSS3submit(self,bossJobId):
