@@ -6,8 +6,9 @@ Python packages for the CMS Production Agent
 
 """
 
-from distutils.core import setup
+__revision__ = "$Id:$"
 
+from distutils.core import setup
 
 packages = [
     'AdminControl',
