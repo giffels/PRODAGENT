@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id:$"
+__revision__ = "$Id: setup.py,v 1.10 2006/05/02 17:13:25 elmer Exp $"
 
 from distutils.core import setup
 
@@ -20,6 +20,7 @@ packages = [
     'FwkJobRep',
     'IMProv',
     'JobCleanup',
+    'JobCleanup.Handlers',
     'JobCreator',
     'JobCreator.Creators',
     'JobCreator.RuntimeTools',
@@ -56,6 +57,11 @@ packages = [
     'ShREEK.CMSPlugins.JobMon',
     'TaskObjects',
     'TaskObjects.Tools'
+    'Trigger',
+    'Trigger.Actions',
+    'Trigger.Database',
+    'Trigger.Database.Api',
+    'Trigger.TriggerAPI',
     ]
 
 setup(name='ProdAgent',
