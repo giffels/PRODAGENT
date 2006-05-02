@@ -15,11 +15,13 @@ Events Published:
 
 
 """
-import socket
-import urllib2
+__version__ = "$Revision$"
+__revision__ = "$Id$"
+
+import os
 import logging
 from logging.handlers import RotatingFileHandler
-import os
+
 
 from MessageService.MessageService import MessageService
 
@@ -42,6 +44,7 @@ class JobSubmitterComponent:
         self.args['JobState'] = True
         self.args.update(args)
         self.job_state = self.args['JobState']
+        self.ms = None
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
@@ -144,12 +147,48 @@ class JobSubmitterComponent:
             logging.error(msg)
             self.ms.publish("SubmissionFailed", jobSpecId)
             self.ms.commit()
-            raise RuntimeError, msg
+            return
 
+        #  //
+        # // Should we actually submit the job?
+        #//  The Racers settings in the JobStates DB define how many
+        #  //times the same identical job can be submitted in parallel
+        # // So we check to see how many jobs have been submitted
+        #//  for this JobSpecID, and if there are too many, it doesnt
+        #  // get submitted, we send a SubmissionFailed Event
+        # //
+        #//
+        try:
+            stateInfo = JobStateInfoAPI.general(jobSpecId)
+        except StandardError, ex:
+            #  //
+            # // Error here means JobSpecID is unknown to 
+            #//  JobStates DB.
+            msg = "Error retrieving JobState Information for %s\n" % jobSpecId
+            msg += "Aborting submitting job...\n"
+            msg += str(ex)
+            logging.error(msg)
+            return
+        
+        numRacers = stateInfo['Racers'] # number of currently submitted
+        maxRacers = stateInfo['MaxRacers'] # limit on parallel jobs
+
+        if numRacers >= maxRacers:
+            #  //
+            # // To many submitted jobs for this JobSpecID already
+            #//  Abort submission
+            msg = "Too many submitted jobs for JobSpecID: %s\n" % jobSpecId
+            msg += "Current Jobs: %s\n" % numRacers
+            msg += "Maximum Jobs: %s\n" % maxRacers
+            logging.warning(msg)
+            self.ms.publish("SubmissionFailed", jobSpecId)
+            self.ms.commit()
+            return
+
+        #  //
+        # // Retrieve the submitter plugin and invoke it
+        #//
         submitter = retrieveSubmitter(self.args['SubmitterName'])
-        
-        
-        
         try:
             submitter(
                 jobCache,
@@ -162,14 +201,14 @@ class JobSubmitterComponent:
             logging.error(msg)
             self.ms.publish("SubmissionFailed", jobSpecId)
             self.ms.commit()
-            raise RuntimeError, msg
+            return
         #  //
-        # // Publish Successful submission (TODO: Update JobState)
+        # // Publish Successful submission 
         #//
         if self.job_state:
             try:
                 JobStateChangeAPI.submit(jobSpecId)
-            except Exception, ex:
+            except StandardError, ex:
                 # NOTE: this should be stored in the logger
                 # NOTE: we can have different errors here
                 # NOTE: transition, submission, other...
@@ -208,8 +247,8 @@ class JobSubmitterComponent:
  
         # wait for messages
         while True:
-            type, payload = self.ms.get()
+            msgtype, payload = self.ms.get()
             self.ms.commit()
-            logging.debug("JobSubmitter: %s, %s" % (type, payload))
-            self.__call__(type, payload)
+            logging.debug("JobSubmitter: %s, %s" % (msgtype, payload))
+            self.__call__(msgtype, payload)
 
