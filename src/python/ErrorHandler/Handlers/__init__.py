@@ -1,4 +1,4 @@
-#!/user/bin/env python
+#!/usr/bin/env python
 
 """
 This module contains the various handlers that can be called when receiving an
