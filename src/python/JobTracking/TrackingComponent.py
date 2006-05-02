@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.8 2006/05/01 11:45:04 elmer Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.9 2006/05/01 14:43:37 elmer Exp $"
 
 import socket
 import time
@@ -88,11 +88,12 @@ class TrackingComponent:
 
 # The rest of the initialization
         ##AF: get boss version from "boss v"
-        outf=os.popen4("boss v -c " + self.bossCfgDir)[1].read()
-        version=outf.split("BOSS Version")[1].strip()
-        self.BossVersion="v"+version.split('_')[1] 
-           
+##         outf=os.popen4("boss v -c " + self.bossCfgDir)[1].read()
+##         version=outf.split("BOSS Version")[1].strip()
+##         self.BossVersion="v"+version.split('_')[1] 
+
         #number of iterations after which failed jobs are purged from DB
+        self.BossVersion="v4"
         self.failedJobsPublishedTTL = 180
         #dictionary containing failed jobs: the key is jobid and value is a counter
         self.bossJobScheduler={"v3":self.BOSS3scheduler,"v4":self.BOSS4scheduler}
@@ -381,11 +382,11 @@ class TrackingComponent:
         
         """
         
-        jobReportLocation = "file://"+self.directory+"/BossJob_%s/FrameworkJobReport.xml" % jobId
-        self.ms.publish("JobSuccess", jobReportLocation)
+        self.reportfilename=self.bossReportFileName[self.BossVersion](jobId)
+        self.ms.publish("JobSuccess", self.reportfilename)
         self.ms.commit()
                                                                                 
-        logging.debug("JobSuccess:%s" % jobReportLocation)
+        logging.debug("JobSuccess:%s" % self.reportfilename)
        
         
         return
