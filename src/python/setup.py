@@ -18,6 +18,7 @@ packages = [
     'ErrorHandler.Handlers',
     'FwkJobRep',
     'IMProv',
+    'JobCleanup',
     'JobCreator',
     'JobCreator.Creators',
     'JobCreator.RuntimeTools',
