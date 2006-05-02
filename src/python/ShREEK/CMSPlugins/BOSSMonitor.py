@@ -112,7 +112,9 @@ class BOSSMonitor(ShREEKMonitor):
         exitCode = pop.poll()
                                                                                                                  
         output = pop.fromchild.read().strip()
-        mem=output.split(':')[1]
+        mem='unknown'
+        if output.count(':') >0:
+           mem=output.split(':')[1]
                                                                                                                  
         return mem.strip()
 
@@ -129,7 +131,9 @@ class BOSSMonitor(ShREEKMonitor):
         output = pop.fromchild.read().strip()
         cpuList=output.split('\n')
         cpunumber=len(cpuList)
-        cpu=cpuList[0].split(':')[1].strip()
+        cpu='unknown'
+        if output.count(':') >0:
+          cpu=cpuList[0].split(':')[1].strip()
                                                                                                                  
         return cpu,cpunumber
 
