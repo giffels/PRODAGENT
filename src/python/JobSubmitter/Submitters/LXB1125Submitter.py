@@ -8,14 +8,13 @@ Configuration of the submitter is done via the configuration variables
 in this module, for simplicity in the prototype.
 
 """
+__revision__ = "$Id:$"
 
 #  //
 # // Configuration variables for this submitter
 #//
 bossJobType = "test"  # some predetermined type value from boss install here
 bossScheduler = "fork"
-#bossScheduler = "lsf" # batch scheduler as registered to BOSS
-
 
 #  //
 # // End of Config variables.
@@ -26,8 +25,6 @@ import logging
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
-
-
 
 class LXB1125Submitter(SubmitterInterface):
     """

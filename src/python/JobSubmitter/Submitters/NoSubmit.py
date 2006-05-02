@@ -6,12 +6,10 @@ Submitter implementation that doesnt submit.
 Used for testing job creation.
 
 """
+__revision__ = "$Id:$"
 
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.Registry import registerSubmitter
-
-
-
 
 class NoSubmit(SubmitterInterface):
     """

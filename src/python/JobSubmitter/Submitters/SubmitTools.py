@@ -4,9 +4,9 @@ _SubmitTools_
 
 Standard tools for wrapping a job for submission and execution
 
-
-
 """
+
+__revision__ = "$Id:$"
 
 import os
 from popen2 import Popen4

@@ -9,13 +9,13 @@ in this module, for simplicity in the prototype.
 
 """
 
+__revision__ = "$Id:$"
+
 #  //
 # // Configuration variables for this submitter
 #//
 #bossJobType = ""  # some predetermined type value from boss install here
 bossScheduler = "edg"
-#bossScheduler = "fork"
-
 
 #  //
 # // End of Config variables.

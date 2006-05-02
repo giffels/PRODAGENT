@@ -9,13 +9,13 @@ in this module, for simplicity in the prototype.
 
 """
 
+__revision__ = "$Id:$"
+
 #  //
 # // Configuration variables for this submitter
 #//
 bossJobType = "cmsRun"  # some predetermined type value from boss install here
-#bossScheduler = "fork"
 bossScheduler = "lsf" # batch scheduler as registered to BOSS
-
 
 #  //
 # // End of Config variables.
@@ -25,8 +25,6 @@ import os
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
-
-
 
 class LSFSubmitter(SubmitterInterface):
     """

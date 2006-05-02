@@ -9,6 +9,7 @@ as it includes no job tracking.
 
 """
 
+__revision__ = "$Id:$"
 
 import os
 
