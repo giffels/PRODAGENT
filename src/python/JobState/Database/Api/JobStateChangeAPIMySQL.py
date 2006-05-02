@@ -371,3 +371,25 @@ def setRacer(jobSpecId,maxRacers):
            dbCur.close()
            raise
 
+def purgeStates():
+   conn=connect()
+   dbCur=conn.cursor()
+   try:
+
+       dbCur.execute("START TRANSACTION")
+       sqlStr1="""DELETE FROM js_JobSpec;"""
+       sqlStr2="""DELETE FROM js_JobInstance;"""
+       sqlStr3="""DELETE FROM tr_Trigger;"""
+       sqlStr4="""DELETE FROM tr_Action;"""
+       dbCur.execute(sqlStr1)
+       # if cascacding is suported the next
+       # queries are not needed.
+       dbCur.execute(sqlStr2)
+       dbCur.execute(sqlStr3)
+       dbCur.execute(sqlStr4)
+       dbCur.execute("COMMIT")
+       dbCur.close()
+   except:
+       dbCur.execute("ROLLBACK")
+       dbCur.close()
+       raise
