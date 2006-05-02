@@ -5,11 +5,8 @@ _ServerTest_
 
 """
 import os
-import socket
 import unittest
-import threading
 import time
-import xmlrpclib
 
 from MessageService.MessageService import MessageService
 
