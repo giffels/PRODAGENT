@@ -147,6 +147,10 @@ componentFields = {
     "ComponentDir" : None
     
     },
+    'JobCleanup'   : {
+    "ComponentDir" : None
+
+    },
     'AdminControl' : {
     "ComponentDir" : None,
     "AdminControlHost" : "127.0.0.1",
