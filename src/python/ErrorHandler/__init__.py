@@ -1,5 +1,5 @@
 #!/user/bin/env python
-
+  
 """
 _ErrorHandler_
 
@@ -20,8 +20,8 @@ to this handler using the HandlerInterface method:
 handlerError(payload).
 
 """
-__revision__ = "$Id: __init__.py,v 1.3 2006/03/24 19:20:30 fvlingen Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: __init__.py,v 1.1 2006/04/11 17:41:13 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "fvlingen@caltech.edu"
 
 import ErrorHandler.Handlers
