@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision$"
-__revision__ = "$Id$"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: createPreProdWorkflow.py,v 1.1 2006/05/02 14:32:09 evansde Exp $"
 
 
 import os
@@ -53,7 +53,8 @@ if version == None:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
 
-prodName = cfgFile.replace(".cfg", "")
+prodName = os.path.basename(cfgFile)
+prodName = prodName.replace(".cfg", "")
 pycfgFile = "%s.pycfg" % prodName
 hashFile = "%s.hash" % prodName
 
