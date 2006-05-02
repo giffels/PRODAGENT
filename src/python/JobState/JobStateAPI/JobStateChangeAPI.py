@@ -226,3 +226,12 @@ def setRacer(jobSpecId, maxRacers):
       """
       JobStateChangeAPIMySQL.setRacer(jobSpecId, maxRacers)
 
+def purgeStates():
+      """
+      _purgeStates_
+ 
+      purges all state information (including trigger information) 
+
+      """
+      JobStateChangeAPIMySQL.purgeStates()
+
