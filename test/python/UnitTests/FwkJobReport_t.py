@@ -107,9 +107,9 @@ class FwkJobReportTests(unittest.TestCase):
 
 
 
-    #def runTest(self):
-    #     self.testA()
-    #     self.testB()
+    def runTest(self):
+         self.testA()
+         self.testB()
 
 if __name__ == '__main__':
     unittest.main()

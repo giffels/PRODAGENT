@@ -166,6 +166,7 @@ class TriggerUnitTests(unittest.TestCase):
         try:
             for j in xrange(0,self.jobspecs):
                 self.trigger.cleanout("jobSpec"+str(j))
+                JobStateChangeAPI.cleanout("jobSpec"+str(j))
         except StandardError, ex:
             msg = "Failed Test H:\n"
             msg += str(ex)

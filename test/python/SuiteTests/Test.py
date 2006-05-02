@@ -17,8 +17,6 @@ def preTests():
     print "with the data in the database!"
     print " "
     print "Make sure the database (and client) are properly"
-    print "configured. (see ...JobState/Database/Config and"
-    print "..../JobState/Database/Schema dirs.)"
     print " "
 
     print "*****************START TEST*******************"
