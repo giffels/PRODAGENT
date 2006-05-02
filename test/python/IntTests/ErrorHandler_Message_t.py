@@ -2,9 +2,6 @@
 """
 _ServerTest_
 
-Start an instance of a server in its own process,
-and test communicating with it using Message Service
-
 
 """
 import os
