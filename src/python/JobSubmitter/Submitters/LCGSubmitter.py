@@ -46,11 +46,8 @@ class LCGSubmitter(SubmitterInterface):
             msg = "Error: BOSS environment BOSSDIR not set:\n"
             raise RuntimeError, msg
 
-        if not os.environ.has_key("BOSSVERSION"):
-            msg = "Error: BOSS environment BOSSVERSION not set:\n"
-            raise RuntimeError, msg
-        self.BossVersion=os.environ["BOSSVERSION"].split('_')[0]
-
+        # Hard-code this for now, as a 2nd step will remove support for v3
+        self.BossVersion = "v4"
 
         # BOSS supported versions (best red from configration)
         supportedBossVersions = ["v3","v4"]
