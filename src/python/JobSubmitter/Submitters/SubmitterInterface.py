@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.4 2006/05/02 12:32:16 elmer Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.5 2006/05/02 13:04:03 elmer Exp $"
 
 import os
 import logging
@@ -268,18 +268,18 @@ class SubmitterInterface:
             bossJobType=""
         
 
-        print "bossJobType = %s"%bossJobType
+        logging.debug( "bossJobType = %s"%bossJobType)
         xmlfile = "%s/%sdeclare.xml" % (
             self.parameters['JobCacheArea'], self.parameters['JobName'],
             )
-        print "xmlfile=%s"%xmlfile
+        logging.debug( "xmlfile=%s"%xmlfile)
         bossDeclare = "boss declare -xmlfile %s"%xmlfile + "  -c " + self.bossCfgDir
         declareClad=open(xmlfile,"w")
         declareClad.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
         
         declareClad.write("<task name=\"%s\">"%self.parameters['JobName'])
         declareClad.write("<chain scheduler=\"%s\" rtupdater=\"mysql\" ch_tool_name=\"\">"%self.parameters['Scheduler'])
-        declareClad.write(" <program exec=\"%s\" args=\"\" stderr=\"stderr.log\" program_types=\"%s\" stdin=\"\" stdout=\"stdout.log\"  infiles=\"%s,%s\" outfiles=\"*.root,stdout.log,stderr.log,FrameworkJobReport.xml\"  outtopdir=\"\"/></chain></task>"% (os.path.basename(self.parameters['Wrapper']),bossJobType,self.parameters['Wrapper'],self.parameters['Tarball']))
+        declareClad.write(" <program exec=\"%s\" args=\"\" stderr=\"%s.stderr\" program_types=\"%s\" stdin=\"\" stdout=\"%s.stdout\"  infiles=\"%s,%s\" outfiles=\"*.root,%s.stdout,%s.stderr,FrameworkJobReport.xml\"  outtopdir=\"\"/></chain></task>"% (os.path.basename(self.parameters['Wrapper']), self.parameters['JobName'],bossJobType, self.parameters['JobName'],self.parameters['Wrapper'],self.parameters['Tarball'], self.parameters['JobName'], self.parameters['JobName']))
         declareClad.close()
         logging.debug("SubmitterInterface:BOSS xml declare file written:%s" % xmlfile)
 
