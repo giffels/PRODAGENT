@@ -6,6 +6,8 @@ Installation and configuration script for prod agent database.
 
 """
 
+__revision__ = "$Id:$"
+
 import getopt
 import getpass
 import os
@@ -59,9 +61,9 @@ if config == None:
         msg += "either set $PRODAGENT_CONFIG variable\n"
         msg += "or provide the --config option"
 
-print("This script assumes the mysql server is ")
-print("up and running and you have a MySQL user")
-print("name and password to install and configure")
+print
+print("This script assumes the mysql server is up and running and that you have")
+print("a MySQL user name and password with privileges to install and configure")
 print("the prod agent database")
 print
 
@@ -81,11 +83,11 @@ dbName=dbConfig['dbName']
 
 # ask for password (optional)
 print
-userName=raw_input('Please provide mysql user name for updating \n database server (leave empty if not needed): ')
+userName=raw_input('Please provide the mysql user name (typically "root") for updating the \ndatabase server (leave empty if not needed): ')
 if userName=='':
     userName='root'
 print
-passwd=getpass.getpass('Please provide mysql passwd associated to \n user name for updating database server: ')
+passwd=getpass.getpass('Please provide mysql passwd associated to this user name for \nupdating the database server: ')
 if passwd=='':
     passwd="''"
 
