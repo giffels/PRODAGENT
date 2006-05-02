@@ -9,13 +9,14 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id:$"
+__revision__ = "$Id: SubmitterInterface.py,v 1.4 2006/05/02 12:32:16 elmer Exp $"
 
 import os
 import logging
 from popen2 import Popen4
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 class SubmitterInterface:
     """
@@ -32,14 +33,7 @@ class SubmitterInterface:
         # Determine the location of the BOSS configuration files. These is 
         # expected to be in a specific location under the prodAgent workdir, 
         # i.e. <prodAgentWorkDir>/bosscfg
-        config = None 
-        config = os.environ.get("PRODAGENT_CONFIG", None)
-        if config == None:
-           msg = "No ProdAgent Config file provided\n"
-           msg += "either set $PRODAGENT_CONFIG variable\n"
-           msg += "or provide the --config option"
-        cfgObject = ProdAgentConfiguration()
-        cfgObject.loadFromFile(config)
+        cfgObject = loadProdAgentConfiguration()
         prodAgentConfig = cfgObject.get("ProdAgent")
         workingDir = prodAgentConfig['ProdAgentWorkDir'] 
         workingDir = os.path.expandvars(workingDir)
