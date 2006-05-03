@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.4 2006/04/10 10:38:24 ckavka Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: MessageService.py,v 1.1 2006/04/10 17:12:42 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -577,13 +577,47 @@ class MessageService:
 
         # perform all operations in current newly created transaction
         for sqlOperation in self.transaction:
-             cursor.execute(sqlOperation)
+            cursor.execute(sqlOperation)
 
         # logging
         logging.warning("MS: transaction recovered")
 
         # close cursor
         cursor.close()
+
+    ##########################################################################
+    # purgeMessages method 
+    ##########################################################################
+
+    def purgeMessages(self):
+        """
+        __purgeMessages__
+        
+        Drop all messages to be delivered. 
+        """
+
+        # logging
+        logging.debug("MS: purgeMessages requested")
+
+        # get cursor
+        cursor = self.conn.cursor()
+
+        # remove all messsages
+        sqlCommand = """
+                     DELETE 
+                       FROM ms_message
+                     """
+        cursor.execute(sqlCommand)
+
+        # drop transaction status, no recover possible
+        self.transaction = []
+
+        # commit
+        self.conn.commit()
+
+        # return 
+        cursor.close()
+        return 
 
     ##########################################################################
     # get a list from elements in a row
