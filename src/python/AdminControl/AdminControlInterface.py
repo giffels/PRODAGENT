@@ -12,6 +12,7 @@ import types
 from MessageService.MessageService import MessageService
 from MessageService.MessageServiceStatus import MessageServiceStatus
 import JobState.JobStateAPI.JobStateInfoAPI as JobStateStatus
+import JobState.JobStateAPI.JobStateChangeAPI as JobStateChange
 
 from xmlrpclib import Fault
 
@@ -201,4 +202,29 @@ class AdminControlInterface:
         """
         return JobStateStatus.rangeGeneral(offset, total)
     
+        
+    def purgeProdAgentDB(self):
+        """
+        _purgeProdAgentDB_
+
+        Remove all pending messages from the message service and wipe out
+        all JobStates information.
+
+        Only use this method if you are sure you know what you are doing
+
+        """
+        try:
+            self.ms.purgeMessages()
+        except StandardError, ex:
+            msg = "Failed to Purge Messages:\n"
+            msg += str(ex)
+            return Fault(1, msg)
+        try:
+            JobStateChange.purgeStates()
+        except StandardError, ex:
+            msg = "Failed to Purge States:\n"
+            msg += str(ex)
+            return Fault(1, msg)
+        return 0
+
         
