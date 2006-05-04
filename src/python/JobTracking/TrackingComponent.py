@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.9 2006/05/01 14:43:37 elmer Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.10 2006/05/02 14:58:52 bacchi Exp $"
 
 import socket
 import time
@@ -274,7 +274,7 @@ class TrackingComponent:
                     logging.debug("check Job Success %s"%checkSuccess(self.reportfilename))
                     
                     if checkSuccess(self.reportfilename):
-                        self.jobSuccess(jobId[0])
+                        self.jobSuccess()
                     else:
                         try:
                             self.cmsErrorJobs[jobId[0]]+=0
@@ -371,7 +371,7 @@ class TrackingComponent:
         pass
     
     
-    def jobSuccess(self, jobId):
+    def jobSuccess(self):
         """
         _jobSuccess_
         
@@ -382,7 +382,6 @@ class TrackingComponent:
         
         """
         
-        self.reportfilename=self.bossReportFileName[self.BossVersion](jobId)
         self.ms.publish("JobSuccess", self.reportfilename)
         self.ms.commit()
                                                                                 
