@@ -7,6 +7,9 @@ from JobCleanup.Handlers.HandlerInterface import HandlerInterface
 from JobCleanup.Registry import registerHandler
 from JobCleanup.Registry import retrieveHandler
 
+from JobState.JobStateAPI import JobStateChangeAPI
+from JobState.JobStateAPI import JobStateInfoAPI
+
 class CleanupHandler(HandlerInterface):
     """
     _CleanupHandler_
@@ -23,7 +26,15 @@ class CleanupHandler(HandlerInterface):
          """
          jobReportUrl= payload
 
-         logging.debug(">CleanupHandler<")
+         try:
+             logging.debug(">CleanupHandler< removing cached files and state "+\
+                            "information for jobspec: "+str(payload))
+             cacheDirLocation=JobStateInfoAPI.general(str(payload))['CacheDirLocation']
+             logging.debug(">CleanupHandler< removing directory: "+cacheDirLocation)
+             os.rmdir(cacheDirLocation)
+             JobStateChangeAPI.cleanout(str(payload))
+         except Exception,ex:
+             logging.debug(">CleanupHandler< ERROR job cleanup: "+str(ex))
 
 registerHandler(CleanupHandler(),"cleanupHandler")
 
