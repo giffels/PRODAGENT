@@ -17,7 +17,7 @@ preTests()
 # this is the order in which they will be tested
 testSuite.addTest(JobStateUnitTests2())
 testSuite.addTest(JobStateUnitTests())
-#testSuite.addTest(JobStateUnitTests2())
+testSuite.addTest(JobStateUnitTests2())
 
 testResult= unittest.TestResult()
 testResult=testSuite.run(testResult)

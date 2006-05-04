@@ -16,13 +16,7 @@ class JobStateUnitTests(unittest.TestCase):
     """
 
     def setUp(self):
-        print "**************NOTE JobStateUnitTests***********"
-        print "Make sure the test input does not conflict"
-        print "with the data in the database!"
-        print " "
-        print "Make sure the database (and client) are properly"
-        print "configured."
-        print " "
+        print "\n**************Start JobStateUnitTests**********"
 
     def testA(self):
         """change state test"""
@@ -283,11 +277,11 @@ class JobStateUnitTests(unittest.TestCase):
          self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 6, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'processing'})
 
     def testJ(self):
-
+                   
          self.assertEqual(JobStateInfoAPI.jobSpecTotal(),9)
-         print(str(JobStateInfoAPI.rangeGeneral()))
 
     def runTest(self):
+        # testA-J are also used for the error handler test
         self.testA()
         self.testB()
         self.testC()
@@ -297,6 +291,8 @@ class JobStateUnitTests(unittest.TestCase):
         self.testG()
         self.testH()
         self.testI()
+        self.testJ()
+        
             
 if __name__ == '__main__':
     unittest.main()

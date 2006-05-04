@@ -16,10 +16,7 @@ class FwkJobReportTests(unittest.TestCase):
     """
 
     def setUp(self):
-        #print "**************NOTE FwkJobReportTests***********"
-        #print "This test module will generate several xml files."
-        #print "in the data directory"
-        #print ""
+        print "\n**************Start FwkJobReportTests**********"
         prodAgentEnv = os.environ.get('PRODAGENT_WORKDIR', None)
         if prodAgentEnv == None:
             proidAgentEnv = "/tmp"
@@ -27,7 +24,7 @@ class FwkJobReportTests(unittest.TestCase):
 
 
     def testAA(self):
-        """test instantiation"""
+        print("""\nJob report instantiation""")
         try:
             jobRep = FwkJobReport()
         except StandardError, ex:
@@ -37,7 +34,7 @@ class FwkJobReportTests(unittest.TestCase):
 
 
     def testBB(self):
-        """test adding information"""
+        print("""\nAdding information to job report""")
         jobRep = FwkJobReport()
         jobRep.exitCode = 0
         jobRep.status = "Success"
@@ -76,6 +73,7 @@ class FwkJobReportTests(unittest.TestCase):
             
 
     def testA(self):
+        print("""\nCreate job reports""")
         try:
            for i in [1,2,3]:
               fwkJobReport=FwkJobReport("jobClassID"+str(i))
@@ -90,6 +88,7 @@ class FwkJobReportTests(unittest.TestCase):
             self.fail(msg)
 
     def testB(self):
+         print("""\nRead and duplicate job reports""")
          try:
               for i in [1,2,3]:
                  fwkJobReport=readJobReport(self.outputPath+"/jobReportTest"+str(i)+".xml")

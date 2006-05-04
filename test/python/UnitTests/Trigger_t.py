@@ -19,21 +19,15 @@ class TriggerUnitTests(unittest.TestCase):
     _triggerSet = False
 
     def setUp(self):
-        self.ms=MessageService()
-        self.ms.registerAs("TriggerTest")
-        self.trigger=TriggerAPI(self.ms)
-        self.triggers=2
-        self.jobspecs=2
-        self.flags=2
 
         if not TriggerUnitTests._triggerSet:
-           print "**************NOTE TriggerUnitTests***********"
-           print "Make sure the test input does not conflict"
-           print "with the data in the database!"
-           print " "
-           print "Make sure the database (and client) are properly"
-           print "configured."
-           print " "
+           print "\n**************Start TriggerUnitTests**********"
+           self.ms=MessageService()
+           self.ms.registerAs("TriggerTest")
+           self.trigger=TriggerAPI(self.ms)
+           self.triggers=5
+           self.jobspecs=5
+           self.flags=5
            TriggerUnitTests._triggerSet=True
 
     def testA(self):
@@ -42,7 +36,7 @@ class TriggerUnitTests(unittest.TestCase):
            for j in xrange(0,self.jobspecs):
                JobStateChangeAPI.register("jobSpec"+str(j),"processing",3,1)
         except StandardError, ex:
-            msg = "Failed Test A:\n"
+            msg = "Failed TestA:\n"
             msg += str(ex)
             self.fail(msg)
 
@@ -58,7 +52,7 @@ class TriggerUnitTests(unittest.TestCase):
                        "trigger"+str(i),"testAction")
 
         except StandardError, ex:
-            msg = "Failed Test B:\n"
+            msg = "Failed TestB:\n"
             msg += str(ex)
             self.fail(msg)
 
@@ -87,8 +81,6 @@ class TriggerUnitTests(unittest.TestCase):
             msg += str(ex)
             self.fail(msg)
 
-    
-
     def testC(self):
         try:
            print("\nCreate Duplicate Triggers (to test exceptions)")
@@ -98,7 +90,7 @@ class TriggerUnitTests(unittest.TestCase):
                       try:
                          self.trigger.addFlag("trigger"+str(i),"jobSpec"+str(j),"flag"+str(k))
                       except Exception, ex:
-                         self.assertEqual(str(ex[1]),"Flag trigger"+str(i)+",jobSpec"+str(j)+",flag"+str(k)+" already exists")
+                         self.assertEqual(str(ex[1]),"Flag trigger"+str(i)+",jobSpec"+str(j)+",flag"+str(k)+" already exists or jobspec ID does not exist.")
         except Exception , ex:
             msg = "Failed Test C:\n"
             msg += str(ex)
@@ -164,14 +156,18 @@ class TriggerUnitTests(unittest.TestCase):
 
     def testH(self):
         try:
-            for j in xrange(0,self.jobspecs):
-                self.trigger.cleanout("jobSpec"+str(j))
-                JobStateChangeAPI.cleanout("jobSpec"+str(j))
+           print("\nSet All Flags")
+           for i in xrange(0,self.triggers):
+               for j in xrange(0,self.jobspecs):
+                   for k in xrange(0,self.flags):
+                      self.trigger.setFlag("trigger"+str(i),\
+                          "jobSpec"+str(j),"flag"+str(k))
+
         except StandardError, ex:
-            msg = "Failed Test H:\n"
+            msg = "Failed Test F:\n"
             msg += str(ex)
             self.fail(msg)
-        
+
     def runTest(self):
         self.testA()
         self.testB()
@@ -184,7 +180,6 @@ class TriggerUnitTests(unittest.TestCase):
         self.testG()
         self.testFlags1(True)
         self.testFlags2(True)
-        self.testH()
            
 if __name__ == '__main__':
     unittest.main()

@@ -15,6 +15,11 @@ class JobStateUnitTests2(unittest.TestCase):
     TestCase for JobStateAPI module 
     """
 
+    def setUp(self):
+        print "\n**************Start JobStateUnitTests2**********"
+        print "\nPurging job states from database"
+
+
     def testA(self):
         """change state test"""
         try:

@@ -43,10 +43,11 @@ def postTests(testResult):
 
     print "******************IMPORTANT*****************"
     print "Please read the componentLog to check for anomalies"
-    print "The component might have logged errors as part of its internal"
-    print "error handling."
+    print "The component might have logged errors as part of its "
+    print "internal error handling."
     print ""
     print "The log file can contain Failed messages "
-    print "This might be  intended behaviour depending on the tests."
+    print "This might be  intended behaviour depending on some "
+    print "of the tests."
 
 
