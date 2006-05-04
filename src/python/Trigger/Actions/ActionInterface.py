@@ -18,7 +18,7 @@ class ActionInterface:
          """
          self.parameters ={}
 
-    def invoke(self):
+    def invoke(self,jobSpecId):
          """
          _invoke_
         
@@ -28,8 +28,8 @@ class ActionInterface:
          msg = "Virtual Method ActionInterface.invoke called"
          raise RuntimeError, msg
 
-    def __call__(self):
+    def __call__(self,jobSpecId):
          """
          Call method
          """
-         self.invoke()
+         self.invoke(jobSpecId)

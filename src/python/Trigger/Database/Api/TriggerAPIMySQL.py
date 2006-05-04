@@ -94,7 +94,7 @@ def addFlag(triggerId,jobSpecId,flagId):
       dbCur.execute("ROLLBACK")
       dbCur.close()
       raise Exception("ERROR:","Flag "+triggerId+','+jobSpecId+','+flagId+ \
-          " already exists")
+          " already exists or jobspec ID does not exist.")
 
 def setAction(jobSpecId,triggerId,actionName):
    conn=connect()

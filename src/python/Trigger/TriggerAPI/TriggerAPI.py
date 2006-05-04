@@ -39,7 +39,7 @@ class TriggerAPI:
           try:
               actionName=TriggerAPIMySQL.getAction(triggerId,jobSpecId)
               action=retrieveAction(actionName)
-              action.invoke()
+              action.invoke(jobSpecId)
           except Exception, ex:
               pass
 
