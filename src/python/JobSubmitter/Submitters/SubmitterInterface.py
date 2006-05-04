@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.6 2006/05/02 14:59:26 bacchi Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.7 2006/05/04 13:07:54 bacchi Exp $"
 
 import os
 import logging
@@ -206,12 +206,8 @@ class SubmitterInterface:
         Parameters are extracted from this instance
 
         """
-        #outf=self.executeCommand("boss v -c " + self.bossCfgDir)
-        #version=outf.split("BOSS Version")[1].strip()
-        #version=version.split('_')[0]
         version="v4"   
                                    
-        logging.info("version = %s"%version)
         bossDeclare={"v3":self.BOSS3declare,"v4":self.BOSS4declare}
 
         logging.debug("SubmitterInterface:Declaring Job To BOSS")
