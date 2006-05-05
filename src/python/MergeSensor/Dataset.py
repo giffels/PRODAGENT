@@ -11,8 +11,8 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id: Dataset.py,v 1.7 2006/04/12 09:14:51 ckavka Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: Dataset.py,v 1.1 2006/04/12 15:12:11 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError
@@ -124,9 +124,14 @@ class Dataset:
         
 
         # no, it is a new dataset, read the WorkflowSpecFile
-        wfile = WorkflowSpec()
-        wfile.load(fileName)
+        try:
+            wfile = WorkflowSpec()
+            wfile.load(fileName)
 
+        # wrong dataset file, ignore it
+        except:
+            self.data = None
+            return
 
         # get primary dataset name
         try:
@@ -471,12 +476,14 @@ class Dataset:
                                                                                 
         """
 
-        if (dataTier == 'Simulated'):
+        if dataTier == 'Simulated':
             dataTier = 'SIM'
-        elif (dataTier == 'Digitized'):
+        elif dataTier == 'Digitized':
             dataTier = 'DIGI'
         elif (dataTier == 'GenSimDigi') or (dataTier == 'GEN-SIM-DIGI'):
             dataTier = 'GEN-SIM-DIGI'
+        elif dataTier == 'GEN-SIM':
+  	    dataTier = 'GEN-SIM'
         else:
             dataTier = 'Unknown'
 
