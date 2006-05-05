@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.2 2006/04/13 07:40:41 ckavka Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.3 2006/04/13 10:56:24 ckavka Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -26,7 +26,7 @@ import sys
 from MergeSensor.WatchedDatasets import WatchedDatasets
 from MergeSensor.MergeSensorError import MergeSensorError
 from MessageService.MessageService import MessageService
-
+from JobState.JobStateAPI import JobStateChangeAPI                                                                                
 # Workflow and Job specification
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from CMSConfigTools.CfgInterface import CfgInterface
@@ -118,6 +118,9 @@ class MergeSensorComponent:
         # use message server or xmlrpc interface?
         self.ms = None 
         
+        # JobState
+        self.args["JobState"] = True
+        self.job_state = self.args["JobState"]
 
     def __call__(self, event, payload):
         """
@@ -216,7 +219,7 @@ class MergeSensorComponent:
         dummyTask.name = "dummyTask"
         dummyTask.type = "CMSSW"
         dummyTask.application["Project"] = "CMSSW"
-        dummyTask.application["Version"] = "CMSSW_0_6_0_pre3"
+        dummyTask.application["Version"] = "CMSSW_0_6_0_pre7"
         dummyTask.application["Architecture"] = "slc3_ia32_gcc323"
         dummyTask.application["Executable"] = "cmsRun"
                                                                                 
@@ -266,7 +269,7 @@ class MergeSensorComponent:
         """
         
         # build dataset path
-        pattern ="^\[(\w+)\]\[(\w+)\]\[(\w+)]"
+        pattern = "^\[([\w\-]+)\]\[([\w\-]+)\]\[([\w\-]+)]"
         match = re.search(pattern, datasetId)
         data = match.groups()            
         datasetPath = '/%s/%s/%s' % data
@@ -302,19 +305,24 @@ class MergeSensorComponent:
             # critical region start
             self.cond.acquire()
 
+            # define merge job
             outFile = self.datasets.addMergeJob(datasetId, selectedSet)
+
+            # get real data tier name 
+            properties = self.datasets.getProperties(datasetId)
+            tier = properties["realDataTier"]
 
             # critical region end
             self.cond.release()
         
             # build specification files
-            pattern ="^\[(\w+)\]\[(\w+)\]\[(\w+)]"
+            pattern ="^\[([\w\-]+)\]\[([\w\-]+)\]\[([\w\-]+)]"
             match = re.search(pattern, datasetId)
             dataset = match.groups()
 
             # build workflow and job specifications
             jobSpecFile = self.buildWorkflowSpecFile(jobId, selectedSet,
-                                                      dataset, outFile)
+                                                      dataset, outFile, tier)
             # publish CreateJob event
             self.publishCreateJob(jobSpecFile)
 
@@ -324,7 +332,7 @@ class MergeSensorComponent:
                       (datasetPath,str(selectedSet)))
             logging.info("  output dataset: /%s/%s/%s-merged file: %s" % \
                       (dataset[0],dataset[1],dataset[2],outFile))
-                     
+             
             # critical region start
             self.cond.acquire()
  
@@ -336,7 +344,7 @@ class MergeSensorComponent:
 
         return
 
-    def buildWorkflowSpecFile(self, jobId, fileList, dataset, outputFile):
+    def buildWorkflowSpecFile(self, jobId, fileList, dataset, outputFile, tier):
         """
         _buildWorkflowSpecFile_
         
@@ -351,6 +359,7 @@ class MergeSensorComponent:
           fileList -- the list of files to be merged
           dataset -- the name of the dataset
           outputFile -- the name of the merged file
+          tier -- the real data tier name
                     
         Return:
             
@@ -362,34 +371,42 @@ class MergeSensorComponent:
         spec = WorkflowSpec()
         spec.setWorkflowName("job-%s" % jobId)
 
+        # update job state
+        if self.job_state:
+            try:
+                JobStateChangeAPI.register(jobId, 'processing', 10, 1)
+            except StandardError, ex:
+                logging.error('JobStateAPI error: '+str(ex))
+
         # describe it as a cmsRun job
         cmsRun = spec.payload
         cmsRun.name = "cmsRun1"
         cmsRun.type = "CMSSW"
         cmsRun.application["Project"] = "CMSSW"
-        cmsRun.application["Version"] = "CMSSW_0_6_0_pre3"
+        cmsRun.application["Version"] = "CMSSW_0_6_0_pre7"
         cmsRun.application["Architecture"] = "slc3_ia32_gcc323"
         cmsRun.application["Executable"] = "cmsRun"
  
         # input dataset (primary, processed)
         cmsRun.addInputDataset(dataset[0], dataset[2])
          
-        # output dataset (primary, processed, module name)
-        cmsRun.addOutputDataset(dataset[0], dataset[2]+"-merged", "Merged")
+        # output dataset (primary, processed, module name, tier)
+        out = cmsRun.addOutputDataset(dataset[0], dataset[2]+"-merged", "Merged")
+        out["DataTier"] = tier
  
         # get PSet
         cfg = CfgInterface(self.mergeWorkflow, True)
         
         # set output module
         outModule = cfg.outputModules['Merged']
-        outModule.setFileName("file:%s-merged.root" % outputFile)
+        outModule.setFileName("file:%s-%s-merged.root" % (dataset[0],outputFile))
         outModule.setCatalog("%s-merge.xml" % jobId)
 
         # set input module
         inModule = cfg.inputSource
 
         # get input file names (expects a trivial catalog on site)
-        inputFiles = ["/%s" % fileName for fileName in fileList]
+        inputFiles = ["%s" % fileName for fileName in fileList]
 
         inModule.setFileNames(*inputFiles)
 
@@ -538,7 +555,6 @@ class MergeSensorComponent:
                     name = aFile.getLogicalFileName()
                     size = aFile.getFileSize()
                     fileList.append((name, size))
-
         else:
 
             # use Web Services API
@@ -622,6 +638,7 @@ class MergeSensorComponent:
                 from dbsProcessedDataset import DbsProcessedDataset
                 processed = DbsProcessedDataset(datasetPath = path)
                 blockList = self.dbsApi.getDatasetFileBlocks(processed)
+
             except Exception, ex:
                 # dbs is not answering properly, just wait
                 logging.error("DBS error (exception: %s)" % \
@@ -684,12 +701,8 @@ class MergeSensorComponent:
             logging.error(message);
             return
         
-        # set policy parameters (2GB)
-        self.datasets.setMergeFileSize(2000000000)
-
-    
-
-       
+        # set policy parameters (100 MB)
+        self.datasets.setMergeFileSize(100000000)
 
         # create message server
         self.ms = MessageService()
