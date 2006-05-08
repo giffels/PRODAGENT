@@ -134,6 +134,15 @@ class JobCreatorComponent:
                 #  // 
                 # // Register job creation for jobname, provide Cache Area
                 #//  and set job state to InProgress
+
+                # NOTE: max retries and racers are fixed but should
+                # NOTE: configurable
+
+                # NOTE: does this component only handle processing jobs?
+                # NOTE: if not we need to differentiate between processing
+                # NOTE: and merging jobs
+
+                JobStateChangeAPI.register(jobname, 'processing', 10, 1)
                 JobStateChangeAPI.create(jobname, cacheArea)
                 JobStateChangeAPI.inProgress(jobname)
             except Exception, ex:
