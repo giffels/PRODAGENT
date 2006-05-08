@@ -23,7 +23,7 @@ References:
 __author__ = "Chad J. Schroeder"
 __copyright__ = "Copyright (C) 2005 Chad J. Schroeder"
 
-__revision__ = "$Id$"
+__revision__ = "$Id: CreateDaemon.py,v 1.1 2006/04/10 17:13:54 evansde Exp $"
 __version__ = "0.2"
 
 # Standard Python modules.
@@ -179,7 +179,7 @@ def createDaemon(workdir):
       maxfd = MAXFD
   
    # Iterate through and close all file descriptors.
-   for fd in range(0, maxfd):
+   for fd in range(3, maxfd):
       try:
          os.close(fd)
       except OSError:	# ERROR, fd wasn't open to begin with (ignored)
@@ -195,8 +195,8 @@ def createDaemon(workdir):
    os.open(REDIRECT_TO, os.O_RDWR)	# standard input (0)
 
    # Duplicate standard input to standard output and standard error.
-   os.dup2(0, 1)			# standard output (1)
-   os.dup2(0, 2)			# standard error (2)
+   #os.dup2(0, 1)			# standard output (1)
+   #os.dup2(0, 2)			# standard error (2)
 
    return(0)
 

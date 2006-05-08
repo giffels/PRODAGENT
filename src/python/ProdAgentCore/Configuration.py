@@ -3,20 +3,20 @@
 _Configuration_
 
 Objects to manage/save/load/access a single configuration setup
-for an entire ProdAgentLite system including components
+for an entire ProdMgrLite system including components
 
-To retrieve the ProdAgent Configuration for a component do:
+To retrieve the ProdMgr Configuration for a component do:
 
-from ProdAgentCore.Configuration import loadProdAgentConfiguration
-cfg = loadProdAgentConfiguration()
+from ProdMgrCore.Configuration import loadProdMgrConfiguration
+cfg = loadProdMgrConfiguration()
 componentSettings = cfg.getConfig("componentNameHere")
 
-Note that this method requires that the env var PRODAGENT_CONFIG is
+Note that this method requires that the env var PRODMGR_CONFIG is
 set to point to the config file to be loaded.
 
-You can also access configuration for core prodagent services like
-ProdAgentDB, MessageService and JobStates, for example
-dbSettings = cfg.getConfig("ProdAgentDB")
+You can also access configuration for core prodmgr services like
+ProdMgrDB, MessageService and JobStates, for example
+dbSettings = cfg.getConfig("ProdMgrDB")
 
 The config objects are dictionaries and parameters can be accessed in the
 usual manner.
@@ -30,8 +30,8 @@ intParamValue = int( componentSettings["SomeInteger"] )
 
 
 """
-__revision__ = "$Id: Configuration.py,v 1.3 2006/04/13 14:35:09 evansde Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: Configuration.py,v 1.4 2006/04/13 19:26:49 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -44,52 +44,48 @@ from IMProv.IMProvQuery import IMProvQuery
 from IMProv.IMProvLoader import loadIMProvFile
 
 
-def loadProdAgentConfiguration():
+def loadProdMgrConfiguration():
     """
-    _loadProdAgentConfiguration_
+    _loadProdMgrConfiguration_
 
-    Util method to load the ProdAgentConfiguration from a location
-    defined by the env var PRODAGENT_CONFIG
+    Util method to load the ProdMgrConfiguration from a location
+    defined by the env var PRODMGR_CONFIG
 
-    Returns a ProdAgentConfiguration object
+    Returns a ProdMgrConfiguration object
     
     """
-    envVar = os.environ.get("PRODAGENT_CONFIG", None)
+    envVar = os.environ.get("PRODMGR_CONFIG", None)
     if envVar == None:
-        msg = "Cannot load ProdAgent Configuration:\n"
-        msg += "PRODAGENT_CONFIG is not set:\n"
+        msg = "Cannot load ProdMgr Configuration:\n"
+        msg += "PRODMGR_CONFIG is not set:\n"
         raise RuntimeError, msg
     if not os.path.exists(envVar):
         msg = "File Not Found:\n"
         msg += "%s\n" % envVar
-        msg += "PRODAGENT_CONFIG must point to a valid file\n"
+        msg += "PRODMGR_CONFIG must point to a valid file\n"
         raise RuntimeError, msg
 
-    config = ProdAgentConfiguration()
+    config = ProdMgrConfiguration()
     config.loadFromFile(envVar)
     return config
 
     
 
-class ProdAgentConfiguration(dict):
+class ProdMgrConfiguration(dict):
     """
-    _ProdAgentConfiguration_
+    _ProdMgrConfiguration_
 
-    Configuation container for the ProdAgent
+    Configuation container for the ProdMgr
 
     Essentially a map of named ConfigBlock instances.
 
-    There are two types of ConfigBlock:
-    - Those for Core pieces of the ProdAgent (like ProdAgentDB etc)
-    - Those for ProdAgent Components
+ 
 
     The Core ConfigBlocks are added by default, Component ConfigBlocks
     are added with the newComponentConfig method.
     No Components are added by default.
 
-    The config file is used to provide a list of Components to be
-    started to the prodAgentd startup utility. So only components
-    to actually be run should be added to the config.
+  
 
     """
     def __init__(self):
@@ -98,11 +94,8 @@ class ProdAgentConfiguration(dict):
         #  //
         # // Core non-component pieces are included by default
         #//
-        self.setdefault("ProdAgent", ConfigBlock("ProdAgent"))
-        self.setdefault("ProdAgentDB", ConfigBlock("ProdAgentDB"))
-        self.setdefault("JobStates", ConfigBlock("JobStates"))
-        self.setdefault("MessageService", ConfigBlock("MessageService"))
-        self.setdefault("LocalDBS", ConfigBlock("LocalDBS"))
+        self.setdefault("ProdMgr", ConfigBlock("ProdMgr"))
+        self.setdefault("ProdMgrDB", ConfigBlock("ProdMgrDB"))
         
     def save(self):
         """
@@ -111,7 +104,7 @@ class ProdAgentConfiguration(dict):
         Generate an IMProvNode object to save this object to XML
 
         """
-        result = IMProvNode("ProdAgentConfiguration")
+        result = IMProvNode("ProdMgrConfiguration")
         for item in self.components:
             result.addNode(IMProvNode("Component", None,
                                       Name = item))
@@ -127,10 +120,10 @@ class ProdAgentConfiguration(dict):
         Populate self based on content of improvNode instance
         """
         componentQ = IMProvQuery(
-            "ProdAgentConfiguration/Component[attribute(\"Name\")]"
+            "ProdMgrConfiguration/Component[attribute(\"Name\")]"
             )
         configQ = IMProvQuery(
-            "ProdAgentConfiguration/ConfigBlock"
+            "ProdMgrConfiguration/ConfigBlock"
             )
         components = componentQ(improvNode)
         configs = configQ(improvNode)
@@ -154,7 +147,7 @@ class ProdAgentConfiguration(dict):
             improv = loadIMProvFile(filename)
         except StandardError, ex:
             msg = "Cannot read file: %s\n" % filename
-            msg += "Failed to load ProdAgentConfiguration\n"
+            msg += "Failed to load ProdMgrConfiguration\n"
             raise RuntimeError, msg
 
         self.load(improv)
@@ -167,7 +160,7 @@ class ProdAgentConfiguration(dict):
         Save this instance to the file provided
 
         """
-        doc = IMProvDoc("ProdAgentConfig")
+        doc = IMProvDoc("ProdMgrConfig")
         doc.addNode(self.save())
         handle = open(filename, 'w')
         handle.write(doc.makeDOMDocument().toprettyxml())
@@ -193,7 +186,7 @@ class ProdAgentConfiguration(dict):
         
         """
         if configName in self.configNames():
-            msg = "Duplicate Config Name added to ProdAgentConfiguration\n"
+            msg = "Duplicate Config Name added to ProdMgrConfiguration\n"
             msg += "%s already exists\n" % configName
             raise RuntimeError, msg
 
@@ -219,7 +212,7 @@ class ProdAgentConfiguration(dict):
 
         Get list of all components in this Config
         Does not include core non component config blocks such as
-        ProdAgentDB, JobStates and MessageService blocks
+        ProdMgrDB, JobStates and MessageService blocks
         
         """
         return self.components
