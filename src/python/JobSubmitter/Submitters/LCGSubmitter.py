@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id:$"
+__revision__ = "$Id: LCGSubmitter.py,v 1.5 2006/05/02 12:31:14 elmer Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -106,7 +106,9 @@ class LCGSubmitter(SubmitterInterface):
             self.declareToBOSS()
             bossJobId=self.isBOSSDeclared()
         #bossJobId=self.getIdFromFile(TarballDir, JobName)
-        print "bossJobId = %s"%bossJobId
+        logging.debug( "LCGSubmitter.doSubmit bossJobId = %s"%bossJobId)
+        if bossJobId==0:
+            return
         JobName=self.parameters['JobName']
         swversion=self.parameters['AppVersions'][0]  # only one sw version for now
 
@@ -129,14 +131,14 @@ class LCGSubmitter(SubmitterInterface):
             sys.exit()
             
         bossSubmit = self.bossSubmitCommand[self.BossVersion](bossJobId)  
-        bossSubmit += "-scheduler %s -schclassad %s" % (self.parameters['Scheduler'],schedulercladfile)
+        bossSubmit += " -schclassad %s"%schedulercladfile
 
         #  //
         # // Executing BOSS Submit command
         #//
-        print "LCGSubmitter.doSubmit:", bossSubmit
+        logging.debug( "LCGSubmitter.doSubmit:", bossSubmit)
         output = self.executeCommand(bossSubmit)
-        print "LCGSubmitter.doSubmit: %s" % output
+        logging.debug ("LCGSubmitter.doSubmit: %s" % output)
         #os.remove(cladfile)
         return
 
