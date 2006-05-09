@@ -36,13 +36,11 @@ class MergingRunFailureHandler(HandlerInterface):
 
               self.publishEvent("SubmitJob",(jobId))
          except RetryException:
-              JobStateChangeAPI.cleanout(jobId)
               logging.debug(">MergingRunFailureHandler<: Registered a "+\
                             " job run failure "+ \
                             "Maximum number of retries reached!" +\
-                            " Submitting a general failure job event to be handled"+\
-                            " by the prodmanager")
-
+                            " Submitting a general failure job and cleanup event ")
+              self.publishEvent("JobCleanup",(jobId))
               self.publishEvent("GeneralJobFailure",(jobId))
 
 registerHandler(MergingRunFailureHandler(),"mergingRunFailureHandler")

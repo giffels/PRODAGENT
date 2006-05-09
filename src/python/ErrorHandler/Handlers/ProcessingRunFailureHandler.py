@@ -35,13 +35,11 @@ class ProcessingRunFailureHandler(HandlerInterface):
                             "publishing a submit job event")
               self.publishEvent("SubmitJob",(jobId))
          except RetryException:
-              JobStateChangeAPI.cleanout(jobId)
               logging.debug(">ProcessingRunFailureHandler<: Registered "+\
                             "a job run failure "+ \
                             "Maximum number of retries reached!" +\
-                            " Submitting a failure job event to be handled"+\
-                            " by the prodmanager")
-
+                            " Submitting a failure job and cleanup event ")
+              self.publishEvent("JobCleanup",(jobId))
               self.publishEvent("GeneralJobFailure",(jobId))
 
 registerHandler(ProcessingRunFailureHandler(),"processingRunFailureHandler")

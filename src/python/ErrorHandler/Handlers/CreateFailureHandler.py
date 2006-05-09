@@ -35,13 +35,11 @@ class CreateFailureHandler(HandlerInterface):
                             "publishing a create event")
               self.publishEvent("CreateJob",(jobId))
          except RetryException:
-              JobStateChangeAPI.cleanout(jobId)
               logging.debug(">CreateFailureHandler<: Registered "+\
                             "a create failure "+ \
                             "Maximum number of retries reached!" +\
-                            " Submitting a general failure job event to be handled"+\
-                            " by the prodmanager")
-
+                            " Submitting a general failure and cleanup job event ")
+              self.publishEvent("JobCleanup",(jobId))
               self.publishEvent("GeneralJobFailure",(jobId))
 
 registerHandler(CreateFailureHandler(),"createFailureHandler")
