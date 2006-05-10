@@ -15,6 +15,29 @@ from MB.Persistency import save as saveMetabroker
 from IMProv.IMProvDoc import IMProvDoc
 
 
+class InsertStageOutAttrs:
+    """
+    _InsertStageOutAttrs_
+
+    Put in standard StageOut specific fields in the task Objects
+
+    """
+    def __call__(self, taskObject):
+        """
+        _operator()_
+
+        Act on a taskObject and if its type is StageOut, add in the standard fields for a StageOut tgask
+
+        """
+        if taskObject['Type'] != "StageOut":
+            return
+        #  //
+        # // Lists of pre stage out and post stage out shell commands for setting up stage out env
+        #//  Should be bash shell commands as strings
+        taskObject['PreStageOutCommands'] = []
+        taskObject['PostStageOutCommands'] = []
+        
+
 class PopulateStageOut:
     """
     _PopulateStageOut_
@@ -53,6 +76,13 @@ class PopulateStageOut:
         stageOutFor = parent['Name']
 
         #  //
+        # // Pre and Post Stage out commands
+        #//
+        precomms = taskObject.get("PreStageOutCommands", [])
+        postcomms = taskObject.get("PostStageOutCommands", [])
+        
+
+        #  //
         # // Install the main script
         #//
         srcfile = inspect.getsourcefile(RuntimeStageOut)
@@ -60,7 +90,12 @@ class PopulateStageOut:
             os.system("chmod +x %s" % srcfile)
         taskObject.attachFile(srcfile)
         exeScript = taskObject[taskObject['Executable']]
+
+        for precomm in precomms:
+            exeScript.append(str(precomm))
         exeScript.append("./RuntimeStageOut.py")
+        for postcomm in postcomms:
+            exeScript.append(str(postcomm))
 
       
         #  //
