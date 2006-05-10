@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.5 2006/04/12 09:16:12 ckavka Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.1 2006/04/12 15:12:11 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 import os
@@ -45,7 +45,7 @@ class WatchedDatasets:
 
        used to update the list of files in the dataset.
         
-     * addMergeJob(self, datasetId, fileList)
+     * addMergeJob(self, datasetId, fileList, fileBlockId)
 
        add a new merge job to the dataset.
        
@@ -229,7 +229,7 @@ class WatchedDatasets:
         """
         self.datasets[datasetId].setFiles(fileList)
         
-    def addMergeJob(self, datasetId, fileList):
+    def addMergeJob(self, datasetId, fileList, fileBlockId):
         """
         _addMergeJobs_
         
@@ -239,13 +239,14 @@ class WatchedDatasets:
             
           datasetId -- the name of the dataset
           fileList -- the list of files that the job will start to merge
+          fileBlockId -- the file block id as returned by DBS
           
         Return:
             
           the name of the output file
           
         """
-        return self.datasets[datasetId].addMergeJob(fileList)
+        return self.datasets[datasetId].addMergeJob(fileList, fileBlockId)
 
     def mergeable(self, datasetId):
         """
@@ -259,15 +260,15 @@ class WatchedDatasets:
           
         Return:
             
-          tuple (condition, listFiles)
+          tuple (condition, listFiles, fileBlockId)
           
           where condition is True if there is a subset of files eligible for
           merging and False if not. listFiles contains the selected list of
           files, which can be directly used as an argument to addMergeJob.
           
         """
-        fileList = self.datasets[datasetId].selectFiles()
-        return (fileList != [], fileList)
+        (fileList, fileBlockId) = self.datasets[datasetId].selectFiles()
+        return (fileList != [], fileList, fileBlockId)
     
     def close(self, datasetId):
         """
