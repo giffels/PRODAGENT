@@ -11,17 +11,15 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.3 2006/04/13 10:56:24 ckavka Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
 import time
-import socket
 import re
 import inspect
 import sys
-
 
 from MergeSensor.WatchedDatasets import WatchedDatasets
 from MergeSensor.MergeSensorError import MergeSensorError
@@ -54,7 +52,7 @@ class MergeSensorComponent:
 
     """
 
-    def __init__(self,**args):
+    def __init__(self, **args):
         """
         
         Arguments:
@@ -291,7 +289,7 @@ class MergeSensorComponent:
         self.datasets.updateFiles(datasetId, fileList)
         
         # verify if it can be merged
-        (mergeable, selectedSet) = self.datasets.mergeable(datasetId)
+        (mergeable, selectedSet, fileBlockId) = self.datasets.mergeable(datasetId)
  
         # critical region end
         self.cond.release()
@@ -306,7 +304,7 @@ class MergeSensorComponent:
             self.cond.acquire()
 
             # define merge job
-            outFile = self.datasets.addMergeJob(datasetId, selectedSet)
+            outFile = self.datasets.addMergeJob(datasetId, selectedSet, fileBlockId)
 
             # get real data tier name 
             properties = self.datasets.getProperties(datasetId)
@@ -337,7 +335,7 @@ class MergeSensorComponent:
             self.cond.acquire()
  
             # verify again the same dataset for another set
-            (mergeable, selectedSet) = self.datasets.mergeable(datasetId)
+            (mergeable, selectedSet, fileBlockId) = self.datasets.mergeable(datasetId)
 
             # critical region end
             self.cond.release()
@@ -399,7 +397,15 @@ class MergeSensorComponent:
         
         # set output module
         outModule = cfg.outputModules['Merged']
-        outModule.setFileName("file:%s-%s-merged.root" % (dataset[0],outputFile))
+
+        # set output file name
+        baseFileName = "%s-%s-%s.root" % (dataset[0], outputFile, tier)
+        outModule.setFileName("pfn:" + baseFileName)
+        outModule.setLogicalFileName("/store/preprod/" + \
+                       time.strftime("%Y/%m/%d/", time.localtime()) + \
+                       dataset[0] + "/merged/0000/" + baseFileName)
+
+        # set output catalog
         outModule.setCatalog("%s-merge.xml" % jobId)
 
         # set input module
@@ -413,17 +419,12 @@ class MergeSensorComponent:
         # get configuration from template
         cmsRun.configuration = str(cfg)
 
-        
-        
         #  //
         # // Clone the workflow into a job spec
         #//  and set the job name
         jobSpec = spec.createJobSpec()
         jobSpec.parameters['JobName'] = jobId        
         
-        
-
-
         # add stage out 
         stageOut = cmsRun.newNode("stageOut1")
         stageOut.type = "StageOut"
@@ -462,6 +463,7 @@ class MergeSensorComponent:
           none
 
         """
+
         self.ms.publish("CreateJob", mergeSpecURL)
         self.ms.commit()
 
@@ -529,7 +531,7 @@ class MergeSensorComponent:
           
         Return:
             
-          list of tuples (name,size) for all files in dataset
+          list of tuples (name,size,fileBlockId) for all files in dataset
           
         """
 
@@ -548,13 +550,16 @@ class MergeSensorComponent:
 
             # use CGI API
             for fileBlock in blockList:
-            
-                # append (file name,size) to the list of files
+
+                # get file block ID           
+                fileBlockId = fileBlock.getObjectId()
+ 
+                # append (file name,size,fileblockId) to the list of files
                 for aFile in fileBlock.getFileList():
 
                     name = aFile.getLogicalFileName()
                     size = aFile.getFileSize()
-                    fileList.append((name, size))
+                    fileList.append((name, size, fileBlockId))
         else:
 
             # use Web Services API
@@ -573,7 +578,7 @@ class MergeSensorComponent:
                     
                         name = aFile._logicalFileName
                         size = aFile._fileSize
-                        fileList.append((name, size))
+                        fileList.append((name, size, 0))
    
         # return list
         return fileList
