@@ -11,8 +11,8 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id: Dataset.py,v 1.1 2006/04/12 15:12:11 evansde Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError
@@ -41,9 +41,9 @@ class Dataset:
 
      * selectFiles(self)
      
-       select a set of files to be merged based.
+       select a set of files to be merged.
        
-     * addMergeJob(self, fileList)
+     * addMergeJob(self, fileList, fileBlockId)
      
        add a new merge job to the dataset.
 
@@ -74,9 +74,11 @@ class Dataset:
        'last_updated' : 'Thu Jan 12 10:44:28 2006'
        'files' : [{'file1.root','file2.root','file3.root','file4.root',
                   'file5.root','file6.root','file7.root']
-       'remaining_files' : [('file5.root',1024)},
-                            ('file6.root',5607),
-                            ('file7.root',75349)],
+       'remaining_files'[98] : [('file5.root',1024)},
+                                ('file6.root',5607),
+                                ('file7.root',75349)],
+       'remaining_files'[44] : [('file4.root',1024)},
+                                ('file8.root',506)]
       }
       
     where the fields have the following meaning:
@@ -88,6 +90,7 @@ class Dataset:
       'last_updated' -- time of last update
       'files' -- all files in dataset
       'remaining_files' -- list of tuples (file,size) ready to be merged
+      indexed by file blocks.
              
     """
 
@@ -178,7 +181,7 @@ class Dataset:
                      'started' : date,
                      'last_updated' : date,
                      'files' : [],
-                     'remaining_files' : [],
+                     'remaining_files' : {},
                     }
 
         # initialize sequence number for output files
@@ -247,10 +250,17 @@ class Dataset:
         """
         
         # add files not present in original structure
-        for fileName, size in fileList:
+        for fileName, size, fileBlockId in fileList:
             if fileName not in self.data['files']:
                 self.data['files'].append(fileName)
-                self.data['remaining_files'].append((fileName, size))
+               
+                # insert in current file block or create a new one
+                try:
+                    self.data['remaining_files'][fileBlockId].append( \
+                                                        (fileName, size))
+                except KeyError:
+                    self.data['remaining_files'][fileBlockId] = [(fileName, \
+                                                                size)]
 
         # paranoid consistency check
         # possible error: files removed in dataset
@@ -259,14 +269,6 @@ class Dataset:
                   'inconsistency on dataset %s, a file was removed' % \
                   self.data['name']
         
-        # paranoid consistency check
-        # possible error: file change size
-        for fileName in self.data['remaining_files']:
-            if fileName not in fileList:
-                raise MergeSensorError, \
-                      'inconsistency on dataset %s, a file changed size' % \
-                      self.data['name']
-
         # update time
         date = time.asctime(time.localtime(time.time()))
         self.data['last_update'] = date
@@ -274,7 +276,7 @@ class Dataset:
         # write dataset
         self.__write()
         
-    def addMergeJob(self, fileList):
+    def addMergeJob(self, fileList, fileBlockId):
         """
         _addMergeJobs_
         
@@ -283,7 +285,8 @@ class Dataset:
         Arguments:
             
           fileList -- the list of files that the job will start to merge
-          
+          fileBlockId -- the file block id as returned by DBS
+
         Return:
             
           the name of the output file
@@ -296,10 +299,10 @@ class Dataset:
         if wrongFiles:
             raise MergeSensorError, \
                   'cannot merge files %s, not in dataset' % str(wrongFiles)
-        
+       
         # check for files already under merging
         remainingFiles = [fileName for fileName, size in
-                                       self.data['remaining_files']]
+                                     self.data['remaining_files'][fileBlockId]]
         wrongFiles = [fileName for fileName in fileList
                            if fileName not in remainingFiles]
         if wrongFiles:
@@ -308,9 +311,9 @@ class Dataset:
                   str(wrongFiles)
                 
         # remove selected files from set of files
-        self.data['remaining_files'] = [(fileName, size) for fileName, size
-                                             in self.data['remaining_files']
-                                             if fileName not in fileList]
+        self.data['remaining_files'][fileBlockId] = [(fileName, size)
+            for fileName, size in self.data['remaining_files'][fileBlockId]
+                if fileName not in fileList]
 
         # determine output file name
         outputFile = "set" + str(self.outSeqNumber)
@@ -339,26 +342,29 @@ class Dataset:
                     
         Return:
             
-          the list of files to be merged
+          the list of files to be merged and their fileBlockId
           
         """
 
         # get file size
         mergeFileSize = self.__class__.mergeFileSize
 
-        # get set of remaining files
-        files = self.data['remaining_files']
-        
-        # select set of files with at least mergeFileSize size
-        totalSize = 0
-        selectedSet = []
-        for fileName, size in files:
-            selectedSet.append(fileName)
-            totalSize = totalSize + size
-            if totalSize > mergeFileSize:
-                return selectedSet
-               
-        return []
+        # check all file blocks in dataset
+        for fileBlockId in self.data['remaining_files'].keys():
+       
+            # get set of remaining files
+            files = self.data['remaining_files'][fileBlockId]
+
+            # select set of files with at least mergeFileSize size
+            totalSize = 0
+            selectedSet = []
+            for fileName, size in files:
+                selectedSet.append(fileName)
+                totalSize = totalSize + size
+                if totalSize > mergeFileSize:
+                    return (selectedSet, fileBlockId)
+
+        return ([], 0)
 
     def getStatus(self):
         """
@@ -483,7 +489,7 @@ class Dataset:
         elif (dataTier == 'GenSimDigi') or (dataTier == 'GEN-SIM-DIGI'):
             dataTier = 'GEN-SIM-DIGI'
         elif dataTier == 'GEN-SIM':
-  	    dataTier = 'GEN-SIM'
+            dataTier = 'GEN-SIM'
         else:
             dataTier = 'Unknown'
 
