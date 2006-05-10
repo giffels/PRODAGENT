@@ -143,3 +143,11 @@ class CommandBuilder:
         raise MBException("Method not implemented", ClassInstance = self)
         
     
+    def deleteCurrent(self, mbInstance):
+        """
+        _deleteCurrent_
+
+        Take the current values and generate a command to delete that file
+
+        """
+        raise MBException("Method not implemented", ClassInstance = self)

@@ -166,6 +166,16 @@ class DCAPBuilder(CommandBuilder):
             mbInstance['AbsName']
             )
 
+    def deleteCurrent(self, mbInstance):
+        """
+        _deleteCurrent_
+
+        Generate a commadn to delete a file from dCache
+        
+        """
+        return "/bin/rm %s" % mbInstance['AbsName']
+    
+
 
 factory = getCommandFactory()
 factory.registerAccessProtocol("dccp", DCAPBuilder)

@@ -161,7 +161,12 @@ class CPBuilder(CommandBuilder):
             mbInstance['HostName'],
             mbInstance['AbsName']
             )
-
+    def deleteCurrent(self, mbInstance):
+        """
+        remove current file
+        """
+        return "/bin/rm %s" % mbInstance['AbsName']
+    
 
 factory = getCommandFactory()
 factory.registerAccessProtocol("cp", CPBuilder)
