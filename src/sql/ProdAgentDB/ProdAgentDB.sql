@@ -1,5 +1,4 @@
-
-/* This should be the default setting for InnoDB tables; */   
+/* This should be the default setting for InnoDB tables */   
 SET GLOBAL TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 /* Do not commit after every transaction*/
 SET AUTOCOMMIT = 0;
