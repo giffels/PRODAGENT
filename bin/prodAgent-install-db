@@ -6,139 +6,43 @@ Installation and configuration script for prod agent database.
 
 """
 
-__revision__ = "$Id:$"
+__revision__ = "$Id: prodAgent-install-db,v 1.4 2006/05/11 15:37:04 fvlingen Exp $"
 
-import getopt
 import getpass
 import os
 import sys
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
-from ProdAgentCore.DaemonDetails import DaemonDetails
+from ProdAgentDB.Install import adminLogin
+from ProdAgentDB.Install import installDB
+from ProdAgentDB.Install import preInstall
 
 
-def usage():
-    usage = \
-    """
-    Usage: prodAgent-install-db  
-           You can optionally specify the ProdAgent Config file with
-           --config otherwise it will expect to get the config file from
-           the $PRODAGENT_CONFIG environment variable.
-           --help this message.
 
-           Make sure you have the access rights to install the schema.
-         
-
-    """
-    print usage
 
 # start the install db process:
     
 valid = ['config=','help']
 
 # check the input
-
-try:
-    opts, args = getopt.getopt(sys.argv[1:], "", valid)
-except getopt.GetoptError, ex:
-    print str(ex)
-    usage()
-    sys.exit(1)
-
-config = None
-
-for opt, arg in opts:
-    if opt == "--config":
-        config = arg
-    if opt == "--help":
-        usage()
-        sys.exit(1)
-
-if config == None:            
-    config = os.environ.get("PRODAGENT_CONFIG", None)
-    if config == None:
-        msg = "No ProdAgent Config file provided\n"
-        msg += "either set $PRODAGENT_CONFIG variable\n"
-        msg += "or provide the --config option"
-
-print
-print("This script assumes the mysql server is up and running and that you have")
-print("a MySQL user name and password with privileges to install and configure")
-print("the prod agent database")
-print
-
-print("Using config file: "+config)
-
+config=preInstall(valid)
 # load config file
-
 cfgObject = ProdAgentConfiguration()
 cfgObject.loadFromFile(config)
-
-
 # extract the information
 prodAgentConfig = cfgObject.get("ProdAgent")
 dbConfig = cfgObject.get("ProdAgentDB") 
 schemaLocation=dbConfig['schemaLocation']
 dbName=dbConfig['dbName']
-
 # ask for password (optional)
-print
-userName=raw_input('Please provide the mysql user name (typically "root") for updating the \ndatabase server (leave empty if not needed): ')
-if userName=='':
-    userName='root'
-print
-passwd=getpass.getpass('Please provide mysql passwd associated to this user name for \nupdating the database server: ')
-if passwd=='':
-    passwd="''"
+userName,passwd=adminLogin()
 
-updateData="--user="+userName+ " --password="+str(passwd)
-socketFileLocation=dbConfig['socketFileLocation']
-if (socketFileLocation!=""):
-   updateData+="  --socket="+socketFileLocation
-else:
-   choice=raw_input('\nYou will be using ports and hosts settings instead of \n'+\
-                    'sockets. Are you sure you want to use this to connect \n'+\
-                    'to a database as it is a potential security risk? (Y/n)\n ')
-   if choice=='Y':
-       updateData+="  --port="+dbConfig['portNr']+"  --host="+dbConfig['host']
-   else:
-       sys.exit(1)
+users={dbConfig['user']:dbConfig['passwd']}
 
-# install schema.
-try:
-   y=''
-   stdin,stdout=os.popen4('mysql '+updateData+' --exec \'DROP DATABASE IF EXISTS '+dbName+';\'')    
-   y=stdout.read()
-   stdin,stdout=os.popen4('mysql '+updateData+' --exec \'CREATE DATABASE '+dbName+';\'')    
-   y=stdout.read()
-   stdin,stdout=os.popen4('mysql '+updateData+' '+dbName+' < '+schemaLocation)    
-   y=stdout.read()
-   if y!='':
-       raise   
-   print('')
-   print('Created Database ')
-except Exception,ex:
-   print(str(y))
-   print('Perhaps you do not have permission to create a new database.')
-   print('Check your SQL permissions with your database administrator')
+installUser={'userName':userName,
+             'passwd':passwd}
 
+# install the database
+installDB(schemaLocation,dbName,dbConfig['socketFileLocation'],dbConfig['portNr'],dbConfig['host'],users,installUser)
 
-grantCommand='GRANT UPDATE,SELECT,DELETE,INSERT ON '+dbName+'.* TO \''+dbConfig['user']+'\'@\''+dbConfig['host']+'\' IDENTIFIED BY \''+dbConfig['passwd']+'\';'
-
-# update grant information.
-
-try:
-   command='mysql '+updateData+' --exec "'+grantCommand+'"'
-   stdin,stdout=os.popen4(command)    
-   y=''
-   y=stdout.read()
-   if y!='':
-       raise   
-   print('')
-   print('Provided access to database for prod agent user profile')
-except Exception,ex:
-   print(str(y))
-   print('Perhaps you do not have permission to grant access.')
-   print('Check your SQL permissions with your database administrator')
-
-
+choice=raw_input('Continue with installing and configuring BOSS? Y/n ')

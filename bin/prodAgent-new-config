@@ -64,6 +64,7 @@ if  homeDir == None:
     sys.exit(1)
 
 
+bossConfigDir='/home/'+os.getlogin()+'/.bossrc'
 
 coreFields = {
     #  //
@@ -86,6 +87,31 @@ coreFields = {
     'dbWaitingTime' : 10 ,
     'schemaLocation': "$PRODAGENT_ROOT/share/ProdAgentDB.sql"
     },
+
+    # NOTE: We do not define any parametes for the RT mysql backend
+    # as we derive them from these parameters
+    "BOSS": {
+    # BossConfig.clad
+    'tmpDir':'/tmp',
+    'minUpdInt':30,
+    'maxUpdInt':180,
+    'maxRetry':3,
+    'monaLisaUrl':'',
+    # MySQLConfig.clad
+    'dbName':'boss_v3_6',
+    'host':'localhost',
+    'domain':'localdomain',
+    'user':'ProdAgentUser',
+    'passwd':'ProdAgentPass',
+    'guestUser':'ProdAgentGuest',
+    'guestPasswd':'ProdAgentGuestPasswd',
+    'socketFileLocation':'/var/lib/mysql/mysql.sock',
+    'portNr':'0',
+    'realtimeMonitor':'yes',
+    'configDir':bossConfigDir,
+    'schemaLocation':'please set location',
+    #NOTE: change this
+    'bossDir':'please set location'},
     
     "MessageService" : {
     "pollInterval" : 5, 
@@ -169,6 +195,11 @@ comments = {
     "ProdAgentDB" : \
 """
 You should only supply either the portNr OR socketFileLocation
+""",
+   "BOSS" : \
+"""
+You should only supply either the portNr OR socketFileLocation.
+Please look over these parameters carefully.
 """,
    "JobSubmitter" : \
 """
