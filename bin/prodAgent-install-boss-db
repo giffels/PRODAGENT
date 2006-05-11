@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-db,v 1.4 2006/05/11 15:37:04 fvlingen Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.1 2006/05/11 19:34:20 fvlingen Exp $"
 
 import getpass
 import os
@@ -28,7 +28,11 @@ if(exists==-1):
    print('BOSSPATH not part of PATH')
    sys.exit(1)
 
-raw_input('Make sure this script is executed by the same user that will use boss in the prodagent otherwise boss will not be able to find its clad files (press enter to continue)')
+raw_input("""
+WARNING: THIS SCRIPT IS NOT YET FINISHED. USE AT OWN RISK!
+Make sure this script is executed by the same user that will 
+use boss in the prodagent otherwise boss will not be able to 
+find its clad files (press enter to continue)""")
 
 # start the install db process:
 valid = ['config=','help']
