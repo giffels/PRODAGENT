@@ -6,7 +6,7 @@ Installation and configuration script for prod agent database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-db,v 1.4 2006/05/11 15:37:04 fvlingen Exp $"
+__revision__ = "$Id: prodAgent-install-db,v 1.5 2006/05/11 19:34:20 fvlingen Exp $"
 
 import getpass
 import os
@@ -45,4 +45,4 @@ installUser={'userName':userName,
 # install the database
 installDB(schemaLocation,dbName,dbConfig['socketFileLocation'],dbConfig['portNr'],dbConfig['host'],users,installUser)
 
-choice=raw_input('Continue with installing and configuring BOSS? Y/n ')
+#choice=raw_input('Continue with installing and configuring BOSS? Y/n ')
