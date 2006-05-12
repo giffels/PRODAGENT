@@ -71,7 +71,7 @@ def adminLogin():
    return (userName,passwd)
 
 
-def installDB(schemaLocation,dbName,socketFileLocation,portNr,host,users,installUser):
+def installDB(schemaLocation,dbName,socketFileLocation,portNr,host,users,installUser,replace=True ):
 
    updateData="--user="+installUser['userName']+ " --password="+str(installUser['passwd'])
    if (socketFileLocation!=""):
@@ -88,16 +88,21 @@ def installDB(schemaLocation,dbName,socketFileLocation,portNr,host,users,install
    # install schema.
    try:
       y=''
-      stdin,stdout=os.popen4('mysql '+updateData+' --exec \'DROP DATABASE IF EXISTS '+dbName+';\'')
-      y+=str(stdout.read())
-      stdin,stdout=os.popen4('mysql '+updateData+' --exec \'CREATE DATABASE '+dbName+';\'')
-      y+=str(stdout.read())
+      if replace:
+          stdin,stdout=os.popen4('mysql '+updateData+' --exec \'DROP DATABASE IF EXISTS '+dbName+';\'')
+          y+=str(stdout.read())
+          stdin,stdout=os.popen4('mysql '+updateData+' --exec \'CREATE DATABASE '+dbName+';\'')
+          y+=str(stdout.read())
+     
       stdin,stdout=os.popen4('mysql '+updateData+' '+dbName+' < '+schemaLocation)
       y+=str(stdout.read())
       if y!='':
           raise Exception('ERROR',str(y))
       print('')
-      print('Created Database: '+dbName)
+      if replace:
+          print('Created Database: '+dbName)
+      else:
+          print('Augmented Database: '+dbName)
    except Exception,ex:
       print(str(ex))
       print('Perhaps you do not have permission to create a new database.')
