@@ -88,8 +88,6 @@ coreFields = {
     'schemaLocation': "$PRODAGENT_ROOT/share/ProdAgentDB.sql"
     },
 
-    # NOTE: We do not define any parametes for the RT mysql backend
-    # as we derive them from these parameters
     "BOSS": {
     # BossConfig.clad
     'tmpDir':'/tmp',
@@ -98,7 +96,7 @@ coreFields = {
     'maxRetry':3,
     'monaLisaUrl':'',
     # MySQLConfig.clad
-    'dbName':'boss_v3_6',
+    'dbName':'boss_vBOSS_4',
     'host':'localhost',
     'domain':'localdomain',
     'user':'ProdAgentUser',
@@ -109,9 +107,9 @@ coreFields = {
     'portNr':'0',
     'realtimeMonitor':'yes',
     'configDir':bossConfigDir,
-    'schemaLocation':'please set location',
+    'schemaLocation':'ignore for the moment',
     #NOTE: change this
-    'bossDir':'please set location'},
+    'bossDir':'please set location using the BOSSDIR variable'},
     
     "MessageService" : {
     "pollInterval" : 5, 
