@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.5 2006/05/10 10:59:58 ckavka Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.6 2006/05/16 09:53:24 ckavka Exp $"
+__version__ = "$Revision: 1.6 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -213,7 +213,7 @@ class MergeSensorComponent:
         dummyTask.name = "dummyTask"
         dummyTask.type = "CMSSW"
         dummyTask.application["Project"] = "CMSSW"
-        dummyTask.application["Version"] = "CMSSW_0_6_0_pre7"
+        dummyTask.application["Version"] = "CMSSW_0_6_0"
         dummyTask.application["Architecture"] = "slc3_ia32_gcc323"
         dummyTask.application["Executable"] = "cmsRun"
                                                                                 
@@ -370,7 +370,7 @@ class MergeSensorComponent:
         cmsRun.name = "cmsRun1"
         cmsRun.type = "CMSSW"
         cmsRun.application["Project"] = "CMSSW"
-        cmsRun.application["Version"] = "CMSSW_0_6_0_pre7"
+        cmsRun.application["Version"] = "CMSSW_0_6_0"
         cmsRun.application["Architecture"] = "slc3_ia32_gcc323"
         cmsRun.application["Executable"] = "cmsRun"
  
