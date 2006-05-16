@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.4 2006/05/12 14:39:13 fvlingen Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.5 2006/05/16 10:10:22 gcodispo Exp $"
 
 import getpass
 import os
@@ -53,23 +53,6 @@ if os.path.isdir(dbConfig['configDir']) == 0 :
 # just an idea: this url can be already used!
 #dbConfig['monaLisaUrl'] = "http://lxgate35.cern.ch:40808/ApMonConf"
     
-##
-# I commented out this part because config files are then overwrited
-# if used with the --configdir option, bossConfigFiles will write the two
-# config files in the correct place using BOSS defaults,
-# but, at least MySQLConfig.clad won't be as desired 
-##
-#this generates clad files used for other boss commands
-#y=''
-#try:
-#   stdin,stdout=os.popen4('bossConfigFiles --backend mysql --configdir ' + dbConfig['configDir'])
-#   y=stdout.read()
-#   if y!='':
-#      raise Exception("ERROR",str(y))
-#except Exception,ex:
-#   print('*****Ignore this for the moment: '+str(ex[1]))
-#   print('*****End Ignore')
-
 #overwrite clad files with prod agent defaults.
 print
 print 'Creating BossConfig.clad'
@@ -253,16 +236,6 @@ print('The following schedulers where registered:\n'+list)
 raw_input("Press any key to continue installing the BOSS RT MON DB")
 
 y=''
-# again: useless if you rewrite your own config files
-#try:
-#   stdin='y\n'
-#   stdin,stdout=os.popen4('bossRTConfigFiles --backend mysql --configdir ' + dbConfig['configDir'])
-#   y=stdout.read()
-#   if y!='':
-#      raise Exception("ERROR",str(y))
-#except Exception,ex:
-#   print('*****Ignore this for the moment: '+str(ex[1]))
-#   print('*****End Ignore')
 
 bossConfig=open(dbConfig['configDir']+'/MySQLRTConfig.clad','w')
 print("\nCreating MySQLRTConfig.clad")
