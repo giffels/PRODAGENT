@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.5 2006/05/10 10:59:58 ckavka Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -24,7 +24,7 @@ import sys
 from MergeSensor.WatchedDatasets import WatchedDatasets
 from MergeSensor.MergeSensorError import MergeSensorError
 from MessageService.MessageService import MessageService
-from JobState.JobStateAPI import JobStateChangeAPI                                                                                
+
 # Workflow and Job specification
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from CMSConfigTools.CfgInterface import CfgInterface
@@ -116,10 +116,6 @@ class MergeSensorComponent:
         # use message server or xmlrpc interface?
         self.ms = None 
         
-        # JobState
-        self.args["JobState"] = True
-        self.job_state = self.args["JobState"]
-
     def __call__(self, event, payload):
         """
         _operator()_
@@ -368,13 +364,6 @@ class MergeSensorComponent:
         # create a new workflow
         spec = WorkflowSpec()
         spec.setWorkflowName("job-%s" % jobId)
-
-        # update job state
-        if self.job_state:
-            try:
-                JobStateChangeAPI.register(jobId, 'processing', 10, 1)
-            except StandardError, ex:
-                logging.error('JobStateAPI error: '+str(ex))
 
         # describe it as a cmsRun job
         cmsRun = spec.payload
