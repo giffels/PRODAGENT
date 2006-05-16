@@ -11,8 +11,8 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: Dataset.py,v 1.3 2006/05/10 11:04:08 ckavka Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError
@@ -487,7 +487,7 @@ class Dataset:
         elif dataTier == 'Digitized':
             dataTier = 'DIGI'
         elif (dataTier == 'GenSimDigi') or (dataTier == 'GEN-SIM-DIGI'):
-            dataTier = 'GEN-SIM-DIGI'
+            dataTier = 'GEN'
         elif dataTier == 'GEN-SIM':
             dataTier = 'GEN-SIM'
         else:
