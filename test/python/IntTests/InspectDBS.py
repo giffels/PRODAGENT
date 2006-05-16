@@ -59,17 +59,20 @@ except dbsCgiApi.DbsCgiToolError , ex:
 # // Look at contents of dataset
 #//
 for dataset in datasets:
-     print "dataset %s"%dataset.getDatasetPath()
+     print "-----------------------------------"
+     print "Dataset: %s"%dataset.getDatasetPath()
      for block in api.getDatasetContents(dataset.getDatasetPath()):
-         print "  File block name/id: %s/%d, %d event collections}" % (
-             block.getBlockName(),
-             block.getObjectId(),
-             len(block.getEventCollectionList()))                                                                                                                                         
+         print "File block name/id: %s/%d"%(block.getBlockName(),block.getObjectId())
+         print "Number of event collections: %s"%len(block.getEventCollectionList())
 #  //
 # // Look at contents in term single files
 #//
-if full:
-     for block in api.getDatasetFileBlocks (dataset.getDatasetPath()):
-      print " block %s has %d files: " % (block.getBlockName(), len(block.getFileList()))
-      for files in block.getFileList():
-       print "       -> %s"%files.getLogicalFileName()
+     if full:
+       for block in api.getDatasetFileBlocks (dataset.getDatasetPath()):
+         print "--------- info about files --------"
+         print "File block name: ", block.getBlockName()
+         print "Number of files: ", block.getNumberOfFiles()
+         print "Number of Bytes: ", block.getNumberOfBytes()
+         for file in block.getFileList():
+             print "  LFN: ", file.getLogicalFileName()
+
