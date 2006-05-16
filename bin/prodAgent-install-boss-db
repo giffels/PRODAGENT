@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.2 2006/05/11 19:42:56 fvlingen Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.4 2006/05/12 14:39:13 fvlingen Exp $"
 
 import getpass
 import os
@@ -17,7 +17,7 @@ from ProdAgentDB.Install import adminLogin
 from ProdAgentDB.Install import installDB
 from ProdAgentDB.Install import preInstall
 
-bossPath=os.environ.get('BOSSDIR')
+bossPath=os.environ.get('BOSS_ROOT')
 if bossPath==None:
    print('BOSSPATH variable is not set')
    sys.exit(1)
@@ -45,18 +45,30 @@ cfgObject = ProdAgentConfiguration()
 cfgObject.loadFromFile(config)
 # extract the information
 prodAgentConfig = cfgObject.get("BOSS")
-dbConfig = cfgObject.get("BOSS") 
-
+dbConfig = cfgObject.get("BOSS")
+# TMP solution: just to have the correct bosscfg directory
+dbConfig['configDir'] = os.environ["PRODAGENT_WORKDIR"]+"/bosscfg"
+if os.path.isdir(dbConfig['configDir']) == 0 :
+   os.makedirs(dbConfig['configDir'])
+# just an idea: this url can be already used!
+#dbConfig['monaLisaUrl'] = "http://lxgate35.cern.ch:40808/ApMonConf"
+    
+##
+# I commented out this part because config files are then overwrited
+# if used with the --configdir option, bossConfigFiles will write the two
+# config files in the correct place using BOSS defaults,
+# but, at least MySQLConfig.clad won't be as desired 
+##
 #this generates clad files used for other boss commands
-y=''
-try:
-   stdin,stdout=os.popen4('bossConfigFiles --backend mysql')
-   y=stdout.read()
-   if y!='':
-      raise Exception("ERROR",str(y))
-except Exception,ex:
-   print('*****Ignore this for the moment: '+str(ex[1]))
-   print('*****End Ignore')
+#y=''
+#try:
+#   stdin,stdout=os.popen4('bossConfigFiles --backend mysql --configdir ' + dbConfig['configDir'])
+#   y=stdout.read()
+#   if y!='':
+#      raise Exception("ERROR",str(y))
+#except Exception,ex:
+#   print('*****Ignore this for the moment: '+str(ex[1]))
+#   print('*****End Ignore')
 
 #overwrite clad files with prod agent defaults.
 print
@@ -139,7 +151,12 @@ bossMysql.close()
 
 y=''
 try:
-   stdin,stdout=os.popen4('bossAdmin configureDB')
+   stdin,stdout=os.popen4('bossAdmin configureDB -c ' + dbConfig['configDir'])
+   lines=stdout.readlines()
+   for line in lines:
+      if "mysql -u root" in line :
+         schemaLocation=line[line.find('MySQL'):]
+         break
    y=stdout.read()
    if y!='':
       raise Exception("ERROR",str(y))
@@ -147,12 +164,13 @@ except Exception,ex:
    print('*****Ignore this for the moment: '+str(ex[1]))
    print('*****End Ignore')
 
-
 # once we generate the schema we can install the database
-schemaLocation=dbConfig['schemaLocation']
+#schemaLocation=dbConfig['schemaLocation']
 # boss creates the file in the same dir???
-schemaLocation='MySQLConfig.sql'
+#schemaLocation='MySQLConfig.sql'
 dbName=dbConfig['dbName']
+
+print "schemaLocation for ",dbName,": ",schemaLocation
 
 # ask for password (optional)
 userName,passwd=adminLogin()
@@ -169,39 +187,56 @@ installDB(schemaLocation,dbName,dbConfig['socketFileLocation'],dbConfig['portNr'
 # NOTE: if scheduler install script names change we need to change too.
 # NOTE: perhaps put this in the config.xml file?
 
-schedulers=['registerBBSScheduler','registerGLITEScheduler', \
-            'registerCondorScheduler','registerLSF-NoSharedFS-Scheduler', \
-            'registerEDGScheduler','registerLSF-SharedFS-Scheduler', \
-            'registerForkScheduler','registerPBSScheduler']
+schedulers=['registerBBSScheduler', 'registerPBSScheduler', \
+            'registerCondorScheduler', \
+#            'registerCONDOR_GScheduler', \
+            'registerLSF-NoSharedFS-Scheduler', \
+            'registerLSF-SharedFS-Scheduler', \
+            'registerLSF-SharedFS-CERN-Scheduler', \
+            'registerEDGScheduler','registerGLITEScheduler', \
+            'registerGliteAPICollectionScheduler', \
+            'registerGliteAPIParamScheduler', \
+            'registerForkScheduler']
 
 print
 print('Registering schedulers:')
 print
 y=''
 for scheduler in schedulers:
-    try:
-        print('Registering '+scheduler.lstrip('register'))
-        cmd='cd '+bossPath+'/BossSched/bin/;./'+scheduler
-        stdin,stdout=os.popen4(cmd)
-        # this is for dealing with questions on replacing
-        # the scheduler (this might be easier when the Python API of
-        # boss is available
-        stdin.write('y')
-        stdin.close()
-        y=str(stdout.read())
-        y=str(stdout.read())
-        stdout.close()
-        if y!='':
-            raise
-    except Exception,ex:
-        print('ERROR: '+str(ex)+'  '+str(y)+'\Perhaps this user '+\
+   try:
+      # ok: it doesn't look nice but, for the moment, the only way
+      # to understand which ones are the latest working scripts for a given
+      # scheduler, is to read them from our registerSCHEDScheduler
+      file=open(bossPath + "/BossSched/bin/" + scheduler,"r")
+      lines=file.readlines();
+      file.close();
+      for line in lines:
+         if "bossAdmin" in line :
+            cmd = line.strip() + ' -c ' + dbConfig['configDir']
+            break
+      if len(cmd) == 0 :
+         continue
+      print('Registering '+scheduler.lstrip('register'))
+      cmd = 'cd '+bossPath+'/BossSched/bin/;' + cmd
+      stdin,stdout=os.popen4(cmd)
+      # this is for dealing with questions on replacing
+      # the scheduler (this might be easier when the Python API of
+      # boss is available
+      stdin.write('y')
+      stdin.close()
+      y=str(stdout.read())
+      y=str(stdout.read())
+      stdout.close()
+      if y!='':
+         raise
+   except Exception,ex:
+      print('ERROR: '+str(ex)+'  '+str(y)+'\Perhaps this user '+\
             'has not the right privileges for boss or the database?')
-
 
 
 list=''
 try:
-   cmd='boss showSchedulers'
+   cmd='boss showSchedulers -c ' + dbConfig['configDir']
    stdin,stdout=os.popen4(cmd)
    while 1:
        y=stdout.readline()
@@ -218,17 +253,25 @@ print('The following schedulers where registered:\n'+list)
 raw_input("Press any key to continue installing the BOSS RT MON DB")
 
 y=''
-try:
-   stdin,stdout=os.popen4('bossRTConfigFiles --backend mysql')
-   y=stdout.read()
-   if y!='':
-      raise Exception("ERROR",str(y))
-except Exception,ex:
-   print('*****Ignore this for the moment: '+str(ex[1]))
-   print('*****End Ignore')
+# again: useless if you rewrite your own config files
+#try:
+#   stdin='y\n'
+#   stdin,stdout=os.popen4('bossRTConfigFiles --backend mysql --configdir ' + dbConfig['configDir'])
+#   y=stdout.read()
+#   if y!='':
+#      raise Exception("ERROR",str(y))
+#except Exception,ex:
+#   print('*****Ignore this for the moment: '+str(ex[1]))
+#   print('*****End Ignore')
 
 bossConfig=open(dbConfig['configDir']+'/MySQLRTConfig.clad','w')
 print("\nCreating MySQLRTConfig.clad")
+
+# about dbConfig['dbName']:
+# the database name for the RT server should be different from the BOSS client one:
+# in principle the server itself should be different!
+# I just add a '_rt' for the moment
+dbName=dbConfig['dbName']+'_rt'
 
 bossStr="""
 # This is the BOSS MySQL Database configuration file
@@ -264,15 +307,44 @@ DB_CLIENT_FLAG = 0;
 # MySQL timeout in seconds
 DB_CONNECT_TIMEOUT = 30;
 ]
-""" %(dbConfig['dbName'],dbConfig['host'],dbConfig['domain'],dbConfig['user'],dbConfig['passwd'],dbConfig['guestUser'],dbConfig['guestPasswd'],dbConfig['portNr'],dbConfig['socketFileLocation'])
+""" %(dbName,dbConfig['host'],dbConfig['domain'],dbConfig['user'],dbConfig['passwd'],dbConfig['guestUser'],dbConfig['guestPasswd'],dbConfig['portNr'],dbConfig['socketFileLocation'])
+
 
 #write clad file
 bossConfig.write(bossStr)
 bossConfig.close()
 
+# register the mysql RTMon
+
+try:
+   # as for schedulers...
+   cmd = "cd "+bossPath+"/BossRTMon/bin/;bossAdmin registerRTMon -name mysql -updatorPath bossrtupdatorMySQL -clientPath bossrtclientMySQL -configPath " + dbConfig['configDir']+ "/MySQLRTConfig.clad -c " + dbConfig['configDir']
+   print cmd
+   stdin,stdout=os.popen4(cmd)
+   # this is for dealing with questions on replacing
+   # the scheduler (this might be easier when the Python API of
+   # boss is available
+   stdin.write('y')
+   stdin.close()
+   y=str(stdout.read())
+   y=str(stdout.read())
+   stdout.close()
+   if y!='':
+      raise
+except Exception,ex:
+   print('ERROR: '+str(ex)+'  '+str(y)+'\Perhaps this user '+\
+         'has not the right privileges for boss or the database?')
+      
+# now, set up the configuration, you can register
 y=''
 try:
-   stdin,stdout=os.popen4('bossAdmin configureRTMonDB -name mysql')
+   print 'bossAdmin configureRTMonDB -name mysql -c ' + dbConfig['configDir']
+   stdin,stdout=os.popen4('bossAdmin configureRTMonDB -name mysql -c ' + dbConfig['configDir'])
+   lines=stdout.readlines()
+   for line in lines:
+      if "mysql -u root" in line :
+         schemaLocation=line[line.find('MySQL'):]
+         break
    y=stdout.read()
    if y!='':
       raise Exception("ERROR",str(y))
@@ -281,11 +353,30 @@ except Exception,ex:
    print('*****End Ignore')
 
 # add this to the schema to the database
-schemaLocation='MySQLConfig.sql_1'
+#schemaLocation='MySQLConfig.sql_1'
+print "schemaLocation for ",dbName,": ",schemaLocation
 
-installDB(schemaLocation,dbName,dbConfig['socketFileLocation'],dbConfig['portNr'],dbConfig['host'],users,installUser,False)
+installDB(schemaLocation,dbName,dbConfig['socketFileLocation'],dbConfig['portNr'],dbConfig['host'],users,installUser)
 
 
 # we delete the file boss generated
 print('\nDeleting files generated by boss (MySQLConfig.sql*)')
 os.popen('rm MySQLConfig.sql*')
+
+# register the CMSSW BOSSjobtype
+raw_input("Press any key to continue registering CMSSW program type")
+
+y=''
+try:
+   if os.path.exists(bossPath+'/Examples/cmsswSchema')==0 :
+      raise Exception("WARNING","CMSSW program type not found. Skipping")
+   print('Registering cmssw program type')
+   cmd = 'cd '+bossPath+'/Examples; bossAdmin registerProgram -name cmssw -schema cmsswSchema -pre cmsswRuntimeprocess -post cmsswRuntimeprocess -runtime cmsswRuntimeprocess -comment "cmssw program" -c ' + dbConfig['configDir']
+   stdin,stdout=os.popen4(cmd)
+   y=stdout.read()
+   if y!='':
+      raise Exception("ERROR",str(y))
+except Exception,ex:
+   print('*****Ignore this for the moment: '+str(ex[1]))
+   print('*****End Ignore')
+
