@@ -141,8 +141,15 @@ class JobCreatorComponent:
                 # NOTE: does this component only handle processing jobs?
                 # NOTE: if not we need to differentiate between processing
                 # NOTE: and merging jobs
-
-                JobStateChangeAPI.register(jobname, 'processing', 10, 1)
+                
+                try:
+                    # we only register once. The second time will give
+                    # an error which we will pass. Historically registration
+                    # was part of the request injector, and would not clash
+                    # with re-job creation.
+                    JobStateChangeAPI.register(jobname, 'processing', 10, 1)
+                except:
+                    pass
                 JobStateChangeAPI.create(jobname, cacheArea)
                 JobStateChangeAPI.inProgress(jobname)
             except Exception, ex:
