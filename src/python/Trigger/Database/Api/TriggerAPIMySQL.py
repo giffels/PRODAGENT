@@ -1,4 +1,5 @@
 
+from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Connect import connect
 
 def setFlag(triggerId,jobSpecId,flagId):
@@ -11,7 +12,7 @@ def setFlag(triggerId,jobSpecId,flagId):
        dbCur.execute("START TRANSACTION")
        rowsModified=dbCur.execute(sqlStr)
        if rowsModified==0:
-           raise Exception("ERROR:","Flag "+triggerId+','+jobSpecId+','+ \
+           raise ProdAgentException("Flag "+triggerId+','+jobSpecId+','+ \
                flagId+ " does not exists")
        dbCur.execute("COMMIT")
        # check if all flags are set:
@@ -39,7 +40,7 @@ def resetFlag(triggerId,jobSpecId,flagId):
        dbCur.execute("START TRANSACTION")
        rowsModified=dbCur.execute(sqlStr)
        if rowsModified==0:
-           raise Exception("ERROR:","Flag "+triggerId+','+jobSpecId+','+ \
+           raise ProdAgentException("Flag "+triggerId+','+jobSpecId+','+ \
                flagId+ " does not exists")
        dbCur.execute("COMMIT")
        dbCur.close()
@@ -93,7 +94,7 @@ def addFlag(triggerId,jobSpecId,flagId):
    except:
       dbCur.execute("ROLLBACK")
       dbCur.close()
-      raise Exception("ERROR:","Flag "+triggerId+','+jobSpecId+','+flagId+ \
+      raise ProdAgentException("Flag "+triggerId+','+jobSpecId+','+flagId+ \
           " already exists or jobspec ID does not exist.")
 
 def setAction(jobSpecId,triggerId,actionName):
@@ -109,7 +110,7 @@ def setAction(jobSpecId,triggerId,actionName):
    except:
       dbCur.execute("ROLLBACK")
       dbCur.close()
-      raise Exception("ERROR:","Trigger "+triggerId+' does not exist')
+      raise ProdAgentException("Trigger "+triggerId+' does not exist')
 
 def getAction(triggerId,jobSpecId):
    conn=connect()
@@ -121,7 +122,7 @@ def getAction(triggerId,jobSpecId):
    if(len(rows)==1):
        return rows[0][0]
    else:
-       raise Exception("ERROR","No Action Associated")
+       raise ProdAgentException("No Action Associated")
         
 
 def cleanout(jobSpecId):
