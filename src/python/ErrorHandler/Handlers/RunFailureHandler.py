@@ -9,6 +9,8 @@ from ErrorHandler.Registry import registerHandler
 from ErrorHandler.Registry import retrieveHandler
 from FwkJobRep.ReportParser import readJobReport
 from JobState.JobStateAPI import JobStateInfoAPI
+from ProdAgentCore.ProdAgentException import ProdAgentException
+
 
 
 
@@ -77,7 +79,7 @@ class RunFailureHandler(HandlerInterface):
          try:
               handler=retrieveHandler(handlerType)
          except:
-              raise Exception("ERROR","Could not find handler "+handlerType)
+              raise ProdAgentException("Could not find handler "+handlerType)
 
          #set the publication function
          handler.publishEvent=self.publishEvent

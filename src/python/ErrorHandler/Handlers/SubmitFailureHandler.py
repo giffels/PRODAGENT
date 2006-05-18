@@ -7,6 +7,8 @@ from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
 from ErrorHandler.Registry import registerHandler
 from ErrorHandler.Registry import retrieveHandler
 from JobState.JobStateAPI import JobStateInfoAPI
+from ProdAgentCore.ProdAgentException import ProdAgentException
+
 
 
 
@@ -42,8 +44,7 @@ class SubmitFailureHandler(HandlerInterface):
               logging.debug(">SubmitFailureHandler<:Retrieved handler for jobId: "+ \
                             str(jobId)+" with job type: "+str(jobType))
          except:
-              raise Exception("ERROR Submit","Could not find handler "+handlerType)
-
+              raise ProdAgentException("Could not find handler "+handlerType)
          handler.handleError(payload)
 
 registerHandler(SubmitFailureHandler(),"submitFailureHandler")

@@ -34,7 +34,7 @@ class ProcessingSubmitFailureHandler(HandlerInterface):
               logging.debug(">ProcessingSubmitFailureHandler<: Registered "+\
                             "a job submit failure "+ \
                             "Maximum number of retries reached!" +\
-                            " Submitting a failure job and cleanpu event ")
+                            " Submitting a failure job and cleanup event ")
               self.publishEvent("JobCleanup",(jobId))
               self.publishEvent("GeneralJobFailure",(jobId))
 

@@ -97,6 +97,9 @@ class ErrorHandlerComponent:
               elif event in self.args['Events'].keys():
                   handler=retrieveHandler(self.args['Events'][event])
                   handler.handleError(payload)
+              else:
+                  logging.error("No handler available for %s event with payload: %s" \
+                      %(event,str(payload)))
          except Exception, ex:
               logging.error("Failed to handle %s event with payload: %s" \
                             %(event,str(payload)))
