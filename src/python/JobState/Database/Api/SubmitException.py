@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 from ProdAgentCore.ProdAgentException import ProdAgentException
-class RetryException(ProdAgentException):
+
+class SubmitException(ProdAgentException):
    pass
 
 

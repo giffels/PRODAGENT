@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+
+from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Connect import connect
 
 def general(JobSpecId,dbCur = None):
@@ -18,7 +20,7 @@ def general(JobSpecId,dbCur = None):
        if(dbCur==None):
           dbCur.close()
        if len(rows)==0:
-           raise Exception("ERROR:", "Job with JobID "+str(JobSpecId)+ \
+           raise ProdAgentException("Job with JobID "+str(JobSpecId)+ \
                            " does not exists")
        # format it in a dictionary
        return {'JobType':rows[0][0], \
@@ -42,7 +44,7 @@ def lastLocations(JobSpecId,dbCur = None):
        dbCur.execute(sqlStr)
        rows=dbCur.fetchall()
        if len(rows)==0:
-           raise Exception("ERROR:", "Job with JobID "+str(JobSpecId)+ \
+           raise ProdAgentException("Job with JobID "+str(JobSpecId)+ \
                            " has no jobs running yet")
        dbCur.execute("COMMIT")
        if(dbCur==None):
@@ -99,9 +101,9 @@ def rangeGeneral(start = -1 , nr = -1 ,dbCur = None):
            start=0
            nr=jobSpecTotal()
        if start<0:
-           raise Exception('JobStateInfoAPI: Start should be larger than 0!')
+           raise ProdAgentException('Start should be larger than 0!')
        elif nr<0:
-           raise Exception('JobStateInfoAPI: Number should be larger than 0!')
+           raise ProdAgentException('Number should be larger than 0!')
 
        sqlStr='SELECT JobSpecID, JobType,MaxRetries,Retries, '+\
               'State,CacheDirLocation, MaxRacers, Racers '+ \

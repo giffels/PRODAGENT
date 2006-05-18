@@ -1,8 +1,12 @@
 #!/usr/bin/env python
+
 from JobState.Database.Api import JobStateInfoAPIMySQL
-from JobState.Database.Api.RetryException import RetryException
 from JobState.Database.Api.RacerException import RacerException
+from JobState.Database.Api.RetryException import RetryException
+from JobState.Database.Api.RunException import RunException
+from JobState.Database.Api.SubmitException import SubmitException
 from JobState.Database.Api.TransitionException import TransitionException
+from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Connect import connect 
 
 
@@ -50,7 +54,7 @@ def create(jobSpecId, cacheDir):
                   state=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)['State']
                except:
                   state="Undefined"
-               raise TransitionException("ERROR:", "Illegal state "+\
+               raise TransitionException("Illegal state "+\
                      "transition: "+ state+ "-->create")
            dbCur.execute("COMMIT")
            dbCur.close()
@@ -78,16 +82,16 @@ def createFailure(jobSpecId):
                except:
                    state="Undefined"
                if  not state in ['create']:
-                   raise TransitionException("ERROR:", "Illegal state "+  
+                   raise TransitionException("Illegal state "+  
                          "transition: "+state+"-->createFailure")
                # now check if we need to raise a sumit exception as
                # we have reached the maximum number of retries:
                #check if we have not reach the maximum number of retries
                if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1) ):
-                   raise RetryException("ERROR:", "reached "+ \
+                   raise RetryException("reached "+ \
                        "maximum number of retries "+
                        str(generalState['MaxRetries']))
-               raise Exception("ERROR","SubmitFailure failed, please try again")
+               raise SubmitException("SubmitFailure failed, please try again")
            dbCur.execute("COMMIT")
            dbCur.execute("START TRANSACTION")
            # now check if we need to raise a retry exception as
@@ -95,7 +99,7 @@ def createFailure(jobSpecId):
            generalState=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)
            #check if we have not reach the maximum number of retries
            if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1)): 
-               raise RetryException("ERROR:", "reached "+
+               raise RetryException("reached "+
                    "maximum number of retries "+
                    str(generalState['MaxRetries']))
 
@@ -124,7 +128,7 @@ def inProgress(jobSpecId):
                    state=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)['State']
                except:
                    state="Undefined"
-               raise TransitionException("ERROR:", "Illegal state "+ \
+               raise TransitionException("Illegal state "+ \
                                          "transition: "+ state+ \
                                           "-->inProgress")
            dbCur.execute("COMMIT")
@@ -155,21 +159,21 @@ def submit(jobSpecId):
               except:
                  state="Undefined"
               if  not state in ['inProgress']:
-                 raise TransitionException("ERROR:", "Illegal state "+\
+                 raise TransitionException("Illegal state "+\
                                            "transition: "+state+ \
                                           "-->submit")
               #check if we have not reach the maximum number of retries
               if( (int(generalState['Retries'])+int(generalState['Racers']))> (int(generalState['MaxRetries'])-1)):
-                 raise RetryException("ERROR:", "reached "+
+                 raise RetryException("reached "+
                                        "maximum number of retries "+
                                         str(generalState['MaxRetries'])+ \
                                        " (this includes running jobs)")
                #check if we have not reach the maximum number of simulatneous 
                #jobs 
               if(int(generalState['Racers'])> (int(generalState['MaxRacers'])-1)):
-                  raise RacerException("ERROR:", "job with id: "+str(jobSpecId)+
+                  raise RacerException("job with id: "+str(jobSpecId)+
                                         " is already submitted will not resubmit")
-              raise Exception("ERROR","Submit failed, please try again")
+              raise SubmitException("Submit failed, please try again")
            dbCur.execute("COMMIT")
            dbCur.close()
        except:
@@ -197,13 +201,13 @@ def submitFailure(jobSpecId):
                except:
                    state="Undefined"
                if  not state in ['inProgress']:
-                   raise TransitionException("ERROR:", "Illegal state "+  
+                   raise TransitionException("Illegal state "+  
                          "transition: "+state+"-->submitFailure")
                if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1)):
-                   raise RetryException("ERROR:", "reached "+
+                   raise RetryException("reached "+
                        "maximum number of retries "+
                        str(generalState['MaxRetries']))
-               raise Exception("ERROR","SubmitFailure failed, please try again")
+               raise SubmitException("SubmitFailure failed, please try again")
 
            dbCur.execute("COMMIT")
 
@@ -213,7 +217,7 @@ def submitFailure(jobSpecId):
            generalState=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)
            #check if we have not reach the maximum number of retries
            if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1)): 
-               raise RetryException("ERROR:", "reached "+
+               raise RetryException("reached "+
                    "maximum number of retries "+
                    str(generalState['MaxRetries']))
 
@@ -245,17 +249,17 @@ def runFailure(jobSpecId, jobInstanceId = None, runLocation = None, jobReportLoc
                except:
                    state="Undefined"
                if(state!='inProgress'):
-                   raise TransitionException("ERROR:", "Illegal state "+ \
+                   raise TransitionException("Illegal state "+ \
                        "transition: "+state+ "-->runFailure")
                racers=int(generalState['Racers'])
                if(racers == 0):
-                   raise Exception("ERROR","Negative number of racers, "+\
+                   raise RacerException("Negative number of racers, "+\
                        "is not possible, will not update ")
                if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1)): 
-                   raise RetryException("ERROR:", "reached "+
+                   raise RetryException("reached "+
                        "maximum number of retries "+
                        str(generalState['MaxRetries']))
-               raise Exception("ERROR","runFailure failed, please try again")
+               raise RunException("runFailure failed, please try again")
 
            # NOTE: we make these exceptions as we are waiting to 
            # extract some of this information from the job report.
@@ -283,7 +287,7 @@ def runFailure(jobSpecId, jobInstanceId = None, runLocation = None, jobReportLoc
            generalState=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)
            #check if we have not reach the maximum number of retries
            if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1)): 
-               raise RetryException("ERROR:", "reached "+
+               raise RetryException("reached "+
                    "maximum number of retries "+
                    str(generalState['MaxRetries']))
 
@@ -312,7 +316,7 @@ def finished(jobSpecId):
                   state=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)['State']
                except:
                   state="Undefined"
-               raise TransitionException("ERROR:", "Illegal state "+\
+               raise TransitionException("Illegal state "+\
                   "transition: "+state+"-->finished")
            dbCur.execute("COMMIT")
            dbCur.close()
@@ -330,13 +334,19 @@ def cleanout(jobSpecId):
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
-           sqlStr1="""DELETE FROM js_JobSpec WHERE 
+           sqlStr4="""DELETE FROM js_JobSpec WHERE 
                      JobSpecID="%s";""" %(jobSpecId)
            # not every mysql version supports cascade and foreign keys
-           sqlStr2="""DELETE FROM js_JobInstance WHERE 
+           sqlStr3="""DELETE FROM js_JobInstance WHERE 
                       JobSpecID="%s";""" %(jobSpecId)
-           rowsModified=dbCur.execute(sqlStr1)
+           sqlStr2="""DELETE FROM tr_Trigger WHERE 
+                      JobSpecID="%s";""" %(jobSpecId)
+           sqlStr1="""DELETE FROM tr_Action WHERE 
+                      JobSpecID="%s";""" %(jobSpecId)
+           dbCur.execute(sqlStr1)
            dbCur.execute(sqlStr2)
+           dbCur.execute(sqlStr3)
+           dbCur.execute(sqlStr4)
            dbCur.execute("COMMIT")
            dbCur.close()
        except:
@@ -362,7 +372,7 @@ def setRacer(jobSpecId,maxRacers):
                       JobSpecID="%s"; """ %(str(maxRacers),str(jobSpecId)) 
            rowsModified=dbCur.execute(sqlStr1)
            if rowsModified!=1:
-              raise Exception("ERROR","This jobspec with ID "+\
+              raise ProdAgentException("This jobspec with ID "+\
                               str(jobSpecId)+" does not exist")
            dbCur.execute("COMMIT")
            dbCur.close()
