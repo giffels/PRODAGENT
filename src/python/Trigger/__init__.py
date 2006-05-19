@@ -9,12 +9,11 @@ parallel execution of multiple tasks and synchronizing them by using
 1 flag per tasks which is set once the task is finished.
 
 """
-__revision__ = "$Id: __init__.py,v 1.1 2006/04/28 17:06:16 fvlingen Exp $"
+__revision__ = "$Id: __init__.py,v 1.1 2006/05/01 22:07:47 fvlingen Exp $"
 __version__ = "$Revision: 1.1 $"
 __author__ = "fvlingen@caltech.edu"
 
 
 import TriggerAPI 
-#import Database
 import Actions
 
