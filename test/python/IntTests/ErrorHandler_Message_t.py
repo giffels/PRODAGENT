@@ -39,6 +39,7 @@ class ComponentServerTest(unittest.TestCase):
         print("""\nPublish events to turn ErrorHandler logging on""")
         try:
             self.ms.publish("ErrorHandler:StartDebug", "none")
+            self.ms.publish("JobCleanup:StartDebug", "none")
             self.ms.commit()
         except StandardError, ex:
             msg = "Failed testA\n"

@@ -18,8 +18,8 @@ from IntTests.ErrorHandler_Message_t import ComponentServerTest
 
 preTests()
 
-userInput=raw_input("Is the error handler (and only the error handler "+\
-                    " component running? Y/n ")
+userInput=raw_input("Is the error handler (and only the error handler) "+\
+                    " component running (JobCleanup can be active too)? Y/n ")
 if userInput!="Y":
    print "Make sure ONLY the ErrorHandler component is running!"
    sys.exit()

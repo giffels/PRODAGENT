@@ -34,6 +34,18 @@ class ComponentServerTest(unittest.TestCase):
            for i in xrange(0,self.jobSpecs):
                try:
                   os.makedirs('/tmp/createComponent/jobSpecDir_'+str(i))
+                  # create some files (some of which should not be deleted,
+                  # by a partial cleanup)
+                  file1=open('/tmp/createComponent/jobSpecDir_'+str(i)+'/JobSpec.xml','w')
+                  file1.close()
+                  file2=open('/tmp/createComponent/jobSpecDir_'+str(i)+'/FrameworkJobReport.xml','w')
+                  file2.close()
+                  file3=open('/tmp/createComponent/jobSpecDir_'+str(i)+'/JobTarFile.tar.gz','w')
+                  file3.close()
+                  file4=open('/tmp/createComponent/jobSpecDir_'+str(i)+'/Pretend2BeADir1.txt','w')
+                  file4.close()
+                  file5=open('/tmp/createComponent/jobSpecDir_'+str(i)+'/Pretend2BeADir2.txt','w')
+                  file5.close()
                except:
                   pass
            ComponentServerTest._triggerSet=True
@@ -60,6 +72,16 @@ class ComponentServerTest(unittest.TestCase):
             self.fail(msg)
 
     def testC(self):
+        print("""\nEmit partial cleanup events to test the partialCleanupHandler""")
+        for i in xrange(0,self.jobSpecs):
+            payload="jobSpec"+str(i)+",SubmitJob,jobSpec"+str(i)
+            self.ms.publish("PartialJobCleanup", payload)
+            self.ms.commit()
+        print("""\nSleep for several seconds""")
+        time.sleep(3)
+
+
+    def testD(self):
         print("""\nCreate and set triggers to activate job cleanup""")
         try:
             for i in xrange(0,self.jobSpecs):
@@ -73,7 +95,7 @@ class ComponentServerTest(unittest.TestCase):
             msg += str(ex)
             self.fail(msg)
 
-    def testD(self):
+    def testE(self):
         print("\nInvoke trigger action and sleep for 20 seconds to") 
         print("let the cleanup component receive the messages")
         try:
@@ -87,7 +109,7 @@ class ComponentServerTest(unittest.TestCase):
             msg += str(ex)
             self.fail(msg)
  
-    def testE(self):
+    def testF(self):
         print("""\nCleanup the prodagent database""")
         try:
             JobStateChangeAPI.purgeStates()
@@ -98,11 +120,13 @@ class ComponentServerTest(unittest.TestCase):
             self.fail(msg)
        
     def runTest(self):
+         i='donothing'
          self.testA()
          self.testB()
          self.testC()
          self.testD()
          self.testE()
+         self.testF()
 
     
 
