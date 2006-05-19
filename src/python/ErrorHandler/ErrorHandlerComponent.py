@@ -32,7 +32,11 @@ class ErrorHandlerComponent:
     a particular error handler is invoked.  For example the default 
     job failure error handler either submits a request for renewed 
     submission or cleanout the job information stored in the database 
-    and contact the ProdManager (through an event submission).
+    and contact the ProdManager (through an event submission). 
+
+    If resubmission takes place, the size of the job cache is examined.
+    if found to larget, it is selectively purged by submitting a 
+    "PartialJobCleanup" event to the JobCleanup component.
 
     """
 
@@ -41,7 +45,7 @@ class ErrorHandlerComponent:
          __init__
  
          initialization of the component. This methods defines
-         to what events this components subscribes and initializes
+         to what events this component subscribes and initializes
          the logging for this component.
 
          """
@@ -50,6 +54,7 @@ class ErrorHandlerComponent:
          # reports when there is a failure will be in the tmp dir.
          self.args['jobReportLocation']='/tmp/prodAgentJobReports'
          self.args['Logfile'] = None
+         self.args['MaxCacheDirSizeMB'] = 100
          self.args.update(args)
  
 
@@ -111,7 +116,7 @@ class ErrorHandlerComponent:
          
         Method called by the handlers if they need to publish an event.
         This method automatically chooses the message service consistent
-        with its configuration.
+        with its configuration and commits the publication.
 
         """   
         self.ms.publish(name,payload)
@@ -129,6 +134,7 @@ class ErrorHandlerComponent:
          for handlerName in Registry.HandlerRegistry.keys():
              handler=Registry.HandlerRegistry[handlerName]
              handler.publishEvent=self.publishEvent
+             handler.maxCacheDirSizeMB=self.args['MaxCacheDirSizeMB']
              if (handlerName == "runFailureHandler"):
                  handler.setJobReportLocation(self.args['jobReportLocation'])
                  

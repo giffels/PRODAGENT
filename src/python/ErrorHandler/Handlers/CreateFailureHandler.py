@@ -14,7 +14,7 @@ class CreateFailureHandler(HandlerInterface):
     """
     _CreateFailureHandler_
 
-    error handler that gets called if the prod agent fails
+    Error handler that gets called if the prod agent fails
     to create a job. This handler either generates a new create event
     or cleans out the job information if the maximum number of retries 
     has been reached (and generates a general failure event).

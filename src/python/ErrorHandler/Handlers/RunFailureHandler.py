@@ -4,15 +4,17 @@ import logging
 import os
 import urllib
 
+from ErrorHandler.DirSize import dirSize
+from ErrorHandler.DirSize import convertSize
+
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
 from ErrorHandler.Registry import registerHandler
 from ErrorHandler.Registry import retrieveHandler
 from FwkJobRep.ReportParser import readJobReport
+from JobState.Database.Api.RetryException import RetryException
+from JobState.JobStateAPI import JobStateChangeAPI
 from JobState.JobStateAPI import JobStateInfoAPI
 from ProdAgentCore.ProdAgentException import ProdAgentException
-
-
-
 
 class RunFailureHandler(HandlerInterface):
     """
@@ -25,9 +27,14 @@ class RunFailureHandler(HandlerInterface):
     the job report.
 
     Based on the job report, we can retrieve the job id and use
-    that to retrieve the job type in the database. Using this information.
-    we propagate it to different job error handlers associated to different 
-    job types.
+    that to retrieve the job type in the database. 
+
+    Processing error handler that either generates a new submit event
+    or cleans out the job information if the maximum number of retries
+    has been reached (and generates a general failure event).
+
+    Using this information we propagate it to different job error handlers 
+    associated to different job types, for further processing.
 
     """
 
@@ -51,7 +58,7 @@ class RunFailureHandler(HandlerInterface):
          fileName = jobReportUrl[slash+1:]
          urllib.urlretrieve(jobReportUrl, \
               self.args['jobReportLocation']+'/'+fileName)
-         logging.debug(">RunFailureHandler<: Retrieving job report from %s " % jobReportUrl)
+         logging.debug(">RunFailureHandler<:Retrieving job report from %s " % jobReportUrl)
 
          jobReport=readJobReport(self.args['jobReportLocation']+'/'+fileName)
          #NOTE: is this the right way to extract the job id.
@@ -70,25 +77,56 @@ class RunFailureHandler(HandlerInterface):
                        +self.args['jobReportLocation']+'/'+jobId)
          pipe.close()
 
+
+         reportLocation=self.args['jobReportLocation']+'/'+ \
+                           jobId+'/'+fileName
+         generalInfo=JobStateInfoAPI.general(jobId)
+
+         try:
+              JobStateChangeAPI.runFailure(jobId,jobReportLocation= reportLocation)
+
+              # check the cache dir size. If it is beyond the threshold, purge it.
+              dirSizeBytes=dirSize(generalInfo['CacheDirLocation'],0,0,0)
+              dirSizeMegaBytes=convertSize(dirSizeBytes,'m')
+              logging.debug(">RunFailureHandler<:Cache dir. size is "+\
+                            str(dirSizeMegaBytes)+" MB. Maximum allowed is "+\
+                            str(self.maxCacheDirSizeMB)+" MB ")
+
+              # if necessary first a partial cleanup is done, which after it
+              # is finished publishes the proper event.
+              if(float(dirSizeMegaBytes)>float(self.maxCacheDirSizeMB)):
+                  newPayload=jobId+",SubmitJob,"+jobId
+                  logging.debug(">RunFailureHandler<: Reached maximum cache size. "+\
+                      "Performing partial cache cleanup first.")
+                  self.publishEvent("PartialJobCleanup",newPayload)
+              else:
+                  logging.debug(">RunFailureHandler<:Registered "+\
+                                "a job run failure,"\
+                                "publishing a submit job event")
+                  self.publishEvent("SubmitJob",(jobId))
+         except RetryException:
+              logging.debug(">RunFailureHandler<:Registered "+\
+                            "a job run failure "+ \
+                            "Maximum number of retries reached!" +\
+                            " Submitting a failure job and cleanup event ")
+              self.publishEvent("JobCleanup",(jobId))
+              self.publishEvent("GeneralJobFailure",(jobId))
+
+
          # we retrieve the job type, and depending on the type we
          # pick an error handler (her we propagate the rest of the
          # the error handling.
 
-         jobType=JobStateInfoAPI.general(jobId)['JobType']
+         jobType=generalInfo['JobType']
          handlerType=jobType+"RunFailureHandler"
          try:
               handler=retrieveHandler(handlerType)
          except:
               raise ProdAgentException("Could not find handler "+handlerType)
 
-         #set the publication function
-         handler.publishEvent=self.publishEvent
-         # pass on the new jobreport location:
-         jobReportLocation=self.args['jobReportLocation']+'/'+ \
-                           jobId+'/'+fileName
          logging.debug(">RunFailureHandler<:Propagating error to new error handler for further "+\
                        " processing")
-         handler.handleError(jobReportLocation)
+         handler.handleError(reportLocation)
 
 registerHandler(RunFailureHandler(),"runFailureHandler")
 
