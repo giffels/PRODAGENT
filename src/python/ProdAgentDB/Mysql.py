@@ -26,6 +26,9 @@ __dbWaitingTime=10
 def connect(dbName,dbHost,dbUser,dbPasswd,socketLocation,portNr="",cache=True):
 
    """
+
+   _connect_
+
    Generic connect method that returns a connection opbject.
    We do not need to close this object as we can reuse it.
    We do however have a refresh period to prevent the connection 

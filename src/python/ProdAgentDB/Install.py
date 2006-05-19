@@ -9,6 +9,7 @@ from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.DaemonDetails import DaemonDetails
 
 def usage(scriptName):
+
     usage = \
     """
     Usage: %s
