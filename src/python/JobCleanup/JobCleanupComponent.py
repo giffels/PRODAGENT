@@ -2,11 +2,13 @@
 """
 _JobCleanupComponent_
 
-Skeleton JobCleanupComponent
+The JobCleanup subcribes to cleanup events. Currently there are two 
+types of cleanups:
 
-The JobCleanup subcribes to cleanup events. The payload of an cleanup event
-is the job spec id.
-
+-JobCleanup : cleans upd the database entries and the cache dir
+-PartialJobCleanup : selectively cleans up the cache dir to prevent
+it from growing to large.
+ 
 """
 
 import logging
@@ -26,7 +28,7 @@ class JobCleanupComponent:
 
     ProdAgent Component that responds to cleanup events. Depending
     on the type of handler that is associated to a particular event,
-    a particular error handler is invoked.  For example the default 
+    a particular cleanup handler is invoked.  For example the default 
     cleanup handler removes the job cache and cleans the database.
 
     """
@@ -47,7 +49,7 @@ class JobCleanupComponent:
 
          # the cleanup events this components subscribes to
          # that invoke an cleanup handler
-         self.args['Events']={'JobCleanup':'cleanupHandler'}
+         self.args['Events']={'JobCleanup':'cleanupHandler','PartialJobCleanup':'partialCleanupHandler'}
 
          if self.args['Logfile'] == None:
               self.args['Logfile'] = os.path.join(self.args['ComponentDir'],\
@@ -93,7 +95,7 @@ class JobCleanupComponent:
          
         Method called by the handlers if they need to publish an event.
         This method automatically chooses the message service consistent
-        with its configuration.
+        with its configuration and commits the publication.
 
         """   
         self.ms.publish(name,payload)

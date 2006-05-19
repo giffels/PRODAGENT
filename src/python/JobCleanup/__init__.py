@@ -1,27 +1,19 @@
 #!/user/bin/env python
 
 """
-_ErrorHandler_
+_JobCleanup_
 
-Component that handles errors, by subscribing
-to error events. Depending on the type of error
-(e.g. job run error) and the type
-of job (e.g. merge, processing,...) it will 
-initiate the appropiate error handler and update
-the jobstate. As a result it will create either 
-a submit event (to re submit the job) or a general
-failure event (maximum number of submission is reached).
-
-The error handler has a pluggable structure in which
-also other (non job related error handlers can 
-be inserted and configured). Upon receiving the event it will
-activate the proper error handler and pass the payload
-to this handler using the HandlerInterface method:
-handlerError(payload).
+Component that handles cleanup events.
+The pluggable structure allows for different
+types of cleanup events. Currently there
+are the JobCleanup and the PartialJobCleanup.
+The first removes all job information from the
+prodagent while the latter just compacts the 
+files in the cache dir.
 
 """
-__revision__ = "$Id: __init__.py,v 1.1 2006/04/11 17:41:13 evansde Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: __init__.py,v 1.1 2006/05/19 05:50:20 fvlingen Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "fvlingen@caltech.edu"
 
 import JobCleanup.Handlers

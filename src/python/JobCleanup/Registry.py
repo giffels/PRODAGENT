@@ -4,7 +4,7 @@ _Registry_
 
 Plugin Registry Module for JobCleanup handlers 
 
-A handler implementation must be registered with a Unique name
+A handler implementation must be registered with a unique name
 with this registry by doing:
 
 from JobCleanup.Registry import registerHandler

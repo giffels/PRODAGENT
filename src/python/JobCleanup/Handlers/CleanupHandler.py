@@ -15,6 +15,10 @@ class CleanupHandler(HandlerInterface):
     """
     _CleanupHandler_
 
+    A handler that receiveds a job spec id, It uses this id to 
+    call the cleanout methods of the database and find the cache dir
+    which it removes.
+
     """
 
     def __init__(self):
@@ -23,7 +27,7 @@ class CleanupHandler(HandlerInterface):
 
     def handleEvent(self,payload):
          """
-         The payload of a job failure is a url to the job report
+         The payload of for a cleanup handler is a job id. 
          """
 
          try:
