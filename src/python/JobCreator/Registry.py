@@ -21,7 +21,7 @@ match the name of one of the registered creators.
 
 """
 import types
-
+import logging
 
 class Registry:
     """
@@ -55,6 +55,16 @@ def registerCreator(objectRef, name):
         msg += "The object must be a callable object, either\n"
         msg += "a function or class instance with a __call__ method\n"
         raise RuntimeError, msg
+    if not type(objectRef) == types.ClassType:
+        #  //
+        # // Futureproof warning, will change to a type check and
+        #//  exception throw in the near future.
+        msg = "WARNING: Creator Plugin named: %s\n" % name
+        msg += "is not a Class Type Object. Creator Plugins should be "
+        msg += "registered as Class objects that implement the "
+        msg += "JobCreator.Creators.CreatorInterface API"
+        logging.warning(msg)
+        print msg
 
     Registry.CreatorRegistry[name] = objectRef
 
@@ -71,6 +81,12 @@ def retrieveCreator(name):
         msg = "Name: %s not a registered Creator\n" % name
         msg += "No object registered with that name in JobCreator Registry"
         raise RuntimeError, msg
-    return Registry.CreatorRegistry[name] 
+    #  //
+    # // Temp check on type: If Class type, return an instance
+    #//  if not return the object itself. Soon will be class type only
+    registeredObject = Registry.CreatorRegistry[name]
+    if type(registeredObject) == types.ClassType:
+        return registeredObject()
+    return registeredObject
 
 

@@ -9,97 +9,164 @@ can be run interactively to test the job creation
 
 import os
 from JobCreator.Registry import registerCreator
+from JobCreator.Creators.CreatorInterface import CreatorInterface
+from ProdAgentCore.PluginConfiguration import PluginConfiguration
 
 from JobCreator.ScramSetupTools import setupScramEnvironment
 from JobCreator.ScramSetupTools import scramProjectCommand
 from JobCreator.ScramSetupTools import scramRuntimeCommand
 
 
-def handleCMSSWTaskObject(taskObject):
+class FNALCreator(CreatorInterface):
     """
-    _handleCMSSWTaskObject_
+    _FNALCreator_
 
-    Method to customise CMSSW type (Eg cmsRun application) TaskObjects
+    Creator plugin for creating dedicated FNAL jobs
 
     """
-    test = taskObject.has_key("CMSProjectVersion") and \
-           taskObject.has_key("CMSProjectName")
-    if not test:
+    def __init__(self):
+        CreatorInterface.__init__(self)
+
+
+    def checkPluginConfig(self):
+        """
+        _checkPluginConfig_
+
+        Validaate/default config for this plugin
+
+        """
+        if self.pluginConfig == None:
+            #  //
+            # // No config => create one and populate with defaults
+            #//
+            self.pluginConfig = PluginConfiguration()
+        
+        if not self.pluginConfig.has_key("StageOut"):
+            #  //
+            # // StageOut defaults
+            #//
+            stageOut = self.pluginConfig.newBlock("StageOut")
+            stageOut['DCachePath'] = "/pnfs/cms/WAX/12/prodAgentTests"
+            
+        if not self.pluginConfig.has_key("SoftwareSetup"):
+            swsetup = self.pluginConfig.newBlock("SoftwareSetup")
+            swsetup['ScramCommand'] = "scramv1"
+            swsetup['ScramArch'] = "slc3_ia32_gcc323"
+            swsetup['SetupCommand'] = ". /uscms/prod/sw/cms/setup/bashrc"
+
         return
 
-    taskObject['Environment'].addVariable("SCRAM_ARCH", "slc3_ia32_gcc323")
-    
-    scramSetup = taskObject.addStructuredFile("scramSetup.sh")
-    scramSetup.interpreter = "."
-    taskObject['PreAppCommands'].append(
-        setupScramEnvironment(". /uscms/prod/sw/cms/setup/bashrc"))
-    taskObject['PreAppCommands'].append(". scramSetup.sh")
-    
-    scramSetup.append("#!/bin/bash")
-    scramSetup.append(
-        scramProjectCommand(taskObject['CMSProjectName'],
-                            taskObject['CMSProjectVersion'])
+
+    def processTaskObject(self, taskObject):
+        """
+        _processTaskObject_
+
+        Process each TaskObject based on type
+        """
+        typeVal = taskObject['Type']
+        if typeVal == "CMSSW":
+            self.handleCMSSWTaskObject(taskObject)
+            return
+        elif typeVal == "Script":
+            self.handleScriptTaskObject(taskObject)
+            return
+        elif typeVal == "StageOut":
+            self.handleStageOut(taskObject)
+        else:
+            return
+
+
+
+    def preprocessTree(self, taskObjectTree):
+        """
+        _preprocessTree_
+
+        Install monitors into top TaskObject
+
+        """
+        installMonitor(taskObjectTree)
+        return
+        
+
+        
+
+
+
+    def handleCMSSWTaskObject(self, taskObject):
+        """
+        _handleCMSSWTaskObject_
+        
+        Method to customise CMSSW type (Eg cmsRun application) TaskObjects
+        
+        """
+        test = taskObject.has_key("CMSProjectVersion") and \
+               taskObject.has_key("CMSProjectName")
+        if not test:
+            return
+        
+        taskObject['Environment'].addVariable(
+            "SCRAM_ARCH",
+            self.pluginConfig['SoftwareSetup']['ScramArch'])
+        
+        scramSetup = taskObject.addStructuredFile("scramSetup.sh")
+        scramSetup.interpreter = "."
+        taskObject['PreAppCommands'].append(
+            setupScramEnvironment(
+            self.pluginConfig['SoftwareSetup']['SetupCommand'])
+            )
+        taskObject['PreAppCommands'].append(". scramSetup.sh")
+        
+        scramSetup.append("#!/bin/bash")
+        scramSetup.append(
+            scramProjectCommand(
+            taskObject['CMSProjectName'],
+            taskObject['CMSProjectVersion'],
+            self.pluginConfig['SoftwareSetup']['ScramCommand']
+            )
+            )
+        scramSetup.append(
+        scramRuntimeCommand(
+            taskObject['CMSProjectVersion'],
+            self.pluginConfig['SoftwareSetup']['ScramCommand']
+            )
         )
-    scramSetup.append(
-        scramRuntimeCommand(taskObject['CMSProjectVersion'])
-        )
-
-    return
-
-def handleScriptTaskObject(taskObject):
-    """
-    _handleScriptTaskObject_
-
-    Handle a Script type TaskObject, assumes the the Executable specifies
-    a shell command, the command is extracted from the JobSpecNode and
-    inserted into the main script
-
-    """
-    exeScript = taskObject[taskObject['Executable']]
-    jobSpec = taskObject['JobSpecNode']
-    exeCommand = jobSpec.application['Executable']
-    exeScript.append(exeCommand)
-    return
-
-def handleStageOut(taskObject):
-    """
-    _handleStageOut_
-
-    Handle a StageOut type task object. For FNAL, manipulate the stage out
-    settings to do a dCache dccp stage out
-
-    """
-    template = taskObject['StageOutTemplates'][0]
-    template['TargetHostName'] = None
-    template['TargetPathName'] = "/pnfs/cms/WAX/12/preprod-round1"
-    template['TransportMethod'] = "dccp"
-
-    
-    
-    
-    return
-    
-    
-    
-def distributor(taskObject):
-    """
-    _distributor_
-
-    Function that distributes the taskObject to the appropriate handler
-    based on the taskObjects Type provided from the WorkflowSpec
-
-    """
-    typeVal = taskObject['Type']
-    if typeVal == "CMSSW":
-        handleCMSSWTaskObject(taskObject)
+        
         return
-    elif typeVal == "Script":
-        handleScriptTaskObject(taskObject)
+
+    def handleScriptTaskObject(self, taskObject):
+        """
+        _handleScriptTaskObject_
+        
+        Handle a Script type TaskObject, assumes the the Executable specifies
+        a shell command, the command is extracted from the JobSpecNode and
+        inserted into the main script
+        
+        """
+        exeScript = taskObject[taskObject['Executable']]
+        jobSpec = taskObject['JobSpecNode']
+        exeCommand = jobSpec.application['Executable']
+        exeScript.append(exeCommand)
         return
-    elif typeVal == "StageOut":
-        handleStageOut(taskObject)
-    else:
+
+    def handleStageOut(self, taskObject):
+        """
+        _handleStageOut_
+        
+        Handle a StageOut type task object. For FNAL, manipulate the stage out
+        settings to do a dCache dccp stage out
+        
+        """
+        template = taskObject['StageOutTemplates'][0]
+        template['TargetHostName'] = None
+        template['TargetPathName'] = \
+                    self.pluginConfig['StageOut']['DCachePath']
+        template['TransportMethod'] = "dccp"
+    
         return
+    
+    
+    
+
     
 
 def installMonitor(taskObject):
@@ -125,7 +192,8 @@ def installMonitor(taskObject):
     #//
     shreekConfig.addUpdator("ChildProcesses")
     shreekConfig.addUpdator("ProcessToBinary")
-    shreekConfig.addUpdator("Example")
+
+    
 
     
     #dashboard = shreekConfig.newMonitorCfg()
@@ -157,10 +225,10 @@ def installMonitor(taskObject):
     #shreekConfig.addMonitorCfg(jobmon)
 
 
-    boss = shreekConfig.newMonitorCfg()
-    boss.setMonitorName("boss-1") # name of this instance (make it up)
-    boss.setMonitorType("boss")   # type of this instance (as registered)
-    shreekConfig.addMonitorCfg(boss)
+    #boss = shreekConfig.newMonitorCfg()
+    #boss.setMonitorName("boss-1") # name of this instance (make it up)
+    #boss.setMonitorType("boss")   # type of this instance (as registered)
+    #shreekConfig.addMonitorCfg(boss)
     
 
     #timeout = shreekConfig.newMonitorCfg()
@@ -176,21 +244,6 @@ def installMonitor(taskObject):
     
 
 
-class FNALCreator:
-    """
-    _FNALCreator_
-
-    FNAL job creator implementation.
-    
-    """
-
-
-
-    def __call__(self, taskObject):
-        if taskObject.parent == None:
-            installMonitor(taskObject)
-        
-        taskObject(distributor)
 
 
 
@@ -200,6 +253,6 @@ class FNALCreator:
 #  // registration based on import of entire module)
 # // 
 #//
-registerCreator(FNALCreator(), "fnal")
+registerCreator(FNALCreator, FNALCreator.__name__)
 
 

@@ -5,8 +5,8 @@ _JobCreator.Creators_
 Plugins and tools for creating Jobs and acting on TaskObjects
 
 """
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: __init__.py,v 1.7 2006/02/27 08:56:21 ckavka Exp $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: __init__.py,v 1.1 2006/04/10 18:42:44 evansde Exp $"
 __all__ = []
 
 
@@ -19,3 +19,4 @@ import LCGCreator
 import FNALCreator
 import LSFCreator
 import LCGCreator
+import ExampleCreator
