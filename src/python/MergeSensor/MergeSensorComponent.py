@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.6 2006/05/16 09:53:24 ckavka Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -541,13 +541,13 @@ class MergeSensorComponent:
             for fileBlock in blockList:
 
                 # get file block ID           
-                fileBlockId = fileBlock.getObjectId()
+                fileBlockId = fileBlock.get('objectId')
  
                 # append (file name,size,fileblockId) to the list of files
-                for aFile in fileBlock.getFileList():
+                for aFile in fileBlock.get('fileList'):
 
-                    name = aFile.getLogicalFileName()
-                    size = aFile.getFileSize()
+                    name = aFile.get('logicalFileName')
+                    size = aFile.get('fileSize')
                     fileList.append((name, size, fileBlockId))
         else:
 
@@ -581,7 +581,6 @@ class MergeSensorComponent:
         if self.args['DBSType'] == 'CGI':
 
             # use CGI API
-            import dbsApi
             from dbsCgiApi import DbsCgiApi
             from dbsException import DbsException
 
@@ -611,9 +610,6 @@ class MergeSensorComponent:
                 logging.error("Fatal error: cannot contact DBS: %s" % ex)
                 sys.exit(1)
 
-        # quiet DBS interaction
-        dbs.setLogLevel(dbsApi.DBS_LOG_LEVEL_QUIET_)
-
         # return DBS API instance
         return dbs
 
@@ -630,7 +626,7 @@ class MergeSensorComponent:
             # use CGI API
             try:
                 from dbsProcessedDataset import DbsProcessedDataset
-                processed = DbsProcessedDataset(datasetPath = path)
+                processed = DbsProcessedDataset(datasetPathName = path)
                 blockList = self.dbsApi.getDatasetFileBlocks(processed)
 
             except Exception, ex:
