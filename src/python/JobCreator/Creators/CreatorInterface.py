@@ -32,8 +32,11 @@ class CreatorInterface:
         self.pluginConfig = None
 
         try:
+            #  //
+            # // Always searches in JobCreator Config Block
+            #//  for parameter called CreatorPluginConfig
             self.pluginConfig = loadPluginConfig("JobCreator",
-                                                 self.__class__.__name__)
+                                                 "Creator")
         except StandardError, ex:
             msg = "Failed to load Plugin Config for Creator Plugin:\n"
             msg += "Plugin Name: %s\n" % self.__class__.__name__
