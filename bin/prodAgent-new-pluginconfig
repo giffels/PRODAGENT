@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+"""
+_prodAgent-new-pluginconfig_
+
+Generate default plugin configuration files for the components
+that have plugins.
+
+"""
+
+import os
+
+try:
+    from ProdAgentCore.Configuration import loadProdAgentConfiguration
+    from ProdAgentCore.PluginConfiguration import PluginConfiguration
+except ImportError, ex:
+    msg = "Unable to import ProdAgent Python modules:\n"
+    msg += "There may be a problem with your PYTHONPATH env variable\n"
+    print msg
+    sys.exit(1)
+
+
+
+
+configFile = os.environ.get("PRODAGENT_CONFIG", None)
+if configFile == None:
+    msg = "Config file not found\n"
+    msg += "$PRODAGENT_CONFIG must be set"
+    print msg
+    sys.exit(1)
+
+try:
+    config = loadProdAgentConfiguration()
+except StandardError, ex:
+    msg = "Unable to read the configuration file:\n"
+    msg += "%s\n" % configFile
+    msg += "Error:\n"
+    msg += str(ex)
+    print msg
+    sys.exit(1)
+
+
+#  //
+# // JobCreator plugin
+#//
+
+creatorTemplate = {
+    #  //
+    # // Standard Settings for contacting Dashboard
+    #//
+    "Dashboard" : {
+    },
+
+    #  //
+    # // Standard settings for JobMon server
+    #//
+    "JobMon" : {
+    },
+    
+
+
+    }
+
+creatorCfg = config.get("JobCreator", {})
+pluginFile = creatorCfg.get('CreatorPluginConfig', None)
+if pluginFile:
+    pluginFile = os.path.expandvars(pluginFile)
+    creatorPluginConfig = PluginConfiguration()
+    for key, value in creatorTemplate.items():
+        block = creatorPluginConfig.newBlock(key)
+        block.update(value)
+
+    creatorPluginConfig.writeToFile(pluginFile)
+    
+
+
+#  //
+# // JobSubmitter plugin
+#//
+
+submitterTemplate = {
+    #  //
+    # // Submitter Whitelist
+    #//  Format: key = host name,
+    #  //        value = None (maybe a priority value in future??)
+    "SiteWhitelist" : {
+    "cmsosgce.fnal.gov/jobmanager-condor" : None,
+    "cithep90.ultralight.org/jobmanager-condor" : None,
+    "red.unl.edu/jobmanager-pbs" : None,
+    "cmsgrid02.hep.wisc.edu/jobmanager-condor" : None,
+    },
+    #  //
+    # // Submitter Blacklist
+    #//  Format: key = host name, value = None
+    "SiteBlacklist" : {
+    "twoflower.fnal.gov" : None,
+    },
+
+
+    }
+
+submitterCfg = config.get("JobSubmitter", {})
+pluginFile = submitterCfg.get('SubmitterPluginConfig', None)
+if pluginFile:
+    pluginFile = os.path.expandvars(pluginFile)
+    submitterPluginConfig = PluginConfiguration()
+    for key, value in submitterTemplate.items():
+        block = submitterPluginConfig.newBlock(key)
+        block.update(value)
+
+    submitterPluginConfig.writeToFile(pluginFile)
+    

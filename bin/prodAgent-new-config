@@ -130,16 +130,18 @@ coreFields = {
 componentFields = {
 
     "RequestInjector" : {
-    "ComponentDir" : "$PRODAGENT_WORKDIR/RequestInjector",
+    "ComponentDir" : None,
     },
 
     "JobCreator" : {
     "ComponentDir" : None,
     "CreatorName" : "testCreator",
+    "CreatorPluginConfig": "$PRODAGENT_ROOT/etc/CreatorPluginConfig.xml",
     },
     "JobSubmitter" : {
     "ComponentDir" : None,
     "SubmitterName" : "noSubmit",
+    "SubmitterPluginConfig" : "$PRODAGENT_ROOT/etc/SubmitterPluginConfig.xml",
     },
 
     "DBSInterface" : {
@@ -275,6 +277,10 @@ config.saveToFile(configFile)
 
 
 
+#  //
+# // Generate plugin configs
+#//
+os.system("prodAgent-new-pluginconfig")
 
 
 
