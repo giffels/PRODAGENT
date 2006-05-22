@@ -231,6 +231,13 @@ for name, values in coreFields.items():
 
 prodAgentBlock = config.getConfig("ProdAgent")
 
+# NOTE: boss post processing
+# NOTE: needs to be done better (how, withouth designating BOSS a component?)
+cfgDict = config.getConfig("BOSS")
+cfgDict['tmpDir']=os.path.join(prodAgentBlock['ProdAgentWorkDir'],"BOSS/tmp")
+cfgDict['configDir']=os.path.join(prodAgentBlock['ProdAgentWorkDir'],"BOSS/config")
+
+
 def processField(fieldName, fieldDict):
     """
     _processField_

@@ -121,6 +121,12 @@ def generateCompDirs():
     for comp in config.components:
         compBlock = config.getConfig(comp)
         compBlock['ComponentDir'] = os.path.join(prodAgentWork, comp)
+    # NOTE: changes so boss settings are updated.
+    # NOTE: needs to be done better (how, without making BOSS a component?).
+    compBlock = config.getConfig("BOSS")
+    compBlock['tmpDir'] = os.path.join(prodAgentWork, "BOSS/tmp")
+    compBlock['configDir'] = os.path.join(prodAgentWork, "BOSS/config")
+    
     return
 
 #  //
