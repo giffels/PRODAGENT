@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.7 2006/05/04 13:07:54 bacchi Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.8 2006/05/04 13:30:27 elmer Exp $"
 
 import os
 import logging
@@ -17,6 +17,7 @@ from popen2 import Popen4
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdAgentCore.PluginConfiguration import loadPluginConfig
 
 class SubmitterInterface:
     """
@@ -38,6 +39,37 @@ class SubmitterInterface:
         workingDir = prodAgentConfig['ProdAgentWorkDir'] 
         workingDir = os.path.expandvars(workingDir)
         self.bossCfgDir = workingDir + "/bosscfg/"
+
+        #  //
+        # // Load plugin configuration
+        #//
+        self.pluginConfig = None
+        try:
+            #  //
+            # // Always searches in JobSubmitter Config Block
+            #//  for parameter called SubmitterPluginConfig
+            self.pluginConfig = loadPluginConfig("JobSubmitter",
+                                                 "Submitter")
+        except StandardError, ex:
+            msg = "Failed to load Plugin Config for Submitter Plugin:\n"
+            msg += "Plugin Name: %s\n" % self.__class__.__name__
+            msg += str(ex)
+            logging.warning(msg)
+            
+        self.checkPluginConfig()
+
+    def checkPluginConfig(self):
+        """
+        _checkPluginConfig_
+
+        Override this method to check/set defaults etc for the
+        Plugin config for the Submitter Plugin being used
+
+        If self.pluginConfig == None, there was an error loading the config
+        or it was not found
+
+        """
+        pass
     
     def doSubmit(self, wrapperScript, jobTarball):
         """
