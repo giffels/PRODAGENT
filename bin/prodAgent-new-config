@@ -64,7 +64,10 @@ if  homeDir == None:
     sys.exit(1)
 
 
-bossConfigDir='/home/'+os.getlogin()+'/.bossrc'
+BOSSDIR=os.environ.get("BOSSDIR")
+if  BOSSDIR == None:
+    print "WARNING: BOSSDIR variable not found"
+    BOSSDIR=""
 
 coreFields = {
     #  //
@@ -90,7 +93,7 @@ coreFields = {
 
     "BOSS": {
     # BossConfig.clad
-    'tmpDir':'/tmp',
+    'tmpDir':'',
     'minUpdInt':30,
     'maxUpdInt':180,
     'maxRetry':3,
@@ -106,10 +109,13 @@ coreFields = {
     'socketFileLocation':'/var/lib/mysql/mysql.sock',
     'portNr':'0',
     'realtimeMonitor':'yes',
-    'configDir':bossConfigDir,
+    'configDir':'',
     'schemaLocation':'ignore for the moment',
-    #NOTE: change this
-    'bossDir':'please set location using the BOSSDIR variable'},
+    'clarensKey':'',
+    'clarensCert':'',
+    'clarensUrl':'',
+    'clarensProxy':'',
+    'bossDir':BOSSDIR},
     
     "MessageService" : {
     "pollInterval" : 5, 
@@ -157,7 +163,7 @@ componentFields = {
 
     "JobTracking" : {
     "ComponentDir" : None,
-    "BOSSDIR" : None,
+    "BOSSDIR" : BOSSDIR,
     "BOSSPATH" : None,
     "BOSSVERSION" : None,
     "PollInterval" : 10,
