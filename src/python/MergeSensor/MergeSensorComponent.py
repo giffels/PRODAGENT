@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.8 2006/05/22 12:26:36 ckavka Exp $"
+__version__ = "$Revision: 1.8 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -389,7 +389,7 @@ class MergeSensorComponent:
 
         # set output file name
         baseFileName = "%s-%s-%s.root" % (dataset[0], outputFile, tier)
-        outModule.setFileName("pfn:" + baseFileName)
+        outModule.setFileName(baseFileName)
         outModule.setLogicalFileName("/store/preprod/" + \
                        time.strftime("%Y/%m/%d/", time.localtime()) + \
                        dataset[0] + "/merged/0000/" + baseFileName)
