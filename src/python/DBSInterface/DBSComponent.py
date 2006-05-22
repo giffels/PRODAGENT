@@ -132,16 +132,20 @@ class DBSComponent:
                 return
             except InvalidJobReport, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
-                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
+                logging.error("InvalidJobReport Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
+                return
             except DbsException, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
-                logging.error("Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
+                logging.error("DbsException Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
+                return
+            except AssertionError, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                logging.error("AssertionError Details: %s" % str(ex))
                 return
             except StandardError, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
-                logging.error("Details: %s" % str(ex))
+                logging.error("StandardError Details:%s" % str(ex))
                 return
-
 
                 
         if event == "DBSInterface:StartDebug":

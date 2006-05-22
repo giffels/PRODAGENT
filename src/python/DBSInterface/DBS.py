@@ -17,7 +17,7 @@ from dbsEventCollection import DbsEventCollection
 from dbsPrimaryDataset import DbsPrimaryDataset
 from dbsProcessedDataset import DbsProcessedDataset
 from dbsProcessing import DbsProcessing
-from dbsApi import DbsApi, DbsApiException, InvalidDataTier, DBS_LOG_LEVEL_ALL_
+from dbsApi import DbsApi, DbsApiException, InvalidDataTier
 
 import logging
 # ##############
@@ -38,9 +38,10 @@ class DBS:
     args['instance']=dbinstance
 
     self.api = DbsCgiApi(DEFAULT_URL, args)
-    ## set log level
+
+    ## set log level : log not supported
     #self.api.setLogLevel(dbsApi.DBS_LOG_LEVEL_ALL_)
-    self.api.setLogLevel(dbsApi.DBS_LOG_LEVEL_INFO_)
+    #self.api.setLogLevel(dbsApi.DBS_LOG_LEVEL_INFO_)
     #self.api.setLogLevel(dbsApi.DBS_LOG_LEVEL_QUIET_)
 
 # ##############
@@ -89,7 +90,8 @@ class DBS:
          pass
 
        # Create File Block (in the datatier loop for now)
-       datasetPath="/%s/%s/%s"%(dataset.getPrimaryDataset().getDatasetName(),dataset.getDataTier(),dataset.getDatasetName())
+       datasetPath="/%s/%s/%s"%(dataset.get('primaryDataset')['datasetName'],dataset.get('dataTier'),dataset.get('datasetName'))
+
        #print " datasetPath %s"%datasetPath
        self.insertFileBlock(datasetPath, processing)
 
@@ -156,17 +158,26 @@ class DBS:
     #print "Insering file with:"
     #print "  LFN %s"%fileinfo['LFN']
     #print "  GUID %s"%fileinfo['GUID']
+    logging.debug("  GUID %s"%fileinfo['GUID'])
     #print "  Checksum %s"%fileinfo['Checksum']
     #print "  Size %s"%fileinfo['Size']
-
-    outfile = DbsFile (logicalFileName=fileinfo['LFN'], 
+ 
+    if fileinfo['GUID']:
+      outfile = DbsFile (logicalFileName=fileinfo['LFN'], 
                        fileSize=int(fileinfo['Size']),
                        checkSum="cksum:%s"%fileinfo['Checksum'],
                        guid=fileinfo['GUID'], 
                        fileType="EVD")
+    else: # do not insert GUID if it's not there
+       outfile = DbsFile (logicalFileName=fileinfo['LFN'],
+                       fileSize=int(fileinfo['Size']),
+                       checkSum="cksum:%s"%fileinfo['Checksum'],
+                       fileType="EVD")
+
+
     fList=[outfile]
-    logging.debug(" insert files to block %s"%fileblock.getBlockName())
-    print " insert files to block %s"%fileblock.getBlockName()
+    logging.debug(" insert files to block %s"%fileblock.get('blockName'))
+    #print " insert files to block %s"%fileblock.get('blockName')
     try:
       self.api.insertFiles(fileblock, fList)
     except DbsCgiObjectExists, ex:
@@ -204,12 +215,11 @@ class DBS:
 
     name="%s_%s"%(tier,nameLFN)
     logging.debug(" evc name : %s"%name)
-    print " evc name : %s"%name
+
     ec = DbsEventCollection (collectionName=name, 
                              numberOfEvents=events,
                              fileList=fList,
                              parentageList=parentList)
-
     evcList = [ec]   
     return evcList
 
@@ -218,9 +228,9 @@ class DBS:
     """
     """
     # dataset
-    dataset= DbsProcessedDataset(datasetPath=datasetPath)
-    logging.debug(" insert EventCollections for dataset %s"%datasetPath)
-    print " insert EventCollections for dataset %s"%datasetPath
+    logging.debug("insert EventCollections for dataset %s"%datasetPath)
+    dataset= DbsProcessedDataset (datasetPathName=datasetPath)
+    #print " insert EventCollections for dataset %s"%datasetPath
     try:
      self.api.insertEventCollections(dataset, evcList)
     except DbsCgiObjectExists, ex:
@@ -241,13 +251,13 @@ class DBS:
     fileBlockList = self.api.getDatasetContents(dbspath)
 
     for fileBlock in fileBlockList:
-      logging.debug("File block name: %s" % (fileBlock.getBlockName()))
-      print "File block name: %s" % (fileBlock.getBlockName())
-      for eventCollection in fileBlock.getEventCollectionList():
-         logging.debug("  - eventcollection: %s nb.ofevts: %d "% (eventCollection.getCollectionName(), eventCollection.getNumberOfEvents()))
+      logging.debug("File block name: %s" % (fileBlock.get('blockName')))
+      print "File block name: %s" % (fileBlock.get('blockName'))
+      for eventCollection in fileBlock.get('eventCollectionList'):
+         logging.debug("  - eventcollection: %s nb.ofevts: %d "% (eventCollection.get('collectionName'), eventCollection.get('numberOfEvents')))
          print "  - eventcollection: %s nb.ofevts: %d " \
-        % (eventCollection.getCollectionName(), eventCollection.getNumberOfEvents())
-         nevts=nevts+eventCollection.getNumberOfEvents()
+        % (eventCollection.get('collectionName'), eventCollection.get('numberOfEvents'))
+         nevts=nevts+eventCollection.get('numberOfEvents')
 
     return fileBlockList
 
