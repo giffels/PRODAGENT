@@ -31,17 +31,7 @@ class SRMTransporter(Transporter):
         commandMaker = _CommandFactory['srm']
         command = commandMaker.transportSourceToCurrent(mbInstance)
 
-        pop = popen2.Popen4(command)
-        while pop.poll() == -1:
-            exitCode = pop.poll()
-        exitCode = pop.poll()
-        if exitCode > 0:
-            msg = "SRM Transport failed "
-            msg += "Command Used: %s" % command
-            raise TransportFailed(
-                msg, ClassInstance = self,
-                MetaBroker = mbInstance)
-        return True
+        return self.runCommand(command)
 
     def transportOut(self, mbInstance):
         """
@@ -50,18 +40,7 @@ class SRMTransporter(Transporter):
         commandMaker = _CommandFactory['srm']
         command = commandMaker.transportCurrentToTarget(mbInstance)
 
-        pop = popen2.Popen4(command)
-        while pop.poll() == -1:
-            exitCode = pop.poll()
-        exitCode = pop.poll()
-        if exitCode > 0:
-            msg = "SRM Transport failed "
-            msg += "Command Used: %s\n" % command
-            msg += "Output:\n%s\n" % pop.fromchild.read()
-            raise TransportFailed(
-                msg, ClassInstance = self,
-                MetaBroker = mbInstance)
-        return True
+        return self.runCommand(command)
 
     def transportInOut(self, mbInstance):
         """
@@ -69,18 +48,8 @@ class SRMTransporter(Transporter):
         """
         commandMaker = _CommandFactory['srm']
         command = commandMaker.transportSourceToTarget(mbInstance)
-
-        pop = popen2.Popen4(command)
-        while pop.poll() == -1:
-            exitCode = pop.poll()
-        exitCode = pop.poll()
-        if exitCode > 0:
-            msg = "SRM Transport failed "
-            msg += "Command Used: %s" % command
-            raise TransportFailed(
-                msg, ClassInstance = self,
-                MetaBroker = mbInstance)
-        return True
+        return self.runCommand(command)
+        
 
         
 

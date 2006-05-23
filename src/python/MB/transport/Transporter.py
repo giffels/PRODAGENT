@@ -6,10 +6,12 @@ objects referenced by metabrokers
 
 """
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: Transporter.py,v 1.1 2005/12/30 18:51:41 evansde Exp $"
+__revision__ = "$Id: Transporter.py,v 1.1 2006/04/10 17:10:00 evansde Exp $"
 
+
+import popen2
 from MB.MetaBroker import MetaBroker
-from MB.transport.TransportException import TransportException
+from MB.transport.TransportException import TransportException, TransportFailed
 
 class Transporter:
     """
@@ -131,4 +133,25 @@ class Transporter:
         
         
 
+    def runCommand(self, command):
+        """
+        _runCommand_
+
+        Implement a safe way to run a shell command
+
+        """
+        pop = popen2.Popen4(command)
+        pop.tochild.close()
+        output = pop.fromchild.read()
+        exitCode = pop.wait()
         
+        if exitCode > 0:
+            msg = "Transporter.runCommand failed for %s\n" % (
+                self.__class__.__name__,
+                )
+            msg += "Command Used: %s" % command
+            raise TransportFailed(
+                msg, ClassInstance = self,
+                Command = command)
+        return True
+
