@@ -36,24 +36,27 @@ config=preInstall(valid)
 cfgObject = ProdAgentConfiguration()
 cfgObject.loadFromFile(config)
 # extract the information
-dbConfig = cfgObject.get("BOSS")
-if os.path.isdir(dbConfig['configDir']) == 0 :
-   os.makedirs(dbConfig['configDir'])
-if os.path.isdir(dbConfig['tmpDir']) == 0 :
-   os.makedirs(dbConfig['tmpDir'])
+bossDbConfig = cfgObject.get("BOSS")
+# part of the boss info we get from the prodagent block:
+prodAgentDbConfig = cfgObject.get("ProdAgentDB")
+
+if os.path.isdir(bossDbConfig['configDir']) == 0 :
+   os.makedirs(bossDbConfig['configDir'])
+if os.path.isdir(bossDbConfig['tmpDir']) == 0 :
+   os.makedirs(bossDbConfig['tmpDir'])
 
 # just an idea: this url can be already used!
-#dbConfig['monaLisaUrl'] = "http://lxgate35.cern.ch:40808/ApMonConf"
+#bossDbConfig['monaLisaUrl'] = "http://lxgate35.cern.ch:40808/ApMonConf"
 
 print    
-print 'Writing BOSS config files in : '+dbConfig['configDir']
+print 'Writing BOSS config files in : '+bossDbConfig['configDir']
 print    
 #overwrite clad files with prod agent defaults.
 print
 print 'Creating BossConfig.clad'
 print
 
-bossConfig=open(dbConfig['configDir']+'/BossConfig.clad','w')
+bossConfig=open(bossDbConfig['configDir']+'/BossConfig.clad','w')
 
 bossStr="""
 # This is the BOSS configuration file
@@ -77,8 +80,8 @@ DB_BACKEND = "MySQL";
 # Info sent also to Monalisa (if empty not enabled)
 ML_URL = "%s";
 ]
-""" % (dbConfig['tmpDir'],dbConfig['minUpdInt'],dbConfig['maxUpdInt'],\
-    dbConfig['maxRetry'],dbConfig['monaLisaUrl'])
+""" % (bossDbConfig['tmpDir'],bossDbConfig['minUpdInt'],bossDbConfig['maxUpdInt'],\
+    bossDbConfig['maxRetry'],bossDbConfig['monaLisaUrl'])
 bossConfig.write(bossStr)
 bossConfig.close()
 
@@ -86,7 +89,7 @@ print
 print 'Creating MySQLConfig.clad'
 print
 
-bossMysql=open(dbConfig['configDir']+'/MySQLConfig.clad','w')
+bossMysql=open(bossDbConfig['configDir']+'/MySQLConfig.clad','w')
 bossStr="""
 
 # This is the BOSS MySQL Database configuration file
@@ -120,7 +123,7 @@ DB_SOCKET = "%s";
 # MySQL client flag
 DB_CLIENT_FLAG = 0;
 ]
-""" %(dbConfig['dbName'],dbConfig['host'],dbConfig['domain'],dbConfig['user'],dbConfig['passwd'],dbConfig['guestUser'],dbConfig['guestPasswd'],dbConfig['portNr'],dbConfig['socketFileLocation'])
+""" %(prodAgentDbConfig['dbName']+'_BOSS',prodAgentDbConfig['host'],bossDbConfig['domain'],prodAgentDbConfig['user'],prodAgentDbConfig['passwd'],bossDbConfig['guestUser'],bossDbConfig['guestPasswd'],prodAgentDbConfig['portNr'],prodAgentDbConfig['socketFileLocation'])
 bossMysql.write(bossStr)
 bossMysql.close()
 
@@ -130,7 +133,7 @@ bossMysql.close()
 
 y=''
 try:
-   stdin,stdout=os.popen4('bossAdmin configureDB -c ' + dbConfig['configDir'])
+   stdin,stdout=os.popen4('bossAdmin configureDB -c ' + bossDbConfig['configDir'])
    lines=stdout.readlines()
    for line in lines:
       if "mysql -u root" in line :
@@ -144,23 +147,18 @@ except Exception,ex:
    print('*****End Ignore')
 
 # once we generate the schema we can install the database
-#schemaLocation=dbConfig['schemaLocation']
-# boss creates the file in the same dir???
-#schemaLocation='MySQLConfig.sql'
-dbName=dbConfig['dbName']
-
-print "schemaLocation for ",dbName,": ",schemaLocation
+dbName=prodAgentDbConfig['dbName']+'_BOSS'
 
 # ask for password (optional)
 userName,passwd=adminLogin()
 
-users={dbConfig['user']:dbConfig['passwd'],
-       dbConfig['guestUser']:dbConfig['passwd']}
+users={prodAgentDbConfig['user']:prodAgentDbConfig['passwd'],
+       bossDbConfig['guestUser']:bossDbConfig['guestPasswd']}
 
 installUser={'userName':userName,
              'passwd':passwd}
 # install the database
-installDB(schemaLocation,dbName,dbConfig['socketFileLocation'],dbConfig['portNr'],dbConfig['host'],users,installUser)
+installDB(schemaLocation,dbName,prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],prodAgentDbConfig['host'],users,installUser)
 
 # clad files and database have been installed. Register schedulers.
 # NOTE: if scheduler install script names change we need to change too.
@@ -191,7 +189,7 @@ for scheduler in schedulers:
       file.close();
       for line in lines:
          if "bossAdmin" in line :
-            cmd = line.strip() + ' -c ' + dbConfig['configDir']
+            cmd = line.strip() + ' -c ' + bossDbConfig['configDir']
             break
       if len(cmd) == 0 :
          continue
@@ -215,7 +213,7 @@ for scheduler in schedulers:
 
 list=''
 try:
-   cmd='boss showSchedulers -c ' + dbConfig['configDir']
+   cmd='boss showSchedulers -c ' + bossDbConfig['configDir']
    stdin,stdout=os.popen4(cmd)
    while 1:
        y=stdout.readline()
@@ -236,14 +234,10 @@ print
 print 'Creating MySQLRTConfig.clad'
 print
 
-bossConfig=open(dbConfig['configDir']+'/MySQLRTConfig.clad','w')
+bossConfig=open(bossDbConfig['configDir']+'/MySQLRTConfig.clad','w')
 print("\nCreating MySQLRTConfig.clad")
 
-# about dbConfig['dbName']:
-# the database name for the RT server should be different from the BOSS client one:
-# in principle the server itself should be different!
-# I just add a '_rt' for the moment
-dbName=dbConfig['dbName']+'_rt'
+dbName=dbName+'_rt'
 
 bossStr="""
 # This is the BOSS MySQL Database configuration file
@@ -279,7 +273,7 @@ DB_CLIENT_FLAG = 0;
 # MySQL timeout in seconds
 DB_CONNECT_TIMEOUT = 30;
 ]
-""" %(dbName,dbConfig['host'],dbConfig['domain'],dbConfig['user'],dbConfig['passwd'],dbConfig['guestUser'],dbConfig['guestPasswd'],dbConfig['portNr'],dbConfig['socketFileLocation'])
+""" %(dbName,prodAgentDbConfig['host'],bossDbConfig['domain'],prodAgentDbConfig['user'],prodAgentDbConfig['passwd'],bossDbConfig['guestUser'],bossDbConfig['guestPasswd'],prodAgentDbConfig['portNr'],prodAgentDbConfig['socketFileLocation'])
 
 
 #write clad file
@@ -290,7 +284,7 @@ print
 print 'Creating ClarensConfig.clad'
 print
 
-bossClarens=open(dbConfig['configDir']+'/ClarensConfig.clad','w')
+bossClarens=open(bossDbConfig['configDir']+'/ClarensConfig.clad','w')
 bossStr="""
 # This is the BOSS Clarens database configuration file
 # *************Generated by ProdAgent*************
@@ -335,7 +329,7 @@ DB_SOCKET = "%s";
 # MySQL client flag
 DB_CLIENT_FLAG = 0;
 ]
-""" %(dbName,dbConfig['clarensUrl'],dbConfig['clarensCert'],dbConfig['clarensKey'],dbConfig['clarensProxy'],dbConfig['host'],dbConfig['domain'],dbConfig['user'],dbConfig['passwd'],dbConfig['guestUser'],dbConfig['guestPasswd'],dbConfig['portNr'],dbConfig['socketFileLocation'])
+""" %(dbName,bossDbConfig['clarensUrl'],bossDbConfig['clarensCert'],bossDbConfig['clarensKey'],bossDbConfig['clarensProxy'],prodAgentDbConfig['host'],bossDbConfig['domain'],prodAgentDbConfig['user'],prodAgentDbConfig['passwd'],bossDbConfig['guestUser'],bossDbConfig['guestPasswd'],prodAgentDbConfig['portNr'],prodAgentDbConfig['socketFileLocation'])
 
 bossClarens.write(bossStr)
 bossClarens.close()
@@ -344,7 +338,7 @@ bossClarens.close()
 
 try:
    # as for schedulers...
-   cmd = "cd "+bossPath+"/BossRTMon/bin/;bossAdmin registerRTMon -name mysql -updatorPath bossrtupdatorMySQL -clientPath bossrtclientMySQL -configPath " + dbConfig['configDir']+ "/MySQLRTConfig.clad -c " + dbConfig['configDir']
+   cmd = "cd "+bossPath+"/BossRTMon/bin/;bossAdmin registerRTMon -name mysql -updatorPath bossrtupdatorMySQL -clientPath bossrtclientMySQL -configPath " + bossDbConfig['configDir']+ "/MySQLRTConfig.clad -c " + bossDbConfig['configDir']
    print cmd
    stdin,stdout=os.popen4(cmd)
    # this is for dealing with questions on replacing
@@ -364,8 +358,8 @@ except Exception,ex:
 # now, set up the configuration, you can register
 y=''
 try:
-   print 'bossAdmin configureRTMonDB -name mysql -c ' + dbConfig['configDir']
-   stdin,stdout=os.popen4('bossAdmin configureRTMonDB -name mysql -c ' + dbConfig['configDir'])
+   print 'bossAdmin configureRTMonDB -name mysql -c ' + bossDbConfig['configDir']
+   stdin,stdout=os.popen4('bossAdmin configureRTMonDB -name mysql -c ' + bossDbConfig['configDir'])
    lines=stdout.readlines()
    for line in lines:
       if "mysql -u root" in line :
@@ -382,7 +376,7 @@ except Exception,ex:
 #schemaLocation='MySQLConfig.sql_1'
 print "schemaLocation for ",dbName,": ",schemaLocation
 
-installDB(schemaLocation,dbName,dbConfig['socketFileLocation'],dbConfig['portNr'],dbConfig['host'],users,installUser)
+installDB(schemaLocation,dbName,prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],prodAgentDbConfig['host'],users,installUser)
 
 
 # we delete the file boss generated
@@ -397,7 +391,7 @@ try:
    if os.path.exists(bossPath+'/Examples/cmsswSchema')==0 :
       raise Exception("WARNING","CMSSW program type not found. Skipping")
    print('Registering cmssw program type')
-   cmd = 'cd '+bossPath+'/Examples; bossAdmin registerProgram -name cmssw -schema cmsswSchema -pre cmsswRuntimeprocess -post cmsswRuntimeprocess -runtime cmsswRuntimeprocess -comment "cmssw program" -c ' + dbConfig['configDir']
+   cmd = 'cd '+bossPath+'/Examples; bossAdmin registerProgram -name cmssw -schema cmsswSchema -pre cmsswRuntimeprocess -post cmsswRuntimeprocess -runtime cmsswRuntimeprocess -comment "cmssw program" -c ' + bossDbConfig['configDir']
    stdin,stdout=os.popen4(cmd)
    y=stdout.read()
    if y!='':

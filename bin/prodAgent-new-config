@@ -99,23 +99,15 @@ coreFields = {
     'maxRetry':3,
     'monaLisaUrl':'',
     # MySQLConfig.clad
-    'dbName':'boss_vBOSS_4',
-    'host':'localhost',
     'domain':'localdomain',
-    'user':'ProdAgentUser',
-    'passwd':'ProdAgentPass',
     'guestUser':'ProdAgentGuest',
     'guestPasswd':'ProdAgentGuestPasswd',
-    'socketFileLocation':'/var/lib/mysql/mysql.sock',
-    'portNr':'0',
     'realtimeMonitor':'yes',
     'configDir':'',
-    'schemaLocation':'ignore for the moment',
     'clarensKey':'',
     'clarensCert':'',
     'clarensUrl':'',
-    'clarensProxy':'',
-    'bossDir':BOSSDIR},
+    'clarensProxy':''},
     
     "MessageService" : {
     "pollInterval" : 5, 
@@ -204,8 +196,10 @@ You should only supply either the portNr OR socketFileLocation
 """,
    "BOSS" : \
 """
-You should only supply either the portNr OR socketFileLocation.
 Please look over these parameters carefully.
+If you are not using the Clarens based web service for database
+communication you can leave the Clarens entries empty.
+The BOSS database names will be derived from the ProdAgent DB name
 """,
    "JobSubmitter" : \
 """
