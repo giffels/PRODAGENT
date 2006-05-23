@@ -49,7 +49,7 @@ api = dbsCgiApi.DbsCgiApi(url, args)
 # // Get list of datasets
 #//
 try:
-  datasets = api.listDatasets("/*/*/*")
+  datasets = api.listProcessedDatasets("/*/*/*")
 except dbsCgiApi.DbsCgiToolError , ex:
   print "%s: %s " %(ex.getClassName(),ex.getErrorMessage())
   print "exiting..."
@@ -60,19 +60,19 @@ except dbsCgiApi.DbsCgiToolError , ex:
 #//
 for dataset in datasets:
      print "-----------------------------------"
-     print "Dataset: %s"%dataset.getDatasetPath()
-     for block in api.getDatasetContents(dataset.getDatasetPath()):
-         print "File block name/id: %s/%d"%(block.getBlockName(),block.getObjectId())
-         print "Number of event collections: %s"%len(block.getEventCollectionList())
+     print "Dataset: %s"%dataset.get('datasetPathName')
+     for block in api.getDatasetContents(dataset.get('datasetPathName')):
+         print "File block name/id: %s/%d"%(block.get('blockName'),block.get('objectId'))
+         print "Number of event collections: %s"%len(block.get('eventCollectionList'))
 #  //
 # // Look at contents in term single files
 #//
      if full:
-       for block in api.getDatasetFileBlocks (dataset.getDatasetPath()):
+       for block in api.getDatasetFileBlocks (dataset.get('datasetPathName')):
          print "--------- info about files --------"
-         print "File block name: ", block.getBlockName()
-         print "Number of files: ", block.getNumberOfFiles()
-         print "Number of Bytes: ", block.getNumberOfBytes()
-         for file in block.getFileList():
-             print "  LFN: ", file.getLogicalFileName()
+         print "File block name: ", block.get('blockName')
+         print "Number of files: ", block.get('numberOfFiles')
+         print "Number of Bytes: ", block.get('numberOfBytes')
+         for file in block.get('fileList'):
+             print "  LFN: ", file.get('logicalFileName')
 
