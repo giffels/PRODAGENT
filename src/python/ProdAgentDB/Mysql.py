@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 
+from ProdAgentDB.Config import defaultConfig
 try:
    import MySQLdb
 except:
@@ -11,17 +12,18 @@ except:
                             "more information at: " \
                             "http://sourceforge.net/projects/mysql-python ")
 import time
+import logging
 
 # Cache (connection pool) so we can reuse connections.
 __connectionCache={}
 # Refresh connections every 4 hours
-__refreshPeriod=4*3600
+__refreshPeriod=int(defaultConfig['refreshPeriod'])
 # Check the connection every 3 minutes.
-__checkConnectionPeriod=3*60
+__checkConnectionPeriod=int(defaultConfig['checkConnectionPeriod'])
 # Try to connect a maximum of 5 times.
-__maxConnectionAttempts=5
+__maxConnectionAttempts=int(defaultConfig['maxConnectionAttempts'])
 # Time to wait to reconnect
-__dbWaitingTime=10
+__dbWaitingTime=int(defaultConfig['dbWaitingTime'])
        
 def connect(dbName,dbHost,dbUser,dbPasswd,socketLocation,portNr="",cache=True):
 

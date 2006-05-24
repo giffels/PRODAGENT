@@ -33,7 +33,11 @@ defaultConfig={'dbName':'ProdAgentDB',
                'user':'Proddie',
                'passwd':'ProddiePass',
                'socketFileLocation':'/opt/openpkg/var/mysql/mysql.sock',
-               'dbPortNr':''
+               'dbPortNr':'',
+               'refreshPeriod' : 4*3600 ,
+               'checkConnectionPeriod' : 3*60,
+               'maxConnectionAttempts' : 5,
+               'dbWaitingTime' : 10 
               }
 
 
