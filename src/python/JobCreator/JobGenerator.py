@@ -28,6 +28,7 @@ from JobCreator.AppTools import InsertPythonPSet, InsertJobReportTools
 from JobCreator.RunResTools import InstallRunResComponent
 from JobCreator.RunResTools import AccumulateRunResDB
 from JobCreator.RunResTools import CMSSWRunResDB, InsertDirInRunRes
+from JobCreator.StageOutTools import InsertStageOut
 from JobCreator.StageOutTools import PopulateStageOut
 from JobCreator.StageOutTools import StoreStageOutTemplates
 
@@ -127,7 +128,7 @@ class JobGenerator:
         taskObject(InsertAppDetails())
         taskObject(InstallRunResComponent())
         taskObject(InsertJobReportTools())
-        taskObject(PopulateStageOut())
+        taskObject(InsertStageOut())
         
         
         #  //
@@ -145,6 +146,7 @@ class JobGenerator:
         taskObject(BashEnvironmentMaker())
         taskObject(InsertPythonPSet())
         taskObject(PopulateMainScript())
+        taskObject(PopulateStageOut())
         taskObject(StoreStageOutTemplates())
         #  //
         # // Physical Job Creation starts here

@@ -15,7 +15,7 @@ from MB.Persistency import save as saveMetabroker
 from IMProv.IMProvDoc import IMProvDoc
 
 
-class InsertStageOutAttrs:
+class InsertStageOut:
     """
     _InsertStageOutAttrs_
 
@@ -32,11 +32,33 @@ class InsertStageOutAttrs:
         if taskObject['Type'] != "StageOut":
             return
         #  //
-        # // Lists of pre stage out and post stage out shell commands for setting up stage out env
-        #//  Should be bash shell commands as strings
+        # // Lists of pre stage out and post stage out shell commands
+        #//  for setting up stage out env
+        #  //Should be bash shell commands as strings
         taskObject['PreStageOutCommands'] = []
         taskObject['PostStageOutCommands'] = []
-        
+
+        #  //
+        # // Determine what is being staged out from the parent node
+        #//  (This should be a CMSSW node)
+        parent = taskObject.parent
+        if parent == None:
+            # no parent => dont know what to stage out
+            return
+
+        if parent['Type'] != "CMSSW":
+            # parent isnt a CMSSW node, dont know what it does...
+            return
+        stageOutFor = parent['Name']
+        taskObject['StageOutFor'] = stageOutFor
+        #  //
+        # // Template meta broker that will be used to define 
+        #//  parameters for the stage out.
+        #  //A list of these objects may be provided to provide
+        # // alternative stage out settings for retries.
+        #//  
+        taskObject['StageOutTemplates'] = [FileMetaBroker()]
+        taskObject.addIMProvDoc('StageOutTemplatesFile')
 
 class PopulateStageOut:
     """
@@ -62,19 +84,7 @@ class PopulateStageOut:
         if taskObject['Type'] != "StageOut":
             return
 
-        #  //
-        # // Determine what is being staged out from the parent node
-        #//  (This should be a CMSSW node)
-        parent = taskObject.parent
-        if parent == None:
-            # no parent => dont know what to stage out
-            return
-
-        if parent['Type'] != "CMSSW":
-            # parent isnt a CMSSW node, dont know what it does...
-            return
-        stageOutFor = parent['Name']
-
+     
         #  //
         # // Pre and Post Stage out commands
         #//
@@ -103,7 +113,7 @@ class PopulateStageOut:
         #//
         runres = taskObject['RunResDB']
         toName = taskObject['Name']
-
+        stageOutFor = taskObject['StageOutFor']
         paramBase = "/%s/StageOutParameters" % toName
         runres.addPath(paramBase)
 
@@ -119,14 +129,7 @@ class PopulateStageOut:
 
         
         
-        #  //
-        # // Template meta broker that will be used to define 
-        #//  parameters for the stage out.
-        #  //A list of these objects may be provided to provide
-        # // alternative stage out settings for retries.
-        #//  
-        taskObject['StageOutTemplates'] = [FileMetaBroker()]
-        taskObject.addIMProvDoc('StageOutTemplatesFile')
+        
         
         
         return
