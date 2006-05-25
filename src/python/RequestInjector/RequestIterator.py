@@ -13,6 +13,7 @@ The jobs are JobSpec instances created from the WorkflowSpec
 import os
 
 from MCPayloads.WorkflowSpec import WorkflowSpec
+from MCPayloads.LFNAlgorithm import createUnmergedLFNs
 from CMSConfigTools.CfgGenerator import CfgGenerator
 
 
@@ -73,6 +74,12 @@ class RequestIterator:
         jobSpec.payload.operate(self.generateJobConfig)
         jobSpecFile = os.path.join(self.workingDir,
                                    "%s-JobSpec.xml" % jobName)
+
+        #  //
+        # // generate LFNs for output modules
+        #//
+        createUnmergedLFNs(jobSpec)
+        
         jobSpec.save(jobSpecFile)
         
         return "file://%s" % jobSpecFile
@@ -103,5 +110,7 @@ class RequestIterator:
                            firstRun = self.count)
 
         jobSpecNode.configuration = jobCfg.cmsConfig.asPythonString()
+
+        
         return
     
