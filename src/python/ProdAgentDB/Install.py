@@ -101,7 +101,7 @@ def installDB(schemaLocation,dbName,socketFileLocation,portNr,host,installUser,r
           raise Exception('ERROR',str(y))
       print('')
       if replace:
-          print('Created Database: '+dbName)
+          print('Created Database: '+dbName+'\n')
       else:
           print('Augmented Database: '+dbName)
    except Exception,ex:
