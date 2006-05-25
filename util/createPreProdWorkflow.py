@@ -16,17 +16,26 @@ import os
 import sys
 import getopt
 import popen2
+import time
 
 from MCPayloads.WorkflowSpec import WorkflowSpec
+from MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
 from CMSConfigTools.CfgInterface import CfgInterface
 
 
 
-valid = ['cfg=', 'version=' ]
+valid = ['cfg=', 'version=', 'category=', 'name=' ]
 usage = "Usage: createPreProdWorkflow.py --cfg=<cfgFile>\n"
 usage += "                                --version=<CMSSW version>\n"
+usage += "                                --name=<Workflow Name>\n"
+usage += "                                --category=<Production category>\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
-usage += "since it will invoke EdmConfig tools\n"
+usage += "since it will invoke EdmConfig tools\n\n"
+usage += "Workflow Name is the name of the Workflow/Request/Primary Dataset\n"
+usage += "to be used. \n"
+usage += "It will default to the name of the cfg file if not provided\n\n"
+usage += "Production category is a marker that will be added to LFNs, \n"
+usage += "For example: PreProd, CSA06 etc etc. Defaults to PreProd\n"
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
@@ -38,12 +47,18 @@ except getopt.GetoptError, ex:
 cfgFile = None
 prodName = None
 version = None
+category = "PreProd"
+timestamp = int(time.time())
 
 for opt, arg in opts:
     if opt == "--cfg":
         cfgFile = arg
     if opt == "--version":
         version = arg
+    if opt == "--catgory":
+        category = arg
+    if opt == "--name":
+        prodName = arg
 
 if cfgFile == None:
     msg = "--cfg option not provided: This is required"
@@ -53,8 +68,10 @@ if version == None:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
 
-prodName = os.path.basename(cfgFile)
-prodName = prodName.replace(".cfg", "")
+if prodName == None:
+    prodName = os.path.basename(cfgFile)
+    prodName = prodName.replace(".cfg", "")
+
 pycfgFile = "%s.pycfg" % prodName
 hashFile = "%s.hash" % prodName
 
@@ -120,6 +137,8 @@ if exitStatus:
 #//
 spec = WorkflowSpec()
 spec.setWorkflowName(prodName)
+spec.setRequestCategory(category)
+spec.setRequestTimestamp(timestamp)
 
 #  //
 # // This value was created by running the EdmConfigHash tool
@@ -160,6 +179,8 @@ stageOut.application["Architecture"] = ""
 stageOut.application["Executable"] = "RuntimeStageOut.py" # binary name
 stageOut.configuration = ""
 
+mergedLFNBase(spec)
+unmergedLFNBase(spec)
 
 spec.save("%s-Workflow.xml" % prodName)
 
