@@ -10,8 +10,10 @@ of the configuration file being created
 """
 
 import os
+import socket
 import sys
 import getopt
+
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 
@@ -107,7 +109,10 @@ coreFields = {
     'clarensKey':'',
     'clarensCert':'',
     'clarensUrl':'',
-    'clarensProxy':''},
+    'clarensProxy':'',
+    'rtHost':socket.gethostname(),
+    'rtDomain':socket.getfqdn(),
+    'rtPortNr':'3306'},
     
     "MessageService" : {
     "pollInterval" : 5, 
