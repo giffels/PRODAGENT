@@ -160,7 +160,10 @@ installUser={'userName':userName,
              'passwd':passwd}
 # install the database
 installDB(schemaLocation,dbName,prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],prodAgentDbConfig['host'],installUser)
-grantUsers(dbName,prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],prodAgentDbConfig['host'],users,installUser)
+
+schemaLocation='MySQLConfig.sql_grid'
+print "schemaLocation for ",dbName,": ",schemaLocation
+installDB(schemaLocation,'',prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],prodAgentDbConfig['host'],installUser,False)
 
 # clad files and database have been installed. Register schedulers.
 # NOTE: if scheduler install script names change we need to change too.
@@ -237,7 +240,6 @@ print 'Creating MySQLRTConfig.clad'
 print
 
 bossConfig=open(bossDbConfig['configDir']+'/MySQLRTConfig.clad','w')
-print("\nCreating MySQLRTConfig.clad")
 
 dbName=dbName+'_rt'
 bossStr="""
@@ -378,8 +380,10 @@ except Exception,ex:
 print "schemaLocation for ",dbName,": ",schemaLocation
 
 installDB(schemaLocation,dbName,prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],bossDbConfig['rtHost'],installUser)
-grantUsers(dbName,prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],bossDbConfig['rtHost'],users,installUser)
-grantUsers(dbName,prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],prodAgentDbConfig['host'],users,installUser)
+
+schemaLocation='MySQLConfig.sql_1_grid'
+print "schemaLocation for ",dbName,": ",schemaLocation
+installDB(schemaLocation,'',prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],bossDbConfig['rtHost'],installUser,False)
 
 
 # we delete the file boss generated
