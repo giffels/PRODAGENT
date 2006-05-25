@@ -34,7 +34,8 @@ class WorkflowSpec:
         self.payload = PayloadNode()
         self.parameters = {}
         self.parameters.setdefault("WorkflowName", "Workflow-%s" % time.time())
-        
+        self.parameters.setdefault("RequestTimestamp", int(time.time()))
+        self.parameters.setdefault("RequestCategory", "PreProd") 
         self._NodeMap = {}
 
     def workflowName(self):
@@ -54,6 +55,48 @@ class WorkflowSpec:
         """
         self.parameters['WorkflowName'] = name
         updateWorkflowName(self.payload, name)
+        return
+
+    def requestTimestamp(self):
+        """
+        _requestTimestamp_
+
+        Get the request timestamp that will be used in LFN generation
+
+        """
+        return int(self.parameters['RequestTimestamp'])
+
+    def setRequestTimestamp(self, timestamp):
+        """
+        _setRequestTimestamp_
+
+        Set the Request Timestamp to be used for LFN creation. Must be
+        a Unix time integer such as the output of time.time() in python
+        or `date +%s`
+        
+        """
+        self.parameters['RequestTimestamp'] = timestamp
+        return
+
+    def requestCategory(self):
+        """
+        _requestCategory_
+
+        Get the Request Category value. This is the broad classification
+        of the Request indicating what it is for, eg PreProd, CSA06, DC04,
+        Personal etc etc
+
+        """
+        return self.parameters['RequestCategory']
+
+    def setRequestCategory(self, category):
+        """
+        _setRequestCategory_
+
+        Set the category value for this request
+
+        """
+        self.parameters['RequestCategory'] = category
         return
     
     def makeIMProv(self):
@@ -147,7 +190,8 @@ class WorkflowSpec:
         """
         newNode = JobSpecNode()
         newNode.loadPayloadNode(node)
-        newNode.addParameter("WorkflowName", self.workflowName())
+        for key, val in self.parameters.items():
+            newNode.addParameter(key, value)
         self._NodeMap[id(node)] = newNode
         if node.parent != None:
             parentNode = self._NodeMap[id(node.parent)]
