@@ -191,7 +191,7 @@ class WorkflowSpec:
         newNode = JobSpecNode()
         newNode.loadPayloadNode(node)
         for key, val in self.parameters.items():
-            newNode.addParameter(key, value)
+            newNode.addParameter(key, val)
         self._NodeMap[id(node)] = newNode
         if node.parent != None:
             parentNode = self._NodeMap[id(node.parent)]

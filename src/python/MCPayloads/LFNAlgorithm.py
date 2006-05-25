@@ -5,11 +5,12 @@ _LFNAlgorithm_
 Algorithmic generation of Logical File Names using the CMS LFN Convention
 
 """
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: LFNAlgorithm.py,v 1.1 2006/05/25 14:27:13 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "evansde@fnal.gov"
 
 import time
+import os
 
 #  //
 # // All LFNS start with this constant value
@@ -111,16 +112,60 @@ def generateLFN(requestBase, lfnGroup, jobName, dataTier):
     return result
 
 
-
-def createJobSpecNodeLFNs(self, jobSpecNode):
+class JobSpecLFNMaker:
     """
-    _createJobSpecNodeLFNs_
+    _JobSpecLFNMaker_
 
-    For each output module in the jobSpecNode instance provided,
-    generate an LFN.
+    Util class to traverse a JobSpec's nodes and generate and
+    insert Unmerged LFNs for each node that requires them
 
-    Return dict of output module name to lfn
+    We derive the lfn group value from the run number
 
     """
-    pass
+    def __init__(self, jobName, runNumber):
+        self.jobName = jobName
+        self.run = runNumber
+        self.lfnGroup = str(runNumber // 1000).zfill(4)
 
+    def __call__(self, node):
+        """
+        _operator(JobSpecNode)_
+
+        Act on each JobSpec node
+        """
+        #  //
+        # // Extract LFN base from included WorkflowSpec parameters
+        #//
+        base = node.getParameter("UnmergedLFNBase")[0]
+        #  //
+        # // iterate over outputmodules/data tiers
+        #//  Generate LFN, PFN and Catalog for each module
+        for dataTier in node.extractOutputModules():
+            lfn = generateLFN(base, self.lfnGroup, self.jobName, dataTier)
+            outModule = node.cfgInterface.outputModules[dataTier]
+            outModule.setCatalog("%s-%s-OutputCatalog.xml" % (
+                self.jobName, dataTier,
+                )
+                                 )
+            outModule.setFileName(os.path.basename(lfn))
+            outModule.setLogicalFileName(lfn)
+        #  //
+        # // Save changes in the configuration
+        #//
+        node.configuration = str(node.cfgInterface)
+        return
+
+def createUnmergedLFNs(jobSpecInstance):
+    """
+    _createUnmergedLFNs_
+
+    Generate and insert the Unmerged LFNs for the JobSpec instance
+    provided
+
+    """
+    lfnMaker = JobSpecLFNMaker(jobSpecInstance.parameters['JobName'],
+                               jobSpecInstance.parameters['RunNumber'])
+
+    jobSpecInstance.payload.operate(lfnMaker)
+
+    return
