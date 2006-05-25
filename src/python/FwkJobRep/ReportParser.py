@@ -38,7 +38,7 @@ class FwkJobRepHandler(ContentHandler):
         self.currentDict = None
 
         self.currentInputDict = None
-        
+        self.currentCksum = None
         self._CharCache = ""
 
         #  //
@@ -64,6 +64,7 @@ class FwkJobRepHandler(ContentHandler):
             "Runs" : self.noResponse,
             "Run" : self.noResponse,
             "SkippedEvent" : self.skippedEvent,
+            "Checksum" : self.checksum,
             }
 
         #  //
@@ -83,7 +84,7 @@ class FwkJobRepHandler(ContentHandler):
             "Runs" : self.noResponse,
             "Run" : self.endRun,
             "SkippedEvent" : self.noResponse,
-
+            "Checksum" : self.endChecksum,
             }
 
     def noResponse(self, name, attrs = {}):
@@ -303,6 +304,31 @@ class FwkJobRepHandler(ContentHandler):
             return
         self.currentReport.addSkippedEvent(str(run), str(event))
         return
+
+    def checksum(self, name, attrs):
+        """
+        _checksum_
+
+        Handle a checksum element start
+        """
+        self.currentCksum = attrs.get("Algorithm", None)
+        
+
+    def endChecksum(self, name):
+        """
+        _endChecksum_
+
+        Handle a checksum element end
+        """
+        if self.currentCksum == None:
+            return
+        if not self.inFile():
+            return
+        self.currentFile.addChecksum(str(self.currentCksum),
+                                     str(self._CharCache))
+        self.currentCksum = None
+        return
+        
         
 def readJobReport(filename):
     """

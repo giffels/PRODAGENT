@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: TaskState.py,v 1.1 2006/04/10 16:58:25 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: TaskState.py,v 1.2 2006/04/28 20:07:00 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -322,7 +322,7 @@ class TaskState:
                 continue
             size = os.stat(pfn)[6]
             fileInfo['Size'] = size
-            fileInfo['Checksum'] = readCksum(pfn)
+            fileInfo.addChecksum("cksum", readCksum(pfn))
         return
     
     def reportFiles(self):
@@ -354,7 +354,7 @@ def readCksum(filename):
     if exitStatus:
         return None
     content = pop.fromchild.read()
-    value = content.split()[0]
+    value = content.strip()
     return value
 
             

@@ -26,7 +26,6 @@ class FileInfo(dict):
         self.setdefault("PFN", None)
         self.setdefault("GUID", None)
         self.setdefault("Size", None)
-        self.setdefault("Checksum", None)
         self.setdefault("TotalEvents", None)
         self.setdefault("EventsRead", None)
 
@@ -60,7 +59,10 @@ class FileInfo(dict):
         #//  structure as the MCPayloads.DatasetInfo object
         self.dataset = {}
         
-        
+        #  //
+        # // Checksums include a flag indicating which kind of 
+        #//  checksum alg was used.
+        self.checksums = {}
         
     def addInputFile(self, pfn, lfn):
         """
@@ -79,7 +81,17 @@ class FileInfo(dict):
         return
     
         
+    def addChecksum(self, algorithm, value):
+        """
+        _addChecksum_
 
+        Add a Checksum to this file. Eg:
+        "cksum", 12345657
+
+        """
+        self.checksums[algorithm] = value
+        return
+    
     def save(self):
         """
         _save_
@@ -102,6 +114,12 @@ class FileInfo(dict):
             improvNode.addNode(node)
 
         #  //
+        # // Checksums
+        #//
+        for key, val in self.checksums.items():
+            improvNode.addNode(IMProvNode("Checksum", val, Algorithm = key) )
+
+        #  //
         # // State
         #//
         improvNode.addNode(IMProvNode("State", None, Value = self.state))
@@ -118,14 +136,7 @@ class FileInfo(dict):
                     inpNode.addNode(IMProvNode(key, value))
                 inputs.addNode(inpNode)
 
-        #  //
-        # // Branches
-        #//
-        branches = IMProvNode("Branches")
-        improvNode.addNode(branches)
-        for branch in self.branches:
-            branches.addNode(IMProvNode("Branch", branch))
-
+    
         #  //
         # // Runs
         #//
@@ -142,6 +153,13 @@ class FileInfo(dict):
             improvNode.addNode(dataset)
             for key, val in self.dataset.items():
                 dataset.addNode(IMProvNode(key, str(val)))
+        #  //
+        # // Branches
+        #//
+        branches = IMProvNode("Branches")
+        improvNode.addNode(branches)
+        for branch in self.branches:
+            branches.addNode(IMProvNode("Branch", branch))
 
             
         return improvNode
