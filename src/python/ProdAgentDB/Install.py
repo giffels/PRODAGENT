@@ -72,7 +72,7 @@ def adminLogin():
    return (userName,passwd)
 
 
-def installDB(schemaLocation,dbName,socketFileLocation,portNr,host,users,installUser,replace=True ):
+def installDB(schemaLocation,dbName,socketFileLocation,portNr,host,installUser,replace=True ):
 
    updateData="--user="+installUser['userName']+ " --password="+str(installUser['passwd'])
    if (socketFileLocation!=""):
@@ -105,11 +105,27 @@ def installDB(schemaLocation,dbName,socketFileLocation,portNr,host,users,install
       else:
           print('Augmented Database: '+dbName)
    except Exception,ex:
-      print(str(ex))
-      print('Perhaps you do not have permission to create a new database.')
+      print('Could not proceed. Perhaps due to one of the following reasons: ')
+      print('-You do not have permission to create a new database.')
       print('Check your SQL permissions with your database administrator')
+      print('-Connecting through a port (not socket), but the firewall is blocking it')
+      print('-The wrong host name')
       raise
 
+
+def grantUsers(dbName,socketFileLocation,portNr,host,users,installUser):
+
+   updateData="--user="+installUser['userName']+ " --password="+str(installUser['passwd'])
+   if (socketFileLocation!=""):
+      updateData+="  --socket="+socketFileLocation
+   else:
+      choice=raw_input('\nYou will be using ports and hosts settings instead of \n'+\
+                       'sockets. Are you sure you want to use this to connect \n'+\
+                       'to a database as it is a potential security risk? (Y/n)\n ')
+      if choice=='Y':
+          updateData+="  --port="+portNr+"  --host="+host
+      else:
+          sys.exit(1)
 
    for user in users.keys():
        passwd=users[user]
@@ -126,7 +142,7 @@ def installDB(schemaLocation,dbName,socketFileLocation,portNr,host,users,install
            if y!='':
                raise
            print('')
-           print('Provided access to database '+dbName+' for user profile '+user)
+           print('Provided access to database: '+dbName+' for user profile: '+user+' and host: '+host)
        except Exception,ex:
            print(str(y))
            print('Perhaps you do not have permission to grant access.')
