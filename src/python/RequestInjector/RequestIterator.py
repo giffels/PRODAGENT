@@ -110,7 +110,7 @@ class RequestIterator:
                            firstRun = self.count)
 
         jobSpecNode.configuration = jobCfg.cmsConfig.asPythonString()
-
+        jobSpecNode.loadConfiguration()
         
         return
     
