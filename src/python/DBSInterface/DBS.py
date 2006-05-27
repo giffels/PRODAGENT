@@ -159,19 +159,21 @@ class DBS:
     #print "  LFN %s"%fileinfo['LFN']
     #print "  GUID %s"%fileinfo['GUID']
     logging.debug("  GUID %s"%fileinfo['GUID'])
-    #print "  Checksum %s"%fileinfo['Checksum']
+    #print "  cksum %s"%fileinfo['cksum']
     #print "  Size %s"%fileinfo['Size']
  
     if fileinfo['GUID']:
       outfile = DbsFile (logicalFileName=fileinfo['LFN'], 
                        fileSize=int(fileinfo['Size']),
-                       checkSum="cksum:%s"%fileinfo['Checksum'],
+                       #checkSum="cksum:%s"%fileinfo['Checksum'],
+                       checkSum="%s"% fileinfo.checksums['cksum'],
                        guid=fileinfo['GUID'], 
                        fileType="EVD")
     else: # do not insert GUID if it's not there
        outfile = DbsFile (logicalFileName=fileinfo['LFN'],
                        fileSize=int(fileinfo['Size']),
-                       checkSum="cksum:%s"%fileinfo['Checksum'],
+                       #checkSum="cksum:%s"%fileinfo['Checksum'],
+                       checkSum="%s"% fileinfo.checksums['cksum'],
                        fileType="EVD")
 
 
