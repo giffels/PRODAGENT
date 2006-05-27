@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.8 2006/05/04 13:30:27 elmer Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.9 2006/05/22 19:15:17 evansde Exp $"
 
 import os
 import logging
@@ -33,13 +33,16 @@ class SubmitterInterface:
         self.parameters = {}
         # Determine the location of the BOSS configuration files. These is 
         # expected to be in a specific location under the prodAgent workdir, 
-        # i.e. <prodAgentWorkDir>/bosscfg
+        # i.e. <prodAgentWorkDir>/bosscfg 
+        # AF: this is nolonger true.... pick up configdir from BOSS configDir
         cfgObject = loadProdAgentConfiguration()
         prodAgentConfig = cfgObject.get("ProdAgent")
         workingDir = prodAgentConfig['ProdAgentWorkDir'] 
         workingDir = os.path.expandvars(workingDir)
-        self.bossCfgDir = workingDir + "/bosscfg/"
-
+        #AFself.bossCfgDir = workingDir + "/bosscfg/"
+        bossConfig = cfgObject.get("BOSS")
+        self.bossCfgDir = bossConfig['configDir']
+        
         #  //
         # // Load plugin configuration
         #//
