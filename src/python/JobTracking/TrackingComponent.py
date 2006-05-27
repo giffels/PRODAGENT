@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.10 2006/05/02 14:58:52 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.11 2006/05/04 08:52:47 bacchi Exp $"
 
 import socket
 import time
@@ -69,8 +69,7 @@ class TrackingComponent:
         logging.info("JobTracking Component Initializing...")
 
 # Determine the location of the BOSS configuration files. These is expected
-# to be in a specific location under the prodAgent workdir, i.e.
-# <prodAgentWorkDir>/bosscfg
+# to be in the configDir of BOSS 
         config = None 
         config = os.environ.get("PRODAGENT_CONFIG", None)
         if config == None:
@@ -83,7 +82,9 @@ class TrackingComponent:
         prodAgentConfig = cfgObject.get("ProdAgent")
         workingDir = prodAgentConfig['ProdAgentWorkDir'] 
         workingDir = os.path.expandvars(workingDir)
-        self.bossCfgDir = workingDir + "/bosscfg/"
+        #self.bossCfgDir = workingDir + "/bosscfg/"
+        bossConfig = cfgObject.get("BOSS")
+        self.bossCfgDir = bossConfig['configDir'] 
         logging.info("Using BOSS configuration from " + self.bossCfgDir)
 
 # The rest of the initialization
