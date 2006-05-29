@@ -159,21 +159,24 @@ class DBS:
     #print "  LFN %s"%fileinfo['LFN']
     #print "  GUID %s"%fileinfo['GUID']
     logging.debug("  GUID %s"%fileinfo['GUID'])
-    #print "  cksum %s"%fileinfo['cksum']
     #print "  Size %s"%fileinfo['Size']
  
+    ## checksum
+    cksumalgo='cksum'
+    checksum=fileinfo.checksums[cksumalgo].split(' ')[0]
+    checkSum="%s:%s"%(cksumalgo,checksum)
+    logging.debug("  checkSum %s"%checkSum )
+
     if fileinfo['GUID']:
       outfile = DbsFile (logicalFileName=fileinfo['LFN'], 
                        fileSize=int(fileinfo['Size']),
-                       #checkSum="cksum:%s"%fileinfo['Checksum'],
-                       checkSum="%s"% fileinfo.checksums['cksum'],
+                       checkSum="%s"%checkSum,
                        guid=fileinfo['GUID'], 
                        fileType="EVD")
     else: # do not insert GUID if it's not there
        outfile = DbsFile (logicalFileName=fileinfo['LFN'],
                        fileSize=int(fileinfo['Size']),
-                       #checkSum="cksum:%s"%fileinfo['Checksum'],
-                       checkSum="%s"% fileinfo.checksums['cksum'],
+                       checkSum="%s"%checkSum,
                        fileType="EVD")
 
 
@@ -198,6 +201,8 @@ class DBS:
 
     # event collection
     fileLFN=fileinfo['LFN']
+    #nameLFN=os.path.basename(fileLFN)
+    #nameLFN=nameLFN.replace('.root','')
     nameLFN=fileLFN.replace('.root','')
     events=int(fileinfo['TotalEvents'])
     #tier=dataset.getDataTier()
