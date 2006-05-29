@@ -9,7 +9,7 @@ based on CGI DBS API
 """
 import os,string,exceptions
 import dbsApi
-from dbsCgiApi import DbsCgiApi, DbsCgiObjectExists
+from dbsCgiApi import DbsCgiApi, DbsCgiObjectExists, DbsCgiNoObject
 from dbsException import DbsException
 from dbsFile import DbsFile
 from dbsFileBlock import DbsFileBlock
