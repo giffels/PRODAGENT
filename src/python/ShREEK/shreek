@@ -62,6 +62,12 @@ if not os.path.exists(commandOptions['--config']):
     print msg
     sys.exit(1)
 
+#  //
+# // Import Core plugins
+#//
+import ShREEK.ControlPoints.CondImpl
+import ShREEK.ControlPoints.ActionImpl
+
 config = ShREEKConfig()
 try:
     config.loadFromFile(commandOptions['--config'])

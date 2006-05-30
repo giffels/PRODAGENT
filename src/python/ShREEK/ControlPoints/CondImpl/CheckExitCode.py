@@ -11,7 +11,7 @@ import os
 
 from ShREEK.ControlPoints.Conditional import Conditional
 import ShREEK.ControlPoints.ControlPointFactory as Factory
-from ShLogger.LogStates import LogStates
+
 
 
 class CheckExitCode(Conditional):
@@ -26,7 +26,7 @@ class CheckExitCode(Conditional):
     """
     def __init__(self):
         Conditional.__init__(self)
-        self.attrs['ExitCodeFile'] = "exit_code"
+        self.attrs['ExitCodeFile'] = "exit.status"
 
     def setExitCodeFile(self, filename):
         """
@@ -51,8 +51,6 @@ class CheckExitCode(Conditional):
             #  //
             # // File not found
             #//
-            self.log("Unable to locate Exit Code File: %s" % exitCodeFile,
-                     LogStates.Alert)
             return False
         #  //
         # // read file
@@ -64,22 +62,16 @@ class CheckExitCode(Conditional):
         try:
             exitCode = int(content)
         except ValueError:
-            self.log(
-                "Unable to read contents of Exit Code File: %s" % exitCodeFile,
-                LogStates.Alert
-                )
             return False
 
         if exitCode:
             #  //
             # // Non zero
             #//
-            self.log("Exit Code is Non-Zero: %s" % exitCode, LogStates.Alert)
             return False
         #  //
         # // Zero
         #//
-        self.log("Exit Code is Zero", LogStates.Info)
         return True
     
 Factory.registerConditional(CheckExitCode)

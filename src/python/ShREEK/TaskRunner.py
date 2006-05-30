@@ -6,8 +6,8 @@ Execution class for running a task described by a ShREEKTask instance,
 and managing its execution.
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: TaskRunner.py,v 1.2 2006/03/16 15:48:55 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: TaskRunner.py,v 1.1 2006/04/10 17:38:42 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
@@ -112,15 +112,24 @@ class TaskRunner(LogInterface):
             for process in procList:
                 self.log("Terminating Process: %s" % process,
                          LogStates.Dbg_med)
-                os.kill(int(process), signal.SIGTERM)
+                try:
+                    os.kill(int(process), signal.SIGTERM)
+                except OSError:
+                    pass
             time.sleep(2)
             procList = self.findProcesses()
             for process in procList:
                 self.log("Killing Process: %s" % process, LogStates.Dbg_med)
-                os.kill(int(process), signal.SIGKILL)
+                try:
+                    os.kill(int(process), signal.SIGKILL)
+                except OSError:
+                    procList.remove(process)
             self.log("Killing Child Process: %s" % self.process,
                      LogStates.Dbg_lo) 
-            os.kill(self.process, signal.SIGTERM)
+            try:
+                os.kill(self.process, signal.SIGTERM)
+            except OSError:
+                pass
         return
         
 
