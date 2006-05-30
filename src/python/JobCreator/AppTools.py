@@ -36,6 +36,8 @@ import os
 import JobCreator.RuntimeTools.RuntimePSetPrep as RuntimePSetModule
 import JobCreator.RuntimeTools.RuntimeFwkJobRep as RuntimeFwkJobRep
 
+from ShREEK.ControlPoints.CondImpl.CheckExitCode import CheckExitCode
+from ShREEK.ControlPoints.ActionImpl.BasicActions import KillJob 
 
 #  //
 # // Following script segment contains the standard script 
@@ -133,6 +135,16 @@ class InsertAppDetails:
         taskObject['PostTaskCommands'] = []
         taskObject['PreAppCommands'] = []
         taskObject['PostAppCommands'] = []
+
+        #  //
+        # // Insert End Control Point check on exit status
+        #//
+        controlP = taskObject['ShREEKTask'].endControlPoint
+        exitCheck = CheckExitCode()
+        exitCheck.attrs['OnFail'] = "killJob"
+        exitAction = KillJob("killJob")
+        controlP.addConditional(exitCheck)
+        controlP.addAction(exitAction)
         
         return
 
@@ -207,6 +219,8 @@ class PopulateMainScript:
             exeScript.append(item)
         exeScript.append("echo \"Ended: `date +%s`\"")
         exeScript.append("exit $EXIT_STATUS")
+
+      
         return
         
         
