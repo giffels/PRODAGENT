@@ -7,11 +7,10 @@ into an object with an API for getting info from it
 
 """
 
-
+import os
 
 from IMProv.IMProvLoader import loadIMProvFile
 from IMProv.IMProvQuery import IMProvQuery
-
 
 class SiteConfigError(StandardError):
     """
@@ -19,6 +18,27 @@ class SiteConfigError(StandardError):
     """
     pass
 
+
+def loadSiteLocalConfig(self):
+    """
+    _loadSiteLocalConfig_
+
+    Runtime Accessor for the site local config.
+
+    Requires that CMS_PATH is defined as an environment variable
+
+    """
+    defaultPath = "$CMS_PATH/SITECONF/local/JobConfig/site-local-config.xml"
+    actualPath = os.path.expandvars(defaultPath)
+
+    if not os.path.exists(actualPath):
+        msg = "Unable to find site local config file:\n"
+        msg += actualPath
+        raise SiteConfigError, msg
+
+    config = SiteLocalConfig(actualPath)
+    return config
+    
 
 class SiteLocalConfig:
     """
@@ -93,10 +113,5 @@ class SiteLocalConfig:
 
 
 
-if __name__ == '__main__':
-    siteConf = SiteLocalConfig("file:///home/evansde/work/PRODAGENT/src/python/FwkJobRep/testConfig.xml")
 
-    print siteConf.siteName
-    print siteConf.eventData
-    print siteConf.calibData
     

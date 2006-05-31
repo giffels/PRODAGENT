@@ -11,13 +11,14 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: TaskState.py,v 1.2 2006/04/28 20:07:00 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: TaskState.py,v 1.3 2006/05/25 18:02:48 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
 import os
 import popen2
+
 
 from IMProv.IMProvLoader import loadIMProvFile
 from IMProv.IMProvQuery import IMProvQuery
@@ -27,6 +28,10 @@ from RunRes.RunResDBAccess import loadRunResDB
 
 from FwkJobRep.ReportParser import readJobReport
 from FwkJobRep.CatalogParser import readCatalog
+from FwkJobRep.SiteLocalConfig import loadSiteLocalConfig
+
+
+lfnSearch = lambda fileInfo, lfn:  fileInfo.get("LFN", None) == lfn
 
 
 def getTaskState(taskName):
@@ -75,7 +80,7 @@ class TaskState:
         self.dir = taskDirectory
         self.jobReport = os.path.join(self.dir, "FrameworkJobReport.xml")
         self.runresdb = os.path.join(self.dir, "RunResDB.xml")
-
+        
         self.taskAttrs = {}
         self.taskAttrs.setdefault("Name", None)
         self.taskAttrs.setdefault("CfgFile", None)
@@ -86,8 +91,12 @@ class TaskState:
         
         self._RunResDB = None
         self._JobReport = None
+        self._CatalogEntries = None
+        self._SiteConfig = None
         self.runresLoaded = False
         self.jobReportLoaded = False
+        self.catalogsLoaded = False
+        self.siteConfigLoaded = False
         
         
 
@@ -191,7 +200,51 @@ class TaskState:
         self._JobReport.write(os.path.join(self.dir,"FrameworkJobReport.xml"))
         return
     
+
+
+    def loadCatalogs(self):
+        """
+        _loadCatalogs_
+
+        Load information from all the output catalogs
+
+        """
+        self._CatalogEntries = []
+        for catalog in self.outputCatalogs():
+            self._CatalogEntries.extend(self.listFiles(catalog))
+        self.catalogsLoaded = True
+        return
+                                        
+    def loadSiteConfig(self):
+        """
+        _loadSiteConfig_
+
+        Load the Site config into this state object
+
+        """
+        try:
+            self._SiteConfig = loadSiteLocalConfig()
+            self.siteConfigLoaded = True
+        except StandardError, ex:
+            msg = "Unable to load SiteLocalConfig:\n"
+            msg += str(ex)
+            print msg
+            self._SiteConfig = None
+        return
+
+    def getSiteConfig(self):
+        """
+        _getSiteConfig_
+
+        Return the SiteLocalConfig instance if available, None if
+        isnt
+
+        """
+        if not self.siteConfigLoaded:
+            self.loadSiteConfig()
+        return self._SiteConfig
     
+            
 
     def outputDatasets(self):
         """
@@ -272,6 +325,7 @@ class TaskState:
         if not os.path.exists(catalog):
             return []
         return readCatalog(catalog)
+
     
 
     def assignFilesToDatasets(self):
@@ -313,9 +367,22 @@ class TaskState:
         size and cksum value
 
         """
+        if not self.catalogsLoaded:
+            self.loadCatalogs()
        
         for fileInfo in self._JobReport.files:
             pfn = fileInfo['PFN']
+            lfn = fileInfo['LFN']
+            matchedFile = {}
+            matchedCatFiles = \
+                 [i for i in self._CatalogEntries if lfnSearch(i, lfn)]
+            if len(matchedCatFiles) > 0:
+                matchedFile = matchedCatFiles[-1]
+
+            if matchedFile.has_key("GUID"):
+                fileInfo['GUID'] = matchedFile['GUID']
+            
+            
             if pfn.startswith("file:"):
                 pfn = pfn.replace("file:", "")
             if not os.path.exists(pfn):
@@ -355,6 +422,7 @@ def readCksum(filename):
         return None
     content = pop.fromchild.read()
     value = content.strip()
+    value = content.split()[0]
     return value
 
             
