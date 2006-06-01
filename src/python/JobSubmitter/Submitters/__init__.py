@@ -7,7 +7,7 @@ Submission interfaces package
 """
 __all__ = []
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: __init__.py,v 1.1 2006/03/20 22:37:04 evansde Exp $"
+__revision__ = "$Id: __init__.py,v 1.1 2006/04/10 19:49:02 evansde Exp $"
 
 
 
@@ -21,4 +21,4 @@ import CondorGSubmitter
 import LXB1125Submitter
 import LSFSubmitter
 import LCGSubmitter
-
+import OSGSubmitter

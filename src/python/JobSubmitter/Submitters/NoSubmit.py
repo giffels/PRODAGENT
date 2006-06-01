@@ -6,7 +6,7 @@ Submitter implementation that doesnt submit.
 Used for testing job creation.
 
 """
-__revision__ = "$Id:$"
+__revision__ = "$Id: NoSubmit.py,v 1.2 2006/05/02 12:31:14 elmer Exp $"
 
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.Registry import registerSubmitter
@@ -38,4 +38,4 @@ class NoSubmit(SubmitterInterface):
         print "NoSubmit.generateWrapper: %s" % jobname
         
         
-registerSubmitter(NoSubmit, "noSubmit")
+registerSubmitter(NoSubmit, NoSubmit.__name__)
