@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     workingDir = None
     jobname = None
-    submitter = "noSubmit"
+    submitter = "NoSubmit"
     for opt, arg in opts:
         if opt == "--dir":
             workingDir = arg
