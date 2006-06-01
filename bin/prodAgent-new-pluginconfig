@@ -44,18 +44,38 @@ except StandardError, ex:
 #//
 
 creatorTemplate = {
+
+    #  //
+    # // Standard Software setup config
+    #//
+    "SoftwareSetup": {
+    "ScramCommand" : "scramv1",
+    "ScramArch" : "slc3_ia32_gcc323",
+    "SetupCommand" : "echo \"Setup Command goes here\"",
+    },
+
+    #  //
+    # // Standard Stage Out settings
+    #//
+    "StageOut" :{
+    "TargetHostName" : None,
+    "TargetPathName" : None,
+    "TransportMethod" : None,
+    },
     #  //
     # // Standard Settings for contacting Dashboard
     #//
     "Dashboard" : {
+    "UseDashboard" : "False",
     },
 
     #  //
     # // Standard settings for JobMon server
     #//
     "JobMon" : {
+    "UseJobMon" : "False",
+    "ServerURL" : None,
     },
-    
 
 
     }
@@ -95,6 +115,19 @@ submitterTemplate = {
     "twoflower.fnal.gov" : None,
     },
 
+    #  //
+    # // Standard OSG Config parameters
+    #//
+    "OSG" : {
+    "GlobusScheduler" : None,
+    },
+
+    #  //
+    # // Standard LCG Config parameters
+    #//
+    "LCG" : {
+    
+    },
 
     }
 
