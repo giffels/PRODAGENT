@@ -7,8 +7,8 @@ Objects to manage/save/load/access a Plugin Configuration.
 Uses the same block structure as the ProdAgent configuration
 
 """
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: PluginConfiguration.py,v 1.1 2006/05/18 22:03:47 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -49,6 +49,7 @@ def loadPluginConfig(component, plugin):
         msg += "In Config for component: %s\n" % component
         msg += "Expected parameter: %s\n " % keyname
         raise RuntimeError, msg
+    filename = os.path.expandvars(filename)
     if not os.path.exists(filename):
         msg = "Plugin Configuration file Not Found:\n"
         msg += "%s\n" % filename
