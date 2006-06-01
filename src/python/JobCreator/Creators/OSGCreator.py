@@ -88,7 +88,7 @@ class OSGCreator(CreatorInterface):
         Install monitors into top TaskObject
 
         """
-        installMonitor(taskObjectTree)
+        self.installMonitor(taskObjectTree)
         return
         
 
@@ -174,67 +174,64 @@ class OSGCreator(CreatorInterface):
 
     
 
-def installMonitor(taskObject):
-    """
-    _installMonitor_
-
-    Installs shreek monitoring plugins
-
-    """
-    shreekConfig = taskObject['ShREEKConfig']
-
-    #  //
-    # // Insert list of plugin modules to be used
-    #//
-    shreekConfig.addPluginModule("ShREEK.CMSPlugins.DashboardMonitor")
-    shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobMonMonitor")
-    shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
-    shreekConfig.addPluginModule("ShREEK.CMSPlugins.BOSSMonitor")
-    shreekConfig.addPluginModule("ShREEK.CMSPlugins.CMSMetrics")
-
-    #  //
-    # // Insert list of metrics to be generated
-    #//
-    shreekConfig.addUpdator("ChildProcesses")
-    shreekConfig.addUpdator("ProcessToBinary")
-
-    
-    
-  
-    
-    #jobmon = shreekConfig.newMonitorCfg()
-    #jobmon.setMonitorName("cmsjobmon-1")
-    #jobmon.setMonitorType("jobmon")
-
-    #  //
-    # // Include the proxy file in the job so that it can be registered to 
-    #//  jobMon
-    #proxyFile = "/tmp/x509up_u%s" % os.getuid()
-    #taskObject.attachFile(proxyFile)
-    #injobProxy = "$PRODAGENT_JOB_DIR/%s/x509_u%s" % (
-    #    taskObject['Name'], os.getuid(),
-    #    )
-    #jobmon.addKeywordArg(
-    #    RequestName = taskObject['RequestName'],
-    #    JobName = taskObject['JobName'],
-    #    CertFile = injobProxy,
-    #    KeyFile = injobProxy,
-    #    ServerURL = "https://b0ucsd03.fnal.gov:8443/clarens"
-    #    )
-    #shreekConfig.addMonitorCfg(jobmon)
-
+    def installMonitor(self, taskObject):
+        """
+        _installMonitor_
+        
+        Installs shreek monitoring plugins
+        
+        """
+        shreekConfig = taskObject['ShREEKConfig']
+        
+        #  //
+        # // Insert list of plugin modules to be used
+        #//
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.DashboardMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobMonMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.BOSSMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.CMSMetrics")
+        
+        #  //
+        # // Insert list of metrics to be generated
+        #//
+        shreekConfig.addUpdator("ChildProcesses")
+        shreekConfig.addUpdator("ProcessToBinary")
 
     
+    
+        #  //
+        # // If the Config file says to use JobMon, then we add it
+        #//
+        jobMonCfg = self.pluginConfig.get("JobMon", {})
+        usingJobMon = jobMonCfg.get("UseJobMon", None)
+        if usingJobMon.lower() == "true":
+            jobmon = shreekConfig.newMonitorCfg()
+            jobmon.setMonitorName("cmsjobmon-1")
+            jobmon.setMonitorType("jobmon")
+            #  //
+            # // Include the proxy file in the job so that it can be registered to 
+            #//  jobMon
+            proxyFile = "/tmp/x509up_u%s" % os.getuid()
+            taskObject.attachFile(proxyFile)
+            injobProxy = "$PRODAGENT_JOB_DIR/%s/x509_u%s" % (
+                taskObject['Name'], os.getuid(),
+                )
+            jobmon.addKeywordArg(
+                RequestName = taskObject['RequestName'],
+                JobName = taskObject['JobName'],
+                CertFile = injobProxy,
+                KeyFile = injobProxy,
+                ServerURL = self.pluginConfig['JobMon']['ServerURL']
+                )
+            shreekConfig.addMonitorCfg(jobmon)
+        
+        
+    
 
-    #timeout = shreekConfig.newMonitorCfg()
-    #timeout.setMonitorName("timeout-1")
-    #timeout.setMonitorType("timeout")
-    # Timeout is number of seconds before job gets whacked
-    #timeout.addKeywordArg(Timeout = 5) 
-    #shreekConfig.addMonitorCfg(timeout)
 
     
-    return
+        return
     
     
 
