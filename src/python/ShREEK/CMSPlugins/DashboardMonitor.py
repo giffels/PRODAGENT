@@ -7,7 +7,7 @@ CMS Dashboard
 
 """
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.1 2006/03/14 22:51:59 evansde Exp $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.1 2006/04/10 17:38:43 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -15,7 +15,7 @@ __author__ = "evansde@fnal.gov"
 from ShREEK.ShREEKMonitor import ShREEKMonitor
 from ShREEK.ShREEKPluginMgr import registerShREEKMonitor
 
-from ShREEK.CMSPlugins.ApMon.DashboardAPI import DashboardAPI
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
 import os
 import time
@@ -30,42 +30,48 @@ class DashboardMonitor(ShREEKMonitor):
     
     def __init__(self):
         ShREEKMonitor.__init__(self)
-        self.dashboard = None
-        self.jobName = None
-        self.requestName = None
+        self.destPort = None
+        self.destHost = None
+        self.dashboardInfo = None
+        
 
     def initMonitor(self, *args, **kwargs):
         """
         _initMonitor_
 
         """
-        self.jobName = kwargs['JobName']
-        self.requestName = kwargs['RequestName']
-
-        gridJobId = None
-        if os.environ.has_key("GLOBUS_GRAM_JOB_CONTACT"):
-            gridJobId = os.environ['GLOBUS_GRAM_JOB_CONTACT']
-        if os.environ.has_key("EDG_WL_JOBID"):
-            gridJobId = os.environ['EDG_WL_JOBID']
-
-        if gridJobId != None:
-            self.jobName = "%s_%s" % (self.jobName, gridJobId)
-
-        self.dashboard = DashboardAPI(self.requestName, self.jobName)
+        self.destHost = kwargs['ServerHost']
+        self.destPort = int(kwargs['ServerPort'])
+        dashboardInfoFile = kwargs['DashboardInfo']
+        dashboardInfoFile = os.path.expandvars(dashboardInfoFile)
+        
+        self.dashboardInfo = DashboardInfo()
+        try:
+            self.dashboardInfo.read(dashboardInfoFile)
+            self.dashboardInfo.addDestination(self.destHost, self.destPort)
+        except StandardError, ex:
+            msg = "ERROR: Unable to load Dashboard Info File:\n"
+            msg += "%s\n" % dashboardInfoFile
+            msg += "Unable to communicate to Dashboard\n"
+            print msg
+            self.dashboardInfo = None
+        
 
     def shutdown(self):
         """
         Shutdown method, will be called before object is deleted
         at end of job.
         """  
-        del self.dashboard
+        del self.dashboardInfo
         
     def jobStart(self):
         """
         Job start notifier.
         """
-        self.dashboard.publish(JobStarted = time.time())
-        
+        if self.dashboardInfo == None:
+            return
+        self.dashboardInfo['JobStarted'] = time.time()
+        self.dashboardInfo.publish(5)
 
     #  //
     # // Task started
@@ -74,24 +80,35 @@ class DashboardMonitor(ShREEKMonitor):
         """
         Tasked started notifier. 
         """
-        self.dashboard.publish(CurrentExe = task.taskname(),
-                               ExeStarted = time.time())
-        
-        
+        if self.dashboardInfo == None:
+            return
+        self.dashboardInfo['ExeStart'] = task.taskname()
+        self.dashboardInfo['ExeStartTime'] = time.time()
+        self.dashboardInfo.publish(5)
+        return
     
     def taskEnd(self, task, exitCode):
         """
         Tasked ended notifier.
         """
-        self.dashboard.publish(ExeFinished = time.time(),
-                               ExeStatus = exitCode)
-
+        if self.dashboardInfo == None:
+            return
+        
+        
+        self.dashboardInfo['ExeEnd'] = task.taskname()
+        self.dashboardInfo['ExeFinishTime'] = time.time()
+        self.dashboardInfo['ExeExitCode'] = exitCode
+        self.dashboardInfo.publish(5)
+        return
 
     def jobEnd(self):
         """
         Job ended notifier.
         """
-        self.dashboard.publish(JobFinished = time.time())
-
+        if self.dashboardInfo == None:
+            return
+        self.dashboardInfo['JobFinished'] = time.time()
+        self.dashboardInfo.publish(5)
+        
         
 registerShREEKMonitor(DashboardMonitor, 'dashboard')
