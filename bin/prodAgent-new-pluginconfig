@@ -67,6 +67,8 @@ creatorTemplate = {
     #//
     "Dashboard" : {
     "UseDashboard" : "False",
+    "DestinationHost" : "lxgate35.cern.ch",
+    "DestinationPort" : "8884",
     },
 
     #  //
