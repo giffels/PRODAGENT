@@ -31,6 +31,7 @@ from JobCreator.RunResTools import CMSSWRunResDB, InsertDirInRunRes
 from JobCreator.StageOutTools import InsertStageOut
 from JobCreator.StageOutTools import PopulateStageOut
 from JobCreator.StageOutTools import StoreStageOutTemplates
+from JobCreator.DashboardTools import installDashboardInfo, writeDashboardInfo
 
 import inspect
 import os
@@ -124,6 +125,7 @@ class JobGenerator:
         #//
         taskObject = self._JobSpec.payload.taskObject
         generateShREEKConfig(taskObject)
+        installDashboardInfo(taskObject)
         taskObject(GenerateMainScript())
         taskObject(InsertAppDetails())
         taskObject(InstallRunResComponent())
@@ -155,6 +157,7 @@ class JobGenerator:
         taskObject(FlatTaskDirBuilder(directory))
         taskObject(CMSSWRunResDB())
         taskObject(InsertDirInRunRes())
+        writeDashboardInfo(taskObject, cacheDir)
         taskObject(WriteStructuredFiles())
         taskObject(WriteIMProvDocs())
         accumRunRes = AccumulateRunResDB()

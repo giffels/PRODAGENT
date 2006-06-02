@@ -189,7 +189,6 @@ class OSGCreator(CreatorInterface):
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.DashboardMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobMonMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
-        shreekConfig.addPluginModule("ShREEK.CMSPlugins.BOSSMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.CMSMetrics")
         
         #  //
@@ -199,12 +198,12 @@ class OSGCreator(CreatorInterface):
         shreekConfig.addUpdator("ProcessToBinary")
 
     
-    
+        
         #  //
         # // If the Config file says to use JobMon, then we add it
         #//
         jobMonCfg = self.pluginConfig.get("JobMon", {})
-        usingJobMon = jobMonCfg.get("UseJobMon", None)
+        usingJobMon = jobMonCfg.get("UseJobMon", "False")
         if usingJobMon.lower() == "true":
             jobmon = shreekConfig.newMonitorCfg()
             jobmon.setMonitorName("cmsjobmon-1")
@@ -227,10 +226,20 @@ class OSGCreator(CreatorInterface):
             shreekConfig.addMonitorCfg(jobmon)
         
         
-    
-
-
-    
+        #  //
+        # // Dashboard Monitoring
+        #//
+        dashboardCfg = self.pluginConfig.get('Dashboard', {})
+        usingDashboard = dashboardCfg.get("UseDashboard", "False")
+        if usingDashboard.lower() == "true":
+            dashboard = shreekConfig.newMonitorCfg()
+            dashboard.setMonitorName("cmsdashboard-1")
+            dashboard.setMonitorType("dashboard")
+            dashboard.addKeywordArg(
+                ServerHost = dashboardCfg['DestinationHost'],
+                ServerPort = dashboardCfg['DestinationPort'],
+                DashboardInfo = taskObject['DashboardInfoLocation'])
+            shreekConfig.addMonitorCfg(dashboard)
         return
     
     
