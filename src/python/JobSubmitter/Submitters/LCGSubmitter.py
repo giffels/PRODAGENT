@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.5 2006/05/02 12:31:14 elmer Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.6 2006/05/08 08:51:18 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -24,9 +24,17 @@ bossScheduler = "edg"
 import os
 import sys
 import logging
+import exceptions
 from MCPayloads.JobSpec import JobSpec
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
+from JobSubmitter.JSException import JSException
+
+class InvalidUserJDLFile(exceptions.Exception):
+  def __init__(self,msg):
+   args="%s\n"%msg
+   exceptions.Exception.__init__(self, args)
+   pass
 
 
 class LCGSubmitter(SubmitterInterface):
@@ -61,6 +69,27 @@ class LCGSubmitter(SubmitterInterface):
         
         self.parameters['Scheduler']="edg"
         self.bossSubmitCommand={"v3":self.BOSS3submit,"v4":self.BOSS4submit}
+
+
+    def checkPluginConfig(self):
+        """
+        _checkPluginConfig_
+
+        Make sure config has what is required for this submitter
+
+        """
+        if self.pluginConfig == None:
+            msg = "Failed to load Plugin Config for:\n"
+            msg += self.__class__.__name__
+            raise JSException( msg, ClassInstance = self)
+
+        if not self.pluginConfig.has_key("LCG"):
+            msg = "Submitter Plugin Config contains no LCG Config:\n"
+            msg += self.__class__.__name__
+            logging.error(msg)
+            raise JSException(msg, ClassInstance = self)
+
+        logging.debug(" plugin configurator %s"%self.pluginConfig)
 
 
     #  //
@@ -112,11 +141,13 @@ class LCGSubmitter(SubmitterInterface):
         JobName=self.parameters['JobName']
         swversion=self.parameters['AppVersions'][0]  # only one sw version for now
 
+
+        ## prepare scheduler related file 
         schedulercladfile = "%s/%s_scheduler.clad" %  (self.parameters['JobCacheArea'],self.parameters['JobName'])
-        declareClad=open(schedulercladfile,"w")
-        declareClad.write("Requirements = Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment);\n"%swversion)
-        declareClad.write("VirtualOrganisation = \"cms\";\n")
-        declareClad.close()
+        try:
+           self.createJDL(schedulercladfile,swversion)
+        except InvalidUserJDLFile, ex:
+           return 
 
         try:
             output=self.executeCommand("grid-proxy-info")
@@ -142,6 +173,46 @@ class LCGSubmitter(SubmitterInterface):
         #os.remove(cladfile)
         return
 
+    def createJDL(self, cladfilename,swversion):
+        """
+        _createJDL_
+    
+        create the scheduler JDL combining the user specified bit of the JDL
+        """
+
+        declareClad=open(cladfilename,"w")
+                                                                                            
+        if not 'JDLRequirementsFile' in self.pluginConfig['LCG'].keys():
+          self.pluginConfig['LCG']['JDLRequirementsFile']=None
+
+        ## combine with the JDL provided by the user
+        user_requirements=""
+
+        if self.pluginConfig['LCG']['JDLRequirementsFile']!=None and self.pluginConfig['LCG']['JDLRequirementsFile']!='None':
+          if os.path.exists(self.pluginConfig['LCG']['JDLRequirementsFile']) :
+            logging.debug("createJDL: using JDLRequirementsFile "+self.pluginConfig['LCG']['JDLRequirementsFile'])
+            fileuserjdl=open(self.pluginConfig['LCG']['JDLRequirementsFile'],'r')
+            inlines=fileuserjdl.readlines()
+            for inline in inlines :
+              ## extract the Requirements specified by the user
+              if inline.find('Requirements') > -1 and inline.find('#') == -1 :
+                UserReq = inline[ inline.find('=')+2 : inline.find(';') ]
+              ## write the other user defined JDL lines as they are
+              else :
+                if inline.find('#') != 0 and len(inline) > 1 :
+                   declareClad.write(inline)
+            user_requirements=" %s && "%UserReq
+          else:
+            msg="JDLRequirementsFile File Not Found: %s"%self.pluginConfig['LCG']['JDLRequirementsFile']
+            logging.error(msg) 
+            raise InvalidUserJDLFile(msg)
+
+        requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment);\n'%(user_requirements,swversion)
+        logging.debug('%s'%requirements)
+        declareClad.write(requirements)
+        declareClad.write("VirtualOrganisation = \"cms\";\n")
+        declareClad.close()
+        return
 
 
 registerSubmitter(LCGSubmitter, "lcg")
