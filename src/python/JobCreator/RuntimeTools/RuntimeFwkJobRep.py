@@ -25,25 +25,31 @@ def processFrameworkJobReport():
     state = TaskState(os.getcwd())
     state.loadRunResDB()
 
+    state.dumpJobReport()
+
     try:
         state.loadJobReport()
-    except:
+    except Exception, ex:
         #  //
         # // Error reading report ==> it is corrupt.
         #//  Setting it to None means that it will be converted into
         #  //a diagnostic report in the following code
         # //
         #//
+        print "Error Reading JobReport:"
+        print str(ex)
         state._JobReport = None
 
     #  //
     # // If no report file is found, we create an empty one to
     #//  make sure we report the failure implied by the missing report
     if state.getJobReport() == None:
+        print "Generating Job Report by hand..."
         state._JobReport = FwkJobReport()
         
         
     
+        
     
     #  //
     # // match files to datasets.
