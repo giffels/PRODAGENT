@@ -218,6 +218,5 @@ def installMonitor(taskObject):
 #  // registration based on import of entire module)
 # // 
 #//
-#registerCreator(LCGCreator, LCGCreator.__name__)
-registerCreator(LCGCreator, "lcg")
-
+#registerCreator(LCGCreator, "lcg")
+registerCreator(LCGCreator, LCGCreator.__name__)
