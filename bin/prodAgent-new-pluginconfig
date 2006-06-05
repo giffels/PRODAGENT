@@ -128,7 +128,9 @@ submitterTemplate = {
     # // Standard LCG Config parameters
     #//
     "LCG" : {
-    
+    "JDLRequirementsFile" : None,
+    "RBconfigVO" : None,
+    "RBconfig" : None,
     },
 
     }
