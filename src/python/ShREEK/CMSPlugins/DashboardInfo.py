@@ -43,7 +43,7 @@ class DashboardInfo(dict):
         self.setdefault("GridJobID", None)
         self.setdefault("LocalBatchID", None)
         self.setdefault("GridUser", None)
-        self.setdefault("User" , os.getlogin())
+        self.setdefault("User" , os.environ.get('USER', 'ProdAgent'))
         self.setdefault("JSTool","ProdAgent")
         self.setdefault("NbEvPerRun", 0)
         self.setdefault("NodeName", None)
