@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.6 2006/05/08 08:51:18 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.7 2006/06/04 23:53:51 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -30,7 +30,7 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
 
-class InvalidUserJDLFile(exceptions.Exception):
+class InvalidFile(exceptions.Exception):
   def __init__(self,msg):
    args="%s\n"%msg
    exceptions.Exception.__init__(self, args)
@@ -146,7 +146,7 @@ class LCGSubmitter(SubmitterInterface):
         schedulercladfile = "%s/%s_scheduler.clad" %  (self.parameters['JobCacheArea'],self.parameters['JobName'])
         try:
            self.createJDL(schedulercladfile,swversion)
-        except InvalidUserJDLFile, ex:
+        except InvalidFile, ex:
            return 
 
         try:
@@ -205,14 +205,35 @@ class LCGSubmitter(SubmitterInterface):
           else:
             msg="JDLRequirementsFile File Not Found: %s"%self.pluginConfig['LCG']['JDLRequirementsFile']
             logging.error(msg) 
-            raise InvalidUserJDLFile(msg)
+            raise InvalidFile(msg)
 
         requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment);\n'%(user_requirements,swversion)
         logging.debug('%s'%requirements)
         declareClad.write(requirements)
         declareClad.write("VirtualOrganisation = \"cms\";\n")
+
+        ## change the RB according to user provided RB configuration files
+        if not 'RBconfig' in self.pluginConfig['LCG'].keys():
+           self.pluginConfig['LCG']['RBconfig']=None
+        if self.pluginConfig['LCG']['RBconfig']!=None and self.pluginConfig['LCG']['RBconfig']!='None':
+           if not os.path.exists(self.pluginConfig['LCG']['RBconfig']) :
+              msg="RBconfig File Not Found: %s"%self.pluginConfig['LCG']['RBconfig']
+              logging.error(msg)
+              raise InvalidFile(msg)
+           declareClad.write('RBconfig = "'+self.pluginConfig['LCG']['RBconfig']+'";\n')
+
+        if not 'RBconfigVO' in self.pluginConfig['LCG'].keys():
+           self.pluginConfig['LCG']['RBconfigVO']=None
+        if self.pluginConfig['LCG']['RBconfigVO']!=None and self.pluginConfig['LCG']['RBconfigVO']!='None':
+           if not os.path.exists(self.pluginConfig['LCG']['RBconfigVO']) :
+              msg="RBconfigVO File Not Found: %s"%self.pluginConfig['LCG']['RBconfigVO']
+              logging.error(msg)
+              raise InvalidFile(msg)
+           declareClad.write('RBconfigVO = "'+self.pluginConfig['LCG']['RBconfigVO']+'";\n')
+
         declareClad.close()
         return
 
 
-registerSubmitter(LCGSubmitter, "lcg")
+#registerSubmitter(LCGSubmitter, "lcg")
+registerSubmitter(LCGSubmitter, LCGSubmitter.__name__)
