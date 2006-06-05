@@ -78,7 +78,16 @@ creatorTemplate = {
     "UseJobMon" : "False",
     "ServerURL" : None,
     },
+    
 
+    #  //
+    # // Software Setup settings
+    #//
+    "SoftwareSetup": {
+    'ScramCommand' : "scramv1",
+    'ScramArch' : "slc3_ia32_gcc323",
+    'SetupCommand': ". /uscms/prod/sw/cms/setup/bashrc",
+    },
 
     }
 
