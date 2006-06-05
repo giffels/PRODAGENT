@@ -65,6 +65,7 @@ class FwkJobRepHandler(ContentHandler):
             "Run" : self.noResponse,
             "SkippedEvent" : self.skippedEvent,
             "Checksum" : self.checksum,
+            "SiteDetail" : self.siteDetail,
             }
 
         #  //
@@ -85,6 +86,7 @@ class FwkJobRepHandler(ContentHandler):
             "Run" : self.endRun,
             "SkippedEvent" : self.noResponse,
             "Checksum" : self.endChecksum,
+            "SiteDetail" : self.noResponse,
             }
 
     def noResponse(self, name, attrs = {}):
@@ -328,7 +330,22 @@ class FwkJobRepHandler(ContentHandler):
                                      str(self._CharCache))
         self.currentCksum = None
         return
-        
+
+    def siteDetail(self, name, attrs):
+        """
+        _siteDetail_
+
+        Handle a site detail parameter node
+
+        """
+        if self.currentReport == None:
+            return
+        detailName = attrs.get('Parameter', None)
+        detailValue = attrs.get('Value' , None)
+        if detailName == None:
+            return
+        self.currentReport.siteDetails[str(detailName)] = str(detailValue)
+        return
         
 def readJobReport(filename):
     """

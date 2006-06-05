@@ -30,6 +30,7 @@ class FwkJobReport:
         self.errors = []
         self.skippedEvents = []
         self.exitCode = 0
+        self.siteDetails = {}
 
 
     def wasSuccess(self):
@@ -118,7 +119,15 @@ class FwkJobReport:
                        )
             )
         
+        #  //
+        # // Save Site details
+        #//
+        for key, value in self.siteDetails.items():
+            siteDetail = IMProvNode("SiteDetail", None,
+                                    Parameter = key,
+                                    Value = str(value))
         
+            result.addNode(siteDetail)
         
         #  //
         # // Save Files
