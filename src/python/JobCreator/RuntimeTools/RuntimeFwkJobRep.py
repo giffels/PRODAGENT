@@ -9,6 +9,7 @@ by CMSSW executables.
 """
 
 import os
+import socket
 
 from FwkJobRep.TaskState import TaskState
 from FwkJobRep.MergeReports import mergeReports
@@ -49,7 +50,7 @@ def processFrameworkJobReport():
         
         
     
-        
+    
     
     #  //
     # // match files to datasets.
@@ -68,6 +69,18 @@ def processFrameworkJobReport():
     else:
         if exitCode != 0:
             reportStatus = "Failed"
+
+    #  //
+    # // Include site details in job report
+    #//
+    siteName = "Unknown"
+    hostName = socket.gethostname()
+    state.loadSiteConfig()
+    siteCfg = state.getSiteConfig()
+    if siteCfg != None:
+        siteName = siteCfg.siteName
+    report.siteDetails['SiteName'] = siteName
+    report.siteDetails['HostName'] = hostName
         
     
     #  //

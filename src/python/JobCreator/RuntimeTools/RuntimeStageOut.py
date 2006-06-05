@@ -21,6 +21,8 @@ a list of workflow nodes to perform StageOut for.
 """
 
 import os
+import sys
+
 from FwkJobRep.TaskState import TaskState, getTaskState
 from FwkJobRep.MergeReports import updateReport
 
@@ -40,12 +42,31 @@ from RunRes.RunResDBAccess import loadRunResDB, queryRunResDB
 
 
 class StageOutFailure(Exception):
-    pass
+    """
+    _StageOutFailure_
 
+    Self documenting Failure exception
+
+    """
+    def __init__(self, data):
+        Exception.__init__(self)
+        print "=========Stage Out Failure==========="
+        for key, value in data.items():
+            print key, value
+        print "====================================="
+        
 
 
 class StageOutSuccess(Exception):
-    pass
+    """
+    _StageOutSuccess_
+
+    Self documenting Failure exception
+
+    """
+    def __init__(self, data):
+        Exception.__init__(self)
+        print "File Staged Out: %s" % data['PFN']
 
 
 class StageOutManager:
@@ -107,15 +128,17 @@ class StageOutManager:
                 self.succeeded.append(sucessInfo)
                 continue
 
-        for item in self.succeeded:
-            print "Success:", item
+        #for item in self.succeeded:
+        #    print "Success:", item
 
+        exitCode = 0
         for item in self.failed:
             #  //
             # // Failures imply that input Node is failed 
             #//
             self.inputState._JobReport.status = "Failed"
-            print "Failure:", item
+            self.inputState._JobReport.exitCode = 60311
+            exitCode = 60311
             
             
 
@@ -132,9 +155,10 @@ class StageOutManager:
         
         
         updateReport(toplevelReport, self.inputState.getJobReport())
+        print "Stage Out Complete: Exiting: %s " % exitCode
         
         
-        return
+        return exitCode
 
     def transferFile(self, fileInfo, template):
         """
@@ -186,8 +210,8 @@ def stageOut():
     
     
     manager = StageOutManager(state, inputState)
-    manager()
-    
+    exitCode = manager()
+    return exitCode
     
 
 def loadTemplates(*templates):
@@ -220,4 +244,5 @@ def loadTemplates(*templates):
 
 if __name__ == '__main__':
     _TransportFactory = getTransportFactory()
-    stageOut()
+    exitCode = stageOut()
+    sys.exit(exitCode)
