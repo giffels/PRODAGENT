@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: TaskState.py,v 1.3 2006/05/25 18:02:48 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: TaskState.py,v 1.4 2006/05/31 19:15:42 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -178,6 +178,22 @@ class TaskState:
             fileInfo['PFN'] = pfnPath
         return
     
+
+    def dumpJobReport(self):
+        """
+        _dumpJobReport_
+
+        Read the Job Report file and dump it to stdout
+
+        """
+        print "======================Dump Job Report======================"
+        if os.path.exists(self.jobReport):
+            handle = open(self.jobReport, 'w')
+            print handle.read()
+        else:
+            print "NOT FOUND: %s" % self.jobReport
+        print "======================End Dump Job Report======================"
+        return
         
     def getJobReport(self):
         """
