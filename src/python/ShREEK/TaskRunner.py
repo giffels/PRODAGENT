@@ -6,14 +6,15 @@ Execution class for running a task described by a ShREEKTask instance,
 and managing its execution.
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: TaskRunner.py,v 1.1 2006/04/10 17:38:42 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: TaskRunner.py,v 1.2 2006/05/30 20:26:46 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
 import time
 import signal
 import popen2
+import fcntl, select, sys
 
 from ShLogger.LogInterface import LogInterface
 from ShLogger.LogStates import LogStates
@@ -36,7 +37,11 @@ def findChildProcesses(pid):
     output = pop.fromchild.read().strip()
     result = []
     for item in output.split():
-        result.append(int(item))
+        try:
+            value = int(item)
+        except ValueError:
+            continue
+        result.append(value)
     return result
 
 
@@ -81,7 +86,7 @@ class TaskRunner(LogInterface):
     def __init__(self, shreekTask):
         LogInterface.__init__(self)
         self.task = shreekTask
-        self.logName = "task-stdout-stderr.log"
+        self.logName = "%s-stdout.log" % self.task.executable()
         self.process = -1
         
 
@@ -218,30 +223,72 @@ class TaskRunner(LogInterface):
                                   TaskName = self.task.taskname())
         os.chdir(self.task.directory())
 
-        args = ('>', self.logName , '2>&1') 
+        #args = ("  ",)
         
-        pid = os.fork()
+        #pid = os.fork()
         
-        if pid == 0:
-            # child -- never returns
-            self.log("TaskRunner: Spawned Child Process: %s" %os.getpid(),
-                     LogStates.Dbg_med)
-            os.execv(self.task.executable(), args)
+        #if pid == 0:
+        #    # child -- never returns
+        #    self.log("TaskRunner: Spawned Child Process: %s" %os.getpid(),
+        #             LogStates.Dbg_med)
+        #    os.execv(self.task.executable(), args)
 
-        else:
-            #parent
-            self.process = pid
-            while 1:
-                (waitresult, exitCode) = os.waitpid(pid, os.WNOHANG)
-                if pid == waitresult:
-                    break
-                
-                
-        if os.WIFEXITED(exitCode):
-            exitCode = os.WEXITSTATUS(exitCode)
+        #else:
+        #    #parent
+        #    self.process = pid
+        #    while 1:
+        #        (waitresult, exitCode) = os.waitpid(pid, os.WNOHANG)
+        #        if pid == waitresult:
+        #            break
+
+        #print exitCode
+        
+        #if os.WIFEXITED(exitCode):
+        #    exitCode = os.WEXITSTATUS(exitCode)
+        
+        command = "./%s | tee %s" % (self.task.executable(), self.logName)
+        
+        exitCode = getCommandOutput(command)
+        
+
         self.log("TaskRunner.run: Child Exited %s" % exitCode,
                  LogStates.Dbg_lo)
         os.chdir(currentDir)
         return exitCode
     
             
+def makeNonBlocking(fd):
+    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    try:
+        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NDELAY)
+    except AttributeError:
+	fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
+    
+
+def getCommandOutput(command):
+    child = popen2.Popen3(command, 1) # capture stdout and stderr from command
+    child.tochild.close()             # don't need to talk to child
+    outfile = child.fromchild 
+    outfd = outfile.fileno()
+    errfile = child.childerr
+    errfd = errfile.fileno()
+    makeNonBlocking(outfd)            # don't deadlock!
+    makeNonBlocking(errfd)
+    outdata = errdata = ''
+    outeof = erreof = 0
+    while 1:
+	ready = select.select([outfd,errfd],[],[]) # wait for input
+	if outfd in ready[0]:
+	    outchunk = outfile.read()
+	    if outchunk == '': outeof = 1
+	    sys.stdout.write(outchunk)
+	if errfd in ready[0]:
+	    errchunk = errfile.read()
+	    if errchunk == '': erreof = 1
+            sys.stderr.write(errchunk)
+	if outeof and erreof: break
+	select.select([],[],[],.1) # give a little time for buffers to fill
+    err = child.wait()
+    
+    return err
+
