@@ -7,11 +7,11 @@ General Exception class for JC modules
 """
 
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: ApMonException.py,v 1.1 2006/04/10 18:42:44 evansde Exp $"
+__revision__ = "$Id: ApMonException.py,v 1.1 2006/05/23 19:45:30 evansde Exp $"
 
 import exceptions
 import inspect
-import logging
+#import logging
 
 class ApMonException(exceptions.Exception):
     """
@@ -67,7 +67,7 @@ class ApMonException(exceptions.Exception):
             self['ClassName'] = \
               self['ClassInstance'].__class__.__name__
 
-        logging.error(str(self))
+        #logging.error(str(self))
 
     def __getitem__(self, key):
         """
