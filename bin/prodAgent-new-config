@@ -139,12 +139,12 @@ componentFields = {
     "JobCreator" : {
     "ComponentDir" : None,
     "CreatorName" : "testCreator",
-    "CreatorPluginConfig": "$PRODAGENT_ROOT/etc/CreatorPluginConfig.xml",
+    "CreatorPluginConfig": os.path.join(os.path.dirname(configFile), "CreatorPluginConfig.xml"),
     },
     "JobSubmitter" : {
     "ComponentDir" : None,
     "SubmitterName" : "noSubmit",
-    "SubmitterPluginConfig" : "$PRODAGENT_ROOT/etc/SubmitterPluginConfig.xml",
+    "SubmitterPluginConfig" : os.path.join(os.path.dirname(configFile),"SubmitterPluginConfig.xml"),
     },
 
     "DBSInterface" : {

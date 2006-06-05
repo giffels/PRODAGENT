@@ -105,16 +105,16 @@ submitterTemplate = {
     #//  Format: key = host name,
     #  //        value = None (maybe a priority value in future??)
     "SiteWhitelist" : {
-    "cmsosgce.fnal.gov/jobmanager-condor" : None,
-    "cithep90.ultralight.org/jobmanager-condor" : None,
-    "red.unl.edu/jobmanager-pbs" : None,
-    "cmsgrid02.hep.wisc.edu/jobmanager-condor" : None,
+    #"cmsosgce.fnal.gov/jobmanager-condor" : None,
+    #"cithep90.ultralight.org/jobmanager-condor" : None,
+    #"red.unl.edu/jobmanager-pbs" : None,
+    #"cmsgrid02.hep.wisc.edu/jobmanager-condor" : None,
     },
     #  //
     # // Submitter Blacklist
     #//  Format: key = host name, value = None
     "SiteBlacklist" : {
-    "twoflower.fnal.gov" : None,
+    #"twoflower.fnal.gov" : None,
     },
 
     #  //
