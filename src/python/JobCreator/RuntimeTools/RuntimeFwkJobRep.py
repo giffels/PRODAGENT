@@ -73,6 +73,7 @@ def processFrameworkJobReport():
     #  //
     # // Include site details in job report
     #//
+    report = state.getJobReport()
     siteName = "Unknown"
     hostName = socket.gethostname()
     state.loadSiteConfig()
@@ -86,7 +87,7 @@ def processFrameworkJobReport():
     #  //
     # // write out updated report
     #//
-    report = state.getJobReport()
+    
     report.status = reportStatus
     report.workflowSpecId = state.taskAttrs['WorkflowSpecID']
     report.jobSpecId = state.taskAttrs['JobSpecID']
