@@ -19,7 +19,7 @@ class SiteConfigError(StandardError):
     pass
 
 
-def loadSiteLocalConfig(self):
+def loadSiteLocalConfig():
     """
     _loadSiteLocalConfig_
 

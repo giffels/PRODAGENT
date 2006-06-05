@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: TaskState.py,v 1.4 2006/05/31 19:15:42 evansde Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: TaskState.py,v 1.5 2006/06/05 15:30:33 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -188,7 +188,7 @@ class TaskState:
         """
         print "======================Dump Job Report======================"
         if os.path.exists(self.jobReport):
-            handle = open(self.jobReport, 'w')
+            handle = open(self.jobReport, 'r')
             print handle.read()
         else:
             print "NOT FOUND: %s" % self.jobReport
