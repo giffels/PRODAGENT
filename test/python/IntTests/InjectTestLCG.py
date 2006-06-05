@@ -4,7 +4,7 @@ Generate jobs for the workflow provided
 
 """
 from MessageService.MessageService import MessageService
-import sys,os,getopt
+import sys,os,getopt,time
 
 
 usage="\n Usage: python InjectTest.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow file \n --run=<firstRun> \t\t first run number \n --nevts=<NumberofEvent> \t\t number of events per job \n --njobs=<NumberofEvent> \t\t number of jobs \n"
@@ -66,9 +66,9 @@ ms.publish("JobSubmitter:StartDebug","none")
 ms.publish("TrackingComponent:StartDebug","none")
 
 ## Set Creator
-ms.publish("JobCreator:SetCreator","lcg")
+ms.publish("JobCreator:SetCreator","LCGCreator")
 ## Set Submitter
-ms.publish("JobSubmitter:SetSubmitter","lcg")
+ms.publish("JobSubmitter:SetSubmitter","LCGSubmitter")
 ## Set Workflow and NewDataset
 ms.publish("RequestInjector:SetWorkflow", workflow)
 ms.publish("RequestInjector:NewDataset",'')
