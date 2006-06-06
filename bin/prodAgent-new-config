@@ -13,10 +13,11 @@ import os
 import socket
 import sys
 import getopt
-
+import time
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 
+_Timestamp = time.strftime("%d-%M-%Y")
 
 def usage():
     """print usage info"""
@@ -226,6 +227,13 @@ print "Writing Config File: %s" % configFile
 print "Using Components:"
 for item in componentList:
     print "  ",item
+
+if os.path.exists(configFile):
+    print "Config File Already Exists: %s" % configFile
+    backup = "%s.BAK.%s" % (configFile, _Timestamp)
+    os.system("/bin/cp %s %s" % (configFile, backup))
+    print "Config File backed up to:"
+    print " ", backup
 
 
 

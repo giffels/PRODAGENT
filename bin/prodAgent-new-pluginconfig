@@ -8,6 +8,9 @@ that have plugins.
 """
 
 import os
+import time
+
+_Timestamp = time.strftime("%d-%M-%Y")
 
 try:
     from ProdAgentCore.Configuration import loadProdAgentConfiguration
@@ -61,6 +64,8 @@ creatorTemplate = {
     "TargetHostName" : None,
     "TargetPathName" : None,
     "TransportMethod" : None,
+    "SetupCommand" : None,
+    
     },
     #  //
     # // Standard Settings for contacting Dashboard
@@ -86,7 +91,7 @@ creatorTemplate = {
     "SoftwareSetup": {
     'ScramCommand' : "scramv1",
     'ScramArch' : "slc3_ia32_gcc323",
-    'SetupCommand': ". /uscms/prod/sw/cms/setup/bashrc",
+    'SetupCommand': None,
     },
 
     }
@@ -95,11 +100,19 @@ creatorCfg = config.get("JobCreator", {})
 pluginFile = creatorCfg.get('CreatorPluginConfig', None)
 if pluginFile:
     pluginFile = os.path.expandvars(pluginFile)
+
+    if os.path.exists(pluginFile):
+        print "Plugin Config File Already Exists: %s" % configFile
+        backup = "%s.BAK.%s" % (pluginFile, _Timestamp)
+        os.system("/bin/cp %s %s" % (pluginFile, backup))
+        print "Plugin Config File backed up to:"
+        print " ", backup
+    
     creatorPluginConfig = PluginConfiguration()
     for key, value in creatorTemplate.items():
         block = creatorPluginConfig.newBlock(key)
         block.update(value)
-
+        
     creatorPluginConfig.writeToFile(pluginFile)
     
 
@@ -148,6 +161,13 @@ submitterCfg = config.get("JobSubmitter", {})
 pluginFile = submitterCfg.get('SubmitterPluginConfig', None)
 if pluginFile:
     pluginFile = os.path.expandvars(pluginFile)
+    if os.path.exists(pluginFile):
+        print "Plugin Config File Already Exists: %s" % configFile
+        backup = "%s.BAK.%s" % (pluginFile, _Timestamp)
+        os.system("/bin/cp %s %s" % (pluginFile, backup))
+        print "Plugin Config File backed up to:"
+        print " ", backup
+
     submitterPluginConfig = PluginConfiguration()
     for key, value in submitterTemplate.items():
         block = submitterPluginConfig.newBlock(key)
