@@ -18,13 +18,13 @@ import logging
 __connectionCache={}
 # Refresh connections every 4 hours
 __refreshPeriod=int(defaultConfig['refreshPeriod'])
-# Check the connection every 3 minutes.
-__checkConnectionPeriod=int(defaultConfig['checkConnectionPeriod'])
 # Try to connect a maximum of 5 times.
 __maxConnectionAttempts=int(defaultConfig['maxConnectionAttempts'])
 # Time to wait to reconnect
 __dbWaitingTime=int(defaultConfig['dbWaitingTime'])
-       
+# Set check connectivity period
+__checkConnectionPeriod = (__maxConnectionAttempts * __dbWaitingTime) / 2
+
 def connect(dbName,dbHost,dbUser,dbPasswd,socketLocation,portNr="",cache=True):
 
    """
