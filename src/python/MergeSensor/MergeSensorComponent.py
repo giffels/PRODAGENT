@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.8 2006/05/22 12:26:36 ckavka Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.9 2006/05/22 14:58:46 ckavka Exp $"
+__version__ = "$Revision: 1.9 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -27,6 +27,7 @@ from MessageService.MessageService import MessageService
 
 # Workflow and Job specification
 from MCPayloads.WorkflowSpec import WorkflowSpec
+from MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
 from CMSConfigTools.CfgInterface import CfgInterface
 
 # threads
@@ -192,7 +193,6 @@ class MergeSensorComponent:
 
         # create workflow specification for new dataset
         spec = WorkflowSpec()
-        spec.setWorkflowName("merge")
                                                                                 
         # critical region start
         self.cond.acquire()
@@ -207,13 +207,24 @@ class MergeSensorComponent:
         primary = properties["primaryDataset"]
         processed = properties["processedDataset"]
         tier = properties["realDataTier"]
-                                                                                
+        workflowName = properties["workflowName"]
+        category = properties["category"]
+        version = properties["version"]
+        timeStamp = properties["timeStamp"]
+                                                 
+        # set workflow values
+        spec.setWorkflowName(workflowName)
+        spec.setRequestCategory(category)
+        spec.setRequestTimestamp(timeStamp)
+        mergedLFNBase(spec)
+        unmergedLFNBase(spec)
+        
         # create a dummy task to pass information to DBS Component
         dummyTask = spec.payload
         dummyTask.name = "dummyTask"
         dummyTask.type = "CMSSW"
         dummyTask.application["Project"] = "CMSSW"
-        dummyTask.application["Version"] = "CMSSW_0_6_0"
+        dummyTask.application["Version"] = version
         dummyTask.application["Architecture"] = "slc3_ia32_gcc323"
         dummyTask.application["Executable"] = "cmsRun"
                                                                                 
@@ -302,9 +313,8 @@ class MergeSensorComponent:
             # define merge job
             outFile = self.datasets.addMergeJob(datasetId, selectedSet, fileBlockId)
 
-            # get real data tier name 
+            # get properties
             properties = self.datasets.getProperties(datasetId)
-            tier = properties["realDataTier"]
 
             # critical region end
             self.cond.release()
@@ -316,7 +326,7 @@ class MergeSensorComponent:
 
             # build workflow and job specifications
             jobSpecFile = self.buildWorkflowSpecFile(jobId, selectedSet,
-                                                      dataset, outFile, tier)
+                                                      dataset, outFile, properties)
             # publish CreateJob event
             self.publishCreateJob(jobSpecFile)
 
@@ -338,7 +348,7 @@ class MergeSensorComponent:
 
         return
 
-    def buildWorkflowSpecFile(self, jobId, fileList, dataset, outputFile, tier):
+    def buildWorkflowSpecFile(self, jobId, fileList, dataset, outputFile, properties):
         """
         _buildWorkflowSpecFile_
         
@@ -353,24 +363,36 @@ class MergeSensorComponent:
           fileList -- the list of files to be merged
           dataset -- the name of the dataset
           outputFile -- the name of the merged file
-          tier -- the real data tier name
+          properties -- dataset properties
                     
         Return:
             
           none
           
         """
-        
+
+        # get dataset properties
+        workflowName = properties['workflowName']
+        tier = properties['realDataTier']
+        category = properties["category"]
+        version = properties["version"]
+        timeStamp = properties["timeStamp"]
+        lfnBase = properties["mergedLFNBase"]
+                
         # create a new workflow
         spec = WorkflowSpec()
-        spec.setWorkflowName("job-%s" % jobId)
-
+        
+        # set its properties
+        spec.setWorkflowName(workflowName)
+        spec.setRequestCategory(category)
+        spec.setRequestTimestamp(timeStamp)
+        
         # describe it as a cmsRun job
         cmsRun = spec.payload
         cmsRun.name = "cmsRun1"
         cmsRun.type = "CMSSW"
         cmsRun.application["Project"] = "CMSSW"
-        cmsRun.application["Version"] = "CMSSW_0_6_0"
+        cmsRun.application["Version"] = version
         cmsRun.application["Architecture"] = "slc3_ia32_gcc323"
         cmsRun.application["Executable"] = "cmsRun"
  
@@ -390,9 +412,7 @@ class MergeSensorComponent:
         # set output file name
         baseFileName = "%s-%s-%s.root" % (dataset[0], outputFile, tier)
         outModule.setFileName(baseFileName)
-        outModule.setLogicalFileName("/store/preprod/" + \
-                       time.strftime("%Y/%m/%d/", time.localtime()) + \
-                       dataset[0] + "/merged/0000/" + baseFileName)
+        outModule.setLogicalFileName(os.path.join(lfnBase, baseFileName))
 
         # set output catalog
         outModule.setCatalog("%s-merge.xml" % jobId)
@@ -407,6 +427,10 @@ class MergeSensorComponent:
 
         # get configuration from template
         cmsRun.configuration = str(cfg)
+
+        # generate merge and unmerged specifications
+        mergedLFNBase(spec)
+        unmergedLFNBase(spec)
 
         #  //
         # // Clone the workflow into a job spec
