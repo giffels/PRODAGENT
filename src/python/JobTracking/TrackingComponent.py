@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.11 2006/05/04 08:52:47 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.12 2006/05/27 01:25:59 afanfani Exp $"
 
 import socket
 import time
@@ -110,7 +110,7 @@ class TrackingComponent:
         self.verbose=(self.args["verbose"]==1)
 
         logging.info("JobTracking Component Started...")
-        logging.info("BOSSDIR = %s"%os.environ["BOSSDIR"])         
+        logging.info("BOSS_ROOT = %s"%os.environ["BOSS_ROOT"])         
         logging.info("BOSS_VERSION = %s\n"%self.BossVersion)
     def __call__(self, event, payload):
         """
@@ -157,7 +157,8 @@ class TrackingComponent:
         infile,outfile=os.popen4("boss RTupdate -jobid all -c " + self.bossCfgDir)
         infile,outfile=os.popen4("boss q -statusOnly -all -c " + self.bossCfgDir)
         lines=outfile.readlines()
-        
+        logging.debug("boss q -statusOnly -all -c " + self.bossCfgDir)
+        logging.debug(lines)
 # fill job lists
         for j in lines:
             j=j.strip()
@@ -300,6 +301,8 @@ class TrackingComponent:
                         fwjr=FwkJobReport()
                         fwjr.jobSpecId=self.bossJobSpecId[self.BossVersion](jobId[0])
                         self.reportfilename=self.bossReportFileName[self.BossVersion](jobId)
+                        fwjr.exitCode=-1
+                        fwjr.status="Failed"
                         fwjr.write(self.reportfilename)
 
             else:
@@ -493,7 +496,9 @@ class TrackingComponent:
             resub=outp.split("ID")[1].strip()
         except:
             logging.debug(outp)
-        infile,outfile=os.popen4("boss getOutput -outdir "+self.directory+ " -taskid %s"%(taskid) + " -c " + self.bossCfgDir)
+
+        getoutpath="%s/BossJob_%s_%s/Submission_%s/" %(self.directory, taskid,chainid,resub)
+        infile,outfile=os.popen4("boss getOutput -outdir "+getoutpath+ " -taskid %s -jobid %s"%(taskid,chainid) + " -c " + self.bossCfgDir)
         outp=outfile.read()
         return outp
     
