@@ -7,7 +7,7 @@ Module defining the transport method manager
 """
 
 __version__ = "$Version$"
-__revision__ = "$Id: TransportFactory.py,v 1.1 2006/04/10 17:10:00 evansde Exp $"
+__revision__ = "$Id: TransportFactory.py,v 1.2 2006/06/07 15:56:33 evansde Exp $"
 
 
 
@@ -23,6 +23,7 @@ from MB.transport.DCAPTransporter import DCAPTransporter
 from MB.transport.GSIFTPTransporter import GSIFTPTransporter
 from MB.transport.SRMTransporter import SRMTransporter
 from MB.transport.LCGTransporter import LCGTransporter
+from MB.transport.RFCPTransporter import RFCPTransporter
 #  //
 # // Accessor to return factory instance
 #//
@@ -69,6 +70,8 @@ class TransportFactory(dict):
                                       SRMTransporter())
         self.registerTransportMethod('lcg',
                                       LCGTransporter())
+        self.registerTransportMethod('rfcp',
+                                      RFCPTransporter())
 
     def __setitem__(self, key, value):
         self.registerTransportMethod(key, value)
