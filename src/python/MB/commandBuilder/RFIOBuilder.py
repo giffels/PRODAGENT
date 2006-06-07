@@ -25,10 +25,7 @@ class RFIOBuilder(CommandBuilder):
         rfcpBinary = mbInstance.get('RfcpBinary', 'rfcp')
         rfcpOptions = mbInstance.get('RfcpOptions', '')
         command = "%s %s " % (rfcpBinary, rfcpOptions)
-        command += " %s:%s " % (
-            mbInstance['SourceHostName'],
-            mbInstance['SourceAbsName'],
-            )
+        command += mbInstance['SourceAbsName']
         command += " %s " % mbInstance['AbsName']
         return command
 
@@ -44,9 +41,7 @@ class RFIOBuilder(CommandBuilder):
         rfcpOptions = mbInstance.get('RfcpOptions', '')
         command = "%s %s " % (rfcpBinary, rfcpOptions)
         command += " %s " % mbInstance['AbsName']
-        command += " %s:%s " % (
-            mbInstance['TargetHostName'],
-            mbInstance['TargetAbsName'],
+        command += " %s " % mbInstance['TargetAbsName']
             )
         return command
 
@@ -61,14 +56,9 @@ class RFIOBuilder(CommandBuilder):
         rfcpBinary = mbInstance.get('RfcpBinary', 'rfcp')
         rfcpOptions = mbInstance.get('RfcpOptions', '')
         command = "%s %s " % (rfcpBinary, rfcpOptions)
-        command += " %s:%s " % (
-            mbInstance['SourceHostName'],
-            mbInstance['SourceAbsName'],
-            )
-        command += " %s:%s " % (
-            mbInstance['TargetHostName'],
-            mbInstance['TargetAbsName'],
-            )
+        command += " %s " % mbInstance['SourceAbsName']
+        command += " %s " % mbInstance['TargetAbsName']
+            
         return command
 
 
@@ -82,10 +72,7 @@ class RFIOBuilder(CommandBuilder):
         rfsatBin = mbInstance.get("RfstatBinary", "rfstat")
         rfstatOpts = mbInstance.get("RfstatOptions", "")
         command = "%s %s " % (rfsatBin, rfstatOpts)
-        command += "%s:%s" % (
-            mbInstance["SourceHostName"],
-            mbInstance["SourceAbsName"],
-            )
+        command += "%s" % mbInstance["SourceAbsName"]
         return command
 
 
@@ -99,10 +86,8 @@ class RFIOBuilder(CommandBuilder):
         rfsatBin = mbInstance.get("RfstatBinary", "rfstat")
         rfstatOpts = mbInstance.get("RfstatOptions", "")
         command = "%s %s " % (rfsatBin, rfstatOpts)
-        command += "%s:%s" % (
-            mbInstance["TargetHostName"],
-            mbInstance["TargetAbsName"],
-            )
+        command += "%s" % mbInstance["TargetAbsName"]
+            
         return command
 
 
@@ -117,8 +102,7 @@ class RFIOBuilder(CommandBuilder):
         rfsatBin = mbInstance.get("RfstatBinary", "rfstat")
         rfstatOpts = mbInstance.get("RfstatOptions", "")
         command = "%s %s " % (rfsatBin, rfstatOpts)
-        command += "%s:%s" % (
-            mbInstance["HostName"],
+        command += "%s" % (
             mbInstance["AbsName"],
             )
         return command
@@ -133,8 +117,7 @@ class RFIOBuilder(CommandBuilder):
         rfmkdirBin = mbInstance.get("Rfmkdir", "rfmkdir")
         rfmkdirOpts = mbInstance.get("RfmkdirOptions", "")
         command = "%s %s " % (rfmkdirBin, rfmkdirOpts)
-        command += "%s:%s " % (
-            mbInstance['TargetHostName'],
+        command += "%s " % (
             mbInstance['TargetAbsName'],
             )
         return command
@@ -160,9 +143,8 @@ class RFIOBuilder(CommandBuilder):
 
         Create a URL for the target for rfio access
         """
-        return "rfio:%s:%s" % (
-            mbInstance['TargetHostName'],
-            mbInstance['TargetAbsName']
+        return "rfio:%s" % (
+            mbInstance['TargetAbsName'],
             )
     
 
@@ -172,9 +154,8 @@ class RFIOBuilder(CommandBuilder):
 
         Create a URL for the source for rfio access
         """
-        return "rfio:%s:%s" % (
-            mbInstance['SourceHostName'],
-            mbInstance['SourceAbsName']
+        return "rfio:%s" % (
+            mbInstance['SourceAbsName'],
             )
 
     
@@ -185,9 +166,8 @@ class RFIOBuilder(CommandBuilder):
         Create a URL for the current values for rfio access
 
         """
-        return "rfio:%s:%s" % (
-            mbInstance['HostName'],
-            mbInstance['AbsName']
+        return "rfio:%s" % (
+            mbInstance['AbsName'],
             )
 
 
