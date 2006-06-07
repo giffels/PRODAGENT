@@ -7,7 +7,7 @@ Module defining the transport method manager
 """
 
 __version__ = "$Version$"
-__revision__ = "$Id: TransportFactory.py,v 1.3 2006/03/08 13:13:03 afanfani Exp $"
+__revision__ = "$Id: TransportFactory.py,v 1.1 2006/04/10 17:10:00 evansde Exp $"
 
 
 
@@ -59,7 +59,7 @@ class TransportFactory(dict):
                                      RCPTransporter())
         self.registerTransportMethod('scp',
                                      SCPTransporter())
-        self.registerTransportMethod('rfio:',
+        self.registerTransportMethod('rfio',
                                       RFIOTransporter())  
         self.registerTransportMethod('dccp',
                                       DCAPTransporter())
