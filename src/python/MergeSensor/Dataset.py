@@ -11,8 +11,8 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id: Dataset.py,v 1.3 2006/05/10 11:04:08 ckavka Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: Dataset.py,v 1.4 2006/05/16 14:12:35 ckavka Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError
@@ -78,7 +78,12 @@ class Dataset:
                                 ('file6.root',5607),
                                 ('file7.root',75349)],
        'remaining_files'[44] : [('file4.root',1024)},
-                                ('file8.root',506)]
+                                ('file8.root',506)],
+       'version' : 'CMSSW_0_6_1',
+       'workflowName' : 'Test060pre5Mu10GeV',
+       'mergedLFNBase' : '/store/PreProd/2006/6/6/Test060pre5Mu10GeV',
+       'category' : 'PreProd',
+       'timeStamp' : 1149604662
       }
       
     where the fields have the following meaning:
@@ -169,6 +174,23 @@ class Dataset:
         name = "/%s/%s/%s" % (primaryDataset, dataTier, \
                               processedDataset)
         
+        # get Merged LFN base
+        try:
+            mergedLFNBase = wfile.parameters['UnmergedLFNBase']
+        except KeyError:
+            mergedLFNBase = ''
+            
+        # get workflow name, category and time stamp
+        workflowName = wfile.workflowName()
+        category = wfile.requestCategory()
+        timeStamp = wfile.requestTimestamp()
+        
+        # get application version
+        try:
+            version = outputDataset['ApplicationVersion']
+        except:
+            version = 'CMSSW_0_6_1'
+        
         # initialize it
         date = time.asctime(time.localtime(time.time()))
         self.data = {'id' : datasetId,
@@ -177,11 +199,16 @@ class Dataset:
                      'dataTier' : dataTier,
                      'realDataTier' : dataTierName,
                      'processedDataset' : processedDataset,
+                     'version' : version,
+                     'workflowName' : workflowName,
+                     'mergedLFNBase' : mergedLFNBase,
+                     'category' : category,
+                     'timeStamp' : timeStamp,
                      'status' : 'open',
                      'started' : date,
                      'last_updated' : date,
                      'files' : [],
-                     'remaining_files' : {},
+                     'remaining_files' : {}
                     }
 
         # initialize sequence number for output files
