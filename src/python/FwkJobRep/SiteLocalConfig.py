@@ -12,6 +12,8 @@ import os
 from IMProv.IMProvLoader import loadIMProvFile
 from IMProv.IMProvQuery import IMProvQuery
 
+from FwkJobRep.TrivialFileCatalog import tfcFilename, readTFC
+
 class SiteConfigError(StandardError):
     """
     Exception class placeholder
@@ -30,7 +32,11 @@ def loadSiteLocalConfig():
     """
     defaultPath = "$CMS_PATH/SITECONF/local/JobConfig/site-local-config.xml"
     actualPath = os.path.expandvars(defaultPath)
-
+    if os.environ.get("CMS_PATH", None) == None:
+        msg = "Unable to find site local config file:\n"
+        msg += "CMS_PATH variable is not defined."
+        raise SiteConfigError, msg
+    
     if not os.path.exists(actualPath):
         msg = "Unable to find site local config file:\n"
         msg += actualPath
@@ -54,6 +60,27 @@ class SiteLocalConfig:
         self.calibData = {}
         self.read()
 
+
+    def trivialFileCatalog(self):
+        """
+        _trivialFileCatalog_
+
+        Return an instance of FwkJobRep.TrivialFileCatalog
+        if there is a catalog specified in eventData
+
+        """
+        tfcUrl = self.eventData.get('catalog', None)
+        if tfcUrl == None:
+            return None
+        try:
+            tfcFile = tfcFilename(tfcUrl)
+            tfcInstance = readTFC(tfcFile)
+        except StandardError, ex:
+            msg = "Unable to load TrivialFileCatalog:\n"
+            msg += "URL = %s\n" % tfcUrl
+            raise SiteConfigError, msg
+        return tfcInstance
+            
 
     def read(self):
         """
@@ -92,7 +119,7 @@ class SiteLocalConfig:
             raise SiteConfigError, msg
 
         self.eventData['catalog'] = str(catNodes[0].attrs.get("url"))
-
+        
 
         #  //
         # // calib data
