@@ -56,8 +56,8 @@ class StageOutFailure(Exception):
         for key, value in data.items():
             print key, value
         print "====================================="
+        self.data = data
         
-
 
 class StageOutSuccess(Exception):
     """
@@ -69,7 +69,7 @@ class StageOutSuccess(Exception):
     def __init__(self, data):
         Exception.__init__(self)
         print "File Staged Out: %s" % data['PFN']
-
+        self.data = data
 
 class StageOutManager:
     """
@@ -152,17 +152,17 @@ class StageOutManager:
                     # // Try local stage out
                     #//
                     self.localTransferFile(fileInfo, localMatch)
-                except StageOutSuccess, successInfo:
+                except StageOutSuccess:
                     #  //
                     # // Local suceeded for this file
                     #//  log it and we are done
-                    self.succeeded.append(sucessInfo['LFN'])
+                    self.succeeded.append(fileInfo['LFN'])
                     continue
-                except StageOutFailed, failedInfo:
+                except StageOutFailure:
                     #  //
                     # // No continue here: carry on to templates
                     #//  and record the failure
-                    self.failed.append(failedInfo['LFN'])
+                    self.failed.append(fileInfo['LFN'])
             else:
                 #  //
                 # // No stage out locally counts as a potential 
@@ -170,7 +170,7 @@ class StageOutManager:
                 #  //If a template stage out works, it will be removed
                 # // from the failure list
                 #//
-                self.failed.append(failedInfo['LFN'])
+                self.failed.append(fileInfo['LFN'])
                 
             try:
                 #  //
@@ -179,20 +179,20 @@ class StageOutManager:
                 for template in self.templates:
                     try:
                         self.transferFile(fileInfo, template)
-                    except StageOutFailure, failedInfo:
+                    except StageOutFailure:
                         #  //
                         # // failed with this template, record
                         #//  failure and advance to next template
-                        self.failed.append(failedInfo['LFN'])
+                        self.failed.append(fileInfo['LFN'])
                         continue
-            except StageOutSuccess, sucessInfo:
+            except StageOutSuccess:
                 #  //
                 # // Stage out succeeded for some template, remove
                 #//  lfn from failures and contiue to next file
-                lfn = successInfo['LFN'] 
+                lfn = fileInfo['LFN'] 
                 while lfn in self.failed:
                     self.failed.remove(lfn)
-                self.succeeded.append(sucessInfo['LFN'])
+                self.succeeded.append(fileInfo['LFN'])
                 continue
             
             
@@ -240,7 +240,7 @@ class StageOutManager:
             fmb[key] = value
         
         fmb['AbsName'] = fileInfo['PFN']
-        fmb['TargetBaseName'] = fmb['BaseName']
+        fmb['TargetBaseName'] = fileInfo['LFN']
         
         transporter = _TransportFactory[fmb['TransportMethod']]
         try:
@@ -263,10 +263,10 @@ class StageOutManager:
         
         """
         template['AbsName'] = fileInfo['PFN']
-        transporter = _TransportFactory[fmb['TransportMethod']]
+        transporter = _TransportFactory[template['TransportMethod']]
         try:
-            transporter.transportOut(fmb)
-            targetURL = transportTargetURL(fmb)
+            transporter.transportOut(template)
+            targetURL = transportTargetURL(template)
             fileInfo['PFN'] = targetURL
         except MBException, ex:
             msg = "Local Transfer failed:\n"
@@ -336,7 +336,11 @@ def stageOut():
         msg += "%s\n" % state.runresdb 
         msg += "and extracting details for task in: %s\n" % os.getcwd()
         print msg
-        sys.exit(60311)
+        exitCode = 60311
+        f = open("exit.status", 'w')
+        f.write(str(exitCode))
+        f.close()
+        sys.exit(exitCode)
 
     #  //
     # // find inputs by locating the task for which we are staging out
@@ -381,4 +385,8 @@ def loadTemplates(*templates):
 if __name__ == '__main__':
     _TransportFactory = getTransportFactory()
     exitCode = stageOut()
+    f = open("exit.status", 'w')
+    f.write(str(exitCode))
+    f.close()
     sys.exit(exitCode)
+    
