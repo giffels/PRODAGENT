@@ -12,7 +12,7 @@ import os
 from IMProv.IMProvLoader import loadIMProvFile
 from IMProv.IMProvQuery import IMProvQuery
 
-from FwkJobRep.TrivialFileCatalog import tfcFilename, readTFC
+from FwkJobRep.TrivialFileCatalog import tfcFilename, tfcProtocol, readTFC
 
 class SiteConfigError(StandardError):
     """
@@ -58,6 +58,7 @@ class SiteLocalConfig:
         self.siteName = None
         self.eventData = {}
         self.calibData = {}
+        self.localStageOut = {}
         self.read()
 
 
@@ -69,12 +70,19 @@ class SiteLocalConfig:
         if there is a catalog specified in eventData
 
         """
-        tfcUrl = self.eventData.get('catalog', None)
+        tfcUrl = self.localStageOut.get('catalog', None)
+        if tfcUrl == None:
+            #  //
+            # // This should be removed when local-stage-out is 
+            #//  implemented as standard
+            tfcUrl = self.eventData.get('catalog', None)
         if tfcUrl == None:
             return None
         try:
             tfcFile = tfcFilename(tfcUrl)
+            tfcProto = tfcProtocol(tfcUrl)
             tfcInstance = readTFC(tfcFile)
+            tfcInstance.preferredProtocol = tfcProto
         except StandardError, ex:
             msg = "Unable to load TrivialFileCatalog:\n"
             msg += "URL = %s\n" % tfcUrl
@@ -108,7 +116,7 @@ class SiteLocalConfig:
         self.siteName = str(nameNodes[0].attrs.get("name"))
 
         #  //
-        # // event data (Trivial Catalog location)
+        # // event data (Read Trivial Catalog location)
         #//
         
         catalogQ = IMProvQuery("/site-local-config/site/event-data/catalog")
@@ -119,8 +127,25 @@ class SiteLocalConfig:
             raise SiteConfigError, msg
 
         self.eventData['catalog'] = str(catNodes[0].attrs.get("url"))
-        
 
+        #  //
+        # // local stage out information
+        #//
+        stageOutQ = IMProvQuery(
+            "/site-local-config/site/local-stage-out/catalog"
+            )
+        stageOutNodes = stageOutQ(node)
+        if len(stageOutNodes) == 0:
+            msg = "Unable to find any local-stage-out information in:\n"
+            msg += self.siteConfigFile
+            print msg
+            # TODO: This should be an exception eventually
+            # At present, fallback on the event-data catalog
+            # raise SiteConfigError, msg
+        self.localStageOut['catalog'] = str(stageOutNodes[0].attrs.get("url"))
+        
+            
+            
         #  //
         # // calib data
         #//

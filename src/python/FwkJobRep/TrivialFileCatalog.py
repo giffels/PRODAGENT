@@ -44,6 +44,7 @@ class TrivialFileCatalog(list):
 
     def __init__(self):
         list.__init__(self)
+        self.preferredProtocol = None # attribute for preferred protocol
         
 
     def addMapping(self, protocol, match, result):
