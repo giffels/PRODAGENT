@@ -22,9 +22,11 @@ a list of workflow nodes to perform StageOut for.
 
 import os
 import sys
+import urlparse
 
 from FwkJobRep.TaskState import TaskState, getTaskState
 from FwkJobRep.MergeReports import updateReport
+
 
 from IMProv.IMProvLoader import loadIMProvFile
 from IMProv.IMProvQuery  import IMProvQuery
@@ -92,7 +94,30 @@ class StageOutManager:
         self.toTransfer = []
         self.failed = []
         self.succeeded = []
+
+
+        #  //
+        # // Try an get the TFC for the site
+        #//
+        self.tfc = None
+        siteCfg = self.state.getSiteConfig()
         
+            
+        if siteCfg != None:
+            try:
+                self.tfc = siteCfg.trivialFileCatalog()
+                msg = "Trivial File Catalog has been loaded:\n"
+                msg += str(self.tfc)
+                print msg
+            except StandardError, ex:
+                msg = "Unable to load Trivial File Catalog:\n"
+                msg += "Local stage out will not be attempted\n"
+                msg += str(ex)
+                print msg
+                self.tfc = None
+            
+            
+                
 
     def __call__(self):
         """
@@ -115,26 +140,69 @@ class StageOutManager:
                 msg += " %s\n" % item
             print msg
             return
-
+        
         for fileInfo in self.toTransfer:
+            localMatch = self.searchTFC(fileInfo['LFN'])
+            if localMatch != None:
+                #  //
+                # // We have a local stage out match
+                #//
+                try:
+                    #  //
+                    # // Try local stage out
+                    #//
+                    self.localTransferFile(fileInfo, localMatch)
+                except StageOutSuccess, successInfo:
+                    #  //
+                    # // Local suceeded for this file
+                    #//  log it and we are done
+                    self.succeeded.append(sucessInfo['LFN'])
+                    continue
+                except StageOutFailed, failedInfo:
+                    #  //
+                    # // No continue here: carry on to templates
+                    #//  and record the failure
+                    self.failed.append(failedInfo['LFN'])
+            else:
+                #  //
+                # // No stage out locally counts as a potential 
+                #//  failure, so record it.
+                #  //If a template stage out works, it will be removed
+                # // from the failure list
+                #//
+                self.failed.append(failedInfo['LFN'])
+                
             try:
+                #  //
+                # // Still here, means using the reserve templates
+                #//
                 for template in self.templates:
                     try:
                         self.transferFile(fileInfo, template)
                     except StageOutFailure, failedInfo:
-                        self.failed.append(failedInfo)
+                        #  //
+                        # // failed with this template, record
+                        #//  failure and advance to next template
+                        self.failed.append(failedInfo['LFN'])
                         continue
             except StageOutSuccess, sucessInfo:
-                self.succeeded.append(sucessInfo)
+                #  //
+                # // Stage out succeeded for some template, remove
+                #//  lfn from failures and contiue to next file
+                lfn = successInfo['LFN'] 
+                while lfn in self.failed:
+                    self.failed.remove(lfn)
+                self.succeeded.append(sucessInfo['LFN'])
                 continue
-
-        #for item in self.succeeded:
-        #    print "Success:", item
-
+            
+            
         exitCode = 0
+        #  //
+        # // Anything in failures means that the stage out overall
+        #//  failed.
         for item in self.failed:
             #  //
-            # // Failures imply that input Node is failed 
+            # // Failures imply that input task is failed 
             #//
             self.inputState._JobReport.status = "Failed"
             self.inputState._JobReport.exitCode = 60311
@@ -186,9 +254,69 @@ class StageOutManager:
             raise StageOutFailure, fileInfo
 
         raise StageOutSuccess, fileInfo
-    
+
+    def localTransferFile(self, fileInfo, template):
+        """
+        _localTransferFile_
+
+        TFC matched LFN transfer
         
+        """
+        template['AbsName'] = fileInfo['PFN']
+        transporter = _TransportFactory[fmb['TransportMethod']]
+        try:
+            transporter.transportOut(fmb)
+            targetURL = transportTargetURL(fmb)
+            fileInfo['PFN'] = targetURL
+        except MBException, ex:
+            msg = "Local Transfer failed:\n"
+            msg += str(ex)
+            fileInfo['Failure'] = msg
+            raise StageOutFailure, fileInfo
+
+        raise StageOutSuccess, fileInfo
         
+
+    def searchTFC(self, lfn):
+        """
+        _searchTFC_
+
+        Search the Trivial File Catalog for the lfn provided
+
+        """
+        if self.tfc == None:
+            msg = "Trivial File Catalog not available to match LFN:\n"
+            msg += lfn
+            print msg
+            return None
+        if self.tfc.preferredProtocol == None:
+            msg = "Trivial File Catalog does not have a preferred protocol\n"
+            msg += "which prevents local stage out for:\n"
+            msg += lfn
+            print msg
+            return None
+        if self.tfc.preferredProtocol not in urlparse.uses_netloc:
+            urlparse.uses_netloc.append(self.tfc.preferredProtocol)
+
+        pfn = self.tfc.matchLFN(self.tfc.preferredProtocol, lfn)
+        if pfn == None:
+            msg = "Unable to map LFN to PFN:\n"
+            msg += "LFN: %s\n" % lfn
+            return
+
+        msg = "LFN to PFN match made:\n"
+        msg += "LFN: %s\nPFN: %s\n" % (lfn, pfn)
+        print msg
+
+        template = FileMetaBroker()
+        template['TransportMethod'] = self.tfc.preferredProtocol
+
+        splitURL = urlparse.urlsplit(pfn)
+        host = splitURL[1].strip()
+        if len(host) > 0:
+            template['TargetHostName'] = host
+        template['TargetAbsName'] = splitURL[2]
+        return template
 
 def stageOut():
     """
@@ -200,8 +328,16 @@ def stageOut():
     """
     state = TaskState(os.getcwd())
     state.loadRunResDB()
-    config = state._RunResDB.toDictionary()[state.taskAttrs['Name']]
-    
+    try:
+        config = state._RunResDB.toDictionary()[state.taskAttrs['Name']]
+    except StandardError, ex:
+        msg = "Unable to load details from task directory:\n"
+        msg += "Error reading RunResDB XML file:\n"
+        msg += "%s\n" % state.runresdb 
+        msg += "and extracting details for task in: %s\n" % os.getcwd()
+        print msg
+        sys.exit(60311)
+
     #  //
     # // find inputs by locating the task for which we are staging out
     #//  and loading its TaskState
