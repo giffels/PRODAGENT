@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.1 2006/04/10 17:38:43 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.2 2006/06/02 18:06:15 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -19,6 +19,13 @@ from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
 import os
 import time
+
+_GridJobIDPriority = [
+    'EDG_WL_JOBID',
+    'GLITE_WMS_JOBID',
+    'GLOBUS_GRAM_JOB_CONTACT',
+    ]
+
 
 class DashboardMonitor(ShREEKMonitor):
     """
@@ -70,6 +77,16 @@ class DashboardMonitor(ShREEKMonitor):
         """
         if self.dashboardInfo == None:
             return
+
+       
+        gridJobId = None
+        for envVar in _GridJobIDPriority:
+            val = os.environ.get(envVar, None)
+            if val != None:
+                gridJobId = val
+                break
+        
+        self.dashboardInfo['GridJobID'] = gridJobId
         self.dashboardInfo['JobStarted'] = time.time()
         self.dashboardInfo.publish(5)
 
@@ -93,11 +110,20 @@ class DashboardMonitor(ShREEKMonitor):
         """
         if self.dashboardInfo == None:
             return
-        
-        
+
+        exitFile = os.path.join(task.directory(), "exit.status")
+        exitValue = exitCode
+        if os.path.exists(exitFile):
+            content = file(exitFile).read().strip()
+            try:
+                exitValue = int(content)
+            except ValueError:
+                exitValue = exitCode
+                
+                
         self.dashboardInfo['ExeEnd'] = task.taskname()
         self.dashboardInfo['ExeFinishTime'] = time.time()
-        self.dashboardInfo['ExeExitCode'] = exitCode
+        self.dashboardInfo['ExeExitCode'] = exitValue
         self.dashboardInfo.publish(5)
         return
 
