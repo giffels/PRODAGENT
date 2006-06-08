@@ -11,8 +11,8 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id: Dataset.py,v 1.4 2006/05/16 14:12:35 ckavka Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: Dataset.py,v 1.5 2006/06/07 12:58:43 ckavka Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError
@@ -176,7 +176,7 @@ class Dataset:
         
         # get Merged LFN base
         try:
-            mergedLFNBase = wfile.parameters['UnmergedLFNBase']
+            mergedLFNBase = wfile.parameters['MergedLFNBase']
         except KeyError:
             mergedLFNBase = ''
             
