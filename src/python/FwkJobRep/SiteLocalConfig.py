@@ -83,6 +83,11 @@ class SiteLocalConfig:
             tfcProto = tfcProtocol(tfcUrl)
             tfcInstance = readTFC(tfcFile)
             tfcInstance.preferredProtocol = tfcProto
+            msg = "TrivialFileCatalog loaded from file:\n"
+            msg += tfcFile
+            msg += "\nFound Protocol: %s\n" % tfcProto
+            msg += "Contents:\n%s\n" % str(tfcInstance)
+            print msg
         except StandardError, ex:
             msg = "Unable to load TrivialFileCatalog:\n"
             msg += "URL = %s\n" % tfcUrl
@@ -136,14 +141,21 @@ class SiteLocalConfig:
             )
         stageOutNodes = stageOutQ(node)
         if len(stageOutNodes) == 0:
-            msg = "Unable to find any local-stage-out information in:\n"
+            msg = "Warning:Unable to find any local-stage-out"
+            msg += "information in:\n"
             msg += self.siteConfigFile
+            msg += "\nFalling back to event-data catalog:\n"
+            msg += self.eventData['catalog']
             print msg
             # TODO: This should be an exception eventually
             # At present, fallback on the event-data catalog
             # raise SiteConfigError, msg
-        self.localStageOut['catalog'] = str(stageOutNodes[0].attrs.get("url"))
+        else:
+            localSOCatalog = stageOutNodes[0].attrs.get("url")
+            self.localStageOut['catalog'] = str(localSOCatalog)
+            
         
+    
             
             
         #  //
