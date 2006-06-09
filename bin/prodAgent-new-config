@@ -88,7 +88,6 @@ coreFields = {
     'socketFileLocation':'/var/lib/mysql/mysql.sock',
     'portNr':'',
     'refreshPeriod' : 4*3600 ,
-    'checkConnectionPeriod' : 3*60,
     'maxConnectionAttempts' : 5,
     'dbWaitingTime' : 10 ,
     'schemaLocation': "$PRODAGENT_ROOT/share/ProdAgentDB.sql"
