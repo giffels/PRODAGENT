@@ -110,7 +110,7 @@ class RCFPBuilder(CommandBuilder):
         create a directory based on the Target values of the MetaBroker
         using local filesystem tools
         """
-        command = "mkdir -p %s" % mbInstance['TargetAbsName']
+        command = "rfmkdir  %s" % mbInstance['TargetAbsName']
         return command
 
     

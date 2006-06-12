@@ -244,7 +244,15 @@ class SRMBuilder(CommandBuilder):
             mbInstance['HostName'], srmcpPort,
             mbInstance['AbsName']
             )
-    
+
+    def createTargetDir(self, mbInstance):
+        """
+        _createTargetDir_
+
+        SRM makes its own dirs automatically
+
+        """
+        return "echo \"SRM Makes its own Directories\""
 
 
 factory = getCommandFactory()

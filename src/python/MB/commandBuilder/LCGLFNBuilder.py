@@ -167,7 +167,15 @@ class LCGLFNBuilder(CommandBuilder):
         """
         return "lfn:%s" % mbInstance['SourceBaseName']
     
-        
+    def createTargetDir(self, mbInstance):
+        """
+        _createTargetDir_
+
+        Null operation, since lcg-cp makes dirs for you
+
+        """
+        return "echo \"LCG-CP makes its own directories\" "
+    
 
     
     def currentURL(self, mbInstance):
