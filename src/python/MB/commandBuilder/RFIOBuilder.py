@@ -42,7 +42,7 @@ class RFIOBuilder(CommandBuilder):
         command = "%s %s " % (rfcpBinary, rfcpOptions)
         command += " %s " % mbInstance['AbsName']
         command += " %s " % mbInstance['TargetAbsName']
-            )
+        
         return command
 
 
