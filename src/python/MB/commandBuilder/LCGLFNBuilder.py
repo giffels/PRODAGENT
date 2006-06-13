@@ -5,7 +5,7 @@ _LCGLFNBuilder_
 LCG based command building for transfer using LFN as opposed to SFN
 
 """
-
+import os
 from MB.commandBuilder.CommandBuilder import CommandBuilder
 from MB.commandBuilder.CommandFactory import getCommandFactory
 from MB.MBException import MBException
@@ -80,14 +80,14 @@ class LCGLFNBuilder(CommandBuilder):
         command = lcgcpBinary
         command += " %s " % lcgcpOptions
         command += " --vo %s " % args['VO']
-        subdir=mbInstance['TargetBaseName'].split("-")[0]
-        destFile="gsiftp://%s%s/%s/%s"%(mbInstance['TargetHostName'], mbInstance['TargetPathName'],subdir,mbInstance['TargetBaseName'])
+        #subdir=mbInstance['TargetBaseName'].split("-")[0]
+        destFile="gsiftp://%s%s/%s"%(mbInstance['TargetHostName'], mbInstance['TargetPathName'].replace("\n","").strip(),mbInstance['TargetBaseName'])
         if guid != None:
             command += " -g %s " % guid
         command += " %s " % sourceFile
         command += " %s " % destFile
         print "\n SE_OUT: %s"%mbInstance['TargetHostName']
-        print "\n SE_PATH: %s/%s"%(mbInstance['TargetPathName'],subdir)
+        print "\n SE_PATH: %s/%s"%(mbInstance['TargetPathName'].replace("\n","").strip(),os.path.dirname(mbInstance['TargetBaseName']))
         return command
 
     
