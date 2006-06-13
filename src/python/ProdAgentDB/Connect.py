@@ -15,19 +15,22 @@ def connect(**config):
      passwd              : pass word
      socketFileLocation  : socket file location (use if connect local)
                            but leave empty if connecting from remote.
-     dbPortNr            : port number if you connect from remote.
+     portNr            : port number if you connect from remote.
                            Leave empty if you connect via a socket file.
      """
      actualConfig = defaultConfig
      if config != {}:
           actualConfig = config
      try:
+         print('*********************')
+         print(str(actualConfig))
+         print('*********************')
          conn=Mysql.connect(actualConfig['dbName'],\
                             actualConfig['host'],\
                             actualConfig['user'],\
                             actualConfig['passwd'],\
                             actualConfig['socketFileLocation'],\
-                            actualConfig['dbPortNr'])
+                            actualConfig['portNr'])
          return conn
      except:
          raise
