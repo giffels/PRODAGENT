@@ -22,9 +22,6 @@ def connect(**config):
      if config != {}:
           actualConfig = config
      try:
-         print('*********************')
-         print(str(actualConfig))
-         print('*********************')
          conn=Mysql.connect(actualConfig['dbName'],\
                             actualConfig['host'],\
                             actualConfig['user'],\
