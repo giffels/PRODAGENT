@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGSubmitter.py,v 1.2 2006/05/02 12:31:14 elmer Exp $"
+__revision__ = "$Id: OSGSubmitter.py,v 1.1 2006/06/01 16:46:08 evansde Exp $"
 
 import os
 import logging
@@ -130,6 +130,7 @@ class OSGSubmitter(SubmitterInterface):
         jdl.append("transfer_input_files = %s\n" % tarballName)
         jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
         jdl.append("should_transfer_files = YES\n")
+        jdl.append("notification = NEVER\n")
         jdl.append("when_to_transfer_output = ON_EXIT\n")
         jdl.append("Output = %s-condor.out\n" % jobname)
         jdl.append("Error = %s-condor.err\n" %  jobname)
