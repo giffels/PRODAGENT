@@ -241,17 +241,12 @@ class StageOutManager:
             fmb[key] = value
         
         fmb['AbsName'] = fileInfo['PFN']
-
-        print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
         sePath = template['TargetPathName']
         lfn = fileInfo['LFN']
         absPath = "%s/%s" % (sePath, lfn)
-        print "1", absPath
         absPath = os.path.normpath(absPath)
-        print "2", absPath
         fmb['TargetAbsName'] = absPath
                               
-        print fmb['TargetAbsName']
 
         try:
             createDirectory(fmb)
@@ -264,9 +259,8 @@ class StageOutManager:
             print msg
         
 
-        
-        transporter = _TransportFactory[fmb['TransportMethod']]
         try:
+            transporter = _TransportFactory[fmb['TransportMethod']]
             transporter.transportOut(fmb)
             targetURL = transportTargetURL(fmb)
             fileInfo['PFN'] = targetURL
@@ -286,7 +280,7 @@ class StageOutManager:
         
         """
         template['AbsName'] = fileInfo['PFN']
-        transporter = _TransportFactory[template['TransportMethod']]
+
 
         try:
             createDirectory(template)
@@ -299,6 +293,7 @@ class StageOutManager:
             print msg
         
         try:
+            transporter = _TransportFactory[template['TransportMethod']]
             transporter.transportOut(template)
             targetURL = transportTargetURL(template)
             fileInfo['PFN'] = targetURL
