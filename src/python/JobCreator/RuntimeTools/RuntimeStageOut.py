@@ -36,6 +36,7 @@ from MB.Persistency import load as loadMetabroker
 from MB.transport.TransportFactory import getTransportFactory
 from MB.MBException import MBException
 from MB.TargetURL import transportTargetURL
+from MB.CreateDir import createDirectory
 
 _TransportFactory = None
 
@@ -240,7 +241,29 @@ class StageOutManager:
             fmb[key] = value
         
         fmb['AbsName'] = fileInfo['PFN']
-        fmb['TargetBaseName'] = fileInfo['LFN']
+
+        print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+        sePath = template['TargetPathName']
+        lfn = fileInfo['LFN']
+        absPath = "%s/%s" % (sePath, lfn)
+        print "1", absPath
+        absPath = os.path.normpath(absPath)
+        print "2", absPath
+        fmb['TargetAbsName'] = absPath
+                              
+        print fmb['TargetAbsName']
+
+        try:
+            createDirectory(fmb)
+        except StandardError, ex:
+            #  //
+            # // NOTE: Should probably throw StageOutFailure here
+            #//  but it is a new thing so will give it some time.
+            msg = "Error occurred when attempting to make directory:\n"
+            msg += str(ex)
+            print msg
+        
+
         
         transporter = _TransportFactory[fmb['TransportMethod']]
         try:
@@ -264,6 +287,17 @@ class StageOutManager:
         """
         template['AbsName'] = fileInfo['PFN']
         transporter = _TransportFactory[template['TransportMethod']]
+
+        try:
+            createDirectory(template)
+        except StandardError, ex:
+            #  //
+            # // NOTE: Should probably throw StageOutFailure here
+            #//  but it is a new thing so will give it some time.
+            msg = "Error occurred when attempting to make directory:\n"
+            msg += str(ex)
+            print msg
+        
         try:
             transporter.transportOut(template)
             targetURL = transportTargetURL(template)
