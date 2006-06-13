@@ -18,11 +18,8 @@ from JobSubmitter.JSException import JSException
 import exceptions
 
 
-class MissingConfigurationKey(exceptions.Exception):
-  def __init__(self,msg):
-   args="%s\n"%msg
-   exceptions.Exception.__init__(self, args)
-   pass
+class MissingConfigurationKey(JSException):
+  pass
 
 
 class BOSSCondorGSubmitter(SubmitterInterface):
