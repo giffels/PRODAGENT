@@ -34,11 +34,13 @@ def createDirectory(mbInstance):
         
     if exitCode > 0:
         msg = "createDirectory failed for %s\n" % (
-            self.__class__.__name__,
+            mbInstance['TargetPathName'],
             )
+        msg += "Using Protocol: %s\n " % mbInstance['TransportMethod']
         msg += "Command Used: %s" % command
         raise MBException(
-            msg, ClassInstance = self,
+            msg, 
+            MBInstance = mbInstance,
             Command = command)
     return 0
     
