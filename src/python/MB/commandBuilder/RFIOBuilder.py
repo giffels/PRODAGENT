@@ -7,7 +7,7 @@ Implementation of CommandBuilder for secure shell access protocol
 """
 
 
-
+import os
 from MB.commandBuilder.CommandBuilder import CommandBuilder
 from MB.commandBuilder.CommandFactory import getCommandFactory
 
@@ -114,11 +114,11 @@ class RFIOBuilder(CommandBuilder):
         create a directory based on the Target values of the MetaBroker
         using rfio access
         """
-        rfmkdirBin = mbInstance.get("Rfmkdir", "rfmkdir")
+        rfmkdirBin = mbInstance.get("Rfmkdir", "rfmkdir -p ")
         rfmkdirOpts = mbInstance.get("RfmkdirOptions", "")
         command = "%s %s " % (rfmkdirBin, rfmkdirOpts)
         command += "%s " % (
-            mbInstance['TargetAbsName'],
+            os.path.dirname(mbInstance['TargetAbsName']),
             )
         return command
 

@@ -7,7 +7,7 @@ local systems
 """
 
 
-
+import os
 from MB.commandBuilder.CommandBuilder import CommandBuilder
 from MB.commandBuilder.CommandFactory import getCommandFactory
 
@@ -110,7 +110,7 @@ class RCFPBuilder(CommandBuilder):
         create a directory based on the Target values of the MetaBroker
         using local filesystem tools
         """
-        command = "rfmkdir  %s" % mbInstance['TargetAbsName']
+        command = "rfmkdir -p %s" % os.path.dirname(mbInstance['TargetAbsName'])
         return command
 
     
