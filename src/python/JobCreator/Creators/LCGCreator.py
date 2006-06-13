@@ -167,6 +167,9 @@ class LCGCreator(CreatorInterface):
         settings to do a dCache dccp stage out
         
         """
+        taskObject['PreStageOutCommands'].append(
+            ". $VO_CMS_SW_DIR/cmsset_default.sh"
+            )
         template = taskObject['StageOutTemplates'][0]
         template['TargetHostName'] = self.pluginConfig['StageOut']['TargetHostName']
         template['TargetPathName'] = self.pluginConfig['StageOut']['TargetPathName']
