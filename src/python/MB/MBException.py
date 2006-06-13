@@ -7,13 +7,13 @@ General Exception class for MB modules
 """
 
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: MBException.py,v 1.1 2005/12/30 18:51:37 evansde Exp $"
+__revision__ = "$Id: MBException.py,v 1.1 2006/04/10 17:09:57 evansde Exp $"
 
-import exceptions
+
 import inspect
+import exceptions
 
-
-class MBException(exceptions.Exception):
+class MBException(StandardError):
     """
     _MBException_
 
@@ -23,8 +23,8 @@ class MBException(exceptions.Exception):
     """
     def __init__(self, message, **data):
         self.name = str(self.__class__.__name__)
-        exceptions.Exception.__init__(self, self.name,
-                                      message)
+        StandardError.__init__(self, self.name,
+                               message)
 
         #  //
         # // Init data dictionary with defaults
