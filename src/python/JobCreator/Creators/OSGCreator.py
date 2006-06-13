@@ -18,6 +18,8 @@ from JobCreator.ScramSetupTools import scramProjectCommand
 from JobCreator.ScramSetupTools import scramRuntimeCommand
 
 
+validator = lambda x: x in ("", None, "None", "none")
+
 class OSGCreator(CreatorInterface):
     """
     _OSGCreator_
@@ -52,11 +54,17 @@ class OSGCreator(CreatorInterface):
             raise JCException(msg, ClassInstance = self)
             
         if not self.pluginConfig.has_key("SoftwareSetup"):
-            swsetup = self.pluginConfig.newBlock("SoftwareSetup")
-            swsetup['ScramCommand'] = "scramv1"
-            swsetup['ScramArch'] = "slc3_ia32_gcc323"
-            swsetup['SetupCommand'] = ". /uscms/prod/sw/cms/setup/bashrc"
-            
+            msg = "Creator Plugin Config contains no SoftwareSetup Config:\n"
+            msg += self.__class__.__name__
+            logging.error(msg)
+            raise JCException(msg, ClassInstance = self)
+
+        for key, value in self.pluginConfig['SoftwareSetup'].items():
+            if validator(value):
+                msg = "Bad Value for SoftwareSetup parameter: %s\n" % key
+                msg += "This must be set to a proper value"
+                raise JCException(msg, ClassInstance = self)
+        
             
         return
 
@@ -160,6 +168,9 @@ class OSGCreator(CreatorInterface):
         settings to do a dCache dccp stage out
         
         """
+        taskObject['PreStageOutCommands'].append(
+            self.pluginConfig['StageOut']['SetupCommand']
+            )
         template = taskObject['StageOutTemplates'][0]
         template['TargetHostName'] = None
         template['TargetPathName'] = \
