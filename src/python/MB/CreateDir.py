@@ -8,6 +8,9 @@ using the transport method to look up the command.
 Some builders will return this as a null command
 
 """
+
+import popen2
+
 from MB.MBException import MBException
 from MB.commandBuilder.CommandFactory import getCommandFactory
 _CommandFactory = getCommandFactory()
