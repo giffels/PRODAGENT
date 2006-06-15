@@ -47,7 +47,7 @@ class TrivialFileCatalog(list):
         self.preferredProtocol = None # attribute for preferred protocol
         
 
-    def addMapping(self, protocol, match, result):
+    def addMapping(self, protocol, match, result, chain = None):
         """
         _addMapping_
 
@@ -59,8 +59,9 @@ class TrivialFileCatalog(list):
         entry.setdefault("path-match-expr", match)
         entry.setdefault("path-match", re.compile(match))
         entry.setdefault("result", result)
+        entry.setdefault("chain", chain)
         self.append(entry)
-
+        
 
     def matchLFN(self, protocol, lfn):
         """
@@ -75,6 +76,8 @@ class TrivialFileCatalog(list):
             if mapping['protocol'] != protocol:
                 continue
             if mapping['path-match'].match(lfn):
+                if mapping['chain'] != None:
+                    lfn = self.matchLFN(mapping['chain'], lfn)
                 try:
                     splitLFN = mapping['path-match'].split(lfn, 1)[1]
                 except IndexError:
@@ -87,9 +90,14 @@ class TrivialFileCatalog(list):
     def __str__(self):
         result = ""
         for item in self:
-            result += "LFN-to-PFN: %s %s %s\n" % (
-                item['protocol'], item['path-match-expr'], item['result']
-                )
+            result += "LFN-to-PFN: %s %s %s" % (
+                item['protocol'],
+                item['path-match-expr'],
+                item['result'])
+            if item['chain'] != None:
+                result += " chain=%s" % item['chain']
+            result += "\n"
+            
         return result
     
 
@@ -147,9 +155,10 @@ def readTFC(filename):
         protocol = mapping.attrs.get("protocol", None)
         match = mapping.attrs.get("path-match", None)
         result = mapping.attrs.get("result", None)
+        chain = mapping.attrs.get("chain", None)
         if True in (protocol, match, mapping == None):
             continue
-        tfcInstance.addMapping(str(protocol), str(match), str(result))
+        tfcInstance.addMapping(str(protocol), str(match), str(result), chain)
         
     return tfcInstance
 
