@@ -109,7 +109,7 @@ class DCAPBuilder(CommandBuilder):
         create a directory based on the Target values of the MetaBroker
         using local filesystem tools
         """
-        command = "mkdir -p %s" % mbInstance['TargetAbsName']
+        command = "mkdir -p %s" % mbInstance['TargetPathName']
         return command
 
     
