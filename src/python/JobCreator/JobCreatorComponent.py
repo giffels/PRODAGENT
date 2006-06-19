@@ -135,7 +135,7 @@ class JobCreatorComponent:
                 # // Register job creation for jobname, provide Cache Area
                 #//  and set job state to InProgress
 
-                # NOTE: max retries and racers are fixed but should
+                # NOTE: racers is fixed but should
                 # NOTE: configurable
 
                 # NOTE: does this component only handle processing jobs?
@@ -147,13 +147,12 @@ class JobCreatorComponent:
                     # an error which we will pass. Historically registration
                     # was part of the request injector, and would not clash
                     # with re-job creation.
-                    JobStateChangeAPI.register(jobname, 'processing', 10, 1)
+                    JobStateChangeAPI.register(jobname, 'processing', self.args['maxRetries'], 1)
                 except:
                     pass
                 JobStateChangeAPI.create(jobname, cacheArea)
                 JobStateChangeAPI.inProgress(jobname)
             except Exception, ex:
-                # NOTE: this should be stored in the logger
                 # NOTE: we can have different errors here 
                 # NOET: transition, submission, other...
                 logging.error("JobState Error:%s" % str(ex))
