@@ -20,8 +20,13 @@ from JobCreator.JobCreatorComponent import JobCreatorComponent
 #//
 
 try:
+    
     config = loadProdAgentConfiguration()
+    jobStatesCfg = config.getConfig("JobStates")
     compCfg = config.getConfig("JobCreator")
+    #NOTE: this works only if we assume that there are no
+    #NOTE: duplicate names in the different configurations
+    compCfg.update(jobStatesCfg)
 except StandardError, ex:
     msg = "Error reading configuration:\n"
     msg += str(ex)
