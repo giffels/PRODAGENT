@@ -119,7 +119,7 @@ coreFields = {
     },
 
     "JobStates" : {
-    # no parameters yet
+    "maxRetries":10
     },
 
     'LocalDBS' :{
@@ -216,7 +216,14 @@ SubmitterName values you can use: condorg, condor, lcg, lsf, lxb1125, and noSubm
 MaxCacheDirSizeMB : The maximum size a cache dir can have before it is pruned,
 to prevent taking up to much space. If it reaches this size the next submision/run
 failure will trigger an intermediate cleanup event.
+""",
+  "JobStates"      : \
 """
+MaxRetries: The maximum number of retries for a certain job(spec). If there
+is a failure in creation,submission,running,etc.. a failure event will be triggered
+and the job will restart (retry). Once the maximum is reached a general job failure
+will be triggered. NOTE: this number needs to be bigger than 0 (1 and up). 
+"""   
     }
 
 if componentList == []:
