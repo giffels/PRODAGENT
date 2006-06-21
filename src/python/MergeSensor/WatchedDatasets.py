@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.1 2006/04/12 15:12:11 evansde Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.2 2006/05/10 11:01:26 ckavka Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 import os
@@ -37,6 +37,10 @@ class WatchedDatasets:
 
        return a list of the currently watched datasets.
 
+     * getNames()
+
+       return a list of the names of currently watched datasets.
+
      * setMergeFileSize(self, mergeFileSize)
      
        set the expected merge file size (applicable to all datasets).
@@ -49,7 +53,7 @@ class WatchedDatasets:
 
        add a new merge job to the dataset.
        
-     * mergeable(self, datasetId)
+     * mergeable(self, datasetId, forceMerge)
 
        test if dataset can be merged.
        
@@ -187,6 +191,24 @@ class WatchedDatasets:
         """
             
         return [value.getId() for value in self.datasets.values()]
+
+    def getNames(self):
+        """
+        _getNames_
+
+        Return the list of names of currently watched datasets.
+
+        Arguments:
+
+          none
+
+        Return:
+
+          list of Dataset instances
+
+        """
+
+        return [value.getName() for value in self.datasets.values()]
     
     def setMergeFileSize(self, mergeFileSize):
         """
@@ -248,7 +270,7 @@ class WatchedDatasets:
         """
         return self.datasets[datasetId].addMergeJob(fileList, fileBlockId)
 
-    def mergeable(self, datasetId):
+    def mergeable(self, datasetId, forceMerge):
         """
         _mergeable_
         
@@ -257,7 +279,8 @@ class WatchedDatasets:
         Arguments:
             
           datasetId -- the name of the dataset
-          
+          forceMerge -- True indicates merge should be performed
+                        independently of file sizes
         Return:
             
           tuple (condition, listFiles, fileBlockId)
@@ -267,7 +290,7 @@ class WatchedDatasets:
           files, which can be directly used as an argument to addMergeJob.
           
         """
-        (fileList, fileBlockId) = self.datasets[datasetId].selectFiles()
+        (fileList, fileBlockId) = self.datasets[datasetId].selectFiles(forceMerge)
         return (fileList != [], fileList, fileBlockId)
     
     def close(self, datasetId):
