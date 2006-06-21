@@ -29,7 +29,34 @@ class JobSpec:
         self.payload = JobSpecNode()
         self.parameters = {}
         self.parameters.setdefault("JobName", "Job-%s" % time.time())
+        self.siteWhitelist = []
+        self.siteBlacklist = []
+        
 
+    def addWhitelistSite(self, sitename):
+        """
+        _addWhitelistSite_
+
+        Add a site to the whitelist
+
+        """
+        if sitename not in self.siteWhitelist:
+            self.siteWhitelist.append(sitename)
+        return
+    
+            
+    def addBlacklistSite(self, sitename):
+        """
+        _addBlacklistSite_
+
+        Add a site to the blacklist
+
+        """
+        if sitename not in self.siteBlacklist:
+            self.siteBlacklist.append(sitename)
+        return
+    
+            
         
     def setJobName(self, jobName):
         """
@@ -51,6 +78,21 @@ class JobSpec:
         for key, val in self.parameters.items():
             paramNode = IMProvNode("Parameter", str(val), Name = str(key))
             node.addNode(paramNode)
+        whitelist = IMProvNode("SiteWhitelist")
+        blacklist = IMProvNode("SiteBlacklist")
+        node.addNode(whitelist)
+        node.addNode(blacklist)
+        for site in self.siteWhitelist:
+            whitelist.addNode(
+                IMProvNode("Site", None, Name = site)
+                )
+        for site in self.siteBlacklist:
+            blacklist.addNode(
+                IMProvNode("Site", None, Name = site)
+                )
+
+        
+        
         payload = IMProvNode("Payload")
         payload.addNode(self.payload.makeIMProv())
         node.addNode(payload)
@@ -81,6 +123,8 @@ class JobSpec:
         node = loadIMProvFile(filename)
         paramQ = IMProvQuery("/JobSpec/Parameter")
         payloadQ = IMProvQuery("/JobSpec/Payload/JobSpecNode")
+        whitelistQ = IMProvQuery("/JobSpec/SiteWhitelist/Site")
+        blacklistQ = IMProvQuery("/JobSpec/SiteBlacklist/Site")
 
         #  //
         # // Extract Params
@@ -93,6 +137,19 @@ class JobSpec:
             paramValue = str(item.chardata)
             self.parameters[str(paramName)] = paramValue
 
+        #  //
+        # // Extract site lists
+        #//
+        whiteNodes = whitelistQ(node)
+        for wnode in whiteNodes:
+            value = wnode.attrs.get("Name", None)
+            if value != None:
+                self.siteWhitelist.append(str(value))
+        blackNodes = blacklistQ(node)
+        for bnode in blackNodes:
+            value = bnode.attrs.get("Name", None)
+            if value != None:
+                self.siteBlacklist.append(str(value))
 
         #  //
         # // Extract Payload Nodes
