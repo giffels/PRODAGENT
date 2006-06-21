@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.9 2006/05/22 19:15:17 evansde Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.10 2006/05/27 01:24:36 afanfani Exp $"
 
 import os
 import logging
@@ -182,6 +182,12 @@ class SubmitterInterface:
         self.parameters['Wrapper'] = wrapperName
         self.parameters['AppVersions'] = \
                    self.parameters['JobSpecInstance'].listApplicationVersions()
+        self.parameters['Blacklist'] = \
+                   self.parameters['JobSpecInstance'].siteBlacklist
+        self.parameters['Whitelist'] = \
+                   self.parameters['JobSpecInstance'].siteWhitelist
+
+
         bossId = self.isBOSSDeclared()
         if bossId != None:
             self.parameters['BOSSID'] = bossId
