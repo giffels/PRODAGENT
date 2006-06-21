@@ -117,6 +117,9 @@ class MergeSensorComponent:
         # use message server or xmlrpc interface?
         self.ms = None 
         
+        # by default merge is not forced for any dataset
+        self.forceMergeList = []
+
     def __call__(self, event, payload):
         """
         _operator()_
@@ -147,6 +150,10 @@ class MergeSensorComponent:
 
         if event == "MergeSensor:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
+            return
+
+        if event == "ForceMerge":
+            self.forceMerge(payload)
             return
 
         logging.debug("Unexpected event %s, ignored" % event)
@@ -251,7 +258,56 @@ class MergeSensorComponent:
         self.publishNewDataset(mergeNewDatasetFile)
         
         return
-    
+   
+    def forceMerge(self, datasetPath):
+        """
+        _forceMerge_
+
+        Add the dataset specified in the payload to the list of
+        datasets for which a forced merge should be performed.
+ 
+        Arguments:
+
+          datasetPath -- The dataset path
+
+        Return:
+
+          none
+
+        """
+
+        # critical region start
+        self.cond.acquire()
+
+        # get list of datasets and forced merge status
+        datasetList = self.datasets.getNames()
+        forceMergeList = self.forceMergeList
+
+        # critical region end
+        self.cond.release()
+
+        # verify if it is currently watched
+        if not datasetPath in datasetList:
+            logging.error("Cannot force merge on non watched dataset %s" %
+                          datasetPath)
+            return
+
+        # verify it is not currently in forced merge status
+        if datasetPath in forceMergeList:
+            logging.error("Forced merge already set for dataset %s" %
+                          datasetPath)
+            return
+
+        # critical region start
+        self.cond.acquire()
+
+        # add to the list of datasets with force merge in next DBS poll cycle
+        self.forceMergeList.append(datasetPath)
+
+        # critical region end
+        self.cond.release()
+
+
     def pollDBS(self, datasetId):
         """
         _pollDBS_
@@ -281,26 +337,62 @@ class MergeSensorComponent:
         
         # log information
         logging.info("Polling DBS for %s" % datasetPath)
-    
+
+        # critical region start
+        self.cond.acquire()
+
+        # check forced merge condition
+        forceMerge = datasetPath in self.forceMergeList
+ 
+        if forceMerge: 
+            logging.info("Forced merge on dataset %s" % datasetPath)
+ 
+        # critical region end
+        self.cond.release()
+
         # get file list in dataset        
         fileList = self.getFileListFromDBS(datasetPath)
-        
+       
         # ignore empty sets
         if fileList == []:
+
+            # reset force merge status if set
+            if (forceMerge):
+
+                logging.info("Forced merge does not apply to empty dataset %s"
+                             % datasetPath)
+
+                # critical region start
+                self.cond.acquire()
+
+                # remove dataset from forced merged datasets
+                self.forceMergeList.remove(datasetPath)
+
+                # critical region end
+                self.cond.release()
+
+            # just return
             return
        
         # critical region start
         self.cond.acquire()
 
-        # update it
+        # update file information
         self.datasets.updateFiles(datasetId, fileList)
         
         # verify if it can be merged
-        (mergeable, selectedSet, fileBlockId) = self.datasets.mergeable(datasetId)
+        (mergeable,
+         selectedSet,
+         fileBlockId) = self.datasets.mergeable(datasetId, forceMerge)
  
         # critical region end
         self.cond.release()
-       
+
+        # force merging does not apply
+        if forceMerge and not mergeable:
+            logging.info("Forced merge does not apply to dataset %s"
+                             % datasetPath)
+               
         # generate one job for every mergeable set of files in dataset
         while (mergeable):
        
@@ -311,7 +403,8 @@ class MergeSensorComponent:
             self.cond.acquire()
 
             # define merge job
-            outFile = self.datasets.addMergeJob(datasetId, selectedSet, fileBlockId)
+            outFile = self.datasets.addMergeJob(datasetId,
+                                                selectedSet, fileBlockId)
 
             # get properties
             properties = self.datasets.getProperties(datasetId)
@@ -325,8 +418,9 @@ class MergeSensorComponent:
             dataset = match.groups()
 
             # build workflow and job specifications
-            jobSpecFile = self.buildWorkflowSpecFile(jobId, selectedSet,
-                                                      dataset, outFile, properties)
+            jobSpecFile = self.buildWorkflowSpecFile(jobId,
+                                   selectedSet,dataset, outFile, properties)
+
             # publish CreateJob event
             self.publishCreateJob(jobSpecFile)
 
@@ -341,7 +435,21 @@ class MergeSensorComponent:
             self.cond.acquire()
  
             # verify again the same dataset for another set
-            (mergeable, selectedSet, fileBlockId) = self.datasets.mergeable(datasetId)
+            (mergeable,
+             selectedSet,
+             fileBlockId) = self.datasets.mergeable(datasetId, forceMerge)
+
+            # critical region end
+            self.cond.release()
+
+        # reset forceMerge status if set
+        if (forceMerge):
+
+            # critical region start
+            self.cond.acquire()
+
+            # remove dataset from forced merged datasets
+            self.forceMergeList.remove(datasetPath)
 
             # critical region end
             self.cond.release()
@@ -728,7 +836,8 @@ class MergeSensorComponent:
         self.ms.subscribeTo("NewDataset")
         self.ms.subscribeTo("MergeSensor:StartDebug")
         self.ms.subscribeTo("MergeSensor:EndDebug")
-        
+        self.ms.subscribeTo("ForceMerge")
+
         # start polling thread
         pollingThread = PollDBS(self.poll)
         pollingThread.start()
