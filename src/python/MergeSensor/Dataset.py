@@ -11,8 +11,8 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id: Dataset.py,v 1.5 2006/06/07 12:58:43 ckavka Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError
@@ -355,17 +355,18 @@ class Dataset:
         
         return outputFile
 
-    def selectFiles(self):
+    def selectFiles(self, forceMerge):
         """
         _selectFiles_
         
         Select a set of files to be merged based on a selection policy.
         Currently, it is based just on the size of the files and the
-        expected merge size.
+        expected merge size. When forceMerge is True, a set of files
+        is returned even if the size requirement is not fullfilled.
         
         Arguments:
             
-          none
+          forceMerge -- True indicates size is not a requirement.
                     
         Return:
             
@@ -391,7 +392,12 @@ class Dataset:
                 if totalSize > mergeFileSize:
                     return (selectedSet, fileBlockId)
 
-        return ([], 0)
+            # not enough files, return empty list or what we have if
+            # merge is forced.
+            if forceMerge:
+                return(selectedSet, fileBlockId)
+            else:
+                return ([], 0)
 
     def getStatus(self):
         """
