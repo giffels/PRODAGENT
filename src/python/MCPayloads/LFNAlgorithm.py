@@ -5,8 +5,8 @@ _LFNAlgorithm_
 Algorithmic generation of Logical File Names using the CMS LFN Convention
 
 """
-__revision__ = "$Id: LFNAlgorithm.py,v 1.1 2006/05/25 14:27:13 evansde Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: LFNAlgorithm.py,v 1.2 2006/05/25 16:18:03 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "evansde@fnal.gov"
 
 import time
@@ -50,7 +50,7 @@ def unmergedLFNBase(workflowSpecInstance):
 
     """
     category = workflowSpecInstance.requestCategory()
-    result = os.path.join(_LFNBase, category, "unmerged")
+    result = os.path.join(_LFNBase, "unmerged", category)
     timestamp = workflowSpecInstance.requestTimestamp()
     result = os.path.join(
         result,
@@ -102,8 +102,12 @@ def generateLFN(requestBase, lfnGroup, jobName, dataTier):
     - *dataTier* The Data Tier of the file being produced
                  (usually same as output module name)
 
+    Note that this is a temporary LFN: When stage out is performed,
+    the GUID of the file will be used as the basename instead. But we
+    dont know the GUID until after the file has been created.
+
     """
-    result = os.path.join(requestBase, lfnGroup)                    
+    result = os.path.join(requestBase, dataTier, str(lfnGroup))
     result += "/"
     result += jobName
     result += "-"
