@@ -17,6 +17,7 @@ from JobCreator.JobGenerator import JobGenerator
 from JobCreator.JCException import JCException
 from MessageService.MessageService import MessageService
 from JobState.JobStateAPI import JobStateChangeAPI
+from JobState.JobStateAPI import JobStateInfoAPI
 
 import JobCreator.Creators
 
@@ -146,12 +147,13 @@ class JobCreatorComponent:
                 # an error which we will pass. Historically registration
                 # was part of the request injector, and would not clash
                 # with re-job creation.
-                JobStateChangeAPI.register(jobname, 'processing', self.args['maxRetries'], 1)
+                if not JobStateInfoAPI.isRegistered(jobname):
+                    JobStateChangeAPI.register(jobname, 'processing', self.args['maxRetries'], 1)
                 JobStateChangeAPI.create(jobname, cacheArea)
                 JobStateChangeAPI.inProgress(jobname)
             except Exception, ex:
                 # NOTE: we can have different errors here 
-                # NOET: transition, submission, other...
+                # NOTE: transition, submission, other...
                 logging.error("JobState Error:%s" % str(ex))
         
         
