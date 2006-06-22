@@ -35,6 +35,9 @@ def general(jobId, dbCur=None):
 
        return JobStateInfoAPIMySQL.general(jobId, dbCur)
 
+def isRegistered(jobId,dbCur = None):
+       return JobStateInfoAPIMySQL.isRegistered(jobId, dbCur)
+
 def lastLocations(jobId, dbCur = None):
        """
 
