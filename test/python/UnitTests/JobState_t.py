@@ -25,14 +25,21 @@ class JobStateUnitTests(unittest.TestCase):
          try:
             JobStateChangeAPI.create("jobClassID1","cacheDir/location/1somewhere")
          except Exception, ex:
-            print('>>>Test succeeded for exception 1/2 in testA of JobState_t.py\n')
+            print('>>>Test succeeded for exception 1/3 in testA of JobState_t.py\n')
          JobStateChangeAPI.register("jobClassID1","processing",3,1)
 
+         # register again (illegal):
+         try:
+             JobStateChangeAPI.register("jobClassID1","processing",3,1)
+             print('>>>Test ERROR \n')
+         except Exception, ex:
+             print('>>>Test succeeded for exception 2/3 in testA of JobState_t.py\n')
+       
          try:
          # illegal state transitions:
             JobStateChangeAPI.inProgress("jobClassID1")
          except Exception, ex:
-            print('>>>Test succeeded for exception 2/2 in testA of JobState_t.py\n')
+            print('>>>Test succeeded for exception 3/3 in testA of JobState_t.py\n')
          JobStateChangeAPI.create("jobClassID1","cacheDir/location/1somewhere")
          JobStateChangeAPI.inProgress("jobClassID1")
 
