@@ -143,6 +143,16 @@ class StageOutManager:
             return
         
         for fileInfo in self.toTransfer:
+            #  //
+            # // If a GUID is present, we insert it into the LFN as the
+            #//  basename of the file to GUID.root.
+            if fileInfo['GUID'] != None:
+                fileInfo['LFN'] = os.path.join(
+                    os.path.dirname(fileInfo['LFN']),
+                    "%s.root" % fileInfo['GUID']
+                    )
+
+            
             localMatch = self.searchTFC(fileInfo['LFN'])
             if localMatch != None:
                 #  //
@@ -243,6 +253,7 @@ class StageOutManager:
         fmb['AbsName'] = fileInfo['PFN']
         sePath = template['TargetPathName']
         lfn = fileInfo['LFN']
+            
         absPath = "%s/%s" % (sePath, lfn)
         absPath = os.path.normpath(absPath)
         fmb['TargetAbsName'] = absPath
