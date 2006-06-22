@@ -32,6 +32,24 @@ def general(JobSpecId,dbCur = None):
                'Racers':rows[0][6] \
               }
 
+def isRegistered(JobSpecId,dbCur = None):
+       if(dbCur==None):
+           conn=connect()
+           dbCur=conn.cursor()
+       dbCur.execute("START TRANSACTION")
+
+       sqlStr='SELECT JobType FROM js_JobSpec WHERE '+  \
+              'JobSpecID="'+JobSpecId+'";'
+       dbCur.execute(sqlStr)
+       #due to the schema we either get 0 or 1 row back.
+       rows=dbCur.fetchall()
+       dbCur.execute("COMMIT")
+       if(dbCur==None):
+          dbCur.close()
+       if len(rows)==0:
+           return False
+       return True
+
 def lastLocations(JobSpecId,dbCur = None):
        sqlStr='SELECT Location from js_JobInstance WHERE JobSpecID="'+\
                JobSpecId+'";'
