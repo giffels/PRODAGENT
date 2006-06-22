@@ -20,14 +20,17 @@ def register(jobSpecId, jobType, maxRetries, maxRacers = 1):
        try:
            sqlStr="INSERT INTO js_JobSpec(JobSpecID,                   \
                    JobType,MaxRetries, MaxRacers,\
-                   Retries,State) VALUES(\""+jobSpecId+"\",             \
-                                             \""+jobType+"\",           \
+                   Retries,State) VALUES(\""+str(jobSpecId)+"\",             \
+                                             \""+str(jobType)+"\",           \
                                              \""+str(maxRetries)+"\",   \
                                              \""+str(maxRacers)+"\",    \
                                              \"0\",                     \
                                              \"register\");"
            dbCur.execute("START TRANSACTION")
-           dbCur.execute(sqlStr)
+           try:
+               dbCur.execute(sqlStr)
+           except Exception,ex:
+               raise ProdAgentException("Error registering job. You probably are trying to register a job using an job id/job name that has already been used for registration. Your job id/job name is: "+str(jobSpecId)+". Original error: "+str(ex[1]))
            dbCur.execute("COMMIT")
            dbCur.close()
        except:
