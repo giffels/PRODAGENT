@@ -26,7 +26,10 @@ class JobStateUnitTests(unittest.TestCase):
             JobStateChangeAPI.create("jobClassID1","cacheDir/location/1somewhere")
          except Exception, ex:
             print('>>>Test succeeded for exception 1/3 in testA of JobState_t.py\n')
+
+         self.assertEqual(JobStateInfoAPI.isRegistered("jobClassID1"),False)
          JobStateChangeAPI.register("jobClassID1","processing",3,1)
+         self.assertEqual(JobStateInfoAPI.isRegistered("jobClassID1"),True)
 
          # register again (illegal):
          try:
