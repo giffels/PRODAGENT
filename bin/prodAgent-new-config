@@ -149,6 +149,7 @@ componentFields = {
 
     "DBSInterface" : {
     "ComponentDir" : None,
+    "DBSDataTier" : "GEN,SIM,DIGI,RECO,AOD,RAW,USER",
     # Local DBS settings come from LocalDBS core block 
     },
 
