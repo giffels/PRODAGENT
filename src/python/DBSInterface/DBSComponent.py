@@ -48,6 +48,21 @@ class InvalidWorkFlowSpec(exceptions.Exception):
    return "%s" % (self.args)
 
 # ##############
+class InvalidDataTier(exceptions.Exception):
+  def __init__(self,datatier,DBSdatatiers):
+   args=" DataTier: => %s <= not supported in DBS.\n Valid Data Tier is a combination of - separated tiers among: %s"%(datatier,DBSdatatiers)
+   exceptions.Exception.__init__(self, args)
+   pass
+                                                                                                                      
+  def getClassName(self):
+   """ Return class name. """
+   return "%s" % (self.__class__.__name__)
+                                                                                                                      
+  def getErrorMessage(self):
+   """ Return exception error. """
+   return "%s" % (self.args)
+
+# ##############
 class InvalidJobReport(exceptions.Exception):
   def __init__(self,jobreportfile):
    args="Invalid JobReport file: %s\n"%jobreportfile
@@ -75,8 +90,8 @@ class DBSComponent:
         self.args['DBSAddress'] = None
         self.args['DBSType'] = 'CGI' # default to CGI
         self.args['Logfile'] = None
+        self.args['DBSDataTier']= 'GEN,SIM,DIGI'
         self.args.update(args)
-
         
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
@@ -107,11 +122,14 @@ class DBSComponent:
         logging.debug("Recieved Event: %s" % event)
         logging.debug("Payload: %s" % payload)
         if event == "NewDataset":
-            logging.info("New Dataset: %s" % payload)
+            logging.info("New Dataset Event: %s" % payload)
             try:
-                self.newDataset(payload)
+                self.newDatasetEvent(payload)
                 return
             except InvalidWorkFlowSpec, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
+            except InvalidDataTier, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
             except DbsException, ex:
@@ -134,6 +152,9 @@ class DBSComponent:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("InvalidJobReport Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
                 return
+            except InvalidDataTier, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
             except DbsException, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("DbsException Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
@@ -157,11 +178,24 @@ class DBSComponent:
         
         return
 
-    def newDataset(self, workflowspec):
+    def newDatasetEvent(self, workflowspec):
+        """
+        _newDatasetEvent_
+
+        Extract relevant info from the WorkFlowSpecification and loop over Dataset
+        """
+
+        #### Extract info from event payload :
+        logging.debug("DBSComponent.newDatasetEvent: %s" % workflowspec)
+        datasetinfoList=self.readNewDatasetInfo(workflowspec)
+        for datasetinfo in datasetinfoList:
+            self.newDataset(datasetinfo)
+
+
+    def newDataset(self, datasetinfo):
         """
         _newDataset_
-
-        Extract relevant info from the WorkFlowSpecification:
+        Extract relevant info:
             - the application info (Version, etc..)
             - primary dataset, processed dataset, etc...
             - the encoded PSet (PSet Hash in future)
@@ -176,12 +210,7 @@ class DBSComponent:
          (- Create a fileblock associated to the processed dataset)
         """
 
-        #### Extract info from event payload :
-        logging.debug("DBSComponent.newDataset: %s" % workflowspec)
-        datasetinfo=self.readNewDatasetInfo(workflowspec)
-
-        logging.debug(" - PrimaryDataset %s"%datasetinfo['PrimaryDataset'])
-        logging.debug(" - ProcessedDataset %s"%datasetinfo['ProcessedDataset'])
+        logging.debug("Inserting a Dataset in DBS: primary %s processed %s"%(datasetinfo['PrimaryDataset'],datasetinfo['ProcessedDataset']))
         logging.debug(" - ApplicationName %s"%datasetinfo['ApplicationName'])
         logging.debug(" - ApplicationVersion %s"%datasetinfo['ApplicationVersion'])
 
@@ -196,15 +225,16 @@ class DBSComponent:
 
         dbsinfo.insertPrimaryDataset(datasetinfo['PrimaryDataset'])
 
-        ## check datatier/app family
-        applicationfamily=self.getAppFamily(datasetinfo['OutputModuleName'])
-        #datatier=self.getDataTier(datasetinfo['OutputModuleName'])
-        datatier=self.getDataTier(datasetinfo['DataTier'])
+        ## define app family from OutputModuleName
+        applicationfamily=datasetinfo['OutputModuleName']
+        #applicationfamily=self.getAppFamily(datasetinfo['OutputModuleName'])
+        ## check datatier
+        datatier=self.getDataTier(datasetinfo['DataTier'],self.args['DBSDataTier'])
         logging.debug(" - ApplicationFamily %s"%applicationfamily)
         logging.debug(" - DataTier %s"%datatier)
-        if datatier=='Unknown' or applicationfamily=='Unknown' :
-         logging.error("Uknown datatier/Application Family")
-         return 
+        #if datatier=='Unknown' or applicationfamily=='Unknown' :
+        # logging.error("Uknown datatier/Application Family")
+        # return 
 
         ## create processed dataset ( + empty fileblock associated to it)
 
@@ -233,15 +263,12 @@ class DBSComponent:
           raise InvalidWorkFlowSpec(workflowFile)
         
         ListDatasetInfo=workflowSpec.outputDatasets()
-        #for dataset in ListDatasetInfo:
-        #  for key in dataset.keys():
-        #    print "key %s value %s"%(key,dataset[key])
 
         # pick up only the first dataset since I don't know how to handle multiple output datasets
-        DatasetInfo=ListDatasetInfo[0]
-        #PSet = base64.encodestring(payload.configuration)
-
-        return DatasetInfo
+        #DatasetInfo=ListDatasetInfo[0]
+        #
+        #return DatasetInfo
+        return ListDatasetInfo
 
     def readJobReportInfo(self,jobReportFile):
         """  
@@ -291,7 +318,7 @@ class DBSComponent:
           for fileinfo in jobreport.files:
  
            ## Retrieve the fileblock to add files to, look for just the first datasetPath
-           datatier=self.getDataTier(fileinfo.dataset['DataTier'])
+           datatier=self.getDataTier(fileinfo.dataset['DataTier'],self.args['DBSDataTier'])
            
            tiers=string.split(datatier,'-')    # split the multi datatiers GEN-SIM-DIGI into single data tier 
            if ( self.args['DBSType'] != 'CGI'): tiers=[datatier]  # keep the datatier as a single piece 
@@ -312,25 +339,6 @@ class DBSComponent:
 
         return
 
- 
-    def getAppFamilyDataTier(self,OutModuleName):
-        """
-         guessing the Application family and data tier from the POOL Output Module Name convention in .cfg 
-        """
-        if ( OutModuleName=='Simulated' ) or ( OutModuleName=='writeOscar'):
-             applicationfamily='Simulation'
-             datatier='SIM'
-        elif (OutModuleName=='Digitized' ) or ( OutModuleName=='writeDigis'):
-             applicationfamily='Digitization'
-             datatier='DIGI'
-        elif (OutModuleName=='GenSimDigi') or (OutModuleName=='GEN-SIM-DIGI'):
-             applicationfamily='GEN-SIM-DIGI'
-             datatier='GEN-SIM-DIGI'
-        else:
-          applicationfamily='Unknown'
-          datatier='Unknown'
-
-        return applicationfamily,datatier
 
     def getAppFamily(self,ApplicationFamily):
         """
@@ -351,22 +359,18 @@ class DBSComponent:
 
         return applicationfamily
 
-    def getDataTier(self,DataTier):
+    def getDataTier(self,DataTier,DBSDataTier):
         """
          guess the Application family and data tier from the POOL Output Module Name convention in .cfg 
         """
-        if ( DataTier=='Simulated' ):
-          datatier='SIM'
-        elif ( DataTier=='Digitized' ):
-          datatier='DIGI'
-        elif ( DataTier=='GenSimDigi') or (DataTier=='GEN-SIM-DIGI'):
-          datatier='GEN-SIM-DIGI'
-        elif ( DataTier=='GEN-SIM'):
-          datatier='GEN-SIM'
-        else:
-          datatier='Unknown'
 
-        return datatier
+        DataTierList=DataTier.split("-")
+        DBSDataTierList=DBSDataTier.split(",")
+
+        for dt in DataTierList:
+            if DBSDataTierList.count(dt)<=0:
+               raise InvalidDataTier(dt,DBSDataTierList)
+        return DataTier              
 
     def startComponent(self):
         """
