@@ -78,6 +78,7 @@ coreFields = {
     #//               Local scope DBS
     "ProdAgent": {
     "ProdAgentWorkDir": os.getcwd(),
+    "ProdAgentName" : "ProdAgent@%s" % socket.gethostname(),
     },
     
     "ProdAgentDB": {
