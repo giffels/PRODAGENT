@@ -11,8 +11,8 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: Dataset.py,v 1.7 2006/06/21 10:34:07 ckavka Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError
@@ -83,7 +83,8 @@ class Dataset:
        'workflowName' : 'Test060pre5Mu10GeV',
        'mergedLFNBase' : '/store/PreProd/2006/6/6/Test060pre5Mu10GeV',
        'category' : 'PreProd',
-       'timeStamp' : 1149604662
+       'timeStamp' : 1149604662,
+       'outSeqNumber' : 6
       }
       
     where the fields have the following meaning:
@@ -96,6 +97,12 @@ class Dataset:
       'files' -- all files in dataset
       'remaining_files' -- list of tuples (file,size) ready to be merged
       indexed by file blocks.
+      'version' : CMSSW version
+      'workflowName' : name of original workflow
+      'mergedLFNBase' : LFN for merged files
+      'category' : the category (pre production, etc.)
+      'timeStamp' : time stamp of last modification
+      'outSeqNumber' : index of output files
              
     """
 
@@ -122,7 +129,8 @@ class Dataset:
         """
 
         # check if it is a persistence file
-        pattern ="^\[(\w+)\]\[(\w+)\]\[(\w+)]"
+
+        pattern ="^\[([\w\-]+)\]\[([\w\-]+)\]\[([\w\-]+)]"
         match = re.search(pattern, fileName)
 
         # yes, read the persistence file
@@ -130,7 +138,6 @@ class Dataset:
             self.__read(fileName)
             return
         
-
         # no, it is a new dataset, read the WorkflowSpecFile
         try:
             wfile = WorkflowSpec()
@@ -208,12 +215,10 @@ class Dataset:
                      'started' : date,
                      'last_updated' : date,
                      'files' : [],
-                     'remaining_files' : {}
+                     'remaining_files' : {},
+                     'outSeqNumber' : 1
                     }
 
-        # initialize sequence number for output files
-        self.outSeqNumber = 1
-        
         # write to the persistence file    
         self.__write()
             
@@ -343,8 +348,8 @@ class Dataset:
                 if fileName not in fileList]
 
         # determine output file name
-        outputFile = "set" + str(self.outSeqNumber)
-        self.outSeqNumber = self.outSeqNumber + 1
+        outputFile = "set" + str(self.data['outSeqNumber'])
+        self.data['outSeqNumber'] = self.data['outSeqNumber'] + 1
                 
         # update time
         date = time.asctime(time.localtime(time.time()))
