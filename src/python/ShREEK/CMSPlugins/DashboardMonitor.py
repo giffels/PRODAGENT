@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.2 2006/06/02 18:06:15 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.3 2006/06/08 19:53:07 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -40,6 +40,7 @@ class DashboardMonitor(ShREEKMonitor):
         self.destPort = None
         self.destHost = None
         self.dashboardInfo = None
+        self.lastExitCode = None
         
 
     def initMonitor(self, *args, **kwargs):
@@ -89,6 +90,7 @@ class DashboardMonitor(ShREEKMonitor):
         self.dashboardInfo['GridJobID'] = gridJobId
         self.dashboardInfo['JobStarted'] = time.time()
         self.dashboardInfo.publish(5)
+        return
 
     #  //
     # // Task started
@@ -120,7 +122,8 @@ class DashboardMonitor(ShREEKMonitor):
             except ValueError:
                 exitValue = exitCode
                 
-                
+
+        self.lastExitCode = exitValue
         self.dashboardInfo['ExeEnd'] = task.taskname()
         self.dashboardInfo['ExeFinishTime'] = time.time()
         self.dashboardInfo['ExeExitCode'] = exitValue
@@ -133,6 +136,7 @@ class DashboardMonitor(ShREEKMonitor):
         """
         if self.dashboardInfo == None:
             return
+        self.dashboardInfo['JobExitCode'] = self.lastExitCode
         self.dashboardInfo['JobFinished'] = time.time()
         self.dashboardInfo.publish(5)
         
