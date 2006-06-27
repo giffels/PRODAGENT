@@ -72,11 +72,6 @@ class SiteLocalConfig:
         """
         tfcUrl = self.localStageOut.get('catalog', None)
         if tfcUrl == None:
-            #  //
-            # // This should be removed when local-stage-out is 
-            #//  implemented as standard
-            tfcUrl = self.eventData.get('catalog', None)
-        if tfcUrl == None:
             return None
         try:
             tfcFile = tfcFilename(tfcUrl)
@@ -94,6 +89,33 @@ class SiteLocalConfig:
             raise SiteConfigError, msg
         return tfcInstance
             
+
+    def localStageOutCommand(self):
+        """
+        _localStageOutCommand_
+
+        Return the stage out command setting from local-stage-out
+
+        """
+        return self.localStageOut['command']
+
+    def localStageOutOption(self):
+        """
+        _localStageOutOption_
+
+        Return the stage out option setting from local-stage-out
+        """
+        return self.localStageOut['option']
+
+    def localStageOutSEName(self):
+        """
+        _localStageOutSEName_
+
+        return the local SE Name used for stage out
+
+        """
+        return self.localStageOut['se-name']
+    
 
     def read(self):
         """
@@ -137,22 +159,20 @@ class SiteLocalConfig:
         # // local stage out information
         #//
         stageOutQ = IMProvQuery(
-            "/site-local-config/site/local-stage-out/catalog"
+            "/site-local-config/site/local-stage-out"
             )
         stageOutNodes = stageOutQ(node)
         if len(stageOutNodes) == 0:
-            msg = "Warning:Unable to find any local-stage-out"
+            msg = "Error:Unable to find any local-stage-out"
             msg += "information in:\n"
             msg += self.siteConfigFile
-            msg += "\nFalling back to event-data catalog:\n"
-            msg += self.eventData['catalog']
-            print msg
-            # TODO: This should be an exception eventually
-            # At present, fallback on the event-data catalog
-            # raise SiteConfigError, msg
+            raise SiteConfigError, msg
         else:
-            localSOCatalog = stageOutNodes[0].attrs.get("url")
-            self.localStageOut['catalog'] = str(localSOCatalog)
+            #  //
+            # // Assume single local-stage-out node.
+            #//  Extract details from it:
+            localSO = stageOutNodes[0]
+            self.localStageOut = self.readLocalStageOut(localSO)
             
         
     
@@ -178,4 +198,30 @@ class SiteLocalConfig:
 
 
 
-    
+    def readLocalStageOut(self, node):
+        """
+        _readLocalStageOut_
+
+        Extract data from local stage out node, return it as a dictionary
+
+        """
+        result = {}
+        result.setdefault("catalog", None)
+        result.setdefault("se-name", None)
+        result.setdefault("command", None)
+        result.setdefault("option", None)
+        for child in node.children:
+            if child.name == "catalog":
+                result['catalog'] = str(child.attrs['url'])
+                continue
+            if child.name == "se-name":
+                result['se-name'] = str(child.attrs['value'])
+                continue
+            if child.name == "command":
+                result['command'] = str(child.attrs['value'])
+                continue
+            if child.name == "option":
+                result['option'] = str(child.attrs['value'])
+                continue
+            
+        return result
