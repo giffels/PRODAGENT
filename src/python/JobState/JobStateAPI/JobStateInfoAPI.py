@@ -86,3 +86,15 @@ def jobSpecTotal(dbCur = None):
 def rangeGeneral(start = -1, nr = -1, dbCur = None):
 
        return JobStateInfoAPIMySQL.rangeGeneral(start,nr,dbCur)
+
+def startedJobs(daysBack):
+      """
+      _startedJobs_
+
+      Returns a list of job spec ids that have started futher than the number of days
+      specified.
+
+      """
+
+      return JobStateInfoAPIMySQL.startedJobs(daysBack)
+

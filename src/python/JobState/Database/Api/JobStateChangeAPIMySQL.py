@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+
 from JobState.Database.Api import JobStateInfoAPIMySQL
 from JobState.Database.Api.RacerException import RacerException
 from JobState.Database.Api.RetryException import RetryException
@@ -402,6 +403,28 @@ def purgeStates():
        dbCur.execute(sqlStr4)
        dbCur.execute("COMMIT")
        dbCur.close()
+   except:
+       dbCur.execute("ROLLBACK")
+       dbCur.close()
+       raise
+
+def startedJobs(daysBack):
+   conn=connect()
+   dbCur=conn.cursor()
+
+   now=datetime.datetime.now()
+   delta=datetime.timedelta(days=int(daysBack))
+   daysBack=now-delta
+   try:
+       dbCur.execute("START TRANSACTION")
+       sqlStr='SELECT JobSpecID from js_JobSpec WHERE Time<"'+str(daysBack)+'";'
+       # NOTE:this can be potentially large, but we assume it will be not larger than
+       # NOTE: several mbs.
+       dbCur.execute(sqlStr)
+       result=dbCur.fetchall() 
+       dbCur.execute("COMMIT")
+       dbCur.close()
+       return result
    except:
        dbCur.execute("ROLLBACK")
        dbCur.close()

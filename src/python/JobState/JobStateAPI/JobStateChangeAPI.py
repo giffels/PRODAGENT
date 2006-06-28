@@ -234,4 +234,3 @@ def purgeStates():
 
       """
       JobStateChangeAPIMySQL.purgeStates()
-

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import datetime
 
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Connect import connect
@@ -145,3 +146,27 @@ def rangeGeneral(start = -1 , nr = -1 ,dbCur = None):
                resultRow.append(entry)
            result.append(resultRow)
        return result    
+
+def startedJobs(daysBack,dbCur = None):
+   if(dbCur==None):
+       conn=connect()
+       dbCur=conn.cursor()
+
+   now=datetime.datetime.now()
+   delta=datetime.timedelta(days=int(daysBack))
+   daysBack=now-delta
+   try:
+       dbCur.execute("START TRANSACTION")
+       sqlStr='SELECT JobSpecID from js_JobSpec WHERE Time<"'+str(daysBack)+'";'
+       # NOTE:this can be potentially large, but we assume it will be not larger than
+       # NOTE: several mbs.
+       dbCur.execute(sqlStr)
+       result=dbCur.fetchall()
+       dbCur.execute("COMMIT")
+       dbCur.close()
+       return result
+   except:
+       dbCur.execute("ROLLBACK")
+       dbCur.close()
+       raise
+
