@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision$"
-__revision__ = "$Id$"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.3 2006/05/02 14:25:25 evansde Exp $"
 
 import os
 import logging
@@ -29,6 +29,7 @@ from JobSubmitter.Registry import retrieveSubmitter
 from MCPayloads.JobSpec import JobSpec
 from JobState.JobStateAPI import JobStateChangeAPI
 from JobState.JobStateAPI import JobStateInfoAPI
+from ProdAgentCore.ProdAgentException import ProdAgentException
 
 class JobSubmitterComponent:
     """
@@ -195,7 +196,7 @@ class JobSubmitterComponent:
                 jobToSubmit, jobSpecId,
                 JobSpecInstance = jobSpecInstance
                 )
-        except StandardError, ex:
+        except ProdAgentException, ex:
             msg = "Submission Failed for job %s\n" % jobSpecId
             msg += str(ex)
             logging.error(msg)
@@ -208,7 +209,7 @@ class JobSubmitterComponent:
         if self.job_state:
             try:
                 JobStateChangeAPI.submit(jobSpecId)
-            except StandardError, ex:
+            except ProdAgentException, ex:
                 # NOTE: this should be stored in the logger
                 # NOTE: we can have different errors here
                 # NOTE: transition, submission, other...
