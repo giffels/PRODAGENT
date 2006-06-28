@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.1 2006/04/10 17:12:42 evansde Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: MessageService.py,v 1.2 2006/05/03 08:14:28 ckavka Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -417,7 +417,7 @@ class MessageService:
                        WHERE
                          typeid=type and
                          dest='""" + str(self.procid) + """'
-                       ORDER BY(time)
+                       ORDER BY time,messageid
                        LIMIT 1
                        
                      """
