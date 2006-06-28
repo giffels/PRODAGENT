@@ -5,7 +5,7 @@ _Execute_
 Run the stage out commands in a nice non-blocking way
 
 """
-
+import os
 import popen2
 import fcntl, select, sys
 
@@ -72,7 +72,7 @@ def execute(command):
     """
     exitCode = runCommand(command)
     if exitCode:
-        msg += "Command exited non-zero"
+        msg = "Command exited non-zero"
         raise StageOutError(msg, Command = command, ExitCode = exitCode)
     return
 

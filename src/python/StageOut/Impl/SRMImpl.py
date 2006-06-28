@@ -51,7 +51,7 @@ class SRMImpl(StageOutImpl):
 
         """
         print "NOT IMPLEMENTED CLEANUP FOR SRM YET"
-        command = "echo \"cleaning up %s\"" % pfnToRemove)
+        command = "echo \"cleaning up %s\"" % pfnToRemove
         self.executeCommand(command)
 
 
