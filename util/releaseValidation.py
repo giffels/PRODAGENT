@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision$"
-__revision__ = "$Id$"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: releaseValidation.py,v 1.1 2006/06/14 20:02:22 evansde Exp $"
 
 
 import os
@@ -29,9 +29,10 @@ from CMSConfigTools.CfgInterface import CfgInterface
 prodAgentService = xmlrpclib.Server("http://127.0.0.1:8081")
 
 
-valid = ['url=', 'version=', 'events=']
+valid = ['url=', 'version=', 'relvalversion=', 'events=']
 usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
-usage += "                            --version=<CMSSW version>\n"
+usage += "                            --version=<CMSSW version to be used>\n"
+usage += "                            --relvalversion=<version to be used in spec file>\n"
 usage += "                            --events=<events per job>\n"
 usage += "                            "
 usage += "You must have a scram runtime environment setup to use this tool\n"
@@ -48,6 +49,7 @@ except getopt.GetoptError, ex:
 
 xmlFile = None
 version = None
+relvalVersion = None
 category = "RelVal"
 timestamp = int(time.time())
 eventsPerJob = 100
@@ -58,6 +60,8 @@ for opt, arg in opts:
         xmlFile = arg
     if opt == "--version":
         version = arg
+    if opt == "--relvalversion":
+        relvalVersion = arg
     if opt == "--events":
         eventsPerJob = int(arg)
 
@@ -68,16 +72,31 @@ if xmlFile == None:
 if version == None:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
-
+if relvalVersion == None:
+    msg = "--relvalVersion not provided, falling back to: %s" % version
+    print msg
 
 try:
-    relValSpec = getRelValSpecForVersion(xmlFile, version)
+    relValSpec = getRelValSpecForVersion(xmlFile, relvalVersion)
 except StandardError, ex:
     msg = "Error retrieving Release Validation Spec File:\n"
     msg += "%s\n" % xmlFile
     msg += str(ex)
     print msg
     sys.exit(1)
+
+if relValSpec == None:
+    msg =  "Unable to extract release validation spec from file:\n"
+    msg += "%s\n" % xmlFile
+    msg += "Release Validation Version requested: %s\n " % relvalVersion
+    msg += "You may need to provide --relvalversion as a command line option"
+    print msg
+    sys.exit(1)
+
+
+summaryJobs = 0
+summaryEvents = 0
+
 
 for relTest in relValSpec:
     cfgUrl = relTest['CfgUrl']
@@ -222,11 +241,17 @@ for relTest in relValSpec:
     prodAgentService.publishEvent("RequestInjector:SetWorkflow", workflow)
     prodAgentService.publishEvent("RequestInjector:SelectWorkflow", workflowBase)
     prodAgentService.publishEvent("RequestInjector:SetEventsPerJob", str(eventsPerJob))
+    prodAgentService.publishEvent("RequestInjector:NewDataset")
     #prodAgentService.publishEvent("JobCreator:SetCreator", "OSGCreator")
     #prodAgentService.publishEvent("JobSubmitter:SetSubmitter", "NoSubmit")
     
     for i in range(0, numberOfJobs):
+        summaryJobs += 1
+        summaryEvents += eventsPerJob
+
         time.sleep(.1)
         prodAgentService.publishEvent("ResourcesAvailable")
         
     
+print "Total Jobs Created: %s" % summaryJobs
+print "Total Events for all jobs: %s" % summaryEvents
