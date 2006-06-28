@@ -63,19 +63,27 @@ ms.registerAs("Test")
 ms.publish("RequestInjector:StartDebug","none")
 ms.publish("JobCreator:StartDebug","none")
 ms.publish("JobSubmitter:StartDebug","none")
+ms.commit()
 ms.publish("TrackingComponent:StartDebug","none")
-
+ms.commit()
 ## Set Creator
 ms.publish("JobCreator:SetCreator","LCGCreator")
 ## Set Submitter
 ms.publish("JobSubmitter:SetSubmitter","LCGSubmitter")
 ## Set Workflow and NewDataset
 ms.publish("RequestInjector:SetWorkflow", workflow)
+ms.commit()
+time.sleep(2)
 ms.publish("RequestInjector:NewDataset",'')
+ms.commit()
 ## Set first run and number of events per job
 ms.publish("RequestInjector:SetInitialRun", str(run))
+ms.commit()
 ms.publish("RequestInjector:SetEventsPerJob", str(nevts))
+ms.commit()
+time.sleep(2)
 ## Loop over jobs
+print " Trying to submit %s jobs with %s events each starting from run %s"%(njobs,str(nevts),str(run))
 njobs=njobs+1
 for i in range(1, njobs):
  ms.publish("ResourcesAvailable","none")
