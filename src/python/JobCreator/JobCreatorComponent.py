@@ -35,6 +35,7 @@ class JobCreatorComponent:
         self.args['CreatorName'] = "testCreator"
         self.args['Logfile'] = None
         self.args['JobState'] = True
+        self.args['maxRetries'] = 3
         self.args.update(args)
         self.job_state = self.args['JobState']
         if self.args['Logfile'] == None:
@@ -148,7 +149,9 @@ class JobCreatorComponent:
                 # was part of the request injector, and would not clash
                 # with re-job creation.
                 if not JobStateInfoAPI.isRegistered(jobname):
-                    JobStateChangeAPI.register(jobname, 'processing', self.args['maxRetries'], 1)
+                    JobStateChangeAPI.register(jobname, 'processing',
+                                               int(self.args['maxRetries']),
+                                               1)
                 JobStateChangeAPI.create(jobname, cacheArea)
                 JobStateChangeAPI.inProgress(jobname)
             except Exception, ex:
