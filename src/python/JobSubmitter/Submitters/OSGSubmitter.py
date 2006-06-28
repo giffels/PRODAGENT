@@ -18,61 +18,6 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
 
-CallbackScript = \
-"""
-#!/usr/bin/env python
-
-import os
-import sys
-import xmlrpclib
-
-from FwkJobRep.ReportState import checkSuccess
-
-logfile = open("callback.log", 'w')
-
-currentDir = os.getcwd()
-jobReport = os.path.join(currentDir, "FrameworkJobReport.xml")
-logfile.write("Report:%s\\n" % jobReport)
-
-if not os.path.exists(jobReport):
-    logfile.write("Report Not Found..\\n")
-    logfile.close()
-    sys.exit(0)
-
-try:
-    logfile.write("Connecting to ProdAgent...\\n")
-    server = xmlrpclib.Server("http://127.0.0.1:8081")
-    logfile.write("Connected...\\n")
-except:
-    logfile.write("Connection Failed...\\n")
-
-success = False
-try:
-    success = checkSuccess(jobReport)
-    logfile.write("Success Check: %s" % success)
-except Exception, ex:
-    logfile.write("Failed To do Success  Check:")
-    logfile.write("%s" % str(ex))
-
-if success:
-    try:
-        logfile.write("Publishing JobSuccess...\\n")
-        server.publishEvent("JobSuccess", jobReport)
-        logfile.write("Published...\\n")
-    except:
-        logfile.write("Publishing Failed...\\n")
-else:
-    try:
-        logfile.write("Publishing JobFailed...\\n")
-        server.publishEvent("JobFailed", jobReport)
-        logfile.write("Published...\\n")
-    except:
-        logfile.write("Publishing Failed...\\n")
-
-logfile.close()
-sys.exit(0)
-
-"""
 
 
 class OSGSubmitter(SubmitterInterface):
@@ -106,8 +51,17 @@ class OSGSubmitter(SubmitterInterface):
             raise JSException( msg , ClassInstance = self,
                                PluginConfig = self.pluginConfig)
 
-        
-        
+        #  //
+        # // Validate the value of the GlobusScheduler is present
+        #//  and sane
+        sched = self.pluginConfig['OSG'].get("GlobusScheduler", None)
+        if sched in (None, "None", "none", ""):
+            msg = "Invalid value for OSG GlobusScheduler in Submitter "
+            msg += "plugin configuration: %\n" % sched
+            msg += "You must provide a valid scheduler"
+            raise JSException( msg , ClassInstance = self,
+                               PluginConfig = self.pluginConfig)
+            
         
 
     def generateWrapper(self, wrapperName, tarballName, jobname):
@@ -130,11 +84,11 @@ class OSGSubmitter(SubmitterInterface):
         jdl.append("transfer_input_files = %s\n" % tarballName)
         jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
         jdl.append("should_transfer_files = YES\n")
-        jdl.append("notification = NEVER\n")
         jdl.append("when_to_transfer_output = ON_EXIT\n")
         jdl.append("Output = %s-condor.out\n" % jobname)
         jdl.append("Error = %s-condor.err\n" %  jobname)
         jdl.append("Log = %s-condor.log\n" % jobname)
+        jdl.append("notification = NEVER\n")
         jdl.append("Queue\n")
         
         
@@ -143,23 +97,7 @@ class OSGSubmitter(SubmitterInterface):
         handle.close()
 
         
-        postFile = os.path.join(directory, "prodAgentCallback.py")
-        handle = open(postFile, 'w')
-        handle.write(CallbackScript)
-        handle.close()
-        os.system("chmod +x %s" % postFile)
-        logging.debug("OSGSubmitter.generateWrapper: POST %s" % postFile)
-
-        dagFile = "%s.dag" % wrapperName
-        logging.debug("OSGSubmitter.generateWrapper: DAG %s" % dagFile)
-        dag = []
-        dag.append("JOB APP %s\n" % jdlFile)
-        dag.append("Script POST APP /usr/bin/python2 %s\n" % postFile) 
-
-        handle = open(dagFile, 'w')
-        handle.writelines(dag)
-        handle.close()
-        
+  
         tarballBaseName = os.path.basename(tarballName)
         script = ["#!/bin/sh\n"]
         script.append("PRODAGENT_JOB_INITIALDIR=`pwd`\n")
@@ -186,16 +124,13 @@ class OSGSubmitter(SubmitterInterface):
         Build and run a condor_submit command
 
         """
-        dagFile = "%s.dag" % wrapperScript
-        directory = os.path.dirname(wrapperScript)
-        command = "cd %s; condor_submit_dag %s" % (
-            directory,
-            os.path.basename(dagFile),
-            )
+        jdlFile = "%s.jdl" % wrapperScript
+        
+        command = "condor_submit %s" % jdlFile
         logging.debug("OSGSubmitter.doSubmit: %s" % command)
         output = self.executeCommand(command)
         logging.info("OSGSubmitter.doSubmit: %s " % output)
         return
-
+    
 
 registerSubmitter(OSGSubmitter, OSGSubmitter.__name__)
