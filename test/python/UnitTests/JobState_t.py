@@ -281,6 +281,9 @@ class JobStateUnitTests(unittest.TestCase):
     def testJ(self):
                    
          self.assertEqual(JobStateInfoAPI.jobSpecTotal(),9)
+         res=JobStateInfoAPI.startedJobs(-1)
+         print(str(type(res)))
+         print('test '+str(res))
 
     def runTest(self):
         # testA-J are also used for the error handler test
