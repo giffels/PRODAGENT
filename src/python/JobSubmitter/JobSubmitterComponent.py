@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.3 2006/05/02 14:25:25 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.4 2006/06/28 15:10:17 evansde Exp $"
 
 import os
 import logging
@@ -123,7 +123,14 @@ class JobSubmitterComponent:
 
         """
         jobSpecId = payload
-        jobCache = JobStateInfoAPI.general(jobSpecId)['CacheDirLocation']
+
+        try:
+            jobCache = JobStateInfoAPI.general(jobSpecId)['CacheDirLocation']
+        except ProdAgentException, ex:
+            msg = "Unable to retrieve Cache location for job spec ID: %s\n" % payload
+            msg += "Error from JobState: %s" % ex
+            logging.error(msg)
+            return
         
         jobToSubmit = os.path.join(jobCache, jobSpecId)
         
