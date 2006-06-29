@@ -158,7 +158,7 @@ class JobCreatorComponent:
                 # NOTE: we can have different errors here 
                 # NOTE: transition, submission, other...
                 logging.error("JobState Error:%s" % str(ex))
-        
+                return
         
         #  //
         # // Publish SubmitJob event
