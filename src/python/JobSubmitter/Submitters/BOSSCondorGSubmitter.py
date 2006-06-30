@@ -7,8 +7,9 @@ Globus Universe Condor Submitter via BOSS implementation.
 
 """
 
-__revision__ = "$Id: CondorGSubmitter.py,v 1.2 2006/05/02 12:31:14 elmer Exp $"
+__revision__ = "$Id: BOSSCondorGSubmitter.py,v 1.2 2006/06/13 15:29:49 bacchi Exp $"
 
+import time
 import os
 import logging
 from JobSubmitter.Registry import registerSubmitter
@@ -173,15 +174,16 @@ class BOSSCondorGSubmitter(SubmitterInterface):
            return 
 
         try:
-          output=self.executeCommand("grid-proxy-info")
+          output=self.executeCommand("voms-proxy-info")
           output=output.split("timeleft :")[1].strip()
+          output=output.split(":")[1].strip()
           if output=="0:00:00":
-            #logging.info( "You need a grid-proxy-init")
-            logging.error("grid-proxy-init expired")
+            #logging.info( "You need a voms-proxy-init")
+            logging.error("voms-proxy expired")
             #sys.exit()
         except StandardError,ex:
-          #print "You need a grid-proxy-init"
-          logging.error("grid-proxy-init does not exist")
+          #print "You need a voms-proxy-init -voms cms"
+          logging.error("voms-proxy does not exist")
           sys.exit()
           
         bossSubmit = self.bossSubmitCommand[self.BossVersion](bossJobId)
@@ -268,6 +270,31 @@ class BOSSCondorGSubmitter(SubmitterInterface):
 
         declareClad.close()
         return
+
+    def executeCommand(self,command,timeout=600) :
+        """
+        _executeCommand_
+        
+        Util it execute the command provided in a popen object with a timeout
+
+        """
+        p=Popen4(command)
+        maxt=time.time()+timeout
+        pid=p.pid
+        logging.info("process id of %s = %d"%(command,pid))
+        while p.poll()==-1 and time.time()<maxt:
+            pass
+        err=p.poll()
+        if err ==-1:
+            logging.error("command %s timed out. timeout %d\n"%(command,timeout))
+            return ""
+        if err>0:
+            logging.error("command %s gave %d exit code"%(command,err))
+            logging.error(p.fromchild.read())
+          
+            return ""
+        return p.fromchild.read()
+
 
 
 registerSubmitter(BOSSCondorGSubmitter,BOSSCondorGSubmitter.__name__ )

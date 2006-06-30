@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.7 2006/06/04 23:53:51 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.8 2006/06/05 11:01:28 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -20,7 +20,7 @@ bossScheduler = "edg"
 #  //
 # // End of Config variables.
 #//
-
+import time
 import os
 import sys
 import logging
@@ -29,7 +29,7 @@ from MCPayloads.JobSpec import JobSpec
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
-
+from popen2 import Popen4
 class InvalidFile(exceptions.Exception):
   def __init__(self,msg):
    args="%s\n"%msg
@@ -150,15 +150,17 @@ class LCGSubmitter(SubmitterInterface):
            return 
 
         try:
-            output=self.executeCommand("grid-proxy-info")
-            output=output.split("timeleft :")[1].strip()
+            output=self.executeCommand("voms-proxy-info")
+            output=output.split("timeleft")[1].strip()
+            output=output.split(":")[1].strip()
             if output=="0:00:00":
-                #logging.info( "You need a grid-proxy-init")
-                logging.error("grid-proxy-init expired")
+                #logging.info( "You need a voms-proxy-init -voms cms")
+                logging.error("voms-proxy-init expired")
                 #sys.exit()
         except StandardError,ex:
-            #print "You need a grid-proxy-init"
-            logging.error("grid-proxy-init does not exist")
+            #print "You need a voms-proxy-init -voms cms"
+            logging.error("voms-proxy-init does not exist")
+            logging.error(output)
             sys.exit()
             
         bossSubmit = self.bossSubmitCommand[self.BossVersion](bossJobId)  
@@ -234,6 +236,31 @@ class LCGSubmitter(SubmitterInterface):
         declareClad.close()
         return
 
-
+    def executeCommand(self, command, timeout=600 ) :
+        """
+        _executeCommand_
+      
+        
+        Util it execute the command provided in a popen object with a timeout
+        
+        """
+      
+        p=Popen4(command)
+        maxt=time.time()+timeout
+        pid=p.pid
+        logging.info("process id of %s = %d"%(command,pid))
+        while p.poll()==-1 and time.time()<maxt:
+            pass
+        err=p.poll()
+        if err ==-1:
+            logging.error("command %s timed out. timeout %d\n"%(command,timeout))
+            return ""
+        if err>0:
+            logging.error("command %s gave %d exit code"%(command,err))
+            logging.error(p.fromchild.read())
+            return ""
+        return p.fromchild.read()
+        
+        
 #registerSubmitter(LCGSubmitter, "lcg")
 registerSubmitter(LCGSubmitter, LCGSubmitter.__name__)
