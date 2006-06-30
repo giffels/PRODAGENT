@@ -119,6 +119,10 @@ class OSGCreator(CreatorInterface):
         taskObject['Environment'].addVariable(
             "SCRAM_ARCH",
             self.pluginConfig['SoftwareSetup']['ScramArch'])
+
+        taskObject['PreTaskCommands'].append(
+            self.pluginConfig['SoftwareSetup']['SetupCommand'])
+        
         
         scramSetup = taskObject.addStructuredFile("scramSetup.sh")
         scramSetup.interpreter = "."

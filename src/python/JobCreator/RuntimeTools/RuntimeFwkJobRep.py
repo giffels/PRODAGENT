@@ -104,7 +104,11 @@ def processFrameworkJobReport():
         siteName = siteCfg.siteName
     report.siteDetails['SiteName'] = siteName
     report.siteDetails['HostName'] = hostName
-        
+    
+    if siteCfg.localStageOut.get('se-name', None) != None:
+        report.siteDetails['se-name'] = siteCfg.localStageOut['se-name']
+    
+    
     
     #  //
     # // write out updated report
