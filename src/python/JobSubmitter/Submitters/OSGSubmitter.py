@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGSubmitter.py,v 1.1 2006/06/01 16:46:08 evansde Exp $"
+__revision__ = "$Id: OSGSubmitter.py,v 1.3 2006/06/28 19:04:52 evansde Exp $"
 
 import os
 import logging
@@ -89,6 +89,10 @@ class OSGSubmitter(SubmitterInterface):
         jdl.append("Error = %s-condor.err\n" %  jobname)
         jdl.append("Log = %s-condor.log\n" % jobname)
         jdl.append("notification = NEVER\n")
+
+        if self.pluginConfig['OSG']['GlobusScheduler'].endswith("jobmanager-pbs"):
+            jdl.append("GlobusRSL=(jobtype=single)\n")
+        
         jdl.append("Queue\n")
         
         
