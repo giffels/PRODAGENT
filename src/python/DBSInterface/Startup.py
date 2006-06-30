@@ -10,6 +10,7 @@ the common configuration file, which is accessed by environment variable
 import os
 import sys
 import getopt
+import logging
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
@@ -36,6 +37,9 @@ except:
 
 dbsConfig = config.get("LocalDBS")
 compCfg.update(dbsConfig)
+dlsConfigComp = config.getConfig("DLSInterface")
+dlsConfig={'DLSType':dlsConfigComp['DLSType'],'DLSAddress':dlsConfigComp['DLSAddress']}
+compCfg.update(dlsConfig)
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 #  //
 # // Initialise and start the component

@@ -31,7 +31,11 @@ from MessageService.MessageService import MessageService
 
 import logging
 from logging.handlers import RotatingFileHandler
-                                                                                
+
+## temporary waiting for SEname in FWKJobReport 
+from ProdAgentCore.PluginConfiguration import loadPluginConfig
+
+                                                                               
 # ##############
 class InvalidWorkFlowSpec(exceptions.Exception):
   def __init__(self,workflowfile):
@@ -87,12 +91,15 @@ class DBSComponent:
     """
     def __init__(self, **args):
         self.args = {}
-        self.args['DBSAddress'] = None
-        self.args['DBSType'] = 'CGI' # default to CGI
-        self.args['Logfile'] = None
-        self.args['DBSDataTier']= 'GEN,SIM,DIGI'
+
+        self.args.setdefault("DBSAddress", None)
+        self.args.setdefault("DBSType", "CGI")
+        self.args.setdefault("Logfile", None)
+        self.args.setdefault("DBSDataTier", 'GEN,SIM,DIGI,RECO')
+        self.args.setdefault("MaxBlockSize", None)  # No check on fileblock size
+
         self.args.update(args)
-        
+
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
@@ -312,32 +319,90 @@ class DBSComponent:
             from DBS import DBS as DBSclient
           else:
             from DBS_Ws import DBS_Ws as DBSclient
-          dbsinfo= DBSclient(self.args['DBSAddress'])
+
+          self.dbsinfo= DBSclient(self.args['DBSAddress'])
+
+          ## FIXME: get Stage out SE from FWK report
+          SEname=self.getSEname() 
+          logging.debug(" SEname %s"%SEname)
+          ## SEname=jobreport.se ??
 
           ## handle output files information from FWK report
           for fileinfo in jobreport.files:
  
-           ## Retrieve the fileblock to add files to, look for just the first datasetPath
+           ## Define the fileblock to add files to, look for just the first datasetPath
            datatier=self.getDataTier(fileinfo.dataset['DataTier'],self.args['DBSDataTier'])
            
            tiers=string.split(datatier,'-')    # split the multi datatiers GEN-SIM-DIGI into single data tier 
            if ( self.args['DBSType'] != 'CGI'): tiers=[datatier]  # keep the datatier as a single piece 
            datasetPath="/"+fileinfo.dataset['PrimaryDataset']+"/"+tiers[0]+"/"+fileinfo.dataset['ProcessedDataset']
-           fileblock = dbsinfo.getDatasetFileBlocks(datasetPath)
-           if ( len(fileblock) == 0 ) or ( fileblock == None ) :
-            logging.error("No Fileblock for the dataset %s"%datasetPath)
-            return
+
+           fileblock = self.checkFileBlockforSE(datasetPath,SEname,self.args['MaxBlockSize'],fileinfo.dataset)
+           if fileblock is None:
+              logging.error("No Fileblock found to add data to, for the dataset %s"%datasetPath)
+              return
 
            ## Insert files to block
-           fList=dbsinfo.insertFiletoBlock(fileinfo,fileblock[0])
+           fList=self.dbsinfo.insertFiletoBlock(fileinfo,fileblock)
 
            ## Insert event collections: 
            for tier in tiers:
              datasetPath="/"+fileinfo.dataset['PrimaryDataset']+"/"+tier+"/"+fileinfo.dataset['ProcessedDataset']
-             evcList=dbsinfo.setEVCollection(fileinfo,fList,datasetPath)
-             dbsinfo.insertEVCtoDataset(datasetPath,evcList)
+             evcList=self.dbsinfo.setEVCollection(fileinfo,fList,datasetPath)
+             self.dbsinfo.insertEVCtoDataset(datasetPath,evcList)
 
         return
+
+
+    def getSEname(self):
+        """
+         fake the SE name for the time being...until this is extracted form FWJReport
+        """
+        plugConfig = loadPluginConfig("JobCreator","Creator")
+        if plugConfig.has_key("StageOut"):
+          if plugConfig['StageOut']['TargetHostName']!='None':
+            SEname=plugConfig['StageOut']['TargetHostName']
+            return SEname
+        SEname=None
+        return SEname
+
+    def checkFileBlockforSE(self,datasetPath,SEname,MaxBlockSize,fileinfo):
+        """
+         o create a file block associated to a storage element (SE) 
+           and add the fileblock-SE entry in DLS if one of the following conditions holds:
+           1. a fileblock associated to this SE is not yet registered for the current dataset
+           2. the file block associated to the SE is full
+         o return the fileblock to add files to
+        """
+        from DLS import DLS 
+
+        fileBlockList = self.dbsinfo.getDatasetFileBlocks(datasetPath)
+
+        if SEname is None: return fileBlockList[0]  ##temporary hack to behave as before until SEname is not defined in FWKJobReport
+
+        ## get the type and endpoint from configuration DLS block 
+        dlsinfo= DLS(self.args['DLSType'],self.args['DLSAddress'])
+        #dlsinfo= DLS("DLS_TYPE_LFC","lfc-cms-test.cern.ch/grid/cms/DLS/LFC")
+
+        ## look for an existing file block associated to the storage element and not yet full
+        for fileBlock in fileBlockList:
+          SEList=dlsinfo.getFileBlockLocation(fileBlock.get('blockName'))
+          fileBlockSize=fileBlock.get('numberOfBytes')
+          # check the fileblock at SE
+          if SEList.count(SEname)>0:
+            # check block size (need to check if fileblock is open too??)
+           if MaxBlockSize==None:
+              return fileBlock # found a fileblock associated to SE, no check on its size is performed
+           elif fileBlockSize<=MaxBlockSize:
+              return fileBlock # found a fileblock associated to SE and not full  
+
+        ## create a new fileblock with the same processing from the empty fileblock created at the time of NewDataset
+        #fileBlock = self.dbsinfo.addFileBlock(fileBlockList,datasetPath)
+        fileBlock = self.dbsinfo.addFileBlock(fileinfo,datasetPath)
+        if fileBlock is not None :
+         ## add the fileblock-SE entry to DLS
+         dlsinfo.addEntryinDLS(fileBlock.get('blockName'),SEname)        
+        return fileBlock
 
 
     def getAppFamily(self,ApplicationFamily):
