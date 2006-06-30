@@ -32,7 +32,7 @@ import urlparse
 from IMProv.IMProvLoader import loadIMProvFile
 from IMProv.IMProvQuery import IMProvQuery
 
-
+_TFCArgSplit = re.compile("\?protocol=")
 
 class TrivialFileCatalog(list):
     """
@@ -121,7 +121,8 @@ def tfcFilename(contactString):
 
     """
     value = contactString.replace("trivialcatalog_file:", "")
-    path = urlparse.urlsplit(value)[2]
+    value = _TFCArgSplit.split(value)[0]
+    path = os.path.normpath(value)
     return path
 
     
