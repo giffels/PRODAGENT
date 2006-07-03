@@ -11,8 +11,8 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id: Dataset.py,v 1.7 2006/06/21 10:34:07 ckavka Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: Dataset.py,v 1.8 2006/06/27 10:50:28 ckavka Exp $"
+__version__ = "$Revision: 1.8 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError
@@ -69,6 +69,7 @@ class Dataset:
        'dataTier' : 'Tier',
        'realDataTier' : 'realTier',
        'processedDataset' : 'Processed',
+       'PSetHash' : '123456789012345678190',
        'status' : 'open',
        'started' : 'Thu Jan 12 10:41:09 2006',
        'last_updated' : 'Thu Jan 12 10:44:28 2006'
@@ -198,6 +199,12 @@ class Dataset:
         except:
             version = 'CMSSW_0_6_1'
         
+        # get PSetHash
+        try:
+            psethash = outputDataset["PSetHash"]
+        except:
+            psethash = "12345678901234567890"
+
         # initialize it
         date = time.asctime(time.localtime(time.time()))
         self.data = {'id' : datasetId,
@@ -206,6 +213,7 @@ class Dataset:
                      'dataTier' : dataTier,
                      'realDataTier' : dataTierName,
                      'processedDataset' : processedDataset,
+                     'PSetHash' : psethash,
                      'version' : version,
                      'workflowName' : workflowName,
                      'mergedLFNBase' : mergedLFNBase,

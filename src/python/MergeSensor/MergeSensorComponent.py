@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.9 2006/05/22 14:58:46 ckavka Exp $"
-__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.11 2006/06/21 10:27:29 ckavka Exp $"
+__version__ = "$Revision: 1.11 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -206,7 +206,7 @@ class MergeSensorComponent:
                                                                                 
         # get parameters from source dataset
         properties = self.datasets.getProperties(datasetId)
-                                                                                
+        
         # critical region end
         self.cond.release()
                                                                                 
@@ -218,6 +218,7 @@ class MergeSensorComponent:
         category = properties["category"]
         version = properties["version"]
         timeStamp = properties["timeStamp"]
+        psethash = properties["PSetHash"]
                                                  
         # set workflow values
         spec.setWorkflowName(workflowName)
@@ -244,7 +245,7 @@ class MergeSensorComponent:
         out["ApplicationProject"] = dummyTask.application["Project"]
         out["ApplicationVersion"] = dummyTask.application["Version"]
         out["ApplicationFamily"] = "Merged"
-        out["PSetHash"] = "12345678901234567890" # dummy value
+        out["PSetHash"] = psethash;
                                                                                 
         # set empty configuration
         dummyTask.configuration = ""
