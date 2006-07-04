@@ -19,16 +19,16 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.12 2006/05/27 01:25:59 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.13 2006/06/07 12:50:48 bacchi Exp $"
 
 import socket
 import time
 import os
 import logging
 from logging.handlers import RotatingFileHandler
+from popen2 import Popen4
 # threads
 from threading import Thread, Condition
-
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from MessageService.MessageService import MessageService
 from FwkJobRep.ReportState import checkSuccess
@@ -154,9 +154,10 @@ class TrackingComponent:
 
 # query boss Database to get jobs status
 
-        infile,outfile=os.popen4("boss RTupdate -jobid all -c " + self.bossCfgDir)
-        infile,outfile=os.popen4("boss q -statusOnly -all -c " + self.bossCfgDir)
-        lines=outfile.readlines()
+        outfile=self.executeCommand("boss RTupdate -jobid all -c " + self.bossCfgDir)
+        outfile=self.executeCommand("boss q -statusOnly -all -c " + self.bossCfgDir)
+        #lines=outfile.readlines()
+        lines=outfile.split('\n')
         logging.debug("boss q -statusOnly -all -c " + self.bossCfgDir)
         logging.debug(lines)
 # fill job lists
@@ -417,7 +418,39 @@ class TrackingComponent:
            
         return
     
-    
+    def executeCommand(self,command,timeout=600):
+        """
+        _executeCommand_
+        
+        Util it execute the command provided in a popen object with a timeout
+        
+        """
+
+       
+        p=Popen4(command)
+        
+        maxt=time.time()+timeout
+        logging.debug("from time %d to time %d"%(time.time(),maxt))
+        pid=p.pid
+        logging.debug("process id of %s = %d"%(command,pid))
+        while p.poll() == -1 and time.time() < maxt :
+            pass
+        err = p.poll()
+        if err == -1:
+            logging.error("command %s timed out. timeout %d\n"%(command,timeout))
+            return ""
+        if err > 0:
+            logging.error("command %s gave %d exit code"%(command,err))
+        #    p.wait()
+            #ogging.error(p.fromchild.read())
+            
+            #eturn ""
+        
+        output=p.fromchild.read()
+        logging.debug("command output \n %s"%output)
+        return output
+
+
     def saveDict(self,d,filename):
         try:
             f=open("%s/%s"%(self.directory,filename),'w')
@@ -464,11 +497,17 @@ class TrackingComponent:
         self.ms.subscribeTo("TrackingComponent:EndDebug")
 
         # start polling thread
+        #logging.info("before Poll constructor")
+
         pollingThread = Poll(self.checkJobs)
+        #logging.info("after Poll constructor")
         pollingThread.start()
+        #logging.info("after Poll start")
 
         # wait for messages
         while True:
+            
+            #logging.info("Thread Alive %s"%pollingThread.isAlive())
             type, payload = self.ms.get()
             self.ms.commit()
             logging.debug("TrackingComponent: %s, %s" % (type, payload))
@@ -489,8 +528,8 @@ class TrackingComponent:
             chainid=jobId[0].split('.')[1]
         except:
             logging.debug("Boss 4 getoutput - split error %s"%jobId)
-        infile,outfile=os.popen4("bossAdmin SQL -query \"select max(ID) ID  from JOB_HEAD where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
-        outp=outfile.read()
+        outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID  from JOB_HEAD where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
+        outp=outfile
         
         try:
             resub=outp.split("ID")[1].strip()
@@ -498,8 +537,8 @@ class TrackingComponent:
             logging.debug(outp)
 
         getoutpath="%s/BossJob_%s_%s/Submission_%s/" %(self.directory, taskid,chainid,resub)
-        infile,outfile=os.popen4("boss getOutput -outdir "+getoutpath+ " -taskid %s -jobid %s"%(taskid,chainid) + " -c " + self.bossCfgDir)
-        outp=outfile.read()
+        outfile=self.executeCommand("boss getOutput -outdir "+getoutpath+ " -taskid %s -jobid %s"%(taskid,chainid) + " -c " + self.bossCfgDir)
+        outp=outfile
         return outp
     
     def BOSS3getoutput(self,jobId):
@@ -509,8 +548,8 @@ class TrackingComponent:
         Boss 3 command to retrieve output
         """
     
-        infile,outfile=os.popen4("boss getOutput -outdir "+self.directory+ "/BossJob_" + jobId[0] + " -jobid "+jobId[0] + " -c " + self.bossCfgDir)
-        outp=outfile.read()
+        outfile=self.executeCommand("boss getOutput -outdir "+self.directory+ "/BossJob_" + jobId[0] + " -jobid "+jobId[0] + " -c " + self.bossCfgDir)
+        outp=outfile
         return outp
 
     def BOSS3reportfilename(self,jobId):
@@ -530,8 +569,8 @@ class TrackingComponent:
         
         taskid = jobId[0].split('.')[0]
         chainid=jobId[0].split('.')[1]
-        infile,outfile=os.popen4("bossAdmin SQL -query \"select max(ID) ID from JOB_HEAD where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
-        outp=outfile.read()
+        outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID from JOB_HEAD where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
+        outp=outfile
         try:
             resub=outp.split("ID")[1].strip()
         except:
@@ -544,8 +583,8 @@ class TrackingComponent:
 
         BOSS 3 command to retrieve JobSpecID from BOSS db
         """
-        infile,outfile=os.popen4("boss SQL -query \"select GROUP_N from JOB where id='%s'\""%id)
-        outp=outfile.read()
+        outfile=self.executeCommand("boss SQL -query \"select GROUP_N from JOB where id='%s'\""%id)
+        outp=outfile
         try:
             outp=outp.split("GROUP_N")[1].strip()
             
@@ -561,8 +600,8 @@ class TrackingComponent:
         BOSS 4 command to retrieve JobSpecID from BOSS db
         """
         
-        infile,outfile=os.popen4("bossAdmin SQL -query \"select TASK_NAME from TASK_HEAD where id='%s'\""%id.split('.')[0] + " -c " + self.bossCfgDir)
-        outp=outfile.read()
+        outfile=self.executeCommand("bossAdmin SQL -query \"select TASK_NAME from TASK_HEAD where id='%s'\""%id.split('.')[0] + " -c " + self.bossCfgDir)
+        outp=outfile
         try:
             outp=outp.split("TASK_NAME")[1].strip()
         except:
@@ -579,8 +618,8 @@ class TrackingComponent:
         Boss 3 command which retrieves the scheduler used to submit job
         """
 
-        infile,outfile=os.popen4("boss SQL -query \"select SCH from JOB where ID='%s'\""%id)
-        outp=outfile.read()
+        outfile=self.executeCommand("boss SQL -query \"select SCH from JOB where ID='%s'\""%id)
+        outp=outfile
         try:
             outp=outp.split("SCH")[1].strip()
         except:
@@ -597,8 +636,8 @@ class TrackingComponent:
         """
         
         try:
-            infile,outfile=os.popen4("bossAdmin SQL -query \"select SCHEDULER from JOB where TASK_ID='%s' and ID='%s'\""%(id.split('.')[0],id.split('.')[1]) + " -c " + self.bossCfgDir)
-            outp=outfile.read()
+            outfile=self.executeCommand("bossAdmin SQL -query \"select SCHEDULER from JOB where TASK_ID='%s' and ID='%s'\""%(id.split('.')[0],id.split('.')[1]) + " -c " + self.bossCfgDir)
+            outp=outfile
         except:
             outp=""
             
@@ -608,6 +647,7 @@ class TrackingComponent:
             outp=""
             
         return outp
+
 
 
 class Poll(Thread):
