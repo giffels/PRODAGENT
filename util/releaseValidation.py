@@ -29,15 +29,24 @@ from CMSConfigTools.CfgInterface import CfgInterface
 prodAgentService = xmlrpclib.Server("http://127.0.0.1:8081")
 
 
-valid = ['url=', 'version=', 'relvalversion=', 'events=']
+valid = ['url=', 'version=', 'relvalversion=', 'events=',
+         'testretrieval', 'testpython']
+
 usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
 usage += "                            --version=<CMSSW version to be used>\n"
 usage += "                            --relvalversion=<version to be used in spec file>\n"
 usage += "                            --events=<events per job>\n"
+usage += "     Options:\n"
+usage += "                            --testretrieval\n"
+usage += "                            --testpython\n"
 usage += "                            "
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
 usage += "Events per job defaults to 100 for faster finishing jobs\n"
+usage += "If --testretrieval is provided only parsing the XML spec and \n"
+usage += "retrieving the cfg files is performed\n"
+usage += "If --testpython is provided the cfg files will be retrieved \n"
+usage += "and converted to python, but no jobs will be submitted\n" 
 
 
 try:
@@ -53,7 +62,23 @@ relvalVersion = None
 category = "RelVal"
 timestamp = int(time.time())
 eventsPerJob = 100
+testRetrievalMode = False
+testPythonMode = False
 
+def reduceVersion(versString):
+    """
+    _reduceVersion_
+
+    take a string like CMSSW_X_Y_Z_preA and reduce it to
+    XYZpreA
+
+    We add this into the job name for each release validation run to enable
+    easily identifying which jobs are from which release
+    
+    """
+    result = versString.replace("CMSSW_", "")
+    result = result.replace("_", "")
+    return result
 
 for opt, arg in opts:
     if opt == "--url":
@@ -64,6 +89,10 @@ for opt, arg in opts:
         relvalVersion = arg
     if opt == "--events":
         eventsPerJob = int(arg)
+    if opt == "--testretrieval":
+        testRetrievalMode = True
+    if opt == "--testpython":
+        testPythonMode = True
 
 if xmlFile == None:
     msg = "--url option not provided: This is required"
@@ -99,15 +128,29 @@ summaryEvents = 0
 
 
 for relTest in relValSpec:
-    cfgUrl = relTest['CfgUrl']
+    cfgUrl = "\"%s\"" % relTest['CfgUrl']
     prodName = relTest['Name']
-    cfgFile = os.path.join(os.getcwd(), "%s.cfg" % relTest['Name'])
+    prodName = prodName.replace("RelVal", "RelVal%s" % reduceVersion(version) )
+    cfgFile = os.path.join(os.getcwd(), "%s.cfg" % prodName)
     numberOfJobs = int( int(relTest['Events']) / eventsPerJob) + 1
     wgetCommand = "wget %s -O %s" % (cfgUrl, cfgFile)
-    os.system(wgetCommand)
     
-    pycfgFile = "%s.pycfg" % relTest['Name']
-    hashFile = "%s.hash" % relTest['Name']
+    pop = popen2.Popen4(wgetCommand)
+    while pop.poll() == -1:
+        exitStatus = pop.poll()
+    exitStatus = pop.poll()
+    if exitStatus:
+        msg = "Error creating retrieving cfg file: %s\n" % cfgUrl
+        msg += pop.fromchild.read()
+        raise RuntimeError, msg
+    
+    if testRetrievalMode:
+        print "Test Retrieval Mode:"
+        print "Retrieval Completed for %s" % prodName
+        print "Cfg File is %s " % cfgFile
+        continue
+    pycfgFile = "%s.pycfg" % prodName
+    hashFile = "%s.hash" % prodName
 
     if not os.path.exists(cfgFile):
         msg = "Cfg File Not Found: %s" % cfgFile
@@ -165,6 +208,14 @@ for relTest in relValSpec:
         msg = "Error importing Python cfg file:\n"
         msg += pop.fromchild.read()
         raise RuntimeError, msg
+
+
+    if testPythonMode:
+        print "Test Python Mode:"
+        print "EdmConfigToPython and EdmConfigHash successful for %s" % prodName
+        print "Python Config File: %s" % pycfgFile
+        print "Config Hash File: %s" % hashFile
+        continue
     
     #  // 
     # // Create a new WorkflowSpec and set its name
@@ -187,7 +238,7 @@ for relTest in relValSpec:
     cmsRun.application["Architecture"] = "slc3_ia32_gcc323" # arch (not needed)
     cmsRun.application["Executable"] = "cmsRun" # binary name
     cmsRun.configuration = file(pycfgFile).read() # Python PSet file
-
+    
     #  //
     # // Pull all the output modules from the configuration file,
     #//  treat the output module name as DataTier and AppFamily,
