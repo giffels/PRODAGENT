@@ -98,15 +98,18 @@ def processFrameworkJobReport():
     report = state.getJobReport()
     siteName = "Unknown"
     hostName = socket.gethostname()
+    seName = "Unknown"
     state.loadSiteConfig()
     siteCfg = state.getSiteConfig()
     if siteCfg != None:
         siteName = siteCfg.siteName
+        if siteCfg.localStageOut.get('se-name', None) != None:
+            seName = siteCfg.localStageOut['se-name']
+
+            
     report.siteDetails['SiteName'] = siteName
     report.siteDetails['HostName'] = hostName
-    
-    if siteCfg.localStageOut.get('se-name', None) != None:
-        report.siteDetails['se-name'] = siteCfg.localStageOut['se-name']
+    report.siteDetails['se-name'] = seName    
     
     
     
