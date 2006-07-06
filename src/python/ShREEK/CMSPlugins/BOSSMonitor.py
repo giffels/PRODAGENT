@@ -93,6 +93,15 @@ class BOSSMonitor(ShREEKMonitor):
         Job ended notifier.
         """
         print self._Prefix, "BOSSMonitor.jobEnd Ended=%s"%time.time()
+        print self._Prefix, "Dump Final FrameworkJobReport "
+        jobReport="FrameworkJobReport.xml"
+        if os.path.exists(jobReport):
+            handle = open(jobReport, 'r')
+            print handle.read()
+        else:
+            print "NOT FOUND: %s" % jobReport
+
+        print self._Prefix, "End Dump Final FrameworkJobReport "
 
     def jobKilled(self):
         """
