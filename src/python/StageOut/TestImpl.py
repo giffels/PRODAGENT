@@ -13,7 +13,7 @@ from StageOut.Registry import retrieveStageOutImpl
 import StageOut.Impl
 
 
-valid = ['input-pfn=', 'protocol=', "impl=", "target-pfn="]
+valid = ['input-pfn=', 'protocol=', "impl=", "target-pfn=", "cleanup"]
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -25,6 +25,7 @@ inputPfn = None
 targetPfn = None
 implName = None
 protocol = None
+doCleanup = False
 
 
 for opt, arg in opts:
@@ -36,8 +37,9 @@ for opt, arg in opts:
         implName = arg
     if opt == "--protocol":
         protocol = arg
-
-
+    if opt == "--cleanup":
+        doCleanup = True
+        
 if implName == None:
     msg = "Error: ImplName not provided, you need to provide the --impl option"
     print msg
@@ -53,9 +55,23 @@ if targetPfn == None:
     print msg
     sys.exit(1)
     
+try:
+    implInstance = retrieveStageOutImpl(implName)
+except RegistryError, ex:
+    print "Error retrieving plugin from registry named: %s" % implName
+    print str(ex)
+    sysexit(1)
 
-implInstance = retrieveStageOutImpl(implName)
 
+print " Invoking StageOutImpl: %s" % implName
 implInstance(protocol, inputPfn, targetPfn)
+
+
+if doCleanup:
+    #  //
+    # // Cleanup implies that we invoke the implementations 
+    #//  removeFile method on the target PFN after the transfer
+    print "Invoking %s.removeFile on %s" % (implName, targetPfn)
+    implInstance.removeFile(targetPfn)
 
 
