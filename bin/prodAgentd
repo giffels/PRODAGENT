@@ -11,6 +11,7 @@ import sys
 import getopt
 import inspect
 import time
+import popen2
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.DaemonDetails import DaemonDetails
@@ -32,7 +33,8 @@ def usage():
     print usage
 
     
-valid = ['config=', 'start', 'shutdown', 'status']
+valid = ['config=', 'start', 'shutdown', 'status', 'restart',
+         'components=', 'cleanup-logs', 'cleanup-all', 'reset-db']
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
@@ -43,6 +45,9 @@ except getopt.GetoptError, ex:
 
 config = None
 command = None
+doLogCleanup = False
+doDirCleanup = False
+componentsList = None
 
 
 for opt, arg in opts:
@@ -69,6 +74,32 @@ for opt, arg in opts:
             print msg
             sys.exit(1)
         command = "status"
+    if opt == "--restart":
+        if command != None:
+            msg = "Command specified twice:\n"
+            msg += usage()
+            print msg
+            sys.exit(1)
+        command = "restart"
+    if opt == "--reset-db":
+        if command != None:
+            msg = "Command specified twice:\n"
+            msg += usage()
+            print msg
+            sys.exit(1)
+        command = "reset"
+    if opt == "--cleanup-logs":
+        doLogCleanup = True
+    if opt == "--cleanup-all":
+        doDirCleanup = True
+    if opt == "--components":
+        compList = arg.split(',')
+        componentsList = []
+        for item in compList:
+            if item.strip == "":
+                continue
+            componentsList.append(item)
+            
 
 if config == None:            
     config = os.environ.get("PRODAGENT_CONFIG", None)
@@ -86,8 +117,35 @@ prodAgentConfig = cfgObject.get("ProdAgent")
 dbConfig = cfgObject.get("ProdAgentDB") # TODO: test DB connection
 workingDir = prodAgentConfig['ProdAgentWorkDir'] # TODO: check Dirs exist
 workingDir = os.path.expandvars(workingDir)
-components = cfgObject.listComponents()
 
+if componentsList != None:
+    msg = "Components List Specified:\n"
+    msg += str(componentsList).replace('\'', '')
+    print msg
+    components = componentsList
+else:    
+    components = cfgObject.listComponents()
+
+
+def connectionTest():
+    """
+    _connectionTest_
+
+    Create a DB Connection instance to test the mysqldb connection specified
+    in the config file.
+
+    """
+    from ProdAgentDB.Connect import connect
+
+    try:
+        conn = connect()
+    except Exception, ex:
+        msg = "Unable to make connection to ProdAgentDB using ProdAgent DB\n"
+        msg += "Parameters provided in %s\n" % config
+        msg += str(ex)
+        print msg
+        return False
+    return True
 
 def startup():
     """
@@ -96,6 +154,11 @@ def startup():
     Start up the component daemons
 
     """
+    if not connectionTest():
+        msg = "Cannot connect to ProdAgent DB...\n"
+        msg += "exiting...\n"
+        print msg
+        sys.exit(1)
     for component in components:
         modRef = __import__(component, globals(), locals(), [])
         srcFile = inspect.getsourcefile(modRef)
@@ -134,8 +197,7 @@ def startup():
             print "Error: Component %s Did not start properly..." % component
             sys.exit(1)
 
-        
-    sys.exit(0)
+    return
     
         
 def shutdown():
@@ -143,6 +205,10 @@ def shutdown():
     _shutdown_
 
     Shutdown the component daemons
+
+    If cleanup-logs option is specified, wipe out the component logs
+    If cleanup-all option is specified, wipe out all component dir
+    content and purge the ProdAgentDB
 
     """
     for component in components:
@@ -161,6 +227,36 @@ def shutdown():
                 )
             continue
         daemon.kill()
+        if doLogCleanup:
+            #  //
+            # // Log Cleanup
+            #//
+            msg = "Removing %s/ComponentLog" % compDir
+            print msg
+            try:
+                os.remove("%s/ComponentLog" % compDir)
+            except StandardError, ex:
+                msg = "Unable to cleanup Component Log: "
+                msg += "%s/ComponentLog\n" % compDir
+                msg += str(ex)
+                
+        if doDirCleanup:
+            #  //
+            # // Cleanout everything in ComponentDir
+            #//  for this component
+            msg = "Removing %s/*\n" % compDir
+            print msg
+            pop = popen2.Popen4("/bin/rm -rf %s/*" % compDir)
+            exitCode = pop.poll()
+            while pop.poll() == -1:
+                exitCode = pop.poll()
+            output = pop.fromchild.read()
+            if exitCode:
+                msg = "Failed to clean up dir: %s\n" % compDir
+                msg += output
+                print msg
+
+   
     return
 
 
@@ -186,15 +282,45 @@ def status():
             print "Component:%s Running:%s" % (component, daemon['ProcessID'])
 
     sys.exit(0)
+
+def restart():
+    """
+    _restart_
+
+    do a shutdown and startup again
+
+    """
+    shutdown()
+    startup()
+    return
+
+def resetdb():
+    """
+    _resetdb_
+
+    Purge the ProdAgentDB
+
+    """
+    print "Removing all Pending messages and JobState info from ProdAgentDB"
+    from AdminControl.AdminControlInterface import AdminControlInterface
+    intf = AdminControlInterface()
+    intf.purgeProdAgentDB()
+    return
         
 if command == "start":
     startup()
+    sys.exit(0)
 
 elif command == "shutdown":
     shutdown()
-
+    sys.exit(0)
 elif command == "status":
     status()
+    sys.exit(0)
     
-    
-
+elif command == "restart":
+    restart()
+    sys.exit(0)
+elif command == "reset":
+    resetdb()
+    sys.exit(0)
