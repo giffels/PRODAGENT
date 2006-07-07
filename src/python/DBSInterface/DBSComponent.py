@@ -234,7 +234,6 @@ class DBSComponent:
 
         ## define app family from OutputModuleName
         applicationfamily=datasetinfo['OutputModuleName']
-        #applicationfamily=self.getAppFamily(datasetinfo['OutputModuleName'])
         ## check datatier
         datatier=self.getDataTier(datasetinfo['DataTier'],self.args['DBSDataTier'])
         logging.debug(" - ApplicationFamily %s"%applicationfamily)
@@ -322,10 +321,10 @@ class DBSComponent:
 
           self.dbsinfo= DBSclient(self.args['DBSAddress'])
 
-          ## FIXME: get Stage out SE from FWK report
-          SEname=self.getSEname() 
+          # SEname=self.getSEname() 
+          ## get Stage out SE from FWK report 
+          SEname=jobreport.siteDetails['se-name']
           logging.debug(" SEname %s"%SEname)
-          ## SEname=jobreport.se ??
 
           ## handle output files information from FWK report
           for fileinfo in jobreport.files:
@@ -378,7 +377,7 @@ class DBSComponent:
 
         fileBlockList = self.dbsinfo.getDatasetFileBlocks(datasetPath)
 
-        if SEname is None: return fileBlockList[0]  ##temporary hack to behave as before until SEname is not defined in FWKJobReport
+        #if SEname is None: return fileBlockList[0]  ##temporary hack to behave as before until SEname is not defined in FWKJobReport
 
         ## get the type and endpoint from configuration DLS block 
         dlsinfo= DLS(self.args['DLSType'],self.args['DLSAddress'])
@@ -388,6 +387,9 @@ class DBSComponent:
         for fileBlock in fileBlockList:
           SEList=dlsinfo.getFileBlockLocation(fileBlock.get('blockName'))
           fileBlockSize=fileBlock.get('numberOfBytes')
+          # if the SEname is not set use the  
+          if SEname=="Unknown" and len(SEList)<=0:
+              return fileBlock # found a fileblock not associated to any SE
           # check the fileblock at SE
           if SEList.count(SEname)>0:
             # check block size (need to check if fileblock is open too??)
@@ -399,30 +401,12 @@ class DBSComponent:
         ## create a new fileblock with the same processing from the empty fileblock created at the time of NewDataset
         #fileBlock = self.dbsinfo.addFileBlock(fileBlockList,datasetPath)
         fileBlock = self.dbsinfo.addFileBlock(fileinfo,datasetPath)
-        if fileBlock is not None :
+        if fileBlock is not None and SEname!="Unknown" :
          ## add the fileblock-SE entry to DLS
          dlsinfo.addEntryinDLS(fileBlock.get('blockName'),SEname)        
         return fileBlock
 
 
-    def getAppFamily(self,ApplicationFamily):
-        """
-         guess the Application family and data tier from the POOL Output Module Name convention in .cfg 
-        """
-        if ( ApplicationFamily=='Simulated' ):
-          applicationfamily='Simulation'
-        elif ( ApplicationFamily=='Digitized' ):
-          applicationfamily='Digitization'
-        elif ( ApplicationFamily=='Merged' ):
-          applicationfamily='Merging'
-        elif ( ApplicationFamily=='GenSimDigi') or ( ApplicationFamily=='GEN-SIM-DIGI'):
-          applicationfamily='GEN-SIM-DIGI'
-        elif ( ApplicationFamily=='GEN-SIM'):
-          applicationfamily='GEN-SIM'
-        else:
-          applicationfamily='Unknown'
-
-        return applicationfamily
 
     def getDataTier(self,DataTier,DBSDataTier):
         """
