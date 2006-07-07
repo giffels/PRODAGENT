@@ -86,6 +86,15 @@ class BOSSMonitor(ShREEKMonitor):
         print self._Prefix, "BOSSMonitor.taskEnd Task=%s Exit=%s Ended=%s" % (
             task.taskname(), exitCode, time.time()
             )
+        print self._Prefix, "Dump taskEnd FrameworkJobReport "
+        jobReport="FrameworkJobReport.xml"
+        if os.path.exists(jobReport):
+            handle = open(jobReport, 'r')
+            print handle.read()
+        else:
+            print "NOT FOUND: %s" % jobReport
+
+        print self._Prefix, "End Dump taskEnd FrameworkJobReport "
 
         
     def jobEnd(self):
