@@ -11,11 +11,11 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id: Dataset.py,v 1.8 2006/06/27 10:50:28 ckavka Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
-from MergeSensor.MergeSensorError import MergeSensorError
+from MergeSensor.MergeSensorError import MergeSensorError, InvalidDataTier
 from MCPayloads.WorkflowSpec import WorkflowSpec
 
 class Dataset:
@@ -58,16 +58,17 @@ class Dataset:
      * getName(self):
         
        return the name of the dataset.
-     
+            
     All methods can generate the exception MergeSensorError    
 
     Example of the representation of a dataset object:
    
-      {'id' : '[Primary][Tier][Processed]',
+      {'id' : '[Primary][PollTier][Processed]',
        'name' : '/Primary/Tier/Processed',
        'primaryDataset' : 'Primary',
-       'dataTier' : 'Tier',
-       'realDataTier' : 'realTier',
+       'dataTier' : 'SIM-GEN-DIGI',
+       'pollTier' : 'SIM',
+       'secondaryOutputTiers' : 'RECO',
        'processedDataset' : 'Processed',
        'PSetHash' : '123456789012345678190',
        'status' : 'open',
@@ -113,6 +114,9 @@ class Dataset:
     # default size for merged files (1MB)
     mergeFileSize = 1000000
     
+    # list of data tiers
+    dataTierList = []
+    
     def __init__(self, fileName):
         """
 
@@ -149,27 +153,44 @@ class Dataset:
             self.data = None
             return
 
-        # get primary dataset name
+        # get output datasets
         try:
-            outputDataset = (wfile.outputDatasets())[0]
+            outputDatasetsList = wfile.outputDatasets()
+            
+            # the first one
+            outputDataset = outputDatasetsList[0]
+            
+            # the others
+            others = outputDatasetsList[1:]
+            secondaryOutputTiers = [outDS['DataTier'] for outDS in others]
+            
+        except (IndexError, KeyError):
+            raise MergeSensorError("MergeSensor exception: wrong output dataset specification")
+        
+        # get primary Dataset
+        try:
             primaryDataset = outputDataset['PrimaryDataset']
         except KeyError:
-            primaryDataset = "dummyDataset"
+            raise MergeSensorError("MergeSensor exception: invalid primary dataset specification")
 
         # get datatier
         try:
-            dataTierName =  outputDataset['DataTier']
+            dataTier =  outputDataset['DataTier']
         except KeyError:
-            dataTierName = "dummyDataTier"
+            raise InvalidDataTier("MergeSensor exception: DataTier not specified")
 
-        # process it
-        dataTier = self.encodeTier(dataTierName)
-
+        # verify if valid
+        if not self.validDataTier(dataTier):
+            raise InvalidDataTier("MergeSensor exception: invalid DataTier %s" % dataTier)
+         
+        # get poll datatier
+        pollTier = dataTier.split("-")[0]
+        
         # get processed
         try:
             processedDataset = outputDataset['ProcessedDataset']
         except KeyError:
-            processedDataset = "dummyProcessedDataset"
+            raise MergeSensorError("MergeSensor exception: invalid processed dataset specification")
 
         # do not merge merged datasets
         if processedDataset.endswith("-merged"):
@@ -178,7 +199,7 @@ class Dataset:
         
         # build dataset id and name
         datasetId = "[%s][%s][%s]" % \
-                    (primaryDataset, dataTier, processedDataset)
+                    (primaryDataset, pollTier, processedDataset)
         name = "/%s/%s/%s" % (primaryDataset, dataTier, \
                               processedDataset)
         
@@ -197,7 +218,7 @@ class Dataset:
         try:
             version = outputDataset['ApplicationVersion']
         except:
-            version = 'CMSSW_0_6_1'
+            version = 'CMSSW_0_7_0'
         
         # get PSetHash
         try:
@@ -211,7 +232,8 @@ class Dataset:
                      'name' : name,
                      'primaryDataset' : primaryDataset,
                      'dataTier' : dataTier,
-                     'realDataTier' : dataTierName,
+                     'pollTier' : pollTier,
+                     'secondaryOutputTiers' : secondaryOutputTiers,
                      'processedDataset' : processedDataset,
                      'PSetHash' : psethash,
                      'version' : version,
@@ -250,7 +272,53 @@ class Dataset:
         """
         self.__class__.basePath = basePath
         
-    def setMergeFileSize(self, size):
+    @classmethod
+    def setDataTierList(cls, tierList):
+        """
+        _setDataTiers_
+
+        Set the list of possible datatiers.
+
+        Arguments:
+
+          list -- list of possible datatiers
+
+        Return:
+
+          none
+
+        """
+        cls.dataTierList = tierList.split(',')
+
+    @classmethod
+    def validDataTier(cls, dataTierName):
+        """
+        _validDataTiers_
+
+        check dataTier validity
+
+        Arguments:
+
+          true if fine, false if wrong
+
+        Return:
+
+          none
+
+        """
+        dataTiers = dataTierName.split("-")
+
+        if dataTiers == []:
+            return False
+        
+        for elem in dataTiers:
+            if not elem in cls.dataTierList:
+                return False
+      
+        return True
+    
+    @classmethod
+    def setMergeFileSize(cls, size):
         """
         _setMergeFileSize_
         
@@ -267,7 +335,7 @@ class Dataset:
           none
 
         """
-        self.__class__.mergeFileSize = size
+        cls.mergeFileSize = size
         
     def setFiles(self, fileList):
         """
@@ -429,7 +497,6 @@ class Dataset:
         """
         return self.data['status']
     
-
     def setStatus(self, status):
         """
         _setStatus_
@@ -510,36 +577,6 @@ class Dataset:
         except IOError:
             raise MergeSensorError, \
                   'cannot write to dataset %s' % self.data['id']           
-
-    def encodeTier(self, dataTier):
-        """
-        _encodeTier_
-                                                                                
-       Encode the name of the dataTier to be used to store the
-       dataset in DBS 
-                                                                                
-        Arguments:
-                                                                                
-          dataTier - the name of the tier as from workflow
-                                                                                
-        Return:
-
-          the encoded tier name as a string
-                                                                                
-        """
-
-        if dataTier == 'Simulated':
-            dataTier = 'SIM'
-        elif dataTier == 'Digitized':
-            dataTier = 'DIGI'
-        elif (dataTier == 'GenSimDigi') or (dataTier == 'GEN-SIM-DIGI'):
-            dataTier = 'GEN'
-        elif dataTier == 'GEN-SIM':
-            dataTier = 'GEN-SIM'
-        else:
-            dataTier = 'Unknown'
-
-        return dataTier
 
     def getName(self):
         """
