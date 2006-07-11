@@ -15,25 +15,31 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
 from MergeSensor.MergeSensorComponent import MergeSensorComponent
 
-#  //
-# // Find and load the Configuration
-#//
+# Find and load the Configuration
 
 try:
     config = loadProdAgentConfiguration()
+    
+    # Basic merge sensor configuration
     compCfg = config.getConfig("MergeSensor")
+    compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
+
+    # Local DBS configuration
+    localDBSConfig = config.get("LocalDBS")
+    compCfg["DBSAddress"] = localDBSConfig["DBSAddress"]
+    compCfg["DBSType"] = localDBSConfig["DBSType"]
+
+    # DBS Interface configuration
+    DBSInterfaceConfig = config.get("DBSInterface")
+    compCfg["DBSDataTier"] = DBSInterfaceConfig["DBSDataTier"]
+    
 except StandardError, ex:
     msg = "Error reading configuration:\n"
     msg += str(ex)
     raise RuntimeError, msg
 
 
-dbsConfig = config.get("LocalDBS")
-compCfg.update(dbsConfig)
-compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
-#  //
-# // Initialise and start the component
-#//
+# Initialize and start the component
 
 createDaemon(compCfg['ComponentDir'])
 component = MergeSensorComponent(**dict(compCfg))
