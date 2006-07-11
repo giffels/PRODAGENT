@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.2 2006/05/10 11:01:26 ckavka Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.3 2006/06/21 10:32:30 ckavka Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 import os
@@ -209,24 +209,6 @@ class WatchedDatasets:
         """
 
         return [value.getName() for value in self.datasets.values()]
-    
-    def setMergeFileSize(self, mergeFileSize):
-        """
-        _setMergeFileSize_
-        
-        Set the expected merge file size applicable to all datasets in the
-        list of currently watched datasets.
-        
-        Arguments:
-            
-          mergeFileSize -- expected size of the resulting merged files.
-          
-        Return:
-            
-          none
-          
-        """
-        Dataset.mergeFileSize = mergeFileSize
         
     def updateFiles(self, datasetId, fileList):
         """
