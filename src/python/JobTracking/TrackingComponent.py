@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.13 2006/06/07 12:50:48 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.14 2006/07/04 12:21:33 bacchi Exp $"
 
 import socket
 import time
@@ -33,6 +33,7 @@ from ProdAgentCore.Configuration import ProdAgentConfiguration
 from MessageService.MessageService import MessageService
 from FwkJobRep.ReportState import checkSuccess
 from FwkJobRep.FwkJobReport import FwkJobReport
+from JobState.JobStateAPI import JobStateChangeAPI
 
 
 class TrackingComponent:
@@ -309,16 +310,26 @@ class TrackingComponent:
             else:
                 logging.info(outp)
 
-             
+        logging.debug("failed jobs"+str(len(badJobs)))
         for jobId in badJobs:
-            self.jobFailed(jobId,"Output not retrieved")
+            logging.debug(jobId)
             
             #if there aren't failed jobs don't print anything
 
             try:
-                logging.debug("%s - %d" % (jobId.__str__() , self.failedJobsPublished[jobId[0]]))
+                self.failedJobsPublished[jobId[0]]+=0
             except StandardError,ex:
-                pass
+                logging.info( "%s  Creating FrameworkReport" % jobId.__str__() )
+                fwjr=FwkJobReport()
+                fwjr.jobSpecId=self.bossJobSpecId[self.BossVersion](jobId[0])
+                self.reportfilename=self.directory+"/FrameworkJobReport%s.xml"%jobId[0]
+                fwjr.exitCode=-1
+                fwjr.status="Failed"
+                fwjr.write(self.reportfilename)
+      
+                self.jobFailed(jobId,self.reportfilename)
+                
+                
             self.saveDict(self.failedJobsPublished,"failedJobsPublished")
             
         logging.debug("Running Jobs "+ str( len(rJobs)))
@@ -418,6 +429,30 @@ class TrackingComponent:
            
         return
     
+    def subFailed(self, jobId, msg):
+        """
+        _subFailed_
+        
+        Publishes a SubmissionFailed event
+        
+        """
+        
+        #if it's the first time we see this failed job we  publish JobFailed event and add the job in failedJobsPublished dict
+       # logging.debug("SubmissionFailed: %s" % msg)
+
+        try:
+            self.failedJobsPublished[jobId[0]] += 0
+        except StandardError:
+            JobStateChangeAPI.submitFailure(msg)
+
+            logging.debug("SubmissionFailed: %s" % msg)
+            self.ms.publish("SubmissionFailed", msg)
+            self.ms.commit()
+                                                                                
+            self.failedJobsPublished[jobId[0]] = 1
+           
+        return
+
     def executeCommand(self,command,timeout=600):
         """
         _executeCommand_
