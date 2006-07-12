@@ -6,7 +6,7 @@ Submitter implementation that doesnt submit.
 Used for testing job creation.
 
 """
-__revision__ = "$Id: NoSubmit.py,v 1.2 2006/05/02 12:31:14 elmer Exp $"
+__revision__ = "$Id: NoSubmit.py,v 1.3 2006/06/01 16:46:08 evansde Exp $"
 
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.Registry import registerSubmitter
@@ -31,6 +31,9 @@ class NoSubmit(SubmitterInterface):
         print "NoSubmit.doSubmit: %s"  % wrapperScript
         print "NoSubmit.doSubmit: %s"  % jobTarball
         return
+
+    def editDashboardInfo(self, dashboardInfo):
+        print "NoSubmit.editDashboardInfo: %s " % dashboardInfo
     
     def generateWrapper(self, wrapperName, tarballName, jobname):
         print "NoSubmit.generateWrapper: %s" % wrapperName

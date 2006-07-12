@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.10 2006/05/27 01:24:36 afanfani Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.11 2006/06/21 09:58:37 evansde Exp $"
 
 import os
 import logging
@@ -18,6 +18,8 @@ from popen2 import Popen4
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
+
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
 class SubmitterInterface:
     """
@@ -88,6 +90,22 @@ class SubmitterInterface:
         msg =  "Virtual Method SubmitterInterface.doSubmit called"
         raise RuntimeError, msg
         
+    def editDashboardInfo(self, dashboardInfo):
+        """
+        _editDashboardInfo_
+
+        Add data about submission to DashboardInfo dictionary before
+        it is published to the dashboard
+
+        A default set of information will be sent if this method is not
+        overridden.
+
+        If dashboardInfo is None, it is not available for this job.
+
+        """
+        pass
+    
+
     
     def generateWrapper(self, wrapperName, tarball, jobname):
         """
@@ -188,6 +206,18 @@ class SubmitterInterface:
                    self.parameters['JobSpecInstance'].siteWhitelist
 
 
+        self.parameters['DashboardInfo'] = None
+        dashboardInfoFile = os.path.join(
+            os.path.dirname(jobCreationArea), 'DashboardInfo.xml')
+        if os.path.exists(dashboardInfoFile):
+            dashboardInfo = DashboardInfo()
+            dashboardInfo.read(dashboardInfoFile)
+            dashboardInfo['Scheduler'] = self.__class__.__name__
+            self.parameters['DashboardInfo'] = dashboardInfo
+            
+
+              
+        
         bossId = self.isBOSSDeclared()
         if bossId != None:
             self.parameters['BOSSID'] = bossId
@@ -198,6 +228,13 @@ class SubmitterInterface:
         #//
         self.generateWrapper(wrapperName, tarball, jobname)
 
+
+        #  //
+        # // Invoke Hook to edit the DashboardInfo with submission 
+        #//  details in plugins and then publish the dashboard info.
+        self.editDashboardInfo(self.parameters['DashboardInfo'])
+        self.publishSubmitToDashboard(self.parameters['DashboardInfo'])
+        
         #  //
         # // Invoke whatever is needed to do the submission
         #//
@@ -238,6 +275,29 @@ class SubmitterInterface:
 
         """
         return os.path.join(targetDir, "%s.tar.gz" % jobName)
+
+    def publishSubmitToDashboard(self, dashboardInfo):
+        """
+        _publishSubmitToDashboard_
+
+        Publish the dashboard info to the appropriate destination
+
+        NOTE: should probably read destination from cfg file, hardcoding
+        it here for time being.
+
+        """
+        if dashboardInfo == None:
+            logging.debug(
+                "SubmitterInterface: No DashboardInfo available for job"
+                )
+            return
+        
+        dashboardInfo['ApplicationVersion'] = listToString(self.parameters['AppVersions'])
+        dashboardInfo['TargetCE'] = listToString(self.parameters['Whitelist'])
+        dashboardInfo.addDestination("lxgate35.cern.ch", 8884)
+        dashboardInfo.publish(5)
+        return
+        
 
     def declareToBOSS(self):
         """
@@ -402,6 +462,20 @@ class SubmitterInterface:
         bossSubmit += "-scheduler %s " %  self.parameters['Scheduler']
         return bossSubmit
 
+
+def listToString(listInstance):
+    """
+    _listToString_
+
+    Lists to string conversion util for Dashboard formatting
+
+    """
+    result = str(listInstance)
+    result = result.replace('[', '')
+    result = result.replace(']', '')
+    result = result.replace(' ', '')
+    result = result.replace('\'', '')
+    return result
 
 def createTarball(targetDir, sourceDir, tarballName):
     """
