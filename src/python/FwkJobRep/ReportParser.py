@@ -198,7 +198,7 @@ class FwkJobRepHandler(ContentHandler):
         """ start of Dataset tag within a File tag"""
         if not self.inFile():
             return
-        self.currentDict = self.currentFile.dataset
+        self.currentDict = self.currentFile.newDataset()
         return
 
     def endDataset(self, name):

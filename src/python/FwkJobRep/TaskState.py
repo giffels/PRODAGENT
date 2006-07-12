@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: TaskState.py,v 1.5 2006/06/05 15:30:33 evansde Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: TaskState.py,v 1.6 2006/06/05 19:53:40 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -276,18 +276,21 @@ class TaskState:
         dbDict = self._RunResDB.toDictionary()
         
         datasets = dbDict[self.taskAttrs['Name']]['Output']['Datasets']
-        for dataset in datasets.values():
-            outputDict = {}
-            for key, value in dataset.items():
-                if key in ("PhysicalFileName", "LogicalFileName"):
-                    continue
-                if value == []:
-                    continue
-                if len(value) == 1:
-                    outputDict[key] = value[0]
-                else:
-                    outputDict[key] = value
-            result.append(outputDict)
+
+        for primaryKey, primaryValue in datasets.items():
+            if type(primaryValue) != type({}): continue
+            for dataTier, dataTierValue in primaryValue.items():
+                if type(dataTierValue) != type({}): continue
+                for processedDS, datasetContents in dataTierValue.items():
+                    print "Found Dataset: /%s/%s/%s" % (
+                        primaryKey, dataTier, processedDS,
+                        )
+                    for dataKey, dataValue in datasetContents.items():
+                        if len(dataValue) == 0:
+                            datasetContents[dataKey] = None
+                        if len(dataValue) == 1:
+                            datasetContents[dataKey] = dataValue[0]
+                    result.append(datasetContents)
         return result
         
         
@@ -361,7 +364,9 @@ class TaskState:
         for dataset in datasets:
             outModName = dataset.get("OutputModuleName", None)
             if outModName != None:
-                datasetMap[outModName] = dataset
+                if not datasetMap.has_key(outModName):
+                    datasetMap[outModName] = []
+                datasetMap[outModName].append(dataset)
             
             
         for fileInfo in self._JobReport.files:
@@ -370,6 +375,16 @@ class TaskState:
                 continue
             if datasetMap.has_key(outModLabel):
                 fileInfo.dataset = datasetMap[outModLabel]
+                msg = "File: %s\n" % fileInfo['LFN']
+                msg += "Produced By Output Module: %s\n" % outModLabel
+                msg += "Associated To Datasets:\n"
+                for ds in fileInfo.dataset:
+                    msg += " ==> /%s/%s/%s\n" % (
+                        ds['PrimaryDataset'],
+                        ds['DataTier'],
+                        ds['ProcessedDataset'],
+                        )
+                print msg
                 
         return
         

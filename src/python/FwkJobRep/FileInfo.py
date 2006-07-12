@@ -57,7 +57,7 @@ class FileInfo(dict):
         #  //
         # // Dataset is a dictionary and will have the same key
         #//  structure as the MCPayloads.DatasetInfo object
-        self.dataset = {}
+        self.dataset = []
         
         #  //
         # // Checksums include a flag indicating which kind of 
@@ -79,7 +79,18 @@ class FileInfo(dict):
         self.inputFiles.append({"PFN" : pfn,
                                 "LFN" : lfn})
         return
-    
+
+    def newDataset(self):
+        """
+        _newDataset_
+
+        Add a new dataset that this file is associated with and return
+        the dictionary to be populated
+
+        """
+        newDS = {}
+        self.dataset.append(newDS)
+        return newDS
         
     def addChecksum(self, algorithm, value):
         """
@@ -149,10 +160,11 @@ class FileInfo(dict):
         # // Dataset info
         #//
         if not self.isInput:
-            dataset = IMProvNode("Dataset")
-            improvNode.addNode(dataset)
-            for key, val in self.dataset.items():
-                dataset.addNode(IMProvNode(key, str(val)))
+            for datasetEntry in self.dataset:
+                dataset = IMProvNode("Dataset")
+                improvNode.addNode(dataset)
+                for key, val in datasetEntry.items():
+                    dataset.addNode(IMProvNode(key, str(val)))
         #  //
         # // Branches
         #//
