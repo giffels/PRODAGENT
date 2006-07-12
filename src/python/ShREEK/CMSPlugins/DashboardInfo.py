@@ -200,6 +200,21 @@ class DashboardInfo(dict):
             
         self.publisher.disconnect()
         return
+
+
+    def emptyClone(self):
+        """
+        _emptyClone_
+
+        Return a copy of self including only the task, job and destination
+        information
+
+        """
+        result = DashboardInfo()
+        result.task = self.task
+        result.job = self.job = self.job
+        result.destinations = self.destinations
+        return result
         
     def _InitPublisher(self):
         """

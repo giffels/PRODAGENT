@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.3 2006/06/08 19:53:07 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.4 2006/06/27 21:19:42 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -19,6 +19,7 @@ from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
 import os
 import time
+import socket
 
 _GridJobIDPriority = [
     'EDG_WL_JOBID',
@@ -86,9 +87,10 @@ class DashboardMonitor(ShREEKMonitor):
             if val != None:
                 gridJobId = val
                 break
-        
+        print "Dashboard Grid Job ID: %s" % gridJobId
         self.dashboardInfo['GridJobID'] = gridJobId
         self.dashboardInfo['JobStarted'] = time.time()
+        self.dashboardInfo['SyncCE'] = socket.gethostname()
         self.dashboardInfo.publish(5)
         return
 
@@ -101,9 +103,11 @@ class DashboardMonitor(ShREEKMonitor):
         """
         if self.dashboardInfo == None:
             return
-        self.dashboardInfo['ExeStart'] = task.taskname()
-        self.dashboardInfo['ExeStartTime'] = time.time()
-        self.dashboardInfo.publish(5)
+
+        newInfo = self.dashboardInfo.emptyClone()
+        newInfo['ExeStart'] = task.taskname()
+        newInfo['ExeStartTime'] = time.time()
+        newInfo.publish(5)
         return
     
     def taskEnd(self, task, exitCode):
@@ -122,12 +126,13 @@ class DashboardMonitor(ShREEKMonitor):
             except ValueError:
                 exitValue = exitCode
                 
-
+                
         self.lastExitCode = exitValue
-        self.dashboardInfo['ExeEnd'] = task.taskname()
-        self.dashboardInfo['ExeFinishTime'] = time.time()
-        self.dashboardInfo['ExeExitCode'] = exitValue
-        self.dashboardInfo.publish(5)
+        newInfo = self.dashboardInfo.emptyClone()
+        newInfo['ExeEnd'] = task.taskname()
+        newInfo['ExeFinishTime'] = time.time()
+        newInfo['ExeExitStatus'] = exitValue
+        newInfo.publish(5)
         return
 
     def jobEnd(self):
@@ -136,9 +141,10 @@ class DashboardMonitor(ShREEKMonitor):
         """
         if self.dashboardInfo == None:
             return
-        self.dashboardInfo['JobExitCode'] = self.lastExitCode
-        self.dashboardInfo['JobFinished'] = time.time()
-        self.dashboardInfo.publish(5)
+        newInfo = self.dashboardInfo.emptyClone()
+        newInfo['JobExitStatus'] = self.lastExitCode
+        newInfo['JobFinished'] = time.time()
+        newInfo.publish(5)
         
         
 registerShREEKMonitor(DashboardMonitor, 'dashboard')
