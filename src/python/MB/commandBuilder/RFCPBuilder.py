@@ -23,7 +23,7 @@ class RCFPBuilder(CommandBuilder):
         use rfcp to transport the source to values to the current values 
         
         """
-        cpBinary = mbInstance.get('RFCPBinary', '/usr/bin/rfcp')
+        cpBinary = mbInstance.get('RFCPBinary', 'rfcp')
         cpOptions = mbInstance.get('RFCPOptions', '')
         command = "%s %s " % (cpBinary, cpOptions)
         command += " %s " % mbInstance['SourceAbsName']
@@ -39,7 +39,7 @@ class RCFPBuilder(CommandBuilder):
 
         create a rfcp commmand to transport current to target
         """
-        cpBinary = mbInstance.get('RFCPBinary', '/usr/bin/rfcp')
+        cpBinary = mbInstance.get('RFCPBinary', 'rfcp')
         cpOptions = mbInstance.get('RFCPOptions', '')
         command = "%s %s " % (cpBinary, cpOptions)
         command += " %s " % mbInstance['AbsName']
@@ -54,7 +54,7 @@ class RCFPBuilder(CommandBuilder):
 
         create a cp command to move Source to target
         """
-        cpBinary = mbInstance.get('RFCPBinary', '/usr/bin/rfcp')
+        cpBinary = mbInstance.get('RFCPBinary', 'rfcp')
         cpOptions = mbInstance.get('RFCPOptions', '')
         command = "%s %s " % (cpBinary, cpOptions)
         command += " %s " % mbInstance['SourceAbsName']
