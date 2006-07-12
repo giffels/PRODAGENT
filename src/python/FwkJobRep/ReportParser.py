@@ -66,6 +66,7 @@ class FwkJobRepHandler(ContentHandler):
             "SkippedEvent" : self.skippedEvent,
             "Checksum" : self.checksum,
             "SiteDetail" : self.siteDetail,
+            "FrameworkError" : self.frameworkError,
             }
 
         #  //
@@ -87,6 +88,7 @@ class FwkJobRepHandler(ContentHandler):
             "SkippedEvent" : self.noResponse,
             "Checksum" : self.endChecksum,
             "SiteDetail" : self.noResponse,
+            "FrameworkError" : self.endFrameworkError,
             }
 
     def noResponse(self, name, attrs = {}):
@@ -346,6 +348,38 @@ class FwkJobRepHandler(ContentHandler):
             return
         self.currentReport.siteDetails[str(detailName)] = str(detailValue)
         return
+
+    def frameworkError(self, name, attrs):
+        """
+        _frameworkError_
+
+        Start Error message in job report
+        
+        """
+        if self.currentReport == None:
+            return
+        errStatus = str(attrs.get("ExitStatus", "1"))
+        errType  = str(attrs.get("Type", "Unknown"))
+        self.currentDict = self.currentReport.addError(errStatus, errType)
+        return
+
+    def endFrameworkError(self, name):
+        """
+        _endFrameworkError_
+
+        End Error block in job report
+
+        """
+        if self.currentReport == None:
+            return
+        if self.currentDict == None:
+            return
+        self.currentDict['Description'] = str(self._CharCache)
+        self.currentDict == None
+        return
+    
+
+    
         
 def readJobReport(filename):
     """

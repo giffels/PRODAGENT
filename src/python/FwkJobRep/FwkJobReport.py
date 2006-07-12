@@ -91,6 +91,20 @@ class FwkJobReport:
         return
         
 
+    def addError(self, status, errType):
+        """
+        _addError_
+
+        Add a new Error dictionary to this report, return it to be populated
+
+        """
+        newError = {"ExitStatus" : status,
+                    "Type" : errType,
+                    "Description": ""}
+        self.errors.append(newError)
+        return newError
+    
+
     def save(self):
         """
         _save_
@@ -148,6 +162,17 @@ class FwkJobReport:
             result.addNode(IMProvNode("SkippedEvent", None,
                                       Run = skipped['Run'],
                                       Event = skipped['Event']))
+
+
+        #  //
+        # // Save Errors
+        #//
+        for error in self.errors:
+            result.addNode(
+                IMProvNode("FrameworkError", error['Description'],
+                           ExitStatus = error['ExitStatus'],
+                           Type = error['Type'])
+                )
         
         return result
 
