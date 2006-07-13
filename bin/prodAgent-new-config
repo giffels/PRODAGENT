@@ -188,7 +188,9 @@ componentFields = {
     "AdminControlHost" : "127.0.0.1",
     "AdminControlPort" : 8081,
     },
-    
+    "StatTracker" : {
+    "ComponentDir" : None,
+    },
     }# end componentFields
 
 #  //
