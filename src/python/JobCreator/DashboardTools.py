@@ -74,10 +74,10 @@ def installDashboardInfo(taskObject):
     """
     dashboardInfo = DashboardInfo()
     dashboardInfo.job = generateGlobalJobID(taskObject)
-    dashboardInfo.task = taskObject['JobSpecNode'].workflow
+    dashboardInfo.task = "ProdAgent_%s" % taskObject['JobSpecNode'].workflow
     dashboardInfo['GridUser'] = gridProxySubject()
     dashboardInfo['User'] = os.environ.get('USER', 'ProdAgent')
-    dashboardInfo['NodeName'] = socket.gethostname()
+
 
     taskObject['DashboardInfoInstance'] =  dashboardInfo
     taskObject['DashboardInfo'] =  IMProvDoc("DashboardMonitoring")
