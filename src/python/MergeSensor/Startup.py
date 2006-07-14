@@ -32,7 +32,12 @@ try:
     # DBS Interface configuration
     DBSInterfaceConfig = config.get("DBSInterface")
     compCfg["DBSDataTier"] = DBSInterfaceConfig["DBSDataTier"]
-    
+
+    # DLS Interface configuration
+    DLSInterfaceConfig = config.get("DLSInterface")
+    compCfg["DLSType"] = DLSInterfaceConfig["DLSType"]
+    compCfg["DLSAddress"] = DLSInterfaceConfig["DLSAddress"]
+   
 except StandardError, ex:
     msg = "Error reading configuration:\n"
     msg += str(ex)
