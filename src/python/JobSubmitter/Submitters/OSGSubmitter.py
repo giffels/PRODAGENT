@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGSubmitter.py,v 1.3 2006/06/28 19:04:52 evansde Exp $"
+__revision__ = "$Id: OSGSubmitter.py,v 1.4 2006/06/30 20:32:10 evansde Exp $"
 
 import os
 import logging
@@ -57,11 +57,23 @@ class OSGSubmitter(SubmitterInterface):
         sched = self.pluginConfig['OSG'].get("GlobusScheduler", None)
         if sched in (None, "None", "none", ""):
             msg = "Invalid value for OSG GlobusScheduler in Submitter "
-            msg += "plugin configuration: %\n" % sched
+            msg += "plugin configuration: %s\n" % sched
             msg += "You must provide a valid scheduler"
             raise JSException( msg , ClassInstance = self,
                                PluginConfig = self.pluginConfig)
             
+        #  //
+        # // Extract the mapping of SEName to Jobmanager from the
+        #//  plugin config
+        siteMapping = self.pluginConfig.get('SENameToJobmanager', None)
+        if siteMapping == None:
+            msg = "SENameToJobManager not provided in Submitter "
+            msg += "pluging configuration\n"
+            msg += "This is required for mapping merge jobs to the appropriate"
+            msg += "Site based on fileblock name"
+            raise JSException(msg, 
+                              ClassInstance = self,
+                              PluginConfig = self.pluginConfig)
         
 
     def generateWrapper(self, wrapperName, tarballName, jobname):
@@ -73,12 +85,15 @@ class OSGSubmitter(SubmitterInterface):
 
         """
         logging.debug("OSGSubmitter.generateWrapper")
+
+        globusScheduler = self.lookupGlobusScheduler()
+
         jdlFile = "%s.jdl" % wrapperName
         logging.debug("OSGSubmitter.generateWrapper: JDL %s" % jdlFile)
         directory = os.path.dirname(wrapperName)
         jdl = []
         jdl.append("universe = globus\n")
-        jdl.append("globusscheduler = %s\n" % self.pluginConfig['OSG']['GlobusScheduler'])
+        jdl.append("globusscheduler = %s\n" % globusScheduler)
         jdl.append("initialdir = %s\n" % directory)
         jdl.append("Executable = %s\n" % wrapperName)
         jdl.append("transfer_input_files = %s\n" % tarballName)
@@ -135,6 +150,58 @@ class OSGSubmitter(SubmitterInterface):
         output = self.executeCommand(command)
         logging.info("OSGSubmitter.doSubmit: %s " % output)
         return
-    
+
+
+    def lookupGlobusScheduler(self):
+        """
+        _lookupGlobusScheduler_
+
+        If a whitelist is supplied in the job spec instance,
+        match it to a globus scheduler using the SENameToJobmanager map.
+
+        If no whitelist is present, the standard OSG GlobusSubmitter is used,
+
+        If a whitelist is present and no match can be made, an exception
+        is thrown
+
+        """
+        logging.debug("lookupGlobusScheduler:")
+        if len(self.parameters['Whitelist']) == 0:
+            #  //
+            # //  No Preference, use plain GlobusScheduler
+            #//
+            logging.debug("lookupGlobusScheduler:No Whitelist")
+            return self.pluginConfig['OSG']['GlobusScheduler']
+        
+        #  //
+        # // We have a list, get the first one that matches
+        #//  NOTE: Need some better selection process if more that one site
+        #  //   Can we make condor match from a list??
+        # //
+        #//
+        seMap = self.pluginConfig['SENameToJobmanager']
+
+        matchedJobmgr = None
+        for sitePref in  self.parameters['Whitelist']:
+            if sitePref not in seMap.keys():
+                logging.debug("lookupGlobusScheduler: No match: %s" % sitePref)
+                continue
+            matchedJobmgr = seMap[sitePref]
+            logging.debug("lookupGlobusScheduler: Matched: %s => %s" % (
+                sitePref, matchedJobMgr  )
+                          )
+            break
+
+        if matchedJobmgr == None:
+            msg = "Unable to match site preferences: "
+            msg += "\n%s\n" % self.parameters['Whitelist']
+            msg += "To any JobManager"
+            raise JSException(msg, 
+                              ClassInstance = self,
+                              SENameToJobmanager = seMap,
+                              Whitelist = self.parameters['Whitelist'])
+        return matchedJobmgr
+                
+            
 
 registerSubmitter(OSGSubmitter, OSGSubmitter.__name__)
