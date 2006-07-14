@@ -7,6 +7,7 @@ DB API for inserting JobStatistics instances into the DB tables
 
 """
 import logging
+import MySQLdb
 from ProdAgentDB.Connect import connect
 
 
@@ -176,3 +177,97 @@ def insertJobFailure(jobFailureInstance):
         msg = "Failed to insert JobFailure %s\n" % ex
         raise RuntimeError, msg
     return
+
+
+
+def selectSuccessCount(workflowSpec = None):
+    """
+    _selectSuccessCount_
+
+    Query DB for number of successful jobs in DB, restricted by workflowSpec
+    if specified
+
+    """
+    sqlStr = "SELECT COUNT(*) FROM st_job_success"
+    if workflowSpec == None:
+        sqlStr += ";"
+    else:
+        sqlStr += " WHERE workflow_spec_id=\"%s\";" % workflowSpec
+
+    
+    connection = connect()
+    dbCur = connection.cursor()
+    
+    dbCur.execute(sqlStr)
+    count = dbCur.fetchone()[0]
+    dbCur.close()
+    return count
+
+def selectFailureCount(workflowSpec = None):
+    """
+    _selectFailureCount_
+
+    Query DB for number of failed jobs in DB, restricted by workflowSpec
+    if specified
+
+    """
+    sqlStr = "SELECT COUNT(*) FROM st_job_failure"
+    if workflowSpec == None:
+        sqlStr += ";"
+    else:
+        sqlStr += " WHERE workflow_spec_id=\"%s\";" % workflowSpec
+
+    
+    connection = connect()
+    dbCur = connection.cursor()
+    
+    dbCur.execute(sqlStr)
+    count = dbCur.fetchone()[0]
+    dbCur.close()
+    return count
+
+
+arrToString = lambda x: x.__setitem__('error_desc', x['error_desc'].tostring())
+
+
+def selectFailureDetails(workflowSpecId):
+    """
+    _selectFailureDetails_
+
+    extract the details of failed jobs for the workflowSpecId provided
+
+    """
+    sqlStr = """SELECT job_index,
+                job_spec_id,      
+                workflow_spec_id, 
+                exit_code ,       
+                task_name ,       
+                status    ,       
+                site_name ,       
+                host_name ,       
+                se_name   ,       
+                error_type,       
+                error_code,      
+                error_desc FROM st_job_failure WHERE
+
+        workflow_spec_id="%s";""" % workflowSpecId
+    
+    connection = connect()
+    dbCur = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+    dbCur.execute(sqlStr)
+    rows = dbCur.fetchall()
+    dbCur.close()
+    map(arrToString, rows)
+    return rows
+    
+
+
+def selectSuccessDetails(workflowSpecId):
+    """
+    _selectSuccessDetails_
+
+    Extract the details of the successful jobs for the
+    workflowSpecId provided
+
+    """
+    
