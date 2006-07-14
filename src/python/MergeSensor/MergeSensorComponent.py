@@ -21,6 +21,7 @@ import re
 import inspect
 import sys
 
+# Merge sensor import
 from MergeSensor.WatchedDatasets import WatchedDatasets
 from MergeSensor.MergeSensorError import MergeSensorError, InvalidDataTier
 from MessageService.MessageService import MessageService
@@ -30,6 +31,10 @@ from MergeSensor.Dataset import Dataset
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
 from CMSConfigTools.CfgInterface import CfgInterface
+
+# DLS
+from dlsDataObjects import *
+import dlsClient
 
 # threads
 from threading import Thread, Condition
@@ -76,7 +81,10 @@ class MergeSensorComponent:
         self.args.setdefault("Logfile", None)
         self.args.setdefault("StartMode", 'cold')
         self.args.setdefault("DBSDataTier", "GEN,SIM,DIGI")
-        
+        self.args.setdefault("DLSType", None)
+        self.args.setdefault("DLSAddress", None)
+        self.args.setdefault("MergeFileSize", 100000000)
+
         # update
         self.args.update(args)
 
@@ -102,7 +110,10 @@ class MergeSensorComponent:
 
         # get DBS API
         self.dbsApi = self.connectDBS()
-    
+   
+        # get DLS API
+        self.dlsApi = self.connectDLS()
+ 
         # merge workflow specification
         thisModule = os.path.abspath(
                           inspect.getsourcefile(MergeSensorComponent))
@@ -443,7 +454,8 @@ class MergeSensorComponent:
             
             # build workflow and job specifications
             jobSpecFile = self.buildWorkflowSpecFile(jobId,
-                                   selectedSet,dataset, outFile, properties)
+                                   selectedSet,dataset, outFile,
+                                   fileBlockId, properties)
 
             # publish CreateJob event
             self.publishCreateJob(jobSpecFile)
@@ -482,7 +494,8 @@ class MergeSensorComponent:
 
         return
 
-    def buildWorkflowSpecFile(self, jobId, fileList, dataset, outputFile, properties):
+    def buildWorkflowSpecFile(self, jobId, fileList, dataset,
+                              outputFile, fileBlockId, properties):
         """
         _buildWorkflowSpecFile_
         
@@ -497,6 +510,7 @@ class MergeSensorComponent:
           fileList -- the list of files to be merged
           dataset -- the name of the dataset
           outputFile -- the name of the merged file
+          fileBlockId -- the file block id
           properties -- dataset properties
                     
         Return:
@@ -515,6 +529,9 @@ class MergeSensorComponent:
         lfnBase = properties["mergedLFNBase"]
         psethash = properties["PSetHash"]
         secondaryOutputTiers = properties["secondaryOutputTiers"]
+
+        # get SE list
+        seList = self.getSElist(fileBlockId)
         
         # create a new workflow
         spec = WorkflowSpec()
@@ -583,7 +600,11 @@ class MergeSensorComponent:
         #//  and set the job name
         jobSpec = spec.createJobSpec()
         jobSpec.parameters['JobName'] = jobId        
-        
+       
+        # add SE list
+        for storageElement in seList:
+            jobSpec.addWhitelistSite(storageElement)
+ 
         # add stage out 
         stageOut = cmsRun.newNode("stageOut1")
         stageOut.type = "StageOut"
@@ -597,8 +618,8 @@ class MergeSensorComponent:
         mergeJobSpecFile = "%s/%s-spec.xml" % (
                self.args['MergeJobSpecs'], jobId)
 
-        jobSpec = spec.createJobSpec()
-        jobSpec.setJobName(jobId)
+        #jobSpec = spec.createJobSpec()
+        #jobSpec.setJobName(jobId)
 
         # save job specification
         jobSpec.save(mergeJobSpecFile)
@@ -677,7 +698,27 @@ class MergeSensorComponent:
         # sleep for the specified time
         time.sleep(float(self.args['PollInterval']))
         return
-    
+   
+    def getSElist(self, fileBlockId):
+        """
+        return SE list associated to file block
+        # code taken from DBSInterface/DLS.py
+        """
+
+        entryList = []
+        try:
+           entryList = self.dlsApi.getLocations(fileBlockId)
+        except dlsApi.DlsApiError, inst:
+            logging.warning("Error in DLS query: %s. Assuming empty SE list"
+                             % str(inst))  
+
+        seList = []
+        for entry in entryList:
+            for loc in entry.locations:
+                seList.append(str(loc.host))
+
+        return seList
+ 
     def getFileListFromDBS(self, datasetId):
         """
         _getFileListFromDBS_
@@ -711,7 +752,7 @@ class MergeSensorComponent:
             for fileBlock in blockList:
 
                 # get file block ID           
-                fileBlockId = fileBlock.get('objectId')
+                fileBlockId = fileBlock.get('blockName')
  
                 # append (file name,size,fileblockId) to the list of files
                 for aFile in fileBlock.get('fileList'):
@@ -782,6 +823,20 @@ class MergeSensorComponent:
 
         # return DBS API instance
         return dbs
+
+    def connectDLS(self):
+        """
+        open a connection with the DLS server
+        """
+        try:
+            dlsapi = dlsClient.getDlsApi(dls_type = self.args["DLSType"],
+                                  dls_endpoint = self.args["DLSAddress"])
+        except dlsApi.DlsApiError, inst:
+            logging.error("Fatal error: Cannot contact DLS: %s" % str(int))
+            sys.exit(1)
+
+        # return DLS API instance
+        return dlsapi
 
     def getDatasetContents(self, path):
         """
@@ -861,8 +916,8 @@ class MergeSensorComponent:
             logging.error(message);
             return
         
-        # set policy parameters (100 MB)
-        Dataset.setMergeFileSize(100000000)
+        # set merged file size
+        Dataset.setMergeFileSize(int(self.args['MergeFileSize']))
 
         # set Datatier possible names
         Dataset.setDataTierList(self.args['DBSDataTier'])
