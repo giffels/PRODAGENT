@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: releaseValidation.py,v 1.1 2006/06/14 20:02:22 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: releaseValidation.py,v 1.3 2006/07/05 19:35:17 evansde Exp $"
 
 
 import os
@@ -24,18 +24,17 @@ from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
 from MCPayloads.RelValSpec import getRelValSpecForVersion
 from CMSConfigTools.CfgInterface import CfgInterface
+from MessageService.MessageService import MessageService
 
 
-prodAgentService = xmlrpclib.Server("http://127.0.0.1:8081")
-
-
-valid = ['url=', 'version=', 'relvalversion=', 'events=',
+valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
          'testretrieval', 'testpython']
 
 usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
 usage += "                            --version=<CMSSW version to be used>\n"
 usage += "                            --relvalversion=<version to be used in spec file>\n"
 usage += "                            --events=<events per job>\n"
+usage += "                            --run=<first run number>\n"
 usage += "     Options:\n"
 usage += "                            --testretrieval\n"
 usage += "                            --testpython\n"
@@ -43,6 +42,7 @@ usage += "                            "
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
 usage += "Events per job defaults to 100 for faster finishing jobs\n"
+usage += "First run number defaults to 5000"
 usage += "If --testretrieval is provided only parsing the XML spec and \n"
 usage += "retrieving the cfg files is performed\n"
 usage += "If --testpython is provided the cfg files will be retrieved \n"
@@ -62,6 +62,7 @@ relvalVersion = None
 category = "RelVal"
 timestamp = int(time.time())
 eventsPerJob = 100
+run = 5000
 testRetrievalMode = False
 testPythonMode = False
 
@@ -89,6 +90,8 @@ for opt, arg in opts:
         relvalVersion = arg
     if opt == "--events":
         eventsPerJob = int(arg)
+    if opt == "--run":
+        run = int(arg)
     if opt == "--testretrieval":
         testRetrievalMode = True
     if opt == "--testpython":
@@ -276,33 +279,49 @@ for relTest in relValSpec:
     print "From: %s " % cfgFile
 
 
-
-
     #  //
     # // Inject the workflow into the ProdAgent and trigger job creation
     #//
     
-    prodAgentService
     workflowBase = "%s-Workflow.xml" % prodName
     workflow = os.path.join(os.getcwd(), workflowBase)
 
     print "Creating Jobs..."
     print "%s jobs being created for workflow: %s" % (numberOfJobs, workflowBase)
 
-    prodAgentService.publishEvent("RequestInjector:SetWorkflow", workflow)
-    prodAgentService.publishEvent("RequestInjector:SelectWorkflow", workflowBase)
-    prodAgentService.publishEvent("RequestInjector:SetEventsPerJob", str(eventsPerJob))
-    prodAgentService.publishEvent("RequestInjector:NewDataset")
-    #prodAgentService.publishEvent("JobCreator:SetCreator", "OSGCreator")
-    #prodAgentService.publishEvent("JobSubmitter:SetSubmitter", "NoSubmit")
-    
-    for i in range(0, numberOfJobs):
-        summaryJobs += 1
-        summaryEvents += eventsPerJob
+## use MessageService
+    ms = MessageService()
+## register message service instance as "Test"
+    ms.registerAs("Test")
 
-        time.sleep(.1)
-        prodAgentService.publishEvent("ResourcesAvailable")
-        
-    
+## Debug level
+    ms.publish("RequestInjector:StartDebug","none")
+    ms.publish("JobCreator:StartDebug","none")
+    ms.publish("JobSubmitter:StartDebug","none")
+    ms.publish("TrackingComponent:StartDebug","none")
+                                                                                                                      
+## Set Creator
+    ms.publish("JobCreator:SetCreator","LCGCreator")
+## Set Submitter
+    ms.publish("JobSubmitter:SetSubmitter","LCGSubmitter")
+## Set Workflow and NewDataset
+    ms.publish("RequestInjector:SetWorkflow", workflow)
+    ms.publish("RequestInjector:SelectWorkflow", workflowBase)
+    time.sleep(1)
+    ms.publish("RequestInjector:NewDataset",'')
+## Set first run and number of events per job
+    ms.publish("RequestInjector:SetInitialRun", str(run))
+    ms.publish("RequestInjector:SetEventsPerJob", str(eventsPerJob))
+    time.sleep(1)
+
+## Loop over jobs
+    for i in range(0, numberOfJobs):
+     summaryJobs += 1
+     summaryEvents += eventsPerJob
+
+     time.sleep(1)
+     ms.publish("ResourcesAvailable","none")
+     ms.commit()
+
 print "Total Jobs Created: %s" % summaryJobs
 print "Total Events for all jobs: %s" % summaryEvents
