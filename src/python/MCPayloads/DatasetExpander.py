@@ -56,13 +56,16 @@ def expandDatasetInfo(datasetInfo, requestTimestamp):
         #//
         result.append(datasetInfo)
         return result
-
+    
     tiers = splitMultiTier(datasetInfo['DataTier'])
+    processedDSName = "%s-%s-%s" % (datasetInfo['ApplicationVersion'],
+                                    datasetInfo['OutputModuleName'],
+                                    requestTimestamp)
     for tier in tiers:
         newInfo = DatasetInfo()
         newInfo.update(datasetInfo)
         newInfo['DataTier'] = tier
-        newInfo['ProcessedDataset'] = "%s-%s" % (tier, requestTimestamp)
+        newInfo['ProcessedDataset'] = processedDSName
         result.append(newInfo)
     return result
 

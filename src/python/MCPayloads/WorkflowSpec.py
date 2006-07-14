@@ -16,6 +16,7 @@ import time
 from MCPayloads.PayloadNode import PayloadNode
 from MCPayloads.JobSpecNode import JobSpecNode
 from MCPayloads.JobSpec import JobSpec
+from MCPayloads.DatasetExpander import expandDatasetInfo
 import  MCPayloads.DatasetTools as DatasetTools
 
 from IMProv.IMProvNode import IMProvNode
@@ -214,7 +215,14 @@ class WorkflowSpec:
         in all nodes of this WorkflowSpec
 
         """
-        return DatasetTools.getOutputDatasetsFromTree(self.payload)
+        allDatasets = DatasetTools.getOutputDatasetsFromTree(self.payload)
+        result = []
+        #  //
+        # // Split multi tiers into basic tiers
+        #//
+        for dataset in allDatasets:
+            result.extend(expandDatasetInfo(dataset, self.requestTimestamp()))
+        return result
     
     
 
