@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.4 2006/06/27 21:19:42 evansde Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.5 2006/07/12 13:58:04 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -88,6 +88,8 @@ class DashboardMonitor(ShREEKMonitor):
                 gridJobId = val
                 break
         print "Dashboard Grid Job ID: %s" % gridJobId
+        if gridJobId != None:
+            self.dashboardInfo.job = "%s_%s" % (self.dashboardInfo.job, gridJobId)
         self.dashboardInfo['GridJobID'] = gridJobId
         self.dashboardInfo['JobStarted'] = time.time()
         self.dashboardInfo['SyncCE'] = socket.gethostname()
