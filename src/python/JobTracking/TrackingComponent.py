@@ -19,11 +19,12 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.14 2006/07/04 12:21:33 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.15 2006/07/11 15:27:31 bacchi Exp $"
 
 import socket
 import time
 import os
+import string
 import logging
 from logging.handlers import RotatingFileHandler
 from popen2 import Popen4
@@ -34,7 +35,8 @@ from MessageService.MessageService import MessageService
 from FwkJobRep.ReportState import checkSuccess
 from FwkJobRep.FwkJobReport import FwkJobReport
 from JobState.JobStateAPI import JobStateChangeAPI
-
+import select
+import fcntl
 
 class TrackingComponent:
     """
@@ -158,7 +160,11 @@ class TrackingComponent:
         outfile=self.executeCommand("boss RTupdate -jobid all -c " + self.bossCfgDir)
         outfile=self.executeCommand("boss q -statusOnly -all -c " + self.bossCfgDir)
         #lines=outfile.readlines()
-        lines=outfile.split('\n')
+        lines=[]
+        try:
+            lines=outfile.split('\n')
+        except:
+            pass
         logging.debug("boss q -statusOnly -all -c " + self.bossCfgDir)
         logging.debug(lines)
 # fill job lists
@@ -463,14 +469,33 @@ class TrackingComponent:
 
        
         p=Popen4(command)
-        
+        p.tochild.close()
+	outfd=p.fromchild
+	outfno=outfd.fileno()
+	fl=fcntl.fcntl(outfno,fcntl.F_GETFL)
+ 	try:
+	    fcntl.fcntl(outfno,fcntl.F_SETFL, fl | os.O_NDELAY)
+        except AttributeError:
+            fcntl.fcntl(outfno,fcntl.F_SETFL, fl | os.FNDELAY)
+	err = -1
+        outc = []
+        outfeof = 0
         maxt=time.time()+timeout
         logging.debug("from time %d to time %d"%(time.time(),maxt))
         pid=p.pid
         logging.debug("process id of %s = %d"%(command,pid))
-        while p.poll() == -1 and time.time() < maxt :
-            pass
-        err = p.poll()
+        while time.time() < maxt :
+            ready=select.select([outfno],[],[])
+            if outfno in ready[0]:
+                outch=outfd.read()
+                if outch=='':
+                    outfeof=1
+                outc.append(outch)
+            if outfeof:
+                err=p.wait()
+                break
+            time.sleep(.1)
+    
         if err == -1:
             logging.error("command %s timed out. timeout %d\n"%(command,timeout))
             return ""
@@ -481,7 +506,7 @@ class TrackingComponent:
             
             #eturn ""
         
-        output=p.fromchild.read()
+        output=string.join(outc,"")
         logging.debug("command output \n %s"%output)
         return output
 
@@ -601,9 +626,12 @@ class TrackingComponent:
 
         Boss 4 command to define the correct FrameworkJobReport Location
         """
-        
-        taskid = jobId[0].split('.')[0]
-        chainid=jobId[0].split('.')[1]
+        try:
+            taskid = jobId[0].split('.')[0]
+            chainid=jobId[0].split('.')[1]
+        except:
+            logging.debug("Boss 4 reportfilename - split error %s"%jobId)
+
         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID from JOB_HEAD where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
         outp=outfile
         try:
@@ -634,8 +662,13 @@ class TrackingComponent:
 
         BOSS 4 command to retrieve JobSpecID from BOSS db
         """
-        
-        outfile=self.executeCommand("bossAdmin SQL -query \"select TASK_NAME from TASK_HEAD where id='%s'\""%id.split('.')[0] + " -c " + self.bossCfgDir)
+        try:
+            taskid=id.split('.')[0]
+        except:
+            logging.error("Boss4 JobSpecId splitting error")
+            return ""
+        outfile=self.executeCommand("bossAdmin SQL -query \"select TASK_NAME from TASK_HEAD where id='%s'\""%taskid + " -c " + self.bossCfgDir)
+            
         outp=outfile
         try:
             outp=outp.split("TASK_NAME")[1].strip()
