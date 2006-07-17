@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: createPreProdWorkflow.py,v 1.1 2006/05/02 14:32:09 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: createPreProdWorkflow.py,v 1.3 2006/05/25 16:26:49 evansde Exp $"
 
 
 import os
@@ -21,7 +21,7 @@ import time
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
 from CMSConfigTools.CfgInterface import CfgInterface
-
+from MCPayloads.DatasetExpander import splitMultiTier
 
 
 valid = ['cfg=', 'version=', 'category=', 'name=' ]
@@ -161,16 +161,30 @@ cmsRun.configuration = file(pycfgFile).read() # Python PSet file
 # //    
 #//  For each module a dataset declaration is created in the spec
 cfgInt = CfgInterface(cmsRun.configuration, True)
-for key, val in cfgInt.outputModules.items():
-    #                               primary     DT   Processed
-    outDS = cmsRun.addOutputDataset(prodName, key, key)
-    outDS['DataTier'] = key
-    outDS["ApplicationName"] = cmsRun.application["Executable"]
-    outDS["ApplicationProject"] = cmsRun.application["Project"]
-    outDS["ApplicationVersion"] = cmsRun.application["Version"]
-    outDS["ApplicationFamily"] = key
-    outDS['PSetHash'] = PSetHashValue
-    
+datasetList = []
+for outModName, val in cfgInt.outputModules.items():
+    #  //
+    # // Check for Multi Tiers.
+    #//  If Output module contains - characters, we split based on it
+    #  //And create a different tier for each basic tier
+    # //
+    #//
+
+    tierList = splitMultiTier(outModName)    
+    for dataTier in tierList:
+        processedDS = "%s-%s-%s" % (
+            cmsRun.application['Version'], outModName, timestamp)
+        outDS = cmsRun.addOutputDataset(prodName, 
+                                        processedDS,
+                                        outModName)
+        outDS['DataTier'] = dataTier
+        outDS["ApplicationName"] = cmsRun.application["Executable"]
+        outDS["ApplicationProject"] = cmsRun.application["Project"]
+        outDS["ApplicationVersion"] = cmsRun.application["Version"]
+        outDS["ApplicationFamily"] = outModName
+        outDS['PSetHash'] = PSetHashValue
+        datasetList.append(outDS.name())
+
 stageOut = cmsRun.newNode("stageOut1")
 stageOut.type = "StageOut"
 stageOut.application["Project"] = ""
@@ -189,6 +203,11 @@ print "Created: %s-Workflow.xml" % prodName
 print "Created: %s " % pycfgFile
 print "Created: %s " % hashFile
 print "From: %s " % cfgFile
+print "Output Datasets:"
+for item in datasetList:
+    print " ==> %s" % item
+
+
 
 
 
