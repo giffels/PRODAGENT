@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-_OSGSubmitter_
+_OSGRouter_
 
 Globus Universe Condor Submitter implementation.
 Used for testing jobs in a batch environment, shouldnt be used generally
@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGSubmitter.py,v 1.5 2006/07/14 21:48:41 evansde Exp $"
+__revision__ = "$Id: OSGRouter.py,v 1.5 2006/07/14 21:48:41 evansde Exp $"
 
 import os
 import logging
@@ -20,9 +20,9 @@ from JobSubmitter.JSException import JSException
 
 
 
-class OSGSubmitter(SubmitterInterface):
+class OSGRouter(SubmitterInterface):
     """
-    _OSGSubmitter_
+    _OSGRouter_
 
     Globus Universe condor submitter. Generates a simple JDL file
     and condor_submits it using a dag wrapper and post script to generate
@@ -44,23 +44,13 @@ class OSGSubmitter(SubmitterInterface):
                                
 
         # expect globus scheduler in OSG block
-        # self.pluginConfig['OSG']['GlobusScheduler']
+        # 
         if not self.pluginConfig.has_key("OSG"):
             msg = "Plugin Config for: %s \n" % self.__class__.__name__
             msg += "Does not contain an OSG config block"
             raise JSException( msg , ClassInstance = self,
                                PluginConfig = self.pluginConfig)
 
-        #  //
-        # // Validate the value of the GlobusScheduler is present
-        #//  and sane
-        sched = self.pluginConfig['OSG'].get("GlobusScheduler", None)
-        if sched in (None, "None", "none", ""):
-            msg = "Invalid value for OSG GlobusScheduler in Submitter "
-            msg += "plugin configuration: %s\n" % sched
-            msg += "You must provide a valid scheduler"
-            raise JSException( msg , ClassInstance = self,
-                               PluginConfig = self.pluginConfig)
             
         #  //
         # // Extract the mapping of SEName to Jobmanager from the
@@ -84,32 +74,71 @@ class OSGSubmitter(SubmitterInterface):
         overload this method to also generate a JDL file
 
         """
-        logging.debug("OSGSubmitter.generateWrapper")
+        logging.debug("OSGRouter.generateWrapper")
 
         globusScheduler = self.lookupGlobusScheduler()
+        
+        logging.debug("OSGRouter: globus scheduler is %s" % globusScheduler)
 
+        
         jdlFile = "%s.jdl" % wrapperName
-        logging.debug("OSGSubmitter.generateWrapper: JDL %s" % jdlFile)
+        logging.debug("OSGRouter.generateWrapper: JDL %s" % jdlFile)
         directory = os.path.dirname(wrapperName)
         jdl = []
-        jdl.append("universe = globus\n")
-        jdl.append("globusscheduler = %s\n" % globusScheduler)
-        jdl.append("initialdir = %s\n" % directory)
-        jdl.append("Executable = %s\n" % wrapperName)
-        jdl.append("transfer_input_files = %s\n" % tarballName)
-        jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
-        jdl.append("should_transfer_files = YES\n")
-        jdl.append("when_to_transfer_output = ON_EXIT\n")
-        jdl.append("Output = %s-condor.out\n" % jobname)
-        jdl.append("Error = %s-condor.err\n" %  jobname)
-        jdl.append("Log = %s-condor.log\n" % jobname)
-        jdl.append("notification = NEVER\n")
 
-        if self.pluginConfig['OSG']['GlobusScheduler'].endswith("jobmanager-pbs"):
-            jdl.append("GlobusRSL=(jobtype=single)\n")
+        if globusScheduler != None:
+            #  //
+            # // Scheduler is set => Merge job, go via condor G
+            #//
+            logging.info("Dispatching job via CondorG")
+            jdl.append("universe = globus\n")
+            jdl.append("globusscheduler = %s\n" % globusScheduler)
+            jdl.append("initialdir = %s\n" % directory)
+            jdl.append("Executable = %s\n" % wrapperName)
+            jdl.append("transfer_input_files = %s\n" % tarballName)
+            jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
+            jdl.append("should_transfer_files = YES\n")
+            jdl.append("when_to_transfer_output = ON_EXIT\n")
+            jdl.append("prod_agent_job_spec_id = %s\n" % jobname)
+            jdl.append("prod_agent_workflow_spec_id = %s\n" % (
+                self.parameters['JobSpecInstance'].payload.workflow)
+                       )
+            jdl.append("Output = %s-condor.out\n" % jobname)
+            jdl.append("Error = %s-condor.err\n" %  jobname)
+            jdl.append("Log = %s-condor.log\n" % jobname)
+            jdl.append("notification = NEVER\n")
+            
+            if self.pluginConfig['OSG']['GlobusScheduler'].endswith("jobmanager-pbs"):
+                jdl.append("GlobusRSL=(jobtype=single)\n")
+                
+            jdl.append("Queue\n")
         
-        jdl.append("Queue\n")
-        
+        else:
+            #  //
+            # // No scheduler, so we submit vanilla to the router.
+            #//
+            logging.info("Dispatching job via Vanilla Condor")
+            jdl.append("universe = vanilla\n")
+            jdl.append("requirements = false\n")
+            jdl.append("+WantJobRouter = True\n")
+            jdl.append("X509UserProxy = $ENV(X509_USER_PROXY)\n")
+            jdl.append("initialdir = %s\n" % directory)
+            jdl.append("Executable = %s\n" % wrapperName)
+            jdl.append("transfer_input_files = %s\n" % tarballName)
+            jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
+            jdl.append("should_transfer_files = YES\n")
+            jdl.append("notification = NEVER\n")
+            jdl.append("prod_agent_job_spec_id = %s\n" % jobname)
+            jdl.append("prod_agent_workflow_spec_id = %s\n" % (
+                self.parameters['JobSpecInstance'].payload.workflow)
+                       )
+            jdl.append("when_to_transfer_output = ON_EXIT\n")
+            jdl.append("Output = %s-condor.out\n" % jobname)
+            jdl.append("Error = %s-condor.err\n" %  jobname)
+            jdl.append("Log = %s-condor.log\n" % jobname)
+            jdl.append("Queue\n")
+            
+            
         
         handle = open(jdlFile, 'w')
         handle.writelines(jdl)
@@ -146,9 +175,9 @@ class OSGSubmitter(SubmitterInterface):
         jdlFile = "%s.jdl" % wrapperScript
         
         command = "condor_submit %s" % jdlFile
-        logging.debug("OSGSubmitter.doSubmit: %s" % command)
+        logging.debug("OSGRouter.doSubmit: %s" % command)
         output = self.executeCommand(command)
-        logging.info("OSGSubmitter.doSubmit: %s " % output)
+        logging.info("OSGRouter.doSubmit: %s " % output)
         return
 
 
@@ -204,4 +233,4 @@ class OSGSubmitter(SubmitterInterface):
                 
             
 
-registerSubmitter(OSGSubmitter, OSGSubmitter.__name__)
+registerSubmitter(OSGRouter, OSGRouter.__name__)
