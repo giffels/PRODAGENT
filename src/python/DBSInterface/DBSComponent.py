@@ -156,10 +156,12 @@ class DBSComponent:
                 self.handleJobReport(payload)
                 return
             except InvalidJobReport, ex:
+                logging.error("InvalidJobReport")
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("InvalidJobReport Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
                 return
             except InvalidDataTier, ex:
+                logging.error("InvalidDataTier")
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
             except DbsException, ex:
@@ -233,11 +235,11 @@ class DBSComponent:
         dbsinfo.insertPrimaryDataset(datasetinfo['PrimaryDataset'])
 
         ## define app family from OutputModuleName
-        applicationfamily=datasetinfo['OutputModuleName']
+        applicationfamily = datasetinfo['OutputModuleName']
         ## check datatier
-        datatier=self.getDataTier(datasetinfo['DataTier'],self.args['DBSDataTier'])
-        logging.debug(" - ApplicationFamily %s"%applicationfamily)
-        logging.debug(" - DataTier %s"%datatier)
+        datatier = self.getDataTier(datasetinfo['DataTier'], self.args['DBSDataTier'])
+        logging.debug(" - ApplicationFamily %s" % applicationfamily)
+        logging.debug(" - DataTier %s" % datatier)
         #if datatier=='Unknown' or applicationfamily=='Unknown' :
         # logging.error("Uknown datatier/Application Family")
         # return 
@@ -311,45 +313,118 @@ class DBSComponent:
         jobreports=self.readJobReportInfo(jobReportLocation)
         #loop over the fwk jobreports 
         for jobreport in jobreports:
-          #print jobreport.files
+            #print jobreport.files
+  
+            ### Contact DBS using the DBS class
+            if ( self.args['DBSType'] == 'CGI'):
+                from DBS import DBS as DBSclient
+            else:
+                from DBS_Ws import DBS_Ws as DBSclient
+
+            self.dbsinfo= DBSclient(self.args['DBSAddress'])
+
+            # SEname=self.getSEname() 
+            ## get Stage out SE from FWK report 
+            SEname=jobreport.siteDetails['se-name']
+            logging.debug(" SEname %s"%SEname)
+            #  //
+            # // handle output files information from FWK report
+            #//  We first loop through files and add each file to the fileblock based
+            #  //on the SE Name where it was placed.
+            # // Then we loop through the datasets associated with that file
+            #//  and insert the event collection for that file into each of those
+            #  //datasets. 
+            # // NOTE: Here I assume that the dataset has already been split into
+            #//  basic tier datasets.
+            for fileinfo in jobreport.files:
+                #  //
+                # // Safety check: File Info must be associated to at least one
+                #//  dataset before we try any of this
+                if len(fileinfo.dataset) == 0:
+                    msg = "WARNING: File in job report is not associated to a dataset:\n"
+                    msg += "LFN: %s\n" % fileinfo['LFN']
+                    msg += "This file will not be added to a fileblock or dataset\n"
+                    logging.error(msg)
+                    continue
+                
+                #  //
+                # // Define the fileblock to add files to,
+                #//  look for just the first datasetPath
+                firstDataset = fileinfo.dataset[0]
+                firstDatasetPath = "/%s/%s/%s" % (
+                      firstDataset['PrimaryDataset'],
+                      firstDataset['DataTier'],
+                      firstDataset['ProcessedDataset'],
+                      )
+                #  //
+                # // check DataTier being valid 
+                # //
+                firstdatatier=self.getDataTier(firstDataset['DataTier'],self.args['DBSDataTier'])
+                #  //
+                # // Lookup the file block for this first dataset and SEName
+                #//
+                logging.debug("Searching for fileblock for SE: %s\n:  Dataset: %s\n" % (
+                      SEname, firstDatasetPath)
+                              )
+                fileblock = self.checkFileBlockforSE(
+                    firstDatasetPath,
+                    SEname,
+                    self.args['MaxBlockSize'],
+                    firstDataset
+                    )
+                if fileblock is None:
+                    msg += "No Fileblock found for dataset: %s" % firstDatasetPath
+                    msg += "SEname: %s\n" % SEname 
+                    logging.error(msg)
+                    #continue
+                    return
+                
+                #  //
+                # // Insert files to block
+                #//
+                logging.info("Inserting File: %s \nInto FileBlock : %s\n" %(
+                    fileinfo['LFN'], fileblock.get('blockName'))
+                             )
+
+                fList = self.dbsinfo.insertFiletoBlock(fileinfo, fileblock)
+
+                logging.debug("FileList from FileBlock:\n%s\n" % fList)
+                
+                #  //
+                # // For each dataset associated with the file,
+                #//insert the Event Collection
+                for dataset in fileinfo.dataset:
                     
-          ### Contact DBS using the DBS class
-          if ( self.args['DBSType'] == 'CGI'):
-            from DBS import DBS as DBSclient
-          else:
-            from DBS_Ws import DBS_Ws as DBSclient
+                    datasetPath="/%s/%s/%s" % (
+                      dataset['PrimaryDataset'],
+                      dataset['DataTier'],
+                      dataset['ProcessedDataset'],
+                      )
 
-          self.dbsinfo= DBSclient(self.args['DBSAddress'])
-
-          # SEname=self.getSEname() 
-          ## get Stage out SE from FWK report 
-          SEname=jobreport.siteDetails['se-name']
-          logging.debug(" SEname %s"%SEname)
-
-          ## handle output files information from FWK report
-          for fileinfo in jobreport.files:
- 
-           ## Define the fileblock to add files to, look for just the first datasetPath
-           datatier=self.getDataTier(fileinfo.dataset['DataTier'],self.args['DBSDataTier'])
            
-           tiers=string.split(datatier,'-')    # split the multi datatiers GEN-SIM-DIGI into single data tier 
-           if ( self.args['DBSType'] != 'CGI'): tiers=[datatier]  # keep the datatier as a single piece 
-           datasetPath="/"+fileinfo.dataset['PrimaryDataset']+"/"+tiers[0]+"/"+fileinfo.dataset['ProcessedDataset']
+                    #  //
+                    # // Insert Event Collections
+                    #//
+                    logging.debug(
+                      "Setting Event Collection For: %s\n in Dataset %s\n" % (
+                          fileinfo['LFN'], datasetPath )
+                      )
+                    evcList = self.dbsinfo.setEVCollection(
+                      fileinfo,     # File Details, LFN, PFN etc
+                      fList,        # Details from FileBlock 
+                      datasetPath)  # dataset to add to
+                    logging.debug("Set Event Collection:%s\n" % evcList)
 
-           fileblock = self.checkFileBlockforSE(datasetPath,SEname,self.args['MaxBlockSize'],fileinfo.dataset)
-           if fileblock is None:
-              logging.error("No Fileblock found to add data to, for the dataset %s"%datasetPath)
-              return
+                    #  //
+                    # // Insert into Dataset
+                    #//
+                    logging.debug(
+                      "Inserting Event collections into Dataset"
+                      )
+                    self.dbsinfo.insertEVCtoDataset(datasetPath, evcList)
 
-           ## Insert files to block
-           fList=self.dbsinfo.insertFiletoBlock(fileinfo,fileblock)
-
-           ## Insert event collections: 
-           for tier in tiers:
-             datasetPath="/"+fileinfo.dataset['PrimaryDataset']+"/"+tier+"/"+fileinfo.dataset['ProcessedDataset']
-             evcList=self.dbsinfo.setEVCollection(fileinfo,fList,datasetPath)
-             self.dbsinfo.insertEVCtoDataset(datasetPath,evcList)
-
+                    
+                    
         return
 
 
@@ -413,12 +488,11 @@ class DBSComponent:
          guess the Application family and data tier from the POOL Output Module Name convention in .cfg 
         """
 
-        DataTierList=DataTier.split("-")
-        DBSDataTierList=DBSDataTier.split(",")
+        #DataTierList=DataTier.split("-")
+        DBSDataTierList = DBSDataTier.split(",")
 
-        for dt in DataTierList:
-            if DBSDataTierList.count(dt)<=0:
-               raise InvalidDataTier(dt,DBSDataTierList)
+        if DataTier not in DBSDataTierList:
+            raise InvalidDataTier(DataTier, DBSDataTierList)
         return DataTier              
 
     def startComponent(self):
