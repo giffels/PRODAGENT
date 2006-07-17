@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGRouter.py,v 1.5 2006/07/14 21:48:41 evansde Exp $"
+__revision__ = "$Id: OSGRouter.py,v 1.1 2006/07/17 21:14:57 evansde Exp $"
 
 import os
 import logging
@@ -148,6 +148,9 @@ class OSGRouter(SubmitterInterface):
   
         tarballBaseName = os.path.basename(tarballName)
         script = ["#!/bin/sh\n"]
+        script.append("if [ -d \"$OSG_GRID\" ]; then\n")
+        script.append("   source $OSG_GRID/setup.sh\n")
+        script.append("fi\n") 
         script.append("PRODAGENT_JOB_INITIALDIR=`pwd`\n")
         script.append("cd $_CONDOR_SCRATCH_DIR\n")
         script.append(
@@ -196,11 +199,8 @@ class OSGRouter(SubmitterInterface):
         """
         logging.debug("lookupGlobusScheduler:")
         if len(self.parameters['Whitelist']) == 0:
-            #  //
-            # //  No Preference, use plain GlobusScheduler
-            #//
             logging.debug("lookupGlobusScheduler:No Whitelist")
-            return self.pluginConfig['OSG']['GlobusScheduler']
+            return None
         
         #  //
         # // We have a list, get the first one that matches

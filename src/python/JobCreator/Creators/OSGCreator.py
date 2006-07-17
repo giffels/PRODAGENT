@@ -176,7 +176,8 @@ class OSGCreator(CreatorInterface):
             self.pluginConfig['StageOut']['SetupCommand']
             )
         template = taskObject['StageOutTemplates'][0]
-        template['TargetHostName'] = None
+        template['TargetHostName'] = \
+                    self.pluginConfig['StageOut']['TargetHostName']
         template['TargetPathName'] = \
                     self.pluginConfig['StageOut']['TargetPathName']
         template['TransportMethod'] = \
