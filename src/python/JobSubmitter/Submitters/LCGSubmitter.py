@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.8 2006/06/05 11:01:28 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.9 2006/06/30 22:45:09 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -30,6 +30,9 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
 from popen2 import Popen4
+import select
+import fcntl
+import string
 class InvalidFile(exceptions.Exception):
   def __init__(self,msg):
    args="%s\n"%msg
@@ -212,6 +215,16 @@ class LCGSubmitter(SubmitterInterface):
         requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment);\n'%(user_requirements,swversion)
         logging.debug('%s'%requirements)
         declareClad.write(requirements)
+        if self.parameters['Whitelist']!=[]:
+          requirements="Requirements = anyMatch(other.storage.CloseSEs , ("
+          sitelist=""
+          for i in self.parameters['Whitelist']:
+            logging.debug("Whitelist element %s"%i)
+            sitelist+="target.GlueSEUniqueID==\"%s\""%i+" || "
+          sitelist=sitelist[:len(sitelist)-4]
+          requirements+=sitelist+"));\n"
+          declareClad.write(requirements)
+          
         declareClad.write("VirtualOrganisation = \"cms\";\n")
 
         ## change the RB according to user provided RB configuration files
@@ -245,22 +258,46 @@ class LCGSubmitter(SubmitterInterface):
         
         """
       
+
         p=Popen4(command)
+        p.tochild.close()
+	outfd=p.fromchild
+	outfno=outfd.fileno()
+	fl=fcntl.fcntl(outfno,fcntl.F_GETFL)
+ 	try:
+	    fcntl.fcntl(outfno,fcntl.F_SETFL, fl | os.O_NDELAY)
+        except AttributeError:
+            fcntl.fcntl(outfno,fcntl.F_SETFL, fl | os.FNDELAY)
+	err = -1
+        outc = []
+        outfeof = 0
         maxt=time.time()+timeout
+        logging.debug("from time %d to time %d"%(time.time(),maxt))
         pid=p.pid
-        logging.info("process id of %s = %d"%(command,pid))
-        while p.poll()==-1 and time.time()<maxt:
-            pass
-        err=p.poll()
-        if err ==-1:
+        logging.debug("process id of %s = %d"%(command,pid))
+        while time.time() < maxt :
+            ready=select.select([outfno],[],[])
+            if outfno in ready[0]:
+                outch=outfd.read()
+                if outch=='':
+                    outfeof=1
+                outc.append(outch)
+            if outfeof:
+                err=p.wait()
+                break
+            time.sleep(.1)
+    
+        if err == -1:
             logging.error("command %s timed out. timeout %d\n"%(command,timeout))
             return ""
-        if err>0:
+        if err > 0:
             logging.error("command %s gave %d exit code"%(command,err))
-            logging.error(p.fromchild.read())
-            return ""
-        return p.fromchild.read()
+        #    p.wait()
+            #ogging.error(p.fromchild.read())
+            
+            #eturn ""
         
-        
-#registerSubmitter(LCGSubmitter, "lcg")
+        output=string.join(outc,"")
+        logging.debug("command output \n %s"%output)
+        return output
 registerSubmitter(LCGSubmitter, LCGSubmitter.__name__)
