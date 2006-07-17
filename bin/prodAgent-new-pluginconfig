@@ -155,6 +155,23 @@ submitterTemplate = {
     "RBconfig" : None,
     },
 
+    #  //
+    # // SE to jobmanager map for OSG sites.
+    #//  Maps SITECONF se-name from local-stage-out to the jobmanager
+    #  //that is required to route merge jobs to that site.
+    # //
+    #//
+    "SENameToJobmanager": {
+    "fnal" :"cmsosgce.fnal.gov/jobmanager-condor-opt",
+    "Wisconsin" :"cmsgrid02.hep.wisc.edu/jobmanager-condor",
+    "Nebraska" :"red.unl.edu/jobmanager-pbs",
+    "Caltech" :"cit-gatekeeper.ultralight.org/jobmanager-condor",
+    "Purdue" :"grid.physics.purdue.edu/jobmanager-pbs",
+    "UCSD" :"osg-gw-2.t2.ucsd.edu/jobmanager-condor",
+    "MIT" :"ce01.cmsaf.mit.edu/jobmanager-condor",
+    "Florida" :"ufloridapg.phys.ufl.edu/jobmanager-condor",
+    },
+    
     }
 
 submitterCfg = config.get("JobSubmitter", {})
