@@ -30,6 +30,7 @@ class RequestIterator:
         self.workingDir = workingDir
         self.count = 0
         self.currentJob = None
+        self.sitePref = None
 
         #  //
         # // Initially hard coded, should be extracted from Component Config
@@ -79,6 +80,13 @@ class RequestIterator:
         # // generate LFNs for output modules
         #//
         createUnmergedLFNs(jobSpec)
+
+        #  //
+        # // Add site pref if set
+        #//
+        if self.sitePref != None:
+            jobSpec.addWhitelistSite(self.sitePref)
+            
         
         jobSpec.save(jobSpecFile)
         

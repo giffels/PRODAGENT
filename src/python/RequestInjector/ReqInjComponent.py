@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.6 2006/05/01 22:12:53 fvlingen Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.7 2006/05/08 13:56:28 fvlingen Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -72,6 +72,9 @@ class ReqInjComponent:
             return
         if event == "RequestInjector:SelectWorkflow":
             self.selectWorkflow(payload)
+            return
+        if event == "RequestInjector:SetSitePref":
+            self.setSitePref(payload)
             return
             
         if event == "RequestInjector:NewDataset":
@@ -165,8 +168,34 @@ class ReqInjComponent:
         self.iterator = self.iterators[workflowName]
         return
     
+    def setSitePref(self, sitePrefName):
+        """
+        _setSitePref_
+
+        Add a site preference for the current workflow, this will
+        be added to the JobSpecs site whitelist of all the jobs created
         
-        
+        """
+        logging.debug("SetSitePref:%s" % sitePrefName)
+        if self.iterator == None:
+            msg = "RequestInjector: No Workflow Set, cannot set Site Pref"
+            msg += "You need to send a RequestInjector:SetWorkflow event"
+            msg += "With the file containing the workflow as the payload"
+            logging.warning(msg)
+            return
+        self.iterator.sitePref = sitePrefName
+        #  //
+        # // Save site pref in WorkflowCache area
+        #//
+        workflowSitePref = os.path.join(
+            self.args['WorkflowCache'],
+            "%s%s"  % (os.path.basename(self.iterator.workflow), ".sitepref") )
+        handle = open(workflowSitePref, 'w')
+        handle.write("%s" % self.iterator.sitePref)
+        handle.close()
+        logging.debug("Site Pref Saved: %s" % workflowSitePref) 
+        return
+    
     def newJob(self):
         """
         _newJob_
@@ -306,19 +335,29 @@ class ReqInjComponent:
                                       "%s.events" % item)
             counterFile = os.path.join(self.args['WorkflowCache'],
                                        "%s.counter" % item)
+            sitePrefFile = os.path.join(self.args['WorkflowCache'],
+                                        "%s.sitepref" % item)
             eventsValue = readIntFromFile(eventsFile)
             counterValue = readIntFromFile(counterFile)
+            sitePrefValue = readStringFromFile(sitePrefFile)
             logging.debug("EventCounter for workflow %s = %s" % (
                 item, eventsValue)
                           )
             logging.debug("RunCounter for workflow %s = %s" % (
                 item, counterValue)
                           )
+            logging.debug("SitePref for workflow %s = %s" % (
+                item, sitePrefValue)
+                          )
+            
             if eventsValue != None:
                 iterator.eventsPerJob = eventsValue
 
             if counterValue != None:
                 iterator.count = counterValue
+
+            if sitePrefValue != None:
+                iterator.sitePref = sitePrefValue
                 
         return
     
@@ -345,6 +384,7 @@ class ReqInjComponent:
         self.ms.subscribeTo("RequestInjector:NewDataset")
         self.ms.subscribeTo("RequestInjector:SetEventsPerJob")
         self.ms.subscribeTo("RequestInjector:SetInitialRun")
+        self.ms.subscribeTo("RequestInjector:SetSitePref")
         self.ms.subscribeTo("RequestInjector:StartDebug")
         self.ms.subscribeTo("RequestInjector:EndDebug")
         
@@ -373,3 +413,16 @@ def readIntFromFile(filename):
     except ValueError:
         return None
     
+
+def readStringFromFile(filename):
+    """
+    _readStringFromFile_
+
+    util to extract file content as a string
+
+    """
+    if not os.path.exists(filename):
+        return None
+    content = file(filename).read()
+    content = content.strip()
+    return content
