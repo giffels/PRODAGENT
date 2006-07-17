@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.9 2006/06/30 22:45:09 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.10 2006/07/17 15:54:05 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -211,19 +211,20 @@ class LCGSubmitter(SubmitterInterface):
             msg="JDLRequirementsFile File Not Found: %s"%self.pluginConfig['LCG']['JDLRequirementsFile']
             logging.error(msg) 
             raise InvalidFile(msg)
-
-        requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment);\n'%(user_requirements,swversion)
-        logging.debug('%s'%requirements)
-        declareClad.write(requirements)
+        anyMatchrequirements=""
         if self.parameters['Whitelist']!=[]:
-          requirements="Requirements = anyMatch(other.storage.CloseSEs , ("
+          anyMatchrequirements=" && anyMatch(other.storage.CloseSEs , ("
           sitelist=""
           for i in self.parameters['Whitelist']:
             logging.debug("Whitelist element %s"%i)
             sitelist+="target.GlueSEUniqueID==\"%s\""%i+" || "
           sitelist=sitelist[:len(sitelist)-4]
-          requirements+=sitelist+"));\n"
-          declareClad.write(requirements)
+          anyMatchrequirements+=sitelist+"))"
+          
+
+        requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) %s;\n'%(user_requirements,swversion,anyMatchrequirements)
+        logging.debug('%s'%requirements)
+        declareClad.write(requirements)
           
         declareClad.write("VirtualOrganisation = \"cms\";\n")
 
