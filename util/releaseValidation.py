@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: releaseValidation.py,v 1.3 2006/07/05 19:35:17 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: releaseValidation.py,v 1.4 2006/07/14 14:25:18 hufnagel Exp $"
 
 
 import os
@@ -25,6 +25,7 @@ from MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
 from MCPayloads.RelValSpec import getRelValSpecForVersion
 from CMSConfigTools.CfgInterface import CfgInterface
 from MessageService.MessageService import MessageService
+from MCPayloads.DatasetExpander import splitMultiTier
 
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
@@ -249,15 +250,29 @@ for relTest in relValSpec:
     # //    
     #//  For each module a dataset declaration is created in the spec
     cfgInt = CfgInterface(cmsRun.configuration, True)
-    for key, val in cfgInt.outputModules.items():
-        #                               primary     DT   Processed
-        outDS = cmsRun.addOutputDataset(prodName, key, key)
-        outDS['DataTier'] = key
-        outDS["ApplicationName"] = cmsRun.application["Executable"]
-        outDS["ApplicationProject"] = cmsRun.application["Project"]
-        outDS["ApplicationVersion"] = cmsRun.application["Version"]
-        outDS["ApplicationFamily"] = key
-        outDS['PSetHash'] = PSetHashValue
+    datasetList = []
+    for outModName, val in cfgInt.outputModules.items():
+        #  //
+        # // Check for Multi Tiers.
+        #//  If Output module contains - characters, we split based on it
+        #  //And create a different tier for each basic tier
+        # //
+        #//
+
+        tierList = splitMultiTier(outModName)    
+        for dataTier in tierList:
+            processedDS = "%s-%s-%s" % (
+                cmsRun.application['Version'], outModName, timestamp)
+            outDS = cmsRun.addOutputDataset(prodName, 
+                                            processedDS,
+                                            outModName)
+            outDS['DataTier'] = dataTier
+            outDS["ApplicationName"] = cmsRun.application["Executable"]
+            outDS["ApplicationProject"] = cmsRun.application["Project"]
+            outDS["ApplicationVersion"] = cmsRun.application["Version"]
+            outDS["ApplicationFamily"] = outModName
+            outDS['PSetHash'] = PSetHashValue
+            datasetList.append(outDS.name())
     
     stageOut = cmsRun.newNode("stageOut1")
     stageOut.type = "StageOut"
@@ -277,6 +292,9 @@ for relTest in relValSpec:
     print "Created: %s " % pycfgFile
     print "Created: %s " % hashFile
     print "From: %s " % cfgFile
+    print "Output Datasets:"
+    for item in datasetList:
+        print " ==> %s" % item
 
 
     #  //
@@ -289,39 +307,44 @@ for relTest in relValSpec:
     print "Creating Jobs..."
     print "%s jobs being created for workflow: %s" % (numberOfJobs, workflowBase)
 
-## use MessageService
+    # use MessageService
     ms = MessageService()
-## register message service instance as "Test"
+    # register message service instance as "Test"
     ms.registerAs("Test")
 
-## Debug level
-    ms.publish("RequestInjector:StartDebug","none")
-    ms.publish("JobCreator:StartDebug","none")
-    ms.publish("JobSubmitter:StartDebug","none")
-    ms.publish("TrackingComponent:StartDebug","none")
-                                                                                                                      
-## Set Creator
-    ms.publish("JobCreator:SetCreator","LCGCreator")
-## Set Submitter
-    ms.publish("JobSubmitter:SetSubmitter","LCGSubmitter")
-## Set Workflow and NewDataset
+    # Debug level
+    #ms.publish("RequestInjector:StartDebug","none")
+    #ms.publish("JobCreator:StartDebug","none")
+    #ms.publish("JobSubmitter:StartDebug","none")
+    #ms.publish("TrackingComponent:StartDebug","none")
+    
+    #  //
+    # // These should come from the ProdAgentConfig
+    #//
+    # Set Creator
+    #ms.publish("JobCreator:SetCreator","LCGCreator")
+    # Set Submitter
+    #ms.publish("JobSubmitter:SetSubmitter","LCGSubmitter")
+
+
+    # Set Workflow and NewDataset
     ms.publish("RequestInjector:SetWorkflow", workflow)
     ms.publish("RequestInjector:SelectWorkflow", workflowBase)
     time.sleep(1)
     ms.publish("RequestInjector:NewDataset",'')
-## Set first run and number of events per job
+    # Set first run and number of events per job
     ms.publish("RequestInjector:SetInitialRun", str(run))
     ms.publish("RequestInjector:SetEventsPerJob", str(eventsPerJob))
     time.sleep(1)
 
-## Loop over jobs
+    # Loop over jobs
     for i in range(0, numberOfJobs):
-     summaryJobs += 1
-     summaryEvents += eventsPerJob
-
-     time.sleep(1)
-     ms.publish("ResourcesAvailable","none")
-     ms.commit()
+        summaryJobs += 1
+        summaryEvents += eventsPerJob
+        
+        time.sleep(1)
+        ms.publish("ResourcesAvailable","none")
+        ms.commit()
 
 print "Total Jobs Created: %s" % summaryJobs
 print "Total Events for all jobs: %s" % summaryEvents
