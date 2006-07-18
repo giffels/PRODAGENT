@@ -116,19 +116,27 @@ class OSGCreator(CreatorInterface):
         if not test:
             return
         
+        swSetupCommand = self.pluginConfig['SoftwareSetup']['SetupCommand']
+        swSetupCommand = swSetupCommand.replace(
+            "$CMSSWVERSION",
+            taskObject['CMSProjectVersion'])
+        logging.debug("CMSSW Software Setup Command: %s" % swSetupCommand)
+        
         taskObject['Environment'].addVariable(
             "SCRAM_ARCH",
             self.pluginConfig['SoftwareSetup']['ScramArch'])
 
         taskObject['PreTaskCommands'].append(
-            self.pluginConfig['SoftwareSetup']['SetupCommand'])
+            swSetupCommand
+            )
         
         
         scramSetup = taskObject.addStructuredFile("scramSetup.sh")
         scramSetup.interpreter = "."
         taskObject['PreAppCommands'].append(
             setupScramEnvironment(
-            self.pluginConfig['SoftwareSetup']['SetupCommand'])
+            swSetupCommand
+            )
             )
         taskObject['PreAppCommands'].append(". scramSetup.sh")
         
@@ -172,8 +180,18 @@ class OSGCreator(CreatorInterface):
         settings to do a dCache dccp stage out
         
         """
+        stageOutSetup = self.pluginConfig['StageOut']['SetupCommand']
+        parentVersion = None
+        if taskObject.parent != None:
+            if taskObject.parent.has_key("CMSProjectVersion"):
+                parentVersion = taskObject.parent["CMSProjectVersion"]
+        if parentVersion != None:
+            stageOutSetup = stageOutSetup.replace("$CMSSWVERSION",
+                                                  parentVersion)
+
+        logging.debug("StageOut Software Setup Command: %s" % stageOutSetup)
         taskObject['PreStageOutCommands'].append(
-            self.pluginConfig['StageOut']['SetupCommand']
+            stageOutSetup
             )
         template = taskObject['StageOutTemplates'][0]
         template['TargetHostName'] = \
