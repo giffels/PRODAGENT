@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.14 2006/07/14 16:18:50 ckavka Exp $"
+__version__ = "$Revision: 1.14 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -87,6 +87,7 @@ class MergeSensorComponent:
 
         # update
         self.args.update(args)
+        self.args["MergeFileSize"] = int(self.args["MergeFileSize"])
 
         # server directories
         self.args.setdefault("WatchedDatasets", os.path.join(
@@ -599,7 +600,8 @@ class MergeSensorComponent:
         # // Clone the workflow into a job spec
         #//  and set the job name
         jobSpec = spec.createJobSpec()
-        jobSpec.parameters['JobName'] = jobId        
+        jobSpec.setJobName(jobId)
+
        
         # add SE list
         for storageElement in seList:
