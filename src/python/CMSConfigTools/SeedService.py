@@ -29,16 +29,16 @@ def hasService(cfgInterface):
     return _SvcName in cfgInterface.cmsConfig.serviceNames()
 
 
-def randomSeed(self):
+def randomSeed():
     """
     Create a random 32 bit integer using the
     system time as a seed
     """
     try:
-        value =  _inst.randint(1, self._MAXINT)
+        value =  _inst.randint(1, _MAXINT)
     except:
         print "**** warning no system random generator seeds may not be very random "
-        value =  random.randint(1, self._MAXINT)
+        value =  random.randint(1, _MAXINT)
         
     return value
 
