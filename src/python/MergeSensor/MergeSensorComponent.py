@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.14 2006/07/14 16:18:50 ckavka Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.15 2006/07/18 13:34:57 evansde Exp $"
+__version__ = "$Revision: 1.15 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -393,7 +393,7 @@ class MergeSensorComponent:
             # reset force merge status if set
             if (forceMerge):
 
-                logging.info("Forced merge does not apply to empty dataset %s"
+                logging.info("Forced merge does not apply to empty dataset %s due to empty fileList condition"
                              % datasetPath)
 
                 # critical region start
@@ -424,7 +424,7 @@ class MergeSensorComponent:
 
         # force merging does not apply
         if forceMerge and not mergeable:
-            logging.info("Forced merge does not apply to dataset %s"
+            logging.info("Forced merge does not apply to dataset %s due to non mergeable condition"
                              % datasetPath)
                
         # generate one job for every mergeable set of files in dataset
@@ -596,6 +596,17 @@ class MergeSensorComponent:
         mergedLFNBase(spec)
         unmergedLFNBase(spec)
 
+
+        # add stage out 
+        stageOut = cmsRun.newNode("stageOut1")
+        stageOut.type = "StageOut"
+        stageOut.application["Project"] = ""
+        stageOut.application["Version"] = ""
+        stageOut.application["Architecture"] = ""
+        stageOut.application["Executable"] = "RuntimeStageOut.py" 
+        stageOut.configuration = ""
+
+        
         #  //
         # // Clone the workflow into a job spec
         #//  and set the job name
@@ -607,14 +618,6 @@ class MergeSensorComponent:
         for storageElement in seList:
             jobSpec.addWhitelistSite(storageElement)
  
-        # add stage out 
-        stageOut = cmsRun.newNode("stageOut1")
-        stageOut.type = "StageOut"
-        stageOut.application["Project"] = ""
-        stageOut.application["Version"] = ""
-        stageOut.application["Architecture"] = ""
-        stageOut.application["Executable"] = "RuntimeStageOut.py" 
-        stageOut.configuration = ""
 
         # target file name        
         mergeJobSpecFile = "%s/%s-spec.xml" % (
