@@ -6,9 +6,17 @@ Tools for interacting with the RandomSeedService in the configuration
 
 
 """
-from SeedGen.SeedGen import getSeedGen
 
-_SeedGenerator = getSeedGen()
+
+import random
+from random import SystemRandom
+_inst  = SystemRandom()
+
+#  //
+# // Max bit mask size for 32 bit integers
+#//
+_MAXINT = 2147483645
+
 _SvcName = "RandomNumberGeneratorService"
 
 def hasService(cfgInterface):
@@ -20,6 +28,19 @@ def hasService(cfgInterface):
     """
     return _SvcName in cfgInterface.cmsConfig.serviceNames()
 
+
+def randomSeed(self):
+    """
+    Create a random 32 bit integer using the
+    system time as a seed
+    """
+    try:
+        value =  _inst.randint(1, self._MAXINT)
+    except:
+        print "**** warning no system random generator seeds may not be very random "
+        value =  random.randint(1, self._MAXINT)
+        
+    return value
 
 
 def seedsRequired(cfgInterface):
@@ -114,7 +135,7 @@ def generateSeeds(cfg):
     _generateSeeds_
 
     Find the number of seeds required for the cfg, and generate them using
-    the SeedGen tools.
+    the system random device
 
     This is an interim solution, and should be replaced by seeds provided
     from the ProdMgr
@@ -130,7 +151,7 @@ def generateSeeds(cfg):
     #//
     seeds = []
     for i in range(0, seedsReq):
-        seed = _SeedGenerator.createSeed()
+        seed = randomSeed()
         seeds.append(seed)
 
     #  //

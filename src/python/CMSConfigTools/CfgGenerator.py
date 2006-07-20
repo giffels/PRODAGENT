@@ -11,7 +11,7 @@ from CMSConfigTools.CfgInterface import CfgInterface
 from CMSConfigTools.JobReport import checkJobReport
 
 from CMSConfigTools.SeedService import generateSeeds
-from CMSConfigTools.SeedHackery import randomSeedHack
+
 
 
 class CfgGenerator:
@@ -85,10 +85,6 @@ class CfgGenerator:
         if fileNames != None:
             newCfg.inputSource.setFileNames(*fileNames)
         
-        #  //
-        # // Insert Random Seeds by hand
-        #//  
-        randomSeedHack(newCfg)
 
         #  //
         # // Insert Random seeds into the random seed service
