@@ -6,8 +6,8 @@ Execution class for running a task described by a ShREEKTask instance,
 and managing its execution.
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: TaskRunner.py,v 1.2 2006/05/30 20:26:46 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: TaskRunner.py,v 1.3 2006/06/05 20:50:33 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
@@ -288,7 +288,12 @@ def getCommandOutput(command):
             sys.stderr.write(errchunk)
 	if outeof and erreof: break
 	select.select([],[],[],.1) # give a little time for buffers to fill
-    err = child.wait()
+
+    try:
+        err = child.poll()
+    except Exception, ex:
+        sys.stderr.write("Error retrieving child exit code: %s" % ex)
+        return 1
     
     return err
 
