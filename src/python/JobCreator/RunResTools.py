@@ -139,7 +139,14 @@ class CMSSWRunResDB:
         runresComp.addData("/%s/Input/MaxEvents" % objName, inpSrc.maxevents())
         runresComp.addData("/%s/Input/FirstRun" % objName, inpSrc.firstRun())
         runresComp.addData("/%s/Input/SourceType" % objName, inpSrc.sourceType)
-        
+        runresComp.addPath("/%s/Input/InputFiles" % objName)
+        #  //
+        # // List of input files
+        #//
+        for inpFile in inpSrc.fileNames():
+            
+            runresComp.addData("/%s/Input/InputFiles/InputFile" % objName,
+                               inpFile.replace("\'", ""))
         return
 
 class InsertDirInRunRes:
