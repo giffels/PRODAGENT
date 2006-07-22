@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.15 2006/07/18 13:34:57 evansde Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.16 2006/07/20 15:56:16 evansde Exp $"
+__version__ = "$Revision: 1.16 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -422,11 +422,6 @@ class MergeSensorComponent:
         # critical region end
         self.cond.release()
 
-        # force merging does not apply
-        if forceMerge and not mergeable:
-            logging.info("Forced merge does not apply to dataset %s due to non mergeable condition"
-                             % datasetPath)
-               
         # generate one job for every mergeable set of files in dataset
         while (mergeable):
        

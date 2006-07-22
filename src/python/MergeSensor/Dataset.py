@@ -11,8 +11,8 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: Dataset.py,v 1.10 2006/07/11 14:21:54 ckavka Exp $"
+__version__ = "$Revision: 1.10 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError, InvalidDataTier
@@ -473,12 +473,20 @@ class Dataset:
                 if totalSize > mergeFileSize:
                     return (selectedSet, fileBlockId)
 
-            # not enough files, return empty list or what we have if
-            # merge is forced.
+            # not enough files, continue to next fileBlock
+            # if forceMerge and list non-empty, return what we have
+            # if forceMerge and list empty, make log entry and continue to next fileBlock
             if forceMerge:
-                return(selectedSet, fileBlockId)
+                if selectedSet == []:
+                    logging.info("Forced merge does not apply to FileBlock %s due to non mergeable condition"
+                             % fileBlockId)
+                    continue
+                else:
+                    return(selectedSet, fileBlockId)
             else:
-                return ([], 0)
+                continue
+
+        return ([], 0)
 
     def getStatus(self):
         """
