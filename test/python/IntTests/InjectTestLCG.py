@@ -7,7 +7,7 @@ from MessageService.MessageService import MessageService
 import sys,os,getopt,time
 
 
-usage="\n Usage: python InjectTest.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow file \n --run=<firstRun> \t\t first run number \n --nevts=<NumberofEvent> \t\t number of events per job \n --njobs=<NumberofEvent> \t\t number of jobs \n"
+usage="\n Usage: python InjectTest.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow file \n --nevts=<NumberofEvent> \t\t number of events per job \n --njobs=<NumberofEvent> \t\t number of jobs \n --run=<firstRun> \t\t\t first run number \n\n *Note* that if no run number is provided the last run from the given workflow is taken [This assume that the given workflow already exists]."
 
 valid = ['workflow=', 'run=', 'nevts=' , 'njobs=']
 try:
@@ -40,10 +40,11 @@ if workflow == None:
 if not os.path.exists(workflow):
     print "Workflow not found: %s" % workflow
     sys.exit(1)
-if run == None:
-    print "--run option not provided."
-    print usage
-    sys.exit(1)
+## run is nolonger a compulsory option:
+#if run == None:
+#    print "--run option not provided."
+#    print usage
+#    sys.exit(1)
 if nevts == None:
     print "--nevts option not provided."
     print usage
@@ -70,20 +71,38 @@ ms.commit()
 ms.publish("JobCreator:SetCreator","LCGCreator")
 ## Set Submitter
 ms.publish("JobSubmitter:SetSubmitter","LCGSubmitter")
-## Set Workflow and NewDataset
-ms.publish("RequestInjector:SetWorkflow", workflow)
-ms.commit()
-time.sleep(2)
-ms.publish("RequestInjector:NewDataset",'')
-ms.commit()
-## Set first run and number of events per job
-ms.publish("RequestInjector:SetInitialRun", str(run))
-ms.commit()
+## Set Workflow 
+if run != None: 
+ ## if run number is provided set the workflow and its initial run
+  ms.publish("RequestInjector:SetWorkflow", workflow)
+  ms.commit()
+  time.sleep(0.1)
+  ms.publish("RequestInjector:SetInitialRun", str(run))
+  ms.commit()
+else:
+ ## if no run number is provided, reload the Workflow and start run from there
+  ms.publish("RequestInjector:LoadWorkflows",'')
+  ms.commit()
+  time.sleep(0.1)
+  workflowBase=os.path.basename(workflow)
+  ms.publish("RequestInjector:SelectWorkflow", workflowBase)
+  ms.commit()
+
 ms.publish("RequestInjector:SetEventsPerJob", str(nevts))
 ms.commit()
 time.sleep(2)
+
+## Set New Dataset
+ms.publish("RequestInjector:NewDataset",'')
+ms.commit()
+
 ## Loop over jobs
-print " Trying to submit %s jobs with %s events each starting from run %s"%(njobs,str(nevts),str(run))
+if run != None:
+  runcomment=" run %s"%str(run)
+else:
+  runcomment=" last run for %s "%workflowBase
+print " Trying to submit %s jobs with %s events each starting from %s"%(njobs,str(nevts),runcomment)
+
 njobs=njobs+1
 for i in range(1, njobs):
  ms.publish("ResourcesAvailable","none")
