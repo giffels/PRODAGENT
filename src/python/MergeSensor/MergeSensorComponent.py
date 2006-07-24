@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.16 2006/07/20 15:56:16 evansde Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.17 2006/07/22 23:37:38 hufnagel Exp $"
+__version__ = "$Revision: 1.17 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -832,7 +832,7 @@ class MergeSensorComponent:
             dlsapi = dlsClient.getDlsApi(dls_type = self.args["DLSType"],
                                   dls_endpoint = self.args["DLSAddress"])
         except dlsApi.DlsApiError, inst:
-            logging.error("Fatal error: Cannot contact DLS: %s" % str(int))
+            logging.error("Fatal error: Cannot contact DLS: %s" % str(inst))
             sys.exit(1)
 
         # return DLS API instance
