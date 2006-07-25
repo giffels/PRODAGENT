@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.14 2006/07/25 15:57:17 afanfani Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.15 2006/07/25 19:06:27 evansde Exp $"
 
 import os
 import logging
@@ -176,6 +176,8 @@ class SubmitterInterface:
                 # // NoRecreate is False, so we recreate 
                 #//
                 tarball = createTarball(workingDir, jobCreationArea, jobname)
+            else:
+                tarball = tarballName 
 
         #  //
         # // After creation of the tarball, cleanup the job area used to
