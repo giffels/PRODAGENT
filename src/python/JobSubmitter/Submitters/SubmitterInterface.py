@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.12 2006/07/12 22:03:57 evansde Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.13 2006/07/24 18:21:15 evansde Exp $"
 
 import os
 import logging
@@ -330,9 +330,12 @@ class SubmitterInterface:
         logging.debug("SubmitterInterface:Declaring Job To BOSS")
         bossJobId=bossDeclare[version]()
 
-        idFile = "%s/%sid" % (
-            self.parameters['JobCacheArea'], self.parameters['JobName'],
-            )
+        ## move id file out from job-cache area
+        #idFile = "%s/%sid" % (
+        #    self.parameters['JobCacheArea'], self.parameters['JobName'],
+        #    )
+        idFile = "%s/%sid" % (os.path.dirname(self.parameters['Wrapper']), self.parameters['JobName'])
+
         handle = open(idFile, 'w')
         handle.write("JobId=%s" % bossJobId)
         handle.close()
@@ -348,9 +351,12 @@ class SubmitterInterface:
         from the cache area. If it has not, return None
 
         """
-        idFile = "%s/%sid" % (
-            self.parameters['JobCacheArea'], self.parameters['JobName'],
-            )
+        ## move id file out from job-cache
+        #idFile = "%s/%sid" % (
+        #    self.parameters['JobCacheArea'], self.parameters['JobName'],
+        #    )
+        idFile ="%s/%sid" % (os.path.dirname(self.parameters['Wrapper']), self.parameters['JobName'])
+
         if not os.path.exists(idFile):
             #  //
             # // No BOSS Id File ==> not declared
@@ -382,8 +388,12 @@ class SubmitterInterface:
         
 
         logging.debug( "bossJobType = %s"%bossJobType)
-        xmlfile = "%s/%sdeclare.xml" % (
-            self.parameters['JobCacheArea'], self.parameters['JobName'],
+        ## move one dir up 
+        #xmlfile = "%s/%sdeclare.xml" % (
+        #    self.parameters['JobCacheArea'], self.parameters['JobName'],
+        #    )
+        xmlfile = "%s/%sdeclare.xml"% (
+            os.path.dirname(self.parameters['Wrapper']) , self.parameters['JobName']
             )
         logging.debug( "xmlfile=%s"%xmlfile)
         bossDeclare = "boss declare -xmlfile %s"%xmlfile + "  -c " + self.bossCfgDir
@@ -421,9 +431,10 @@ class SubmitterInterface:
         bossJobType = "cmssw"
         if queryOut.find("cmssw") < 0:
             bossJobType="stdjob"
-        cladfile = "%s/%s.clad" % (
-            self.parameters['JobCacheArea'], self.parameters['JobName'],
-            )
+        #cladfile = "%s/%s.clad" % (
+        #    self.parameters['JobCacheArea'], self.parameters['JobName'],
+        #    )
+        cladfile = "%s/%s.clad" %(os.path.dirname(self.parameters['Wrapper']),self.parameters['JobName'])
         print "cladfile=%s"%cladfile
         declareClad=open(cladfile,"w")
         declareClad.write("executable = %s;\n" % ( os.path.basename(self.parameters['Wrapper'])))

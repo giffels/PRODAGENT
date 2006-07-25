@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.10 2006/07/17 15:54:05 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.11 2006/07/17 16:59:11 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -146,7 +146,7 @@ class LCGSubmitter(SubmitterInterface):
 
 
         ## prepare scheduler related file 
-        schedulercladfile = "%s/%s_scheduler.clad" %  (self.parameters['JobCacheArea'],self.parameters['JobName'])
+        schedulercladfile = "%s/%s_scheduler.clad" % (os.path.dirname(self.parameters['Wrapper']),self.parameters['JobName'])
         try:
            self.createJDL(schedulercladfile,swversion)
         except InvalidFile, ex:
@@ -195,6 +195,7 @@ class LCGSubmitter(SubmitterInterface):
 
         if self.pluginConfig['LCG']['JDLRequirementsFile']!=None and self.pluginConfig['LCG']['JDLRequirementsFile']!='None':
           if os.path.exists(self.pluginConfig['LCG']['JDLRequirementsFile']) :
+            UserReq = None
             logging.debug("createJDL: using JDLRequirementsFile "+self.pluginConfig['LCG']['JDLRequirementsFile'])
             fileuserjdl=open(self.pluginConfig['LCG']['JDLRequirementsFile'],'r')
             inlines=fileuserjdl.readlines()
@@ -206,7 +207,8 @@ class LCGSubmitter(SubmitterInterface):
               else :
                 if inline.find('#') != 0 and len(inline) > 1 :
                    declareClad.write(inline)
-            user_requirements=" %s && "%UserReq
+            if UserReq != None :
+              user_requirements=" %s && "%UserReq
           else:
             msg="JDLRequirementsFile File Not Found: %s"%self.pluginConfig['LCG']['JDLRequirementsFile']
             logging.error(msg) 
