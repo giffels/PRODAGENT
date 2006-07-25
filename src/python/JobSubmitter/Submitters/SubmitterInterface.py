@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.13 2006/07/24 18:21:15 evansde Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.14 2006/07/25 15:57:17 afanfani Exp $"
 
 import os
 import logging
@@ -33,6 +33,8 @@ class SubmitterInterface:
     """
     def __init__(self):
         self.parameters = {}
+        self.parameters['NoRecreate'] = True
+
         # Determine the location of the BOSS configuration files. These is 
         # expected to be in a specific location under the prodAgent workdir, 
         # i.e. <prodAgentWorkDir>/bosscfg 
