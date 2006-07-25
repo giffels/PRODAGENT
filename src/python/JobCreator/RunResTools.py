@@ -143,10 +143,11 @@ class CMSSWRunResDB:
         #  //
         # // List of input files
         #//
-        for inpFile in inpSrc.fileNames():
-            
-            runresComp.addData("/%s/Input/InputFiles/InputFile" % objName,
-                               inpFile.replace("\'", ""))
+        inpFileList = inpSrc.fileNames()
+        if inpFileList != None:
+            for inpFile in inpSrc.fileNames():
+                runresComp.addData("/%s/Input/InputFiles/InputFile" % objName,
+                                   inpFile.replace("\'", ""))
         return
 
 class InsertDirInRunRes:
