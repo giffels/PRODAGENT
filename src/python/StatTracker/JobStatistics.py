@@ -213,9 +213,11 @@ def jobReportToFailure(jobRepInstance):
     result.populateCommon(jobRepInstance)
     
     if len(jobRepInstance.errors) > 0:
-        result['error_type'] = jobRepInstance.errors['Type']
-        result['error_code'] = jobRepInstance.errors['ExitStatus']
-        result['error_desc'] = jobRepInstance.errors['Description']
+        lastError = jobRepInstance.errors[-1]
+                                          
+        result['error_type'] = lastError['Type']
+        result['error_code'] = lastError['ExitStatus']
+        result['error_desc'] = lastError['Description']
         
         
     return result
