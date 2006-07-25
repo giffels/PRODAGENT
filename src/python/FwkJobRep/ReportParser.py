@@ -10,6 +10,7 @@ instances and supporting objects.
 
 from xml.sax.handler import ContentHandler
 from xml.sax import make_parser
+from xml.sax import SAXParseException
 
 from FwkJobRep.FwkJobReport import FwkJobReport
 
@@ -395,7 +396,13 @@ def readJobReport(filename):
     handler = FwkJobRepHandler()
     parser = make_parser()
     parser.setContentHandler(handler)
-    parser.parse(filename)
+    try:
+        parser.parse(filename)
+    except SAXParseException, ex:
+        msg = "Error parsing JobReport File: %s\n" % filename
+        msg += str(ex)
+        print msg
+        return []
     #print handler.results[0]
     return handler.results
 
