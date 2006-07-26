@@ -110,7 +110,7 @@ class RCFPBuilder(CommandBuilder):
         create a directory based on the Target values of the MetaBroker
         using local filesystem tools
         """
-        command = "rfmkdir -p %s" % os.path.dirname(mbInstance['TargetAbsName'])
+        command = "rfmkdir -m 775 -p %s" % os.path.dirname(mbInstance['TargetAbsName'])
         return command
 
     

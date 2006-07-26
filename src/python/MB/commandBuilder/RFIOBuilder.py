@@ -114,7 +114,7 @@ class RFIOBuilder(CommandBuilder):
         create a directory based on the Target values of the MetaBroker
         using rfio access
         """
-        rfmkdirBin = mbInstance.get("Rfmkdir", "rfmkdir -p ")
+        rfmkdirBin = mbInstance.get("Rfmkdir", "rfmkdir -m 775 -p ")
         rfmkdirOpts = mbInstance.get("RfmkdirOptions", "")
         command = "%s %s " % (rfmkdirBin, rfmkdirOpts)
         command += "%s " % (
