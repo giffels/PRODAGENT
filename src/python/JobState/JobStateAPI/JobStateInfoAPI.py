@@ -91,10 +91,11 @@ def startedJobs(daysBack):
       """
       _startedJobs_
 
-      Returns a list of job spec ids that have started futher than the number of days
-      specified.
+      Returns a list of job spec ids that have started 
+      futher than the number of days specified.
 
       """
+      print('test')
 
       return JobStateInfoAPIMySQL.startedJobs(daysBack)
 
