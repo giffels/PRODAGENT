@@ -49,7 +49,7 @@ class CondorTrackerComponent:
         logging.getLogger().setLevel(logging.INFO)
         logging.info("CondorTrackin Component Started...")
         self.cond = Condition()
-        
+        self.pollingThread = Poll(self.pollCondor)
         logging.getLogger().setLevel(logging.DEBUG)
         
     def __call__(self, event, payload):
@@ -66,10 +66,12 @@ class CondorTrackerComponent:
             logging.info("Starting Condor Tracker...")
             self.activePolling = True
 
+
+
         if event == "CondorTracker:Stop":
             logging.info("Stopping RM...")
             self.activePolling = False
-            
+
             
 
         if event == "CondorTracker:StartDebug":
@@ -102,8 +104,7 @@ class CondorTrackerComponent:
         self.ms.subscribeTo("CondorTracker:EndDebug")
         
         # start polling thread
-        pollingThread = Poll(self.pollCondor)
-        pollingThread.start()
+        self.pollingThread.start()
         
         # wait for messages
         while True:
@@ -160,19 +161,28 @@ class CondorTrackerComponent:
         CondorTracker file into the cache
         """
         report = os.path.join(cacheDir, "FrameworkJobReport.xml")
-        checked = os.path.join(cacheDir, "CondorTracker")
-        file(checked, "w").close()
-        
+        logging.debug("handleCompletion: %s" % report)
         if checkSuccess(report):
             logging.info("JobSuccess: %s" % report)
             self.ms.publish("JobSuccess", report)
             self.ms.commit()
-            return
+            logging.debug("Success published for %s" % report)
         else:
             logging.info("JobFailed: %s" % report)
             self.ms.publish("JobFailed", report)
             self.ms.commit()
-            return
+            logging.debug("Failure published for %s" % report)
+            
+        #  //
+        # // Mark job as logged already
+        #//
+        checked = os.path.join(cacheDir, "CondorTracker")
+        logging.debug("Creating file: %s" % checked)
+        handle = open(checked, 'w')
+        handle.write(str(time.time()))
+        handle.close()
+        logging.debug("Created file: %s" % checked)
+        return
         
 
     def pollCondor(self):
@@ -201,7 +211,9 @@ class CondorTrackerComponent:
             # // 
             #//
             for item in completeCache:
+                logging.debug("handleCompletion: %s" %item)
                 self.handleCompletion(item)
+            logging.debug("finished cycle")
             self.cond.release()
         time.sleep(self.args['PollInterval'])
         return returnValue
