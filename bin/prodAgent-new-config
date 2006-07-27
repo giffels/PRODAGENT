@@ -96,7 +96,7 @@ coreFields = {
 
     "BOSS": {
     # BossConfig.clad
-    'tmpDir':'',
+    'tmpDir':'/tmp',
     'minUpdInt':30,
     'maxUpdInt':180,
     'maxRetry':3,
@@ -124,6 +124,7 @@ coreFields = {
     },
 
     'LocalDBS' :{
+    "DBSURL": "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery",
     "DBSAddress": None,
     "DBSType" : "CGI",
     },
@@ -265,7 +266,6 @@ prodAgentBlock = config.getConfig("ProdAgent")
 # NOTE: boss post processing
 # NOTE: needs to be done better (how, withouth designating BOSS a component?)
 cfgDict = config.getConfig("BOSS")
-cfgDict['tmpDir']=os.path.join(prodAgentBlock['ProdAgentWorkDir'],"BOSS/tmp")
 cfgDict['configDir']=os.path.join(prodAgentBlock['ProdAgentWorkDir'],"BOSS/config")
 
 
