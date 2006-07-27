@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.18 2006/07/24 16:56:37 afanfani Exp $"
-__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.19 2006/07/27 02:56:07 afanfani Exp $"
+__version__ = "$Revision: 1.19 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -80,7 +80,9 @@ class MergeSensorComponent:
         self.args.setdefault("ComponentDir", None)
         self.args.setdefault("PollInterval", 30 )
         self.args.setdefault("Logfile", None)
-        self.args.setdefault("StartMode", 'cold')
+        ## move default from cold to warm 
+        # self.args.setdefault("StartMode", 'cold')
+        self.args.setdefault("StartMode", 'warm')
         self.args.setdefault("DBSDataTier", "GEN,SIM,DIGI")
         self.args.setdefault("DLSType", None)
         self.args.setdefault("DLSAddress", None)
@@ -110,6 +112,8 @@ class MergeSensorComponent:
         logging.getLogger().addHandler(logHandler)
         logging.getLogger().setLevel(logging.INFO)
 
+        logging.info("MergeSensor starting... in >> %s << mode" %self.args["StartMode"])
+
         # get DBS API
         self.dbsApi = self.connectDBS()
    
@@ -134,6 +138,7 @@ class MergeSensorComponent:
         
         # by default merge is not forced for any dataset
         self.forceMergeList = []
+
 
     def __call__(self, event, payload):
         """
@@ -806,7 +811,8 @@ class MergeSensorComponent:
                 dbs = DbsCgiApi(url, args)
             except DbsException, ex:
                 logging.error("Fatal error: cannot contact DBS: %s" % ex)
-                sys.exit(1)
+                #sys.exit(1)
+                return
             logging.info(" DBS URL: %s DBSAddress: %s "%(url , self.args['DBSAddress']))
 
         else:
@@ -821,7 +827,8 @@ class MergeSensorComponent:
                 dbs = dbsWsApi.DbsWsApi()
             except dbsException.DbsException, ex:
                 logging.error("Fatal error: cannot contact DBS: %s" % ex)
-                sys.exit(1)
+                #sys.exit(1)
+                return
 
         # return DBS API instance
         return dbs
@@ -835,7 +842,8 @@ class MergeSensorComponent:
                                   dls_endpoint = self.args["DLSAddress"])
         except dlsApi.DlsApiError, inst:
             logging.error("Fatal error: Cannot contact DLS: %s" % str(inst))
-            sys.exit(1)
+            #sys.exit(1)
+            return
 
         # return DLS API instance
         return dlsapi
