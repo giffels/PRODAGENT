@@ -171,6 +171,7 @@ componentFields = {
 
     'MergeSensor' : {
     "ComponentDir" : None,
+    "StartMode" : "warm",
     "PollInterval": 30,
     "MergeFileSize" : 100000000,
     # Local DBS settings come from LocalDBS core block 
