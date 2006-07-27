@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.17 2006/07/22 23:37:38 hufnagel Exp $"
-__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.18 2006/07/24 16:56:37 afanfani Exp $"
+__version__ = "$Revision: 1.18 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -74,6 +74,7 @@ class MergeSensorComponent:
         
         # initialize the server
         self.args = {}
+        self.args.setdefault("DBSURL","http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery")
         self.args.setdefault("DBSAddress", None)
         self.args.setdefault("DBSType", "CGI")
         self.args.setdefault("ComponentDir", None)
@@ -796,7 +797,7 @@ class MergeSensorComponent:
             from dbsException import DbsException
 
             # parameters
-            url = "http://cmsdoc.cern.ch/cms/aprom/DBS/CGIServer/prodquery"
+            url = self.args['DBSURL']
             args = {}
             args['instance'] = self.args['DBSAddress']
 
@@ -806,6 +807,7 @@ class MergeSensorComponent:
             except DbsException, ex:
                 logging.error("Fatal error: cannot contact DBS: %s" % ex)
                 sys.exit(1)
+            logging.info(" DBS URL: %s DBSAddress: %s "%(url , self.args['DBSAddress']))
 
         else:
 

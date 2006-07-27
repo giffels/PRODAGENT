@@ -26,6 +26,8 @@ try:
 
     # Local DBS configuration
     localDBSConfig = config.get("LocalDBS")
+    if 'DBSURL' in localDBSConfig.keys():
+     compCfg["DBSURL"] = localDBSConfig["DBSURL"]  
     compCfg["DBSAddress"] = localDBSConfig["DBSAddress"]
     compCfg["DBSType"] = localDBSConfig["DBSType"]
 
