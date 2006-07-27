@@ -13,8 +13,8 @@ import os,sys,getopt
 #   //
 #  // Get DBS instance to use
 # //
-usage="\n Usage: python InspectDBSDLS.py <options> \n Options: \n --datasetPath=/primarydataset/datatier/procdataset \t\t dataset path \n --DBSAddress=<MCLocal/Writer> \t\t DBS database instance \n --DLSAddress=<lfc-cms-test.cern.ch/grid/cms/DLS/MCLocal_Test>\t\t DLS instance \n --DLSType=<DLS_TYPE_LFC> \t\t DLS type \n --help \t\t\t\t print this help \n"
-valid = ['DBSAddress=','DLSAddress=','DLSType=','datasetPath=','help']
+usage="\n Usage: python InspectDBSDLS.py <options> \n Options: \n --datasetPath=/primarydataset/datatier/procdataset \t\t dataset path \n --DBSAddress=<MCLocal/Writer> \t\t DBS database instance \n --DBSURL=<URL> \t\t DBS URL \n --DLSAddress=<lfc-cms-test.cern.ch/grid/cms/DLS/MCLocal_Test>\t\t DLS instance \n --DLSType=<DLS_TYPE_LFC> \t\t DLS type \n --help \t\t\t\t print this help \n"
+valid = ['DBSAddress=','DBSURL=','DLSAddress=','DLSType=','datasetPath=','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -22,6 +22,7 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
+url = "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery"
 dbinstance = None
 dlsendpoint = None
 dlstype = None
@@ -30,6 +31,8 @@ dataset = None
 for opt, arg in opts:
     if opt == "--DBSAddress":
         dbinstance = arg
+    if opt == "--DBSURL":
+        url = arg
     if opt == "--DLSAddress":
         dlsendpoint = arg
     if opt == "--DLSType":
@@ -58,13 +61,12 @@ if dlsendpoint == None:
     sys.exit(1)
 
 
-print ">>>>> DBS instance : %s"%dbinstance
+print ">>>>> DBS URL : %s DBS Address : %s"%(url,dbinstance)
 print ">>>>> DLS instance : %s"%dlsendpoint
 
 #  //
 # // Get API to DBS
 #//
-url = "http://cmsdoc.cern.ch/cms/aprom/DBS/CGIServer/prodquery"
 ## database instance 
 args = {'instance' : dbinstance}
 dbsapi = dbsCgiApi.DbsCgiApi(url, args)
