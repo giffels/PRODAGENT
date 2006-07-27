@@ -28,17 +28,17 @@ class DBS:
   interface to extract/insert info from DBS
   """
 # ##############
-  def __init__(self, dbinstance):
+  def __init__(self, dbsurl , dbinstance):
     """
      Construct api object.
     """
     ## cgi service API
-    DEFAULT_URL = "http://cmsdoc.cern.ch/cms/aprom/DBS/CGIServer/prodquery"
     args = {}
     args['instance']=dbinstance
 
-    self.api = DbsCgiApi(DEFAULT_URL, args)
-
+    self.api = DbsCgiApi(dbsurl , args)
+    logging.debug(" DBS URL: %s DBSAddress: %s "%(dbsurl , dbinstance))
+    
     ## set log level : log not supported
     #self.api.setLogLevel(dbsApi.DBS_LOG_LEVEL_ALL_)
     #self.api.setLogLevel(dbsApi.DBS_LOG_LEVEL_INFO_)

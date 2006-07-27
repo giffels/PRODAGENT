@@ -92,6 +92,7 @@ class DBSComponent:
     def __init__(self, **args):
         self.args = {}
 
+        self.args.setdefault("DBSURL","http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery")
         self.args.setdefault("DBSAddress", None)
         self.args.setdefault("DBSType", "CGI")
         self.args.setdefault("Logfile", None)
@@ -228,7 +229,7 @@ class DBSComponent:
           from DBS import DBS as DBSclient
         else:
           from DBS_Ws import DBS_Ws as DBSclient
-        dbsinfo= DBSclient(self.args['DBSAddress'])
+        dbsinfo= DBSclient(self.args['DBSURL'],self.args['DBSAddress'])
 
         ## create primary dataset
 
@@ -321,7 +322,7 @@ class DBSComponent:
             else:
                 from DBS_Ws import DBS_Ws as DBSclient
 
-            self.dbsinfo= DBSclient(self.args['DBSAddress'])
+            self.dbsinfo= DBSclient(self.args['DBSURL'],self.args['DBSAddress'])
 
             # SEname=self.getSEname() 
             ## get Stage out SE from FWK report 
