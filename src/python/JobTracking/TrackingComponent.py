@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.15 2006/07/11 15:27:31 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.16 2006/07/17 12:51:53 bacchi Exp $"
 
 import socket
 import time
@@ -157,8 +157,30 @@ class TrackingComponent:
 
 # query boss Database to get jobs status
 
+        jobNumber=300
+        timeout=0
+        outfile=self.executeCommand("bossAdmin SQL -query \"select count(ID) jobNumber from CHAIN\" -c " + self.bossCfgDir)
+        try:
+            jobNumber=float(outfile.split('jobNumber')[1].strip())
+            logging.debug("JobNumber = %s\n"%jobNumber)
+        except:
+            logging.debug("outfule\n")
+            logging.debug(outfile)
+            logging.debug("\n")
+        try:
+            timeout=jobNumber*2
+        except:
+            logging.debug("JobNumber = %d;timeout = %d\n"%(jobNumber,jobNumber*.5))
+        if timeout==0:
+            timeout=600
+        logging.debug("number of jobs %d; timeout set to %d\n"%(jobNumber,timeout))
+
         outfile=self.executeCommand("boss RTupdate -jobid all -c " + self.bossCfgDir)
-        outfile=self.executeCommand("boss q -statusOnly -all -c " + self.bossCfgDir)
+        
+        outfile=self.executeCommand("boss q -submitted -statusOnly  -c " + self.bossCfgDir,timeout)
+        if outfile.find("Option -submitted not found")>=0:
+            outfile=self.executeCommand("boss q -statusOnly -all -c " + self.bossCfgDir,timeout)
+        
         #lines=outfile.readlines()
         lines=[]
         try:
@@ -188,7 +210,7 @@ class TrackingComponent:
                 except StandardError, ex:
                     pass
                 success.append([jid,st])
-            elif st == 'R' or st == 'SR':
+            elif st == 'R' :
                 try:
                     self.failedJobsPublished.pop(jid)                
                     self.cmsErrorJobs.pop(jid)
@@ -371,7 +393,7 @@ class TrackingComponent:
         for jobId in chJobs:
             logging.debug(jobId)
 
-        logging.debug("Unknown Jobs "+ str(len(uJobs)))
+        logging.debug("Other Jobs "+ str(len(uJobs)))
         for jobId in uJobs:
             logging.debug(jobId)
 
