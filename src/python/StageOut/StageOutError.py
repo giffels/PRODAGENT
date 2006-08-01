@@ -6,8 +6,8 @@ General Exception class for JC modules
 
 """
 
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: StageOutError.py,v 1.1 2006/06/26 20:23:31 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: StageOutError.py,v 1.2 2006/08/01 19:24:56 evansde Exp $"
 
 import exceptions
 import inspect
@@ -134,7 +134,7 @@ class StageOutFailure(StageOutError):
         StageOutError.__init__(self, message, **data)
         self.data.setdefault("ErrorCode", 60312)
         self.data.setdefault("ErrorType", ErrorDefinitions[60312])
-
+        
         sys.stdout.write(str(self))
         sys.stdout.write("\n")
 
@@ -154,4 +154,5 @@ class StageOutInitError(StageOutError):
 
         sys.stdout.write(str(self))
         sys.stdout.write("\n")
+
 

@@ -23,7 +23,10 @@ import os
 import sys
 
 
-from StageOut.StageOutError import StageOutFailure, StageOutInitError
+from StageOut.StageOutError import StageOutFailure
+from StageOut.StageOutError import StageOutInitError
+
+from StageOut.Registry import retrieveStageOutImpl
 
 from FwkJobRep.TaskState import TaskState, getTaskState
 from FwkJobRep.MergeReports import updateReport
@@ -203,7 +206,7 @@ class StageOutManager:
                 if not self.override:
                     print "===> Attempting Local Stage Out."
                     try:
-                        pfn = self.localStageOut(lfn)
+                        pfn = self.localStageOut(lfn, fileToStage['PFN'])
                         fileToStage['PFN'] = pfn
                         fileToStage['SEName'] = self.siteCfg.localStageOut['se-name']
                         raise StageOutSuccess
@@ -215,10 +218,11 @@ class StageOutManager:
                 #  //
                 # // Still here => failure, start using the fallback stage outs
                 #//  If override is set, then that will be the only fallback available
-                print "===> Attempting Fallback Stage Outs"
+                print "===> Attempting %s Fallback Stage Outs" % len(self.fallbacks)
                 for fallback in self.fallbacks:
                     try:
-                        pfn = self.fallbackStageOut(lfn, fallback)
+                        pfn = self.fallbackStageOut(lfn, fileToStage['PFN'],
+                                                    fallback)
                         fileToStage['PFN'] = pfn
                         fileToStage['SEName'] = fallback['se-name']
                         if self.failed.has_key(lfn):
@@ -252,7 +256,7 @@ class StageOutManager:
 
         return exitCode
 
-    def fallbackStageOut(self, lfn, fbParams):
+    def fallbackStageOut(self, lfn, localPfn, fbParams):
         """
         _fallbackStageOut_
 
@@ -266,14 +270,29 @@ class StageOutManager:
         se-name - the Name of the SE to which the file is being xferred
         
         """
-        #  //
-        # // TODO: Invoke Stage Out Impl
-        #//
         pfn = "%s%s" % (fbParams['lfn-prefix'], lfn)
+
+        try:
+            impl = retrieveStageOutImpl(fbParams['command'])
+        except Exception, ex:
+            msg = "Unable to retrieve impl for fallback stage out:\n"
+            msg += "Error retrieving StageOutImpl for command named: "
+            msg += "%s\n" % fbParams['command']
+            raise StageOutFailure(msg, Command = fbParams['command'],
+                                  LFN = lfn, ExceptionDetail = str(ex))
         
+        try:
+            impl(fbParams['command'], localPfn, pfn, options)
+        except Exception, ex:
+            msg = "Failure for fallback stage out:\n"
+            msg += str(ex)
+            raise StageOutFailure(msg, Command = command, 
+                                  LFN = lfn, InputPFN = localPfn,
+                                  TargetPFN = pfn)
+            
         return pfn
         
-    def localStageOut(self, lfn):
+    def localStageOut(self, lfn, localPfn):
         """
         _localStageOut_
 
@@ -283,15 +302,31 @@ class StageOutManager:
         seName = self.siteCfg.localStageOut['se-name']
         command = self.siteCfg.localStageOut['command']
         options = self.siteCfg.localStageOut.get('options', None)
-
         pfn = self.searchTFC(lfn)
+        protocol = self.tfc.preferredProtocol
         if pfn == None:
             msg = "Unable to match lfn to pfn: \n  %s" % lfn
             raise StageOutFailure(msg, LFN = lfn, TFC = str(self.tfc))
 
-        #  //
-        # // TODO: Invoke Stage Out Impl...
-        #//
+        
+        try:
+            impl = retrieveStageOutImpl(command)
+        except Exception, ex:
+            msg = "Unable to retrieve impl for local stage out:\n"
+            msg += "Error retrieving StageOutImpl for command named: %s\n" % (
+                command,)
+            raise StageOutFailure(msg, Command = command,
+                                  LFN = lfn, ExceptionDetail = str(ex))
+        
+        try:
+            impl(protocol, localPfn, pfn, options)
+        except Exception, ex:
+            msg = "Failure for local stage out:\n"
+            msg += str(ex)
+            raise StageOutFailure(msg, Command = command, Protocol = protocol,
+                                  LFN = lfn, InputPFN = localPfn,
+                                  TargetPFN = pfn)
+        
         return pfn
 
 
@@ -399,6 +434,7 @@ def stageOut():
 
 
 if __name__ == '__main__':
+    import StageOut.Impl
     exitCode = stageOut()
     f = open("exit.status", 'w')
     f.write(str(exitCode))
