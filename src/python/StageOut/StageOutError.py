@@ -7,7 +7,7 @@ General Exception class for JC modules
 """
 
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: StageOutError.py,v 1.1 2006/04/10 18:42:44 evansde Exp $"
+__revision__ = "$Id: StageOutError.py,v 1.1 2006/06/26 20:23:31 evansde Exp $"
 
 import exceptions
 import inspect
@@ -16,6 +16,14 @@ import inspect
 #//  use sys.stdout instead
 #import logging
 import sys
+
+
+ErrorDefinitions = {
+    60311 : "GeneralStageOutFailure",
+    60312 : "FileStageOutFailure",
+    60313 : "StageOutInitError",
+    }
+
 
 class StageOutError(exceptions.Exception):
     """
@@ -40,6 +48,8 @@ class StageOutError(exceptions.Exception):
         self.data.setdefault("ClassInstance", None)
         self.data.setdefault("FileName", None)
         self.data.setdefault("LineNumber", None)
+        self.data.setdefault("ErrorCode", 60311)
+        self.data.setdefault("ErrorType", ErrorDefinitions[60311])
         
         self.message = message
         self.data.update(data)
@@ -72,8 +82,6 @@ class StageOutError(exceptions.Exception):
               self['ClassInstance'].__class__.__name__
 
         #logging.error(str(self))
-        sys.stdout.write(str(self))
-        sys.stdout.write("\n")
         
         
 
@@ -122,6 +130,28 @@ class StageOutFailure(StageOutError):
     Standard Error class to indicate a stage out failure
 
     """
-    pass
+    def __init__(self, message, **data):
+        StageOutError.__init__(self, message, **data)
+        self.data.setdefault("ErrorCode", 60312)
+        self.data.setdefault("ErrorType", ErrorDefinitions[60312])
 
+        sys.stdout.write(str(self))
+        sys.stdout.write("\n")
+
+          
+class StageOutInitError(StageOutError):
+    """
+    _StageOutInitError_
+
+    Error when initialising for stage out including reading
+    site conf, TFC etc
+
+    """
+    def __init__(self, message, **data):
+        StageOutError.__init__(self, message, **data)
+        self.data["ErrorCode"] =  60313
+        self.data["ErrorType"] = ErrorDefinitions[60313]
+
+        sys.stdout.write(str(self))
+        sys.stdout.write("\n")
 
