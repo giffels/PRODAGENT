@@ -163,3 +163,20 @@ def readTFC(filename):
         
     return tfcInstance
 
+
+
+def loadTFC(contactString):
+    """
+    _loadTFC_
+
+    Given the contact string for the tfc, parse out the file location
+    and the protocol and create a TFC instance
+
+    """
+    protocol = tfcProtocol(contactString)
+    catalog = tfcFilename(contactString)
+    instance = readTFC(catalog)
+    instance.preferredProtocol = protocol
+    return instance
+
+    

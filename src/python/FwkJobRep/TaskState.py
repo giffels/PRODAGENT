@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: TaskState.py,v 1.7 2006/07/12 14:49:29 evansde Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: TaskState.py,v 1.8 2006/07/20 21:48:09 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -98,7 +98,15 @@ class TaskState:
         self.catalogsLoaded = False
         self.siteConfigLoaded = False
         
-        
+
+    def taskName(self):
+        """
+        _taskName_
+
+        get the task name attribute
+
+        """
+        return self.taskAttrs['Name']
 
 
     def loadRunResDB(self):
@@ -124,7 +132,20 @@ class TaskState:
                  dbDict[self.taskAttrs['Name']]['JobSpecID'][0]
         
         return
-        
+
+
+    def configurationDict(self):
+        """
+        _configurationDict_
+
+        Return the RunResDB for this task name as a dictionary
+
+        """
+        try:
+            result = self._RunResDB.toDictionary()[self.taskName()]
+        except StandardError, ex:
+            result = {}
+        return result
 
     def getExitStatus(self):
         """

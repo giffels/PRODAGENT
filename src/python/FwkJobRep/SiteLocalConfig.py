@@ -59,6 +59,7 @@ class SiteLocalConfig:
         self.eventData = {}
         self.calibData = {}
         self.localStageOut = {}
+        self.fallbackStageOut = []
         self.read()
 
 
@@ -67,7 +68,6 @@ class SiteLocalConfig:
         _trivialFileCatalog_
 
         Return an instance of FwkJobRep.TrivialFileCatalog
-        if there is a catalog specified in eventData
 
         """
         tfcUrl = self.localStageOut.get('catalog', None)
@@ -78,11 +78,6 @@ class SiteLocalConfig:
             tfcProto = tfcProtocol(tfcUrl)
             tfcInstance = readTFC(tfcFile)
             tfcInstance.preferredProtocol = tfcProto
-            msg = "TrivialFileCatalog loaded from file:\n"
-            msg += tfcFile
-            msg += "\nFound Protocol: %s\n" % tfcProto
-            msg += "Contents:\n%s\n" % str(tfcInstance)
-            print msg
         except StandardError, ex:
             msg = "Unable to load TrivialFileCatalog:\n"
             msg += "URL = %s\n" % tfcUrl
@@ -174,9 +169,16 @@ class SiteLocalConfig:
             localSO = stageOutNodes[0]
             self.localStageOut = self.readLocalStageOut(localSO)
             
-        
-    
-            
+        #  //
+        # // remote stage out information
+        #//  Assume that there are N of them, in order of preference
+        fallbackQ = IMProvQuery(
+            "/site-local-config/site/fallback-stage-out"
+            )
+        fallbackNodes = fallbackQ(node)
+        for fallbackNode in fallbackNodes:
+            nodeContent = self.readFallbackStageOut(fallbackNode)
+            self.fallbackStageOut.append(nodeContent)
             
         #  //
         # // calib data
@@ -225,3 +227,32 @@ class SiteLocalConfig:
                 continue
             
         return result
+
+    def readFallbackStageOut(self, node):
+        """
+        _readFallbackStageOut_
+
+        Extract data from fallback stage out node, return it as a dictionary
+
+        """
+        result = {}
+        result.setdefault("lfn-prefix", None)
+        result.setdefault("se-name", None)
+        result.setdefault("command", None)
+        result.setdefault("option", None)
+        for child in node.children:
+            if child.name == "lfn-prefix":
+                result['lfn-prefix'] = str(child.attrs['value'])
+                continue
+            if child.name == "se-name":
+                result['se-name'] = str(child.attrs['value'])
+                continue
+            if child.name == "command":
+                result['command'] = str(child.attrs['value'])
+                continue
+            if child.name == "option":
+                result['option'] = str(child.attrs['value'])
+                continue
+            
+        return result
+    
