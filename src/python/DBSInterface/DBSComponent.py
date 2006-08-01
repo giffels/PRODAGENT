@@ -25,7 +25,7 @@ import string
 import socket
 
 from MCPayloads.WorkflowSpec import WorkflowSpec
-import os,base64,exceptions
+import os,base64,time,exceptions
 from FwkJobRep.ReportParser import readJobReport
 from MessageService.MessageService import MessageService
 
@@ -117,6 +117,13 @@ class DBSComponent:
         logHandler.setFormatter(logFormatter)
         logging.getLogger().addHandler(logHandler)
         logging.getLogger().setLevel(logging.INFO)
+
+        #  //
+        # // Log Failed FWJobReport registration into DBS
+        #//
+        FailedFWKJobReport=os.path.join(self.args['ComponentDir'],
+                                                "FailedJobReportList.txt")
+        self.BadReport = open(FailedFWKJobReport,'a')
         
         logging.info("DBSComponent Started...")
         
@@ -168,6 +175,8 @@ class DBSComponent:
             except DbsException, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("DbsException Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
+                self.BadReport.write("%s\n"%payload)
+                self.BadReport.flush()
                 return
             except AssertionError, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
