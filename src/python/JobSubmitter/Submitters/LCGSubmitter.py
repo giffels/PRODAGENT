@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.11 2006/07/17 16:59:11 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.12 2006/07/25 15:57:17 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -260,7 +260,7 @@ class LCGSubmitter(SubmitterInterface):
         Util it execute the command provided in a popen object with a timeout
         
         """
-      
+#        logging.info("my executeCommand")
 
         p=Popen4(command)
         p.tochild.close()
@@ -286,13 +286,22 @@ class LCGSubmitter(SubmitterInterface):
                     outfeof=1
                 outc.append(outch)
             if outfeof:
-                err=p.wait()
+                err=-2
+               # err=p.wait()
                 break
             time.sleep(.1)
     
         if err == -1:
             logging.error("command %s timed out. timeout %d\n"%(command,timeout))
+            os.kill(pid,9)
+            logging.error("killed pid  %d\n"%(pid))
+            
             return ""
+
+        if err == -2:
+            err=p.poll()
+            logging.debug("command %s reached command output eof err=%d\n"%(command,err))
+
         if err > 0:
             logging.error("command %s gave %d exit code"%(command,err))
         #    p.wait()
@@ -301,6 +310,6 @@ class LCGSubmitter(SubmitterInterface):
             #eturn ""
         
         output=string.join(outc,"")
-        logging.debug("command output \n %s"%output)
+        logging.debug("command output \n %s\n"%output)
         return output
 registerSubmitter(LCGSubmitter, LCGSubmitter.__name__)
