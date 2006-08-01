@@ -45,6 +45,7 @@ class CleanupHandler(HandlerInterface):
              except Exception,ex:
                  logging.debug(">CleanupHandler< WARNING job cleanup: "+str(ex))
              JobStateChangeAPI.cleanout(str(payload))
+             TriggerAPI.cleanout(str(payload))
          except Exception,ex:
              logging.debug(">CleanupHandler< ERROR job cleanup: "+str(ex))
 
