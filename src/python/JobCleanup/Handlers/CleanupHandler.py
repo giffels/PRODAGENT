@@ -9,7 +9,6 @@ from JobCleanup.Registry import retrieveHandler
 
 from JobState.JobStateAPI import JobStateChangeAPI
 from JobState.JobStateAPI import JobStateInfoAPI
-from Trigger.TriggerAPI import TriggerAPI
 
 class CleanupHandler(HandlerInterface):
     """
