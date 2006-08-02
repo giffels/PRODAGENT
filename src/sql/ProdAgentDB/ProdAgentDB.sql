@@ -123,10 +123,6 @@ CREATE TABLE tr_Action(
    is associated to some python code in an action registery
    */
    ActionName VARCHAR(255) NOT NULL,
-   /* Not every MySQL version supports cascade or foreign keys */
-   CONSTRAINT `0_3` FOREIGN KEY(TriggerID) 
-       REFERENCES tr_Trigger(TriggerID) 
-       ON DELETE CASCADE,
    UNIQUE(JobSpecID,TriggerID,ActionName)
    ) TYPE=InnoDB;
 
