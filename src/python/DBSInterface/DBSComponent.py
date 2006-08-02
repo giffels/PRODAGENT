@@ -96,6 +96,7 @@ class DBSComponent:
         self.args.setdefault("DBSAddress", None)
         self.args.setdefault("DBSType", "CGI")
         self.args.setdefault("Logfile", None)
+        self.args.setdefault("BadReportfile", None)
         self.args.setdefault("DBSDataTier", 'GEN,SIM,DIGI,RECO')
         self.args.setdefault("MaxBlockSize", None)  # No check on fileblock size
 
@@ -121,9 +122,11 @@ class DBSComponent:
         #  //
         # // Log Failed FWJobReport registration into DBS
         #//
-        FailedFWKJobReport=os.path.join(self.args['ComponentDir'],
-                                                "FailedJobReportList.txt")
-        self.BadReport = open(FailedFWKJobReport,'a')
+        if self.args['BadReportfile'] == None:
+            self.args['BadReportfile'] = os.path.join(self.args['ComponentDir'],
+                                                      "FailedJobReportList.txt")
+
+        self.BadReport = open(self.args['BadReportfile'],'a')
         
         logging.info("DBSComponent Started...")
         
@@ -175,7 +178,8 @@ class DBSComponent:
             except DbsException, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("DbsException Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
-                self.BadReport.write("%s\n"%payload)
+                ## add the FWKJobReport to the failed list
+                self.BadReport.write("%s\n" % payload)
                 self.BadReport.flush()
                 return
             except AssertionError, ex:
@@ -187,7 +191,16 @@ class DBSComponent:
                 logging.error("StandardError Details:%s" % str(ex))
                 return
 
-                
+        if event == "DBSInterface:RetryFailures":
+            logging.info("DBSInterface:RetryFailures Event")
+            try:
+                self.RetryFailures(self.args['BadReportfile'],self.BadReport)
+                return
+            except StandardError, ex:
+                logging.error("Failed to RetryFailures")
+                logging.error("Details: %s" % str(ex))
+                return
+
         if event == "DBSInterface:StartDebug":
             logging.getLogger().setLevel(logging.DEBUG)
             return
@@ -505,6 +518,65 @@ class DBSComponent:
             raise InvalidDataTier(DataTier, DBSDataTierList)
         return DataTier              
 
+
+    def RetryFailures(self,fileName, filehandle):
+        """                                                                     
+        Read the list of FWKJobReport that failed DBS registration and re-try the registration. If the FWKJobReport registration is succesfull remove it form the list of failed ones. 
+                                                                                
+        """
+        from dbsException import DbsException
+        logging.info("*** Begin the RetryFailures procedure")
+
+        ## Read the list of FWJobReport that failed DBS registration and re-try
+        filehandle.close()
+        BadReportfile = open(fileName, 'r')
+
+        stillFailures = []
+        discarded = []
+        for line in BadReportfile.readlines():
+           payload = os.path.expandvars(os.path.expanduser(string.strip(line)))
+           if not os.path.exists(payload):
+             logging.error("File Not Found : %s"%payload)
+             discarded.append(payload)
+             continue
+           try:
+             self.handleJobReport(payload)
+           except InvalidJobReport, ex:
+                logging.error("InvalidJobReport")
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                logging.error("InvalidJobReport Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
+                stillFailures.append(payload)
+           except InvalidDataTier, ex:
+                logging.error("InvalidDataTier")
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
+                stillFailures.append(payload)
+           except DbsException, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                logging.error("DbsException Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
+                stillFailures.append(payload)
+           except AssertionError, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                logging.error("AssertionError Details: %s" % str(ex))
+                stillFailures.append(payload)
+           except StandardError, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                logging.error("StandardError Details:%s" % str(ex))
+                stillFailures.append(payload)
+
+        BadReportfile.close()
+       
+        ## Write the list of those still failing 
+
+        BadReportfile = open(fileName, 'w')
+        for item in stillFailures:
+           jobreport=item.strip()
+           BadReportfile.write("%s\n" % jobreport )
+        BadReportfile.close()
+
+        logging.info("*** End the RetryFailures procedures => Discarded: %s Failed logged in :%s "%(discarded,fileName))
+
+
     def startComponent(self):
         """
         _startComponent_
@@ -521,6 +593,7 @@ class DBSComponent:
         # subscribe to messages
         self.ms.subscribeTo("NewDataset")
         self.ms.subscribeTo("JobSuccess")
+        self.ms.subscribeTo("DBSInterface:RetryFailures")
         self.ms.subscribeTo("DBSInterface:StartDebug")
         self.ms.subscribeTo("DBSInterface:EndDebug")
                                                                                 
