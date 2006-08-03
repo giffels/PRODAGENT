@@ -28,27 +28,7 @@ def processFrameworkJobReport():
 
     state.dumpJobReport()
 
-    #  //TEMP:TEMP:TEMP:TEMP:TEMP:TEMP:TEMP:TEMP:TEMP:TEMP:TEMP
-    # // Temp. Hack: remove Corrupted Skipped Events nodes from the 
-    #//  JobReport since they are corrupted.
-    #  //
-    # // Remove after CMSSW_0_7_0_pre6
-    #//
-    try:
-        state.loadJobReport()
-    except Exception, ex:
-        reportFileName = state.jobReport
-        if os.path.exists(reportFileName):
-            print ">>>>Removing Corrupt SkippedEvents nodes"
-            import re
-            searcher = re.compile("<SkippedEvent.+</SkippedEvent>")
-            report = file(reportFileName).read()
-            report = searcher.sub("", report)
-            handle = open(reportFileName, 'w')
-            handle.write(report)
-            handle.close()
-            print ">>>>Removed Corrupt SkippedEvents nodes"
-    #TEMP:TEMP:TEMP:TEMP:TEMP:TEMP:TEMP:TEMP:TEMP:TEMP:TEMP
+  
 
     try:
         state.loadJobReport()
@@ -111,7 +91,15 @@ def processFrameworkJobReport():
     report.siteDetails['HostName'] = hostName
     report.siteDetails['se-name'] = seName    
     
-    
+    #  //
+    # // If available, include basic start/stop times in job report
+    #// 
+    if os.path.exists("start.time"):
+        report.timing['AppStartTime'] = file("start.time").read().strip()
+    if os.path.exists("end.time"):
+        report.timing['AppEndTime'] = file("end.time").read().strip()
+        
+        
     
     #  //
     # // write out updated report

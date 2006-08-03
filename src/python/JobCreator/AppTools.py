@@ -53,6 +53,7 @@ echo "prodAgentFailure Invoked with code $1"
 echo  "$1" > $PRODAGENT_THIS_TASK_DIR/exit.status
 }
 if [ -e \"./exit.status\" ]; then /bin/rm ./exit.status; fi
+echo `date +%s` >| start.time
 
 """
 
@@ -218,6 +219,7 @@ class PopulateMainScript:
         for item in taskObject['PostTaskCommands']:
             exeScript.append(item)
         exeScript.append("echo \"Ended: `date +%s`\"")
+        exeScript.append("echo `date +%s` >| end.time")
         exeScript.append("exit $EXIT_STATUS")
 
       
