@@ -159,16 +159,16 @@ class TrackingComponent:
 
         jobNumber=300
         timeout=0
-        outfile=self.executeCommand("bossAdmin SQL -query \"select count(ID) jobNumber from CHAIN\" -c " + self.bossCfgDir)
+        outfile=self.executeCommand("bossAdmin SQL -query \"select TASK_ID,ID  from JOB where SUB_TIME>0 and GETOUT_T=0 group by TASK_ID\" -c " + self.bossCfgDir)
         try:
-            jobNumber=float(outfile.split('jobNumber')[1].strip())
+            jobNumber=len(outfile.split('\n'))-2
             logging.debug("JobNumber = %s\n"%jobNumber)
         except:
             logging.debug("outfule\n")
             logging.debug(outfile)
             logging.debug("\n")
         try:
-            timeout=jobNumber*2
+            timeout=jobNumber*5
         except:
             logging.debug("JobNumber = %d;timeout = %d\n"%(jobNumber,jobNumber*.5))
         if timeout==0:
@@ -325,7 +325,6 @@ class TrackingComponent:
                         self.cmsErrorJobs[jobId[0]]=0
                     
                         logging.error("%s - %d" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
-                        self.jobFailed(jobId,"Output retrieved but no FrameworkJobReport!")
                         logging.info( "%s - %d no FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
                         logging.info( "%s - %d Creating FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
                         fwjr=FwkJobReport()
@@ -334,6 +333,7 @@ class TrackingComponent:
                         fwjr.exitCode=-1
                         fwjr.status="Failed"
                         fwjr.write(self.reportfilename)
+                        self.jobFailed(jobId,self.reportfilename)
 
             else:
                 logging.info(outp)
