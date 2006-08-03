@@ -40,6 +40,7 @@ class FwkJobRepHandler(ContentHandler):
 
         self.currentInputDict = None
         self.currentCksum = None
+        self.inTiming = False
         self._CharCache = ""
 
         #  //
@@ -68,6 +69,7 @@ class FwkJobRepHandler(ContentHandler):
             "Checksum" : self.checksum,
             "SiteDetail" : self.siteDetail,
             "FrameworkError" : self.frameworkError,
+            "TimingService" : self.timingService,
             }
 
         #  //
@@ -90,11 +92,16 @@ class FwkJobRepHandler(ContentHandler):
             "Checksum" : self.endChecksum,
             "SiteDetail" : self.noResponse,
             "FrameworkError" : self.endFrameworkError,
+            "TimingService" : self.endTimingService,
             }
 
     def noResponse(self, name, attrs = {}):
         """some elements require no action"""
+        if self.inTiming:
+            value = str(attrs.get("Value"))
+            self.currentDict[str(name)] = value
         pass
+    
         
     def startElement(self, name, attrs):
         """
@@ -234,6 +241,8 @@ class FwkJobRepHandler(ContentHandler):
         handler to populate itself
         """
         if self.currentDict == None:
+            return
+        if self.inTiming:
             return
         self.currentDict[str(name)] = str(self._CharCache)
         return
@@ -379,7 +388,33 @@ class FwkJobRepHandler(ContentHandler):
         self.currentDict == None
         return
     
+    def timingService(self, name, attrs):
+        """
+        _timingService_
 
+        Start of Timing Service element
+
+        """
+        if self.currentReport == None:
+            return
+        self.inTiming = True
+        self.currentDict = self.currentReport.timing
+        return
+    
+    def endTimingService(self, name):
+        """
+        _endTimingService_
+
+        End of Timing Service element
+
+        """
+
+        if self.currentReport == None:
+            return
+        self.inTiming = False
+        self.currentDict = None
+        return
+    
     
         
 def readJobReport(filename):

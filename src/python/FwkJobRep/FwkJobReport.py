@@ -31,7 +31,7 @@ class FwkJobReport:
         self.skippedEvents = []
         self.exitCode = 0
         self.siteDetails = {}
-
+        self.timing = {}
 
     def wasSuccess(self):
         """
@@ -173,6 +173,14 @@ class FwkJobReport:
                            ExitStatus = error['ExitStatus'],
                            Type = error['Type'])
                 )
+
+        #  //
+        # // Save Timing Info
+        #//
+        timing = IMProvNode("TimingService")
+        result.addNode(timing)
+        for key, value in self.timing.items():
+            timing.addNode(IMProvNode(key, None, Value=str(value) ))
         
         return result
 
