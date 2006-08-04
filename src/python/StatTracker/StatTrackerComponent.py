@@ -9,8 +9,8 @@ Subscribes to JobSuccess/JobFailure messages and parses the job report,
 and inserts the data into tables in the ProdAgentDB.
 
 """
-__version__ = "$Revision:$"
-__revision__ = "$Id$"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: StatTrackerComponent.py,v 1.1 2006/07/13 21:27:03 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -22,7 +22,7 @@ from logging.handlers import RotatingFileHandler
 from MessageService.MessageService import MessageService
 from StatTracker.JobStatistics import jobReportToJobStats
 from FwkJobRep.ReportParser import readJobReport
-
+from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 class StatTrackerComponent:
     """
@@ -100,6 +100,14 @@ class StatTrackerComponent:
                 logging.debug(str(stats))
                 stats.insertIntoDB()
                 logging.debug("Insert complete")
+                #  //
+                # // if report is a success, we also set the trigger
+                #//  to say we have finished with it.
+                if report.wasSuccess():
+                    self.trigger.setFlag("cleanup",
+                                         report.jobSpecId,
+                                         "StatTracker")
+
             except StandardError, ex:
                 msg = "Error inserting Stats into DB for report:\n"
                 msg += str(ex)
@@ -117,7 +125,7 @@ class StatTrackerComponent:
         """                                   
         # create message service
         self.ms = MessageService()
-                                                                                
+        self.trigger=TriggerAPI(self.ms)                                                             
         # register
         self.ms.registerAs("StatTracker")
         
