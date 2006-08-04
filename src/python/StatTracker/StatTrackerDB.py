@@ -90,26 +90,31 @@ def insertJobSuccess(jobSuccessInstance):
     #  //
     # // Now insert lists
     #//
-    insertAttrs = """INSERT INTO st_job_attr(job_index, attr_class, attr_value)
+    insertAttrs = """INSERT INTO st_job_attr(job_index, attr_class, attr_value, attr_name)
          VALUES 
     """
     
     for run in jobSuccessInstance['run_numbers']:
-        insertAttrs += "(%s, \"run_numbers\", \"%s\"),\n" % (
+        insertAttrs += "(%s, \"run_numbers\", \"%s\", NULL),\n" % (
             jobIndex, run)
 
     for ofile in jobSuccessInstance['output_files']:
-        insertAttrs += "(%s, \"output_files\", \"%s\"),\n" % (
+        insertAttrs += "(%s, \"output_files\", \"%s\", NULL),\n" % (
             jobIndex, ofile, )
 
     for ifile in jobSuccessInstance['input_files']:
-        insertAttrs += "(%s, \"input_files\", \"%s\"),\n" % (
+        insertAttrs += "(%s, \"input_files\", \"%s\", NULL),\n" % (
             jobIndex, ifile, )
 
     for dataset in jobSuccessInstance['output_datasets']:
-        insertAttrs += "(%s, \"output_datasets\", \"%s\"),\n" % (
+        insertAttrs += "(%s, \"output_datasets\", \"%s\", NULL),\n" % (
              jobIndex, dataset, )
 
+    for timingKey, timingValue in jobSuccessInstance['timing'].items():
+        insertAttrs += "(%s, \"timing\", \"%s\", \"%s\"),\n" % (
+            jobIndex, timingValue, timingKey,
+            )
+        
     insertAttrs = insertAttrs.strip()[:-1]
     insertAttrs += ";"
     
@@ -230,11 +235,12 @@ def selectFailureCount(workflowSpec = None):
 arrToString = lambda x: x.__setitem__('error_desc', x['error_desc'].tostring())
 
 
-def selectFailureDetails(workflowSpecId):
+def selectFailureDetails(workflowSpecId, sinceTime="24:00:00"):
     """
     _selectFailureDetails_
 
     extract the details of failed jobs for the workflowSpecId provided
+    for the time interval provided.
 
     """
     sqlStr = """SELECT job_index,
@@ -250,7 +256,7 @@ def selectFailureDetails(workflowSpecId):
                 error_code,      
                 error_desc FROM st_job_failure WHERE
 
-        workflow_spec_id="%s";""" % workflowSpecId
+        workflow_spec_id="%s" AND time > ADDTIME(CURRENT_TIMESTAMP,'-%s'); """ % (workflowSpecId, sinceTime)
     
     connection = connect()
     dbCur = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
@@ -262,12 +268,111 @@ def selectFailureDetails(workflowSpecId):
     
 
 
-def selectSuccessDetails(workflowSpecId):
+def selectSuccessDetails(workflowSpecId, sinceTime="24:00:00"):
     """
     _selectSuccessDetails_
 
     Extract the details of the successful jobs for the
-    workflowSpecId provided
+    workflowSpecId provided since the time interval provided
 
     """
     
+    sqlStr = """SELECT job_index,
+                job_spec_id,      
+                workflow_spec_id, 
+                exit_code ,       
+                task_name ,       
+                status    ,       
+                site_name ,       
+                host_name ,       
+                se_name   ,       
+                events_read,       
+                events_written FROM st_job_success WHERE      
+
+        workflow_spec_id="%s" AND time > ADDTIME(CURRENT_TIMESTAMP,'-%s');"""  % (workflowSpecId, sinceTime)
+
+    connection = connect()
+    dbCur = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+    dbCur.execute(sqlStr)
+    rows = dbCur.fetchall()
+    dbCur.close()
+    return rows
+
+
+def selectEventsWritten(workflowSpecId):
+    """
+    _selectEventsWritten_
+
+    Get total events written for request.
+
+    """
+    
+    sqlStr = """ select SUM(events_read) FROM st_job_success
+       WHERE workflow_spec_id="%s"
+        """ % workflowSpecId
+
+    connection = connect()
+    dbCur = connection.cursor()
+    dbCur.execute(sqlStr)
+    count = dbCur.fetchone()[0]
+    dbCur.close()
+    return count
+
+def intersection(list1, list2):
+    """fast intersection of two lists"""
+    intDict = {}
+    list1Dict = {}
+    for entry in list1:
+        list1Dict[entry] = 1
+    for entry in list2:
+        if list1Dict.has_key(entry):
+            intDict[entry] = 1
+    return intDict.keys()
+
+
+def removeTuple(objectInATuple):
+    """
+    _removeTuple_
+
+    Given (object,)  return object
+
+    """
+    return objectInATuple[0]
+
+def listWorkflowSpecs():
+    """
+    _listWorkflowSpecs_
+
+    Return a list of all workflow spec ids (request names) in the StatTracker
+    
+    """
+    
+    sqlStr1 = """ select DISTINCT workflow_spec_id FROM st_job_success;"""
+    sqlStr2 = """ select DISTINCT workflow_spec_id FROM st_job_success;"""
+
+    connection = connect()
+    dbCur = connection.cursor()
+    dbCur.execute(sqlStr1)
+    list1 = dbCur.fetchall()
+    dbCur.execute(sqlStr2)
+    list2 = dbCur.fetchall()
+    dbCur.close()
+    return intersection(map(removeTuple, list1), map(removeTuple, list2))
+    
+removeBlobs = lambda x: x.__setitem__('attr_value', x['attr_value'].tostring())
+def getJobAttrs(jobIndex):
+    """
+    _getJobAttrs_
+
+    Get the contents of the st_job_attr table for the job index provided
+
+    """
+    sqlStr = "SELECT * FROM st_job_attr WHERE job_index=%s;" % jobIndex
+
+    connection = connect()
+    dbCur = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+    dbCur.execute(sqlStr)
+    rows = dbCur.fetchall()
+    dbCur.close()
+    map(removeBlobs, rows)
+    return rows

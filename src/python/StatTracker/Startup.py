@@ -13,6 +13,7 @@ import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
+from ProdAgentCore.PostMortem import runWithPostMortem
 from StatTracker.StatTrackerComponent import StatTrackerComponent
 
 #  //
@@ -36,4 +37,4 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 print "Starting StatTracker Component..."
 createDaemon(compCfg['ComponentDir'])
 component = StatTrackerComponent(**dict(compCfg))
-component.startComponent()
+runWithPostMortem(component, compCfg['ComponentDir'])

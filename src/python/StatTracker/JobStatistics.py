@@ -100,7 +100,7 @@ class SuccessfulJob(JobStatistics):
         self.setdefault("events_read", None)
         self.setdefault("events_written", None)
         self.setdefault("run_numbers", [])
-        
+        self.setdefault("timing", {})
 
     def recordInputs(self, jobRepInstance):
         """
@@ -155,6 +155,17 @@ class SuccessfulJob(JobStatistics):
         self['events_written'] = totalWritten
         return
 
+    def recordTiming(self, jobRepInstance):
+        """
+        _recordTiming_
+
+        Get the timing information from the job report
+
+        """
+        timing = jobRepInstance.timing
+        for key, value in timing.items():
+            self['timing'][key] = value
+        return
 
         
 
@@ -199,6 +210,7 @@ def jobReportToSuccess(jobRepInstance):
     result.populateCommon(jobRepInstance)
     result.recordInputs(jobRepInstance)
     result.recordOutputs(jobRepInstance)
+    result.recordTiming(jobRepInstance)
     return result
     
 
