@@ -28,6 +28,7 @@ from MCPayloads.WorkflowSpec import WorkflowSpec
 import os,base64,time,exceptions
 from FwkJobRep.ReportParser import readJobReport
 from MessageService.MessageService import MessageService
+from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -446,7 +447,12 @@ class DBSComponent:
                       )
                     self.dbsinfo.insertEVCtoDataset(datasetPath, evcList)
 
-                    
+            #  //
+            # // On successful insertion of job report, set the trigger
+            #//  to say we are done with it so that cleanup can be triggered.
+            self.trigger.setFlag("cleanup", jobreport.jobSpecId,
+                                 "DBSInterface")
+
                     
         return
 
@@ -586,7 +592,7 @@ class DBSComponent:
         """
         # create message service
         self.ms = MessageService()
-                                                                                
+        self.trigger=TriggerAPI(self.ms)                                                                      
         # register
         self.ms.registerAs("DBSComponent")
                                                                                 
