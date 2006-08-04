@@ -10,9 +10,12 @@ the common configuration file, which is accessed by environment variable
 import os
 import sys
 import getopt
+import time
+import traceback
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
+from ProdAgentCore.PostMortem import runWithPostMortem
 from RequestInjector.ReqInjComponent import ReqInjComponent
 
 #  //
@@ -35,5 +38,8 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 #//
 print "Starting RequestInjector Component..."
 createDaemon(compCfg['ComponentDir'])
+
 component = ReqInjComponent(**dict(compCfg))
-component.startComponent()
+
+
+runWithPostMortem(component, compCfg['ComponentDir'])
