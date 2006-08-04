@@ -256,6 +256,8 @@ CREATE TABLE st_job_success (
    job_index INT NOT NULL AUTO_INCREMENT,
    job_spec_id VARCHAR(255) NOT NULL,
    workflow_spec_id VARCHAR(255) NOT NULL,
+   time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP 
+       on update CURRENT_TIMESTAMP,
    exit_code INT,
    task_name VARCHAR(255),		
    status VARCHAR(255),
@@ -276,8 +278,8 @@ CREATE TABLE st_job_attr (
    attr_index INT NOT NULL AUTO_INCREMENT,
    job_index INT NOT NULL,
    
-   attr_class ENUM("run_numbers", "output_files", "output_datasets", "input_files"),
-   
+   attr_class ENUM("run_numbers", "output_files", "output_datasets", "input_files", 'timing'),
+   attr_name VARCHAR(255),
    attr_value BLOB,
 
    FOREIGN KEY(job_index)
@@ -296,6 +298,8 @@ CREATE TABLE st_job_failure (
    job_index INT NOT NULL AUTO_INCREMENT,
    job_spec_id VARCHAR(255) NOT NULL,
    workflow_spec_id VARCHAR(255) NOT NULL,
+   time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP 
+       on update CURRENT_TIMESTAMP,
    exit_code INT,
    task_name VARCHAR(255),		
    status VARCHAR(255),
