@@ -18,6 +18,7 @@ from JobCreator.JCException import JCException
 from MessageService.MessageService import MessageService
 from JobState.JobStateAPI import JobStateChangeAPI
 from JobState.JobStateAPI import JobStateInfoAPI
+from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 import JobCreator.Creators
 
@@ -49,6 +50,12 @@ class JobCreatorComponent:
         logging.getLogger().addHandler(logHandler)
         logging.getLogger().setLevel(logging.INFO)
         logging.info("JobCreator Component Started...")
+
+        #  //
+        # // Components needing cleanup flags set for each job
+        #//  TODO: get this from configuration somehow...
+        self.cleanupFlags = ['StatTracker', 'DBSInterface']
+        
 
     def __call__(self, event, payload):
         """
@@ -154,6 +161,20 @@ class JobCreatorComponent:
                                                1)
                 JobStateChangeAPI.create(jobname, cacheArea)
                 JobStateChangeAPI.inProgress(jobname)
+
+                logging.debug(" Adding cleanup triggers for %s" % self.cleanupFlags)
+                for component in self.cleanupFlags:
+                    logging.debug("trigger.addFlag(cleanup, %s, %s" % (
+                        jobname, component)
+                                  )
+                    self.trigger.addFlag("cleanup", jobname, component)
+                if len(self.cleanupFlags) > 0:
+                    #  //
+                    # // Only set the action if there are components
+                    #//  that need it.
+                    self.trigger.setAction(jobname,"cleanup","jobCleanAction")
+                    
+                
             except Exception, ex:
                 # NOTE: we can have different errors here 
                 # NOTE: transition, submission, other...
@@ -201,10 +222,10 @@ class JobCreatorComponent:
  
         # create message service
         self.ms = MessageService()
-                                                                                
+        self.trigger=TriggerAPI(self.ms)                                                                                
         # register
         self.ms.registerAs("JobCreator")
- 
+
         # subscribe to messages
         self.ms.subscribeTo("CreateJob")
         self.ms.subscribeTo("JobCreator:SetCreator")
