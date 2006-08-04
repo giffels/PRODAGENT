@@ -216,10 +216,10 @@ class PopulateMainScript:
         exeScript.append("exit $EXIT_STATUS")
         exeScript.append(") # End of App Subshell")
         exeScript.append("EXIT_STATUS=$?")
+        exeScript.append("echo `date +%s` >| end.time")
         for item in taskObject['PostTaskCommands']:
             exeScript.append(item)
         exeScript.append("echo \"Ended: `date +%s`\"")
-        exeScript.append("echo `date +%s` >| end.time")
         exeScript.append("exit $EXIT_STATUS")
 
       
