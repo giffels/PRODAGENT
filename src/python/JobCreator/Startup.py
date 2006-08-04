@@ -13,6 +13,7 @@ import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
+from ProdAgentCore.PostMortem import runWithPostMortem
 from JobCreator.JobCreatorComponent import JobCreatorComponent
 
 #  //
@@ -41,4 +42,6 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 print "Starting JobCreator Component..."
 createDaemon(compCfg['ComponentDir'])
 component = JobCreatorComponent(**dict(compCfg))
-component.startComponent()
+
+runWithPostMortem(component, compCfg['ComponentDir'])
+
