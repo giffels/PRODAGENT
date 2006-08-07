@@ -69,6 +69,7 @@ class RequestIterator:
             )
         self.currentJob = jobName
         jobSpec.setJobName(jobName)
+        jobSpec.setJobType("Processing")
         jobSpec.parameters['RunNumber'] = self.count
 
         
