@@ -32,6 +32,7 @@ class JobSpecNode(PayloadNode):
     def __init__(self):
         PayloadNode.__init__(self)
         self.jobName = None
+        self.jobType = None
         self.parameters = []
         self.inputModule = None
         self.outputModules = []
@@ -47,6 +48,7 @@ class JobSpecNode(PayloadNode):
         """
         PayloadNode.addNode(self, nodeInstance)
         nodeInstance.jobName = self.jobName
+        nodeInstance.jobType = self.jobType
         return
 
     def loadPayloadNode(self, genericPayload):
@@ -174,6 +176,7 @@ class JobSpecNode(PayloadNode):
         """
         baseNode = PayloadNode.makeIMProv(self)
         baseNode.attrs['JobName'] = self.jobName
+        baseNode.attrs['JobType'] = self.jobType
         specNode = IMProvNode("JobSpecification")
 
         paramsNode = IMProvNode("Parameters")
@@ -205,6 +208,10 @@ class JobSpecNode(PayloadNode):
         jobName = improvNode.attrs.get("JobName", None)
         if jobName != None:
             self.jobName = str(jobName)
+        jobType = improvNode.attrs.get("JobType", None)
+        if jobType != None:
+            self.jobType = str(jobName)
+            
         
         #  //
         # // Unpack JobSpecNode additional Data

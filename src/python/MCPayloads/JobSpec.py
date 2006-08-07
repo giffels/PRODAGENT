@@ -29,6 +29,7 @@ class JobSpec:
         self.payload = JobSpecNode()
         self.parameters = {}
         self.parameters.setdefault("JobName", "Job-%s" % time.time())
+        self.parameters.setdefault("JobType", "Processing")
         self.siteWhitelist = []
         self.siteBlacklist = []
         
@@ -66,6 +67,16 @@ class JobSpec:
         self.parameters['JobName'] = jobName
         updateJobName(self.payload, jobName)
         return
+
+    def setJobType(self, jobType):
+        """
+        set the job type for this job
+
+        """
+        self.parameters['JobType'] = jobType
+        updateJobType(self.payload, jobType)
+        return
+        
       
     def makeIMProv(self):
         """
@@ -206,3 +217,14 @@ def updateJobName(jobSpecNode, jobNameVal):
         updateJobName(child, jobNameVal)
     return
 
+def updateJobType(jobSpecNode, jobTypeVal):
+    """
+    _updateJobType_
+
+    Propagate JobType to all JobSpec nodes in tree
+
+    """
+    jobSpecNode.jobType = jobTypeVal
+    for child in jobSpecNode.children:
+        updateJobName(child, jobTypeVal)
+    return
