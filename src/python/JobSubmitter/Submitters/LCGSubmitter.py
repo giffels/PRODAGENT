@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.12 2006/07/25 15:57:17 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.13 2006/08/01 17:32:19 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -172,7 +172,8 @@ class LCGSubmitter(SubmitterInterface):
         #  //
         # // Executing BOSS Submit command
         #//
-        logging.debug( "LCGSubmitter.doSubmit:", bossSubmit)
+        # AF : remove the following buggy logging
+        #logging.debug( "LCGSubmitter.doSubmit:", bossSubmit)
         output = self.executeCommand(bossSubmit)
         logging.debug ("LCGSubmitter.doSubmit: %s" % output)
         #os.remove(cladfile)
