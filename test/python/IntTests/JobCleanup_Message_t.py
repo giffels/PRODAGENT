@@ -26,6 +26,8 @@ class ComponentServerTest(unittest.TestCase):
            self.ms=MessageService()
            self.ms.registerAs("JobCleanupTest")
            self.jobSpecs=10
+           self.location='/tmp/prodAgent/cacheDirs'
+           self.failureJobSpecs=10
            self.flags=5
            self.trigger=TriggerAPI(self.ms)
            # create some directories in tmp
@@ -33,21 +35,44 @@ class ComponentServerTest(unittest.TestCase):
                      'as job cache dirs')
            for i in xrange(0,self.jobSpecs):
                try:
-                  os.makedirs('/tmp/createComponent/jobSpecDir_'+str(i))
+                  os.makedirs(self.location+'/jobSpecDir_'+str(i))
                   # create some files (some of which should not be deleted,
                   # by a partial cleanup)
-                  file1=open('/tmp/createComponent/jobSpecDir_'+str(i)+'/JobSpec.xml','w')
+                  file1=open(self.location+'/jobSpecDir_'+str(i)+'/JobSpec.xml','w')
                   file1.close()
-                  file2=open('/tmp/createComponent/jobSpecDir_'+str(i)+'/FrameworkJobReport.xml','w')
+                  file2=open(self.location+'/jobSpecDir_'+str(i)+'/FrameworkJobReport.xml','w')
                   file2.close()
-                  file3=open('/tmp/createComponent/jobSpecDir_'+str(i)+'/JobTarFile.tar.gz','w')
+                  file3=open(self.location+'/jobSpecDir_'+str(i)+'/JobTarFile.tar.gz','w')
                   file3.close()
-                  file4=open('/tmp/createComponent/jobSpecDir_'+str(i)+'/Pretend2BeADir1.txt','w')
+                  file4=open(self.location+'/jobSpecDir_'+str(i)+'/Pretend2BeADir1.txt','w')
                   file4.close()
-                  file5=open('/tmp/createComponent/jobSpecDir_'+str(i)+'/Pretend2BeADir2.txt','w')
+                  file5=open(self.location+'/jobSpecDir_'+str(i)+'/Pretend2BeADir2.txt','w')
                   file5.close()
                except:
-                  pass
+                  raise
+           # create jobcaches that need to be tarred and then removed:
+           for i in xrange(0,self.failureJobSpecs):
+               try:
+                  os.makedirs(self.location+'/failureJobSpecDir_'+str(i))
+                  file1=open(self.location+'/failureJobSpecDir_'+str(i)+'/JobSpec.xml','w')
+                  file1.close()
+                  file2=open(self.location+'/failureJobSpecDir_'+str(i)+'/FrameworkJobReport.xml','w')
+                  file2.close()
+                  file3=open(self.location+'/failureJobSpecDir_'+str(i)+'/JobTarFile.tar.gz','w')
+                  file3.close()
+                  file4=open(self.location+'/failureJobSpecDir_'+str(i)+'/aFile.txt','w')
+                  file4.close()
+                  os.makedirs(self.location+'/failureJobSpecDir_'+str(i)+'/aDir1')
+                  file5=open(self.location+'/failureJobSpecDir_'+str(i)+'/aDir1/File.txt','w')
+                  file5.close()
+                  os.makedirs(self.location+'/failureJobSpecDir_'+str(i)+'/aDir2')
+                  file6=open(self.location+'/failureJobSpecDir_'+str(i)+'/aDir2/aFile.txt','w')
+                  file6.close()
+                  os.makedirs(self.location+'/failureJobSpecDir_'+str(i)+'/aDir3')
+                  file7=open(self.location+'/failureJobSpecDir_'+str(i)+'/aDir3/aFile.txt','w')
+                  file7.close()
+               except:
+                  raise
            ComponentServerTest._triggerSet=True
 
     def testA(self):
@@ -65,7 +90,7 @@ class ComponentServerTest(unittest.TestCase):
         try:
             for i in xrange(0,self.jobSpecs):
                 JobStateChangeAPI.register("jobSpec"+str(i),"processing",2,2)
-                JobStateChangeAPI.create("jobSpec"+str(i),"/tmp/createComponent/jobSpecDir_"+str(i))
+                JobStateChangeAPI.create("jobSpec"+str(i),self.location+"/jobSpecDir_"+str(i))
         except StandardError, ex:
             msg = "Failed testB:\n"
             msg += str(ex)
@@ -96,21 +121,41 @@ class ComponentServerTest(unittest.TestCase):
             self.fail(msg)
 
     def testE(self):
-        print("\nInvoke trigger action and sleep for 20 seconds to") 
-        print("let the cleanup component receive the messages")
         try:
             for i in xrange(0,self.jobSpecs):
                 for k in xrange(0,self.flags):
                     self.trigger.setFlag("jobCleanupTrigger"+str(i),\
                         "jobSpec"+str(i),"flag"+str(k))
-            time.sleep(20)
         except StandardError, ex:
             msg = "Failed testD:\n"
             msg += str(ex)
             self.fail(msg)
- 
+
     def testF(self):
+        print("""\nSet the job cache (used for failure job cleanup)""")
+        try:
+            for i in xrange(0,self.failureJobSpecs):
+                JobStateChangeAPI.register("failureJobSpec"+str(i),"processing",2,2)
+                JobStateChangeAPI.create("failureJobSpec"+str(i),self.location+"/failureJobSpecDir_"+str(i))
+        except StandardError, ex:
+            msg = "Failed testB:\n"
+            msg += str(ex)
+            self.fail(msg)
+
+    def testG(self):
+        print("""\nEmit failure cleanup events to test the failureCleanupHandler""")
+        for i in xrange(0,self.failureJobSpecs):
+            payload="failureJobSpec"+str(i)
+            self.ms.publish("FailureCleanup", payload)
+            self.ms.commit()
+        print("""\nSleep for several seconds""")
+        time.sleep(3)
+
+    def testH(self):
         print("""\nCleanup the prodagent database""")
+        print("\nsleep for 20 seconds to") 
+        print("let the cleanup component receive the messages")
+        time.sleep(20)
         try:
             JobStateChangeAPI.purgeStates()
             self.ms.purgeMessages()
@@ -120,13 +165,14 @@ class ComponentServerTest(unittest.TestCase):
             self.fail(msg)
        
     def runTest(self):
-         i='donothing'
          self.testA()
          self.testB()
          self.testC()
          self.testD()
          self.testE()
          self.testF()
+         self.testG()
+         self.testH()
 
     
 
