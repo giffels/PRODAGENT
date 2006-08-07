@@ -6,7 +6,7 @@ Start the component, reading its configuration from
 the common configuration file, which is accessed by environment variable
 
 """
-__revision__ = "$Id: TrackingComponent.py,v 1.8 2006/05/01 11:45:04 elmer Exp $"
+__revision__ = "$Id: Startup.py,v 1.3 2006/05/01 11:46:22 elmer Exp $"
 
 import os
 import sys
@@ -14,6 +14,7 @@ import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
+from ProdAgentCore.PostMortem import runWithPostMortem
 from JobTracking.TrackingComponent import TrackingComponent
 
 #  //
@@ -38,4 +39,4 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 
 createDaemon(compCfg['ComponentDir'])
 component = TrackingComponent(**dict(compCfg))
-component.startComponent()
+runWithPostMortem(component, compCfg['ComponentDir'])
