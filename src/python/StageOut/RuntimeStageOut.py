@@ -286,7 +286,7 @@ class StageOutManager:
         except Exception, ex:
             msg = "Failure for fallback stage out:\n"
             msg += str(ex)
-            raise StageOutFailure(msg, Command = command, 
+            raise StageOutFailure(msg, Command = fbParams['command'],
                                   LFN = lfn, InputPFN = localPfn,
                                   TargetPFN = pfn)
             
