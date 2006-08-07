@@ -11,12 +11,16 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id: Dataset.py,v 1.10 2006/07/11 14:21:54 ckavka Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: Dataset.py,v 1.11 2006/07/22 23:37:38 hufnagel Exp $"
+__version__ = "$Revision: 1.11 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError, InvalidDataTier
 from MCPayloads.WorkflowSpec import WorkflowSpec
+
+# logging
+import logging
+from logging.handlers import RotatingFileHandler
 
 class Dataset:
     """
