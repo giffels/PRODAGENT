@@ -24,6 +24,7 @@ class FwkJobReport:
         self.name = name
         self.status = None
         self.jobSpecId = None
+        self.jobType = None
         self.workflowSpecId = None
         self.files = []
         self.inputFiles = []
@@ -122,6 +123,8 @@ class FwkJobReport:
             result.attrs['JobSpecID'] = self.jobSpecId
         if self.workflowSpecId != None:
             result.attrs['WorkflowSpecID'] = self.workflowSpecId
+        if self.jobType != None:
+            result.attrs['JobType'] = self.jobType
 
         #  //
         # // Save ExitCode

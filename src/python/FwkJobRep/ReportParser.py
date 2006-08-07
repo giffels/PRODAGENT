@@ -161,12 +161,15 @@ class FwkJobRepHandler(ContentHandler):
         status = attrs.get("Status", None)
         jobSpec = attrs.get("JobSpecID", None)
         workSpec = attrs.get("WorkflowSpecID", None)
+        jobType = attrs.get("JobType", None)
         if name != None:
             self.currentReport.name = str(name)
         if status != None:
             self.currentReport.status = str(status)
         if jobSpec != None:
             self.currentReport.jobSpecId = str(jobSpec)
+        if jobType != None:
+            self.currentReport.jobType = str(jobType)
         if workSpec != None:
             self.currentReport.workflowSpecId = str(workSpec)
         return
