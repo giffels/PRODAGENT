@@ -62,6 +62,7 @@ def makeTaskObject(jobSpecNode):
     taskObj['Type'] = jobSpecNode.type
     taskObj['RequestName'] = jobSpecNode.workflow
     taskObj['JobName'] = jobSpecNode.jobName
+    taskObj['JobType'] = jobSpecNode.jobType
     setattr(jobSpecNode, "taskObject", taskObj)
     
     if jobSpecNode.parent != None:
