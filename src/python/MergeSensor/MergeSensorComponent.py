@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.19 2006/07/27 02:56:07 afanfani Exp $"
-__version__ = "$Revision: 1.19 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.20 2006/07/27 20:37:32 afanfani Exp $"
+__version__ = "$Revision: 1.20 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -613,6 +613,7 @@ class MergeSensorComponent:
         #//  and set the job name
         jobSpec = spec.createJobSpec()
         jobSpec.setJobName(jobId)
+        jobSpec.setJobType("Merge")
 
        
         # add SE list
