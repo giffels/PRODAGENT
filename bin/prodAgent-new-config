@@ -183,7 +183,8 @@ componentFields = {
     
     },
     'JobCleanup'   : {
-    "ComponentDir" : None
+    "ComponentDir" : None,
+    "FailureArchive":None
 
     },
     'AdminControl' : {
@@ -230,7 +231,13 @@ MaxRetries: The maximum number of retries for a certain job(spec). If there
 is a failure in creation,submission,running,etc.. a failure event will be triggered
 and the job will restart (retry). Once the maximum is reached a general job failure
 will be triggered. NOTE: this number needs to be bigger than 0 (1 and up). 
-"""   
+""" ,
+  "JobCleanup"     :\
+"""
+FailureArchive : If jobs fail to many times you want to tar the job cache and move it
+to another location (dir) for post mortem inspection and to minimize the risk of the 
+job cache directory growing to large (to many files) and slowing down production.
+"""  
     }
 
 if componentList == []:
