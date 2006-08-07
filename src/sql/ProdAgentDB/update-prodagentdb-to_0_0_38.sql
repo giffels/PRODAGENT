@@ -24,7 +24,10 @@ ALTER TABLE st_job_success ADD time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP
 ALTER TABLE st_job_failure ADD time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP;
 
 
+
 /*
  * Update to fix bug in trigger tables
+ * removed the cascade function for the actions.
  */
+ALTER TABLE tr_Action DROP FOREIGN KEY 0_3;
 
