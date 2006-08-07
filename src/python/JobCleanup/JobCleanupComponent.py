@@ -49,7 +49,8 @@ class JobCleanupComponent:
 
          # the cleanup events this components subscribes to
          # that invoke an cleanup handler
-         self.args['Events']={'JobCleanup':'cleanupHandler','PartialJobCleanup':'partialCleanupHandler'}
+         self.args['Events']={'JobCleanup':'cleanupHandler','PartialJobCleanup':'partialCleanupHandler',\
+                              'FailureCleanup':'failureCleanupHandler'}
 
          if self.args['Logfile'] == None:
               self.args['Logfile'] = os.path.join(self.args['ComponentDir'],\
@@ -113,8 +114,7 @@ class JobCleanupComponent:
          for handlerName in Registry.HandlerRegistry.keys():
              handler=Registry.HandlerRegistry[handlerName]
              handler.publishEvent=self.publishEvent
-             if (handlerName == "runFailureHandler"):
-                 handler.setJobReportLocation(self.args['jobReportLocation'])
+             handler.failureArchive=self.args['FailureArchive']
                  
          # main body using persistent based message server
          logging.info("JobCleanup persistent based message service Starting...")
@@ -135,6 +135,8 @@ class JobCleanupComponent:
          # wait for messages
          while True:
              type, payload = self.ms.get()
-             self.ms.commit()
              logging.debug("JobCleanup: %s, %s" % (type, payload))
              self.__call__(type, payload)
+             # we only want to commit if the cleanup or archiving succeeds
+             # and is not interupted by a crash of the prodagent.
+             self.ms.commit()
