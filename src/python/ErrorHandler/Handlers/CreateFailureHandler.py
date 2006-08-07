@@ -39,7 +39,7 @@ class CreateFailureHandler(HandlerInterface):
                             "a create failure "+ \
                             "Maximum number of retries reached!" +\
                             " Submitting a general failure and cleanup job event ")
-              self.publishEvent("JobCleanup",(jobId))
+              self.publishEvent("FailureCleanup",(jobId))
               self.publishEvent("GeneralJobFailure",(jobId))
 
 registerHandler(CreateFailureHandler(),"createFailureHandler")

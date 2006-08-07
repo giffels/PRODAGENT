@@ -67,7 +67,7 @@ class SubmitFailureHandler(HandlerInterface):
                             "a job submit failure. "+ \
                             "Maximum number of retries reached!" +\
                             " Submitting a failure job and cleanup event ")
-              self.publishEvent("JobCleanup",(jobId))
+              self.publishEvent("FailureCleanup",(jobId))
               self.publishEvent("GeneralJobFailure",(jobId))
 
 
