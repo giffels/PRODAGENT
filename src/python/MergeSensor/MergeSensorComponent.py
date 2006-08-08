@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.20 2006/07/27 20:37:32 afanfani Exp $"
-__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.21 2006/08/07 21:45:13 evansde Exp $"
+__version__ = "$Revision: 1.21 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -138,6 +138,34 @@ class MergeSensorComponent:
         
         # by default merge is not forced for any dataset
         self.forceMergeList = []
+
+        # by default the SE whitelist and blacklist are empty
+        self.seWhitelist = []
+        self.seBlacklist = []
+
+
+    def addWhitelistSE(self, sename):
+        """
+        _addWhitelistSE_
+
+        Add a SE to the whitelist
+
+        """
+        if sename not in self.seWhitelist:
+            self.seWhitelist.append(sename)
+        return
+
+
+    def addBlacklistSE(self, sename):
+        """
+        _addBlacklistSE_
+
+        Add a SE to the blacklist
+
+        """
+        if sename not in self.seBlacklist:
+            self.seBlacklist.append(sename)
+        return
 
 
     def __call__(self, event, payload):
@@ -760,13 +788,24 @@ class MergeSensorComponent:
 
                 # get file block ID           
                 fileBlockId = fileBlock.get('blockName')
- 
-                # append (file name,size,fileblockId) to the list of files
-                for aFile in fileBlock.get('fileList'):
 
-                    name = aFile.get('logicalFileName')
-                    size = aFile.get('fileSize')
-                    fileList.append((name, size, fileBlockId))
+                # get SE list
+                seList = self.getSElist(fileBlockId)
+
+                for storageElement in seList:
+
+                    # are we allowed to submit merge jobs for this SE ?
+                    if ( self.seWhitelist == [] or storageElement in self.seWhitelist) and storageElement not in self.seBlacklist:
+
+                        # append (file name,size,fileblockId) to the list of files
+                        for aFile in fileBlock.get('fileList'):
+
+                            name = aFile.get('logicalFileName')
+                            size = aFile.get('fileSize')
+                            fileList.append((name, size, fileBlockId))
+
+                    break
+
         else:
 
             # use Web Services API
