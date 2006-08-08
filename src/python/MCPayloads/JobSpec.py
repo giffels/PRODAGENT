@@ -226,5 +226,5 @@ def updateJobType(jobSpecNode, jobTypeVal):
     """
     jobSpecNode.jobType = jobTypeVal
     for child in jobSpecNode.children:
-        updateJobName(child, jobTypeVal)
+        updateJobType(child, jobTypeVal)
     return

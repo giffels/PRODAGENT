@@ -210,7 +210,7 @@ class JobSpecNode(PayloadNode):
             self.jobName = str(jobName)
         jobType = improvNode.attrs.get("JobType", None)
         if jobType != None:
-            self.jobType = str(jobName)
+            self.jobType = str(jobType)
             
         
         #  //
