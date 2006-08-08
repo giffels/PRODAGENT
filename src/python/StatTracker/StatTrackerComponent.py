@@ -9,8 +9,8 @@ Subscribes to JobSuccess/JobFailure messages and parses the job report,
 and inserts the data into tables in the ProdAgentDB.
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: StatTrackerComponent.py,v 1.1 2006/07/13 21:27:03 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: StatTrackerComponent.py,v 1.2 2006/08/04 15:52:04 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -104,10 +104,15 @@ class StatTrackerComponent:
                 # // if report is a success, we also set the trigger
                 #//  to say we have finished with it.
                 if report.wasSuccess():
-                    self.trigger.setFlag("cleanup",
-                                         report.jobSpecId,
-                                         "StatTracker")
-
+                    try:
+                        self.trigger.setFlag("cleanup",
+                                             report.jobSpecId,
+                                             "StatTracker")
+                    except Exception, ex:
+                        msg = "Error setting cleanup flag for job: %s" % report.jobSpecId
+                        msg += str(ex)
+                        logging.error(msg)
+                        
             except StandardError, ex:
                 msg = "Error inserting Stats into DB for report:\n"
                 msg += str(ex)
