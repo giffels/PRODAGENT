@@ -28,8 +28,8 @@ from JobCreator.AppTools import InsertPythonPSet, InsertJobReportTools
 from JobCreator.RunResTools import InstallRunResComponent
 from JobCreator.RunResTools import AccumulateRunResDB
 from JobCreator.RunResTools import CMSSWRunResDB, InsertDirInRunRes
-from JobCreator.StageOutTools import InsertStageOut
-from JobCreator.StageOutTools import PopulateStageOut
+from JobCreator.StageOutTools import InsertStageOut, NewInsertStageOut
+from JobCreator.StageOutTools import PopulateStageOut, NewPopulateStageOut
 from JobCreator.StageOutTools import StoreStageOutTemplates
 from JobCreator.DashboardTools import installDashboardInfo, writeDashboardInfo
 
@@ -44,10 +44,19 @@ import IMProv
 import CMSConfigTools
 import RunRes
 import FwkJobRep
+import StageOut
 
-_StandardPackages = [ShREEK, MB, ShLogger, IMProv,
+_StandardPackages = [ShREEK, MB, ShLogger, IMProv, StageOut,
                      CMSConfigTools, RunRes, FwkJobRep]
 
+
+#  //
+# // Temporary switch to make testing possible while maintaining 
+#//  backwards compatibility.
+#  //
+# // To use the new StageOut package set this to True
+#//
+_UseNewStageOut = False
 
 def makeTaskObject(jobSpecNode):
     """
@@ -131,7 +140,11 @@ class JobGenerator:
         taskObject(InsertAppDetails())
         taskObject(InstallRunResComponent())
         taskObject(InsertJobReportTools())
-        taskObject(InsertStageOut())
+
+        if _UseNewStageOut:
+            taskObject(NewInsertStageOut())
+        else:
+            taskObject(InsertStageOut())
         
         
         #  //
@@ -149,8 +162,11 @@ class JobGenerator:
         taskObject(BashEnvironmentMaker())
         taskObject(InsertPythonPSet())
         taskObject(PopulateMainScript())
-        taskObject(PopulateStageOut())
-        taskObject(StoreStageOutTemplates())
+        if _UseNewStageOut:
+            taskObject(NewPopulateStageOut())
+        else:
+            taskObject(PopulateStageOut())
+            taskObject(StoreStageOutTemplates())
         #  //
         # // Physical Job Creation starts here
         #//

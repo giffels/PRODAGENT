@@ -9,7 +9,8 @@ StageOut processes in a job
 
 import inspect
 import os
-import JobCreator.RuntimeTools.RuntimeStageOut as RuntimeStageOut
+import JobCreator.RuntimeTools.RuntimeStageOut as OldRuntimeStageOut
+import StageOut.RuntimeStageOut as NewRuntimeStageOut
 from MB.FileMetaBroker import FileMetaBroker
 from MB.Persistency import save as saveMetabroker
 from IMProv.IMProvDoc import IMProvDoc
@@ -95,7 +96,7 @@ class PopulateStageOut:
         #  //
         # // Install the main script
         #//
-        srcfile = inspect.getsourcefile(RuntimeStageOut)
+        srcfile = inspect.getsourcefile(OldRuntimeStageOut)
         if not os.access(srcfile, os.X_OK):
             os.system("chmod +x %s" % srcfile)
         taskObject.attachFile(srcfile)
@@ -158,3 +159,104 @@ class StoreStageOutTemplates:
             taskObject['StageOutTemplatesFile'].addNode(saveMetabroker(item))
         return
     
+class NewInsertStageOut:
+    """
+    _NewInsertStageOutAttrs_
+
+    Put in standard StageOut specific fields in the task Objects
+
+    """
+    def __call__(self, taskObject):
+        """
+        _operator()_
+
+        Act on a taskObject and if its type is StageOut, add in the standard fields for a StageOut tgask
+
+        """
+        if taskObject['Type'] != "StageOut":
+            return
+        #  //
+        # // Lists of pre stage out and post stage out shell commands
+        #//  for setting up stage out env
+        #  //Should be bash shell commands as strings
+        taskObject['PreStageOutCommands'] = []
+        taskObject['PostStageOutCommands'] = []
+
+        #  //
+        # // Determine what is being staged out from the parent node
+        #//  (This should be a CMSSW node)
+        parent = taskObject.parent
+        if parent == None:
+            # no parent => dont know what to stage out
+            return
+
+        if parent['Type'] != "CMSSW":
+            # parent isnt a CMSSW node, dont know what it does...
+            return
+        stageOutFor = parent['Name']
+        taskObject['StageOutFor'] = stageOutFor
+        return
+
+
+
+class NewPopulateStageOut:
+    """
+    _NewPopulateStageOut_
+
+
+    Take a StageOut task object and add standard stuff to it, including
+    metadata fields, RunRes info and main script.
+
+    Site specific customisation should be done in the Creator object
+    for that site
+
+    """
+    def __call__(self, taskObject):
+        """
+        _operator()_
+
+
+        Operate on a TaskObject of type StageOut to insert a standard
+        StageOut structure
+
+        """
+        if taskObject['Type'] != "StageOut":
+            return
+
+     
+        #  //
+        # // Pre and Post Stage out commands
+        #//
+        precomms = taskObject.get("PreStageOutCommands", [])
+        postcomms = taskObject.get("PostStageOutCommands", [])
+        
+
+        #  //
+        # // Install the main script
+        #//
+        srcfile = inspect.getsourcefile(NewRuntimeStageOut)
+        if not os.access(srcfile, os.X_OK):
+            os.system("chmod +x %s" % srcfile)
+        taskObject.attachFile(srcfile)
+        exeScript = taskObject[taskObject['Executable']]
+
+        for precomm in precomms:
+            exeScript.append(str(precomm))
+        exeScript.append("./RuntimeStageOut.py")
+        for postcomm in postcomms:
+            exeScript.append(str(postcomm))
+
+      
+        #  //
+        # // Populate the RunResDB
+        #//
+        runres = taskObject['RunResDB']
+        toName = taskObject['Name']
+        stageOutFor = taskObject['StageOutFor']
+        paramBase = "/%s/StageOutParameters" % toName
+        runres.addPath(paramBase)
+
+        runres.addData("/%s/StageOutFor" % paramBase, stageOutFor)
+        return
+                       
+                        

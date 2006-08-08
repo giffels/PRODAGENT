@@ -50,6 +50,7 @@ class InstallRunResComponent:
         workflow = taskObject['RequestName']
         jobspec = taskObject['JobName']
         jobtype = taskObject['JobType']
+        
 
         newComponent.addPath(objName)
         newComponent.addData("/%s/WorkflowSpecID" % objName, workflow)

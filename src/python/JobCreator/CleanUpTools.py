@@ -106,7 +106,7 @@ class PopulateCleanUp:
         paramBase = "/%s/CleanUpParameters" % toName
         runres.addPath(paramBase)
 
-        runres.addData("/%s/CleanUpFor" % paramBase, stageOutFor)
+        runres.addData("/%s/CleanUpFor" % paramBase, cleanUpFor)
         return
                        
                         
