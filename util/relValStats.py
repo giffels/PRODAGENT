@@ -93,6 +93,43 @@ def summariseSuccesses(workflowSpec):
     result['avgTimePerEvent'] = averageOverList(perEventTimes)
     return result
 
+
+def summariseFailures(workflowSpec):
+    """
+    _summariseFailures_
+
+    Generate summary of failures
+
+    """
+    result = {
+        "sites" : [],
+        "exitCodes" : {},
+        "hosts" : {},
+        "failureCounts" : {},
+        "failureDescriptions" : [],
+        }
+    
+    failures = Stats.jobFailureDetails(workflowSpec, interval)
+    for failure in failures:
+        site = failure['site_name']
+        host = failure['host_name']
+        exitCode = failure['exit_code']
+        errType  = failure['error_type']
+        errDesc = failure['error_desc']
+        if site not in result['sites']:
+            result['sites'].append(site)
+        if not result['hosts'].has_key(site):
+            result['hosts'][site] = []
+        result['hosts'][site].append(host)
+        if not result['exitCodes'].has_key(exitCode):
+            result['exitCodes'][exitCode] = errType
+        if not result['failureCounts'].has_key(exitCode):
+            result['failureCounts'][exitCode] = 0
+        result['failureCounts'][exitCode] += 1
+        result['failureDescriptions'].append((errType, errDesc))
+    return result
+
+
 def stringOverList(x, y):
     return str(x) +  ", %s" % y
 
@@ -123,8 +160,34 @@ def printSummary(results):
     msg += formatList(" SE Names", successDetails['seNames'])
     msg += " LFN List:\n "
     msg += reduce(stringOverLFNList, successDetails['lfns'])
+    if results['FailedJobs'] == 0:
+        print msg
+        return
+    
+    failDetails = results['FailureDetails']
+    msg += "\n Failure Details:\n"
+    msg += formatList(" Failures@Sites", failDetails['sites'])
+    msg += " Host details:\n"
+    for key, value in failDetails['hosts'].items():
+        msg += formatList( " Nodes@%s" % key, value)
+    
 
+    msg += " Exit Status:\n"
+    msg += " Exit Code    |   count   |   error type   \n"
+    msg += " ------------------------------------------\n"
+    for key, value in failDetails['exitCodes'].items():
+        msg += "   %s      |   %s       |  %s \n" % (
+            key, failDetails['failureCounts'][key], value)
+
+
+    msg += " Failure Descriptions:\n\n"
+    for item in failDetails['failureDescriptions']:
+        msg += " %s\n %s\n\n" % (item[0], item[1])
+        
     print msg
+    return
+
+    
 
 def makeLFNFile(results):
     """
@@ -161,9 +224,11 @@ for workflow in workflows:
 
     
     results['SuccessDetails'] = summariseSuccesses(workflow)
+
+    results['FailureDetails'] = summariseFailures(workflow)
     
     printSummary(results)
     if lfnLists:
         makeLFNFile(results)
 
-        
+
