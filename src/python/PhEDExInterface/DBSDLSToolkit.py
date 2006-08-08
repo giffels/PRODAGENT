@@ -112,8 +112,7 @@ class DBSDLSToolkit:
             msg += "  Exception Class: %s\n" % ex.getClassName()
             msg += "  Exception Message: %s\n" % ex.getErrorMessage()
             logging.error(msg)
-            raise RuntimeError, msg
-
+            return []
         
         return fileBlocks
 
