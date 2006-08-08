@@ -23,7 +23,7 @@ References:
 __author__ = "Chad J. Schroeder"
 __copyright__ = "Copyright (C) 2005 Chad J. Schroeder"
 
-__revision__ = "$Id: CreateDaemon.py,v 1.1 2006/04/10 17:13:54 evansde Exp $"
+__revision__ = "$Id: CreateDaemon.py,v 1.3 2006/05/08 13:46:01 evansde Exp $"
 __version__ = "0.2"
 
 # Standard Python modules.
@@ -131,8 +131,7 @@ def createDaemon(workdir):
                                 Value = os.getegid()))
          
          open("Daemon.xml", "w").write(doc.makeDOMDocument().toprettyxml())
-         print "Started Daemon:"
-         print str(doc)
+         print "Started Daemon: Process %s" % os.getpid()
          
       else:
          # exit() or _exit()?  See below.
