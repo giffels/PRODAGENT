@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.8 $"
-__revision__ = "$Id: TaskState.py,v 1.8 2006/07/20 21:48:09 evansde Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: TaskState.py,v 1.9 2006/08/01 19:23:08 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -87,6 +87,7 @@ class TaskState:
         self.taskAttrs.setdefault("PyCfgFile", None)
         self.taskAttrs.setdefault("WorkflowSpecID", None)
         self.taskAttrs.setdefault("JobSpecID", None)
+        self.taskAttrs.setdefault("JobType", None)
         
         
         self._RunResDB = None
@@ -130,7 +131,8 @@ class TaskState:
                  dbDict[self.taskAttrs['Name']]['WorkflowSpecID'][0]
         self.taskAttrs['JobSpecID'] = \
                  dbDict[self.taskAttrs['Name']]['JobSpecID'][0]
-        
+        self.taskAttrs['JobType'] = \
+                      dbDict[self.taskAttrs['Name']]['JobType'][0]
         return
 
 
