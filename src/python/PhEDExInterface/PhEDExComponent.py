@@ -99,7 +99,7 @@ class PhEDExComponent:
         xmlFile = "%s/%s.xml" % (uniqueDir,
                                  datasetName.replace("/", "_"))
         nodeFile = "%s/PhEDEx-Nodes.txt" % uniqueDir
-        optionsFile = "%s/options.txt" % uniqueDir
+        optionsFile = "%s/Options.txt" % uniqueDir
         goFile = "%s/go" % uniqueDir
         
         logging.info("InjectionSpec: %s" % xmlFile)
