@@ -236,10 +236,69 @@ def selectFailureCount(workflowSpec = None):
     return count
 
 
+def jobTypeSuccess(workflowSpec = None):
+    """
+    _jobTypeSuccess_
+
+    Get the count of job types for successes.
+    
+
+    """
+    sqlStr = "SELECT job_type FROM st_job_success"
+    if workflowSpec == None:
+        sqlStr += ";"
+    else:
+        sqlStr += " WHERE workflow_spec_id=\"%s\";" % workflowSpec
+    
+    connection = connect()
+    dbCur = connection.cursor()
+    dbCur.execute(sqlStr)
+    listOfTypes = dbCur.fetchall()
+    dbCur.close()
+    
+    result = {}
+    for item in listOfTypes:
+        typeVal = item[0]
+        if not result.has_key(typeVal):
+            result[typeVal] = 0
+        result[typeVal] += 1
+    
+    return result
+
+def jobTypeFailures(workflowSpec = None):
+    """
+    _jobTypeFailuresCounts_
+
+    Get the count of job types for failures.
+    
+
+    """
+    sqlStr = "SELECT job_type FROM st_job_failure"
+    if workflowSpec == None:
+        sqlStr += ";"
+    else:
+        sqlStr += " WHERE workflow_spec_id=\"%s\";" % workflowSpec
+    
+    connection = connect()
+    dbCur = connection.cursor()
+    dbCur.execute(sqlStr)
+    listOfTypes = dbCur.fetchall()
+    dbCur.close()
+    
+    result = {}
+    for item in listOfTypes:
+        typeVal = item[0]
+        if not result.has_key(typeVal):
+            result[typeVal] = 0
+        result[typeVal] += 1
+    
+    return result
+
+
 arrToString = lambda x: x.__setitem__('error_desc', x['error_desc'].tostring())
 
 
-def selectFailureDetails(workflowSpecId, sinceTime="24:00:00"):
+def selectFailureDetails(workflowSpecId, sinceTime="24:00:00", jobType = None):
     """
     _selectFailureDetails_
 
@@ -261,7 +320,12 @@ def selectFailureDetails(workflowSpecId, sinceTime="24:00:00"):
                 error_code,      
                 error_desc FROM st_job_failure WHERE
 
-        workflow_spec_id="%s" AND time > ADDTIME(CURRENT_TIMESTAMP,'-%s'); """ % (workflowSpecId, sinceTime)
+        workflow_spec_id="%s" AND time > ADDTIME(CURRENT_TIMESTAMP,'-%s') """ % (workflowSpecId, sinceTime)
+
+    if jobType != None:
+        sqlStr += " AND job_type=\"%s\";" % jobType
+    else:
+        sqlStr += ";"
     
     connection = connect()
     dbCur = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
@@ -273,7 +337,7 @@ def selectFailureDetails(workflowSpecId, sinceTime="24:00:00"):
     
 
 
-def selectSuccessDetails(workflowSpecId, sinceTime="24:00:00"):
+def selectSuccessDetails(workflowSpecId, sinceTime="24:00:00", jobType=None):
     """
     _selectSuccessDetails_
 
@@ -295,7 +359,12 @@ def selectSuccessDetails(workflowSpecId, sinceTime="24:00:00"):
                 events_read,       
                 events_written FROM st_job_success WHERE      
 
-        workflow_spec_id="%s" AND time > ADDTIME(CURRENT_TIMESTAMP,'-%s');"""  % (workflowSpecId, sinceTime)
+        workflow_spec_id="%s" AND time > ADDTIME(CURRENT_TIMESTAMP,'-%s')"""  % (workflowSpecId, sinceTime)
+
+    if jobType != None:
+        sqlStr += " AND job_type=\"%s\";" % jobType
+    else:
+        sqlStr += ";"
 
     connection = connect()
     dbCur = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
