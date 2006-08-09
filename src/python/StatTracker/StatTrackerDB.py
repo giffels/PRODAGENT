@@ -46,6 +46,7 @@ def insertJobSuccess(jobSuccessInstance):
     sqlStr = """INSERT INTO st_job_success(job_spec_id, 
                            workflow_spec_id,
                            task_name,
+                           job_type,
                            status,
                            site_name,
                            host_name,
@@ -53,7 +54,7 @@ def insertJobSuccess(jobSuccessInstance):
                            exit_code,
                            events_read,
                            events_written) 
-               VALUES ("%s", "%s", "%s",
+               VALUES ("%s", "%s", "%s", "%s",
                        "%s", "%s", "%s", "%s",
                        %s, %s, %s);
 
@@ -61,6 +62,7 @@ def insertJobSuccess(jobSuccessInstance):
         jobSuccessInstance['job_spec_id'],
         jobSuccessInstance['workflow_spec_id'],
         jobSuccessInstance['task_name'],
+        jobSuccessInstance['job_type'],
         jobSuccessInstance['status'],
         jobSuccessInstance['site_name'],
         jobSuccessInstance['host_name'],
@@ -143,6 +145,7 @@ def insertJobFailure(jobFailureInstance):
     sqlStr = """INSERT INTO st_job_failure(job_spec_id, 
                            workflow_spec_id,
                            task_name,
+                           job_type,
                            status,
                            site_name,
                            host_name,
@@ -152,7 +155,7 @@ def insertJobFailure(jobFailureInstance):
                            exit_code,
                            error_desc)
 
-               VALUES ("%s", "%s", "%s",
+               VALUES ("%s", "%s", "%s", "%s",
                        "%s", "%s", "%s", "%s",
                        "%s", %s, %s, "%s");
 
@@ -160,6 +163,7 @@ def insertJobFailure(jobFailureInstance):
         jobFailureInstance['job_spec_id'],
         jobFailureInstance['workflow_spec_id'],
         jobFailureInstance['task_name'],
+        jobFailureInstance['job_type'],
         jobFailureInstance['status'],
         jobFailureInstance['site_name'],
         jobFailureInstance['host_name'],
@@ -246,7 +250,8 @@ def selectFailureDetails(workflowSpecId, sinceTime="24:00:00"):
     sqlStr = """SELECT job_index,
                 job_spec_id,      
                 workflow_spec_id, 
-                exit_code ,       
+                exit_code ,
+                job_type  ,
                 task_name ,       
                 status    ,       
                 site_name ,       
@@ -281,7 +286,8 @@ def selectSuccessDetails(workflowSpecId, sinceTime="24:00:00"):
                 job_spec_id,      
                 workflow_spec_id, 
                 exit_code ,       
-                task_name ,       
+                task_name ,
+                job_type  ,
                 status    ,       
                 site_name ,       
                 host_name ,       

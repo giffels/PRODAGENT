@@ -34,6 +34,7 @@ class JobStatistics(dict):
         self.setdefault("site_name", None)
         self.setdefault("host_name", None)
         self.setdefault("se_name", None)
+        self.setdefault("job_type", None)
         
 
     def insertIntoDB(self):
@@ -67,6 +68,7 @@ class JobStatistics(dict):
         self['workflow_spec_id'] = jobRepInstance.workflowSpecId
         self['status'] = jobRepInstance.status
         self['exit_code'] =  jobRepInstance.exitCode        
+        self['job_type'] = jobRepInstance.jobType
         
         siteName = jobRepInstance.siteDetails.get("SiteName", "Unknown")
         hostName = jobRepInstance.siteDetails.get("HostName", "Unknown")
@@ -74,6 +76,7 @@ class JobStatistics(dict):
         self["site_name"] = siteName
         self["host_name"] = hostName
         self["se_name"] = seName
+
         
         return
     
