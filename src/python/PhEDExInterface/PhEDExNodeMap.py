@@ -16,12 +16,18 @@ class PhEDExNodeMap:
 
     """
     _Map = {
-        "se-name-1" : "PhEDExNode-1",
-        "se-name-2" : "PhEDExNode-2",
-        "se-name-3" : "PhEDExNode-3",
-        "se-name-4" : "PhEDExNode-4",
-        "se-name-5" : "PhEDExNode-5",
-        'cmssrm.fnal.gov' : 'T1_FNAL',
+       
+        'cmssrm.fnal.gov' : 'T1_FNAL_MSS',
+        "cmssrm.hep.wisc.edu" : "T2_Wisconsin_Buffer",
+        "thpc-1.unl.edu" : "T2_Nebraska_Buffer",
+        "cithep59.ultralight.org" : "T2_Caltech_Buffer",
+        "dcache.rcac.purdue.edu" "T2_Purdue_Buffer",
+        "t2data2.t2.ucsd.edu" : "T2_UCSD_Buffer",
+        "se01.cmsaf.mit.edu" : "T2_MIT_Buffer",
+        "ufdcache.phys.ufl.edu" "T2_Florida_Buffer",
+                  
+        
+
         
         }
 

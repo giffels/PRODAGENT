@@ -90,7 +90,7 @@ class PhEDExComponent:
 
         blocks = dbsdls.listFileBlocksForDataset(datasetName)
         
-        uniqueDir = "%s/%s/%s" % (self.args['ComponentDir'],
+        uniqueDir = "%s/%s-%s" % (self.args['ComponentDir'],
                                   datasetName.replace("/", "_"),
                                   time.time())
         if not os.path.exists(uniqueDir):
