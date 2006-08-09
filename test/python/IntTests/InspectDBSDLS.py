@@ -13,8 +13,8 @@ import os,sys,getopt
 #   //
 #  // Get DBS instance to use
 # //
-usage="\n Usage: python InspectDBSDLS.py <options> \n Options: \n --datasetPath=/primarydataset/datatier/procdataset \t\t dataset path \n --DBSAddress=<MCLocal/Writer> \t\t DBS database instance \n --DBSURL=<URL> \t\t DBS URL \n --DLSAddress=<lfc-cms-test.cern.ch/grid/cms/DLS/MCLocal_Test>\t\t DLS instance \n --DLSType=<DLS_TYPE_LFC> \t\t DLS type \n --help \t\t\t\t print this help \n"
-valid = ['DBSAddress=','DBSURL=','DLSAddress=','DLSType=','datasetPath=','help']
+usage="\n Usage: python GetLFNfromDBSDLS.py <options> \n Options: \n --datasetPath=/primarydataset/datatier/procdataset \t\t dataset path \n --DBSAddress=<MCLocal/Writer> \t\t DBS database instance \n --DBSURL=<URL> \t\t DBS URL \n --DLSAddress=<lfc-cms-test.cern.ch/grid/cms/DLS/MCLocal_Test>\t\t DLS instance \n --DLSType=<DLS_TYPE_LFC> \t\t DLS type \n --SE=<SEname> \t\t option to trigger writing of LFN lists at that SE \n --help \t\t\t\t print this help \n"
+valid = ['DBSAddress=','DBSURL=','DLSAddress=','DLSType=','datasetPath=','SE=','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -27,6 +27,7 @@ dbinstance = None
 dlsendpoint = None
 dlstype = None
 dataset = None
+sename = None
 
 for opt, arg in opts:
     if opt == "--DBSAddress":
@@ -39,6 +40,8 @@ for opt, arg in opts:
         dlstype = arg
     if opt == "--datasetPath":
         dataset = arg
+    if opt == "--SE":
+        sename = arg
     if opt == "--help":
         print usage
         sys.exit(1)
@@ -47,6 +50,11 @@ if dataset == None:
     print "--datasetPath option not provided. For example : --datasetPath /primarydataset/datatier/processeddataset"
     print usage
     sys.exit(1)
+#if  sename == None:
+#    print "--SE option not provided. For example : --SE=srm.cern.ch"
+#    print usage
+#    sys.exit(1)
+
 if dbinstance == None:
     print "--DBSAddress option not provided. For example : --DBSAddress MCLocal/Writer"
     print usage
@@ -90,6 +98,12 @@ except DbsException, ex:
   print "DbsException for DBS API getDatasetFileBlocks(%s): %s %s" %(dataset,ex.getClassName(), ex.getErrorMessage())
   sys.exit(1)
 
+if sename != None:
+ primdataset=dataset.split('/')[1]
+ fileName="%s_SE%s.lfns"%(primdataset,sename)
+ LFNsatSEfile = open(fileName, 'w')
+ SEblocks=[]
+
 for fileBlock in fileBlockList:
         entryList=[]
         try:
@@ -109,4 +123,23 @@ for fileBlock in fileBlockList:
          print "File block name: ", fileBlock.get('blockName')
          print "Number of files: ", fileBlock.get('numberOfFiles')
          print "Number of Bytes: ", fileBlock.get('numberOfBytes')
-         print "File block %s is located at: %s"%(fileBlock.get('blockName'),SEList)                                                                                                   
+         print "File block %s is located at: %s"%(fileBlock.get('blockName'),SEList)
+         if sename != None: 
+          if SEList.count(sename)>0:
+            print " Writing LFN list at SE %s "%sename 
+            for file in fileBlock.get('fileList'):
+                LFNsatSEfile.write("%s\n"%file.get('logicalFileName'))
+            SEblocks.append(fileBlock.get('blockName'))
+
+if sename != None:
+  LFNsatSEfile.close()
+## get number of events at the given SE
+  nevtsatSE=0
+  for block in dbsapi.getDatasetContents(dataset):
+         #hack the block name to cope with DBS API inconsistency
+         blockname="/%s/%s"%(block.get('blockName').split('/')[1],block.get('blockName').split('/')[3])
+         if SEblocks.count(blockname)>0:
+          for evc in block.get('eventCollectionList'):
+            nevtsatSE = nevtsatSE + evc.get('numberOfEvents')
+
+  print "\n File %s written : contains LFNs at SE %s - for a total of %s events "%(fileName,sename,nevtsatSE)                                                                                                  
