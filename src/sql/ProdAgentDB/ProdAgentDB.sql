@@ -255,6 +255,7 @@ CREATE TABLE `ms_subscription` (
 CREATE TABLE st_job_success (
    job_index INT NOT NULL AUTO_INCREMENT,
    job_spec_id VARCHAR(255) NOT NULL,
+   job_type VARCHAR(255),
    workflow_spec_id VARCHAR(255) NOT NULL,
    time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP 
        on update CURRENT_TIMESTAMP,
@@ -298,6 +299,7 @@ CREATE TABLE st_job_failure (
    job_index INT NOT NULL AUTO_INCREMENT,
    job_spec_id VARCHAR(255) NOT NULL,
    workflow_spec_id VARCHAR(255) NOT NULL,
+   job_type VARCHAR(255),	
    time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP 
        on update CURRENT_TIMESTAMP,
    exit_code INT,
