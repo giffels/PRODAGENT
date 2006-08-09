@@ -64,7 +64,8 @@ class InjectionSpec:
     """
     _InjectionSpec_
 
-    <dbs name='DBSNameHere'>
+    <dbs name='DBSNameHere' dls='DLSNameHere'>
+
     <dataset name='/primary/datatier/processed' is-open='boolean' is-transient='boolean'>
     <block name='fileblockname' is-open='boolean'>
     <file lfn='lfn1Here' checksum='cksum:0' size ='fileSize1Here'/>
@@ -72,11 +73,12 @@ class InjectionSpec:
     </dataset>
     </dbs> 
     """
-    def __init__(self, dbs,
-                 datasetName,
+    def __init__(self, dbs, dls, 
+                 datasetName, 
                  datasetOpen = "y",
                  datasetTransient = "n" ):
         self.dbs = dbs
+        self.dls = dls
         #  //
         # // dataset attributes
         #//
@@ -114,6 +116,7 @@ class InjectionSpec:
         """
         result = IMProvNode("dbs")
         result.attrs['name'] = self.dbs
+        result.attrs['dls'] = self.dls
         dataset = IMProvNode("dataset")
         dataset.attrs['name'] = self.datasetName
         dataset.attrs['is-open'] = self.datasetIsOpen

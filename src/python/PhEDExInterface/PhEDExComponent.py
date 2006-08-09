@@ -7,6 +7,7 @@ _PhEDExComponent_
 """
 
 import os
+import time
 from MessageService.MessageService import MessageService
 
 import logging
@@ -15,7 +16,9 @@ from logging.handlers import RotatingFileHandler
 
 from PhEDExInterface.DBSDLSToolkit import DBSDLSToolkit
 from PhEDExInterface.InjectionSpec import InjectionSpec
+from PhEDExInterface.PhEDExNodeMap import PhEDExNodeMap
 
+_NodeMap = PhEDExNodeMap()
 
 class PhEDExComponent:
     """
@@ -87,13 +90,20 @@ class PhEDExComponent:
 
         blocks = dbsdls.listFileBlocksForDataset(datasetName)
         
-        #  //
-        # // Write the file into the component Dir.
-        #//  
-        xmlFile = "%s/%s.xml" % (self.args['ComponentDir'],
+        uniqueDir = "%s/%s/%s" % (self.args['ComponentDir'],
+                                  datasetName.replace("/", "_"),
+                                  time.time())
+        if not os.path.exists(uniqueDir):
+            os.makedirs(uniqueDir)
+        
+        xmlFile = "%s/%s.xml" % (uniqueDir,
                                  datasetName.replace("/", "_"))
+        nodeFile = "%s/PhEDEx-Nodes.txt" % uniqueDir
+        optionsFile = "%s/options.txt" % uniqueDir
+        goFile = "%s/go" % uniqueDir
         
         logging.info("InjectionSpec: %s" % xmlFile)
+        logging.info("Nodes List: %s" % nodeFile)
         
         #  //
         # // Instantiate an InjectionSpec object
@@ -103,6 +113,7 @@ class PhEDExComponent:
         #//  is provided here yet.
         spec = InjectionSpec(
             dbsdls.dbsName(),
+            dbsdls.dlsName(),
             datasetName,
             )
 
@@ -125,19 +136,56 @@ class PhEDExComponent:
                                    fileEntry['checkSum'],
                                    fileEntry['fileSize'])
 
-        #  //
-        # // OK, so have here an xml File containing the information 
-        #//  required for doing the injection and
-        #  //a map of fileBlock name to se-names to be used to map
-        # // to the PhEDEx node name as an interim solution.
-        #//
         spec.write(xmlFile)
-        print blockLocations
-        
-        
+
+        #  //
+        # // create the nodes list file
+        #//
+        nodesList = []
+        for key in blockLocations.keys():
+            for seName in blockLocations[key]:
+                nodeName =  _NodeMap.translateSE(seName)
+                if nodeName == None:
+                    logging.error("No PhEDExNode Map for SE: %s" % seName)
+                    continue
+                if nodeName not in nodesList:
+                    nodesList.append(nodeName)
+
+        handle = open(nodeFile, 'w')
+        for node in nodesList:
+            handle.write("%s\n" % node)
+        handle.close()
+
+
+        #  //
+        # // create the options file
+        #//
+        handle = open(optionsFile, 'w')
+        handle.write("!strict\n")
+        handle.close()
+
+        #  //
+        # // create the (empty) go file
+        #//
+        handle = open(goFile, 'w')
+        handle.write("")
+        handle.close()
+
+        #  //
+        # // dispatch the directory to PhEDEx
+        #//
+        self.sendToDropBox(uniqueDir)
         return
         
         
+    def sendToDropBox(self, dirName):
+        """
+        _sendToDropBox_
+
+        Move the directory dirName to the PhEDEx Drop Box.
+
+        """
+        logging.info("sendToDropBox:%s" % dirName)
 
 
     def startComponent(self):

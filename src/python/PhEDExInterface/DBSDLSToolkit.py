@@ -17,8 +17,7 @@ from dbsException import DbsException
 
 
 
-_DBSConfig = {}
-_DLSConfig = {}
+
 
 
 def loadDBSDLS():
@@ -43,8 +42,7 @@ def loadDBSDLS():
         msg += str(ex)
         logging.error(msg)
         raise RuntimeError, msg
-    _DLSConfig = dlsConfig
-    logging.debug("DLS Config: %s" % _DLSConfig)
+    logging.debug("DLS Config: %s" % dlsConfig)
     try:
         dbsConfig = config.getConfig("LocalDBS")
     except StandardError, ex:
@@ -52,8 +50,7 @@ def loadDBSDLS():
         msg += str(ex)
         logging.error(msg)
         raise RuntimeError, msg
-    _DBSConfig = dbsConfig
-    logging.debug("DBS Config: %s" % _DBSConfig)
+    logging.debug("DBS Config: %s" % dbsConfig)
     try:
         dlsapi = dlsClient.getDlsApi(dls_type = dlsConfig['DLSType'],
                                      dls_endpoint = dlsConfig['DLSAddress'])
@@ -71,7 +68,7 @@ def loadDBSDLS():
         raise RuntimeError, msg
     
 
-    return dlsapi, dbsApi
+    return dlsapi, dbsApi, dlsConfig, dbsConfig
 
 
 class DBSDLSToolkit:
@@ -82,9 +79,9 @@ class DBSDLSToolkit:
     DBS api  instances embedded in the class
 
     """
-    _DLS, _DBS = loadDBSDLS()
-    _DBSConf = _DBSConfig
-    _DLSConf = _DLSConfig
+    _DLS, _DBS, _DLSConf, _DBSConf= loadDBSDLS()
+    
+
     def __init__(self):
         pass
 
@@ -95,7 +92,23 @@ class DBSDLSToolkit:
         return the DBS Instance Name
 
         """
-        return self._DBSConf.get("DBSAddress", None)
+        dbsName = "%s?instance=%s" % ( self._DBSConf['DBSURL'],
+                                       self._DBSConf['DBSAddress'])
+        
+        return dbsName
+
+    def dlsName(self):
+        """
+        _dlsName_
+
+        return the DLS Instance Url
+
+        """
+        typeMap = {'DLS_TYPE_LFC' : "lfc", 'DLS_TYPE_MYSQL': "mysql"}
+        result = "%s:%s" % (
+            typeMap[self._DLSConf['DLSType']],
+            self._DLSConf['DLSAddress'])
+        return result
 
     def listFileBlocksForDataset(self, dataset):
         """
