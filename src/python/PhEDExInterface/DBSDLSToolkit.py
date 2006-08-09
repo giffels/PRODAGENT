@@ -105,7 +105,7 @@ class DBSDLSToolkit:
 
         """
         typeMap = {'DLS_TYPE_LFC' : "lfc", 'DLS_TYPE_MYSQL': "mysql"}
-        result = "%s:%s" % (
+        result = "%s://%s" % (
             typeMap[self._DLSConf['DLSType']],
             self._DLSConf['DLSAddress'])
         return result
