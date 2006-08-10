@@ -450,8 +450,14 @@ class DBSComponent:
             #  //
             # // On successful insertion of job report, set the trigger
             #//  to say we are done with it so that cleanup can be triggered.
-            self.trigger.setFlag("cleanup", jobreport.jobSpecId,
-                                 "DBSInterface")
+            try:
+                self.trigger.setFlag("cleanup", jobreport.jobSpecId,
+                                     "DBSInterface")
+            except Exception, ex:
+                msg = "Error setting cleanup flag for job: "
+                msg += "%s\n" % jobreport.jobSpecId
+                msg += str(ex)
+                logging.error(msg)
 
                     
         return
