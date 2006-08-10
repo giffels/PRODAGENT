@@ -198,6 +198,7 @@ componentFields = {
     },
     "PhEDExInterface" : {
     "ComponentDir" : None,
+    "PhEDExDropBox" : None,
     },
 
     }# end componentFields
