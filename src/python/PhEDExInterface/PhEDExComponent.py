@@ -8,6 +8,7 @@ _PhEDExComponent_
 
 import os
 import time
+import popen2
 from MessageService.MessageService import MessageService
 
 import logging
@@ -30,6 +31,8 @@ class PhEDExComponent:
         self.args = {}
 
         self.args.setdefault("Logfile", None)
+        self.args.setdefault("PhEDExDropBox", None)
+        self.args.setdefault("FailedDrops", None)
         self.args.update(args)
 
         if self.args['Logfile'] == None:
@@ -50,7 +53,27 @@ class PhEDExComponent:
         
         logging.info("PhEDExComponent Started...")
 
+        #  //
+        # // Directories used by this component
+        #//
+        if self.args['PhEDExDropBox'] == "None":
+            self.args['PhEDExDropBox'] = None
+        if self.args['PhEDExDropBox'] == None:
+            msg = "PhEDExDropBox is no provided for PhEDExInterface"
+            logging.warning(msg)
+        else:
+            if not os.path.exists(self.args['PhEDExDropBox']):
+                msg = "PhEDExDropBox dir not found:\n"
+                msg += "%s\n" % self.args['PhEDExDropBox']
+                logging.warning(msg)
+        if self.args['FailedDrops'] == None:
+            self.args['FailedDrops'] = os.path.join(self.args['ComponentDir'],
+                                                    "FailedDrops")
+        if not os.path.exists(self.args['FailedDrops']):
+            os.makedirs(self.args['FailedDrops'])
         
+        
+                              
         
     def __call__(self, event, payload):
         """
@@ -187,7 +210,38 @@ class PhEDExComponent:
         """
         logging.info("sendToDropBox:%s" % dirName)
 
+        targetDir = self.args['PhEDExDropBox']
+        testExists = os.path.exists(self.args['PhEDExDropBox'])
+        logging.debug("PhEDExDropBox exists: %s" % testExists)
+        if not testExists:
+            msg = "PhEDExDropBox doesnt exist,\n"
+            msg += " moving to failure dir instead\n"
+            msg += "Drop: %s\n" % dirName
+            msg += "Failure Dir: %s\n" % self.args['FailedDrops']
+            logging.error(msg)
+            targetDir = "%s/%s" % (self.args['FailedDrops'],
+                                   os.path.basename(dirName))
+            
 
+        command = "/bin/mv  %s %s" % (dirName, targetDir)
+        logging.debug("sendToDropBox: %s " % command)
+        
+        pop = popen2.Popen3(command)
+        output = pop.fromchild.read()
+        pop.wait()
+        exitCode = pop.poll()
+        if exitCode:
+            msg = "Error moving Drop to DropBox:\n"
+            msg += "Drop: %s\n" % dirName
+            msg += "Drop Box : %s\n" % targetDir
+            msg += str(output)
+            logging.error(msg)
+            return
+        logging.info("Drop moved successfully")
+        return
+        
+            
+            
     def startComponent(self):
         """
         _startComponent_
