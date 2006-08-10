@@ -23,13 +23,16 @@ class FailureCleanupHandler(HandlerInterface):
 
     def __init__(self):
          HandlerInterface.__init__(self)
+         self.failureArchive = None
          self.args={}
 
     def handleEvent(self,payload):
          """
          The payload of for a cleanup handler is a job id. 
          """
-
+         if self.failureArchive == None:
+             logging.error("No Failure Archive set: Cannot Archive Job:\n %s" % payload)
+             return
          try:
              logging.debug(">FailureCleanupHandler< archiving  "+\
                             "information for jobspec: "+str(payload))

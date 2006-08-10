@@ -44,12 +44,14 @@ class JobCleanupComponent:
          """
          self.args = {}
          self.args['Logfile'] = None
+         self.args['FailureArchive'] = None
          self.args.update(args)
  
 
          # the cleanup events this components subscribes to
          # that invoke an cleanup handler
-         self.args['Events']={'JobCleanup':'cleanupHandler','PartialJobCleanup':'partialCleanupHandler',\
+         self.args['Events']={'JobCleanup':'cleanupHandler',
+                              'PartialJobCleanup':'partialCleanupHandler',\
                               'FailureCleanup':'failureCleanupHandler'}
 
          if self.args['Logfile'] == None:
