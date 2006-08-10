@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.16 2006/07/17 12:51:53 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.18 2006/08/03 23:38:18 afanfani Exp $"
 
 import socket
 import time
@@ -34,6 +34,7 @@ from ProdAgentCore.Configuration import ProdAgentConfiguration
 from MessageService.MessageService import MessageService
 from FwkJobRep.ReportState import checkSuccess
 from FwkJobRep.FwkJobReport import FwkJobReport
+from FwkJobRep.ReportParser import readJobReport
 from JobState.JobStateAPI import JobStateChangeAPI
 import select
 import fcntl
@@ -303,6 +304,9 @@ class TrackingComponent:
                 self.reportfilename=self.bossReportFileName[self.BossVersion](jobId)
                 logging.debug("%s exists=%s"%(self.reportfilename,os.path.exists(self.reportfilename)))
                 if os.path.exists(self.reportfilename):
+                    logging.debug("Notify JobState.finished: %s" % self.reportfilename)
+                    self.notifyJobState(self.reportfilename)
+
                     logging.debug("check Job Success %s"%checkSuccess(self.reportfilename))
                     
                     if checkSuccess(self.reportfilename):
@@ -414,6 +418,29 @@ class TrackingComponent:
         """
         pass
     
+
+    def notifyJobState(self, jobReportFile):
+        """
+        _notifyJobState_
+
+        Notify the JobState DB of finished jobs
+
+        """
+        reports = readJobReports(jobReportFile)
+        jobspecs = []
+        for report in reports:
+            if report.jobSpecId not in jobspecs:
+                jobspecs.append(report.jobSpecId)
+
+        for jobspec in jobspecs:
+            try:
+                JobStateChangeAPI.finished(jobspec)
+            except Exception, ex:
+                msg = "Error setting job state to finished for job: %s\n" % jobspec
+                msg += str(ex)
+                logging.error(msg)
+        return
+        
     
     def jobSuccess(self):
         """
@@ -425,7 +452,6 @@ class TrackingComponent:
         JobSuccess event to the prodAgent
         
         """
-        
         self.ms.publish("JobSuccess", self.reportfilename)
         self.ms.commit()
                                                                                 
@@ -452,7 +478,6 @@ class TrackingComponent:
             logging.debug("JobFailed: %s" % msg)
             self.ms.publish("JobFailed", msg)
             self.ms.commit()
-                                                                                
             self.failedJobsPublished[jobId[0]] = 1
            
         return
@@ -472,7 +497,7 @@ class TrackingComponent:
             self.failedJobsPublished[jobId[0]] += 0
         except StandardError:
             JobStateChangeAPI.submitFailure(msg)
-
+            
             logging.debug("SubmissionFailed: %s" % msg)
             self.ms.publish("SubmissionFailed", msg)
             self.ms.commit()
