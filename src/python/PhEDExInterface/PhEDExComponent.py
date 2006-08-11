@@ -113,44 +113,29 @@ class PhEDExComponent:
 
         blocks = dbsdls.listFileBlocksForDataset(datasetName)
         
-        uniqueDir = "%s/%s-%s" % (self.args['ComponentDir'],
-                                  datasetName.replace("/", "_"),
-                                  time.time())
-        if not os.path.exists(uniqueDir):
-            os.makedirs(uniqueDir)
         
-        xmlFile = "%s/%s.xml" % (uniqueDir,
-                                 datasetName.replace("/", "_"))
-        nodeFile = "%s/PhEDEx-Nodes.txt" % uniqueDir
-        optionsFile = "%s/Options.txt" % uniqueDir
-        goFile = "%s/go" % uniqueDir
         
-        logging.info("InjectionSpec: %s" % xmlFile)
-        logging.info("Nodes List: %s" % nodeFile)
-        
-        #  //
-        # // Instantiate an InjectionSpec object
-        #//
-        #  //
-        # // Note: No info on wether the dataset is closed or transient
-        #//  is provided here yet.
-        spec = InjectionSpec(
-            dbsdls.dbsName(),
-            dbsdls.dlsName(),
-            datasetName,
-            )
-
         #  //
         # // add the block information to the spec
         #//
-        blockLocations = {}
         for block in blocks:
-            blockEntry = spec.getFileblock(block['blockName'])
             #  //
             # // Grab the se-name from DLS
             #//
             locations = dbsdls.getFileBlockLocation(block['blockName'])
-            blockLocations[block['blockName']] = locations
+            
+
+            #  //
+            # // Create the per block injection spec
+            #//
+           
+            spec = InjectionSpec(
+                dbsdls.dbsName(),
+                dbsdls.dlsName(),
+                datasetName,
+                )
+            blockEntry = spec.getFileblock(block['blockName'])
+            
             #  //
             # // Add each file to the fileBlock.
             #//
@@ -159,14 +144,29 @@ class PhEDExComponent:
                                    fileEntry['checkSum'],
                                    fileEntry['fileSize'])
 
-        spec.write(xmlFile)
+            #  //
+            # // Generate filenames for the Drop.
+            #//
+            blockName = block['blockName']
+            blockName = blockName.replace("/", "_")
+            blockName = blockName.replace("#", "_")
+            dropDir = "%s/%s-%s" % (self.args['ComponentDir'],
+                                    blockName, time.time())
+           
+            
+            xmlFile = "%s/%s.xml" % (dropDir,
+                                     blockName)
+            nodeFile = "%s/PhEDEx-Nodes.txt" % dropDir
+            optionsFile = "%s/Options.txt" % dropDir
+            goFile = "%s/go" % dropDir
 
-        #  //
-        # // create the nodes list file
-        #//
-        nodesList = []
-        for key in blockLocations.keys():
-            for seName in blockLocations[key]:
+            
+            
+            #  //
+            # // Get the list of PhEDEx Nodes from DLS
+            #//
+            nodesList = []
+            for seName in locations:
                 nodeName =  _NodeMap.translateSE(seName)
                 if nodeName == None:
                     logging.error("No PhEDExNode Map for SE: %s" % seName)
@@ -174,30 +174,50 @@ class PhEDExComponent:
                 if nodeName not in nodesList:
                     nodesList.append(nodeName)
 
-        handle = open(nodeFile, 'w')
-        for node in nodesList:
-            handle.write("%s\n" % node)
-        handle.close()
+            if nodesList == []:
+                msg = "ERROR: No PhEDEx Node names for block:\n"
+                msg += "%s\n" % block['blockName']
+                msg += "At locations:\n %s \n" % locations
+                msg += "Not Creating Drop for fileblock..."
+                logging.error(msg)
+                continue
+
+            #  //
+            # // Create the Drop
+            #//
+            if not os.path.exists(dropDir):
+                os.makedirs(dropDir)
+
+            #  //
+            # // Write the Injection spec for the block
+            #//
+            spec.write(xmlFile)
+
+                    
+            handle = open(nodeFile, 'w')
+            for node in nodesList:
+                handle.write("%s\n" % node)
+            handle.close()
 
 
-        #  //
-        # // create the options file
-        #//
-        handle = open(optionsFile, 'w')
-        handle.write("!strict\n")
-        handle.close()
+            #  //
+            # // create the options file
+            #//
+            handle = open(optionsFile, 'w')
+            handle.write("!strict\n")
+            handle.close()
 
-        #  //
-        # // create the (empty) go file
-        #//
-        handle = open(goFile, 'w')
-        handle.write("")
-        handle.close()
+            #  //
+            # // create the (empty) go file
+            #//
+            handle = open(goFile, 'w')
+            handle.write("")
+            handle.close()
 
-        #  //
-        # // dispatch the directory to PhEDEx
-        #//
-        self.sendToDropBox(uniqueDir)
+            #  //
+            # // dispatch the directory to PhEDEx
+            #//
+            self.sendToDropBox(dropDir)
         return
         
         
@@ -211,7 +231,7 @@ class PhEDExComponent:
         logging.info("sendToDropBox:%s" % dirName)
 
         targetDir = self.args['PhEDExDropBox']
-        testExists = os.path.exists(self.args['PhEDExDropBox'])
+        testExists = os.path.exists(str(self.args['PhEDExDropBox']))
         logging.debug("PhEDExDropBox exists: %s" % testExists)
         if not testExists:
             msg = "PhEDExDropBox doesnt exist,\n"
