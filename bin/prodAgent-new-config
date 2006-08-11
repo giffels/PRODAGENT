@@ -168,6 +168,7 @@ componentFields = {
     "BOSSPATH" : None,
     "BOSSVERSION" : None,
     "PollInterval" : 10,
+    "jobsToPoll" : 100,
     },
 
     'MergeSensor' : {
