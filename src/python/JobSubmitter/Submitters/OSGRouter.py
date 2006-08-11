@@ -9,10 +9,11 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGRouter.py,v 1.1 2006/07/17 21:14:57 evansde Exp $"
+__revision__ = "$Id: OSGRouter.py,v 1.2 2006/07/17 22:04:24 evansde Exp $"
 
 import os
 import logging
+import time
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
@@ -144,6 +145,20 @@ class OSGRouter(SubmitterInterface):
         handle.writelines(jdl)
         handle.close()
 
+        #  //
+        # // Check logfiles, and back them up if they exist
+        #//
+        logFile = "%s/%s-condor.log" % (directory, jobname)
+        outFile = "%s/%s-condor.out" % (directory, jobname)
+        errFile = "%s/%s-condor.err" % (directory, jobname)
+
+        for logfilePath in (logFile, outFile, errFile):
+            if os.path.exists(logfilePath):
+                logging.debug("Found file: %s" % logfilePath)
+                newPath = "%s.backup.%s" % (logfilePath, int(time.time()))
+                logging.debug("Backing up logfile to: %s" % newPath)
+                os.system("/bin/cp %s %s" % (logfilePath, newPath))
+                
         
   
         tarballBaseName = os.path.basename(tarballName)
