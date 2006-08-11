@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.15 2006/07/25 19:06:27 evansde Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.16 2006/07/25 19:57:13 afanfani Exp $"
 
 import os
 import logging
@@ -18,6 +18,7 @@ from popen2 import Popen4
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
+from ProdAgentCore.ProdAgentException import ProdAgentException
 
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
@@ -327,12 +328,10 @@ class SubmitterInterface:
         Parameters are extracted from this instance
 
         """
-        version="v4"   
                                    
-        bossDeclare={"v3":self.BOSS3declare,"v4":self.BOSS4declare}
-
+ 
         logging.debug("SubmitterInterface:Declaring Job To BOSS")
-        bossJobId=bossDeclare[version]()
+        bossJobId=self.BOSS4declare()
 
         ## move id file out from job-cache area
         #idFile = "%s/%sid" % (
@@ -414,60 +413,18 @@ class SubmitterInterface:
         # // Do BOSS Declare
         #//
         bossJobId = self.executeCommand(bossDeclare)
-        print bossJobId
-        bossJobId = bossJobId.split("TASK_ID:")[1].split("\n")[0].strip()
-        logging.debug("SubmitterInterface:BOSS Job ID: %s" % bossJobId)
+        logging.debug( bossJobId)
+        try:
+            bossJobId = bossJobId.split("TASK_ID:")[1].split("\n")[0].strip()
+        except StandardError, ex:
+            logging.debug("SubmitterInterface:BOSS Job ID: %s. BossJobId set to 0\n" % bossJobId)
+            raise ProdAgentException("Job Declaration Failed")
         #os.remove(xmlfile)
         return bossJobId
         
 
 
         
-    def BOSS3declare(self):
-        """
-        BOSS3declare
-
-        BOSS 3 command to declare a task
-        """
-        bossQuery = "boss SQL -query \"select name from JOBTYPE "
-        bossQuery += "where name = 'cmssw'\""
-        queryOut = self.executeCommand(bossQuery)
-        bossJobType = "cmssw"
-        if queryOut.find("cmssw") < 0:
-            bossJobType="stdjob"
-        #cladfile = "%s/%s.clad" % (
-        #    self.parameters['JobCacheArea'], self.parameters['JobName'],
-        #    )
-        cladfile = "%s/%s.clad" %(os.path.dirname(self.parameters['Wrapper']),self.parameters['JobName'])
-        print "cladfile=%s"%cladfile
-        declareClad=open(cladfile,"w")
-        declareClad.write("executable = %s;\n" % ( os.path.basename(self.parameters['Wrapper'])))
-        declareClad.write("group = %s;\n" % self.parameters['JobName'])
-        
-        declareClad.write("jobtype = %s;\n" % bossJobType)
-        declareClad.write("stdout = %s.stdout;\n" % self.parameters['JobName'])
-        declareClad.write("stderr = %s.stderr;\n"% self.parameters['JobName'])
-        declareClad.write("infiles = %s,%s;\n" % (
-            self.parameters['Wrapper'], self.parameters['Tarball'],
-            )
-                          )
-        outfiles = "outfiles = %s.stdout,%s.stderr," % (
-            self.parameters['JobName'], self.parameters['JobName'],
-            )
-        outfiles += "FrameworkJobReport.xml;\n" 
-        declareClad.write(outfiles)
-        declareClad.close()
-        logging.debug("SubmitterInterface:BOSS Classad written:%s" % cladfile)
-
-        #  //
-        # // Do BOSS Declare
-        #//
-        bossDeclare = "boss declare -classad %s " % cladfile
-        bossJobId = self.executeCommand(bossDeclare)
-        bossJobId = bossJobId.replace("Job ID","").strip()
-        logging.debug("SubmitterInterface:BOSS Job ID: %s" % bossJobId)
-        #os.remove(cladfile)
-        return bossJobId
 
 
     def BOSS4submit(self,bossJobId):
@@ -482,16 +439,6 @@ class SubmitterInterface:
         bossSubmit += " -c " + self.bossCfgDir + " "
         return bossSubmit
                 
-    def BOSS3submit(self,bossJobId):
-        """
-        BOSS3submit
-
-        BOSS 3 command to submit a task
-        """
-        bossSubmit = "boss submit "
-        bossSubmit += "-jobid %s " % bossJobId
-        bossSubmit += "-scheduler %s " %  self.parameters['Scheduler']
-        return bossSubmit
 
 
 def listToString(listInstance):

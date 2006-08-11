@@ -29,6 +29,8 @@ from MCPayloads.JobSpec import JobSpec
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
+from ProdAgentCore.ProdAgentException import ProdAgentException
+
 from popen2 import Popen4
 import select
 import fcntl
@@ -57,21 +59,12 @@ class LCGSubmitter(SubmitterInterface):
             msg = "Error: BOSS environment BOSSDIR not set:\n"
             raise RuntimeError, msg
 
-        # Hard-code this for now, as a 2nd step will remove support for v3
-        self.BossVersion = "v4"
-
-        # BOSS supported versions (best red from configration)
-        supportedBossVersions = ["v3","v4"]
 
 
-        # test if version is in supported versions list
-        if not supportedBossVersions.__contains__(self.BossVersion):
-            msg = "Error: BOSS version " +  os.environ["BOSSVERSION"] + " not supported:\n"
-            msg += "supported versions are " + supportedBossVersions.__str__()
-            raise RuntimeError, msg
+
+
         
         self.parameters['Scheduler']="edg"
-        self.bossSubmitCommand={"v3":self.BOSS3submit,"v4":self.BOSS4submit}
 
 
     def checkPluginConfig(self):
@@ -140,7 +133,7 @@ class LCGSubmitter(SubmitterInterface):
         #bossJobId=self.getIdFromFile(TarballDir, JobName)
         logging.debug( "LCGSubmitter.doSubmit bossJobId = %s"%bossJobId)
         if bossJobId==0:
-            return
+            raise ProdAgentException("Failed Job Declaration")
         JobName=self.parameters['JobName']
         swversion=self.parameters['AppVersions'][0]  # only one sw version for now
 
@@ -166,7 +159,7 @@ class LCGSubmitter(SubmitterInterface):
             logging.error(output)
             sys.exit()
             
-        bossSubmit = self.bossSubmitCommand[self.BossVersion](bossJobId)  
+        bossSubmit = self.BOSS4submit(bossJobId)  
         bossSubmit += " -schclassad %s"%schedulercladfile
 
         #  //
@@ -176,6 +169,8 @@ class LCGSubmitter(SubmitterInterface):
         #logging.debug( "LCGSubmitter.doSubmit:", bossSubmit)
         output = self.executeCommand(bossSubmit)
         logging.debug ("LCGSubmitter.doSubmit: %s" % output)
+        if output.find("error")>=0:
+          raise ProdAgentException("Submission Failed")
         #os.remove(cladfile)
         return
 
@@ -297,7 +292,7 @@ class LCGSubmitter(SubmitterInterface):
             os.kill(pid,9)
             logging.error("killed pid  %d\n"%(pid))
             
-            return ""
+            raise ProdAgentException("Submission Timed Out")
 
         if err == -2:
             err=p.poll()
@@ -309,6 +304,7 @@ class LCGSubmitter(SubmitterInterface):
             #ogging.error(p.fromchild.read())
             
             #eturn ""
+            raise ProdAgentException("command %s gave %d exit code"%(command,err))
         
         output=string.join(outc,"")
         logging.debug("command output \n %s\n"%output)
