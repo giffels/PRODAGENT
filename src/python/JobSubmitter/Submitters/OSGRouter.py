@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGRouter.py,v 1.2 2006/07/17 22:04:24 evansde Exp $"
+__revision__ = "$Id: OSGRouter.py,v 1.3 2006/08/11 15:47:46 evansde Exp $"
 
 import os
 import logging
@@ -167,7 +167,34 @@ class OSGRouter(SubmitterInterface):
         script.append("   source $OSG_GRID/setup.sh\n")
         script.append("fi\n") 
         script.append("PRODAGENT_JOB_INITIALDIR=`pwd`\n")
-        script.append("cd $_CONDOR_SCRATCH_DIR\n")
+        script.append("echo Starting up OSG prodAgent job\n")
+        script.append("echo hostname: `hostname -f`\n")
+        script.append("echo site: $OSG_SITE_NAME\n")
+        script.append("echo gatekeeper: $OSG_JOB_CONTACT\n")
+        script.append("echo pwd: `pwd`\n")
+        script.append("echo date: `date`\n")
+        script.append("echo df output:\n")
+        script.append("df\n")
+        script.append("echo env output:\n")
+        script.append("env\n")
+        script.append("\n")
+        
+        script.append("MIN_DISK=1500000\n") #TODO: make this configurable
+        script.append("DIRS=\"$OSG_WN_TMP $_CONDOR_SCRATCH_DIR\"\n")
+        script.append("for dir in $DIRS; do\n")
+        script.append("  space=`df $dir | tail -1 | awk '{print $4}'`\n")
+        script.append("  if [ \"$space\" -gt $MIN_DISK ]; then \n")
+        script.append("     CHOSEN_WORKDIR=$dir\n")
+        script.append("     break\n")
+        script.append("  fi\n")
+        script.append("done\n")
+        script.append("if [ \"$CHOSEN_WORKDIR\" = \"\" ]; then\n")
+        script.append("  echo Insufficient disk space: Found no directory with $MIN_DISK kB in the following list: $DIRS\n")
+        script.append("  touch FrameworkJobReport.xml\n")
+        script.append("  exit 1\n")
+        script.append("fi\n")
+        script.append("echo CHOSEN_WORKDIR: `$CHOSEN_WORKDIR`\n")
+        script.append("cd $CHOSEN_WORKDIR\n")
         script.append(
             "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % tarballBaseName 
             )
