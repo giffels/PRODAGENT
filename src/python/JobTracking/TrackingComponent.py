@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.19 2006/08/10 18:39:22 evansde Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.20 2006/08/11 14:12:05 bacchi Exp $"
 
 import socket
 import time
@@ -54,6 +54,7 @@ class TrackingComponent:
         
         self.args = {}
         self.args.setdefault("PollInterval", 10 )
+        self.args.setdefault("jobsToPoll", 100)
         self.args.setdefault("ComponentDir","/tmp")
         self.args['Logfile'] = None
         self.args.setdefault("verbose",0)
@@ -323,8 +324,9 @@ class TrackingComponent:
                 self.reportfilename=self.BOSS4reportfilename(jobId)
                 logging.debug("%s exists=%s"%(self.reportfilename,os.path.exists(self.reportfilename)))
                 if os.path.exists(self.reportfilename):
-                    logging.debug("Notify JobState.finished: %s" % self.reportfilename)
-                    self.notifyJobState(self.reportfilename)
+                    #AF: remove the notifyJobState since it's blocking the rest of the code
+                    #AFlogging.debug("Notify JobState.finished: %s" % self.reportfilename)
+                    #AFself.notifyJobState(self.reportfilename)
 
                     logging.debug("check Job Success %s"%checkSuccess(self.reportfilename))
                     
