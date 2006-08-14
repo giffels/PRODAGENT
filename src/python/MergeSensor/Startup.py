@@ -13,6 +13,7 @@ import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
+from ProdAgentCore.PostMortem import runWithPostMortem
 from MergeSensor.MergeSensorComponent import MergeSensorComponent
 
 # Find and load the Configuration
@@ -50,4 +51,8 @@ except StandardError, ex:
 
 createDaemon(compCfg['ComponentDir'])
 component = MergeSensorComponent(**dict(compCfg))
-component.startComponent()
+runWithPostMortem(component, compCfg['ComponentDir'])
+
+
+                  
+
