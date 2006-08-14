@@ -11,8 +11,8 @@ import pickle
 import time
 import re
 
-__revision__ = "$Id: Dataset.py,v 1.11 2006/07/22 23:37:38 hufnagel Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: Dataset.py,v 1.12 2006/08/07 22:32:36 hufnagel Exp $"
+__version__ = "$Revision: 1.12 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 from MergeSensor.MergeSensorError import MergeSensorError, InvalidDataTier
@@ -581,15 +581,19 @@ class Dataset:
         # build file name
         pathname = os.path.join(self.__class__.basePath, self.data['id'])
         
-        # write information into dataset file
+        # write information into temporary file
+        tmpFile = "data.tmp"
         try:       
-            aFile = file(pathname,"w")
+            aFile = file(tmpFile, "w")
             pickle.dump(self.data, aFile)
             aFile.close()
         except IOError:
             raise MergeSensorError, \
-                  'cannot write to dataset %s' % self.data['id']           
+                  'cannot write to temporary file for dataset %s' % self.data['id']           
 
+        # rename with the real file name
+        os.rename(tmpFile, pathname)
+        
     def getName(self):
         """
         _getName_
