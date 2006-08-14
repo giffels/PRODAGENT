@@ -2,7 +2,7 @@
 from ProdAgentDB.Config import defaultConfig
 from ProdAgentDB import Mysql
 
-def connect(**config):
+def connect(cache=True):
      """
      _connect_  Connects to the underlying MySQL database.
     
@@ -19,15 +19,14 @@ def connect(**config):
                            Leave empty if you connect via a socket file.
      """
      actualConfig = defaultConfig
-     if config != {}:
-          actualConfig = config
      try:
          conn=Mysql.connect(actualConfig['dbName'],\
                             actualConfig['host'],\
                             actualConfig['user'],\
                             actualConfig['passwd'],\
                             actualConfig['socketFileLocation'],\
-                            actualConfig['portNr'])
+                            actualConfig['portNr'],
+                            cache)
          return conn
      except:
          raise

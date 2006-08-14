@@ -37,12 +37,18 @@ def connect(dbName,dbHost,dbUser,dbPasswd,socketLocation,portNr="",cache=True):
    from actually "cutting" us of.
    """
    cacheKey=dbName+dbHost+dbUser+dbPasswd
-   if __connectionCache.has_key(cacheKey):
+   if __connectionCache.has_key(cacheKey) and cache:
        conn, staleness, lastCheck = __connectionCache[cacheKey]
        timeDiff=time.time()-staleness
-       if(timeDiff > __refreshPeriod) or not cache:
-           conn.close()
-           del __connectionCache[cacheKey] 
+       if(timeDiff > __refreshPeriod) :
+           try:
+               conn.close()
+               del __connectionCache[cacheKey] 
+           except:
+               try:
+                   del __connectionCache[cacheKey] 
+               except:
+                   pass
        else:
            # test if the connection is still open?
            # NOTE: is there a better way to do this?
@@ -57,7 +63,7 @@ def connect(dbName,dbHost,dbUser,dbPasswd,socketLocation,portNr="",cache=True):
                  cursor.execute("SELECT CURDATE()")
                  cursor.close()
                  return conn
-              except:
+              except Exception,ex:
                  pass
            else:
               return conn
@@ -71,7 +77,8 @@ def connect(dbName,dbHost,dbUser,dbPasswd,socketLocation,portNr="",cache=True):
                conn=MySQLdb.Connect(unix_socket=socketLocation,\
                                    host=dbHost,db=dbName,\
                                    user=dbUser,passwd=dbPasswd)
-           __connectionCache[cacheKey]=(conn,time.time(),time.time())
+           if cache:
+               __connectionCache[cacheKey]=(conn,time.time(),time.time())
            return conn
        except Exception, v:
            # wait and try again.
