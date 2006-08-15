@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.21 2006/08/07 21:45:13 evansde Exp $"
-__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.22 2006/08/08 14:44:22 hufnagel Exp $"
+__version__ = "$Revision: 1.22 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -87,10 +87,22 @@ class MergeSensorComponent:
         self.args.setdefault("DLSType", None)
         self.args.setdefault("DLSAddress", None)
         self.args.setdefault("MergeFileSize", 100000000)
+        # default SE white/black lists are empty
+        self.args.setdefault("MergeSiteWhitelist", None)
+        self.args.setdefault("MergeSiteBlacklist", None)
 
         # update
         self.args.update(args)
         self.args["MergeFileSize"] = int(self.args["MergeFileSize"])
+
+        if self.args['MergeSiteWhitelist'] == None or self.args['MergeSiteWhitelist'] == "None" or self.args['MergeSiteWhitelist'] == "" :
+          self.seWhitelist = []
+        else:  
+          self.seWhitelist = self.args['MergeSiteWhitelist'].split(',')
+        if self.args['MergeSiteBlacklist'] == None or self.args['MergeSiteBlacklist'] == "None" or self.args['MergeSiteBlacklist'] == "":
+          self.seBlacklist = []
+        else:
+          self.seBlacklist = self.args['MergeSiteBlacklist'].split(',')
 
         # server directories
         self.args.setdefault("WatchedDatasets", os.path.join(
@@ -113,6 +125,7 @@ class MergeSensorComponent:
         logging.getLogger().setLevel(logging.INFO)
 
         logging.info("MergeSensor starting... in >> %s << mode" %self.args["StartMode"])
+        logging.info("with MergeFileSize=%s MergeSiteWhitelist=%s MergeSiteBlacklist=%s"%(self.args['MergeFileSize'],self.seWhitelist,self.seBlacklist))        
 
         # get DBS API
         self.dbsApi = self.connectDBS()
@@ -138,10 +151,6 @@ class MergeSensorComponent:
         
         # by default merge is not forced for any dataset
         self.forceMergeList = []
-
-        # by default the SE whitelist and blacklist are empty
-        self.seWhitelist = []
-        self.seBlacklist = []
 
 
     def addWhitelistSE(self, sename):
@@ -804,7 +813,7 @@ class MergeSensorComponent:
                             size = aFile.get('fileSize')
                             fileList.append((name, size, fileBlockId))
 
-                    break
+                        break
 
         else:
 
