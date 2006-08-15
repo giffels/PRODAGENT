@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.2 2006/05/03 08:14:28 ckavka Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: MessageService.py,v 1.3 2006/06/28 15:48:46 ckavka Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -79,12 +79,12 @@ class MessageService:
         self.transaction = []
 
         # parameters
-        self.maxConnectionAttemps = 5
-        self.dbWaitingTime = 10
+        self.refreshPeriod = 60 * 30
         self.pollTime = 5
 
-        # open connection
-        self.conn = self.connect()
+        # force open connection
+        self.connectionTime = 0
+        self.conn = self.connect(invalidate = True)
         
         # logging
         logging.debug("MS: initialization OK")
@@ -289,9 +289,6 @@ class MessageService:
         # logging
         logging.debug("MS: publish requested")
 
-        # get cursor
-        cursor = self.conn.cursor()
-
         # check if message type is in database
         sqlCommand = """
                      SELECT typeid
@@ -299,6 +296,10 @@ class MessageService:
                        WHERE name = '""" + name + """'
                      """
         try:
+            # get cursor
+            cursor = self.conn.cursor()
+
+            # execute command
             cursor.execute(sqlCommand)
         except:
 
@@ -306,7 +307,7 @@ class MessageService:
             logging.warning("MS: connection to database lost")
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect()
+            self.conn = self.connect(invalidate = True)
 
             # logging
             logging.warning("MS: connection to database recovered")
@@ -407,9 +408,6 @@ class MessageService:
         # logging
         logging.debug("MS: get requested")
 
-        # get cursor
-        cursor = self.conn.cursor()
-
         # get messages command
         sqlCommand = """
                      SELECT messageid, name, payload
@@ -427,6 +425,10 @@ class MessageService:
 
             # get messsages
             try:
+                # get cursor
+                cursor = self.conn.cursor()
+
+                # execute command
                 cursor.execute(sqlCommand)
             except:
 
@@ -434,7 +436,7 @@ class MessageService:
                 logging.warning("MS: connection to database lost")
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect()
+                self.conn = self.connect(invalidate = True)
                                                                                 
                 # logging
                 logging.warning("MS: connection to database recovered")
@@ -452,6 +454,9 @@ class MessageService:
             if cursor.rowcount == 1:
                 break
 
+            # close cursor
+            cursor.close()
+                
             # no messages yet
             if not wait:
 
@@ -504,7 +509,7 @@ class MessageService:
             logging.warning("MS: connection to database lost")
 
             # lost connection with database, reopen it
-            self.conn = self.connect()
+            self.conn = self.connect(invalidate = True)
 
             # logging
             logging.warning("MS: connection to database recovered")
@@ -566,7 +571,9 @@ class MessageService:
         an interrupted transaction.
 
         If it cannot be done, the component can safely be restarted and
-        transaction will be automatically rolled back                                                                         
+        transaction will be automatically rolled back
+        
+        Only called with a fresh valid connection
         """
 
         # get cursor
@@ -643,56 +650,41 @@ class MessageService:
     # get an open connection to the database
     ##########################################################################
                                                                                 
-    def connect(self): 
+    def connect(self, invalidate = False): 
         """
         __connect__
                                                                                 
-        Refresh the connection to the database, re-attempting a maximum of
-        maxConnection attempts, waiting for dbWaitingTime between attempts.
+        return a DB connection, reusing old one if still valid. Create a new
+        one if requested so or if old one expired.
                                                                                 
         """
 
-        # get a connection
-        for attempt in range(self.maxConnectionAttemps):
-
+        # is it necessary to refresh the connection?
+        
+        if (time.time() - self.connectionTime > self.refreshPeriod or invalidate):
+            
+            #  close current connection (if any)
             try:
-                #  try to get one
-                conn = connect()#dbName = "ProdAgentDB",\
-                                #host = "cmslcgco01.cern.ch",\
-                                #user = "Proddie",\
-                                #passwd = "ProddiePass",\
-                                #socketFileLocation = "",\
-                                #dbPortNr = "")
-
-                # set transaction properties
-                cursor = conn.cursor()
-                cursor.execute(\
-                     "SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
-                cursor.execute("SET AUTOCOMMIT=0")
-                cursor.close()
-                break
-
+                self.conn.close()
             except:
-                # logging
-                logging.warning("MS: cannot connect to database, waiting")
-
-                # failed, wait before trying again
-                time.sleep(self.dbWaitingTime)
-                conn = None
-
-        # failed, abort
-        if conn == None:
-
+                pass
+            
+            # create a new one    
+            conn = connect(False)
+            self.connectionTime = time.time()
+                
+            # set transaction properties
+            cursor = conn.cursor()
+            cursor.execute(\
+                 "SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
+            cursor.execute("SET AUTOCOMMIT=0")
+            cursor.close()
+            
             # logging
-            logging.error("MS: cannot connec to database, aborting")
+            logging.debug("MS: got connection to database")
 
-            # abort
-            raise
-
-        # logging
-        logging.debug("MS: got connection to database")
-
-        # return connection handler
-        return conn
-
-
+            # return connection handler
+            return conn
+        
+        # return old one
+        return self.conn
