@@ -7,8 +7,8 @@ import os,sys,getopt
 #   //
 #  // Get DBS instance to use
 # //
-usage="\n Usage: python InspectDBS.py <options> \n Options: \n --instance=<MCLocal/Writer> \t\t DBS database instance \n --url=<URL> \t\t DBS URL \n --full \t\t\t\t enable printing of file list \n --help \t\t\t\t print this help \n"
-valid = ['instance=','url=','full','help']
+usage="\n Usage: python InspectDBS.py <options> \n Options: \n --instance=<MCLocal/Writer> \t\t DBS database instance \n --url=<URL> \t\t DBS URL \n --full \t\t\t\t enable printing of file list \n --datasetPath=/primarydataset/datatier/procdataset \t\t optional dataset path to refine the search\n --help \t\t\t\t print this help \n"
+valid = ['instance=','url=','full','datasetPath=','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -20,7 +20,8 @@ except getopt.GetoptError, ex:
 url = "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery"
 # default instance to "MCLocal/Writer"
 dbinstance = "MCLocal/Writer"
-full=False                                                                                                          
+full=False         
+datasetPath = None                                                                                                 
 for opt, arg in opts:
     if opt == "--instance":
         dbinstance = arg
@@ -28,6 +29,8 @@ for opt, arg in opts:
         url = arg
     if opt == "--full":
         full = True
+    if opt == "--datasetPath":
+        datasetPath = arg
     if opt == "--help":
         print usage
         sys.exit(1)
@@ -47,7 +50,10 @@ api = dbsCgiApi.DbsCgiApi(url, args)
 # // Get list of datasets
 #//
 try:
-  datasets = api.listProcessedDatasets("/*/*/*")
+   if datasetPath:
+     datasets = api.listProcessedDatasets(datasetPath)
+   else:
+     datasets = api.listProcessedDatasets("/*/*/*")
 except dbsCgiApi.DbsCgiToolError , ex:
   print "%s: %s " %(ex.getClassName(),ex.getErrorMessage())
   print "exiting..."
