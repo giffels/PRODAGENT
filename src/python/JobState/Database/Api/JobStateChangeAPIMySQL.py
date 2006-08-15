@@ -16,7 +16,7 @@ from ProdAgentDB.Connect import connect
 ##########################################################################
 
 def register(jobSpecId, jobType, maxRetries, maxRacers = 1):   
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        try:
            sqlStr="INSERT INTO js_JobSpec(JobSpecID,                   \
@@ -34,9 +34,11 @@ def register(jobSpecId, jobType, maxRetries, maxRacers = 1):
                raise ProdAgentException("Error registering job. You probably are trying to register a job using an job id/job name that has already been used for registration. Your job id/job name is: "+str(jobSpecId)+". Original error: "+str(ex[1]))
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
            raise 
 
 ##########################################################################
@@ -44,7 +46,7 @@ def register(jobSpecId, jobType, maxRetries, maxRacers = 1):
 ##########################################################################
       
 def create(jobSpecId, cacheDir): 
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -62,16 +64,18 @@ def create(jobSpecId, cacheDir):
                      "transition: "+ state+ "-->create")
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
            raise
 
 ##########################################################################
 # createFailure method
 ##########################################################################
 def createFailure(jobSpecId):
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -109,9 +113,11 @@ def createFailure(jobSpecId):
 
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
            raise
 
 
@@ -120,7 +126,7 @@ def createFailure(jobSpecId):
 ##########################################################################
 
 def inProgress(jobSpecId): 
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -137,9 +143,11 @@ def inProgress(jobSpecId):
                                           "-->inProgress")
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
            raise
 
 ##########################################################################
@@ -147,7 +155,7 @@ def inProgress(jobSpecId):
 ##########################################################################
 
 def submit(jobSpecId):
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -180,9 +188,11 @@ def submit(jobSpecId):
               raise SubmitException("Submit failed, please try again")
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
            raise
          
 ##########################################################################
@@ -190,7 +200,7 @@ def submit(jobSpecId):
 ##########################################################################
 
 def submitFailure(jobSpecId):
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -227,9 +237,11 @@ def submitFailure(jobSpecId):
 
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
            raise
          
 ##########################################################################
@@ -237,7 +249,7 @@ def submitFailure(jobSpecId):
 ##########################################################################
 
 def runFailure(jobSpecId, jobInstanceId = None, runLocation = None, jobReportLocation = None):
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -298,9 +310,11 @@ def runFailure(jobSpecId, jobInstanceId = None, runLocation = None, jobReportLoc
            dbCur.execute("COMMIT")
 
            dbCur.close()
+           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
            raise
 
 ##########################################################################
@@ -308,7 +322,7 @@ def runFailure(jobSpecId, jobInstanceId = None, runLocation = None, jobReportLoc
 ##########################################################################
 
 def finished(jobSpecId): 
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -324,9 +338,11 @@ def finished(jobSpecId):
                   "transition: "+state+"-->finished")
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
            raise
 
 ##########################################################################
@@ -334,7 +350,7 @@ def finished(jobSpecId):
 ##########################################################################
 
 def cleanout(jobSpecId): 
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -353,9 +369,11 @@ def cleanout(jobSpecId):
            dbCur.execute(sqlStr4)
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
            raise
 
 ##########################################################################
@@ -367,7 +385,7 @@ def setRacer(jobSpecId,maxRacers):
        Sets the maximum number of the same jobs that can be run at the
        same time (number of racers).
        """
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        try:
 
@@ -380,13 +398,15 @@ def setRacer(jobSpecId,maxRacers):
                               str(jobSpecId)+" does not exist")
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
            raise
 
 def purgeStates():
-   conn=connect()
+   conn=connect(False)
    dbCur=conn.cursor()
    try:
 
@@ -403,13 +423,15 @@ def purgeStates():
        dbCur.execute(sqlStr4)
        dbCur.execute("COMMIT")
        dbCur.close()
+       conn.close()
    except:
        dbCur.execute("ROLLBACK")
        dbCur.close()
+       conn.close()
        raise
 
 def startedJobs(daysBack):
-   conn=connect()
+   conn=connect(False)
    dbCur=conn.cursor()
 
    now=datetime.datetime.now()
@@ -424,8 +446,10 @@ def startedJobs(daysBack):
        result=dbCur.fetchall() 
        dbCur.execute("COMMIT")
        dbCur.close()
+       conn.close()
        return result
    except:
        dbCur.execute("ROLLBACK")
        dbCur.close()
+       conn.close()
        raise

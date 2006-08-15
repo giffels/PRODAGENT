@@ -6,8 +6,9 @@ from ProdAgentDB.Connect import connect
 
 def general(JobSpecId,dbCur1 = None):
    try:
+       #NOTE we should put this in separte commit,rollback and connect methods
        if(dbCur1==None):
-           conn=connect()
+           conn=connect(False)
            dbCur=conn.cursor()
            dbCur.execute("START TRANSACTION")
        else:
@@ -23,6 +24,7 @@ def general(JobSpecId,dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        if len(rows)==0:
            raise ProdAgentException("Job with JobID "+str(JobSpecId)+ \
                            " does not exists")
@@ -39,13 +41,14 @@ def general(JobSpecId,dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
        raise
 
 
 def isRegistered(JobSpecId,dbCur1 = None):
    try:
        if(dbCur1==None):
-           conn=connect()
+           conn=connect(False)
            dbCur=conn.cursor()
            dbCur.execute("START TRANSACTION")
        else:
@@ -59,6 +62,7 @@ def isRegistered(JobSpecId,dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        if len(rows)==0:
            return False
        return True
@@ -66,6 +70,7 @@ def isRegistered(JobSpecId,dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
        raise
 
 def lastLocations(JobSpecId,dbCur1 = None):
@@ -74,7 +79,7 @@ def lastLocations(JobSpecId,dbCur1 = None):
                JobSpecId+'";'
 
        if(dbCur1==None):
-           conn=connect()
+           conn=connect(False)
            dbCur=conn.cursor()
            dbCur.execute("START TRANSACTION")
        else:
@@ -88,6 +93,7 @@ def lastLocations(JobSpecId,dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        result=[]
        for i in rows:
            result.append(i[0])
@@ -96,12 +102,13 @@ def lastLocations(JobSpecId,dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
        raise
           
 def jobReports(JobSpecId, dbCur1 = None):
    try:
        if(dbCur1==None):
-           conn=connect()
+           conn=connect(False)
            dbCur=conn.cursor()
            dbCur.execute("START TRANSACTION")
        else:
@@ -121,17 +128,19 @@ def jobReports(JobSpecId, dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        return result
    except:
        if dbCur1==None:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
        raise
 
 def jobSpecTotal(dbCur1 = None):
    try:
        if(dbCur1==None):
-           conn=connect()
+           conn=connect(False)
            dbCur=conn.cursor()
            dbCur.execute("START TRANSACTION")
        else:
@@ -144,17 +153,19 @@ def jobSpecTotal(dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        return result
    except:
        if dbCur1==None:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
        raise
 
 def rangeGeneral(start = -1 , nr = -1 ,dbCur1 = None):
    try:
        if(dbCur1==None):
-           conn=connect()
+           conn=connect(False)
            dbCur=conn.cursor()
            dbCur.execute("START TRANSACTION")
        else:
@@ -177,6 +188,7 @@ def rangeGeneral(start = -1 , nr = -1 ,dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        result=[]
        resultDescription=['JobSpecID','JobType','MaxRetries','Retries','State','CacheDirLocation','MaxRacers','Racers']
        result.append(resultDescription)
@@ -194,11 +206,12 @@ def rangeGeneral(start = -1 , nr = -1 ,dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
        raise
 
 def startedJobs(daysBack,dbCur1 = None):
    if(dbCur1==None):
-       conn=connect()
+       conn=connect(False)
        dbCur=conn.cursor()
        dbCur.execute("START TRANSACTION")
    else:
@@ -216,10 +229,12 @@ def startedJobs(daysBack,dbCur1 = None):
        if dbCur1==None:
            dbCur.execute("COMMIT")
            dbCur.close()
+           conn.close()
        return result
    except:
        if dbCur1==None:
            dbCur.execute("ROLLBACK")
            dbCur.close()
+           conn.close()
        raise
 
