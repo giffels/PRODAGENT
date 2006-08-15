@@ -12,5 +12,6 @@ class TestAction(ActionInterface):
    def invoke(self,jobSpecId):
       self.messageService.publish("testEvent","none")
       print('-->Action Test Action is being Invoked for jobSpecID: '+jobSpecId)
+      self.messageService.commit()
 
 registerAction(TestAction(),"testAction")
