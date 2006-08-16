@@ -11,8 +11,8 @@ subscribes to the event newDataset and publishes CreateJob events.
 Original implementation by: evansde@fnal.gov  
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.22 2006/08/08 14:44:22 hufnagel Exp $"
-__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.23 2006/08/15 20:28:34 afanfani Exp $"
+__version__ = "$Revision: 1.23 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -146,8 +146,9 @@ class MergeSensorComponent:
         # create thread synchronization condition variable
         self.cond = Condition()
  
-        # use message server or xmlrpc interface?
+        # message service instances
         self.ms = None 
+        self.msThread = None
         
         # by default merge is not forced for any dataset
         self.forceMergeList = []
@@ -688,8 +689,8 @@ class MergeSensorComponent:
 
         """
 
-        self.ms.publish("CreateJob", mergeSpecURL)
-        self.ms.commit()
+        self.msThread.publish("CreateJob", mergeSpecURL)
+        self.msThread.commit()
 
         return
 
@@ -705,7 +706,7 @@ class MergeSensorComponent:
         # generate NewDataset event
         self.ms.publish("NewDataset", mergeNewDatasetFile)
         self.ms.commit()
- 
+
         return
 
 
@@ -981,11 +982,13 @@ class MergeSensorComponent:
         # set Datatier possible names
         Dataset.setDataTierList(self.args['DBSDataTier'])
 
-        # create message server
+        # create message service instances
         self.ms = MessageService()
+        self.msThread = MessageService()
         
         # register
         self.ms.registerAs("MergeSensor")
+        self.msThread.registerAs("MergeSensorThread")
         
         # subscribe to messages
         self.ms.subscribeTo("NewDataset")
