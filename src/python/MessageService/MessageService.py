@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.3 2006/06/28 15:48:46 ckavka Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: MessageService.py,v 1.4 2006/08/15 10:51:48 ckavka Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -79,7 +79,7 @@ class MessageService:
         self.transaction = []
 
         # parameters
-        self.refreshPeriod = 60 * 30
+        self.refreshPeriod = 60 * 60 * 12
         self.pollTime = 5
 
         # force open connection
