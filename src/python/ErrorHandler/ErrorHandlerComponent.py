@@ -55,6 +55,7 @@ class ErrorHandlerComponent:
          self.args['jobReportLocation']='/tmp/prodAgentJobReports'
          self.args['Logfile'] = None
          self.args['MaxCacheDirSizeMB'] = 100
+         self.args['DelayFactor']=60
          self.args.update(args)
  
 
@@ -110,7 +111,7 @@ class ErrorHandlerComponent:
                             %(event,str(payload)))
               logging.error("Details: %s" % str(ex)) 
                 
-    def publishEvent(self,name,payload):
+    def publishEvent(self,name,payload,delay="00:00:00"):
         """
         _publishEvent_
          
@@ -119,7 +120,7 @@ class ErrorHandlerComponent:
         with its configuration and commits the publication.
 
         """   
-        self.ms.publish(name,payload)
+        self.ms.publish(name,payload,delay)
         self.ms.commit()
 
  
@@ -134,9 +135,9 @@ class ErrorHandlerComponent:
          for handlerName in Registry.HandlerRegistry.keys():
              handler=Registry.HandlerRegistry[handlerName]
              handler.publishEvent=self.publishEvent
+             handler.args=self.args
+             #NOTE: remove this
              handler.maxCacheDirSizeMB=self.args['MaxCacheDirSizeMB']
-             if (handlerName == "runFailureHandler"):
-                 handler.setJobReportLocation(self.args['jobReportLocation'])
                  
          # main body using persistent based message server
          logging.info("ErrorHandler persistent based message service Starting...")

@@ -8,6 +8,7 @@ from ErrorHandler.DirSize import convertSize
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
 from ErrorHandler.Registry import registerHandler
 from ErrorHandler.Registry import retrieveHandler
+from ErrorHandler.TimeConvert import convertSeconds
 from JobState.Database.Api.RetryException import RetryException
 from JobState.JobStateAPI import JobStateChangeAPI
 from JobState.JobStateAPI import JobStateInfoAPI
@@ -40,6 +41,11 @@ class SubmitFailureHandler(HandlerInterface):
          logging.debug(">SubmitFailureHandler<:Retrieving jobId from payload: "+str(jobId))
 
          generalInfo=JobStateInfoAPI.general(jobId)
+         # a submit event with delay
+         delay=int(self.args['DelayFactor'])*(int(generalInfo['Retries']+1))
+         delay=convertSeconds(delay)
+         logging.debug(">SubmitHandler<: Submitting with delay (h:m:s) "+\
+                      str(delay))
          try:
               JobStateChangeAPI.submitFailure(jobId)
 
@@ -56,12 +62,12 @@ class SubmitFailureHandler(HandlerInterface):
                   newPayload=jobId+",SubmitJob,"+jobId
                   logging.debug(">SubmitFailureHandler<: Reached maximum cache size. "+\
                       "Performing partial cache cleanup first.")
-                  self.publishEvent("PartialJobCleanup",newPayload)
+                  self.publishEvent("PartialJobCleanup",newPayload,delay)
               else:
                   logging.debug(">SubmitFailureHandler<:Registered "+\
                      "a job submit failure,"\
                      "publishing a submit job event")
-                  self.publishEvent("SubmitJob",(jobId))
+                  self.publishEvent("SubmitJob",(jobId),delay)
          except RetryException:
               logging.debug(">SubmitFailureHandler<:Registered "+\
                             "a job submit failure. "+ \

@@ -5,6 +5,7 @@ import logging
 
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
 from ErrorHandler.Registry import registerHandler
+from ErrorHandler.TimeConvert import convertSeconds
 from JobState.Database.Api.RetryException import RetryException
 from JobState.JobStateAPI import JobStateChangeAPI
 from JobState.JobStateAPI import JobStateInfoAPI
@@ -26,14 +27,19 @@ class CreateFailureHandler(HandlerInterface):
 
     def handleError(self,payload):
          jobId  = payload
+         generalInfo=JobStateInfoAPI.general(jobId)
 
+         delay=int(self.args['DelayFactor'])*(int(generalInfo['Retries']+1))
+         delay=convertSeconds(delay)
+         logging.debug(">CreateFailureHandler<: re-creating with delay "+\
+             " (h:m:s) "+str(delay))
          try:
               JobStateChangeAPI.createFailure(jobId)
 
               logging.debug(">CreateFailureHandler<: Registered "+\
                             "a create failure,"\
                             "publishing a create event")
-              self.publishEvent("CreateJob",(jobId))
+              self.publishEvent("CreateJob",(jobId),delay)
          except RetryException:
               logging.debug(">CreateFailureHandler<: Registered "+\
                             "a create failure "+ \

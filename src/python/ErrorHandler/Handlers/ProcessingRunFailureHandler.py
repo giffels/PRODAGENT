@@ -20,8 +20,9 @@ class ProcessingRunFailureHandler(HandlerInterface):
          jobReport=readJobReport(payload)
          jobId  = jobReport[0].jobSpecId
          # do nothing for the moment.
+         logging.debug(">ProcessingRunFailureHandler< do nothing 4 the moment")
 
-registerHandler(ProcessingRunFailureHandler(),"processingRunFailureHandler")
+registerHandler(ProcessingRunFailureHandler(),"ProcessingRunFailureHandler")
 
 
 

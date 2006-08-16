@@ -18,8 +18,9 @@ class ProcessingSubmitFailureHandler(HandlerInterface):
 
     def handleError(self,payload):
          jobId = payload
+         logging.debug(">ProcessingSubmitFailureHandler<: do nothing 4 the moment") 
 
-registerHandler(ProcessingSubmitFailureHandler(),"processingSubmitFailureHandler")
+registerHandler(ProcessingSubmitFailureHandler(),"ProcessingSubmitFailureHandler")
 
 
 

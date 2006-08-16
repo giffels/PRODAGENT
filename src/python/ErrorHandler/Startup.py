@@ -29,6 +29,7 @@ except StandardError, ex:
 
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 compCfg['jobReportLocation'] = compCfg['ComponentDir']+'/JobReports' 
+
 #  //
 # // Initialise and start the component
 #//

@@ -18,7 +18,8 @@ class MergingSubmitFailureHandler(HandlerInterface):
 
     def handleError(self,payload):
          jobId = payload
+         logging.debug(">MergeSubmitFailureHandler<: do nothing 4 the moment")
 
-registerHandler(MergingSubmitFailureHandler(),"mergingSubmitFailureHandler")
+registerHandler(MergingSubmitFailureHandler(),"MergeSubmitFailureHandler")
 
 

@@ -10,6 +10,7 @@ from ErrorHandler.DirSize import convertSize
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
 from ErrorHandler.Registry import registerHandler
 from ErrorHandler.Registry import retrieveHandler
+from ErrorHandler.TimeConvert import convertSeconds
 from FwkJobRep.ReportParser import readJobReport
 from JobState.Database.Api.RetryException import RetryException
 from JobState.JobStateAPI import JobStateChangeAPI
@@ -41,9 +42,6 @@ class RunFailureHandler(HandlerInterface):
     def __init__(self):
          HandlerInterface.__init__(self)
          self.args={}
-
-    def setJobReportLocation(self,jobReportLocation):
-         self.args['jobReportLocation']=jobReportLocation
 
     def handleError(self,payload):
          """
@@ -81,6 +79,11 @@ class RunFailureHandler(HandlerInterface):
          reportLocation=self.args['jobReportLocation']+'/'+ \
                            jobId+'/'+fileName
          generalInfo=JobStateInfoAPI.general(jobId)
+         # a submit event with delay
+         delay=int(self.args['DelayFactor'])*(int(generalInfo['Retries']+1))
+         delay=convertSeconds(delay) 
+         logging.debug(">RunFailureHandler<: re-submitting with delay (h:m:s) "+\
+                      str(delay))
 
          try:
               JobStateChangeAPI.runFailure(jobId,jobReportLocation= reportLocation)
@@ -94,16 +97,18 @@ class RunFailureHandler(HandlerInterface):
 
               # if necessary first a partial cleanup is done, which after it
               # is finished publishes the proper event.
+
+              # retrieve the number of retries and publish
               if(float(dirSizeMegaBytes)>float(self.maxCacheDirSizeMB)):
-                  newPayload=jobId+",SubmitJob,"+jobId
+                  newPayload=jobId+",SubmitJob,"+jobId+","+str(delay)
                   logging.debug(">RunFailureHandler<: Reached maximum cache size. "+\
                       "Performing partial cache cleanup first.")
-                  self.publishEvent("PartialJobCleanup",newPayload)
+                  self.publishEvent("PartialJobCleanup",newPayload,delay)
               else:
                   logging.debug(">RunFailureHandler<:Registered "+\
                                 "a job run failure,"\
                                 "publishing a submit job event")
-                  self.publishEvent("SubmitJob",(jobId))
+                  self.publishEvent("SubmitJob",(jobId),delay)
          except RetryException:
               logging.debug(">RunFailureHandler<:Registered "+\
                             "a job run failure "+ \

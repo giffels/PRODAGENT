@@ -19,8 +19,9 @@ class MergingRunFailureHandler(HandlerInterface):
     def handleError(self,payload):
          jobReport=readJobReport(payload)
          jobId  = jobReport[0].jobSpecId
+         logging.debug(">MergeRunFailureHandler<: do nothing 4 the moment")
 
-registerHandler(MergingRunFailureHandler(),"mergingRunFailureHandler")
+registerHandler(MergingRunFailureHandler(),"MergeRunFailureHandler")
 
 
 
