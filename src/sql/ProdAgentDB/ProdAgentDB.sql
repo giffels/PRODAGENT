@@ -192,6 +192,8 @@ CREATE TABLE `ms_history` (
   `dest` int(11) NOT NULL default '0',
   `payload` text NOT NULL,
   `time` timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+  `delay` varchar(50) NOT NULL default '00:00:00',
+
   PRIMARY KEY `messageid` (`messageid`),
   FOREIGN KEY(`type`) references `ms_type`(`typeid`),
   FOREIGN KEY(`source`) references `ms_process`(`procid`),
@@ -218,6 +220,8 @@ CREATE TABLE `ms_message` (
   `dest` int(11) NOT NULL default '0',
   `payload` text NOT NULL,
   `time` timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+  `delay` varchar(50) NOT NULL default '00:00:00',
+
   PRIMARY KEY `messageid` (`messageid`),
   FOREIGN KEY(`type`) references `ms_type`(`typeid`),
   FOREIGN KEY(`source`) references `ms_process`(`procid`),
@@ -255,10 +259,7 @@ CREATE TABLE `ms_subscription` (
 CREATE TABLE st_job_success (
    job_index INT NOT NULL AUTO_INCREMENT,
    job_spec_id VARCHAR(255) NOT NULL,
-   job_type VARCHAR(255),
    workflow_spec_id VARCHAR(255) NOT NULL,
-   time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP 
-       on update CURRENT_TIMESTAMP,
    exit_code INT,
    task_name VARCHAR(255),		
    status VARCHAR(255),
@@ -279,8 +280,8 @@ CREATE TABLE st_job_attr (
    attr_index INT NOT NULL AUTO_INCREMENT,
    job_index INT NOT NULL,
    
-   attr_class ENUM("run_numbers", "output_files", "output_datasets", "input_files", 'timing'),
-   attr_name VARCHAR(255),
+   attr_class ENUM("run_numbers", "output_files", "output_datasets", "input_files"),
+   
    attr_value BLOB,
 
    FOREIGN KEY(job_index)
@@ -299,9 +300,6 @@ CREATE TABLE st_job_failure (
    job_index INT NOT NULL AUTO_INCREMENT,
    job_spec_id VARCHAR(255) NOT NULL,
    workflow_spec_id VARCHAR(255) NOT NULL,
-   job_type VARCHAR(255),	
-   time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP 
-       on update CURRENT_TIMESTAMP,
    exit_code INT,
    task_name VARCHAR(255),		
    status VARCHAR(255),
