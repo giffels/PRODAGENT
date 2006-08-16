@@ -34,7 +34,7 @@ class TriggerUnitTests(unittest.TestCase):
         try:
            print("\nCreate job spec ids")
            for j in xrange(0,self.jobspecs):
-               JobStateChangeAPI.register("jobSpec"+str(j),"processing",3,1)
+               JobStateChangeAPI.register("jobSpec"+str(j),"Processing",3,1)
         except StandardError, ex:
             msg = "Failed TestA:\n"
             msg += str(ex)
@@ -142,7 +142,7 @@ class TriggerUnitTests(unittest.TestCase):
 
     def testG(self):
         try:
-           print("\nSet All Flags")
+           print("\nSet All Flags (TestG)")
            for i in xrange(0,self.triggers):
                for j in xrange(0,self.jobspecs):
                    for k in xrange(0,self.flags):
@@ -150,21 +150,7 @@ class TriggerUnitTests(unittest.TestCase):
                           "jobSpec"+str(j),"flag"+str(k))
 
         except StandardError, ex:
-            msg = "Failed Test F:\n"
-            msg += str(ex)
-            self.fail(msg)
-
-    def testH(self):
-        try:
-           print("\nSet All Flags")
-           for i in xrange(0,self.triggers):
-               for j in xrange(0,self.jobspecs):
-                   for k in xrange(0,self.flags):
-                      self.trigger.setFlag("trigger"+str(i),\
-                          "jobSpec"+str(j),"flag"+str(k))
-
-        except StandardError, ex:
-            msg = "Failed Test F:\n"
+            msg = "Failed Test G:\n"
             msg += str(ex)
             self.fail(msg)
 

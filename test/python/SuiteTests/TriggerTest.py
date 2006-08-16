@@ -4,7 +4,7 @@ A test suite that runs a number of tests that depend
 on eachother.
 
 """
-
+import time
 import unittest
 
 from Test import preTests

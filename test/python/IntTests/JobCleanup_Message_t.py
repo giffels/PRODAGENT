@@ -89,7 +89,7 @@ class ComponentServerTest(unittest.TestCase):
         print("""\nSet the job cache (used for job cleanup)""")
         try:
             for i in xrange(0,self.jobSpecs):
-                JobStateChangeAPI.register("jobSpec"+str(i),"processing",2,2)
+                JobStateChangeAPI.register("jobSpec"+str(i),"Processing",2,2)
                 JobStateChangeAPI.create("jobSpec"+str(i),self.location+"/jobSpecDir_"+str(i))
         except StandardError, ex:
             msg = "Failed testB:\n"
@@ -135,7 +135,7 @@ class ComponentServerTest(unittest.TestCase):
         print("""\nSet the job cache (used for failure job cleanup)""")
         try:
             for i in xrange(0,self.failureJobSpecs):
-                JobStateChangeAPI.register("failureJobSpec"+str(i),"processing",2,2)
+                JobStateChangeAPI.register("failureJobSpec"+str(i),"Processing",2,2)
                 JobStateChangeAPI.create("failureJobSpec"+str(i),self.location+"/failureJobSpecDir_"+str(i))
         except StandardError, ex:
             msg = "Failed testB:\n"
