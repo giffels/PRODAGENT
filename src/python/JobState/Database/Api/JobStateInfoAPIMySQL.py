@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import datetime
+import logging
 
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Connect import connect
@@ -7,6 +8,7 @@ from ProdAgentDB.Connect import connect
 def general(JobSpecId,dbCur1 = None):
    try:
        #NOTE we should put this in separte commit,rollback and connect methods
+      
        if(dbCur1==None):
            conn=connect(False)
            dbCur=conn.cursor()
@@ -21,14 +23,14 @@ def general(JobSpecId,dbCur1 = None):
        dbCur.execute(sqlStr)
        #due to the schema we either get 0 or 1 row back.
        rows=dbCur.fetchall()
-       if dbCur1==None:
-           dbCur.execute("COMMIT")
-           dbCur.close()
-           conn.close()
        if len(rows)==0:
            raise ProdAgentException("Job with JobID "+str(JobSpecId)+ \
                            " does not exists")
        # format it in a dictionary
+       if dbCur1==None:
+           dbCur.execute("COMMIT")
+           dbCur.close()
+           conn.close()
        return {'JobType':rows[0][0], \
                'MaxRetries':rows[0][1], \
                'Retries':rows[0][2], \
