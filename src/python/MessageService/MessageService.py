@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.4 2006/08/15 10:51:48 ckavka Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: MessageService.py,v 1.5 2006/08/16 15:24:21 ckavka Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -272,7 +272,7 @@ class MessageService:
     # publish method 
     ##########################################################################
 
-    def publish(self, name, payload):
+    def publish(self, name, payload,delay="00:00:00"):
         """
         _publish_
         
@@ -365,22 +365,24 @@ class MessageService:
             sqlCommand = """
                          INSERT
                            INTO ms_message
-                             (type, source, dest, payload)
+                             (type, source, dest, payload,delay)
                            VALUES ('""" + str(typeid) + """',
                                    '""" + str(self.procid) + """',
                                    '""" + str(dest) + """',
-                                   '""" + payload + """')
+                                   '""" + payload + """',
+                                   '""" + str(delay)+ """')
                          """
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
             sqlCommand = """
                          INSERT
                            INTO ms_history
-                             (type, source, dest, payload)
+                             (type, source, dest, payload,delay)
                            VALUES ('""" + str(typeid) + """',
                                    '""" + str(self.procid) + """',
                                    '""" + str(dest) + """',
-                                   '""" + payload + """')
+                                   '""" + payload + """',
+                                   '""" + str(delay)+ """')
                          """
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
@@ -414,6 +416,7 @@ class MessageService:
                        FROM ms_message, ms_type
                        WHERE
                          typeid=type and
+                         ADDTIME(time,delay) <= CURRENT_TIMESTAMP and
                          dest='""" + str(self.procid) + """'
                        ORDER BY time,messageid
                        LIMIT 1
