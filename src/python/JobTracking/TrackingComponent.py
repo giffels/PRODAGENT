@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.20 2006/08/11 14:12:05 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.21 2006/08/13 18:36:49 afanfani Exp $"
 
 import socket
 import time
@@ -473,8 +473,8 @@ class TrackingComponent:
         JobSuccess event to the prodAgent
         
         """
-        self.ms.publish("JobSuccess", self.reportfilename)
-        self.ms.commit()
+        self.msThread.publish("JobSuccess", self.reportfilename)
+        self.msThread.commit()
                                                                                 
         logging.debug("JobSuccess:%s" % self.reportfilename)
        
@@ -497,8 +497,8 @@ class TrackingComponent:
             self.failedJobsPublished[jobId[0]] += 0
         except StandardError:
             logging.debug("JobFailed: %s" % msg)
-            self.ms.publish("JobFailed", msg)
-            self.ms.commit()
+            self.msThread.publish("JobFailed", msg)
+            self.msThread.commit()
             self.failedJobsPublished[jobId[0]] = 1
            
         return
@@ -520,8 +520,8 @@ class TrackingComponent:
             JobStateChangeAPI.submitFailure(msg)
             
             logging.debug("SubmissionFailed: %s" % msg)
-            self.ms.publish("SubmissionFailed", msg)
-            self.ms.commit()
+            self.msThread.publish("SubmissionFailed", msg)
+            self.msThread.commit()
                                                                                 
             self.failedJobsPublished[jobId[0]] = 1
            
@@ -616,11 +616,15 @@ class TrackingComponent:
 
         """
 
-        # create message server
+        # create message server instances
         self.ms = MessageService()
+        self.msThread = MessageService()
                                                                                 
         # register
         self.ms.registerAs("TrackingComponent")
+        self.msThread.registerAs("TrackingComponentThread")
+
+        # subscribe to messages
         self.ms.subscribeTo("TrackingComponent:StartDebug")
         self.ms.subscribeTo("TrackingComponent:EndDebug")
 
