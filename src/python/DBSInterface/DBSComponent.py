@@ -347,10 +347,9 @@ class DBSComponent:
 
             self.dbsinfo= DBSclient(self.args['DBSURL'],self.args['DBSAddress'])
 
-            # SEname=self.getSEname() 
-            ## get Stage out SE from FWK report 
+            ## get site Stage out SE from FWK report 
             SEname=jobreport.siteDetails['se-name']
-            logging.debug(" SEname %s"%SEname)
+            logging.debug("site SEname %s"%SEname)
             #  //
             # // handle output files information from FWK report
             #//  We first loop through files and add each file to the fileblock based
@@ -370,7 +369,12 @@ class DBSComponent:
                     msg += "This file will not be added to a fileblock or dataset\n"
                     logging.error(msg)
                     continue
-                
+                #  //
+                # // Overwite the site se-name with the SEName associated to each file (if any)
+                #//  
+                if fileinfo.has_key("SEName"):
+                  SEname=fileinfo['SEName']
+                  logging.debug("SEname associated to file is %s"%SEname)
                 #  //
                 # // Define the fileblock to add files to,
                 #//  look for just the first datasetPath
