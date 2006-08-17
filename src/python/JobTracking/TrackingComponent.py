@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.21 2006/08/13 18:36:49 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.22 2006/08/16 15:12:56 ckavka Exp $"
 
 import socket
 import time
@@ -173,16 +173,16 @@ class TrackingComponent:
 
         try:
             lines=outfile.split("\n")
-            logging.info(lines[1].split("-")[1])
+            #logging.info(lines[1].split("-")[1])
             startId=int(lines[1].split("-")[1])
-            logging.info("startId = %d\n"%startId)
+            #logging.info("startId = %d\n"%startId)
             
             maxId=int(lines[1].split("-")[0])
             endId=startId+float(self.args["jobsToPoll"])
         except:
             maxId=0
             startId=1
-        logging.info("%d %d %d \n"%(startId,maxId,endId))
+        #logging.info("%d %d %d \n"%(startId,maxId,endId))
 
 
         try:
