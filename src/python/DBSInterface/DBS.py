@@ -90,10 +90,11 @@ class DBS:
          pass
 
        # Create File Block (in the datatier loop for now)
-       datasetPath="/%s/%s/%s"%(dataset.get('primaryDataset')['datasetName'],dataset.get('dataTier'),dataset.get('datasetName'))
 
-       logging.debug(" datasetPath %s"%datasetPath)
-       self.insertFileBlock(datasetPath, processing)
+#AF - skip creation of empty fileblock
+#AF       datasetPath="/%s/%s/%s"%(dataset.get('primaryDataset')['datasetName'],dataset.get('dataTier'),dataset.get('datasetName'))
+#AF       logging.debug(" datasetPath %s"%datasetPath)
+#AF       self.insertFileBlock(datasetPath, processing)
 
     return 
 
@@ -187,48 +188,6 @@ class DBS:
            pass
     return block
 
-
-
-#  def addFileBlock(self, fileblockList, datasetPath):
-#    """
-#      Create FileBlock with the same processing of the empty fileblock created with New Dataset  
-#    """
-#
-#    ## get information about the existing processing 
-#    # - get application configuration info
-#    for fileblock in fileblockList:
-#     blockobjectId=fileblock.get('objectId')
-#     for appconfig in self.api.listApplicationConfigs():
-#       #print "  %s" % appc
-#       if appconfig['objectId']==blockobjectId:
-#         blockapp=appconfig['application']
-#         #print " blockapp %s"%blockapp
-#         blockpset=appconfig['parameterSet']
-#         #print " blockpset %s"%blockpset
-#         # - get dataset names
-#         primdataset = DbsPrimaryDataset(datasetName = datasetPath.split('/')[1])
-#         procdatasetName=datasetPath.split('/')[3]
-#
-#         processing = DbsProcessing (primaryDataset = primdataset,
-#                              processingName = procdatasetName,
-#                              applicationConfig = {
-#                                'application' :  blockapp ,
-#                                'parameterSet' : blockpset })
-#
-#         logging.debug("processing taken from block with id %s"%blockobjectId)
-##         logging.debug("processing is: %s"%processing)
-#         ## add another block associated with that processing
-#         block = DbsFileBlock (processing = processing)
-#         try:
-#           self.api.createFileBlock(block)
-#         except DbsCgiObjectExists, ex:
-#           print "Object existed already, passing"
-#           pass
-#         return block
-#   
-#    msg = " Not able to extract the processing associated to the dataset %s "%datasetPath
-#    raise RuntimeError, msg
-#    return None
 
 # ##############
   def insertFiletoBlock(self, fileinfo,fileblock):

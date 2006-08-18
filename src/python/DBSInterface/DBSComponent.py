@@ -83,6 +83,22 @@ class InvalidJobReport(exceptions.Exception):
    return "%s" % (self.args)
 
 # ##############
+class NoFileBlock(exceptions.Exception):
+  def __init__(self,errmsg):
+   args= errmsg
+   exceptions.Exception.__init__(self, args)
+   pass
+                                                                                              
+  def getClassName(self):
+   """ Return class name. """
+   return "%s" % (self.__class__.__name__)
+                                                                                              
+  def getErrorMessage(self):
+   """ Return exception error. """
+   return "%s" % (self.args)
+                                                                                              
+
+# ##############
 class DBSComponent:
     """
     _DBSComponent_
@@ -186,6 +202,10 @@ class DBSComponent:
             except AssertionError, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("AssertionError Details: %s" % str(ex))
+                return
+            except NoFileBlock, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
                 return
             except StandardError, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
@@ -402,11 +422,8 @@ class DBSComponent:
                     firstDataset
                     )
                 if fileblock is None:
-                    msg += "No Fileblock found for dataset: %s" % firstDatasetPath
-                    msg += "SEname: %s\n" % SEname 
-                    logging.error(msg)
-                    #continue
-                    return
+                    msg = "No Fileblock found to add files to for dataset: %s SEname: %s\n" %( firstDatasetPath , SEname )
+                    raise NoFileBlock(msg)
                 
                 #  //
                 # // Insert files to block
@@ -453,6 +470,15 @@ class DBSComponent:
                     self.dbsinfo.insertEVCtoDataset(datasetPath, evcList)
 
             #  //
+            # // (placeholder for ) Publish MergeRegistered Event for PheDex injection
+            #//
+            if jobreport.jobType != None :
+               logging.debug("jobType is %s"%(jobreport.jobType,))
+               if jobreport.jobType == "Merge":
+                  logging.debug("TEST: Placeholder for publishing MergeRegistered Event with payload %s"%(jobReportLocation,)) 
+
+            ### set the "cleanup" trigger in PhEDEX instead??
+            #  //
             # // On successful insertion of job report, set the trigger
             #//  to say we are done with it so that cleanup can be triggered.
             try:
@@ -490,9 +516,10 @@ class DBSComponent:
         """
         from DLS import DLS 
 
-        fileBlockList = self.dbsinfo.getDatasetFileBlocks(datasetPath)
+        if SEname=="Unknown" :  #return a None block
+          return None
 
-        #if SEname is None: return fileBlockList[0]  ##temporary hack to behave as before until SEname is not defined in FWKJobReport
+        fileBlockList = self.dbsinfo.getDatasetFileBlocks(datasetPath)
 
         ## get the type and endpoint from configuration DLS block 
         dlsinfo= DLS(self.args['DLSType'],self.args['DLSAddress'])
@@ -502,9 +529,6 @@ class DBSComponent:
         for fileBlock in fileBlockList:
           SEList=dlsinfo.getFileBlockLocation(fileBlock.get('blockName'))
           fileBlockSize=fileBlock.get('numberOfBytes')
-          # if the SEname is not set use the  
-          if SEname=="Unknown" and len(SEList)<=0:
-              return fileBlock # found a fileblock not associated to any SE
           # check the fileblock at SE
           if SEList.count(SEname)>0:
             # check block size (need to check if fileblock is open too??)
@@ -513,10 +537,9 @@ class DBSComponent:
            elif fileBlockSize<=MaxBlockSize:
               return fileBlock # found a fileblock associated to SE and not full  
 
-        ## create a new fileblock with the same processing from the empty fileblock created at the time of NewDataset
-        #fileBlock = self.dbsinfo.addFileBlock(fileBlockList,datasetPath)
+        ## create a new fileblock with the same processing used during NewDataset
         fileBlock = self.dbsinfo.addFileBlock(fileinfo,datasetPath)
-        if fileBlock is not None and SEname!="Unknown" :
+        if fileBlock is not None :
          ## add the fileblock-SE entry to DLS
          dlsinfo.addEntryinDLS(fileBlock.get('blockName'),SEname)        
         return fileBlock
@@ -575,6 +598,10 @@ class DBSComponent:
            except AssertionError, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("AssertionError Details: %s" % str(ex))
+                stillFailures.append(payload)
+           except NoFileBlock, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
                 stillFailures.append(payload)
            except StandardError, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
