@@ -156,7 +156,7 @@ class JobCreatorComponent:
                 # was part of the request injector, and would not clash
                 # with re-job creation.
                 if not JobStateInfoAPI.isRegistered(jobname):
-                    JobStateChangeAPI.register(jobname, 'processing',
+                    JobStateChangeAPI.register(jobname, 'Processing',
                                                int(self.args['maxRetries']),
                                                1)
                 JobStateChangeAPI.create(jobname, cacheArea)
