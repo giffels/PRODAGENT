@@ -9,7 +9,7 @@ import os
 from StageOut.Registry import registerStageOutImpl
 from StageOut.StageOutImpl import StageOutImpl
 
-from StageOut.Execute import execute
+from StageOut.Execute import runCommand
 
 
 class RFIOImpl(StageOutImpl):
@@ -19,7 +19,7 @@ class RFIOImpl(StageOutImpl):
     Implement interface for srmcp command
     
     """
-    executeCommand = staticmethod(execute)
+    run = staticmethod(runCommand)
 
     def createSourceName(self, protocol, pfn):
         """
@@ -37,7 +37,7 @@ class RFIOImpl(StageOutImpl):
         create dir with group permission
         """
         command = "rfmkdir -m 775 -p %s" % os.path.dirname(targetPFN)
-        self.executeCommand(command)
+        self.run(command)
 
     def createStageOutCommand(self, sourcePFN, targetPFN, options = None):
         """
