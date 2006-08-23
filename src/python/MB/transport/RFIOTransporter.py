@@ -7,10 +7,10 @@ Transporter implementation for using rfio
 
 """
 __version__ = "$Version$"
-__revision__ = "$Id: RFIOTransporter.py,v 1.1 2006/04/10 17:10:00 evansde Exp $"
+__revision__ = "$Id: RFIOTransporter.py,v 1.2 2006/06/07 15:56:33 evansde Exp $"
  
 
-
+import time
 from MB.transport.Transporter import Transporter
 from MB.transport.TransportException import TransportFailed
 from MB.commandBuilder.CommandFactory import getCommandFactory
@@ -45,7 +45,23 @@ class RFIOTransporter(Transporter):
         """
         commandMaker = _CommandFactory['rfio']
         command = commandMaker.transportCurrentToTarget(mbInstance)
-        return self.runCommand(command)
+        Ntries = 1
+        while Ntries<=3:
+         print " Copy attempt number %i" %Ntries
+         Ntries = Ntries+1
+         try:
+            res=self.runCommand(command)
+         except TransportFailed:
+           print "sleeping time 30sec"
+           time.sleep(30)
+           res = False
+           continue
+         break
+
+        return res
+        #return self.runCommand(command)
+
+
 
     def transportInOut(self, mbInstance):
         """
