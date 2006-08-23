@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.22 2006/08/16 15:12:56 ckavka Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.23 2006/08/17 10:35:27 bacchi Exp $"
 
 import socket
 import time
@@ -197,7 +197,8 @@ class TrackingComponent:
         
         while startId <= maxId :
             logging.debug("from taskid %d to taskid %d, maxId %d \n"%(startId,endId,maxId))
-            outfile=self.executeCommand("boss q -submitted -statusOnly -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
+#            outfile=self.executeCommand("boss q -submitted -statusOnly -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
+            outfile=self.executeCommand("boss q -submitted -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
             startId=endId+1
             endId=startId+float(self.args["jobsToPoll"])
             logging.debug("dentro while startId = %d\n"%startId)
@@ -211,85 +212,41 @@ class TrackingComponent:
             #logging.debug("boss q -statusOnly -all -c " + self.bossCfgDir)
             logging.debug(lines)
             # fill job lists
-            for j in lines:
+            for j in lines[1:]:
                 j=j.strip()
                 try:
-                    jid=j.split(' ')[0]
-                    st=j.split(' ')[1]
+                    int(j.split()[0])>0
+                    jid=j.split()[0]+"."+j.split()[1]+"."+j.split()[2]
+                    st=j.split()[5]
                 except StandardError, ex:
-                    logging.debug("splitting error %s"%j)
+                    logging.debug("Incorrect JobId \n %s \n skipping line"%j)
                     jid=''
                     st=''
                 if st == 'E':
-                    try:
-                        self.failedJobsPublished.pop(jid)
-                    except StandardError, ex:
-                        pass
+                    pass
+                elif st=='' and jid=='':
+                    pass
                 elif st == 'OR' or st == 'SD' or st == 'O?':
-                    try:
-                        self.failedJobsPublished.pop(jid)                
-                    except StandardError, ex:
-                        pass
                     success.append([jid,st])
                 elif st == 'R' :
-                    try:
-                        self.failedJobsPublished.pop(jid)                
-                        self.cmsErrorJobs.pop(jid)
-                    except StandardError, ex:
-                        pass
                     running.append([jid,st])
                 elif st == 'I':
-                    try:
-                        self.failedJobsPublished.pop(jid)                
-                        self.cmsErrorJobs.pop(jid)
-                    except StandardError, ex:
-                        pass
                     pending.append([jid,st])
                 elif st == 'SW' or st == 'W':
-                    try:
-                        self.failedJobsPublished.pop(jid)                
-                        self.cmsErrorJobs.pop(jid)
-                    except StandardError, ex:
-                        pass
                     waiting.append([jid,st])
                 elif st == 'SS':
-                    try:
-                        self.failedJobsPublished.pop(jid)                
-                        self.cmsErrorJobs.pop(jid)
-                    except StandardError, ex:
-                        pass
                     scheduled.append([jid,st])
-                elif st == 'SA' or  st == 'A?':
+                elif st == 'SA' :
                     failure.append([jid,st])
                 elif st == 'SK' or st=='K':
                     failure.append([jid,st])
                 elif st == 'SU':
-                    try:
-                        self.failedJobsPublished.pop(jid)                
-                        self.cmsErrorJobs.pop(jid)
-                    except StandardError, ex:
-                        pass
                     submitted.append([jid,st])
                 elif st == 'SE':
-                    try:
-                        self.failedJobsPublished.pop(jid)                
-                        self.cmsErrorJobs.pop(jid)
-                    except StandardError, ex:
-                        pass
                     cleared.append([jid,st])
                 elif st == 'SC':
-                    try:
-                        self.failedJobsPublished.pop(jid)                
-                        self.cmsErrorJobs.pop(jid)
-                    except StandardError, ex:
-                        pass
                     checkpointed.append([jid,st])
                 else:
-                    try:
-                        self.failedJobsPublished.pop(jid)                
-                        self.cmsErrorJobs.pop(jid)
-                    except StandardError, ex:
-                        pass
                     unknown.append([jid,st])
        
 
@@ -320,7 +277,7 @@ class TrackingComponent:
             outp=self.BOSS4getoutput(jobId)
             logging.debug("BOSS Getoutput ")
             logging.debug(outp)
-            if (outp.find("-force")<0 and outp.find("error")< 0):
+            if (outp.find("-force")<0 and outp.find("error")< 0 and outp.find("already been retrieved") < 0 ):
                 self.reportfilename=self.BOSS4reportfilename(jobId)
                 logging.debug("%s exists=%s"%(self.reportfilename,os.path.exists(self.reportfilename)))
                 if os.path.exists(self.reportfilename):
@@ -358,10 +315,11 @@ class TrackingComponent:
                         fwjr.exitCode=-1
                         fwjr.status="Failed"
                         fwjr.write(self.reportfilename)
+
                         self.jobFailed(jobId,self.reportfilename)
 
             else:
-                logging.info(outp)
+                logging.error(outp)
 
         logging.debug("failed jobs"+str(len(badJobs)))
         for jobId in badJobs:
@@ -372,13 +330,27 @@ class TrackingComponent:
             try:
                 self.failedJobsPublished[jobId[0]]+=0
             except StandardError,ex:
-                logging.info( "%s  Creating FrameworkReport" % jobId.__str__() )
+                self.reportfilename=self.BOSS4reportfilename(jobId)
+                logging.info("Creating directory %s"%os.path.dirname(self.reportfilename))
+                try:
+                    os.makedirs(os.path.dirname(self.reportfilename))
+                except:
+                    pass
+                
+                logging.info( "Creating FrameworkReport %s" %self.reportfilename )
                 fwjr=FwkJobReport()
                 fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
-                self.reportfilename=self.directory+"/FrameworkJobReport%s.xml"%jobId[0]
                 fwjr.exitCode=-1
                 fwjr.status="Failed"
                 fwjr.write(self.reportfilename)
+                if jobId[1]=="SA":
+                    jobScheduler=self.BOSS4scheduler(jobId[0])
+                    logging.debug("JobScheduler=%s"%jobScheduler)
+                    if jobScheduler=="edg":
+                        sched_id=self.BOSS4schedulerId(jobId[0])
+                        logging.info("Sched_id=%s"%sched_id)
+                        if sched_id!="":
+                            self.executeCommand("edg-job-get-logging-info -v 2 %s > %s/edgLoggingInfo.txt"%(sched_id,os.path.dirname(self.reportfilename)))
       
                 self.jobFailed(jobId,self.reportfilename)
                 
@@ -475,8 +447,8 @@ class TrackingComponent:
         """
         self.msThread.publish("JobSuccess", self.reportfilename)
         self.msThread.commit()
-                                                                                
-        logging.debug("JobSuccess:%s" % self.reportfilename)
+        
+        logging.info("published JobSuccess with payload :%s" % self.reportfilename)
        
         
         return
@@ -499,6 +471,7 @@ class TrackingComponent:
             logging.debug("JobFailed: %s" % msg)
             self.msThread.publish("JobFailed", msg)
             self.msThread.commit()
+            logging.info("published JobFailed with payload %s"%msg)
             self.failedJobsPublished[jobId[0]] = 1
            
         return
@@ -522,6 +495,7 @@ class TrackingComponent:
             logging.debug("SubmissionFailed: %s" % msg)
             self.msThread.publish("SubmissionFailed", msg)
             self.msThread.commit()
+            logging.info("published SubmissionFailed with payload %s"%msg)
                                                                                 
             self.failedJobsPublished[jobId[0]] = 1
            
@@ -654,20 +628,21 @@ class TrackingComponent:
 
         Boss 4 command to retrieve output
         """
-        logging.info("Boss4 getoutput start %s "%jobId)
+        logging.debug("Boss4 getoutput start %s "%jobId)
         try:
             taskid = jobId[0].split('.')[0]
             chainid=jobId[0].split('.')[1]
+            resub=jobId[0].split('.')[2]
         except:
-            logging.debug("Boss 4 getoutput - split error %s"%jobId)
-        outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID  from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
-        outp=outfile
+            logging.error("Boss 4 getoutput - split error %s"%jobId)
+##         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID  from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
+##         outp=outfile
         
-        try:
-            resub=outp.split("ID")[1].strip()
-        except:
-            logging.debug(outp)
-
+##         try:
+##             resub=outp.split("ID")[1].strip()
+##         except:
+##             logging.debug(outp)
+        
         getoutpath="%s/BossJob_%s_%s/Submission_%s/" %(self.directory, taskid,chainid,resub)
         outfile=self.executeCommand("boss getOutput -outdir "+getoutpath+ " -taskid %s -jobid %s"%(taskid,chainid) + " -c " + self.bossCfgDir)
         outp=outfile
@@ -683,15 +658,16 @@ class TrackingComponent:
         try:
             taskid = jobId[0].split('.')[0]
             chainid=jobId[0].split('.')[1]
+            resub=jobId[0].split('.')[2]
         except:
             logging.debug("Boss 4 reportfilename - split error %s"%jobId)
 
-        outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
-        outp=outfile
-        try:
-            resub=outp.split("ID")[1].strip()
-        except:
-            print outp
+##         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
+##         outp=outfile
+##         try:
+##             resub=outp.split("ID")[1].strip()
+##         except:
+##             print outp
         return "%s/BossJob_%s_%s/Submission_%s/FrameworkJobReport.xml" %(self.directory, taskid,chainid,resub)
 
         
@@ -718,17 +694,33 @@ class TrackingComponent:
 
     
 
-
-        
     def BOSS4scheduler(self,id):
         """
         BOSS4scheduler
 
         Boss 4 command which retrieves the scheduler used to submit job
         """
-        
+        #logging.debug("BOSS4scheduler")
         try:
-            outfile=self.executeCommand("bossAdmin SQL -query \"select SCHEDULER from JOB where TASK_ID='%s' and ID='%s'\""%(id.split('.')[0],id.split('.')[1]) + " -c " + self.bossCfgDir)
+            taskid=id.split('.')[0]
+            chainid=id.split('.')[1]
+            resub=id.split('.')[2]
+            
+        except:
+            logging.error("Boss4 Jobid splitting error")
+            return ""
+        
+##         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
+##         outp=outfile
+##         try:
+##             resub=outp.split("ID")[1].strip()
+##         except:
+##             print outp
+##             resub="0"
+
+
+        try:
+            outfile=self.executeCommand("bossAdmin SQL -query \"select SCHEDULER from JOB where TASK_ID='%s' and CHAIN_ID='%s' and ID='%s'\""%(taskid,chainid,resub) + " -c " + self.bossCfgDir)
             outp=outfile
         except:
             outp=""
@@ -737,8 +729,47 @@ class TrackingComponent:
             outp=outp.split("SCHEDULER")[1].strip()
         except:
             outp=""
+        logging.debug("BOSS4scheduler outp '%s'"%outp)    
             
         return outp
+
+    def BOSS4schedulerId(self,id):
+        """
+        BOSS4schedulerId
+
+        Boss 4 command which retrieves the scheduler used to submit job
+        """
+        try:
+            taskid=id.split('.')[0]
+            chainid=id.split('.')[1]
+            resub=id.split('.')[2]
+        except:
+            logging.error("Boss4 Jobid splitting error")
+            return ""
+
+##         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
+##         outp=outfile
+##         try:
+##             resub=outp.split("ID")[1].strip()
+##         except:
+##             resub="0"
+##             print outp
+
+        
+        try:
+            outfile=self.executeCommand("bossAdmin SQL -query \"select SCHED_ID from JOB where TASK_ID='%s' and CHAIN_ID='%s' and ID='%s'\""%(taskid,chainid,resub) + " -c " + self.bossCfgDir)
+            outp=outfile
+        except:
+            outp=""
+            
+        try:
+            outp=outp.split("SCHED_ID")[1].strip()
+        except:
+            outp=""
+        logging.debug("BOSS4schedulerId outp '%s'"%outp)    
+        return outp
+
+        
 
 
 
