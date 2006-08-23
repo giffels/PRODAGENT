@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.13 2006/08/01 17:32:19 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.15 2006/08/11 14:16:15 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -55,9 +55,9 @@ class LCGSubmitter(SubmitterInterface):
         #  //
         # // BOSS installation consistency check.
         #//
-        if not os.environ.has_key("BOSSDIR"):
-            msg = "Error: BOSS environment BOSSDIR not set:\n"
-            raise RuntimeError, msg
+##        if not os.environ.has_key("BOSSDIR"):
+##            msg = "Error: BOSS environment BOSSDIR not set:\n"
+##            raise RuntimeError, msg
 
 
 
