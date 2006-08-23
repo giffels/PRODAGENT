@@ -9,10 +9,11 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.16 2006/07/25 19:57:13 afanfani Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.17 2006/08/11 14:16:15 bacchi Exp $"
 
 import os
 import logging
+import time
 from popen2 import Popen4
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
@@ -228,15 +229,18 @@ class SubmitterInterface:
 
 
         self.parameters['DashboardInfo'] = None
+        self.parameters['DashboardID'] = None
         dashboardInfoFile = os.path.join(
             os.path.dirname(jobCreationArea), 'DashboardInfo.xml')
         if os.path.exists(dashboardInfoFile):
             dashboardInfo = DashboardInfo()
             dashboardInfo.read(dashboardInfoFile)
+            dashboardInfo.job = "%s_%s" % (dashboardInfo.job, time.time())
             dashboardInfo['Scheduler'] = self.__class__.__name__
             self.parameters['DashboardInfo'] = dashboardInfo
+            self.parameters['DashboardID'] = dashboardInfo.job
             
-
+        
               
         
         bossId = self.isBOSSDeclared()
@@ -312,7 +316,6 @@ class SubmitterInterface:
                 "SubmitterInterface: No DashboardInfo available for job"
                 )
             return
-        
         dashboardInfo['ApplicationVersion'] = listToString(self.parameters['AppVersions'])
         dashboardInfo['TargetCE'] = listToString(self.parameters['Whitelist'])
         dashboardInfo.addDestination("lxgate35.cern.ch", 8884)
