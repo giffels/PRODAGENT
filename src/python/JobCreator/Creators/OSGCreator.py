@@ -84,6 +84,8 @@ class OSGCreator(CreatorInterface):
             return
         elif typeVal == "StageOut":
             self.handleStageOut(taskObject)
+        elif typeVal == "CleanUp":
+            self.handleCleanUp(taskObject)
         else:
             return
 
@@ -193,18 +195,25 @@ class OSGCreator(CreatorInterface):
         taskObject['PreStageOutCommands'].append(
             stageOutSetup
             )
-        template = taskObject['StageOutTemplates'][0]
-        template['TargetHostName'] = \
-                    self.pluginConfig['StageOut']['TargetHostName']
-        template['TargetPathName'] = \
-                    self.pluginConfig['StageOut']['TargetPathName']
-        template['TransportMethod'] = \
-                    self.pluginConfig['StageOut']['TransportMethod']
+        #template = taskObject['StageOutTemplates'][0]
+        #template['TargetHostName'] = \
+        #            self.pluginConfig['StageOut']['TargetHostName']
+        #template['TargetPathName'] = \
+        #            self.pluginConfig['StageOut']['TargetPathName']
+        #template['TransportMethod'] = \
+        #            self.pluginConfig['StageOut']['TransportMethod']
         
         return
     
     
-    
+    def handleCleanUp(self, taskObject):
+        """
+        _handleCleanUp_
+
+        Handle a CleanUp task object
+
+        """
+        print ">>>>>>>>>>>>>>>>>>>>>>handleCleanUp:", taskObject
 
     
 

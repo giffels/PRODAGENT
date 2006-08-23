@@ -53,13 +53,13 @@ def generateGlobalJobID(taskObject):
     except StandardError:
         prodAgentName = "ProdAgent" 
 
-    prodAgentName = "%s@%s" % (prodAgentName, socket.gethostname())
+    hostname = socket.gethostname()
+    if hostname not in prodAgentName:
+        prodAgentName = "%s@%s" % (prodAgentName, socket.gethostname())
     jobSpecId = taskObject['JobSpecNode'].jobName
-
-    result = "ProdAgent_%s_%s_%s" %(
+    result = "ProdAgent_%s_%s" %(
         prodAgentName,
         jobSpecId,
-        time.time(),
         )
     return result
 
