@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.5 2006/07/12 13:58:04 evansde Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.6 2006/07/14 14:16:46 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -53,10 +53,12 @@ class DashboardMonitor(ShREEKMonitor):
         self.destPort = int(kwargs['ServerPort'])
         dashboardInfoFile = kwargs['DashboardInfo']
         dashboardInfoFile = os.path.expandvars(dashboardInfoFile)
-        
+        dashboardID = os.environ.get("PRODAGENT_DASHBOARD_ID", None)
         self.dashboardInfo = DashboardInfo()
         try:
             self.dashboardInfo.read(dashboardInfoFile)
+            if dashboardID != None:
+                self.dashboardInfo.job = dashboardID
             self.dashboardInfo.addDestination(self.destHost, self.destPort)
         except StandardError, ex:
             msg = "ERROR: Unable to load Dashboard Info File:\n"
@@ -107,6 +109,7 @@ class DashboardMonitor(ShREEKMonitor):
             return
 
         newInfo = self.dashboardInfo.emptyClone()
+        newInfo.addDestination(self.destHost, self.destPort)
         newInfo['ExeStart'] = task.taskname()
         newInfo['ExeStartTime'] = time.time()
         newInfo.publish(5)
@@ -131,6 +134,7 @@ class DashboardMonitor(ShREEKMonitor):
                 
         self.lastExitCode = exitValue
         newInfo = self.dashboardInfo.emptyClone()
+        newInfo.addDestination(self.destHost, self.destPort)
         newInfo['ExeEnd'] = task.taskname()
         newInfo['ExeFinishTime'] = time.time()
         newInfo['ExeExitStatus'] = exitValue
@@ -144,6 +148,7 @@ class DashboardMonitor(ShREEKMonitor):
         if self.dashboardInfo == None:
             return
         newInfo = self.dashboardInfo.emptyClone()
+        newInfo.addDestination(self.destHost, self.destPort)
         newInfo['JobExitStatus'] = self.lastExitCode
         newInfo['JobFinished'] = time.time()
         newInfo.publish(5)
