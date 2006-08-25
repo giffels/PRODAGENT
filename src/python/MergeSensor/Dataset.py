@@ -6,21 +6,27 @@ Define the class Dataset, used to store information on a single dataset.
  
 """
 
-import os
-import pickle
 import time
 import re
+import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.12 2006/08/07 22:32:36 hufnagel Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
-from MergeSensor.MergeSensorError import MergeSensorError, InvalidDataTier
+# MergeSensor errors
+from MergeSensor.MergeSensorError import MergeSensorError, \
+                                         InvalidDataTier, \
+                                         MergeSensorDBError, \
+                                         InvalidDataset, \
+                                         NonMergeableDataset
+
+# workflow specifications
 from MCPayloads.WorkflowSpec import WorkflowSpec
 
-# logging
-import logging
-from logging.handlers import RotatingFileHandler
+##############################################################################
+# Dataset class
+##############################################################################
 
 class Dataset:
     """
@@ -28,134 +34,74 @@ class Dataset:
 
     Instances of this class represent a single dataset watched by the
     MergeSensor component of the Production Agent.
-
-    Public methods:
-
-     * setBasePath(self, basePath)
-     
-       set the path where persistence files are stored
-        
-     * setMergeFileSize(self, size)
-     
-       set the expected merge file size (applicable to all datasets).
-        
-     * setFiles(self, fileList)
-     
-       used to update the list of files in the dataset.
-
-     * selectFiles(self)
-     
-       select a set of files to be merged.
-       
-     * addMergeJob(self, fileList, fileBlockId)
-     
-       add a new merge job to the dataset.
-
-     * setStatus(self, status)
-     
-       set status of the dataset
-
-     * getStatus(self)
-     
-       get status of the dataset
-       
-     * getName(self):
-        
-       return the name of the dataset.
-            
-    All methods can generate the exception MergeSensorError    
-
-    Example of the representation of a dataset object:
-   
-      {'id' : '[Primary][PollTier][Processed]',
-       'name' : '/Primary/Tier/Processed',
-       'primaryDataset' : 'Primary',
-       'dataTier' : 'SIM-GEN-DIGI',
-       'pollTier' : 'SIM',
-       'secondaryOutputTiers' : 'RECO',
-       'processedDataset' : 'Processed',
-       'PSetHash' : '123456789012345678190',
-       'status' : 'open',
-       'started' : 'Thu Jan 12 10:41:09 2006',
-       'last_updated' : 'Thu Jan 12 10:44:28 2006'
-       'files' : [{'file1.root','file2.root','file3.root','file4.root',
-                  'file5.root','file6.root','file7.root']
-       'remaining_files'[98] : [('file5.root',1024)},
-                                ('file6.root',5607),
-                                ('file7.root',75349)],
-       'remaining_files'[44] : [('file4.root',1024)},
-                                ('file8.root',506)],
-       'version' : 'CMSSW_0_6_1',
-       'workflowName' : 'Test060pre5Mu10GeV',
-       'mergedLFNBase' : '/store/PreProd/2006/6/6/Test060pre5Mu10GeV',
-       'category' : 'PreProd',
-       'timeStamp' : 1149604662,
-       'outSeqNumber' : 6
-      }
-      
-    where the fields have the following meaning:
-            
-      'id' -- the id of the dataset (cannot use / inside :-(
-      'name' -- the real name
-      'status' -- can be 'open' or 'closed'
-      'started' -- time when watching started
-      'last_updated' -- time of last update
-      'files' -- all files in dataset
-      'remaining_files' -- list of tuples (file,size) ready to be merged
-      indexed by file blocks.
-      'version' : CMSSW version
-      'workflowName' : name of original workflow
-      'mergedLFNBase' : LFN for merged files
-      'category' : the category (pre production, etc.)
-      'timeStamp' : time stamp of last modification
-      'outSeqNumber' : index of output files
-             
+    
     """
 
     # base path where the persistence file is stored
     basePath = "" 
     
-    # default size for merged files (1MB)
-    mergeFileSize = 1000000
+    # default size for merged files (1 GB)
+    mergeFileSize = 1000000000
     
     # list of data tiers
     dataTierList = []
+
+    # logging instance
+    logging = None
     
-    def __init__(self, fileName):
+    # database instance
+    database = None
+
+    ##########################################################################
+    # Dataset initialization
+    ##########################################################################
+
+    def __init__(self, info, fromFile = False):
         """
 
         Initialize a Dataset. 
         
-        The dataset is loaded from the persistence file if it exists. If
+        The dataset information is loaded from the database. If
         not, a new dataset instance is created from the Workflow
         specification file
          
         Arguments:
             
-          file -- the workflow specification file or persistence file
-                  (warm restart)
+          info -- the workflow specification file or the dataset name
+          fromFile -- indicates if initialization is from a workflow
+                      file or from the database
 
         """
 
-        # check if it is a persistence file
+        # get database instance
+        self.database = self.__class__.database
 
-        pattern ="^\[([\w\-]+)\]\[([\w\-]+)\]\[([\w\-]+)]"
-        match = re.search(pattern, fileName)
-
-        # yes, read the persistence file
-        if match is not None:
-            self.__read(fileName)
-            return
+        # get logging instance
+        self.logging = self.__class__.logging
         
-        # no, it is a new dataset, read the WorkflowSpecFile
+        # verify source from dataset information
+        if not fromFile:
+
+            try:
+                self.data = self.database.getDatasetInfo(info)
+                
+            except MergeSensorDBError, msg:
+                self.logging.error( \
+                    "Cannot initialize dataset %s from database (%s)" % \
+                    (info, msg))
+                
+            # dataset loaded
+            return 
+        
+        # it is a new dataset, read the WorkflowSpecFile
         try:
             wfile = WorkflowSpec()
-            wfile.load(fileName)
+            wfile.load(info)
 
-        # wrong dataset file, ignore it
-        except:
-            self.data = None
-            return
+        # wrong dataset file
+        except Exception, msg:
+            raise InvalidDataset, \
+                  "Error loading workflow specifications from %s" % info
 
         # get output datasets
         try:
@@ -169,23 +115,27 @@ class Dataset:
             secondaryOutputTiers = [outDS['DataTier'] for outDS in others]
             
         except (IndexError, KeyError):
-            raise MergeSensorError("MergeSensor exception: wrong output dataset specification")
+            raise MergeSensorError( \
+                    "MergeSensor exception: wrong output dataset specification")
         
         # get primary Dataset
         try:
             primaryDataset = outputDataset['PrimaryDataset']
         except KeyError:
-            raise MergeSensorError("MergeSensor exception: invalid primary dataset specification")
+            raise MergeSensorError( \
+              "MergeSensor exception: invalid primary dataset specification")
 
         # get datatier
         try:
             dataTier =  outputDataset['DataTier']
         except KeyError:
-            raise InvalidDataTier("MergeSensor exception: DataTier not specified")
+            raise InvalidDataTier( \
+              "MergeSensor exception: DataTier not specified")
 
         # verify if valid
         if not self.validDataTier(dataTier):
-            raise InvalidDataTier("MergeSensor exception: invalid DataTier %s" % dataTier)
+            raise InvalidDataTier( \
+              "MergeSensor exception: invalid DataTier %s" % dataTier)
          
         # get poll datatier
         pollTier = dataTier.split("-")[0]
@@ -194,18 +144,17 @@ class Dataset:
         try:
             processedDataset = outputDataset['ProcessedDataset']
         except KeyError:
-            raise MergeSensorError("MergeSensor exception: invalid processed dataset specification")
+            raise MergeSensorError( \
+              "MergeSensor exception: invalid processed dataset specification")
 
-        # do not merge merged datasets
-        if processedDataset.endswith("-merged"):
-            self.data = None
-            return
-        
-        # build dataset id and name
-        datasetId = "[%s][%s][%s]" % \
-                    (primaryDataset, pollTier, processedDataset)
+        # build dataset name
         name = "/%s/%s/%s" % (primaryDataset, dataTier, \
                               processedDataset)
+        
+        # do not merge merged datasets
+        if processedDataset.endswith("-merged"):
+            raise NonMergeableDataset, \
+              "Dataset %s is already merged, ignoring it" % name
         
         # get Merged LFN base
         try:
@@ -222,7 +171,7 @@ class Dataset:
         try:
             version = outputDataset['ApplicationVersion']
         except:
-            version = 'CMSSW_0_7_0'
+            version = 'CMSSW_0_8_2'
         
         # get PSetHash
         try:
@@ -231,9 +180,10 @@ class Dataset:
             psethash = "12345678901234567890"
 
         # initialize it
-        date = time.asctime(time.localtime(time.time()))
-        self.data = {'id' : datasetId,
-                     'name' : name,
+        #date = time.asctime(time.localtime(time.time()))
+        date = time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        self.data = {'name' : name,
                      'primaryDataset' : primaryDataset,
                      'dataTier' : dataTier,
                      'pollTier' : pollTier,
@@ -247,15 +197,49 @@ class Dataset:
                      'timeStamp' : timeStamp,
                      'status' : 'open',
                      'started' : date,
-                     'last_updated' : date,
-                     'files' : [],
-                     'remaining_files' : {},
+                     'lastUpdated' : date,
                      'outSeqNumber' : 1
                     }
 
-        # write to the persistence file    
-        self.__write()
+        # test if it was inserted before
+        try:
+            info = self.database.getDatasetInfo(name)
+
+        # not there, fine
+        except MergeSensorDBError:
+            pass
+
+        # it was registered before
+        else:
+
+            # if it is open, indicate it is currently watched
+            if info['status'] == 'open':
+                raise InvalidDataset, "Dataset %s is currently watched" % name
             
+            # it it is closed, update its information and open it
+            self.database.startTransaction()
+            self.database.updateDataset(name)
+            self.database.commit()
+            return
+        
+        # new dataset in database, insert its information
+        info = self.getData()
+        self.database.startTransaction()
+        
+        try:
+            self.database.insertDataset(info)
+        except MySQLdb.IntegrityError:
+            
+            raise InvalidDataset, \
+                  "Cannot insert dataset %s in database, duplicated?" % \
+                       info['name']
+        
+        self.database.commit()
+        
+    ##########################################################################
+    # set directory base path
+    ##########################################################################
+        
     def setBasePath(self, basePath):
         """
         _setBasePath_
@@ -274,8 +258,13 @@ class Dataset:
           none
 
         """
+        
         self.__class__.basePath = basePath
         
+    ##########################################################################
+    # set list of possible datatiers
+    ##########################################################################
+
     @classmethod
     def setDataTierList(cls, tierList):
         """
@@ -292,7 +281,12 @@ class Dataset:
           none
 
         """
+        
         cls.dataTierList = tierList.split(',')
+
+    ##########################################################################
+    # validates datatier
+    ##########################################################################
 
     @classmethod
     def validDataTier(cls, dataTierName):
@@ -310,6 +304,8 @@ class Dataset:
           none
 
         """
+        
+        # names are separated with hyphens
         dataTiers = dataTierName.split("-")
 
         if dataTiers == []:
@@ -321,6 +317,10 @@ class Dataset:
       
         return True
     
+    ##########################################################################
+    # set merge file size
+    ##########################################################################
+
     @classmethod
     def setMergeFileSize(cls, size):
         """
@@ -339,8 +339,82 @@ class Dataset:
           none
 
         """
+        
         cls.mergeFileSize = size
         
+    ##########################################################################
+    # get components of a dataset name
+    ##########################################################################
+                          
+    @classmethod
+    def getNameComponents(cls, datasetName): 
+        """
+        __getNameComponents__
+        
+        Partition dataset name into components
+        
+        """
+        
+        pattern ="^/([\w\-]+)/([\w\-]+)/([\w\-]+)"
+        match = re.search(pattern, datasetName)
+
+        # wrong name
+        if match is None:
+            return ('', '', '')
+        
+        # get components
+        return match.groups()
+
+    ##########################################################################
+    # define logging instance
+    ##########################################################################
+
+    @classmethod
+    def setLogging(cls, loggingInstance):
+        """
+        _setLogging_
+
+        Set logging facilities.
+
+        Arguments:
+
+          logging -- the initialized logging object
+
+        Return:
+
+          none
+
+        """
+        
+        cls.logging = loggingInstance
+
+    ##########################################################################
+    # define database
+    ##########################################################################
+
+    @classmethod
+    def setDatabase(cls, dbInstance):
+        """
+        _setDatabase_
+
+        Set the database access instance.
+
+        Arguments:
+
+          database -- the database access object
+
+        Return:
+
+          none
+
+        """
+        
+        cls.database = dbInstance
+
+    ##########################################################################
+    # set the list of files in a dataset
+    ##########################################################################
+
     def setFiles(self, fileList):
         """
         _setFiles_
@@ -352,8 +426,8 @@ class Dataset:
         
         Arguments:
             
-          fileList -- a list of tuples (file,size) that specifies the list
-          of all files in the named dataset together with their size.
+          fileList -- a list of tuples (file,size,fileBlock) that specifies
+          the list of all files in the named dataset together with their size.
           
         Return:
             
@@ -361,34 +435,51 @@ class Dataset:
           
         """
         
-        # add files not present in original structure
-        for fileName, size, fileBlockId in fileList:
-            if fileName not in self.data['files']:
-                self.data['files'].append(fileName)
-               
-                # insert in current file block or create a new one
-                try:
-                    self.data['remaining_files'][fileBlockId].append( \
-                                                        (fileName, size))
-                except KeyError:
-                    self.data['remaining_files'][fileBlockId] = [(fileName, \
-                                                                size)]
-
-        # paranoid consistency check
-        # possible error: files removed in dataset
-        if len(self.data['files']) != len(fileList):
-            raise MergeSensorError, \
-                  'inconsistency on dataset %s, a file was removed' % \
-                  self.data['name']
+        # get dataset id
+        datasetId = self.database.getDatasetId(self.data['name'])
         
+        # closed or wrong?
+        if datasetId is None:
+            
+            # better do nothing...
+            return
+        
+        # get file list from database
+        files = self.database.getFileList(datasetId)
+        
+        # start transaction
+        self.database.startTransaction()
+        
+        # add files not present in original structure
+        for fileName, size, fileBlock in fileList:
+
+            # verify membership
+            found = False
+            for aFile in files:
+                if fileName == aFile['name']:
+                    
+                    # found
+                    found = True
+                    break
+                
+            if not found:
+                self.database.addFile(datasetId, fileName, size, fileBlock)
+                        
         # update time
         date = time.asctime(time.localtime(time.time()))
-        self.data['last_update'] = date
+        self.data['lastUpdated'] = date
         
-        # write dataset
-        self.__write()
+        # update dataset info
+        self.database.updateDataset(self.data['name'])
         
-    def addMergeJob(self, fileList, fileBlockId):
+        # commit all changes
+        self.database.commit()
+        
+    ##########################################################################
+    # add a merge job
+    ##########################################################################
+
+    def addMergeJob(self, fileList):
         """
         _addMergeJobs_
         
@@ -397,7 +488,6 @@ class Dataset:
         Arguments:
             
           fileList -- the list of files that the job will start to merge
-          fileBlockId -- the file block id as returned by DBS
 
         Return:
             
@@ -405,40 +495,41 @@ class Dataset:
           
         """
         
-        # check for files not in dataset 
-        wrongFiles = [fileName for fileName in fileList
-                           if fileName not in self.data['files']]
-        if wrongFiles:
-            raise MergeSensorError, \
-                  'cannot merge files %s, not in dataset' % str(wrongFiles)
-       
-        # check for files already under merging
-        remainingFiles = [fileName for fileName, size in
-                                     self.data['remaining_files'][fileBlockId]]
-        wrongFiles = [fileName for fileName in fileList
-                           if fileName not in remainingFiles]
-        if wrongFiles:
-            raise MergeSensorError, \
-                  'cannot merge files %s, already under merging' % \
-                  str(wrongFiles)
-                
-        # remove selected files from set of files
-        self.data['remaining_files'][fileBlockId] = [(fileName, size)
-            for fileName, size in self.data['remaining_files'][fileBlockId]
-                if fileName not in fileList]
-
+        # start transaction
+        self.database.startTransaction()
+        
+        # get dataset id
+        datasetId = self.database.getDatasetId(self.data['name'])
+        
         # determine output file name
         outputFile = "set" + str(self.data['outSeqNumber'])
         self.data['outSeqNumber'] = self.data['outSeqNumber'] + 1
-                
+
+        # create outputFile
+        (new, fileId) = self.database.addOutputFile(datasetId, outputFile)
+        
+        # mark input files as merged for new created output file
+        if new:
+            for aFile in fileList:    
+                self.database.updateInputFile(datasetId, aFile, \
+                                              status = "merged", \
+                                              mergedFile = fileId)
+
         # update time
         date = time.asctime(time.localtime(time.time()))
         self.data['last_update'] = date
+
+        # update dataset
+        self.database.updateDataset(self.data['name'])
         
-        # write dataset
-        self.__write()
+        # commit changes
+        self.database.commit()
         
         return outputFile
+
+    ##########################################################################
+    # select files for merging
+    ##########################################################################
 
     def selectFiles(self, forceMerge):
         """
@@ -462,11 +553,17 @@ class Dataset:
         # get file size
         mergeFileSize = self.__class__.mergeFileSize
 
+        # get dataset id
+        datasetId = self.database.getDatasetId(self.data['name'])
+        
+        # get unmerged file lists organized by fileblocks
+        fileList = self.database.getUnmergedFileList(datasetId)
+        
         # check all file blocks in dataset
-        for fileBlockId in self.data['remaining_files'].keys():
+        for fileBlock in fileList:
        
-            # get set of remaining files
-            files = self.data['remaining_files'][fileBlockId]
+            # get data
+            fileBlockId, files = fileBlock
 
             # select set of files with at least mergeFileSize size
             totalSize = 0
@@ -479,18 +576,26 @@ class Dataset:
 
             # not enough files, continue to next fileBlock
             # if forceMerge and list non-empty, return what we have
-            # if forceMerge and list empty, make log entry and continue to next fileBlock
+            # if forceMerge and list empty, make log entry and continue
+            # with next fileBlock
+            
             if forceMerge:
                 if selectedSet == []:
-                    logging.info("Forced merge does not apply to FileBlock %s due to non mergeable condition"
-                             % fileBlockId)
+                    self.logging.info( \
+                       "Forced merge does not apply to fileblock %s " + \
+                       "due to non mergeable condition" % fileBlockId)
                     continue
                 else:
                     return(selectedSet, fileBlockId)
             else:
                 continue
 
+        # nothing to merge
         return ([], 0)
+
+    ##########################################################################
+    # get dataset status
+    ##########################################################################
 
     def getStatus(self):
         """
@@ -507,8 +612,13 @@ class Dataset:
           the status of the dataset. It can be "open" or "closed"
           
         """
+        
         return self.data['status']
     
+    ##########################################################################
+    # set dataset status
+    ##########################################################################
+
     def setStatus(self, status):
         """
         _setStatus_
@@ -524,76 +634,26 @@ class Dataset:
           none
           
         """
+        
         self.data['status'] = status
 
         # update time
         date = time.asctime(time.localtime(time.time()))
         self.data['last_update'] = date
         
+        # start transaction
+        self.database.startTransaction()
+        
         # write dataset
-        self.__write()
+        self.database.updateDataset(self.data['name'])
         
-    def __read(self, datasetId):
-        """
-        __read_
-        
-        Private method used to restore dataset from persistence file.
-        
-        Arguments:
-            
-          datasetId -- the file name where dataset is stored
-                    
-        Return:
-            
-          reference to dataset
-          
-        """
-        # build file name
-        pathname = os.path.join(self.__class__.basePath, datasetId)
+        # commit changes
+        self.database.commit()
 
-        # get information from dataset file
-        try:
-            aFile = file(pathname,"r")
-            dataset = pickle.load(aFile)
-            aFile.close()
-        except IOError:
-            raise MergeSensorError, \
-                  'cannot read from dataset %s' % datasetId            
-                  
-        # return reference to dataset
-        self.data = dataset
-        
-    def __write(self):
-        """
-        __write_
-        
-        Private method used to store dataset into a persistence file.
-        
-        Arguments:
-            
-          none
-                    
-        Return:
-            
-          none
-          
-        """
-        # build file name
-        pathname = os.path.join(self.__class__.basePath, self.data['id'])
-        
-        # write information into temporary file
-        tmpFile = "data.tmp"
-        try:       
-            aFile = file(tmpFile, "w")
-            pickle.dump(self.data, aFile)
-            aFile.close()
-        except IOError:
-            raise MergeSensorError, \
-                  'cannot write to temporary file for dataset %s' % self.data['id']           
+    ##########################################################################
+    # get the name of a dataset
+    ##########################################################################
 
-        # rename with the real file name
-        os.rename(tmpFile, pathname)
-        
     def getName(self):
         """
         _getName_
@@ -609,27 +669,14 @@ class Dataset:
           the dataset name as a string
           
         """
-        return self.data['name']
-    
-    def getId(self):
-        """
-        _getId_
         
-        Return the id of the dataset.
-        
-        Arguments:
-            
-          none
-          
-        Return:
-            
-          the dataset id as a string, None if it was not created
-          
-        """
         if self.data is None:
             return None
-        else:
-            return self.data['id']
+        return self.data['name']
+    
+    ##########################################################################
+    # get a copy of all dataset properties
+    ##########################################################################
 
     def getData(self):
         """
@@ -650,6 +697,10 @@ class Dataset:
         import copy
         return copy.deepcopy(self.data)
 
+    ##########################################################################
+    # convert dataset to a string
+    ##########################################################################
+
     def __str__(self):
         """
         __str__
@@ -665,6 +716,7 @@ class Dataset:
           the complete dataset as a string
           
         """
+        
         string = "name: %s\n" % self.data['name']
         return string + "\n".join(["%s: %s" % (key, value) for (key, value) 
                                                            in self.data.items()
