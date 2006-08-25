@@ -7,14 +7,19 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.3 2006/06/21 10:32:30 ckavka Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
-import os
-
-from MergeSensor.MergeSensorError import MergeSensorError
+# MergeSensor
 from MergeSensor.Dataset import Dataset
+from MergeSensor.MergeSensorError import MergeSensorError, \
+                                         InvalidDataset, \
+                                         NonMergeableDataset
+
+##############################################################################
+# WatchedDatasets class
+##############################################################################
 
 class WatchedDatasets:
     """
@@ -22,92 +27,87 @@ class WatchedDatasets:
     
     An instance of this class represents the set of datasets currently
     watched by the Merge Sensor component of the Production Agent.
-    
-    Public methods:
-        
-     * add(workflowFile)
-
-       add a dataset to the list of watched datasets.
-
-     * remove(datasetId)
-
-       remove the dataset from the list of watched datasets.
-
-     * list()
-
-       return a list of the currently watched datasets.
-
-     * getNames()
-
-       return a list of the names of currently watched datasets.
-
-     * setMergeFileSize(self, mergeFileSize)
-     
-       set the expected merge file size (applicable to all datasets).
-          
-     * updateFiles(self, datasetId, fileList)
-
-       used to update the list of files in the dataset.
-        
-     * addMergeJob(self, datasetId, fileList, fileBlockId)
-
-       add a new merge job to the dataset.
-       
-     * mergeable(self, datasetId, forceMerge)
-
-       test if dataset can be merged.
-       
-     * closeDataset(datasetId)
-     
-       used to signal that a dataset is closed.
-               
-    All methods can generate the exception MergeSensorError
-        
+            
     """ 
     
-    def __init__(self, basePath, start = "cold"):
+    # logging instance
+    logging = None
+    
+    # database instance
+    database = None
+    
+    def __init__(self, start = "warm"):
         """
 
         Initialize a WatchedDataset object. 
         
         In a "warm" start, the list of watched datasets is initialized from
-        the persistent information stored in the files in control directory.
-        Usually it is expected to be used after a reinicialization of the
-        Production Agent (or Merge Sensor component). In a "cold" start,
-        the list of watched datasets is initialized as an empty list, and
-        all files in control directory are removed.
+        the persistent information stored in database.
+        In a "cold" start, all datasets are closed. However, new dataset
+        events open them in their original state.
+        In a "scratch" start, the list of watched datasets is initialized
+        as an empty list and the database is wiped out.
 
         Arguments:
             
-          basePath -- path of the directory where persistent information
-                        is stored
-          start -- used to select "warm" or "cold" start
+          start -- used to select "warm", "cold" or "scratch" start mode
 
         """
 
-        # set base path       
-        self.basePath = basePath
- 
-        # set path for all datasets
-        Dataset.basePath = basePath
-
         # dictionary used to store info on watched datasets
         self.datasets = {}
-                
-        # get old dataset information (if any)
-        oldDatasets = os.listdir(self.basePath)
-
+        
+        # database instance
+        self.database = self.__class__.database
+              
+        # logging instance
+        self.logging = self.__class__.logging
+        
+        # initialize dataset structure
+        if start not in ['warm', 'cold', 'scratch']:
+            self.logging.error("Start mode %s not valid, assuming warm mode" \
+                          % start)
+            start = "warm"
+            
+        # warm mode: keep all datasets as specified in the database
         if start == "warm":
-            # rebuild dataset information from persistence directory
-            # it should only happen after a restart of Merge Sensor
+            
+            # get information for database
+            oldDatasets = self.database.getDatasetList()
             for datasetId in oldDatasets:
+
+                # get database information
                 dataset = Dataset(datasetId)
                 self.datasets[datasetId] = dataset
+
+        # cold mode: close all open datasets
+        elif start == "cold":
+            
+            # start transaction
+            self.database.startTransaction()
+            
+            # get dataset information
+            oldDatasets = self.database.getDatasetList()
+            for datasetId in oldDatasets:
+
+                # close dataset
+                self.database.closeDataset(datasetId)
+
+            # commit changes
+            self.database.commit()
+            
+        # scratch mode: wipe out all information
         else:
-            # cold starts: remove everything
-            for dataset in oldDatasets:
-                path = os.path.join(basePath, dataset)
-                os.remove(path)
+            
+            # drop all contents of the database
+            self.database.eraseDB()
+
+            # commit changes 
+            self.database.commit()
+            
+    ##########################################################################
+    # add a dataset
+    ##########################################################################
 
     def add(self, workflowFile):
         """
@@ -126,15 +126,22 @@ class WatchedDatasets:
         """
 
         # create a new dataset
-        dataset = Dataset(workflowFile)
-        datasetId = dataset.getId()
-        
-        # check for merged datasets, which should not be merged again
-        if datasetId is None:
+        try:
+            dataset = Dataset(workflowFile, fromFile = True)
+        except InvalidDataset, message:
+            self.logging.error(message)
             return None
+        except NonMergeableDataset, message:
+            self.logging.info(message)
+            return None
+            
+        # get dataset name
+        datasetId = dataset.getName()
         
         # check: dataset should not exist, ignore if it is registered
         if datasetId in self.datasets.keys():
+            self.logging.info("Ignoring workflow %s, is currently watched" % \
+                              workflowFile)
             return None
 
         # add it
@@ -143,6 +150,10 @@ class WatchedDatasets:
         # return its name
         return datasetId
         
+    ##########################################################################
+    # remove a dataset
+    ##########################################################################
+
     def remove(self, datasetId):
         """
         _remove_
@@ -162,17 +173,16 @@ class WatchedDatasets:
         if datasetId not in self.datasets.keys():
             raise MergeSensorError, \
                   'cannot remove dataset %s, it does not exist' % datasetId   
-            
-        # check: dataset pathname should exist
-        pathname = os.path.join(self.basePath, datasetId)
-        if not os.path.exists(pathname):
-            raise MergeSensorError, \
-                  'cannot remove dataset %s, its file does not exists' % \
-                  datasetId
-
-        # remove it and its associated file
+        
+        # remove its information from the database (to be done!!!!!!)
+        #self.datasets[datasetId].remove()
+         
+        # remove it from dataset structure
         del self.datasets[datasetId]
-        os.remove(pathname)
+        
+    ##########################################################################
+    # get the list of watched datasets
+    ##########################################################################
 
     def list(self):
         """
@@ -190,26 +200,12 @@ class WatchedDatasets:
           
         """
             
-        return [value.getId() for value in self.datasets.values()]
-
-    def getNames(self):
-        """
-        _getNames_
-
-        Return the list of names of currently watched datasets.
-
-        Arguments:
-
-          none
-
-        Return:
-
-          list of Dataset instances
-
-        """
-
         return [value.getName() for value in self.datasets.values()]
         
+    ##########################################################################
+    # update the files in a dataset
+    ##########################################################################
+
     def updateFiles(self, datasetId, fileList):
         """
         _updateFiles_
@@ -233,7 +229,11 @@ class WatchedDatasets:
         """
         self.datasets[datasetId].setFiles(fileList)
         
-    def addMergeJob(self, datasetId, fileList, fileBlockId):
+    ##########################################################################
+    # add a merge job
+    ##########################################################################
+
+    def addMergeJob(self, datasetId, fileList):
         """
         _addMergeJobs_
         
@@ -243,14 +243,17 @@ class WatchedDatasets:
             
           datasetId -- the name of the dataset
           fileList -- the list of files that the job will start to merge
-          fileBlockId -- the file block id as returned by DBS
           
         Return:
             
           the name of the output file
           
         """
-        return self.datasets[datasetId].addMergeJob(fileList, fileBlockId)
+        return self.datasets[datasetId].addMergeJob(fileList)
+
+    ##########################################################################
+    # determine mergeable status of a dataset
+    ##########################################################################
 
     def mergeable(self, datasetId, forceMerge):
         """
@@ -272,9 +275,18 @@ class WatchedDatasets:
           files, which can be directly used as an argument to addMergeJob.
           
         """
-        (fileList, fileBlockId) = self.datasets[datasetId].selectFiles(forceMerge)
+        
+        # select file set
+        (fileList, fileBlockId) = \
+               self.datasets[datasetId].selectFiles(forceMerge)
+               
+        # return merge condition, file list and file block 
         return (fileList != [], fileList, fileBlockId)
     
+    ##########################################################################
+    # close a dataset
+    ##########################################################################
+
     def close(self, datasetId):
         """
         _close_
@@ -292,6 +304,10 @@ class WatchedDatasets:
                     
         """
         self.datasets[datasetId].setStatus("closed")
+
+    ##########################################################################
+    # get properties of a dataset
+    ##########################################################################
 
     def getProperties(self, datasetId):
         """
@@ -318,6 +334,54 @@ class WatchedDatasets:
 
             # no, return an empty dictionary
             return {}
+
+    ##########################################################################
+    # set database instance
+    ##########################################################################
+
+    @classmethod
+    def setDatabase(cls, dbInstance):
+        """
+        _setDatabase_
+        
+        Set the database access instance.
+        
+        Arguments:
+            
+          database -- the database access object
+        
+        Return:
+            
+          none
+
+        """
+        cls.database = dbInstance
+    
+    ##########################################################################
+    # set logging instance
+    ##########################################################################
+
+    @classmethod
+    def setLogging(cls, loggingInstance):
+        """
+        _setLogging_
+        
+        Set logging facilities.
+        
+        Arguments:
+            
+          logging -- the initialized logging object
+        
+        Return:
+            
+          none
+
+        """
+        cls.logging = loggingInstance
+        
+    ##########################################################################
+    # convert dataset list to a string
+    ##########################################################################
 
     def __str__(self):
         """
