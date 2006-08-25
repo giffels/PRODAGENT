@@ -173,10 +173,6 @@ class LCGCreator(CreatorInterface):
         taskObject['PreStageOutCommands'].append(
             ". $VO_CMS_SW_DIR/cmsset_default.sh"
             )
-        template = taskObject['StageOutTemplates'][0]
-        template['TargetHostName'] = self.pluginConfig['StageOut']['TargetHostName']
-        template['TargetPathName'] = self.pluginConfig['StageOut']['TargetPathName']
-        template['TransportMethod'] = self.pluginConfig['StageOut']['TransportMethod']
     
         return
     
