@@ -71,6 +71,22 @@ def loadDBSDLS():
     return dlsapi, dbsApi, dlsConfig, dbsConfig
 
 
+def extractFile(evColl):
+    """
+    _extractFile_
+
+    Convert evColl into LFN + number of events
+
+    """
+    name = evColl['collectionName']
+    count = evColl['numberOfEvents']
+    name = name.split("_", 1)[1]
+    name += ".root"
+    return name, count
+
+
+
+
 class DBSDLSToolkit:
     """
     _DBSDLSToolkit_
@@ -128,6 +144,34 @@ class DBSDLSToolkit:
             return []
         
         return fileBlocks
+
+    
+    
+    def getDatasetFiles(self, dataset):
+        """
+        _getDatasetFiles_
+
+        """
+        result = {}
+        try:
+            contents = self._DBS.getDatasetContents(dataset)
+        except DbsException, ex:
+            msg = "DbsException for DBS API getDatasetContents:\n"
+            msg += "  Dataset = %s\n" % dataset
+            msg += "  Exception Class: %s\n" % ex.getClassName()
+            msg += "  Exception Message: %s\n" % ex.getErrorMessage()
+            logging.error(msg)
+            return {}
+        files = []
+        for block in contents:
+            files.extend(map(extractFile,  block['eventCollectionList']))
+
+        for item in files:
+            result[item[0]] = item[1]
+        
+        
+            
+        return result
 
     def getFileBlockLocation(self, fileBlockName):
         """
