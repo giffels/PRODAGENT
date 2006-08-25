@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-_RFIOImpl_
+_RFCPImpl_
 
 Implementation of StageOutImpl interface for RFIO
 
@@ -12,7 +12,7 @@ from StageOut.StageOutImpl import StageOutImpl
 from StageOut.Execute import runCommand
 
 
-class RFIOImpl(StageOutImpl):
+class RFCPImpl(StageOutImpl):
     """
     _SRMImpl_
 
@@ -65,4 +65,4 @@ class RFIOImpl(StageOutImpl):
         self.executeCommand(command)
 
 
-registerStageOutImpl("rfio", RFIOImpl)
+registerStageOutImpl("rfcp", RFCPImpl)
