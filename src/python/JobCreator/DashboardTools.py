@@ -56,10 +56,13 @@ def generateGlobalJobID(taskObject):
     hostname = socket.gethostname()
     if hostname not in prodAgentName:
         prodAgentName = "%s@%s" % (prodAgentName, socket.gethostname())
+
+    prodAgentName = prodAgentName.replace("_", "-")
     jobSpecId = taskObject['JobSpecNode'].jobName
+    jobName = jobSpecId.replace("_", "-")    
     result = "ProdAgent_%s_%s" %(
         prodAgentName,
-        jobSpecId,
+        jobName,
         )
     return result
 
