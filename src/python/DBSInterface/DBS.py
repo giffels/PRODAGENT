@@ -209,13 +209,13 @@ class DBS:
 
     if fileinfo['GUID']:
       outfile = DbsFile (logicalFileName=fileinfo['LFN'], 
-                       fileSize=int(fileinfo['Size']),
+                       fileSize=long(fileinfo['Size']),
                        checkSum="%s"%checkSum,
                        guid=fileinfo['GUID'], 
                        fileType="EVD")
     else: # do not insert GUID if it's not there
        outfile = DbsFile (logicalFileName=fileinfo['LFN'],
-                       fileSize=int(fileinfo['Size']),
+                       fileSize=long(fileinfo['Size']),
                        checkSum="%s"%checkSum,
                        fileType="EVD")
 
@@ -256,7 +256,7 @@ class DBS:
         if tier == "DIGI": parent_tier="SIM"
         parentname="%s_%s"%(parent_tier,nameLFN)
         parent_ec = DbsEventCollection (collectionName=parentname, 
-                                       numberOfEvents=events, 
+                                       numberOfEvents=long(events), 
                                        fileList=fList)
         parentList=[{ 'parent' : parent_ec, 'type' : parent_tier }]
 
@@ -264,7 +264,7 @@ class DBS:
     logging.debug(" evc name : %s"%name)
 
     ec = DbsEventCollection (collectionName=name, 
-                             numberOfEvents=events,
+                             numberOfEvents=long(events),
                              fileList=fList,
                              parentageList=parentList)
     evcList = [ec]   
