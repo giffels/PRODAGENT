@@ -6,10 +6,11 @@ Start the component, reading its configuration from
 the common configuration file, which is accessed by environment variable
 
 """
+__revision__ = "$Id$"
+__version__ = "$Revision$"
+__author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
-import sys
-import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
@@ -28,7 +29,7 @@ try:
     # Local DBS configuration
     localDBSConfig = config.get("LocalDBS")
     if 'DBSURL' in localDBSConfig.keys():
-     compCfg["DBSURL"] = localDBSConfig["DBSURL"]  
+        compCfg["DBSURL"] = localDBSConfig["DBSURL"]  
     compCfg["DBSAddress"] = localDBSConfig["DBSAddress"]
     compCfg["DBSType"] = localDBSConfig["DBSType"]
 
