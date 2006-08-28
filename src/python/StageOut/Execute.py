@@ -70,7 +70,13 @@ def execute(command):
     non zero
 
     """
-    exitCode = runCommand(command)
+    try:
+        exitCode = runCommand(command)
+    except Exception, ex:
+        msg = "Exception while invoking command:\n"
+        msg += "%s\n" % command
+        msg += "Exception: %s\n" % str(ex)
+        raise StageOutError(msg, Command = command, ExitCode = 60311)
     if exitCode:
         msg = "Command exited non-zero"
         raise StageOutError(msg, Command = command, ExitCode = exitCode)
