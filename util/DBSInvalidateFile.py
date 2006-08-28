@@ -11,7 +11,7 @@ from dbsException import DbsException
 import string,sys,os,getopt,time
 
 
-usage="\n Usage: python DBSInvalidateFile.py <options> \n Options: \n --DBSAddress=<MCLocal/Writer> \t\t DBS database instance \n --DBSURL=<URL> \t\t DBS URL \n --lfn=<LFN> \t\t LFN \n --lfnFileList=<filewithFWJReportlist> \t\t File with the list of LFNs \n [ valid \t\t option to set files to valid instead of invalid]"
+usage="\n Usage: python DBSInvalidateFile.py <options> \n Options: \n --DBSAddress=<MCLocal/Writer> \t\t DBS database instance \n --DBSURL=<URL> \t\t DBS URL \n --lfn=<LFN> \t\t LFN \n --lfnFileList=<filewithLFNlist> \t\t File with the list of LFNs \n [ valid \t\t option to set files to valid instead of invalid]"
 valid = ['DBSAddress=','DBSURL=','lfn=','lfnFileList=','valid']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
