@@ -131,15 +131,30 @@ for fileBlock in fileBlockList:
                 LFNsatSEfile.write("%s\n"%file.get('logicalFileName'))
             SEblocks.append(fileBlock.get('blockName'))
 
+## get total number of events
+nevttot=0
+for block in dbsapi.getDatasetContents(dataset):
+   for evc in block.get('eventCollectionList'):
+     nevttot = nevttot + evc.get('numberOfEvents')
+
 if sename != None:
   LFNsatSEfile.close()
 ## get number of events at the given SE
   nevtsatSE=0
   for block in dbsapi.getDatasetContents(dataset):
-         #hack the block name to cope with DBS API inconsistency
-         blockname="/%s/%s"%(block.get('blockName').split('/')[1],block.get('blockName').split('/')[3])
+         try:
+          #hack the block name to cope with DBS API inconsistency
+          blockname="/%s/%s"%(block.get('blockName').split('/')[1],block.get('blockName').split('/')[3])
+         except:
+           blockname=block.get('blockName')
+           pass
          if SEblocks.count(blockname)>0:
           for evc in block.get('eventCollectionList'):
             nevtsatSE = nevtsatSE + evc.get('numberOfEvents')
 
   print "\n File %s written : contains LFNs at SE %s - for a total of %s events "%(fileName,sename,nevtsatSE)                                                                                                  
+print "\n total events: %s in dataset: %s\n"%(nevttot,dataset)
+
+
+
+
