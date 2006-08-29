@@ -79,6 +79,8 @@ coreFields = {
     "ProdAgent": {
     "ProdAgentWorkDir": os.getcwd(),
     "ProdAgentName" : "ProdAgent@%s" % socket.gethostname(),
+    "ProdAgentCert" : "/home/fvlingen/.globus/client.pem",
+    "ProdAgentKey"  : "/home/fvlingen/.globus/clientkey.pem",
     },
     
     "ProdAgentDB": {
