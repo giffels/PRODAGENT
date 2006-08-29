@@ -30,6 +30,17 @@ class InputSource:
         """setMaxEvents value"""
         self.data['maxEvents'] = ('int32', 'untracked', maxEv)
 
+    def skipevents(self):
+        """get value of SkipEvents, None if not set"""
+        tpl = self.data.get("skipEvents", None)
+        if tpl != None:
+            return int(tpl[2])
+        return None
+
+    def setSkipEvents(self, skipEv):
+        "set SkipEvents value"""
+        self.data['skipEvents'] = ('uint32', 'untracked', skipEv)
+
     def firstRun(self):
         """get firstRun value of None if not set"""
         tpl = self.data.get("firstRun", None)
