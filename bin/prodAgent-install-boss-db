@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.8 2006/05/23 06:21:24 fvlingen Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.10 2006/05/25 07:48:12 fvlingen Exp $"
 
 import getpass
 import os
@@ -398,7 +398,7 @@ try:
    if os.path.exists(bossPath+'/Examples/cmsswSchema')==0 :
       raise Exception("WARNING","CMSSW program type not found. Skipping")
    print('Registering cmssw program type')
-   cmd = 'cd '+bossPath+'/Examples; bossAdmin registerProgram -name cmssw -schema cmsswSchema -pre cmsswRuntimeprocess -post cmsswRuntimeprocess -runtime cmsswRuntimeprocess -comment "cmssw program" -c ' + bossDbConfig['configDir']
+   cmd = 'cd '+bossPath+'/Examples; bossAdmin registerProgram -name cmssw -schema cmsswSchema -pre cmsswRuntimeprocess -post cmsswPostprocess -runtime cmsswRuntimeprocess -comment "cmssw program" -c ' + bossDbConfig['configDir']
    stdin,stdout=os.popen4(cmd)
    y=stdout.read()
    if y!='':
