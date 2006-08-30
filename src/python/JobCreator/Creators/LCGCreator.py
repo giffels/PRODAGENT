@@ -102,7 +102,7 @@ class LCGCreator(CreatorInterface):
         Install monitors into top TaskObject
 
         """
-        installMonitor(taskObjectTree)
+        self.installMonitor(taskObjectTree)
         return
         
 
@@ -181,36 +181,44 @@ class LCGCreator(CreatorInterface):
 
     
 
-def installMonitor(taskObject):
-    """
-    _installMonitor_
+    def installMonitor(taskObject):
+        """
+        _installMonitor_
+        
+        Installs shreek monitoring plugins
+        
+        """
+        shreekConfig = taskObject['ShREEKConfig']
+        
+        #  //
+        # // Insert list of plugin modules to be used
+        #//
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.DashboardMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.BOSSMonitor")
+        
 
-    Installs shreek monitoring plugins
+        
+        boss = shreekConfig.newMonitorCfg()
+        boss.setMonitorName("boss-1") # name of this instance (make it up)
+        boss.setMonitorType("boss")   # type of this instance (as registered)
+        shreekConfig.addMonitorCfg(boss)
 
-    """
-    shreekConfig = taskObject['ShREEKConfig']
+        #  //
+        # // Dashboard Monitoring
+        #//
+        dashboardCfg = self.pluginConfig.get('Dashboard', {})
+        usingDashboard = dashboardCfg.get("UseDashboard", "False")
+        if usingDashboard.lower() == "true":
+            dashboard = shreekConfig.newMonitorCfg()
+            dashboard.setMonitorName("cmsdashboard-1")
+            dashboard.setMonitorType("dashboard")
+            dashboard.addKeywordArg(
+                ServerHost = dashboardCfg['DestinationHost'],
+                ServerPort = dashboardCfg['DestinationPort'],
+                DashboardInfo = taskObject['DashboardInfoLocation'])
+            shreekConfig.addMonitorCfg(dashboard)
 
-    #  //
-    # // Insert list of plugin modules to be used
-    #//
-    #shreekConfig.addPluginModule("ShREEK.CMSPlugins.DashboardMonitor")
-    #shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobMonMonitor")
-    #shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
-    shreekConfig.addPluginModule("ShREEK.CMSPlugins.BOSSMonitor")
-    #shreekConfig.addPluginModule("ShREEK.CMSPlugins.CMSMetrics")
-
-    #  //
-    # // Insert list of metrics to be generated
-    #//
-    #shreekConfig.addUpdator("ChildProcesses")
-    #shreekConfig.addUpdator("ProcessToBinary")
-
-    boss = shreekConfig.newMonitorCfg()
-    boss.setMonitorName("boss-1") # name of this instance (make it up)
-    boss.setMonitorType("boss")   # type of this instance (as registered)
-    shreekConfig.addMonitorCfg(boss)
-    
-    return
+        return
     
 
 

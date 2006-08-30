@@ -64,7 +64,14 @@ def generateGlobalJobID(taskObject):
         prodAgentName,
         jobName,
         )
-    return result
+
+    taskName = "ProdAgent_%s_%s" % ( taskObject['JobSpecNode'].workflow,
+                                     prodAgentName)
+    
+    return result, taskName
+
+
+
 
 
 def installDashboardInfo(taskObject):
@@ -76,8 +83,7 @@ def installDashboardInfo(taskObject):
 
     """
     dashboardInfo = DashboardInfo()
-    dashboardInfo.job = generateGlobalJobID(taskObject)
-    dashboardInfo.task = "ProdAgent_%s" % taskObject['JobSpecNode'].workflow
+    dashboardInfo.job, dashboardInfo.task = generateGlobalJobID(taskObject)
     dashboardInfo['GridUser'] = gridProxySubject()
     dashboardInfo['User'] = os.environ.get('USER', 'ProdAgent')
 
