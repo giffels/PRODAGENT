@@ -91,6 +91,21 @@ class JobSplitter:
         
         return self.fileblocks.keys()
 
+    def totalFiles(self):
+        """
+        _totalFiles_
+
+        Return a count of all files in all fileblocks.
+        Useful for checking wether a dataset actually has files in it
+        """
+        result = 0
+        for fileblock in self.fileblocks.values():
+            for fileEntry in fileblock:
+                result += fileEntry[1]
+
+        return result
+
+        
 
     def splitByFiles(self, fileblockName, filesPerJob = 1 ):
         """
