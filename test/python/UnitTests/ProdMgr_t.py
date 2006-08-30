@@ -6,7 +6,7 @@ Unittest ProdMgr.ProdMgr module
 
 import unittest
 
-import ProdMgr.Interface as ProdMgrAPI
+import ProdMgrInterface.Interface as ProdMgrAPI
 
 class ProdMgrUnitTests(unittest.TestCase):
     """
