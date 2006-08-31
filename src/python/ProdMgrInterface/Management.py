@@ -76,3 +76,43 @@ def commit(serverUrl=None,method_name=None,componentID=None):
        dbCur.close()
        conn.close()
        raise ProdAgentException("Service commit Error: "+str(ex))
+
+def retrieve(serverURL=None,method_name=None,componentID=None):
+
+   try:
+       conn=connect(False)
+       dbCur=conn.cursor()
+       dbCur.execute("START TRANSACTION")
+       if serverURL==None and method_name==None and componentID==None:
+           sqlStr="""SELECT server_url,service_call,component_id, max(log_time) FROM ws_last_call
+               WHERE call_state="call_placed" GROUP BY server_url;
+               """ 
+       elif serverURL==None and method_name==None and componentID!=None:
+           sqlStr="""SELECT server_url,service_call,component_id, max(log_time) FROM ws_last_call
+               WHERE component_id="%s" AND call_state="call_placed" GROUP BY server_url;
+               """ %(componentID)
+       elif serverURL==None and method_name!=None and componentID!=None:
+           sqlStr="""SELECT server_url,service_call,component_id, max(log_time) FROM ws_last_call
+               WHERE component_id="%s" AND service_call="%s" AND call_state="call_placed" GROUP BY server_url;
+               """ %(componentID,method_name)
+       elif serverURL!=None and method_name==None and componentID!=None:
+           sqlStr="""SELECT server_url,service_call,component_id, max(log_time) FROM ws_last_call
+               WHERE component_id="%s" AND server_url="%s" AND call_state="call_placed" GROUP BY server_url;
+               """ %(componentID,serverURL)
+       dbCur.execute(sqlStr)
+       rows=dbCur.fetchall()
+       if len(rows)==0:
+           raise ProdException("No result in local last service call table with componentID :"+\
+               str(componentID))
+       server_url=rows[0][0]
+       service_call=rows[0][1]
+       component_id=rows[0][2]
+       dbCur.execute("COMMIT")
+       dbCur.close()
+       conn.close()
+       return [server_url,service_call,component_id]
+   except Exception,ex:
+       dbCur.execute("ROLLBACK")
+       dbCur.close()
+       conn.close()
+       raise ProdAgentException("Service commit Error: "+str(ex))
