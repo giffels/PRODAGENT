@@ -1,70 +1,53 @@
 import logging
 
-import ProdMgrInterface.Clarens
-from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdMgrInterface import Management
 
-config = loadProdAgentConfiguration()
-compCfg = config.getConfig("ProdAgent")
-
-prodAgentCert=compCfg['ProdAgentCert']
-prodAgentKey=compCfg['ProdAgentKey']
-
-connections={}
-
-def getConnection(serverUrl):
-   global prodAgentCert
-   global prodAgentKey
-
+def userID(serverUrl,componentID="defaultComponent"):
    try:
-       if not connections.has_key(serverUrl):
-           dbsvr=ProdMgrInterface.Clarens.client(serverUrl, certfile=str(prodAgentCert),\
-               keyfile=str(prodAgentKey),debug=0)
-           connections[serverUrl]=dbsvr
-       return connections[serverUrl]       
-   except Exception,ex:
-       logging.debug("Service Connection Error:")
-       logging.debug(ex.faultCode)
-       logging.debug(ex.faultString)
-
-def userID(serverUrl):
-   try:
-      connection=getConnection(serverUrl)
+      connection=Management.getConnection(serverUrl)
+      Management.logServiceCall(serverUrl,"prodMgrRequest.userID",[],componentID)
       result=connection.execute("prodMgrRequest.userID",[])
       return result
    except Exception,ex:
-       logging.debug("userID Service Call Error:")
-       logging.debug(ex.faultCode)
-       logging.debug(ex.faultString)
+       raise ProdAgentException("userID Service Error: "+str(ex))
    
-def acquireAllocation(serverUrl,request_id,amount):
+def acquireAllocation(serverUrl,request_id,amount,componentID="defaultComponent"):
    try:
-       connection=getConnection(serverUrl)
-       allocations=connection.execute("prodMgrProdAgent.acquireAllocation",[request_id,15])
+       connection=Management.getConnection(serverUrl)
+       Management.logServiceCall(serverUrl,"prodMgrProdAgent.acquireAllocation",[request_id,amount],componentID)
+       allocations=connection.execute("prodMgrProdAgent.acquireAllocation",[request_id,amount])
        return allocations
    except Exception,ex:
-       logging.debug("acquireAllocation Service Connection Error:")
-       logging.debug(ex.faultCode)
-       logging.debug(ex.faultString)
+       raise ProdAgentException("acquireAllocation Service Error: "+str(ex))
 
-def acquireJob(serverUrl,request_id,parameters):
+def acquireJob(serverUrl,request_id,parameters,componentID="defaultComponent"):
    try:
-       connection=getConnection(serverUrl)
+       connection=Management.getConnection(serverUrl)
+       Management.logServiceCall(serverUrl,"prodMgrProdAgent.acquireJob",[request_id,parameters],componentID)
        jobs=connection.execute("prodMgrProdAgent.acquireJob",[request_id,parameters])
        return jobs
    except Exception,ex:
-       logging.debug("acquireJob Service Connection Error:")
-       logging.debug(ex.faultCode)
-       logging.debug(ex.faultString)
+       raise ProdAgentException("acquireJob Service Error: "+str(ex))
 
-def releaseJob(serverUrl,jobspec,events_completed):
+def releaseJob(serverUrl,jobspec,events_completed,componentID="defaultComponent"):
    try:
-       connection=getConnection(serverUrl)
+       connection=Management.getConnection(serverUrl)
+       Management.logServiceCall(serverUrl,"prodMgrProdAgent.releaseJob",[str(jobspec),events_completed],componentID)
        finished=connection.execute("prodMgrProdAgent.releaseJob",[str(jobspec),events_completed])
        return finished
    except Exception,ex:
-       logging.debug("releaseJob Service Connection Error:")
-       logging.debug(ex.faultCode)
-       logging.debug(ex.faultString)
+       raise ProdAgentException("releaseJob Service Error: "+str(ex))
 
 
+def commit(serverUrl=None,method_name=None,componentID=None):
+   try:
+       Management.commit(serverUrl,method_name,componentID)
+   except Exception,ex:
+       raise ProdAgentException("commit Service Connection Error: "+str(ex))
 
+def retrieve():
+   try:
+       i='donothing'
+   except Exception,ex:
+       raise ProdAgentException("commit Service Connection Error: "+str(ex))
