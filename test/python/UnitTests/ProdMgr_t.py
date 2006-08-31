@@ -25,11 +25,13 @@ class ProdMgrUnitTests(unittest.TestCase):
 
         print('testA')
         result=ProdMgrAPI.userID(self.serverURL) 
+        ProdMgrAPI.commit()
         print('ProdAgent ID is :'+str(result))
 
     def testB(self):
         print('testB')
         allocations=ProdMgrAPI.acquireAllocation(self.serverURL,self.request_id,15)
+        ProdMgrAPI.commit()
         print('Acquired : '+str(len(allocations))+' locations: '+str(allocations))
 
     def testC(self):
@@ -37,6 +39,7 @@ class ProdMgrUnitTests(unittest.TestCase):
         parameters={'numberOfJobs':20,
                     'prefix':'Wave1'}
         jobs=ProdMgrAPI.acquireJob(self.serverURL,self.request_id,parameters)
+        ProdMgrAPI.commit()
         ProdMgrUnitTests.jobs=jobs
         print('Acquired : '+str(len(jobs))+' jobs: '+str(jobs))
 
@@ -47,6 +50,7 @@ class ProdMgrUnitTests(unittest.TestCase):
         for job_index in xrange(0,len(jobs)-5):
             jobspec=jobs[job_index]['jobSpecId']
             finished=ProdMgrAPI.releaseJob(self.serverURL,str(jobspec),30)
+            ProdMgrAPI.commit()
 
     def testE(self):
         print('testE')
@@ -54,6 +58,7 @@ class ProdMgrUnitTests(unittest.TestCase):
         parameters={'numberOfJobs':20,
                     'prefix':'Wave2'}
         jobs=ProdMgrAPI.acquireJob(self.serverURL,self.request_id,parameters)
+        ProdMgrAPI.commit()
         print('Acquired : '+str(len(jobs))+' jobs: '+str(jobs))
         ProdMgrUnitTests.jobs+=jobs
 
@@ -65,14 +70,14 @@ class ProdMgrUnitTests(unittest.TestCase):
            events_completed=jobs[job_index]['end_event']-jobs[job_index]['start_event']+1
            try:
               finished=ProdMgrAPI.releaseJob(self.serverURL,str(jobspec),events_completed)
+              ProdMgrAPI.commit()
               if type(finished)==bool:
                  if finished:
                     print('finished request, killing remaining jobs '+str(len(jobs)-job_index))
                     break
         # we should get some errors as we releasing the same job twice
            except Exception,ex:
-               print(ex.faultCode)
-               print(ex.faultString)
+               print(str(ex))
                print("INTENTIONAL ERROR!!! ")
 
     def runTest(self):
