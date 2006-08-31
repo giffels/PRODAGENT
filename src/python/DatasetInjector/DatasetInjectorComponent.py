@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.1 2006/08/25 20:09:17 evansde Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.2 2006/08/30 20:14:02 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -50,7 +50,7 @@ class DatasetInjectorComponent:
         logFormatter = logging.Formatter("%(asctime)s:%(message)s")
         logHandler.setFormatter(logFormatter)
         logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
+        logging.getLogger().setLevel(logging.DEBUG)
         self.ms = None
 
         if self.args['WorkflowCache'] == None:
@@ -98,7 +98,7 @@ class DatasetInjectorComponent:
         
         return
 
-    def setWorkflow(self, payload):
+    def setWorkflow(self, workflowFile):
         """
         _setWorkflow_
 
@@ -113,7 +113,7 @@ class DatasetInjectorComponent:
             return
         
 
-        
+        logging.debug("Importing workflow file:\n%s\n" % workflowFile)
         #  //
         # // Import the workflow and instantiate an iterator for it
         #//
@@ -123,21 +123,22 @@ class DatasetInjectorComponent:
         os.system(migrateCommand)
         workflowName = os.path.basename(workflowFile)
         workflowPath = os.path.join( self.args['WorkflowCache'], workflowName)
+        logging.debug("Instantiating DatasetIterator for %s" % workflowPath)
         newIterator = DatasetIterator(workflowPath,
                                       self.args['ComponentDir'] )
-
+        logging.debug("Importing Dataset: %s" % newIterator.inputDataset())
         importResult = newIterator.importDataset()
         if importResult:
             msg = "Unable to Import Dataset for workflow:\n"
             msg += "%s\n" % workflowFile
+            logging.error(msg)
             return
+        logging.debug("Import successful")
         #  //
         # // Keep ref to iterator
         #//
         self.iterators[workflowName] = newIterator
         self.iterator = newIterator
-        
-        
         return
 
     
@@ -155,6 +156,7 @@ class DatasetInjectorComponent:
         _selectWorkflow_
 
         """
+        logging.debug("SelectWorkflow:%s" % payload)
         if not self.iterators.has_key(payload):
             msg = "No Iterator matching name: %s\n" % payload
             msg += "Found in list of available iterators:\n"
@@ -208,9 +210,8 @@ class DatasetInjectorComponent:
         #//  and delete the iterator
         if self.iterator.isComplete():
             self.iterator.cleanup()
+            del self.iterators[os.path.basename(self.iterator.workflow)]
             self.iterator = None
-            del self.iterators[self.iterator.workflowSpec.workflowName()]
-        
         return
         
         

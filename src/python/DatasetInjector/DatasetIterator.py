@@ -247,7 +247,7 @@ class DatasetIterator:
 
         """
         owner = DatabaseAPI.ownerIndex(self.workflowSpec.workflowName())
-        if DatabaseAPI.countJobs(ownerId) > 0:
+        if DatabaseAPI.countJobs(owner) > 0:
             return False
         return True
 
