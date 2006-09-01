@@ -53,6 +53,7 @@ class ProdMgrUnitTests(unittest.TestCase):
         print("Recovered data lost in last service call")
 
         ProdMgrAPI.commit()
+
         print('Acquired : '+str(len(allocations))+' allocations: '+str(allocations))
         print('Releasing: '+str(allocations[0]))
         result=ProdMgrAPI.releaseAllocation(self.serverURL,allocations[0])
