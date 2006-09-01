@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorDB.py,v 1.1 2006/08/25 11:02:12 ckavka Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -653,6 +653,102 @@ class MergeSensorDB:
         return rows
     
     ##########################################################################
+    # get list of mergejobs of a dataset
+    ##########################################################################
+            
+    def getJobList(self, datasetName):
+        """
+        __getJobList__
+        
+        Get the list of merge jobs started on a dataset
+        
+        Arguments:
+        
+          datasetName -- the name of the dataset
+          
+        Return:
+            
+          the list of merge jobs
+
+        """
+
+        datasetId = self.getDatasetId(datasetName)
+        
+       # get cursor
+        try:
+            self.conn = self.connect()
+            cursor = self.conn.cursor()
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+            cursor = self.conn.cursor()
+
+        # get merge jobs in dataset
+        sqlCommand = """
+                     SELECT mergejob
+                       FROM merge_outputfile
+                      WHERE dataset='""" + str(datasetId) + "'"
+                       
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # get cursor
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlCommand)
+
+        # process results
+        rows = cursor.rowcount
+        
+        # return empty list
+        if rows == 0:
+            return ()
+        
+        # build list
+        mergeJobs = cursor.fetchall()
+        
+        # remove extra level in lists
+        mergeJobs = [job[0] for job in mergeJobs]
+        
+        # return it
+        return mergeJobs
+
+    ##########################################################################
+    # get list of files of a dataset
+    ##########################################################################
+            
+    def getUnmergedFileListFromDataset(self, datasetName):
+        """
+        __getUnmergedFileListFromDataset__
+        
+        Get the list of unmerged files associated to a dataset
+        
+        Arguments:
+        
+          datasetName -- the name of the dataset
+          
+        Return:
+            
+          the list of files in the dataset
+
+        """
+
+        datasetId = self.getDatasetId(datasetName)
+        
+        if datasetId is None:
+            return []
+        
+        return self.getUnmergedFileList(datasetId)
+
+    ##########################################################################
     # get list of unmerged files of a dataset
     ##########################################################################
             
@@ -770,6 +866,128 @@ class MergeSensorDB:
 
     ##########################################################################
     # get list of files of a dataset
+    ##########################################################################
+            
+    def getJobInfo(self, jobId):
+        """
+        __getFileList__
+        
+        Get the job information
+        
+        Arguments:
+        
+          jobId -- the job name
+          
+        Return:
+            
+          a dictionary with all job information
+
+        """
+
+        # start building result dictionary
+        result = {'jobName' : jobId}
+       
+        # get cursor
+        try:
+            self.conn = self.connect()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+        # get main properties
+        sqlCommand = """
+                     SELECT merge_outputfile.name as outputfile,
+                            merge_outputfile.id as fileid,
+                            merge_dataset.prim as prim,
+                            merge_dataset.tier as tier,
+                            merge_dataset.processed as processed
+                       FROM merge_outputfile, merge_dataset
+                      WHERE mergejob='""" + str(jobId) + """'
+                        AND merge_dataset.id = merge_outputfile.dataset
+                     """
+                       
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # get cursor
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlCommand)
+
+        # process results
+        rows = cursor.rowcount
+        
+        # return no data
+        if rows == 0:
+            return None
+        
+        # get information
+        rows = cursor.fetchone()
+        
+        # add information to result
+        result['outputFile'] = rows['outputfile']
+        result['datasetName'] = "/" + rows['prim'] + \
+                                "/" + rows['tier'] + \
+                                "/" + rows['processed']
+         
+        # get output file id
+        fileId = rows['fileid']
+        
+        # get now all associated input files
+        sqlCommand = """
+                     SELECT merge_inputfile.name as filename,
+                            merge_fileblock.name as blockname
+                       FROM merge_inputfile,
+                            merge_fileblock
+                      WHERE merge_inputfile.mergedfile='""" \
+                             + str(fileId) + """'
+                        AND merge_inputfile.block=merge_fileblock.id
+                     """
+                       
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # get cursor
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlCommand)
+
+        # process results
+        rows = cursor.rowcount
+
+        # something wrong if not a single input file...
+        if rows == 0:
+            return None
+        
+        # get information
+        rows = cursor.fetchall()
+
+        # add to result
+        result['inputFiles'] = [file['filename'] for file in rows]
+        result['fileBlock'] = rows[0]['blockname']
+        
+        # return it
+        return result
+    
+    ##########################################################################
+    # add a file to a dataset
     ##########################################################################
             
     def addFile(self, datasetId, fileName, fileSize, fileBlock):
@@ -991,7 +1209,7 @@ class MergeSensorDB:
     # add output file
     ##########################################################################
             
-    def addOutputFile(self, datasetId, fileName):
+    def addOutputFile(self, datasetId, fileName, jobId):
         """
         __addOutputFile__
         
@@ -1002,6 +1220,7 @@ class MergeSensorDB:
         
           datasetId -- the dataset id in database
           fileName -- the output merged file name
+          jobId -- the job name
           
         Return:
             
@@ -1051,9 +1270,10 @@ class MergeSensorDB:
             # insert it
             sqlCommand = """
                      INSERT INTO merge_outputfile
-                            (name, dataset)
+                            (name, dataset, mergejob)
                      VALUES ('""" + fileName + """',
-                            '""" + str(datasetId) + """')
+                            '""" + str(datasetId) + """',
+                            '""" + jobId + """')
                      """
             # execute command
             try:
@@ -1111,7 +1331,8 @@ class MergeSensorDB:
         sqlCommand = """
                      UPDATE merge_outputfile
                         SET status='merged',
-                            instance=instance+1
+                            instance=instance+1,
+                            mergejob='""" + jobId + """'
                       WHERE name='""" + fileName + """'
                         AND dataset='""" + str(datasetId) + """'
                      """
@@ -1320,7 +1541,7 @@ class MergeSensorDB:
         # get dictionary based cursor
         try:
             self.conn = self.connect()
-            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+            cursor = self.conn.cursor()
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
@@ -1361,3 +1582,222 @@ class MergeSensorDB:
             raise MergeSensorDBError, \
                    'Cannot close dataset %s, not registered in database' \
                         % datasetName    
+
+    ##########################################################################
+    # get merge sensor status
+    ##########################################################################
+            
+    def getStatus(self):
+        """
+        __getStatus__
+        
+        Get the Merge Sensor status
+        
+        Arguments:
+        
+          none
+          
+        Return:
+            
+          a dictionary with the status information
+
+        """
+
+       # get cursor
+        try:
+            self.conn = self.connect()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+        # get status information
+        sqlCommand = """
+                     SELECT *
+                       FROM merge_control
+                     """
+                       
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # get cursor
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlCommand)
+
+        # process results
+        rows = cursor.rowcount
+        
+        # no information, insert default
+        if rows == 0:
+            
+            sqlCommand = """
+                         INSERT
+                           INTO merge_control
+                                ()
+                         VALUES ()
+                         """
+        
+            # execute command
+            try:
+
+                cursor.execute(sqlCommand)
+            except MySQLdb.Error:
+
+                # if it does not work, we lost connection to database.
+                self.conn = self.connect(invalidate = True)
+
+                # get cursor
+                cursor = self.conn.cursor()
+
+                # retry
+                cursor.execute(sqlCommand)
+
+            # check for insertion status
+            rows = cursor.rowcount
+
+            # problems
+            if rows == 0:        
+                raise MergeSensorDBError, \
+                       'Insertion of MergeSensor status into database failed'
+
+            # commit changes
+            self.commit()
+            
+            # get default status information
+            sqlCommand = """
+                         SELECT *
+                           FROM merge_control
+                         """
+                       
+            # execute command
+            try:
+
+                cursor.execute(sqlCommand)
+            except MySQLdb.Error:
+
+                # if it does not work, we lost connection to database.
+                self.conn = self.connect(invalidate = True)
+
+                # get cursor
+                cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+                # retry
+                cursor.execute(sqlCommand)
+
+        # build status dictionary
+        rows = cursor.fetchone()
+        
+        # remove id
+        try:
+            del rows['id']
+        except KeyError:
+            pass
+
+        # return it
+        return rows
+
+    ##########################################################################
+    # set status
+    ##########################################################################
+                                                                                
+    def setStatus(self, statusInfo): 
+        """
+        __setStatus__
+        
+        set Merge Sensor status information into the database
+        
+        Arguments:
+        
+          statusInfo -- the status information
+          
+        Return:
+            
+          none
+
+        """
+        
+        # start transaction
+        self.startTransaction()
+        
+        # build update command
+        updates = ''
+        separator = ''
+        
+        # for every key
+        for (key, value) in statusInfo.items():
+
+            updates = updates + separator + key + "='" + str(value) + "'"
+            separator = ', \n'
+
+        # no updates for empty argument
+        if updates == '':
+            return
+        
+        # get dictionary based cursor
+        try:
+            self.conn = self.connect()
+            cursor = self.conn.cursor()
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+            cursor = self.conn.cursor()
+
+        # get information
+        sqlCommand = """
+                       UPDATE merge_control
+                          SET """ + updates
+
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # get cursor
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlCommand)
+            
+        # commit changes
+        self.commit()
+            
+    ##########################################################################
+    # close database connection
+    ##########################################################################
+                                                                                
+    def closeDatabaseConnection(self): 
+        """
+        __closeDatabaseConnection__
+        
+        close the database connection
+        
+        Arguments:
+        
+          none
+          
+        Return:
+            
+          none
+
+        """
+    
+        # close connection (ignoring errors if any)
+        try:
+            self.database.close()
+        except:
+            pass
