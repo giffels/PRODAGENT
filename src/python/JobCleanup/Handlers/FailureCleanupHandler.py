@@ -42,7 +42,7 @@ class FailureCleanupHandler(HandlerInterface):
                  pass
              cacheDirLocation=JobStateInfoAPI.general(str(payload))['CacheDirLocation']
              logging.debug(">FailureCleanupHandler< archiving and removing directory: "+cacheDirLocation)
-             tar=tarfile.open(self.failureArchive+'/'+str(payload)+'.tar','w:gz')
+             tar=tarfile.open(self.failureArchive+'/'+str(payload)+'.tar.gz','w:gz')
              tar.add(cacheDirLocation)
              try:
                  for root, dirs, files in os.walk(cacheDirLocation, topdown=False):
