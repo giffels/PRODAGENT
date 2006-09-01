@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: Dataset.py,v 1.14 2006/08/25 11:01:23 ckavka Exp $"
+__version__ = "$Revision: 1.14 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -479,7 +479,7 @@ class Dataset:
     # add a merge job
     ##########################################################################
 
-    def addMergeJob(self, fileList):
+    def addMergeJob(self, fileList, jobId):
         """
         _addMergeJobs_
         
@@ -488,6 +488,7 @@ class Dataset:
         Arguments:
             
           fileList -- the list of files that the job will start to merge
+          jobId -- the job name
 
         Return:
             
@@ -506,7 +507,8 @@ class Dataset:
         self.data['outSeqNumber'] = self.data['outSeqNumber'] + 1
 
         # create outputFile
-        (new, fileId) = self.database.addOutputFile(datasetId, outputFile)
+        (new, fileId) = self.database.addOutputFile(datasetId, \
+                                                outputFile, jobId)
         
         # mark input files as merged for new created output file
         if new:

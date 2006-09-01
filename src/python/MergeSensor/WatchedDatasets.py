@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: WatchedDatasets.py,v 1.5 2006/08/25 11:00:02 ckavka Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
@@ -233,7 +233,7 @@ class WatchedDatasets:
     # add a merge job
     ##########################################################################
 
-    def addMergeJob(self, datasetId, fileList):
+    def addMergeJob(self, datasetId, fileList, jobId):
         """
         _addMergeJobs_
         
@@ -243,13 +243,14 @@ class WatchedDatasets:
             
           datasetId -- the name of the dataset
           fileList -- the list of files that the job will start to merge
+          jobId -- the job name
           
         Return:
             
           the name of the output file
           
         """
-        return self.datasets[datasetId].addMergeJob(fileList)
+        return self.datasets[datasetId].addMergeJob(fileList, jobId)
 
     ##########################################################################
     # determine mergeable status of a dataset
