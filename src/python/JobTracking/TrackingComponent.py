@@ -19,11 +19,12 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.23 2006/08/17 10:35:27 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.24 2006/08/23 11:26:53 bacchi Exp $"
 
 import socket
 import time
 import os
+from shutil import copy
 import string
 import logging
 from logging.handlers import RotatingFileHandler
@@ -91,6 +92,9 @@ class TrackingComponent:
         bossConfig = cfgObject.get("BOSS")
         self.bossCfgDir = bossConfig['configDir'] 
         logging.info("Using BOSS configuration from " + self.bossCfgDir)
+        creatorConfig = cfgObject.get("JobCreator")
+        self.archiveDir = creatorConfig['ComponentDir'] 
+        self.archiveDir = os.path.expandvars(self.archiveDir)
 
 # The rest of the initialization
         ##AF: get boss version from "boss v"
@@ -99,7 +103,7 @@ class TrackingComponent:
 ##         self.BossVersion="v"+version.split('_')[1] 
 
         #number of iterations after which failed jobs are purged from DB
-        self.failedJobsPublishedTTL = 180
+#        self.failedJobsPublishedTTL = 180
         #dictionary containing failed jobs: the key is jobid and value is a counter
 #        self.bossJobScheduler={"v3":self.BOSS3scheduler,"v4":self.BOSS4scheduler}
         #self.bossJobSpecId={"v3":self.BOSS3JobSpecId,"v4":self.BOSS4JobSpecId}
@@ -160,7 +164,7 @@ class TrackingComponent:
 
         jobNumber=300
         timeout=0
-        outfile=self.executeCommand("bossAdmin SQL -query \"select TASK_ID,ID  from JOB where SUB_TIME>0 and GETOUT_T=0 group by TASK_ID\" -c " + self.bossCfgDir)
+        outfile=self.executeCommand("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j, (select TASK_ID ,CHAIN_ID,max(id) id from JOB group by task_id,chain_id) a  where j.TASK_ID=a.TASK_ID and j.CHAIN_ID=a.CHAIN_ID and j.ID=a.ID and j.getout_t=0\" -c " + self.bossCfgDir)
         try:
             jobNumber=len(outfile.split('\n'))-2
             logging.debug("JobNumber = %s\n"%jobNumber)
@@ -169,7 +173,9 @@ class TrackingComponent:
             logging.debug(outfile)
             logging.debug("\n")
 
-        outfile=self.executeCommand("bossAdmin SQL -query \"select MAX(TASK_ID),'-',MIN(TASK_ID)  from  (select TASK_ID,CHAIN_ID,MAX(ID),sum(GETOUT_T) GETOUT_T from  JOB group by TASK_ID,CHAIN_ID having GETOUT_T=0) a \" -c " + self.bossCfgDir)
+#        outfile=self.executeCommand("bossAdmin SQL -query \"select MAX(TASK_ID),'-',MIN(TASK_ID)  from  JOB where GETOUT_T=0 and SCHED_ID!='' \" -c " + self.bossCfgDir)
+        outfile=self.executeCommand("bossAdmin SQL -query \"select max(j.TASK_ID),'-',min(j.TASK_ID) from JOB j, (select TASK_ID ,CHAIN_ID,max(id) id from JOB group by task_id,chain_id) a  where j.TASK_ID=a.TASK_ID and j.CHAIN_ID=a.CHAIN_ID and j.ID=a.ID and j.getout_t=0\" -c "+ self.bossCfgDir)
+#        outfile=self.executeCommand("bossAdmin SQL -query \"select MAX(TASK_ID),'-',MIN(TASK_ID)  from  (select TASK_ID,CHAIN_ID,MAX(ID),sum(GETOUT_T) GETOUT_T from  JOB group by TASK_ID,CHAIN_ID having GETOUT_T=0) a \" -c " + self.bossCfgDir)
 
         try:
             lines=outfile.split("\n")
@@ -288,16 +294,18 @@ class TrackingComponent:
                     logging.debug("check Job Success %s"%checkSuccess(self.reportfilename))
                     
                     if checkSuccess(self.reportfilename):
-                        self.jobSuccess()
+                        
+                        self.jobSuccess(jobId)
+                        
                     else:
                         try:
                             self.cmsErrorJobs[jobId[0]]+=0
                         except StandardError:
                             self.cmsErrorJobs[jobId[0]]=0
-                            self.jobFailed(jobId,self.reportfilename)
+                            self.jobFailed(jobId)
 
                             logging.error("%s - %d" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
-                            self.jobFailed(jobId,self.reportfilename )
+                            self.jobFailed(jobId )
                             
                             
                 else:
@@ -316,7 +324,7 @@ class TrackingComponent:
                         fwjr.status="Failed"
                         fwjr.write(self.reportfilename)
 
-                        self.jobFailed(jobId,self.reportfilename)
+                        self.jobFailed(jobId)
 
             else:
                 logging.error(outp)
@@ -348,11 +356,11 @@ class TrackingComponent:
                     logging.debug("JobScheduler=%s"%jobScheduler)
                     if jobScheduler=="edg":
                         sched_id=self.BOSS4schedulerId(jobId[0])
-                        logging.info("Sched_id=%s"%sched_id)
+                        logging.info("Aborted Job Sched_id=%s"%sched_id)
                         if sched_id!="":
-                            self.executeCommand("edg-job-get-logging-info -v 2 %s > %s/edgLoggingInfo.txt"%(sched_id,os.path.dirname(self.reportfilename)))
+                            self.executeCommand("edg-job-get-logging-info -v 2 %s > %s/edgLoggingInfo.log"%(sched_id,os.path.dirname(self.reportfilename)))
       
-                self.jobFailed(jobId,self.reportfilename)
+                self.jobFailed(jobId)
                 
                 
         self.saveDict(self.failedJobsPublished,"failedJobsPublished")
@@ -435,7 +443,7 @@ class TrackingComponent:
         return
         
     
-    def jobSuccess(self):
+    def jobSuccess(self,jobId):
         """
         _jobSuccess_
         
@@ -445,6 +453,8 @@ class TrackingComponent:
         JobSuccess event to the prodAgent
         
         """
+
+        self.archiveJob("Success",jobId)
         self.msThread.publish("JobSuccess", self.reportfilename)
         self.msThread.commit()
         
@@ -453,7 +463,7 @@ class TrackingComponent:
         
         return
     
-    def jobFailed(self, jobId, msg):
+    def jobFailed(self, jobId):
         """
         _jobFailed_
         
@@ -465,9 +475,12 @@ class TrackingComponent:
         """
         
         #if it's the first time we see this failed job we  publish JobFailed event and add the job in failedJobsPublished dict
+        
         try:
             self.failedJobsPublished[jobId[0]] += 0
         except StandardError:
+            self.archiveJob("Failed",jobId)
+            msg=self.reportfilename
             logging.debug("JobFailed: %s" % msg)
             self.msThread.publish("JobFailed", msg)
             self.msThread.commit()
@@ -476,6 +489,96 @@ class TrackingComponent:
            
         return
     
+    def archiveJob(self,success,jobId):
+        """
+        _archiveJob_
+
+        Moves output file to archdir
+        """
+        try:
+            taskid=jobId[0].split('.')[0]
+            chainid=jobId[0].split('.')[1]
+            resub=jobId[0].split('.')[2]
+        except:
+            logging.error("archiveJob jobId split error\nNo Files deleted")
+            return
+        
+        logging.debug("self.archiveDir = %s"%self.archiveDir)
+        lastdir=os.path.dirname(self.reportfilename).split('/').pop()
+        
+        baseDir=os.path.dirname(self.reportfilename)+"/"
+        #logging.info("baseDir = %s"%baseDir)
+        fjr=readJobReport(self.reportfilename)
+        newPath=self.archiveDir+"/"+fjr[0].jobSpecId+"-cache/JobTracking/"+success+"/"+lastdir+"/"
+        #logging.info("newPath = %s"%newPath)
+        
+        try:
+            os.makedirs(newPath)
+        except:
+            pass
+        try:
+            copy(self.reportfilename,newPath)
+            os.unlink(self.reportfilename)
+        except:
+            logging.error("failed to move %s to %s\n"%(self.reportfilename,newPath))
+            pass
+        self.reportfilename=newPath+os.path.basename(self.reportfilename)
+        files=os.listdir(baseDir)
+        
+        for f in files:
+            (name,ext)=os.path.splitext(f)
+            ext=ext.split('.')[1]
+            try:
+                os.makedirs(newPath+ext)
+            except:
+                pass
+            try:
+                copy(baseDir+f,newPath+ext)
+                os.unlink(baseDir+f)
+            except:
+                logging.error("failed to move %s to %s\n"%(baseDir+f,newPath+ext))
+                pass
+        try:
+            os.rmdir(baseDir)
+            logging.debug("removing baseDir %s"%baseDir)
+
+        except:
+            logging.error("error removing baseDir %s"%baseDir)
+
+            
+        try:
+            chainDir=baseDir.split('/')
+            chainDir.pop()
+            chainDir.pop()
+            chainDir="/".join(chainDir)
+            logging.debug("removing chainDir %s"%chainDir)
+            os.rmdir(chainDir)
+        except:
+            logging.error("error removing chainDir %s"%chainDir)
+        if success=="Success":
+            try:
+                logging.debug("bossAdmin SQL -query \"select SUB_PATH from JOB where TASK_ID='%s' and CHAIN_ID='%s' and ID='%s'\""%(taskid,chainid,resub) + " -c " + self.bossCfgDir)
+
+                outfile=self.executeCommand("bossAdmin SQL -query \"select SUB_PATH from JOB where TASK_ID='%s' and CHAIN_ID='%s' and ID='%s'\""%(taskid,chainid,resub) + " -c " + self.bossCfgDir)
+                subPath=outfile
+            except:
+                subPath=""
+                
+            try:
+                subPath=subPath.split("SUB_PATH")[1].strip()
+            except:
+                subPath=""
+            logging.debug("SubmissionPath '%s'"%subPath)
+            try:
+                os.remove("%s/BossArchive_%s_g0.tar"%(subPath,taskid))
+                logging.debug("removed %s/BossArchive_%s_g0.tar"%(subPath,taskid))
+                os.remove("%s/BossClassAdFile_%s"%(subPath,taskid))
+                logging.debug("removed %s/BossClassAdFile_%s"%(subPath,taskid))
+            except:
+                logging.error("Failed to remove submission files")
+        return
+
+        
     def subFailed(self, jobId, msg):
         """
         _subFailed_
