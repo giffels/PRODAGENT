@@ -24,8 +24,9 @@ class ComponentServerTest(unittest.TestCase):
         self.ms=MessageService()
         self.ms.registerAs("TestComponent")
         self.ms.subscribeTo("SubmitJob")
-        self.failedJobs=10
+        self.failedJobs=200
         self.successJobs=10
+        self.maxRetries=20
         self.outputPath=os.getenv('PRODAGENT_WORKDIR')
 
     def testA(self):
@@ -42,19 +43,19 @@ class ComponentServerTest(unittest.TestCase):
     def testB(self):
         try:
             print("--->setting job states for failure and success")
-            print("we allow for 10 retries")
+            print("we allow for "+str(self.maxRetries)+" retries")
             for i in xrange(0,self.successJobs):
-                JobStateChangeAPI.register('JobSpecSuccess_'+str(i),"processing",10,1)
+                JobStateChangeAPI.register('JobSpecSuccess_'+str(i),"Processing",self.maxRetries,1)
             for i in xrange(0,self.failedJobs):
-                JobStateChangeAPI.register('JobSpecFailed_'+str(i),"processing",10,1)
+                JobStateChangeAPI.register('JobSpecFailed_'+str(i),"Processing",self.maxRetries,1)
             # check if the entry was registered:
             for i in xrange(0,self.successJobs):
                 generalInfo=JobStateInfoAPI.general('JobSpecSuccess_'+str(i))
-                self.assertEqual(int(generalInfo['MaxRetries']),10)
+                self.assertEqual(int(generalInfo['MaxRetries']),self.maxRetries)
                 self.assertEqual(int(generalInfo['MaxRacers']),1)
             for i in xrange(0,self.failedJobs):
                 generalInfo=JobStateInfoAPI.general('JobSpecFailed_'+str(i))
-                self.assertEqual(int(generalInfo['MaxRetries']),10)
+                self.assertEqual(int(generalInfo['MaxRetries']),self.maxRetries)
                 self.assertEqual(int(generalInfo['MaxRacers']),1)
         except StandardError, ex:
             msg = "Failed testB:\n"
@@ -154,13 +155,13 @@ class ComponentServerTest(unittest.TestCase):
             # check if the entry was registered:
             for i in xrange(0,self.successJobs):
                 generalInfo=JobStateInfoAPI.general('JobSpecSuccess_'+str(i))
-                self.assertEqual(int(generalInfo['MaxRetries']),10)
+                self.assertEqual(int(generalInfo['MaxRetries']),self.maxRetries)
                 self.assertEqual(int(generalInfo['MaxRacers']),1)
                 self.assertEqual(generalInfo['CacheDirLocation'],self.outputPath+'/JobCache/JobSpecSuccess_'+str(i))
                 self.assertEqual(generalInfo['State'],'create')
             for i in xrange(0,self.failedJobs):
                 generalInfo=JobStateInfoAPI.general('JobSpecFailed_'+str(i))
-                self.assertEqual(int(generalInfo['MaxRetries']),10)
+                self.assertEqual(int(generalInfo['MaxRetries']),self.maxRetries)
                 self.assertEqual(int(generalInfo['MaxRacers']),1)
                 self.assertEqual(generalInfo['CacheDirLocation'],self.outputPath+'/JobCache/JobSpecFailed_'+str(i))
                 self.assertEqual(generalInfo['State'],'create')
@@ -179,14 +180,14 @@ class ComponentServerTest(unittest.TestCase):
             # check if the entry was registered:
             for i in xrange(0,self.successJobs):
                 generalInfo=JobStateInfoAPI.general('JobSpecSuccess_'+str(i))
-                self.assertEqual(int(generalInfo['MaxRetries']),10)
+                self.assertEqual(int(generalInfo['MaxRetries']),self.maxRetries)
                 self.assertEqual(int(generalInfo['MaxRacers']),1)
                 self.assertEqual(int(generalInfo['Racers']),0)
                 self.assertEqual(generalInfo['CacheDirLocation'],self.outputPath+'/JobCache/JobSpecSuccess_'+str(i))
                 self.assertEqual(generalInfo['State'],'inProgress')
             for i in xrange(0,self.failedJobs):
                 generalInfo=JobStateInfoAPI.general('JobSpecFailed_'+str(i))
-                self.assertEqual(int(generalInfo['MaxRetries']),10)
+                self.assertEqual(int(generalInfo['MaxRetries']),self.maxRetries)
                 self.assertEqual(int(generalInfo['MaxRacers']),1)
                 self.assertEqual(int(generalInfo['Racers']),0)
                 self.assertEqual(generalInfo['CacheDirLocation'],self.outputPath+'/JobCache/JobSpecFailed_'+str(i))
@@ -204,7 +205,7 @@ class ComponentServerTest(unittest.TestCase):
             
             # do this 10 times (to simulate 10 retries)
             # pretend to submit the jobs.
-            for tries in xrange(0,10):
+            for tries in xrange(0,self.maxRetries):
                 for i in xrange(0,self.failedJobs):
                     JobStateChangeAPI.submit('JobSpecFailed_'+str(i))
 
@@ -236,8 +237,9 @@ class ComponentServerTest(unittest.TestCase):
                     #self.ms.commit()
 
                 # the error handler submits an Submit Job event that we will receive.
-                # note we should not wait on the last one as after 10 retries the job gets cleaned out
-                if tries<9:
+                # note we should not wait on the last one as after 
+                #self.maxRetries retries the job gets cleaned out
+                if tries<(self.maxRetries-1):
                     for i in xrange(0,self.failedJobs):
                         type, payload = self.ms.get()
                         self.ms.commit()
@@ -261,9 +263,10 @@ class ComponentServerTest(unittest.TestCase):
             # we only emit failed events as error handlers and job cleanup
             # do not subscribe to success events
             
-            # do this 10 times (to simulate 10 retries)
+            # do this self.maxRetries times 
+            # (to simulate self.maxRetries retries)
             # pretend to submit the jobs.
-            for tries in xrange(0,10):
+            for tries in xrange(0,self.maxRetries):
                 for i in xrange(0,self.failedJobs):
                     #NOTE: IF YOU COMMENT OUT THIS LINE AND THUS SUBMITS
                     #NOTE: A JOB THE RACER IS UPDATED HOWEVER THE LAST
@@ -289,8 +292,9 @@ class ComponentServerTest(unittest.TestCase):
                     self.assertEqual(int(generalInfo['Racers']),0)
 
                 # the error handler submits an Submit Job event that we will receive.
-                # note we should not wait on the last one as after 10 retries the job gets cleaned out
-                if tries<9:
+                # note we should not wait on the last one as after 
+                # self.maxRetries retries the job gets cleaned out
+                if tries<(self.maxRetries-1):
                     for i in xrange(0,self.failedJobs):
                         type, payload = self.ms.get()
                         self.ms.commit()
