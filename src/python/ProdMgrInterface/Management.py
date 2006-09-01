@@ -84,21 +84,29 @@ def retrieve(serverURL=None,method_name=None,componentID=None):
        dbCur=conn.cursor()
        dbCur.execute("START TRANSACTION")
        if serverURL==None and method_name==None and componentID==None:
-           sqlStr="""SELECT server_url,service_call,component_id, max(log_time) FROM ws_last_call
-               WHERE call_state="call_placed" GROUP BY server_url;
+           sqlStr="""SELECT server_url,service_call,component_id FROM ws_last_call WHERE 
+               call_state="call_placed" AND log_time IN ( 
+               SELECT  max(log_time) FROM ws_last_call
+               WHERE call_state="call_placed" GROUP BY server_url);
                """ 
        elif serverURL==None and method_name==None and componentID!=None:
-           sqlStr="""SELECT server_url,service_call,component_id, max(log_time) FROM ws_last_call
-               WHERE component_id="%s" AND call_state="call_placed" GROUP BY server_url;
-               """ %(componentID)
+           sqlStr="""SELECT server_url,service_call,component_id FROM ws_last_call WHERE  
+               component_id="%s" AND call_state="call_placed" AND log_time IN ( 
+               SELECT max(log_time) FROM ws_last_call
+               WHERE component_id="%s" AND call_state="call_placed" GROUP BY server_url);
+               """ %(componentID,componentID)
        elif serverURL==None and method_name!=None and componentID!=None:
-           sqlStr="""SELECT server_url,service_call,component_id, max(log_time) FROM ws_last_call
-               WHERE component_id="%s" AND service_call="%s" AND call_state="call_placed" GROUP BY server_url;
-               """ %(componentID,method_name)
+           sqlStr="""SELECT server_url,service_call,component_id FROM ws_last_call WHERE 
+               component_id="%s" AND service_call="%s" AND call_state="call_placed" AND log_time IN ( 
+               SELECT  max(log_time) FROM ws_last_call
+               WHERE component_id="%s" AND service_call="%s" AND call_state="call_placed" GROUP BY server_url);
+               """ %(componentID,method_name,componentID,method_name)
        elif serverURL!=None and method_name==None and componentID!=None:
-           sqlStr="""SELECT server_url,service_call,component_id, max(log_time) FROM ws_last_call
-               WHERE component_id="%s" AND server_url="%s" AND call_state="call_placed" GROUP BY server_url;
-               """ %(componentID,serverURL)
+           sqlStr="""SELECT server_url,service_call,component_id FROM ws_last_call WHERE 
+               component_id="%s" AND server_url="%s" AND call_state="call_placed" AND log_time IN ( 
+               SELECT  max(log_time) FROM ws_last_call
+               WHERE component_id="%s" AND server_url="%s" AND call_state="call_placed" GROUP BY server_url);
+               """ %(componentID,serverURL,componentID,serverURL)
        dbCur.execute(sqlStr)
        rows=dbCur.fetchall()
        if len(rows)==0:

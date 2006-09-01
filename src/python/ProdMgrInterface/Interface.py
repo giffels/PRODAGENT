@@ -65,12 +65,12 @@ def retrieve(serverUrl=None,method_name=None,componentID="defaultComponent"):
    try:
        if ((serverUrl!=None) and (method_name!=None)):
            connection=Management.getConnection(serverUrl)
-           result=connection.execute("prodMgrAdmin.lastServiceCall",[service_map[method_name],componentID])
+           result=connection.execute("prodCommonRecover.lastServiceCall",[service_map[method_name],componentID])
            return result
        else:
            tripple=Management.retrieve(serverUrl,method_name,componentID)
            connection=Management.getConnection(tripple[0])
-           result=connection.execute("prodMgrAdmin.lastServiceCall",[tripple[1],tripple[2]])
+           result=connection.execute("prodCommonRecover.lastServiceCall",[tripple[1],tripple[2]])
            return result
    except Exception,ex:
        raise ProdAgentException("retrieve Service Connection Error: "+str(ex))
