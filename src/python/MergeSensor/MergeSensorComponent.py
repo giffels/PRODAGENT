@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.25 2006/08/25 10:58:36 ckavka Exp $"
+__version__ = "$Revision: 1.25 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -18,7 +18,9 @@ import sys
 
 # Merge sensor import
 from MergeSensor.WatchedDatasets import WatchedDatasets
-from MergeSensor.MergeSensorError import MergeSensorError, InvalidDataTier
+from MergeSensor.MergeSensorError import MergeSensorError, \
+                                         InvalidDataTier, \
+                                         MergeSensorDBError
 from MessageService.MessageService import MessageService
 from MergeSensor.Dataset import Dataset
 from MergeSensor.MergeSensorDB import MergeSensorDB
@@ -189,6 +191,9 @@ class MergeSensorComponent:
         # datasets still not initialized
         self.datasets = None
                 
+        # database connection not initialized
+        self.database = None
+        
         # create thread synchronization condition variable
         self.cond = Condition()
  
@@ -289,6 +294,26 @@ class MergeSensorComponent:
         # force merge event
         if event == "ForceMerge":
             self.forceMerge(payload)
+            return
+
+        # temporary stop event
+        if event == "MergeSensor:TemporaryStop":
+            self.temporaryStop(payload)
+            return
+        
+        # restart
+        if event == "MergeSensor:Restart":
+            self.restart(payload)
+            return
+
+        # limit number of jobs
+        if event == "MergeSensor:LimitNumberOfJobs":
+            self.limitNumberOfJobs(payload)
+            return
+
+        # remove limits on number of jobs
+        if event == "MergeSensor:NoJobLimits":
+            self.noJobLimits(payload)
             return
 
         # wrong event
@@ -465,10 +490,291 @@ class MergeSensorComponent:
         self.cond.release()
 
     ##########################################################################
+    # handle a temporary stop event
+    ##########################################################################
+
+    def temporaryStop(self, payload):
+        """
+        _temporaryStop_
+
+        used to temporary stop MergeSensor operation
+
+        Arguments:
+            
+          payload -- empty string or dataset name
+          
+        Return:
+            
+          none
+          
+        """
+
+        # empty payload means stop all processing
+        if payload == "":
+            
+            # open a new connection (to avoid interfere with transactions
+            # in the other thread)
+            database = MergeSensorDB()
+        
+            # get database status
+            status = database.getStatus()
+        
+            # check running condition
+            if status['status'] == 'stopped':
+                logging.error("MergeSensor is already in stopped condition!")
+                database.closeDatabaseConnection()
+                return
+        
+            # set it to stopped
+            newStatus = {'status':'stopped'}
+            database.setStatus(newStatus)
+            database.commit()
+
+            # log message
+            logging.info("Temporary stopped.")
+        
+            # close connection and return
+            database.closeDatabaseConnection()
+            return
+
+        # stop processing a particular dataset
+        datasetName = payload
+        
+        # open a new connection (to avoid interfere with transactions
+        # in the other thread)
+        database = MergeSensorDB()
+        
+        # get dataset info
+        try:
+            datasetInfo = database.getDatasetInfo(datasetName)
+        
+        # it does not exist
+        except MergeSensorDBError, msg:
+            
+            logging.error( \
+              "Processing on dataset %s cannot be blocked, not watched." \
+              % datasetName)
+            database.closeDatabaseConnection()
+            return
+        
+        # get status
+        status = datasetInfo['status']
+        
+        # check it
+        if status == 'closed':
+            
+            # it is already stopped
+            logging.warning( \
+              "Processing on dataset %s is already blocked." % datasetName)
+            database.closeDatabaseConnection()
+            return
+        
+        # close it
+        database.closeDataset(datasetName)
+        database.commit()
+        
+        # log message
+        logging.info("Processing of dataset %s blocked" % datasetName)
+
+        # close connection and return
+        database.closeDatabaseConnection()
+        return
+    
+    ##########################################################################
+    # handle a restart event
+    ##########################################################################
+
+    def restart(self, payload):
+        """
+        _restart_
+
+        used to restart MergeSensor operation
+
+        Arguments:
+            
+          payload -- empty string or dataset name
+          
+        Return:
+            
+          none
+          
+        """
+
+        
+        # empty payload means stop all processing
+        if payload == "":
+            
+            # open a new connection (to avoid interfere with transactions in the
+            # other thread)
+            database = MergeSensorDB()
+        
+            # get database status
+            status = database.getStatus()
+        
+            # check running condition
+            if status['status'] == 'running':
+                logging.error("MergeSensor is already in running condition!")
+                database.closeDatabaseConnection()
+                return
+        
+            # set it to stopped
+            newStatus = {'status':'running'}
+            database.setStatus(newStatus)
+            database.commit()
+        
+            # log message
+            logging.info("Restarting operation")
+        
+            # close connection and return
+            database.closeDatabaseConnection()
+            return 
+
+        # restart processing a particular dataset
+        datasetName = payload
+        
+        # open a new connection (to avoid interfere with transactions
+        # in the other thread)
+        database = MergeSensorDB()
+        
+        # get dataset info
+        try:
+            datasetInfo = database.getDatasetInfo(datasetName)
+        
+        # it does not exist
+        except MergeSensorDBError, msg:
+            
+            logging.error( \
+              "Processing on dataset %s cannot be restarted, not watched." \
+              % datasetName)
+            database.closeDatabaseConnection()
+            return
+        
+        # get status
+        status = datasetInfo['status']
+        
+        # check it
+        if status == 'open':
+            
+            # it is already running
+            logging.warning( \
+              "Asked restart processing on dataset %s, which is not stopped!" \
+                   % datasetName)
+            database.closeDatabaseConnection()
+            return
+        
+        # open it
+        database.startTransaction()
+        database.updateDataset(datasetName)
+        database.commit()
+        
+        # log message
+        logging.info("Processing of dataset %s restarted" % datasetName)
+
+        # close connection and return
+        database.closeDatabaseConnection()
+        return
+
+    ##########################################################################
+    # handle a limit number of jobs event
+    ##########################################################################
+
+    def limitNumberOfJobs(self, payload):
+        """
+        _restart_
+
+        used to restart MergeSensor operation
+
+        Arguments:
+            
+          payload -- the number of jobs
+          
+        Return:
+            
+          none
+          
+        """
+
+        # get number of allows jobs
+        try:
+            remainingJobs = int(payload)
+        except ValueError, msg:
+            logging.error("Wrong limit on the number of allowed jobs: %s" \
+                          % payload)
+            return
+        
+        # open a new connection (to avoid interfere with transactions in the
+        # other thread)
+        database = MergeSensorDB()
+        
+        # get database status
+        status = database.getStatus()
+        
+        # check running condition
+        if status['status'] == 'stopped':
+            logging.warning( \
+                 "MergeSensor is already in stopped, limit has no effect!")
+        
+        # limit processing
+        newStatus = {'limited':'yes', 'remainingjobs':remainingJobs}
+        database.setStatus(newStatus)
+        database.commit()
+        
+        # log message
+        logging.info("Processing limited to %s jobs." % remainingJobs)
+
+        # close connection
+        database.closeDatabaseConnection()
+
+    ##########################################################################
+    # no limits on job generations
+    ##########################################################################
+
+    def noJobLimits(self, payload):
+        """
+        _restart_
+
+        used to remove the job limitations
+
+        Arguments:
+            
+          none
+          
+        Return:
+            
+          none
+          
+        """
+
+        # open a new connection (to avoid interfere with transactions in the
+        # other thread)
+        database = MergeSensorDB()
+        
+        # get database status
+        status = database.getStatus()
+        
+        # check running condition
+        if status['limited'] == 'no':
+            logging.error( \
+                 "Asked to remove limits, and no limit is in effect!")
+            database.closeDatabaseConnection()
+            return
+        
+        # remove limit processing
+        newStatus = {'limited':'no', 'remainingjobs':'0'}
+        database.setStatus(newStatus)
+        database.commit()
+        
+        # log message
+        logging.info("Removed limit to job generation.")
+
+        # close connection
+        database.closeDatabaseConnection()
+
+    ##########################################################################
     # poll DBS
     ##########################################################################
 
-    def pollDBS(self, datasetPath):
+    def pollDBS(self, datasetPath, status):
         """
         _pollDBS_
 
@@ -479,6 +785,7 @@ class MergeSensorComponent:
         Arguments:
             
           datasetPath -- the name of the dataset
+          status -- MergeSensor status
           
         Return:
             
@@ -486,6 +793,18 @@ class MergeSensorComponent:
           
         """
                 
+        # check for limits
+        if status["limited"] == "yes" and status["remainingjobs"] == 0:
+            
+            # nothing to do (log message displayed before)
+            return
+
+        # check for blocked condition
+        datasetStatus = self.database.getDatasetInfo(datasetPath)
+        if datasetStatus['status'] == 'closed':
+            logging.info("Polling DBS for %s blocked" % datasetPath)
+            return
+        
         # log information
         logging.info("Polling DBS for %s" % datasetPath)
 
@@ -550,7 +869,8 @@ class MergeSensorComponent:
             self.cond.acquire()
 
             # define merge job
-            outFile = self.datasets.addMergeJob(datasetPath, selectedSet)
+            outFile = self.datasets.addMergeJob(datasetPath, selectedSet, \
+                                                jobId)
 
             # get properties
             properties = self.datasets.getProperties(datasetPath)
@@ -582,6 +902,31 @@ class MergeSensorComponent:
             for secondaryTier in secondaryOutputTiers:
                 logging.info("  output dataset: /%s/%s/%s-merged file: %s" % \
                           (dataset[0],secondaryTier,dataset[2],outFile))
+
+            # update dataset status
+            newStatus = {}
+            newStatus["mergedjobs"] = status["mergedjobs"] + 1
+            if status["limited"] == "yes":
+                newStatus["remainingjobs"] = status["remainingjobs"] - 1
+            
+            #critical region start
+            self.cond.acquire()
+
+            # update MergeSensor status
+            self.database.setStatus(newStatus)
+            status = self.database.getStatus()
+            
+            # critical region end
+            self.cond.release()
+            
+            # check for limits
+            if status["limited"] == "yes" and newStatus["remainingjobs"] == 0:
+                mergeable = False
+                logging.info( \
+                    "Limit on the number of generated jobs has been reached.")
+                logging.info(" trying again in %s seconds." % \
+                             self.args['PollInterval'])
+                break
 
             #critical region start
             self.cond.acquire()
@@ -890,8 +1235,46 @@ class MergeSensorComponent:
           none
           
         """
-        logging.info("Start polling DBS")
+        # critical region start
+        self.cond.acquire()
 
+        # get Merge Sensor status
+        status = self.database.getStatus()
+
+        # critical region end
+        self.cond.release()
+
+        # check stopped status
+        if status["status"] == "stopped":
+            
+            # yes, blocked
+            logging.info("MergeSensor operation is currently blocked.")
+            logging.info(" trying again in %s seconds." % \
+                         self.args['PollInterval'])
+            
+            # sleep for the specified time
+            time.sleep(float(self.args['PollInterval']))
+            return
+        
+        # check limited status
+        if status["limited"] == "yes":
+        
+            # yes, limited
+            remainingJobs = status["remainingjobs"]
+                
+            # check for number of jobs
+            if remainingJobs == 0:
+                
+                # no more jobs allows
+                logging.info( \
+                  "Limit on the number of generated jobs has been reached.")
+                logging.info(" trying again in %s seconds." % \
+                             self.args['PollInterval'])
+                
+                # sleep for the specified time
+                time.sleep(float(self.args['PollInterval']))
+                return
+            
         # critical region start
         self.cond.acquire()
 
@@ -901,9 +1284,22 @@ class MergeSensorComponent:
         # critical region end
         self.cond.release()
 
+        logging.info("Start polling DBS")
+
         # check DBS for all watched datasets
         for dataset in datasetList:
-            self.pollDBS(dataset)
+            
+            # poll dataset
+            self.pollDBS(dataset, status)
+            
+            # critical region start
+            self.cond.acquire()
+
+            # update status
+            status = self.database.getStatus()
+
+            # critical region end
+            self.cond.release()
 
         # sleep for the specified time
         time.sleep(float(self.args['PollInterval']))
@@ -1180,9 +1576,9 @@ class MergeSensorComponent:
             os.makedirs(self.args['MergeJobSpecs'])
             
         # set DB connection and give access to it to subclasses
-        database = MergeSensorDB()
-        Dataset.setDatabase(database)
-        WatchedDatasets.setDatabase(database)
+        self.database = MergeSensorDB()
+        Dataset.setDatabase(self.database)
+        WatchedDatasets.setDatabase(self.database)
         
         # give access to logging facilities for WatchedDatasets and Datasets
         WatchedDatasets.setLogging(logging)
@@ -1214,6 +1610,10 @@ class MergeSensorComponent:
         self.ms.subscribeTo("MergeSensor:StartDebug")
         self.ms.subscribeTo("MergeSensor:EndDebug")
         self.ms.subscribeTo("ForceMerge")
+        self.ms.subscribeTo("MergeSensor:TemporaryStop")
+        self.ms.subscribeTo("MergeSensor:Restart")
+        self.ms.subscribeTo("MergeSensor:LimitNumberOfJobs")
+        self.ms.subscribeTo("MergeSensor:NoJobLimits")
 
         # start polling thread
         pollingThread = PollDBS(self.poll)
