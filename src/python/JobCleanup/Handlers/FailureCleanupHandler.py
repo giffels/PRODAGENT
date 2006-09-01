@@ -44,6 +44,7 @@ class FailureCleanupHandler(HandlerInterface):
              logging.debug(">FailureCleanupHandler< archiving and removing directory: "+cacheDirLocation)
              tar=tarfile.open(self.failureArchive+'/'+str(payload)+'.tar.gz','w:gz')
              tar.add(cacheDirLocation)
+             tar.close()
              try:
                  for root, dirs, files in os.walk(cacheDirLocation, topdown=False):
                      for name in files:

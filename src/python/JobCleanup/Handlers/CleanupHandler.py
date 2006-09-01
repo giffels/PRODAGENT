@@ -2,6 +2,7 @@
 
 import logging 
 import os
+import tarfile
 
 from JobCleanup.Handlers.HandlerInterface import HandlerInterface
 from JobCleanup.Registry import registerHandler
@@ -28,19 +29,40 @@ class CleanupHandler(HandlerInterface):
          """
          The payload of for a cleanup handler is a job id. 
          """
-
+         if self.successArchive == None:
+             logging.error("No Success Archive set: Cannot Archive Job:\n %s" % payload)
+             return
          try:
+             logging.debug(">CleanupHandler< archiving  "+\
+                            "information for jobspec: "+str(payload))
+             try:
+                 os.makedirs(self.successArchive)
+             except:
+                 pass
+
              logging.debug(">CleanupHandler< removing cached files and state "+\
                             "information for jobspec: "+str(payload))
              cacheDirLocation=JobStateInfoAPI.general(str(payload))['CacheDirLocation']
              logging.debug(">CleanupHandler< removing directory: "+cacheDirLocation)
+             tar=tarfile.open(self.successArchive+'/'+str(payload)+'.tar.gz','w:gz')
+             tar.add(cacheDirLocation+'/JobTracking')
              try:
                  for root, dirs, files in os.walk(cacheDirLocation, topdown=False):
                      for name in files:
+                         if root==cacheDirLocation:
+                             #NOTE: should be done with regular expressions.
+                             extensions=['.xml','.tar.gz']
+                             for extension in extensions:
+                                 pos1=name.rfind(extension)
+                                 pos2=len(name)-len(extension)
+                                 if(pos1==pos2):
+                                     tar.add(os.path.join(root,name))
+                                     break
                          os.remove(os.path.join(root, name))
                      for name in dirs:
                          os.rmdir(os.path.join(root, name))
                  os.rmdir(cacheDirLocation)
+                 tar.close()
              except Exception,ex:
                  logging.debug(">CleanupHandler< WARNING job cleanup: "+str(ex))
              JobStateChangeAPI.cleanout(str(payload))

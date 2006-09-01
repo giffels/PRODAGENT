@@ -117,6 +117,7 @@ class JobCleanupComponent:
              handler=Registry.HandlerRegistry[handlerName]
              handler.publishEvent=self.publishEvent
              handler.failureArchive=self.args['FailureArchive']
+             handler.successArchive=self.args['SuccessArchive']
                  
          # main body using persistent based message server
          logging.info("JobCleanup persistent based message service Starting...")
