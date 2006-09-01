@@ -191,7 +191,8 @@ componentFields = {
     },
     'JobCleanup'   : {
     "ComponentDir" : None,
-    "FailureArchive":None
+    "FailureArchive":None,
+    "SuccessArchive":None
 
     },
     'AdminControl' : {
@@ -252,6 +253,8 @@ will be triggered. NOTE: this number needs to be bigger than 0 (1 and up).
 FailureArchive : If jobs fail to many times you want to tar the job cache and move it
 to another location (dir) for post mortem inspection and to minimize the risk of the 
 job cache directory growing to large (to many files) and slowing down production.
+SuccessArchive : After a job successfully finishes remainders of its log files
+are tarred and moved to an archive for possible post mortem analysis.
 """  
     }
 
