@@ -45,7 +45,11 @@ class CleanupHandler(HandlerInterface):
              cacheDirLocation=JobStateInfoAPI.general(str(payload))['CacheDirLocation']
              logging.debug(">CleanupHandler< removing directory: "+cacheDirLocation)
              tar=tarfile.open(self.successArchive+'/'+str(payload)+'.tar.gz','w:gz')
-             tar.add(cacheDirLocation+'/JobTracking')
+             # there might not be a job tracking dir.
+             try:
+                 tar.add(cacheDirLocation+'/JobTracking')
+             except:
+                 pass
              try:
                  for root, dirs, files in os.walk(cacheDirLocation, topdown=False):
                      for name in files:
