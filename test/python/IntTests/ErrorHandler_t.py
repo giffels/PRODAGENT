@@ -24,8 +24,8 @@ class ComponentServerTest(unittest.TestCase):
         self.ms=MessageService()
         self.ms.registerAs("TestComponent")
         self.ms.subscribeTo("SubmitJob")
-        self.failedJobs=200
-        self.successJobs=10
+        self.failedJobs=1000
+        self.successJobs=1000
         self.maxRetries=20
         self.outputPath=os.getenv('PRODAGENT_WORKDIR')
 
@@ -103,6 +103,12 @@ class ComponentServerTest(unittest.TestCase):
                     '/aDir2/file6.xml','w')
                 fakeFile.write('test6')
                 fakeFile.close()
+                os.makedirs(self.outputPath+'/JobCache/JobSpecFailed_'+str(i)+\
+                    '/JobTracking')
+                fakeFile=open(self.outputPath+'/JobCache/JobSpecFailed_'+str(i)+\
+                    '/JobTracking/file7.xml','w')
+                fakeFile.write('test7')
+                fakeFile.close()
             # create dirs and files for success jobs
             for i in xrange(0,self.successJobs):
                 os.makedirs(self.outputPath+'/JobCache/JobSpecSuccess_'+str(i))
@@ -136,6 +142,12 @@ class ComponentServerTest(unittest.TestCase):
                 fakeFile=open(self.outputPath+'/JobCache/JobSpecSuccess_'+str(i)+\
                     '/aDir2/file6.xml','w')
                 fakeFile.write('test6')
+                fakeFile.close()
+                os.makedirs(self.outputPath+'/JobCache/JobSpecSuccess_'+str(i)+\
+                    '/JobTracking')
+                fakeFile=open(self.outputPath+'/JobCache/JobSpecSuccess_'+str(i)+\
+                    '/JobTracking/file7.xml','w')
+                fakeFile.write('test7')
                 fakeFile.close()
           
                 
@@ -244,7 +256,7 @@ class ComponentServerTest(unittest.TestCase):
                         type, payload = self.ms.get()
                         self.ms.commit()
                         print('Getting message of type '+str(type)+' and payload: '+str(payload)+\
-                            ' '+str(i)+'/'+str(self.failedJobs)+' re-try: '+str(tries))
+                            ' '+str(i)+'/'+str(self.failedJobs)+' re-try: '+str(tries+1))
                         # check if we get the right event back
                         self.assertEqual("SubmitJob",type)
                         # after the error is handled the number of racers is 0 again
@@ -314,6 +326,17 @@ class ComponentServerTest(unittest.TestCase):
 
     def testH(self):
         try:
+            print("--->emit cleanup events for success jobs. ")
+            for i in xrange(0,self.successJobs):
+                self.ms.publish("JobCleanup","JobSpecSuccess_"+str(i))
+                self.ms.commit()
+        except StandardError, ex:
+            msg = "Failed testG:\n"
+            msg += str(ex)
+            self.fail(msg)
+
+    def testI(self):
+        try:
             print("--->sleep for 20 seconds to make sure messages")
             print("are delivered before purging them")
             self.ms.purgeMessages()
@@ -334,6 +357,7 @@ class ComponentServerTest(unittest.TestCase):
          # but not both!!
          self.testF()
          #self.testG()
+         self.testH()
 
 if __name__ == '__main__':
     unittest.main()
