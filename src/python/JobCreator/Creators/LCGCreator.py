@@ -97,7 +97,7 @@ class LCGCreator(CreatorInterface):
 
     def preprocessTree(self, taskObjectTree):
         """
-        _preprocessTree_
+        _preprocssTree_
 
         Install monitors into top TaskObject
 
@@ -181,7 +181,7 @@ class LCGCreator(CreatorInterface):
 
     
 
-    def installMonitor(taskObject):
+    def installMonitor(self, taskObject):
         """
         _installMonitor_
         
