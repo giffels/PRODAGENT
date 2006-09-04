@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.24 2006/08/23 11:26:53 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.25 2006/09/01 10:58:22 bacchi Exp $"
 
 import socket
 import time
@@ -37,6 +37,7 @@ from FwkJobRep.ReportState import checkSuccess
 from FwkJobRep.FwkJobReport import FwkJobReport
 from FwkJobRep.ReportParser import readJobReport
 from JobState.JobStateAPI import JobStateChangeAPI
+from JobState.JobStateAPI import JobStateInfoAPI 
 import select
 import fcntl
 
@@ -92,9 +93,6 @@ class TrackingComponent:
         bossConfig = cfgObject.get("BOSS")
         self.bossCfgDir = bossConfig['configDir'] 
         logging.info("Using BOSS configuration from " + self.bossCfgDir)
-        creatorConfig = cfgObject.get("JobCreator")
-        self.archiveDir = creatorConfig['ComponentDir'] 
-        self.archiveDir = os.path.expandvars(self.archiveDir)
 
 # The rest of the initialization
         ##AF: get boss version from "boss v"
@@ -309,25 +307,14 @@ class TrackingComponent:
                             
                             
                 else:
-                    try:
-                        self.cmsErrorJobs[jobId[0]]+=0
-                    except StandardError:
-                        self.cmsErrorJobs[jobId[0]]=0
-                    
-                        logging.error("%s - %d" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
-                        logging.info( "%s - %d no FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
-                        logging.info( "%s - %d Creating FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
-                        fwjr=FwkJobReport()
-                        fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
-                        self.reportfilename=self.BOSS4reportfilename(jobId)
-                        fwjr.exitCode=-1
-                        fwjr.status="Failed"
-                        fwjr.write(self.reportfilename)
-
-                        self.jobFailed(jobId)
+                    self.resubmit(jobId)
 
             else:
-                logging.error(outp)
+                if outp.find("Unable to find output sandbox file:")>=0:
+                    self.resubmit(jobId)
+                                        
+                else:
+                    logging.error(outp)
 
         logging.debug("failed jobs"+str(len(badJobs)))
         for jobId in badJobs:
@@ -406,7 +393,32 @@ class TrackingComponent:
         time.sleep(float(self.args["PollInterval"]))
         return
     
-     
+
+    def resubmit(self,jobId):
+        """
+        _resubmit_
+
+
+        Creates a dummy FrameworkJobReport and send a JobFailed message
+        """
+
+        try:
+            self.cmsErrorJobs[jobId[0]]+=0
+        except StandardError:
+            self.cmsErrorJobs[jobId[0]]=0
+            
+            logging.error("%s - %d" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
+            logging.info( "%s - %d no FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
+            logging.info( "%s - %d Creating FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
+            fwjr=FwkJobReport()
+            fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
+            self.reportfilename=self.BOSS4reportfilename(jobId)
+            fwjr.exitCode=-1
+            fwjr.status="Failed"
+            fwjr.write(self.reportfilename)
+            
+            self.jobFailed(jobId)
+        return
         
     def eventCallback(self, event, handler):
         """
@@ -503,13 +515,15 @@ class TrackingComponent:
             logging.error("archiveJob jobId split error\nNo Files deleted")
             return
         
-        logging.debug("self.archiveDir = %s"%self.archiveDir)
         lastdir=os.path.dirname(self.reportfilename).split('/').pop()
         
         baseDir=os.path.dirname(self.reportfilename)+"/"
         #logging.info("baseDir = %s"%baseDir)
         fjr=readJobReport(self.reportfilename)
-        newPath=self.archiveDir+"/"+fjr[0].jobSpecId+"-cache/JobTracking/"+success+"/"+lastdir+"/"
+        jobCacheDir=JobStateInfoAPI.general(fjr[0].jobSpecId)['CacheDirLocation']
+        logging.debug("jobCacheDir = %s"%jobCacheDir)
+
+        newPath=jobCacheDir+"/JobTracking/"+success+"/"+lastdir+"/"
         #logging.info("newPath = %s"%newPath)
         
         try:
