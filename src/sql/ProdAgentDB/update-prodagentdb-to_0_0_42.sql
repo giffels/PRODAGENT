@@ -53,5 +53,7 @@ CREATE TABLE merge_control
  TYPE = InnoDB DEFAULT CHARSET=latin1;
 
 
+/* Added field mergejob to table merge_outputfile */
 
+ALTER TABLE merge_outputfile ADD mergejob varchar(255) NOT NULL default '' AFTER status;
 
