@@ -385,6 +385,7 @@ CREATE TABLE merge_outputfile
     name text NOT NULL default '',
     instance int NOT NULL default '1',
     status enum("merged", "do_it_again") default "merged",
+    mergejob varchar(255) NOT NULL default '',
     dataset int NOT NULL default '0',
 
     PRIMARY KEY(id),
