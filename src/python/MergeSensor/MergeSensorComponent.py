@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.25 2006/08/25 10:58:36 ckavka Exp $"
-__version__ = "$Revision: 1.25 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.26 2006/09/01 12:58:19 ckavka Exp $"
+__version__ = "$Revision: 1.26 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -314,6 +314,11 @@ class MergeSensorComponent:
         # remove limits on number of jobs
         if event == "MergeSensor:NoJobLimits":
             self.noJobLimits(payload)
+            return
+
+        # resubmit a Merge job
+        if event == "MergeSensor:ReSubmit":
+            self.reSubmit(payload)
             return
 
         # wrong event
@@ -771,6 +776,51 @@ class MergeSensorComponent:
         database.closeDatabaseConnection()
 
     ##########################################################################
+    # resubmit a merge job
+    ##########################################################################
+
+    def reSubmit(self, payload):
+        """
+        _reSubmit_
+
+        used to resubmit a merge job
+
+        Arguments:
+            
+          the job name
+          
+        Return:
+            
+          none
+          
+        """
+
+        # get jobName
+        jobName = payload
+        
+        # open a new connection (to avoid interfere with transactions in the
+        # other thread)
+        database = MergeSensorDB()
+        
+        # redo job
+        try:
+            database.redoJob(jobName)
+
+        except Exception, msg:
+            logging.error(msg)
+            database.closeDatabaseConnection()
+            return
+
+        # commit changes
+        database.commit()
+        
+        # log message
+        logging.info("Flagged job %s for resubmission." % jobName)
+
+        # close connection
+        database.closeDatabaseConnection()
+
+    ##########################################################################
     # poll DBS
     ##########################################################################
 
@@ -854,7 +904,8 @@ class MergeSensorComponent:
         # verify if it can be merged
         (mergeable,
          selectedSet,
-         fileBlockId) = self.datasets.mergeable(datasetPath, forceMerge)
+         fileBlockId,
+         oldFile) = self.datasets.mergeable(datasetPath, forceMerge)
  
         # critical region end
         self.cond.release()
@@ -870,7 +921,7 @@ class MergeSensorComponent:
 
             # define merge job
             outFile = self.datasets.addMergeJob(datasetPath, selectedSet, \
-                                                jobId)
+                                                jobId, oldFile)
 
             # get properties
             properties = self.datasets.getProperties(datasetPath)
@@ -934,7 +985,8 @@ class MergeSensorComponent:
             # verify again the same dataset for another set
             (mergeable,
              selectedSet,
-             fileBlockId) = self.datasets.mergeable(datasetPath, forceMerge)
+             fileBlockId,
+             oldFile) = self.datasets.mergeable(datasetPath, forceMerge)
 
             # critical region end
             self.cond.release()
@@ -1614,6 +1666,7 @@ class MergeSensorComponent:
         self.ms.subscribeTo("MergeSensor:Restart")
         self.ms.subscribeTo("MergeSensor:LimitNumberOfJobs")
         self.ms.subscribeTo("MergeSensor:NoJobLimits")
+        self.ms.subscribeTo("MergeSensor:ReSubmit")
 
         # start polling thread
         pollingThread = PollDBS(self.poll)
