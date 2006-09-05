@@ -271,7 +271,7 @@ class StageOutManager:
         
         """
         pfn = "%s%s" % (fbParams['lfn-prefix'], lfn)
-
+        
         try:
             impl = retrieveStageOutImpl(fbParams['command'])
         except Exception, ex:
@@ -282,7 +282,7 @@ class StageOutManager:
                                   LFN = lfn, ExceptionDetail = str(ex))
         
         try:
-            impl(fbParams['command'], localPfn, pfn, options)
+            impl(fbParams['command'], localPfn, pfn, fbParams['option'])
         except Exception, ex:
             msg = "Failure for fallback stage out:\n"
             msg += str(ex)
@@ -301,7 +301,7 @@ class StageOutManager:
         """
         seName = self.siteCfg.localStageOut['se-name']
         command = self.siteCfg.localStageOut['command']
-        options = self.siteCfg.localStageOut.get('options', None)
+        options = self.siteCfg.localStageOut.get('option', None)
         pfn = self.searchTFC(lfn)
         protocol = self.tfc.preferredProtocol
         if pfn == None:
