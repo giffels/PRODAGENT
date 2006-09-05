@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.14 2006/08/25 11:01:23 ckavka Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: Dataset.py,v 1.15 2006/09/01 12:57:02 ckavka Exp $"
+__version__ = "$Revision: 1.15 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -479,7 +479,7 @@ class Dataset:
     # add a merge job
     ##########################################################################
 
-    def addMergeJob(self, fileList, jobId):
+    def addMergeJob(self, fileList, jobId, oldFile):
         """
         _addMergeJobs_
         
@@ -489,6 +489,7 @@ class Dataset:
             
           fileList -- the list of files that the job will start to merge
           jobId -- the job name
+          oldFile -- the name of the old file in case of resubmission
 
         Return:
             
@@ -502,21 +503,35 @@ class Dataset:
         # get dataset id
         datasetId = self.database.getDatasetId(self.data['name'])
         
-        # determine output file name
-        outputFile = "set" + str(self.data['outSeqNumber'])
-        self.data['outSeqNumber'] = self.data['outSeqNumber'] + 1
+        # verify output file name
+        if oldFile == None:
+        
+            # new submission, create a name
+            outputFile = "set" + str(self.data['outSeqNumber'])
+            self.data['outSeqNumber'] = self.data['outSeqNumber'] + 1
 
+        else:
+            
+            # use provided name
+            self.logging.info('Resubmitting job as required')
+            outputFile = oldFile
+            
         # create outputFile
-        (new, fileId) = self.database.addOutputFile(datasetId, \
+        (instance, fileId) = self.database.addOutputFile(datasetId, \
                                                 outputFile, jobId)
         
         # mark input files as merged for new created output file
-        if new:
+        if instance == 0:
             for aFile in fileList:    
                 self.database.updateInputFile(datasetId, aFile, \
                                               status = "merged", \
                                               mergedFile = fileId)
 
+        else:
+            
+            # add instance number to output file in case of resubmission
+            outputFile = outputFile + "_" + str(instance)
+            
         # update time
         date = time.asctime(time.localtime(time.time()))
         self.data['last_update'] = date
@@ -594,6 +609,43 @@ class Dataset:
 
         # nothing to merge
         return ([], 0)
+
+    ##########################################################################
+    # check for job resubmissions
+    ##########################################################################
+
+    def getNewJob(self):
+        """
+        _getNewJob_
+        
+        Check for merge jobs that have to be recreated, as indicated by
+        field status in the corresponding entry in the merge database.
+        Jobs are submitted as new jobs, not resubmissions of original
+        ones. 
+        
+        Arguments:
+            
+          none
+                    
+        Return:
+            
+          the list of files to be merged, their fileBlockId and the
+          name of the old output file.
+          
+        """
+
+        # get dataset id
+        datasetId = self.database.getDatasetId(self.data['name'])
+        
+        # check for an output file in status 'do_it_again'
+        newMerge = self.database.getMergeToBeDoneAgain(datasetId)
+        
+        # nothing to merge
+        if newMerge == None:
+            return ([], 0, None)
+        
+        # return fileList, fileBlock and old file name
+        return newMerge
 
     ##########################################################################
     # get dataset status

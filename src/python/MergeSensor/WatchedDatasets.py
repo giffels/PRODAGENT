@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.5 2006/08/25 11:00:02 ckavka Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.6 2006/09/01 12:57:23 ckavka Exp $"
+__version__ = "$Revision: 1.6 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
@@ -233,7 +233,7 @@ class WatchedDatasets:
     # add a merge job
     ##########################################################################
 
-    def addMergeJob(self, datasetId, fileList, jobId):
+    def addMergeJob(self, datasetId, fileList, jobId, oldFile):
         """
         _addMergeJobs_
         
@@ -244,13 +244,14 @@ class WatchedDatasets:
           datasetId -- the name of the dataset
           fileList -- the list of files that the job will start to merge
           jobId -- the job name
+          oldFile -- name of output file in case of resubmission
           
         Return:
             
           the name of the output file
           
         """
-        return self.datasets[datasetId].addMergeJob(fileList, jobId)
+        return self.datasets[datasetId].addMergeJob(fileList, jobId, oldFile)
 
     ##########################################################################
     # determine mergeable status of a dataset
@@ -269,11 +270,14 @@ class WatchedDatasets:
                         independently of file sizes
         Return:
             
-          tuple (condition, listFiles, fileBlockId)
+          tuple (condition, listFiles, fileBlockId, oldFile)
           
           where condition is True if there is a subset of files eligible for
           merging and False if not. listFiles contains the selected list of
           files, which can be directly used as an argument to addMergeJob.
+          If there is no enough files to be merged, check for requirements
+          of merge jobs resubmissions. oldFile is None if it is a new
+          merge, or the name of the old file in case of resubmission.
           
         """
         
@@ -282,10 +286,17 @@ class WatchedDatasets:
                self.datasets[datasetId].selectFiles(forceMerge)
                
         # return merge condition, file list and file block 
-        return (fileList != [], fileList, fileBlockId)
+        if fileList != []:
+            return (True, fileList, fileBlockId, None)
+    
+        # check for merge jobs to be resubmitted (as new jobs)
+        (fileList, fileBlockId, oldFile) = \
+               self.datasets[datasetId].getNewJob()
+    
+        # return merge condition, file list and file block
+        return (fileList != [], fileList, fileBlockId, oldFile)
     
     ##########################################################################
-    # close a dataset
     ##########################################################################
 
     def close(self, datasetId):
