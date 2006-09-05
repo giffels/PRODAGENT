@@ -94,9 +94,10 @@ class ApMonDestination(dict):
         try:
             udpPacket = self.makeUDPPacket(**params)
         except StandardError, ex:
-            msg = "Error creating UDP Packet:\n"
+            msg = "StandardError creating UDP Packet:\n"
             msg += str(ex)
             raise ApMonException(msg, Destination = str(self))
+
         return self.udpBroadcast(udpPacket)
     
     
@@ -194,6 +195,8 @@ class ApMonDestination(dict):
             self.udpSocket.sendto(bufferContent, (self['Host'], self['Port']))
         except StandardError, ex:
             returnValue = 1
+        except Exception, ex:
+            returnValue = 2
         if openedSocket: 
             self.disconnect()
         return returnValue
