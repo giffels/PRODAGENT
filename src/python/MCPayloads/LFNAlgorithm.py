@@ -5,8 +5,8 @@ _LFNAlgorithm_
 Algorithmic generation of Logical File Names using the CMS LFN Convention
 
 """
-__revision__ = "$Id: LFNAlgorithm.py,v 1.2 2006/05/25 16:18:03 evansde Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: LFNAlgorithm.py,v 1.3 2006/06/22 11:27:31 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "evansde@fnal.gov"
 
 import time
@@ -156,7 +156,8 @@ class JobSpecLFNMaker:
         #  //
         # // Save changes in the configuration
         #//
-        node.configuration = str(node.cfgInterface)
+        if node.cfgInterface != None:
+            node.configuration = str(node.cfgInterface)
         return
 
 def createUnmergedLFNs(jobSpecInstance):
