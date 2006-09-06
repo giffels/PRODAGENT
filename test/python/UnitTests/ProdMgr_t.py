@@ -102,6 +102,14 @@ class ProdMgrUnitTests(unittest.TestCase):
         ProdMgrAPI.commit()
         ProdMgrUnitTests.jobs=jobs
         print('Acquired : '+str(len(jobs))+' jobs: '+str(jobs))
+        print('Start downloading the job specs:')
+        for job in jobs:
+            targetDir='/tmp'
+            targetFile=job['URL'].split('/')[-1]
+            print('Downloading: '+job['URL'])
+            ProdMgrAPI.retrieveFile(job['URL'],targetDir+'/'+targetFile)
+            print('Downloaded: '+targetFile)
+        print('Downloaded job spec:')
 
     def testD(self):
         print('testD')
