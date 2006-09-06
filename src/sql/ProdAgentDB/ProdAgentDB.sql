@@ -268,6 +268,8 @@ CREATE TABLE st_job_success (
    se_name VARCHAR(255),
    events_read INT DEFAULT 0,
    events_written INT DEFAULT 0,
+   job_type VARCHAR(255),
+   time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
    PRIMARY KEY (job_index)
 
 ) TYPE=InnoDB;
@@ -279,8 +281,8 @@ CREATE TABLE st_job_success (
 CREATE TABLE st_job_attr (
    attr_index INT NOT NULL AUTO_INCREMENT,
    job_index INT NOT NULL,
-   
-   attr_class ENUM("run_numbers", "output_files", "output_datasets", "input_files"),
+   attr_name VARCHAR(255),
+   attr_class ENUM("run_numbers", "output_files", "output_datasets", "input_files", 'timing'),
    
    attr_value BLOB,
 
@@ -309,8 +311,28 @@ CREATE TABLE st_job_failure (
    error_type VARCHAR(255),
    error_code INT,
    error_desc BLOB,
-
+   job_type VARCHAR(255),
+   time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
    PRIMARY KEY (job_index)
+) TYPE=InnoDB;
+
+/*
+ * Table to store list based attributes of a failed Job
+ *
+ */
+CREATE TABLE st_job_attr (
+   attr_index INT NOT NULL AUTO_INCREMENT,
+   job_index INT NOT NULL,
+   
+   attr_class ENUM("timing" ),
+   
+   attr_value BLOB,
+
+   FOREIGN KEY(job_index)
+     REFERENCES st_job_success(job_index)
+       ON DELETE CASCADE,
+ 
+   PRIMARY KEY (attr_index)
 ) TYPE=InnoDB;
 
 
