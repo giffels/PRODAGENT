@@ -21,6 +21,7 @@ This script:
 
 import os
 import sys
+import time
 
 
 from StageOut.StageOutError import StageOutFailure
@@ -181,6 +182,7 @@ class StageOutManager:
         Use call to invoke transfers
 
         """
+        stageOutStartTime = int(time.time())
         #  //
         # // First check to see if we are using override
         #//  if so, invoke for all files and exit
@@ -252,6 +254,12 @@ class StageOutManager:
             self.inputReport.status = "Failed"
             self.inputReport.exitCode = 60312
             exitCode = 60312
+
+        #  //
+        # // Record StageOut Timing in job report
+        #//
+        self.inputReport.timing['StageOutStart'] = stageOutStartTime
+        self.inputReport.timing['StageOutEnd'] = int(time.time() )
         self.inputState.saveJobReport()
 
         return exitCode
