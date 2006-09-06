@@ -1,6 +1,8 @@
 import base64
 import cPickle
 import logging
+import time
+import urllib
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.ProdAgentException import ProdAgentException
@@ -18,22 +20,50 @@ prodAgentKey=compCfg['ProdAgentKey']
 # connections to servers
 connections={}
 
+# last call cache
 lastCall=''
+# number of retries when connecting or executing
+# NOTE: should eventually be put in prodagent config file.
+retries=4
+# time out between retries
+# NOTE: should eventually be put in prodagent config file.
+timeout=4
 
 def getConnection(serverUrl):
    global prodAgentCert
    global prodAgentKey
+   global retries
+   global timeout
 
-   try:
-       if not connections.has_key(serverUrl):
-           dbsvr=ProdMgrInterface.Clarens.client(serverUrl, certfile=str(prodAgentCert),\
-               keyfile=str(prodAgentKey),debug=0)
-           connections[serverUrl]=dbsvr
-       return connections[serverUrl]       
-   except Exception,ex:
-       raise ProdAgentException("Service Connection Error: "+str(ex))
+   attempt=0
+   if not connections.has_key(serverUrl):
+       while attempt<retries: 
+           try:
+               dbsvr=ProdMgrInterface.Clarens.client(serverUrl, certfile=str(prodAgentCert),\
+                   keyfile=str(prodAgentKey),debug=0)
+               connections[serverUrl]=dbsvr
+               break
+           except Exception,ex:
+               logging.debug("Clarens Server Connection Attempt "+str(attempt)+\
+                   "/"+str(retries)+" Failed: "+str(ex))
+               attempt=attempt+1
+               time.sleep(timeout)
+   if attempt==retries:       
+       raise ProdAgentException("Could not establish connection with Clarens server "+\
+           serverUrl+" Please check log files for more error messages ")
+   return connections[serverUrl]       
 
-def logServiceCall(serverUrl,method_name,args,componentID="defaultComponent"):
+def executeCall(serverUrl,method_name,parameters=[],componentID="defaultComponent"):
+   connection=getConnection(serverUrl)
+   if method_name!='prodCommonRecover.lastServiceCall':
+       logCall(serverUrl,method_name,parameters,componentID)
+   parameters.append(componentID)
+
+   result=connection.execute(method_name,parameters)
+   return result
+
+
+def logCall(serverUrl,method_name,args,componentID="defaultComponent"):
    global lastCall
 
    try:
@@ -110,7 +140,7 @@ def retrieve(serverURL=None,method_name=None,componentID=None):
        dbCur.execute(sqlStr)
        rows=dbCur.fetchall()
        if len(rows)==0:
-           raise ProdException("No result in local last service call table with componentID :"+\
+           raise ProdAgentException("No result in local last service call table with componentID :"+\
                str(componentID))
        server_url=rows[0][0]
        service_call=rows[0][1]
@@ -124,3 +154,25 @@ def retrieve(serverURL=None,method_name=None,componentID=None):
        dbCur.close()
        conn.close()
        raise ProdAgentException("Service commit Error: "+str(ex))
+
+def retrieveFile(url,local_destination):
+   global prodAgentCert
+   global prodAgentKey
+   global retries
+   
+   attempt=0
+   while attempt<retries: 
+       try:
+           credentials={'key_file':prodAgentKey,'cert_file':prodAgentCert}
+           retriever=urllib.URLopener(proxies=None,**credentials)
+           retriever.retrieve(url,local_destination)
+           break
+       except Exception,ex:
+           logging.debug("File download attempt "+str(attempt)+\
+               "/"+str(retries)+" Failed: "+str(ex))
+           attempt=attempt+1
+           time.sleep(timeout)
+   if attempt==retries:       
+       raise ProdAgentException("Could download file "+url+\
+           " Please check log files for more error messages ")
+
