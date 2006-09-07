@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.26 2006/09/01 12:58:19 ckavka Exp $"
-__version__ = "$Revision: 1.26 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -95,6 +95,9 @@ class MergeSensorComponent:
         self.args.setdefault("MergeSiteWhitelist", None)
         self.args.setdefault("MergeSiteBlacklist", None)
 
+        # fastMerge
+        self.args.setdefault("FastMerge", None)
+        
         # update parameters
         self.args.update(args)
 
@@ -117,6 +120,18 @@ class MergeSensorComponent:
         else:
             self.seBlacklist = self.args['MergeSiteBlacklist'].split(',')
 
+        # fast merge
+        if self.args['FastMerge'] == None or \
+           self.args['FastMerge'] == "NO" or \
+           self.args['FastMerge'] == "no" or \
+           self.args['FastMerge'] == "No" or \
+           self.args['FastMerge'] == "" or \
+           self.args['FastMerge'] == "False" or \
+           self.args['FastMerge'] == 'false':
+            self.fastMerge = False
+        else:
+            self.fastMerge = True
+        
         # server directory
         self.args.setdefault("MergeJobSpecs", os.path.join(
             self.args['ComponentDir'], "merge-jobspecs"))
@@ -141,7 +156,11 @@ class MergeSensorComponent:
         logging.info("with MergeFileSize = %s" % self.args['MergeFileSize'])
         logging.info("     MergeSiteWhitelist = %s" % self.seWhitelist)
         logging.info("     MergeSiteBlacklist = %s" % self.seBlacklist)
-
+        if self.fastMerge:
+            logging.info("Using EDM fast merge.")
+        else:
+            logging.info("Using cmsRun merge.")
+            
         # check DBS type
         if self.args['DBSType'] != 'CGI':
             logging.error("Fatal error: only CGI DBS supported")
@@ -1070,8 +1089,13 @@ class MergeSensorComponent:
         cmsRun.application["Project"] = "CMSSW"
         cmsRun.application["Version"] = version
         cmsRun.application["Architecture"] = "slc3_ia32_gcc323"
-        cmsRun.application["Executable"] = "cmsRun"
- 
+        
+        # specify merge job type
+        if self.fastMerge:
+            cmsRun.application["Executable"] = "EdmFastMerge"
+        else:
+            cmsRun.application["Executable"] = "cmsRun"
+            
         # input dataset (primary, processed)
         inputDataset = cmsRun.addInputDataset(dataset[0], dataset[2])
         inputDataset["DataTier"] = pollTier         
