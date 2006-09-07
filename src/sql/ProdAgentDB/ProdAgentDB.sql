@@ -453,7 +453,7 @@ CREATE TABLE merge_inputfile
     id int NOT NULL auto_increment,
     name text NOT NULL default '',
     block int NOT NULL default '0',
-    status enum("unmerged", "merged") default "unmerged",
+    status enum("unmerged", "merged", "invalid") default "unmerged",
     dataset int NOT NULL default '0',
     mergedfile int default NULL,
     filesize int NOT NULL default '0',
