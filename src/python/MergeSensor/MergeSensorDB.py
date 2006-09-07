@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.2 2006/09/01 12:57:52 ckavka Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -1211,6 +1211,97 @@ class MergeSensorDB:
             self.transaction.append(sqlCommand)
             
     ##########################################################################
+    # invalidate input file
+    ##########################################################################
+            
+    def invalidateFile(self, datasetName, fileName):
+        """
+        __invalidateFile__
+        
+        Invalidate input file information, file should exist
+        
+        Arguments:
+        
+          datasetName -- the dataset name
+          fileName -- the file name to invalidate
+          
+        Return:
+            
+          none
+
+        """
+    
+        # get dataset id
+        datasetId = self.getDatasetId(datasetName)
+        
+       # get cursor
+        try:
+            self.conn = self.connect()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+        # get input file information
+        sqlCommand = """
+                     SELECT id, status
+                       FROM merge_inputfile
+                      WHERE dataset='""" + str(datasetId) + """'
+                        AND name='""" + fileName + """'
+                     """
+                       
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # get cursor
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlCommand)
+
+        # process results
+        rows = cursor.rowcount
+        
+        # file does not exist
+        if rows == 0:
+            raise MergeSensorDBError, \
+             'Cannot invalidate file %s, not registered in dataset %s.' \
+                 % (fileName, datasetName)
+            
+        # mark it as invalid
+        sqlCommand = """
+                     UPDATE merge_inputfile
+                        SET status='invalid'
+                      WHERE dataset='""" + str(datasetId) + """'
+                        AND name='""" + fileName + """'
+                     """
+                     
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # get cursor
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+
+    ##########################################################################
     # add output file
     ##########################################################################
             
@@ -1452,6 +1543,7 @@ class MergeSensorDB:
                        FROM merge_inputfile
                       WHERE dataset='""" + str(datasetId) + """'
                         AND mergedfile='""" + str(fileId) + """'
+                        AND status!='invalid'
                      """
         
         # execute command
