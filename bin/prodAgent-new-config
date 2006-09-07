@@ -177,9 +177,10 @@ componentFields = {
     "ComponentDir" : None,
     "StartMode" : "warm",
     "PollInterval": 30,
-    "MergeFileSize" : 100000000,
+    "MergeFileSize" : 1000000000,
     "MergeSiteWhitelist" : None,
     "MergeSiteBlacklist" : None,
+    "FastMerge": "no"
     # Local DBS settings come from LocalDBS core block 
     },
 
