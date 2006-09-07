@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.9 $"
-__revision__ = "$Id: TaskState.py,v 1.9 2006/08/01 19:23:08 evansde Exp $"
+__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: TaskState.py,v 1.10 2006/08/08 16:18:54 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -297,15 +297,17 @@ class TaskState:
             return result
 
         dbDict = self._RunResDB.toDictionary()
-        
-        datasets = dbDict[self.taskAttrs['Name']]['Output']['Datasets']
+
+        try:
+            datasets = dbDict[self.taskAttrs['Name']]['Output']['Datasets']
+        except KeyError:
+            return []
 
         for primaryKey, primaryValue in datasets.items():
             if type(primaryValue) != type({}): continue
             for dataTier, dataTierValue in primaryValue.items():
                 if type(dataTierValue) != type({}): continue
                 for processedDS, datasetContents in dataTierValue.items():
-                    print "Found Dataset: /%s/%s/%s" % (
                         primaryKey, dataTier, processedDS,
                         )
                     for dataKey, dataValue in datasetContents.items():
