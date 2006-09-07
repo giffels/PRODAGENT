@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: TaskState.py,v 1.10 2006/08/08 16:18:54 evansde Exp $"
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: TaskState.py,v 1.11 2006/09/07 21:31:25 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -308,8 +308,6 @@ class TaskState:
             for dataTier, dataTierValue in primaryValue.items():
                 if type(dataTierValue) != type({}): continue
                 for processedDS, datasetContents in dataTierValue.items():
-                        primaryKey, dataTier, processedDS,
-                        )
                     for dataKey, dataValue in datasetContents.items():
                         if len(dataValue) == 0:
                             datasetContents[dataKey] = None
@@ -330,7 +328,10 @@ class TaskState:
         if not self.runresLoaded:
             return result
         dbDict = self._RunResDB.toDictionary()
-        catalogs = dbDict[self.taskAttrs['Name']]['Output']['Catalogs']
+        try:
+            catalogs = dbDict[self.taskAttrs['Name']]['Output']['Catalogs']
+        except KeyError:
+            return []
         for value in catalogs.values():
             result.append(os.path.basename(value[0]))
         return result
