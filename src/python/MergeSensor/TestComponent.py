@@ -48,13 +48,14 @@ argsDict = {"DBSAddress" : None,
             "StartMode" : 'warm',
             "MergeFileSize" : 2000000000,
             "MergeSiteBlacklist" : "",
-            "MergeSiteWhitelist" : ""
+            "MergeSiteWhitelist" : "",
+            "FastMerge" : "No"
             }
 
 # options
 valid = ['DBSAddress=', 'DBSType=', 'ComponentDir=', 'MergeFileSize=',
          'PollInterval=', 'StartMode=', 'DLSType=', 'DLSAddress=',
-         'MergeSiteBlacklist=', 'MergeSiteWhitelist=']
+         'MergeSiteBlacklist=', 'MergeSiteWhitelist=', 'FastMerge=']
 
 # get options
 try:
