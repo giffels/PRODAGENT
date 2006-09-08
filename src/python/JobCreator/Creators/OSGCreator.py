@@ -68,6 +68,43 @@ class OSGCreator(CreatorInterface):
             
         return
 
+    def handleSVSuite(self, taskObject):
+        """
+        _handleSVSuite_
+
+        Install setup commands for SVSuite type task objects
+
+        """
+        swSetupCommand = self.pluginConfig['SoftwareSetup']['SetupCommand']
+        swSetupCommand = swSetupCommand.replace(
+            "$CMSSWVERSION",
+            taskObject['CMSProjectVersion'])
+        logging.debug("CMSSW Software Setup Command: %s" % swSetupCommand)
+        
+        taskObject['Environment'].addVariable(
+            "SCRAM_ARCH",
+            self.pluginConfig['SoftwareSetup']['ScramArch'])
+
+        taskObject['PreTaskCommands'].append(
+            swSetupCommand
+            )
+        
+        scramSetup = taskObject['scramSetup.sh']
+        scramSetup.append(
+            scramProjectCommand(
+            taskObject['CMSProjectName'],
+            taskObject['CMSProjectVersion'],
+            self.pluginConfig['SoftwareSetup']['ScramCommand']
+            )
+            )
+        scramSetup.append(
+        scramRuntimeCommand(
+            taskObject['CMSProjectVersion'],
+            self.pluginConfig['SoftwareSetup']['ScramCommand']
+            )
+        )
+        return
+        
 
     def processTaskObject(self, taskObject):
         """
@@ -86,6 +123,8 @@ class OSGCreator(CreatorInterface):
             self.handleStageOut(taskObject)
         elif typeVal == "CleanUp":
             self.handleCleanUp(taskObject)
+        elif typeVal == "SVSuite":
+            self.handleSVSuite(taskObject)
         else:
             return
 

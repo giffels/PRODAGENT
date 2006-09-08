@@ -284,13 +284,14 @@ class InsertJobReportTools:
         processing script that runs after the executable.
 
         """
-        if taskObject['Type'] != "CMSSW":
+        if taskObject['Type'] not in ("CMSSW", "SVSuite"):
             return
-
+        
         srcfile = inspect.getsourcefile(RuntimeFwkJobRep)
         if not os.access(srcfile, os.X_OK):
             os.system("chmod +x %s" % srcfile)
         taskObject.attachFile(srcfile)
+        
         taskObject['PostTaskCommands'].append(
             "./RuntimeFwkJobRep.py "
             )

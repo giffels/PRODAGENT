@@ -32,6 +32,7 @@ from JobCreator.StageOutTools import InsertStageOut, NewInsertStageOut
 from JobCreator.StageOutTools import PopulateStageOut, NewPopulateStageOut
 from JobCreator.StageOutTools import StoreStageOutTemplates
 from JobCreator.DashboardTools import installDashboardInfo, writeDashboardInfo
+from JobCreator.SVSuiteTools import InsertSVSuiteDetails, PopulateSVSuite
 
 import inspect
 import os
@@ -45,9 +46,10 @@ import CMSConfigTools
 import RunRes
 import FwkJobRep
 import StageOut
+import SVSuite
 
 _StandardPackages = [ShREEK, MB, ShLogger, IMProv, StageOut,
-                     CMSConfigTools, RunRes, FwkJobRep]
+                     CMSConfigTools, RunRes, FwkJobRep, SVSuite]
 
 
 #  //
@@ -139,7 +141,9 @@ class JobGenerator:
         taskObject(GenerateMainScript())
         taskObject(InsertAppDetails())
         taskObject(InstallRunResComponent())
+        taskObject(InsertSVSuiteDetails())
         taskObject(InsertJobReportTools())
+
 
         if _UseNewStageOut:
             taskObject(NewInsertStageOut())
@@ -162,6 +166,7 @@ class JobGenerator:
         taskObject(BashEnvironmentMaker())
         taskObject(InsertPythonPSet())
         taskObject(PopulateMainScript())
+        taskObject(PopulateSVSuite())
         if _UseNewStageOut:
             taskObject(NewPopulateStageOut())
         else:

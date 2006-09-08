@@ -107,7 +107,7 @@ class PopulateStageOut:
         exeScript.append("./RuntimeStageOut.py")
         for postcomm in postcomms:
             exeScript.append(str(postcomm))
-
+            
       
         #  //
         # // Populate the RunResDB
@@ -190,7 +190,7 @@ class NewInsertStageOut:
             # no parent => dont know what to stage out
             return
 
-        if parent['Type'] != "CMSSW":
+        if parent['Type'] not in  ("CMSSW", "SVSuite"):
             # parent isnt a CMSSW node, dont know what it does...
             return
         stageOutFor = parent['Name']
