@@ -14,12 +14,11 @@ from StageOut.Execute import runCommand
 
 class RFCPImpl(StageOutImpl):
     """
-    _SRMImpl_
+    _RFCPImpl_
 
-    Implement interface for srmcp command
+    Implement interface for rfcp command
     
     """
-    run = staticmethod(runCommand)
 
     def createSourceName(self, protocol, pfn):
         """
@@ -37,7 +36,7 @@ class RFCPImpl(StageOutImpl):
         create dir with group permission
         """
         command = "rfmkdir -m 775 -p %s" % os.path.dirname(targetPFN)
-        self.run(command)
+        self.executeCommand(command)
 
     def createStageOutCommand(self, sourcePFN, targetPFN, options = None):
         """

@@ -10,6 +10,7 @@ import sys
 import getopt
 
 from StageOut.Registry import retrieveStageOutImpl
+from StageOut.StageOutError import StageOutError
 import StageOut.Impl
 
 
@@ -57,10 +58,10 @@ if targetPfn == None:
     
 try:
     implInstance = retrieveStageOutImpl(implName)
-except RegistryError, ex:
+except StageOutError, ex:
     print "Error retrieving plugin from registry named: %s" % implName
     print str(ex)
-    sysexit(1)
+    sys.exit(1)
 
 
 print " Invoking StageOutImpl: %s" % implName
