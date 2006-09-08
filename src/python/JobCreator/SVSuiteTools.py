@@ -57,10 +57,16 @@ class InsertSVSuiteDetails:
         scramSetup = taskObject.addStructuredFile("scramSetup.sh")
         scramSetup.append("#!/bin/sh")
         scramSetup.append(_StandardPreamble)
-        #scramSetup.append(" . $OSG_APP/cmssoft/cms/cmsset_default.sh")
+        
         
         taskObject['SVSuiteSetupCommand'] = ". scramSetup.sh"
         svSuiteConfig.swSetupCommand = taskObject['SVSuiteSetupCommand']
+
+        lfnBase = taskObject['JobSpecNode'].getParameter("UnmergedLFNBase")[0]
+        outputLfn = os.path.join(lfnBase, taskObject['JobName'])
+        outputLfn += "-Output.tgz"
+        svSuiteConfig.outputLfn = outputLfn
+        
         
         #  //
         # // Determine input node name from parent node
@@ -74,6 +80,8 @@ class InsertSVSuiteDetails:
             # parent isnt a CMSSW node, dont know what it does...
             return
         taskObject['SVSuiteInput'] = parent['Name']
+
+        
         return
     
     
