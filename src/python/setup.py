@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.17 2006/08/09 16:42:56 evansde Exp $"
+__revision__ = "$Id: setup.py,v 1.18 2006/08/30 18:20:34 fvlingen Exp $"
 
 from distutils.core import setup
 
@@ -62,6 +62,7 @@ packages = [
     'StatTracker',
     'StageOut',
     'StageOut.Impl',
+    'SVSuite',
     'TaskObjects',
     'TaskObjects.Tools',
     'Trigger',
