@@ -154,17 +154,25 @@ class SVSuiteTask:
         to the job report for stage out.
 
         """
-        outputFile = self.jobReport.newFile()
-        # add details of file here...
-        outputFile["LFN"] = "/store/unmerged/SVSuite/Output/etc etc"
-        outputFile["PFN"] = "actual file name here"
 
+
+        lfn = self.configuration.outputLfn
+        tarname = os.path.basename(lfn)
+        pfn = os.path.join(os.getcwd(), tarname)
+        
+        
         if self.configuration.zipOutput:
-            
+            sourceDir = self.configuration.svSuiteOutputDir
             # make tarfile here
-            tarfile = "SVSuite-Output-JobSpecID.tar.gz"
-            
-            
+            tarCommand = "tar -czf %s -C %s %s " % (
+                tarname,
+                os.path.dirname(sourceDir),
+                os.path.basename(sourceDir)
+                )
+            execute(tarCommand)
+            outputFile = self.jobReport.newFile()            
+            outputFile["LFN"] = lfn
+            outputFile["PFN"] = pfn
         return
 
     def manageFailure(self):

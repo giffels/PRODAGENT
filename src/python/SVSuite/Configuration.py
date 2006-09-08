@@ -43,6 +43,7 @@ class Configuration:
         self.swSetupCommand = None
         self.swVersion = None
         self.jobId = None
+        self.outputLfn = None
         
         #  //
         # // data dir for input reference data
@@ -92,7 +93,12 @@ class Configuration:
         if self.jobId != None:
             result.addNode(IMProvNode(
                 "JobID", None, Value = self.jobId)
-                           )                  
+                           )
+            
+        if self.outputLfn != None:
+            result.addNode(IMProvNode(
+                "OutputLFN", None, Value = self.outputLfn)
+                           )  
         if self.svSuiteDataDir != None:
             result.addNode(IMProvNode("SVSUITE_DATA_DIR", None,
                                       Value = self.svSuiteDataDir))
@@ -138,14 +144,17 @@ class Configuration:
             
         if len(versResult) > 0:
             self.swVersion = versResult[0]
-
+            
         idQ = IMProvQuery("Configuration/JobID[attribute(\"Value\")]")
         idResult = idQ(improvNode)
         if len(idResult) > 0:
-            self.jobId = str(versResult[0])
+            self.jobId = str(idResult[0])
             
+        lfnQ = IMProvQuery("Configuration/OutputLFN[attribute(\"Value\")]")
+        lfnResult = lfnQ(improvNode)
+        if len(lfnResult) > 0:
+            self.outputLfn = str(lfnResult[0])
             
-
         attrs = {
             "SVSUITE_DATA_DIR" : "svSuiteDataDir",
             "SVSUITE_OUTPUT_DIR" : "svSuiteOutputDir",
