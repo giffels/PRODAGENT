@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.25 2006/09/01 10:58:22 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.26 2006/09/04 14:42:36 bacchi Exp $"
 
 import socket
 import time
@@ -520,7 +520,10 @@ class TrackingComponent:
         baseDir=os.path.dirname(self.reportfilename)+"/"
         #logging.info("baseDir = %s"%baseDir)
         fjr=readJobReport(self.reportfilename)
-        jobCacheDir=JobStateInfoAPI.general(fjr[0].jobSpecId)['CacheDirLocation']
+        try:
+            jobCacheDir=JobStateInfoAPI.general(fjr[0].jobSpecId)['CacheDirLocation']
+        except:
+            jobCacheDir=self.args['ComponentDir']
         logging.debug("jobCacheDir = %s"%jobCacheDir)
 
         newPath=jobCacheDir+"/JobTracking/"+success+"/"+lastdir+"/"
