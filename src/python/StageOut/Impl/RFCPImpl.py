@@ -20,6 +20,8 @@ class RFCPImpl(StageOutImpl):
     
     """
 
+    run = staticmethod(runCommand)
+
     def createSourceName(self, protocol, pfn):
         """
         _createSourceName_
@@ -35,8 +37,35 @@ class RFCPImpl(StageOutImpl):
 
         create dir with group permission
         """
-        command = "rfmkdir -m 775 -p %s" % os.path.dirname(targetPFN)
-        self.executeCommand(command)
+        targetdir= os.path.dirname(targetPFN)
+
+        checkdircmd="rfstat %s > /dev/null " % targetdir
+        print "Check dir existence : %s" %checkdircmd 
+        try:
+          checkdirexitCode = self.run(checkdircmd)
+        except Exception, ex:
+             msg = "Warning: Exception while invoking command:\n"
+             msg += "%s\n" % checkdircmd
+             msg += "Exception: %s\n" % str(ex)
+             msg += "Go on anyway..."
+             print msg
+             pass
+
+        if checkdirexitCode:
+           mkdircmd = "rfmkdir -m 775 -p %s" % targetdir
+           "=> creating the dir : %s" %mkdircmd
+           try:
+             self.run(mkdircmd)
+           except Exception, ex:
+             msg = "Warning: Exception while invoking command:\n"
+             msg += "%s\n" % mkdircmd
+             msg += "Exception: %s\n" % str(ex)
+             msg += "Go on anyway..."
+             print msg
+             pass
+        else:
+           print "=> dir already exists... do nothing."
+
 
     def createStageOutCommand(self, sourcePFN, targetPFN, options = None):
         """
@@ -45,11 +74,14 @@ class RFCPImpl(StageOutImpl):
         Build an rfcp command
 
         """
+        original_size = os.stat(sourcePFN)[6]
+        print "Local File Size is: %s" % original_size
         result = "rfcp "
         if options != None:
             result += " %s " % options
         result += " %s " % sourcePFN
         result += " %s " % targetPFN
+        result += "; DEST_SIZE=`rfstat %s | grep Size | cut -f2 -d:` ; if [ '%s' == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (targetPFN,original_size)
         return result
 
     
