@@ -81,7 +81,7 @@ class RFCPImpl(StageOutImpl):
             result += " %s " % options
         result += " %s " % sourcePFN
         result += " %s " % targetPFN
-        result += "; DEST_SIZE=`rfstat %s | grep Size | cut -f2 -d:` ; if [ '%s' == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (targetPFN,original_size)
+        result += "; DEST_SIZE=`rfstat %s | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ '%s' == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (targetPFN,original_size)
         return result
 
     
