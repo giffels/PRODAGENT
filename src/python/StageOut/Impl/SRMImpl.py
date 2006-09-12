@@ -38,22 +38,35 @@ class SRMImpl(StageOutImpl):
         Build an srmcp command
 
         """
-        result = "srmcp "
+
+        result = "REPORT_FILE=`pwd`/srm.report.$$\n"
+        result += "srmcp -report=$REPORT_FILE "
+        
         if options != None:
             result += " %s " % options
         result += " %s " % sourcePFN
         result += " %s \n" % targetPFN
 
-        fileBaseName = os.path.basename(sourcePFN)
-
+        result += """
+        EXIT_STATUS=`cat $REPORT_FILE | cut -f3 -d" "`
+        echo "srmcp exit status: $EXIT_STATUS"
+        if (( $EXIT_STATUS != 0 )); then
+            echo "Non-zero srmcp Exit status!!!"
+            exit $EXIT_STATUS
+        fi
+        
+        """
+        
+        
+        fileAbsPath = sourcePFN.replace("file://", "")
         result += "FILE_SIZE=`stat -c %s "
-        result += " %s`\n" % fileBaseName
+        result += " %s`\n" % fileAbsPath
         result += "echo \"Local File Size is: $FILE_SIZE\"\n"
         metadataCheck = \
         """
         for ((a=1; a <= 10 ; a++))
         do
-           SRM_SIZE=`srm-get-metadata %s 2>/dev/null | grep 'size :[0-9]' | cut -f2 -d":"`
+           SRM_SIZE=`srm-get-metadata -retry_num=0 %s 2>/dev/null | grep 'size :[0-9]' | cut -f2 -d":"`
            echo "SRM Size is $SRM_SIZE"
            if (( $SRM_SIZE > 0 )); then
               if (( $SRM_SIZE == $FILE_SIZE )); then
