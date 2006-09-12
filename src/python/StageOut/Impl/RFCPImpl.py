@@ -53,7 +53,7 @@ class RFCPImpl(StageOutImpl):
 
         if checkdirexitCode:
            mkdircmd = "rfmkdir -m 775 -p %s" % targetdir
-           "=> creating the dir : %s" %mkdircmd
+           print "=> creating the dir : %s" %mkdircmd
            try:
              self.run(mkdircmd)
            except Exception, ex:
