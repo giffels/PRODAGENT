@@ -58,7 +58,7 @@ _StandardPackages = [ShREEK, MB, ShLogger, IMProv, StageOut,
 #  //
 # // To use the new StageOut package set this to True
 #//
-_UseNewStageOut = False
+_UseNewStageOut = True
 
 def makeTaskObject(jobSpecNode):
     """
