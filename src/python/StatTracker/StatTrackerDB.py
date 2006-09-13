@@ -171,7 +171,7 @@ def insertJobFailure(jobFailureInstance):
         jobFailureInstance['error_type'],
         jobFailureInstance['error_code'],
         jobFailureInstance['exit_code'],
-        jobFailureInstance['error_desc'],
+        MySQLdb.escape_string(jobFailureInstance['error_desc']),
         )
     connection = connect()
     dbCur = connection.cursor()
