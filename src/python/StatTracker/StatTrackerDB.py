@@ -179,12 +179,47 @@ def insertJobFailure(jobFailureInstance):
         dbCur.execute("BEGIN")
         dbCur.execute(sqlStr)
         dbCur.execute("COMMIT")
-        dbCur.close()
     except StandardError, ex:
         dbCur.execute("ROLLBACK")
         dbCur.close()
         msg = "Failed to insert JobFailure %s\n" % ex
         raise RuntimeError, msg
+
+    dbCur.execute("SELECT LAST_INSERT_ID()")
+    jobIndex = dbCur.fetchone()[0]
+    dbCur.close()
+
+    #  //
+    # // Now insert attrs
+    #//
+    insertAttrs = """INSERT INTO st_job_fail_attr(job_index, attr_class, attr_value, attr_name)
+         VALUES 
+    """
+    
+    
+    for timingKey, timingValue in jobFailureInstance['timing'].items():
+        insertAttrs += "(%s, \"timing\", \"%s\", \"%s\"),\n" % (
+            jobIndex, timingValue, timingKey,
+            )
+        
+    insertAttrs = insertAttrs.strip()[:-1]
+    insertAttrs += ";"
+    
+    dbCur = connection.cursor()
+    try:
+        dbCur.execute("BEGIN")
+        dbCur.execute(insertAttrs)
+        dbCur.execute("COMMIT")
+        dbCur.close()
+    except StandardError, ex:
+        dbCur.execute("ROLLBACK")
+        dbCur.close()
+        msg = "Failed to insert JobFailure Attrs %s\n" % ex
+        raise RuntimeError, msg
+    
+
+
+    
     return
 
 

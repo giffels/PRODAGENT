@@ -35,7 +35,7 @@ class JobStatistics(dict):
         self.setdefault("host_name", None)
         self.setdefault("se_name", None)
         self.setdefault("job_type", None)
-        
+        self.setdefault("timing", {})
 
     def insertIntoDB(self):
         """
@@ -79,6 +79,18 @@ class JobStatistics(dict):
 
         
         return
+
+    def recordTiming(self, jobRepInstance):
+        """
+        _recordTiming_
+
+        Get the timing information from the job report
+
+        """
+        timing = jobRepInstance.timing
+        for key, value in timing.items():
+            self['timing'][key] = value
+        return
     
     def __str__(self):
         """string print of this object"""
@@ -103,7 +115,7 @@ class SuccessfulJob(JobStatistics):
         self.setdefault("events_read", None)
         self.setdefault("events_written", None)
         self.setdefault("run_numbers", [])
-        self.setdefault("timing", {})
+
 
     def recordInputs(self, jobRepInstance):
         """
@@ -158,17 +170,7 @@ class SuccessfulJob(JobStatistics):
         self['events_written'] = totalWritten
         return
 
-    def recordTiming(self, jobRepInstance):
-        """
-        _recordTiming_
 
-        Get the timing information from the job report
-
-        """
-        timing = jobRepInstance.timing
-        for key, value in timing.items():
-            self['timing'][key] = value
-        return
 
         
 
@@ -226,7 +228,7 @@ def jobReportToFailure(jobRepInstance):
     """
     result = FailedJob()
     result.populateCommon(jobRepInstance)
-    
+    result.recordTiming(jobRepInstance)
     if len(jobRepInstance.errors) > 0:
         lastError = jobRepInstance.errors[-1]
                                           
