@@ -6,7 +6,7 @@ Interface for Stage Out Plugins. All stage out implementations should
 inherit this object and implement the methods accordingly
 
 """
-
+import time
 from StageOut.Execute import execute
 from StageOut.StageOutError import StageOutError
 
@@ -17,8 +17,18 @@ class StageOutImpl:
     Define the interface that needs to be implemented by stage out
     plugins
 
+    Object attributes:
+
+    - *numRetries* : Number of automated retry attempts if the command fails
+                     default is 3 attempts
+    - *retryPause* : Time in seconds to wait between retries.
+                     default is 10 minutes
     """
     executeCommand = staticmethod(execute)
+
+    def __init__(self):
+        self.numRetries = 3
+        self.retryPause = 600
 
     def createSourceName(self, protocol, pfn):
         """
@@ -75,7 +85,6 @@ class StageOutImpl:
         This operator does the actual stage out by invoking the overridden
         plugin methods of the derived object.
 
-        Protoco
 
         """
         #  //
@@ -97,8 +106,23 @@ class StageOutImpl:
         #  //
         # // Run the command
         #//
-        self.executeCommand(command)
-
+        for retryCount in range(1, self.numRetries + 1):
+            try:
+                self.executeCommand(command)
+                return
+            except StageOutError, ex:
+                msg = "Attempted stage out %s failed\n" % retryCount
+                msg += "Automatically retrying in %s secs\n " % self.retryPause
+                print msg
+                if retryCount == self.numRetries :
+                    #  //
+                    # // last retry, propagate exception
+                    #//
+                    raise ex
+                time.sleep(retryPause)
+                continue
+                
+                
         return
 
         
