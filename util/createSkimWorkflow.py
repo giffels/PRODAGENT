@@ -255,6 +255,13 @@ for outModName, val in cfgInt.outputModules.items():
         outDS['PSetHash'] = PSetHashValue
         datasetList.append(outDS.name())
 
+stageOut = cmsRun.newNode("stageOut1")
+stageOut.type = "StageOut"
+stageOut.application["Project"] = ""
+stageOut.application["Version"] = ""
+stageOut.application["Architecture"] = ""
+stageOut.application["Executable"] = "RuntimeStageOut.py" # binary name
+stageOut.configuration = ""
 
 mergedLFNBase(spec)
 unmergedLFNBase(spec)
