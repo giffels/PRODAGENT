@@ -119,7 +119,7 @@ class StageOutImpl:
                     # // last retry, propagate exception
                     #//
                     raise ex
-                time.sleep(retryPause)
+                time.sleep(self.retryPause)
                 continue
                 
                 
