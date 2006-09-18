@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.28 2006/09/07 10:59:25 ckavka Exp $"
+__version__ = "$Revision: 1.28 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -933,7 +933,8 @@ class MergeSensorComponent:
         while (mergeable):
        
             # yes, add job info to dataset and get target name
-            jobId = "mergejob-%s" % time.time()
+            jobId =  "%s-mergejob-%s" % (datasetStatus['workflowName'], \
+                                         time.time())
 
             # critical region start
             self.cond.acquire()
