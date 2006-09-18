@@ -25,9 +25,9 @@ class ComponentServerTest(unittest.TestCase):
            # we use this for event publication.
            self.ms=MessageService()
            self.ms.registerAs("JobCleanupTest")
-           self.jobSpecs=10
+           self.jobSpecs=1000
            self.location='/tmp/prodAgent/cacheDirs'
-           self.failureJobSpecs=10
+           self.failureJobSpecs=1000
            self.flags=5
            self.trigger=TriggerAPI(self.ms)
            # create some directories in tmp
@@ -146,12 +146,14 @@ class ComponentServerTest(unittest.TestCase):
         print("""\nEmit failure cleanup events to test the failureCleanupHandler""")
         for i in xrange(0,self.failureJobSpecs):
             payload="failureJobSpec"+str(i)
+            print('publishing FailureCleanup for failureJobSpec'+str(i))
             self.ms.publish("FailureCleanup", payload)
             self.ms.commit()
         print("""\nSleep for several seconds""")
         time.sleep(3)
 
     def testH(self):
+        return
         print("""\nCleanup the prodagent database""")
         print("\nsleep for 20 seconds to") 
         print("let the cleanup component receive the messages")
@@ -172,7 +174,7 @@ class ComponentServerTest(unittest.TestCase):
          self.testE()
          self.testF()
          self.testG()
-         self.testH()
+#         self.testH()
 
     
 
