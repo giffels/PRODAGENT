@@ -32,6 +32,9 @@ class PartialCleanupHandler(HandlerInterface):
          jobId=payloads[0]
          nextEvent=payloads[1]
          nextPayload=payloads[2]
+         delay=0
+         if len(payloads)==4:
+             delay=payloads[3]
 
          try:
              logging.debug(">PartialCleanupHandler< removing cached files "+\

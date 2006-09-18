@@ -45,6 +45,7 @@ class JobCleanupComponent:
          self.args = {}
          self.args['Logfile'] = None
          self.args['FailureArchive'] = None
+#         self.args['SuccessArchive'] = None
          self.args.update(args)
  
 

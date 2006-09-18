@@ -55,6 +55,7 @@ class FailureCleanupHandler(HandlerInterface):
              except Exception,ex:
                  logging.debug(">FailureCleanupHandler< WARNING job cleanup: "+str(ex))
              JobStateChangeAPI.cleanout(str(payload))
+             logging.debug(">FailureCleanupHandler< archived completed for jobspecID: "+str(payload))
          except Exception,ex:
              logging.debug(">FailureCleanupHandler< ERROR job cleanup: "+str(ex))
 
