@@ -260,8 +260,11 @@ class StageOutManager:
         #//
         self.inputReport.timing['StageOutStart'] = stageOutStartTime
         self.inputReport.timing['StageOutEnd'] = int(time.time() )
-        self.inputState.saveJobReport()
 
+        #self.inputState.saveJobReport()
+        self.state._JobReport = self.inputReport
+        self.state.saveJobReport()
+        
         return exitCode
 
     def fallbackStageOut(self, lfn, localPfn, fbParams):
@@ -430,7 +433,7 @@ def stageOut():
                                   "FrameworkJobReport.xml")
 
 
-    updateReport(toplevelReport, inputState.getJobReport())
+    updateReport(toplevelReport, state.getJobReport())
     print "Stage Out Complete: Exiting: %s " % exitCode
     return exitCode
     
