@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.10 2006/05/25 07:48:12 fvlingen Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.11 2006/08/30 11:10:10 afanfani Exp $"
 
 import getpass
 import os
@@ -123,6 +123,9 @@ DB_SOCKET = "%s";
 
 # MySQL client flag
 DB_CLIENT_FLAG = 0;
+
+# MySQL timeout in seconds
+DB_CONNECT_TIMEOUT = 30;
 ]
 """ %(prodAgentDbConfig['dbName']+'_BOSS',prodAgentDbConfig['host'],bossDbConfig['domain'],prodAgentDbConfig['user'],prodAgentDbConfig['passwd'],bossDbConfig['guestUser'],bossDbConfig['guestPasswd'],prodAgentDbConfig['portNr'],prodAgentDbConfig['socketFileLocation'])
 bossMysql.write(bossStr)
@@ -171,13 +174,15 @@ installDB(schemaLocation,'',prodAgentDbConfig['socketFileLocation'],prodAgentDbC
 
 schedulers=['registerBBSScheduler', 'registerPBSScheduler', \
             'registerCondorScheduler', \
-#            'registerCONDOR_GScheduler', \
-            'registerLSF-NoSharedFS-Scheduler', \
-            'registerLSF-SharedFS-Scheduler', \
+            'registerCONDOR_GScheduler', \
+#            'registerLSF-SharedFS-Scheduler', \
             'registerLSF-SharedFS-CERN-Scheduler', \
             'registerEDGScheduler','registerGLITEScheduler', \
-            'registerGliteAPICollectionScheduler', \
-            'registerGliteAPIParamScheduler', \
+            'registerGliteCollectionScheduler', \
+#            'registerGliteAPICollectionScheduler', \
+            'registerGliteParamScheduler', \
+#            'registerGliteAPIParamScheduler', \
+            'registerSGEScheduler', \
             'registerForkScheduler']
 
 print
@@ -186,35 +191,17 @@ print
 y=''
 for scheduler in schedulers:
    try:
-      # ok: it doesn't look nice but, for the moment, the only way
-      # to understand which ones are the latest working scripts for a given
-      # scheduler, is to read them from our registerSCHEDScheduler
-      file=open(bossPath + "/BossSched/bin/" + scheduler,"r")
-      lines=file.readlines();
-      file.close();
-      for line in lines:
-         if "bossAdmin" in line :
-            cmd = line.strip() + ' -c ' + bossDbConfig['configDir']
-            break
-      if len(cmd) == 0 :
-         continue
+      if os.path.exists( bossPath + "/BossSched/bin/" + scheduler ) == 0 :
+         raise Exception("WARNING", scheduler + " not found. Skipping")
       print('Registering '+scheduler.lstrip('register'))
-      cmd = 'cd '+bossPath+'/BossSched/bin/;' + cmd
+      cmd = bossPath + '/BossSched/bin/' + scheduler + ' -c ' + bossDbConfig['configDir'] + ' -force'
       stdin,stdout=os.popen4(cmd)
-      # this is for dealing with questions on replacing
-      # the scheduler (this might be easier when the Python API of
-      # boss is available
-      stdin.write('y')
-      stdin.close()
-      y=str(stdout.read())
-      y=str(stdout.read())
-      stdout.close()
+      y=stdout.read()
       if y!='':
-         raise
+         raise Exception("ERROR",str(y))
    except Exception,ex:
       print('ERROR: '+str(ex)+'  '+str(y)+'\Perhaps this user '+\
             'has not the right privileges for boss or the database?')
-
 
 list=''
 try:
@@ -398,7 +385,7 @@ try:
    if os.path.exists(bossPath+'/Examples/cmsswSchema')==0 :
       raise Exception("WARNING","CMSSW program type not found. Skipping")
    print('Registering cmssw program type')
-   cmd = 'cd '+bossPath+'/Examples; bossAdmin registerProgram -name cmssw -schema cmsswSchema -pre cmsswRuntimeprocess -post cmsswPostprocess -runtime cmsswRuntimeprocess -comment "cmssw program" -c ' + bossDbConfig['configDir']
+   cmd = bossPath+'/Examples/registerCMSSWProgram -c ' + bossDbConfig['configDir']
    stdin,stdout=os.popen4(cmd)
    y=stdout.read()
    if y!='':
