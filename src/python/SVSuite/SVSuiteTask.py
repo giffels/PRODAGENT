@@ -129,6 +129,8 @@ class SVSuiteTask:
                              self.configuration.svSuiteInputDir
             svTool.environment['SVSUITE_VERSION'] = \
                              self.configuration.swVersion
+            svTool.environment['SVSUITE_JOB_ID'] = \
+                             self.configuration.jobId
             svTool.swSetupCommand = self.configuration.swSetupCommand
             
             #  //
