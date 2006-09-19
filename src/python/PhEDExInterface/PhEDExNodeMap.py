@@ -25,8 +25,22 @@ class PhEDExNodeMap:
         "t2data2.t2.ucsd.edu" : "T2_UCSD_Buffer",
         "se01.cmsaf.mit.edu" : "T2_MIT_Buffer",
         "ufdcache.phys.ufl.edu" : "T2_Florida_Buffer",
-                  
-        
+        "castorsrm.pic.es" : "T1_PIC_MSS",
+        "castorsrm.ciemat.es" : "T2_Spain_Buffer",
+        "srm.cern.ch" : "T1_CERN_MSS",
+        "ccsrm.in2p3.fr" : "T1_IN2P3_MSS",
+        "maite.iihe.ac.be" : "T2_Belgium_IIHE",
+        "dpm01.ifca.es" : "T2_Spain_IFCA",
+        'sc.cr.cnaf.infn.it' : "T1_CNAF_MSS",
+        'pccms2.cmsfarm1.ba.infn.it' : "T2_Bari_Buffer",
+        't2-srm-01.lnl.infn.it' : "T2_Legnaro_Buffer",
+        'cmsdpm.pi.infn.it' : "T2_Pisa_Buffer",
+        'cmsrm-se01.roma1.infn.it' : "T2_Rome_Buffer",
+        'gfe02.hep.ph.ic.ac.uk' : "T2_London_IC_HEP",
+        'dcache.gridpp.rl.ac.uk' : "T1_RAL_Buffer",
+        'grid100.kfki.hu' : "T2_Budapest_Buffer",
+        'heplnx204.pp.rl.ac.uk' : "T2_RutherfordPPD",
+        'dgc-grid-34.brunel.ac.uk' : "T2_London_Brunel"
 
         
         }
