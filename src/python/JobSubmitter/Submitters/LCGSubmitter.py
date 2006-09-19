@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.15 2006/08/11 14:16:15 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.16 2006/08/23 11:14:46 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -159,10 +159,14 @@ class LCGSubmitter(SubmitterInterface):
             logging.error(output)
             sys.exit()
             
-        bossSubmit = self.BOSS4submit(bossJobId)  
-        bossSubmit += " -schclassad %s"%schedulercladfile
+        bossSubmit = self.BOSS4submit(bossJobId)
+        try:
 
-        #  //
+          if self.parameters['RTMon']!='':
+            bossSubmit+="-rtmon %s "%self.parameters['RTMon']
+        except:
+          pass
+        bossSubmit += " -schclassad %s"%schedulercladfile     #  //
         # // Executing BOSS Submit command
         #//
         # AF : remove the following buggy logging

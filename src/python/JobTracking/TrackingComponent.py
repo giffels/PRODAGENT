@@ -25,6 +25,7 @@ import socket
 import time
 import os
 from shutil import copy
+from shutil import rmtree
 import string
 import logging
 from logging.handlers import RotatingFileHandler
@@ -162,7 +163,7 @@ class TrackingComponent:
 
         jobNumber=300
         timeout=0
-        outfile=self.executeCommand("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j, (select TASK_ID ,CHAIN_ID,max(id) id from JOB group by task_id,chain_id) a  where j.TASK_ID=a.TASK_ID and j.CHAIN_ID=a.CHAIN_ID and j.ID=a.ID and j.getout_t=0\" -c " + self.bossCfgDir)
+        outfile=self.executeCommand("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j\" -c " + self.bossCfgDir)
         try:
             jobNumber=len(outfile.split('\n'))-2
             logging.debug("JobNumber = %s\n"%jobNumber)
@@ -172,7 +173,7 @@ class TrackingComponent:
             logging.debug("\n")
 
 #        outfile=self.executeCommand("bossAdmin SQL -query \"select MAX(TASK_ID),'-',MIN(TASK_ID)  from  JOB where GETOUT_T=0 and SCHED_ID!='' \" -c " + self.bossCfgDir)
-        outfile=self.executeCommand("bossAdmin SQL -query \"select max(j.TASK_ID),'-',min(j.TASK_ID) from JOB j, (select TASK_ID ,CHAIN_ID,max(id) id from JOB group by task_id,chain_id) a  where j.TASK_ID=a.TASK_ID and j.CHAIN_ID=a.CHAIN_ID and j.ID=a.ID and j.getout_t=0\" -c "+ self.bossCfgDir)
+        outfile=self.executeCommand("bossAdmin SQL -query \"select max(j.TASK_ID),'-',min(j.TASK_ID) from JOB j\" -c "+ self.bossCfgDir)
 #        outfile=self.executeCommand("bossAdmin SQL -query \"select MAX(TASK_ID),'-',MIN(TASK_ID)  from  (select TASK_ID,CHAIN_ID,MAX(ID),sum(GETOUT_T) GETOUT_T from  JOB group by TASK_ID,CHAIN_ID having GETOUT_T=0) a \" -c " + self.bossCfgDir)
 
         try:
@@ -346,7 +347,12 @@ class TrackingComponent:
                         logging.info("Aborted Job Sched_id=%s"%sched_id)
                         if sched_id!="":
                             self.executeCommand("edg-job-get-logging-info -v 2 %s > %s/edgLoggingInfo.log"%(sched_id,os.path.dirname(self.reportfilename)))
-      
+                    elif jobScheduler=="glite":
+                        sched_id=self.BOSS4schedulerId(jobId[0])
+                        logging.info("Aborted Job Sched_id=%s"%sched_id)
+                        if sched_id!="":
+                            self.executeCommand("glite-wms-job-logging-info -v 2 %s > %s/gliteLoggingInfo.log"%(sched_id,os.path.dirname(self.reportfilename)))
+
                 self.jobFailed(jobId)
                 
                 
@@ -523,7 +529,7 @@ class TrackingComponent:
         try:
             jobCacheDir=JobStateInfoAPI.general(fjr[0].jobSpecId)['CacheDirLocation']
         except:
-            jobCacheDir=self.args['ComponentDir']
+            jobCacheDir=self.args['ComponentDir'] 
         logging.debug("jobCacheDir = %s"%jobCacheDir)
 
         newPath=jobCacheDir+"/JobTracking/"+success+"/"+lastdir+"/"
@@ -574,9 +580,9 @@ class TrackingComponent:
             logging.error("error removing chainDir %s"%chainDir)
         if success=="Success":
             try:
-                logging.debug("bossAdmin SQL -query \"select SUB_PATH from JOB where TASK_ID='%s' and CHAIN_ID='%s' and ID='%s'\""%(taskid,chainid,resub) + " -c " + self.bossCfgDir)
+                logging.debug("bossAdmin SQL -query \"select SUB_PATH from TASK where ID='%s'\""%(taskid) + " -c " + self.bossCfgDir)
 
-                outfile=self.executeCommand("bossAdmin SQL -query \"select SUB_PATH from JOB where TASK_ID='%s' and CHAIN_ID='%s' and ID='%s'\""%(taskid,chainid,resub) + " -c " + self.bossCfgDir)
+                outfile=self.executeCommand("bossAdmin SQL -query \"select SUB_PATH from TASK where ID='%s'\""%(taskid) + " -c " + self.bossCfgDir)
                 subPath=outfile
             except:
                 subPath=""
@@ -587,10 +593,11 @@ class TrackingComponent:
                 subPath=""
             logging.debug("SubmissionPath '%s'"%subPath)
             try:
-                os.remove("%s/BossArchive_%s_g0.tar"%(subPath,taskid))
-                logging.debug("removed %s/BossArchive_%s_g0.tar"%(subPath,taskid))
-                os.remove("%s/BossClassAdFile_%s"%(subPath,taskid))
-                logging.debug("removed %s/BossClassAdFile_%s"%(subPath,taskid))
+                rmtree(subPath)
+#                os.remove("%s/BossArchive_%s_g0.tar"%(subPath,taskid))
+#                logging.debug("removed %s/BossArchive_%s_g0.tar"%(subPath,taskid))
+#                os.remove("%s/BossClassAdFile_%s"%(subPath,taskid))
+                logging.debug("removed %s"%(subPath,taskid))
             except:
                 logging.error("Failed to remove submission files")
         return
@@ -802,7 +809,7 @@ class TrackingComponent:
         except:
             logging.error("Boss4 JobSpecId splitting error")
             return ""
-        outfile=self.executeCommand("bossAdmin SQL -query \"select TASK_NAME from TASK_HEAD where id='%s'\""%taskid + " -c " + self.bossCfgDir)
+        outfile=self.executeCommand("bossAdmin SQL -query \"select TASK_NAME from TASK where id='%s'\""%taskid + " -c " + self.bossCfgDir)
             
         outp=outfile
         try:

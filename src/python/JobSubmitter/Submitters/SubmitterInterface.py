@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.17 2006/08/11 14:16:15 bacchi Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.18 2006/08/23 19:54:03 evansde Exp $"
 
 import os
 import logging
@@ -408,7 +408,8 @@ class SubmitterInterface:
         
         declareClad.write("<task name=\"%s\">"%self.parameters['JobName'])
         declareClad.write("<chain scheduler=\"%s\" rtupdater=\"mysql\" ch_tool_name=\"\">"%self.parameters['Scheduler'])
-        declareClad.write(" <program exec=\"%s\" args=\"\" stderr=\"%s.stderr\" program_types=\"%s\" stdin=\"\" stdout=\"%s.stdout\"  infiles=\"%s,%s\" outfiles=\"*.root,%s.stdout,%s.stderr,FrameworkJobReport.xml\"  outtopdir=\"\"/></chain></task>"% (os.path.basename(self.parameters['Wrapper']), self.parameters['JobName'],bossJobType, self.parameters['JobName'],self.parameters['Wrapper'],self.parameters['Tarball'], self.parameters['JobName'], self.parameters['JobName']))
+        # declareClad.write(" <program exec=\"%s\" args=\"\" stderr=\"%s.stderr\" program_types=\"%s\" stdin=\"\" stdout=\"%s.stdout\"  infiles=\"%s,%s\" outfiles=\"*.root,%s.stdout,%s.stderr,FrameworkJobReport.xml\"  outtopdir=\"\"/></chain></task>"% (os.path.basename(self.parameters['Wrapper']), self.parameters['JobName'],bossJobType, self.parameters['JobName'],self.parameters['Wrapper'],self.parameters['Tarball'], self.parameters['JobName'], self.parameters['JobName']))
+        declareClad.write(" <program> <exec><![CDATA[%s]]></exec><args><![CDATA[""]]></args><stderr><![CDATA[%s.stderr]]></stderr><program_types><![CDATA[%s]]></program_types><stdin><![CDATA[""]]></stdin><stdout><![CDATA[%s.stdout]]></stdout><infiles><![CDATA[%s,%s]]></infiles><outfiles><![CDATA[*.root,%s.stdout,%s.stderr,FrameworkJobReport.xml]]></outfiles><outtopdir><![CDATA[""]]></outtopdir></program></chain></task>"% (os.path.basename(self.parameters['Wrapper']), self.parameters['JobName'],bossJobType, self.parameters['JobName'],self.parameters['Wrapper'],self.parameters['Tarball'], self.parameters['JobName'], self.parameters['JobName']))
         declareClad.close()
         logging.debug("SubmitterInterface:BOSS xml declare file written:%s" % xmlfile)
 
@@ -418,7 +419,8 @@ class SubmitterInterface:
         bossJobId = self.executeCommand(bossDeclare)
         logging.debug( bossJobId)
         try:
-            bossJobId = bossJobId.split("TASK_ID:")[1].split("\n")[0].strip()
+            #bossJobId = bossJobId.split("TASK_ID:")[1].split("\n")[0].strip()
+            bossJobId = bossJobId.split(":")[1].split("\n")[0].strip()
         except StandardError, ex:
             logging.debug("SubmitterInterface:BOSS Job ID: %s. BossJobId set to 0\n" % bossJobId)
             raise ProdAgentException("Job Declaration Failed")
