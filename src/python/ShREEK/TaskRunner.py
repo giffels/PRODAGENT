@@ -6,8 +6,8 @@ Execution class for running a task described by a ShREEKTask instance,
 and managing its execution.
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: TaskRunner.py,v 1.3 2006/06/05 20:50:33 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: TaskRunner.py,v 1.4 2006/07/20 16:06:13 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
@@ -87,6 +87,7 @@ class TaskRunner(LogInterface):
         LogInterface.__init__(self)
         self.task = shreekTask
         self.logName = "%s-stdout.log" % self.task.executable()
+        self.errName = "%s-stderr.log" % self.task.executable()
         self.process = -1
         
 
@@ -246,7 +247,10 @@ class TaskRunner(LogInterface):
         #if os.WIFEXITED(exitCode):
         #    exitCode = os.WEXITSTATUS(exitCode)
         
-        command = "./%s | tee %s" % (self.task.executable(), self.logName)
+        command = "(((./%s | tee %s) 3>&1 1>&2 2>&3 | tee %s) " % (
+            self.task.executable(), self.logName, self.errName,
+            )
+        command += "3>&1 1>&2 2>&3)"
         
         exitCode = getCommandOutput(command)
         
