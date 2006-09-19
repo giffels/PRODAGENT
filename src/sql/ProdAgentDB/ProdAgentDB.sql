@@ -536,6 +536,7 @@ CREATE INDEX di_job_index USING BTREE ON di_job_queue (owner_index);
 CREATE TABLE ws_last_call
   (
     component_id          varchar(150)    not null,
+    tag                   varchar(150)   not null default '0',
     service_call          varchar(255)   not null,
     server_url            varchar(255)   not null,
     service_parameters    mediumtext     not null,
