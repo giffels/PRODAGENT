@@ -56,24 +56,28 @@ def getConnection(serverUrl):
 def executeCall(serverUrl,method_name,parameters=[],componentID="defaultComponent"):
    connection=getConnection(serverUrl)
    if method_name!='prodCommonRecover.lastServiceCall':
-       logCall(serverUrl,method_name,parameters,componentID)
-   parameters.append(componentID)
+       tag=str(time.time())
+       logCall(serverUrl,method_name,parameters,componentID,tag)
+       parameters.append(componentID)
+       parameters.append(tag)
 
    result=connection.execute(method_name,parameters)
    return result
 
 
-def logCall(serverUrl,method_name,args,componentID="defaultComponent"):
+def logCall(serverUrl,method_name,args,componentID="defaultComponent",tag="0"):
    global lastCall
 
    try:
        conn=connect(False)
        dbCur=conn.cursor()
        dbCur.execute("START TRANSACTION")
-       sqlStr="""INSERT INTO ws_last_call(server_url,component_id,service_call,service_parameters,call_state)
-           VALUES("%s","%s","%s","%s","%s") ON DUPLICATE KEY UPDATE
-           service_parameters="%s", call_state="%s";
-           """ %(serverUrl,componentID,method_name,base64.encodestring(cPickle.dumps(args)),"call_placed",base64.encodestring(cPickle.dumps(args)),"call_placed")
+       # NOTE: this should be done differently, we do this to keep the log
+       # NOTE: unqiue
+       sqlStr="""INSERT INTO ws_last_call(server_url,component_id,service_call,service_parameters,call_state,tag)
+           VALUES("%s","%s","%s","%s","%s","%s") ON DUPLICATE KEY UPDATE
+           service_parameters="%s", call_state="%s", tag="%s";
+           """ %(serverUrl,componentID,method_name,base64.encodestring(cPickle.dumps(args)),"call_placed",str(tag),base64.encodestring(cPickle.dumps(args)),"call_placed",tag)
        dbCur.execute(sqlStr)
        dbCur.execute("COMMIT")
        lastCall=(serverUrl,method_name,componentID)
@@ -113,30 +117,57 @@ def retrieve(serverURL=None,method_name=None,componentID=None):
        conn=connect(False)
        dbCur=conn.cursor()
        dbCur.execute("START TRANSACTION")
+       #NOTE: we do several nested queries and assume that the query engine can rewrite them
+       #NOTE: we should rewrite these queries ourselves.
        if serverURL==None and method_name==None and componentID==None:
-           sqlStr="""SELECT server_url,service_call,component_id FROM ws_last_call WHERE 
-               call_state="call_placed" AND log_time IN ( 
+           sqlStr="""SELECT server_url,service_call,component_id,tag FROM ws_last_call WHERE 
+               call_state="call_placed" AND 
+               id in (
+               SELECT max(id)
+               FROM ws_last_call
+               WHERE call_state="call_placed" 
+               AND
+               log_time IN ( 
                SELECT  max(log_time) FROM ws_last_call
-               WHERE call_state="call_placed" GROUP BY server_url);
+               WHERE call_state="call_placed" GROUP BY server_url) GROUP BY server_url);
                """ 
        elif serverURL==None and method_name==None and componentID!=None:
-           sqlStr="""SELECT server_url,service_call,component_id FROM ws_last_call WHERE  
-               component_id="%s" AND call_state="call_placed" AND log_time IN ( 
+           sqlStr="""SELECT server_url,service_call,component_id,tag FROM ws_last_call WHERE  
+               component_id="%s" AND call_state="call_placed" AND
+               id in (
+               SELECT max(id)
+               FROM ws_last_call
+               WHERE component_id="%s" AND call_state="call_placed" 
+               AND log_time IN ( 
                SELECT max(log_time) FROM ws_last_call
-               WHERE component_id="%s" AND call_state="call_placed" GROUP BY server_url);
-               """ %(componentID,componentID)
+               WHERE component_id="%s" AND call_state="call_placed" GROUP BY server_url) GROUP BY server_url);
+               """ %(componentID,componentID,componentID)
        elif serverURL==None and method_name!=None and componentID!=None:
-           sqlStr="""SELECT server_url,service_call,component_id FROM ws_last_call WHERE 
-               component_id="%s" AND service_call="%s" AND call_state="call_placed" AND log_time IN ( 
+           sqlStr="""SELECT server_url,service_call,component_id,tag FROM ws_last_call WHERE 
+               component_id="%s" AND service_call="%s" AND call_state="call_placed" AND
+               id in (
+               SELECT max(id)
+               FROM ws_last_call
+               WHERE component_id="%s" AND service_call="%s" AND call_state="call_placed" 
+               AND log_time IN ( 
                SELECT  max(log_time) FROM ws_last_call
-               WHERE component_id="%s" AND service_call="%s" AND call_state="call_placed" GROUP BY server_url);
-               """ %(componentID,method_name,componentID,method_name)
+               WHERE component_id="%s" AND service_call="%s" AND call_state="call_placed" GROUP BY server_url) GROUP BY server_url;
+               """ %(componentID,method_name,componentID,method_name,componentID,method_name)
        elif serverURL!=None and method_name==None and componentID!=None:
-           sqlStr="""SELECT server_url,service_call,component_id FROM ws_last_call WHERE 
-               component_id="%s" AND server_url="%s" AND call_state="call_placed" AND log_time IN ( 
+           sqlStr="""SELECT server_url,service_call,component_id,tag FROM ws_last_call WHERE 
+               component_id="%s" AND server_url="%s" AND call_state="call_placed" AND
+               id in (
+               SELECT max(id)
+               FROM ws_last_call
+               WHERE component_id="%s" AND server_url="%s" AND call_state="call_placed" 
+               AND log_time IN ( 
                SELECT  max(log_time) FROM ws_last_call
-               WHERE component_id="%s" AND server_url="%s" AND call_state="call_placed" GROUP BY server_url);
-               """ %(componentID,serverURL,componentID,serverURL)
+               WHERE component_id="%s" AND server_url="%s" AND call_state="call_placed" GROUP BY server_url) GROUP BY server_url);
+               """ %(componentID,serverURL,componentID,serverURL,componentID,serverURL)
+       elif serverURL!=None and method_name!=None and componentID!=None:
+           sqlStr="""SELECT server_url,service_call,component_id,tag FROM ws_last_call WHERE 
+               component_id="%s" AND server_url="%s" AND call_state="call_placed" AND service_call="%s"
+               """ %(componentID,serverURL,method_name)
        dbCur.execute(sqlStr)
        rows=dbCur.fetchall()
        if len(rows)==0:
@@ -145,10 +176,11 @@ def retrieve(serverURL=None,method_name=None,componentID=None):
        server_url=rows[0][0]
        service_call=rows[0][1]
        component_id=rows[0][2]
+       tag=rows[0][3]
        dbCur.execute("COMMIT")
        dbCur.close()
        conn.close()
-       return [server_url,service_call,component_id]
+       return [server_url,service_call,component_id,tag]
    except Exception,ex:
        dbCur.execute("ROLLBACK")
        dbCur.close()

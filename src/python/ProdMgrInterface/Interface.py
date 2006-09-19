@@ -30,13 +30,13 @@ def commit(serverUrl=None,method_name=None,componentID=None):
    except Exception,ex:
        raise ProdAgentException("commit Error: "+str(ex))
 
-def retrieve(serverUrl=None,method_name=None,componentID="defaultComponent"):
+def retrieve(serverUrl=None,method_name=None,componentID="defaultComponent",tag="0"):
    try:
-       if ((serverUrl!=None) and (method_name!=None)):
-           return Management.executeCall(serverUrl,"prodCommonRecover.lastServiceCall",[service_map[method_name]],componentID)
-       else:
-           tripple=Management.retrieve(serverUrl,method_name,componentID)
-           return Management.executeCall(tripple[0],"prodCommonRecover.lastServiceCall",[tripple[1],tripple[2]],componentID)
+        if method_name!=None:
+            quad=Management.retrieve(serverUrl,service_map[method_name],componentID)
+        else:
+            quad=Management.retrieve(serverUrl,method_name,componentID)
+        return Management.executeCall(quad[0],"prodCommonRecover.lastServiceCall",[quad[1],quad[2],quad[3]],componentID)
    except Exception,ex:
        raise ProdAgentException("retrieve Error: "+str(ex))
 
