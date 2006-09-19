@@ -536,6 +536,7 @@ CREATE INDEX di_job_index USING BTREE ON di_job_queue (owner_index);
 CREATE TABLE ws_last_call
   (
     component_id          varchar(150)    not null,
+    id                    int(11)        auto_increment,
     tag                   varchar(150)   not null default '0',
     service_call          varchar(255)   not null,
     server_url            varchar(255)   not null,
@@ -543,7 +544,7 @@ CREATE TABLE ws_last_call
     call_state            ENUM('call_placed','result_retrieved'),
     log_time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
 
-
+    index(id),
     unique(component_id,service_call,server_url)
 
   ) Type=InnoDB;
