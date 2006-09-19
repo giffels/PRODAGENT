@@ -15,7 +15,7 @@ class ProdMgrUnitTests(unittest.TestCase):
 
     def setUp(self):
         print('set up')
-        self.serverURL="https://stein.ultralight.org:8444/"
+        self.serverURL="https://rick.ultralight.org:8444/"
         self.request_id='myRequest'
     
     def testA(self):
