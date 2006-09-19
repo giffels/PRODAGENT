@@ -40,9 +40,17 @@ class PhEDExNodeMap:
         'dcache.gridpp.rl.ac.uk' : "T1_RAL_Buffer",
         'grid100.kfki.hu' : "T2_Budapest_Buffer",
         'heplnx204.pp.rl.ac.uk' : "T2_RutherfordPPD",
-        'dgc-grid-34.brunel.ac.uk' : "T2_London_Brunel"
+        'dgc-grid-34.brunel.ac.uk' : "T2_London_Brunel",
+        "grid-srm.physik.rwth-aachen.de" : "T2_RWTH_Buffer",
+        "jupiter.hep.kbfi.ee" : "T2_Estonia_Buffer",
+        "gridka-dcache.fzk.de" : "T1_FZK_Buffer",
+        "lxfs07.jinr.ru" : "T2_JINR_Buffer",
+        "cluster142.knu.ac.kr" : "T2_KNU_Buffer",
+        "castorsc.grid.sinica.edu.tw" : "T1_ASGC_Buffer",
+        "srm-dcache.desy.de" : "T2_DESY_Buffer",
+        "se01-lcg.projects.cscs.ch" : "T2_CSCS_Buffer",
+        "lcg60.sinp.msu.ru" : "T2_SINP_Buffeer"
 
-        
         }
 
     def __init__(self):
