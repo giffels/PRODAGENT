@@ -411,10 +411,10 @@ def stageOut():
     #//  and loading its TaskState
     inputTask = config['StageOutParameters']['StageOutFor'][0]
     inputState = getTaskState(inputTask)
-    reportToUpdate - state.getJobReport()
     try:
         manager = StageOutManager(state, inputState)
         exitCode = manager()
+        reportToUpdate = state.getJobReport() 
     except StageOutInitError, ex:
         exitCode = ex.data['ErrorCode']
         inputReport = inputState.getJobReport()
