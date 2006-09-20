@@ -264,7 +264,6 @@ class StageOutManager:
         #self.inputState.saveJobReport()
         self.state._JobReport = self.inputReport
         self.state.saveJobReport()
-        
         return exitCode
 
     def fallbackStageOut(self, lfn, localPfn, fbParams):
@@ -412,10 +411,10 @@ def stageOut():
     #//  and loading its TaskState
     inputTask = config['StageOutParameters']['StageOutFor'][0]
     inputState = getTaskState(inputTask)
-    
     try:
         manager = StageOutManager(state, inputState)
         exitCode = manager()
+        reportToUpdate = state.getJobReport() 
     except StageOutInitError, ex:
         exitCode = ex.data['ErrorCode']
         inputReport = inputState.getJobReport()
@@ -425,15 +424,17 @@ def stageOut():
         inputReport.status = "Failed"
         inputReport.exitCode = ex.data['ErrorCode']
         inputState.saveJobReport()
+        reportToUpdate = inputState.getJobReport()
         
     #  //
     # // Update primary job report
     #//
+
     toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
                                   "FrameworkJobReport.xml")
-
-
-    updateReport(toplevelReport, state.getJobReport())
+    
+    
+    updateReport(toplevelReport, reportToUpdate)
     print "Stage Out Complete: Exiting: %s " % exitCode
     return exitCode
     
