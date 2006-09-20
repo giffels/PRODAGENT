@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.11 2006/08/30 11:10:10 afanfani Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.12 2006/09/19 13:23:58 gcodispo Exp $"
 
 import getpass
 import os
@@ -328,7 +328,7 @@ bossClarens.close()
 
 try:
    # as for schedulers...
-   cmd = "cd "+bossPath+"/BossRTMon/bin/;bossAdmin registerRTMon -name mysql -updatorPath bossrtupdatorMySQL -clientPath bossrtclientMySQL -configPath " + bossDbConfig['configDir']+ "/MySQLRTConfig.clad -c " + bossDbConfig['configDir']
+   cmd = "cd "+bossPath+"/BossRTMon/bin/;bossAdmin registerRTMon -name mysql -updatorPath bossrtupdatorMySQL -default -clientPath bossrtclientMySQL -configPath " + bossDbConfig['configDir']+ "/MySQLRTConfig.clad -c " + bossDbConfig['configDir']
    print cmd
    stdin,stdout=os.popen4(cmd)
    # this is for dealing with questions on replacing
