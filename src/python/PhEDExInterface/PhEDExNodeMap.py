@@ -49,7 +49,7 @@ class PhEDExNodeMap:
         "castorsc.grid.sinica.edu.tw" : "T1_ASGC_Buffer",
         "srm-dcache.desy.de" : "T2_DESY_Buffer",
         "se01-lcg.projects.cscs.ch" : "T2_CSCS_Buffer",
-        "lcg60.sinp.msu.ru" : "T2_SINP_Buffeer"
+        "lcg60.sinp.msu.ru" : "T2_SINP_Buffer"
 
         }
 
