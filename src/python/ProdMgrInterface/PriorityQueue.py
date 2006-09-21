@@ -6,7 +6,9 @@ Object that keeps a list of requests in order based on their priority
 
 
 """
+import logging
 
+from ProdAgentCore.ProdAgentException import ProdAgentException
 
 class RequestRecord(dict):
     """
@@ -72,10 +74,73 @@ class PriorityQueue(list):
         newReq['RequestID'] = reqId
         newReq['ProdMgrURL'] = prodMgr
         newReq['Priority'] = priority
+        newReq['Allocations']={}
         self.append(newReq)
         return newReq
 
+    def delRequest(self,reqId):
+        for request in self:
+           if request['RequestID']==reqId:
+               del request
+               break
 
+    def retrieveRequest(self,reqId):
+        """
+        _retrieveRequest_
+
+        Returns a particular request.
+        """
+        for request in self:
+           if request['RequestID']==reqId:
+               return request
+        raise ProdAgentException("Request is not available!")
+
+
+    def addAllocations(self,reqId,allocations=[]):
+        """
+        _addAllocations_
+
+        Adds allocations this prodagent aquires
+        """
+        # little bit innefficient but should be done better in a db
+        for request in self:
+            if request['RequestID']==reqId:
+                for allocation in allocations:
+                    request['Allocations'][allocation]='idle'
+                break
+    
+    def delAllocations(self,reqId,allocations=[]): 
+        """
+        _delAllocations_
+
+        Deletes allocations this prodagent is finished 
+        with or if there are not many resources.
+
+        """
+        # little bit innefficient but should be done better in a db
+        for request in self:
+           if request['RequestID']==reqId:
+               for allocation in allocations: 
+                   del request['Allocations'][allocation]
+               break
+
+    def setAllocations(self,reqId,allocations=[],status='idle'):
+        """
+        _setAllocations_
+
+        Sets the status of an allocation. Once we acquire allocations
+        the default will be idle. If we are running a job on it, the
+        allocation is busy prodmgr keeps track of it too. We need to 
+        know how many allocations are busy to determine if we need
+        to acquire more allocations for this request. We also need
+        to keep track of the allocations so we can release them later
+        if necessary.
+        """
+        for request in self:
+           if request['RequestID']==reqId:
+               for allocation in allocations: 
+                   request['Allocations'][allocation]=status
+               break
 
     def orderRequests(self):
         """
@@ -88,8 +153,3 @@ class PriorityQueue(list):
         self.sort(sortByPriority)
         return
 
-
-    
-    
-
-        

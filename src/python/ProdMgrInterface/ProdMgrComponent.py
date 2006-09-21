@@ -28,8 +28,9 @@ class ProdMgrComponent:
 
     """
     def __init__(self, **args):
-        
+
         self.args = {}
+        self.args['Logfile'] = None
         self.args.update(args)
         if self.args['Logfile'] == None:
            self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
@@ -103,18 +104,37 @@ class ProdMgrComponent:
 
         
         """
-        self.priorityQueue.orderRequests()
-        for request in self.priorityQueue:
-            print requesst
-            #  //
-            # // Talk to the ProdMgr:
-            #//
-            # 1. Is work available for this request?
-            #    No => continue
-            #    Yes => Get work and break this loop
-            #           Then publish CreateJob for all job specs
+        #  //
+        # // Talk to the ProdMgr:
+        #//
+        # 1. Is work available  for the top request
+        #    No => continue try other request.
+        #    Yes => Get work and break this loop if we have the maximum number of jobs
+        #           Then publish CreateJob for all job specs
+        try:
+            logging.debug("Retrieve work for "+str(numberOfJobs)+" jobs")
+            logging.debug("There are "+str(len(self.priorityQueue))+" requests in the queue ")
 
-        return
+            if (len(self.priorityQueue)>0):
+                logging.debug("Checking for allocations Step 1")
+                # get request with highest priority:
+                self.priorityQueue.orderRequests()
+                logging.debug("Checking for allocations Step 2")
+                request=self.priorityQueue[0]
+                logging.debug("Checking for allocations Step 3")
+                # check how many allocations we have from this request:
+                idleAllocations=0
+                logging.debug("Checking allocations for request "+str(request['RequestID']))
+                for allocation in request['Allocations'].keys():
+                    if request['Allocations'][allocation]=='idle':
+                        idleAllocations+=1 
+                if (idleAllocations<numberOfJobs):
+                    logging.debug("Not enough idle allocations request "+request['RequestID']+\
+                        ", will acquire more")
+                else:
+                    logging.debug("Sufficient allocations acquired, proceeding with acquiring job")
+        except Exception,ex:
+            raise ProdAgentException("ERROR: "+str(ex))
 
 
     def addRequest(self, requestURL):
@@ -129,16 +149,21 @@ class ProdMgrComponent:
         Eg:
         https://cmsprodmgr.somehost.com?RequestID=1234&Priority=5
 
+ 
         """
-
         #  //
         # // Parse the URL. 
         #//
-        # prodMgr = actual address
-        # priority = value of Priority arg
-        # reqID = value of RequestID arg
-        # self.priorityQueue.addRequest(prodMgr, reqID, priority)
-        pass
+        try:
+            components=requestURL.split('?')
+            prodMgr=components[0]
+            requestId=components[1].split("=")[1]
+            priority=components[2].split("=")[1]
+            logging.debug("Add request: "+requestId+" with priority "+priority+" for prodmgr: "+prodMgr)
+            self.priorityQueue.addRequest(requestId, prodMgr, priority)
+            logging.debug("Added request. There are now "+str(len(self.priorityQueue))+" requests in the queue ")
+        except Exception,ex:
+            logging.debug("ERROR "+str(ex))
 
 
 
@@ -148,18 +173,18 @@ class ProdMgrComponent:
 
         Read the report provided and report the details back to the
         ProdMgr
-
+        
         """
-        pass
+        logging.debug("Reporting Job Success "+frameworkJobReport)
 
-    def reportJobSuccess(self, frameworkJobReport):
+    def reportFailure(self, frameworkJobReport):
         """
         _reportJobFailure_
 
         Read the report provided and report the details back to the ProdMgr
 
         """
-        pass
+        logging.debug("Reporting Job Failure"+frameworkJobReport)
         
         
         
