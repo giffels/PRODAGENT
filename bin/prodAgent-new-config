@@ -208,6 +208,9 @@ componentFields = {
     "ComponentDir" : None,
     "PhEDExDropBox" : None,
     },
+    "ProdMgrInterface" : {
+    "ComponentDir" : None,
+    }
 
     }# end componentFields
 
