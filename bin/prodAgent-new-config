@@ -210,6 +210,7 @@ componentFields = {
     },
     "ProdMgrInterface" : {
     "ComponentDir" : None,
+    "JobSpecDir" : '/tmp',
     }
 
     }# end componentFields
@@ -259,7 +260,12 @@ to another location (dir) for post mortem inspection and to minimize the risk of
 job cache directory growing to large (to many files) and slowing down production.
 SuccessArchive : After a job successfully finishes remainders of its log files
 are tarred and moved to an archive for possible post mortem analysis.
-"""  
+"""  ,
+  "ProdMgrInterface":\
+"""
+-JobSpecDir: The location to which the job specs will be downloaded created
+at the prodmgr.
+"""
     }
 
 if componentList == []:
