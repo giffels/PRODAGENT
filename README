@@ -1,4 +1,8 @@
 
-   $Id: README,v 1.1.1.1 2006/04/07 16:05:59 elmer Exp $
+   $Id: README,v 1.2 2006/04/07 16:25:27 elmer Exp $
 
    Dummy file 
+
+Exception Codes:
+------------
+3000  : No result in local last service call table with for a certain component. 
