@@ -7,7 +7,7 @@ General Exception class for ProdAgent modules
 """
 
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: ProdAgentException.py,v 1.1 2006/05/17 18:42:44 fvlingen Exp $"
+__revision__ = "$Id: ProdAgentException.py,v 1.1 2006/05/18 23:32:14 fvlingen Exp $"
 
 import exceptions
 import inspect
@@ -21,7 +21,7 @@ class ProdAgentException(exceptions.Exception):
     it was raised.
 
     """
-    def __init__(self, message, **data):
+    def __init__(self, message, errorNo=None,**data):
         self.name = str(self.__class__.__name__)
         exceptions.Exception.__init__(self, self.name,
                                       message)
@@ -36,6 +36,12 @@ class ProdAgentException(exceptions.Exception):
         self.data.setdefault("ClassInstance", None)
         self.data.setdefault("FileName", None)
         self.data.setdefault("LineNumber", None)
+
+        if errorNo==None:
+            self.data.setdefault("ErrorNr",0)
+        else:
+            self.data.setdefault("ErrorNr",errorNo)
+
         
         self.message = message
         self.data.update(data)
