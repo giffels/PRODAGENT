@@ -204,6 +204,14 @@ class DatasetIterator:
         #//
         logging.debug("SplitSize = %s" % self.splitSize)
         for block in splitter.listFileblocks():
+            blockInstance = splitter.fileblocks[block]
+            if blockInstance.isEmpty():
+                msg = "Fileblock is empty: \n%s\n" % block
+                msg += "Contains either no files or no SE Names\n"
+                msg += "Will not be imported"
+                logging.warning(msg)
+                continue
+            
             if self.splitType == "event":
                 logging.debug(
                     "Inserting Fileblock split By Events: %s" % block

@@ -51,6 +51,20 @@ class Fileblock(list):
         self.append( (lfn, numEvents) )
         return
 
+    def isEmpty(self):
+        """
+        _isEmpty_
+
+        If the file block has no SE Names or no files, then it
+        is empty
+
+        """
+        if len(self.seNames) == 0:
+            return True
+        if len(self) == 0:
+            return True
+        return False
+
 class JobSplitter:
     """
     _JobSplitter_
