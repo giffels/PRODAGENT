@@ -238,7 +238,7 @@ def retrieveJobDefs(ownerId, limit=100):
     #//  id values
     entryIndices = []
     for row in rows:
-        entryIndices.append(row['job_id'])
+        entryIndices.append(str(row['job_id']))
         result.append(makeJobDef(row))
 
     #  //
@@ -249,7 +249,7 @@ def retrieveJobDefs(ownerId, limit=100):
              where owner_index=%s AND job_id IN """ % ownerId
     
         delStr += "( "
-        delStr += reduce(reduceList, entryIndices)
+        delStr += str(reduce(reduceList, entryIndices))
         delStr += " );"
         dbCur = connection.cursor()
         
