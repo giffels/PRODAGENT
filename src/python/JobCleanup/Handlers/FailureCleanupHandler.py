@@ -42,6 +42,7 @@ class FailureCleanupHandler(HandlerInterface):
                  pass
              cacheDirLocation=JobStateInfoAPI.general(str(payload))['CacheDirLocation']
              logging.debug(">FailureCleanupHandler< archiving and removing directory: "+cacheDirLocation)
+             #NOTE: check what this does when it is repeated (e.g. after a crash)
              tar=tarfile.open(self.failureArchive+'/'+str(payload)+'.tar.gz','w:gz')
              tar.add(cacheDirLocation)
              tar.close()

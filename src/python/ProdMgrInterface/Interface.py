@@ -25,20 +25,14 @@ def releaseAllocation(serverUrl,allocation_id,componentID="defaultComponent"):
    return Management.executeCall(serverUrl,"prodMgrProdAgent.releaseAllocation",[allocation_id],componentID)
 
 def commit(serverUrl=None,method_name=None,componentID=None):
-   try:
-       Management.commit(serverUrl,method_name,componentID)
-   except Exception,ex:
-       raise ProdAgentException("commit Error: "+str(ex))
+   Management.commit(serverUrl,method_name,componentID)
 
 def retrieve(serverUrl=None,method_name=None,componentID="defaultComponent",tag="0"):
-   try:
-        if method_name!=None:
-            quad=Management.retrieve(serverUrl,service_map[method_name],componentID)
-        else:
-            quad=Management.retrieve(serverUrl,method_name,componentID)
-        return Management.executeCall(quad[0],"prodCommonRecover.lastServiceCall",[quad[1],quad[2],quad[3]],componentID)
-   except Exception,ex:
-       raise ProdAgentException("retrieve Error: "+str(ex))
+   if method_name!=None:
+       quad=Management.retrieve(serverUrl,service_map[method_name],componentID)
+   else:
+       quad=Management.retrieve(serverUrl,method_name,componentID)
+   return Management.executeCall(quad[0],"prodCommonRecover.lastServiceCall",[quad[1],quad[2],quad[3]],componentID)
 
 def retrieveFile(url,local_destination):
    Management.retrieveFile(url,local_destination)

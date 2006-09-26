@@ -1,6 +1,7 @@
 import base64
 import cPickle
 import logging
+import os
 import time
 import urllib
 
@@ -29,39 +30,39 @@ retries=4
 # NOTE: should eventually be put in prodagent config file.
 timeout=4
 
-def getConnection(serverUrl):
+def executeCall(serverUrl,method_name,parameters=[],componentID="defaultComponent"):
    global prodAgentCert
    global prodAgentKey
    global retries
    global timeout
 
    attempt=0
-   if not connections.has_key(serverUrl):
-       while attempt<retries: 
-           try:
-               dbsvr=ProdMgrInterface.Clarens.client(serverUrl, certfile=str(prodAgentCert),\
-                   keyfile=str(prodAgentKey),debug=0)
-               connections[serverUrl]=dbsvr
-               break
-           except Exception,ex:
-               logging.debug("Clarens Server Connection Attempt "+str(attempt)+\
-                   "/"+str(retries)+" Failed: "+str(ex))
-               attempt=attempt+1
-               time.sleep(timeout)
+   while attempt<retries: 
+       try:
+           logging.debug("Setting up connection for "+serverUrl)
+           connection=ProdMgrInterface.Clarens.client(serverUrl, certfile=str(prodAgentCert),\
+               keyfile=str(prodAgentKey),debug=0)
+           logging.debug("Created connection for "+serverUrl)
+           break
+       except Exception,ex:
+           logging.debug("Clarens Server Connection Attempt "+str(attempt)+\
+               "/"+str(retries)+" Failed: "+str(ex))
+           attempt=attempt+1
+           time.sleep(timeout)
    if attempt==retries:       
        raise ProdAgentException("Could not establish connection with Clarens server "+\
            serverUrl+" Please check log files for more error messages ")
-   return connections[serverUrl]       
 
-def executeCall(serverUrl,method_name,parameters=[],componentID="defaultComponent"):
-   connection=getConnection(serverUrl)
    if method_name!='prodCommonRecover.lastServiceCall':
        tag=str(time.time())
        logCall(serverUrl,method_name,parameters,componentID,tag)
        parameters.append(componentID)
        parameters.append(tag)
 
+   logging.debug("Making call: "+str(method_name)+\
+       " with parameters:"+str(parameters))
    result=connection.execute(method_name,parameters)
+   logging.debug("Retrieved result: "+str(result))
    return result
 
 
@@ -172,7 +173,7 @@ def retrieve(serverURL=None,method_name=None,componentID=None):
        rows=dbCur.fetchall()
        if len(rows)==0:
            raise ProdAgentException("No result in local last service call table with componentID :"+\
-               str(componentID))
+               str(componentID),3000)
        server_url=rows[0][0]
        service_call=rows[0][1]
        component_id=rows[0][2]
@@ -181,11 +182,16 @@ def retrieve(serverURL=None,method_name=None,componentID=None):
        dbCur.close()
        conn.close()
        return [server_url,service_call,component_id,tag]
+   except ProdException:
+           dbCur.execute("ROLLBACK")
+           dbCur.close()
+           conn.close()
+           raise
    except Exception,ex:
        dbCur.execute("ROLLBACK")
        dbCur.close()
        conn.close()
-       raise ProdAgentException("Service commit Error: "+str(ex))
+       raise ProdAgentException("Service commit Error: "+str(ex),3001)
 
 def retrieveFile(url,local_destination):
    global prodAgentCert
@@ -193,6 +199,7 @@ def retrieveFile(url,local_destination):
    global retries
    
    attempt=0
+   # make the directory if not exists
    while attempt<retries: 
        try:
            credentials={'key_file':prodAgentKey,'cert_file':prodAgentCert}
@@ -200,11 +207,11 @@ def retrieveFile(url,local_destination):
            retriever.retrieve(url,local_destination)
            break
        except Exception,ex:
-           logging.debug("File download attempt "+str(attempt)+\
+           print("File download attempt "+str(attempt)+\
                "/"+str(retries)+" Failed: "+str(ex))
            attempt=attempt+1
            time.sleep(timeout)
    if attempt==retries:       
-       raise ProdAgentException("Could download file "+url+\
+       raise ProdAgentException("Could not download file "+url+\
            " Please check log files for more error messages ")
 
