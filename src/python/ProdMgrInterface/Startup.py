@@ -21,7 +21,7 @@ from ProdMgrInterface.ProdMgrComponent import ProdMgrComponent
 
 try:
     config = loadProdAgentConfiguration()
-    compCfg = config.getConfig("ErrorHandler")
+    compCfg = config.getConfig("ProdMgrInterface")
 except StandardError, ex:
     msg = "Error reading configuration:\n"
     msg += str(ex)
