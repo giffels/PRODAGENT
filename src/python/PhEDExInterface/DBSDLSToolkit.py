@@ -24,7 +24,7 @@ def loadDBSDLS():
     """
     _loadDLSConfig_
 
-    Extract the DLS contact information from the prod agent config
+    Extract the DBS and DLS contact information from the prod agent config
 
     """
     try:
@@ -71,6 +71,44 @@ def loadDBSDLS():
     return dlsapi, dbsApi, dlsConfig, dbsConfig
 
 
+def loadRemoteDBSDLS(**args):
+    """
+    _loadRemoteDBSDLSConfig_
+
+    Instead of using the ProdAgentConfig, use the settings provided
+    as arguments.
+    
+    """
+    dlsConfig = {
+        "DLSType" : args['DLSType'],
+        "DLSAddress" : args['DLSAddress'],
+        }
+
+    dbsConfig = {
+        'DBSURL' : args['DBSURL'],
+        'DBSAddress' : args['DBSAddress'],
+        }
+    
+    try:
+        dlsapi = dlsClient.getDlsApi(dls_type = args['DLSType'],
+                                     dls_endpoint = args['DLSAddress'])
+    except dlsApi.DlsApiError, inst:
+        msg = "Error when binding the DLS interface: " + str(inst)
+        logging.error(msg)
+        raise RuntimeError, msg
+    
+    try:
+        dbsApi = dbsCgiApi.DbsCgiApi(args['DBSURL'],
+                                 { 'instance': args['DBSAddress']})
+    except StandardError, ex:
+        msg = "Error when binding the DBS interface"
+        logging.error(msg)
+        raise RuntimeError, msg
+    
+
+    return dlsapi, dbsApi, dlsConfig, dbsConfig
+
+
 def extractFile(evColl):
     """
     _extractFile_
@@ -87,7 +125,7 @@ def extractFile(evColl):
 
 
 
-class DBSDLSToolkit:
+class DBSDLSBaseToolkit:
     """
     _DBSDLSToolkit_
 
@@ -95,9 +133,6 @@ class DBSDLSToolkit:
     DBS api  instances embedded in the class
 
     """
-    _DLS, _DBS, _DLSConf, _DBSConf= loadDBSDLS()
-    
-
     def __init__(self):
         pass
 
@@ -200,4 +235,39 @@ class DBSDLSToolkit:
 
 
 
+class DBSDLSToolkit(DBSDLSBaseToolkit):
+    """
+    _DBSDLSToolkit_
+
+    Tools for extracting data from DBS and DLS, using a static DLS api and
+    DBS api  instances embedded in the class.
+
+    This uses the ProdAgent Configuration to get the contact details
+    for the DBS/DLS
+
+    """
+    _DLS, _DBS, _DLSConf, _DBSConf= loadDBSDLS()
     
+
+    def __init__(self):
+        DBSDLSBaseToolkit.__init__(self)
+        pass
+
+
+
+class RemoteDBSDLSToolkit(DBSDLSBaseToolkit):
+    """
+    _RemoteDBSDLSToolkit_
+
+    
+    Tools for extracting data from DBS and DLS, using a static DLS api and
+    DBS api  instances embedded in the class.
+
+    The Ctor takes arguments that defines which DBS/DLS instances to use
+
+    """
+    def __init__(self, **args):
+        DBSDLSBaseToolkit.__init__(self)
+        self._DLS, self._DBS, self._DLSConf, self._DBSConf= loadRemoteDBSDLS()
+
+
