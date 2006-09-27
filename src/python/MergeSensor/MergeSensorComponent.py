@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.28 2006/09/07 10:59:25 ckavka Exp $"
-__version__ = "$Revision: 1.28 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.29 2006/09/18 14:25:18 ckavka Exp $"
+__version__ = "$Revision: 1.29 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -932,9 +932,28 @@ class MergeSensorComponent:
         # generate one job for every mergeable set of files in dataset
         while (mergeable):
        
+            # get SE list
+            seList = self.getSElist(fileBlockId) 
+        
+            # apply restrictions
+            seList = self.processSElist(seList)
+      
+            # handle special case when DLS provide no information
+            if seList == None:
+                seList = []
+                
+            # get storage element name
+            if seList == []:
+                storageElement = "Unknown"
+            elif len(seList) == 1:
+                storageElement = seList[0]
+            else:
+                storageElement = "OneOf-" + '-'.join(seList)
+            
             # yes, add job info to dataset and get target name
-            jobId =  "%s-mergejob-%s" % (datasetStatus['workflowName'], \
-                                         time.time())
+            jobId =  "%s-%s-mergejob-%s" % (datasetStatus['workflowName'], \
+                                            storageElement, \
+                                            time.time())
 
             # critical region start
             self.cond.acquire()
@@ -959,7 +978,7 @@ class MergeSensorComponent:
             # build workflow and job specifications
             jobSpecFile = self.buildWorkflowSpecFile(jobId,
                                    selectedSet, dataset, outFile,
-                                   fileBlockId, properties)
+                                   fileBlockId, properties, seList)
 
             # publish CreateJob event
             self.publishCreateJob(jobSpecFile)
@@ -1030,7 +1049,8 @@ class MergeSensorComponent:
     ##########################################################################
 
     def buildWorkflowSpecFile(self, jobId, fileList, dataset,
-                              outputFile, fileBlockId, properties):
+                              outputFile, fileBlockId, properties,
+                              seList):
         """
         _buildWorkflowSpecFile_
         
@@ -1047,6 +1067,7 @@ class MergeSensorComponent:
           outputFile -- the name of the merged file
           fileBlockId -- the file block id
           properties -- dataset properties
+          seList -- storage element lists associated to file block
                     
         Return:
             
@@ -1065,16 +1086,6 @@ class MergeSensorComponent:
         psethash = properties["PSetHash"]
         secondaryOutputTiers = properties["secondaryOutputTiers"]
 
-        # get SE list
-        seList = self.getSElist(fileBlockId) 
-        
-        # apply restrictions
-        seList = self.processSElist(seList)
-      
-        # handle special case when DLS provide no information
-        if seList == None:
-            seList = []
-            
         # create a new workflow
         spec = WorkflowSpec()
         
