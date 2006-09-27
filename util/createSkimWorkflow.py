@@ -20,6 +20,9 @@ from MCPayloads.DatasetExpander import splitMultiTier
 
 valid = ['cfg=', 'version=', 'category=', 'name=', 'dataset=',
          'split-type=', 'split-size=',
+         'only-blocks=', 'only-sites=',
+         '--dbs-address=', '--dbs-url=', '--dls-type=', '--dls-address=',
+         
          ]
 
 
@@ -30,6 +33,14 @@ usage += "                                --category=<Processing category>\n"
 usage += "                                --dataset=<Dataset to process>\n"
 usage += "                                --split-type=<event|file>\n"
 usage += "                                --split-size=<Integer split size>\n"
+usage += "   Options:\n"
+usage += "                                --only-blocks=<List of fileblocks>\n"
+usage += "                                --only-sites=<List of sites>\n"
+usage += "                                --dbs-address=<DBSAddress>\n",
+usage += "                                --dbs-url=<DBSUrl>\n",
+usage += "                                --dls-address=<DLSAddress>\n",
+usage += "                                --dls-type=<DLSType>\n",
+
 
 options = \
 """
@@ -48,6 +59,25 @@ options = \
     set to files, then it is the number of files per job. If --split-type is
     set to events, then it is the number of events per job
 
+  --only-blocks allows you to specify a comma seperated list of blocks that
+    will be imported if you dont want the entire dataset.
+    Eg: --only-blocks=blockname1,blockname2,blockname3 will process only files
+    belonging to the named blocks.
+  --only-sites allows you to restrict which fileblocks are used based on
+    the site name, which will be the SE Name for that site
+    Eg: --only-sites=site1,site2 will process only files that are available
+    at the specified list of sites.
+
+  Specifying a DBS/DLS containing the dataset. Usually data is looked up
+  in the ProdAgents own DBS/DLS. If you want a dataset from different DBS/DLS
+  instances (Eg the Global ones) you need to supply ALL of the following four
+  arguments:
+
+   --dbs-address=DBSInstance Eg: MCLocal/Writer
+   --dbs-url=DBS Url, The URL of the DBS Service
+   --dls-address=DLSInstance, the DLS address
+   --dls-type=DLSType, the Type of DLS you are using.
+    
 """
 
 
@@ -69,6 +99,12 @@ splitType = None
 splitSize = None
 category = "PreProd"
 timestamp = int(time.time())
+onlyBlocks = None
+onlySites = None
+dbsAddress = None
+dbsUrl = None
+dlsAddress = None
+dlsType = None
 
 primaryDataset = None
 dataTier = None
@@ -89,6 +125,18 @@ for opt, arg in opts:
         splitType = arg
     if opt == "--split-size":
         splitSize = arg
+    if opt == "--only-blocks":
+        onlyBlocks = arg
+    if opt == "--only-sites":
+        onlySites = arg
+    if opt == '--dbs-address':
+        dbsAddress = arg
+    if opt == '--dbs-url':
+        dbsUrl = arg
+    if opt == '--dls-type':
+        dlsType = arg
+    if opt == '--dls-address':
+        dlsAddress = arg
 
 if cfgFile == None:
     msg = "--cfg option not provided: This is required"
@@ -118,6 +166,27 @@ try:
 except ValueError, ex:
     msg = "--split-size argument is not an integer: %s\n" % splitSize
     raise RuntimeError, msg
+
+
+
+#  //
+# // Are we using a custom dbs/dls??
+#//
+dbsdlsInfo = {'--dbs-address' : dbsAddress,
+              '--dls-address' : dlsAddress,
+              '--dls-type' : dlsType,
+              '--dls-url' : dbsUrl}
+customDBSDLS = False
+if dbsdlsInfo.values() != [None, None, None, None]:
+    customDBSDLS = True
+    for key, val in dbsdlsInfo.items():
+        if val == None:
+            msg = "Missing Argument for DBS/DLS Custom setup:\n"
+            msg += "%s Is not set" % key
+            msg += "For Custom DBS/DLS you must supply all of:\n"
+            msg += "%s\n" % dbsdlsInfo.keys()
+            raise RuntimeError, msg
+    
 
 
 if prodName == None:
@@ -207,6 +276,17 @@ spec.setRequestTimestamp(timestamp)
 
 spec.parameters['SplitType'] = splitType
 spec.parameters['SplitSize'] = splitSize
+
+if onlyBlocks != None:
+    spec.parameters['OnlyBlocks'] = onlyBlocks
+if onlySites != None:
+    spec.parameters['OnlySites'] = onlySites
+
+if customDBSDLS:
+    spec.parameters['DBSAddress'] = dbsAddress
+    spec.parameters['DBSUrl'] = dbsUrl
+    spec.parameters['DLSType'] = dlsType
+    spec.parameters['DLSAddress'] = dlsAddress
 
 #  //
 # // This value was created by running the EdmConfigHash tool
