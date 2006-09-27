@@ -38,14 +38,52 @@ class DatasetIterator:
         self.workflowSpec.load(workflowSpecFile)
         self.currentJobDef = None
         self.count = 0
-
+        self.allowedBlocks = []
+        self.allowedSites = []
+        self.dbsdlsContact = {}
         self.splitType = \
                 self.workflowSpec.parameters.get("SplitType", "file").lower()
         self.splitSize = int(self.workflowSpec.parameters.get("SplitSize", 1))
         
+        #  //
+        # // Does the workflow contain a block restriction??
+        #//
+        blockRestriction = \
+             self.workflowSpec.parameters.get("OnlyBlocks", None)
+        if blockRestriction != None:
+            #  //
+            # // restriction on blocks present, populate allowedBlocks list
+            #//
+            msg = "Block restriction provided in Workflow Spec:\n"
+            msg += "%s\n" % blockRestriction
+            blockList = blockRestriction.split(",")
+            for block in blockList:
+                if len(block.strip() ) > 0:
+                    self.allowedBlocks.append(block.strip())
 
-        
-        
+        #  //
+        # // Does the workflow contain a site restriction??
+        #//
+        siteRestriction = \
+           self.workflowSpec.parameters.get("OnlySites", None)          
+        if siteRestriction != None:
+            #  //
+            # // restriction on sites present, populate allowedSites list
+            #//
+            msg = "Site restriction provided in Workflow Spec:\n"
+            msg += "%s\n" % siteRestriction
+            siteList = siteRestriction.split(",")
+            for site in siteList:
+                if len(site.strip() ) > 0:
+                    self.allowedSites.append(site.strip())
+
+        #  //
+        # // Is the DBS/DLS contact information provided??
+        #//
+        for item in ['DBSURL', 'DBSAddress', 'DLSType', 'DLSAddress']:
+            value = self.workflowSpec.parameters.get(item, None)
+            if value != None:
+                self.dlsdbsContact[item] = value
         
     def __call__(self, jobDef):
         """
@@ -171,7 +209,8 @@ class DatasetIterator:
 
         """
         try:
-            splitter = createJobSplitter(self.inputDataset())
+            splitter = createJobSplitter(self.inputDataset(),
+                                         **self.dbsdlsContact)
         except Exception, ex:
             msg = "Unable to extract details from DBS/DLS for dataset:\n"
             msg += "%s\n" % self.inputDataset()
@@ -205,6 +244,34 @@ class DatasetIterator:
         logging.debug("SplitSize = %s" % self.splitSize)
         for block in splitter.listFileblocks():
             blockInstance = splitter.fileblocks[block]
+            #  //
+            # // Check list of allowed blocks
+            #//
+            if len(self.allowedBlocks) > 0:
+                if block not in self.allowedBlocks:
+                    msg = "Fileblock not in list of allowed blocks: "
+                    msg += "%s\n" % block
+                    msg += "This block will not be imported"
+                    logging.info(msg)
+                    continue
+            #  //
+            # // Check list of allowed sites
+            #//
+            if len(self.allowedSites) > 0:
+                siteOK = False
+                for site in blockInstance.seNames:
+                    if site in self.allowedSites:
+                        siteOK = True
+                if not siteOK:
+                    msg = "Fileblock not at allowed site: %s\n" % block
+                    msg += "Sites : %s\n" %  blockInstance.seNames
+                    msg += "This block will not be imported"
+                    logging.info(msg)
+                    continue
+            
+            #  //
+            # // Check for empty file blocks
+            #//
             if blockInstance.isEmpty():
                 msg = "Fileblock is empty: \n%s\n" % block
                 msg += "Contains either no files or no SE Names\n"

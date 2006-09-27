@@ -10,24 +10,30 @@ For a given dataset, create and return a JobSplitter instance
 
 
 
-from PhEDExInterface.DBSDLSToolkit import DBSDLSToolkit
+from PhEDExInterface.DBSDLSToolkit import DBSDLSToolkit, RemoteDBSDLSToolkit
 from DatasetInjector.JobSplitter import JobSplitter
 
 
 
 
-
-def createJobSplitter(dataset):
+def createJobSplitter(dataset, **dbsdlsContacts):
     """
     _createJobSplitter_
 
     Instantiate a JobSplitter instance for the dataset provided
     and populate it with details from DBS/DLS via the DBSDLSToolkit
 
+    If dbsdlsContacts are provided, then the DBS and DLS that they
+    point to is used, otherwise the ProdAgent local DBS and DLS are extracted
+    from the cfg file and used.
 
     """
-    toolkit = DBSDLSToolkit()
 
+    if len(dbsdlsContacts) == 0:
+        toolkit = DBSDLSToolkit()
+    else:
+        toolkit = RemoteDBSDLSToolkit(*dbsdlsContacts)
+    
     result = JobSplitter(dataset)
 
 
