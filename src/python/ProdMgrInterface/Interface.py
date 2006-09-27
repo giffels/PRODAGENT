@@ -34,5 +34,12 @@ def retrieve(serverUrl=None,method_name=None,componentID="defaultComponent",tag=
        quad=Management.retrieve(serverUrl,method_name,componentID)
    return Management.executeCall(quad[0],"prodCommonRecover.lastServiceCall",[quad[1],quad[2],quad[3]],componentID)
 
+def lastCall(serverUrl=None,method_name=None,componentID="defaultComponent",tag="0"):
+   if method_name!=None:
+       quad=Management.retrieve(serverUrl,service_map[method_name],componentID)
+   else:
+       quad=Management.retrieve(serverUrl,method_name,componentID)
+   return quad
+
 def retrieveFile(url,local_destination):
    Management.retrieveFile(url,local_destination)

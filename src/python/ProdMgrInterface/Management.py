@@ -93,6 +93,10 @@ def logCall(serverUrl,method_name,args,componentID="defaultComponent",tag="0"):
 def commit(serverUrl=None,method_name=None,componentID=None):
    global lastCall
 
+   # all other methods that access the database can do that
+   # with their own private sessions and hence connect imediately
+   # to the database. Commit is different since if it fails all
+   # updates in the queues must fail (rollback).
    try:
        conn=connect(False)
        dbCur=conn.cursor()
@@ -182,7 +186,7 @@ def retrieve(serverURL=None,method_name=None,componentID=None):
        dbCur.close()
        conn.close()
        return [server_url,service_call,component_id,tag]
-   except ProdException:
+   except ProdAgentException:
            dbCur.execute("ROLLBACK")
            dbCur.close()
            conn.close()
@@ -193,7 +197,7 @@ def retrieve(serverURL=None,method_name=None,componentID=None):
        conn.close()
        raise ProdAgentException("Service commit Error: "+str(ex),3001)
 
-def retrieveFile(url,local_destination):
+def retrieveFile(url,local_destination,componentID="defaultComponent"):
    global prodAgentCert
    global prodAgentKey
    global retries
@@ -214,4 +218,6 @@ def retrieveFile(url,local_destination):
    if attempt==retries:       
        raise ProdAgentException("Could not download file "+url+\
            " Please check log files for more error messages ")
+   tag=str(time.time())
+   logCall(url,'retrieveFile',[],componentID,tag)
 
