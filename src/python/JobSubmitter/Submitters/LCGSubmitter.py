@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.16 2006/08/23 11:14:46 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.17 2006/09/19 13:24:37 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -30,6 +30,7 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
 from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdAgentBOSS import BOSSCommands
 
 from popen2 import Popen4
 import select
@@ -61,7 +62,7 @@ class LCGSubmitter(SubmitterInterface):
 
 
 
-
+        self.bossStrJobId=""
 
         
         self.parameters['Scheduler']="edg"
@@ -146,7 +147,7 @@ class LCGSubmitter(SubmitterInterface):
            return 
 
         try:
-            output=self.executeCommand("voms-proxy-info")
+            output=BOSSCommands.executeCommand("voms-proxy-info")
             output=output.split("timeleft")[1].strip()
             output=output.split(":")[1].strip()
             if output=="0:00:00":
@@ -159,7 +160,7 @@ class LCGSubmitter(SubmitterInterface):
             logging.error(output)
             sys.exit()
             
-        bossSubmit = self.BOSS4submit(bossJobId)
+        bossSubmit = BOSSCommands.submit(bossJobId,self.parameters['Scheduler'],self.bossCfgDir)
         try:
 
           if self.parameters['RTMon']!='':
@@ -171,13 +172,78 @@ class LCGSubmitter(SubmitterInterface):
         #//
         # AF : remove the following buggy logging
         #logging.debug( "LCGSubmitter.doSubmit:", bossSubmit)
-        output = self.executeCommand(bossSubmit)
+        output = BOSSCommands.executeCommand(bossSubmit)
         logging.debug ("LCGSubmitter.doSubmit: %s" % output)
         if output.find("error")>=0:
           raise ProdAgentException("Submission Failed")
         #os.remove(cladfile)
-        return
+        try:
+          resub=output.split("Resubmission number")[1].split("\n")[0].strip()
+          logging.debug("resub =%s"%resub)
+        except:
+          resub="1"
+        try:
+         chainid=(output.split("Scheduler ID for job")[1]).split("is")[0].strip()
+        except:
+          raise ProdAgentException("Submission Failed")
 
+        self.bossStrJobId=str(bossJobId)+"."+chainid+"."+resub
+        logging.info("Submitter bossJobId=%s"%bossJobId)
+        #self.editDashboardInfo(self.parameters['DashboardInfo'])
+        return
+      
+    def publishSubmitToDashboard(self, dashboardInfo):
+      return
+
+    def editDashboardInfo(self, dashboardInfo):
+        """
+        _editDashboardInfo_
+        
+        Add data about submission to DashboardInfo dictionary before
+        it is published to the dashboard
+        
+        
+        If dashboardInfo is None, it is not available for this job.
+
+        """
+        try:
+          taskid=self.bossStrJobId.split(".")[0]
+          chainid=self.bossStrJobId.split(".")[1]
+          resub=self.bossStrJobId.split(".")[2]
+        except:
+          return
+        jobGridId=BOSSCommands.schedulerId(self.bossStrJobId,self.bossCfgDir)
+        rbName=(jobGridId.split("/")[2]).split(":")[0]
+        #logging.info("Scheduler id from LCGSubmitter=%s"%jobGridId)
+        dashboardInfo['ApplicationVersion'] = self.listToString(self.parameters['AppVersions'])
+        dashboardInfo['TargetCE'] = self.listToString(self.parameters['Whitelist'])
+        dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
+         
+        dashboardInfo.job=dashboardInfo.job+"_"+jobGridId
+        dashboardInfo['Scheduler']='LCG'
+        dashboardInfo['GridJobID']=jobGridId
+        dashboardInfo['RBname']=rbName
+#        dashboardInfo.destinations={}
+        dashboardinfodir=BOSSCommands.subdir(self.bossStrJobId,self.bossCfgDir)
+        #dashboardInfo.write(os.path.join(os.path.dirname(self.parameters['JobCacheArea']) , 'DashboardInfo.xml'))
+
+        try:
+          dashboardCfg = self.pluginConfig.get('Dashboard', {})
+          usingDashboard = dashboardCfg.get("UseDashboard", "False")
+          DashboardAddress = dashboardCfg.get("DestinationHost")
+          DashboardPort=dashboardCfg.get("DestinationPort")
+          dashboardInfo.addDestination(DashboardAddress, DashboardPort)
+          logging.debug("DashboardInfo=%s"%dashboardInfo.__str__())
+        except:
+          logging.info("No Dashboard section in SubmitterPluginConfig")
+          usingDashboard="False"
+        if  usingDashboard.lower()=='true':
+          dashboardInfo.publish(5)
+#          dashboardInfo.clear()
+          dashboardInfo.write(dashboardinfodir +"/DashboardInfo%s_%s_%s.xml"%(taskid,chainid,resub))
+
+        return
+      
     def createJDL(self, cladfilename,swversion):
         """
         _createJDL_
@@ -252,65 +318,7 @@ class LCGSubmitter(SubmitterInterface):
         declareClad.close()
         return
 
-    def executeCommand(self, command, timeout=600 ) :
-        """
-        _executeCommand_
-      
-        
-        Util it execute the command provided in a popen object with a timeout
-        
-        """
-#        logging.info("my executeCommand")
 
-        p=Popen4(command)
-        p.tochild.close()
-	outfd=p.fromchild
-	outfno=outfd.fileno()
-	fl=fcntl.fcntl(outfno,fcntl.F_GETFL)
- 	try:
-	    fcntl.fcntl(outfno,fcntl.F_SETFL, fl | os.O_NDELAY)
-        except AttributeError:
-            fcntl.fcntl(outfno,fcntl.F_SETFL, fl | os.FNDELAY)
-	err = -1
-        outc = []
-        outfeof = 0
-        maxt=time.time()+timeout
-        logging.debug("from time %d to time %d"%(time.time(),maxt))
-        pid=p.pid
-        logging.debug("process id of %s = %d"%(command,pid))
-        while time.time() < maxt :
-            ready=select.select([outfno],[],[])
-            if outfno in ready[0]:
-                outch=outfd.read()
-                if outch=='':
-                    outfeof=1
-                outc.append(outch)
-            if outfeof:
-                err=-2
-               # err=p.wait()
-                break
-            time.sleep(.1)
-    
-        if err == -1:
-            logging.error("command %s timed out. timeout %d\n"%(command,timeout))
-            os.kill(pid,9)
-            logging.error("killed pid  %d\n"%(pid))
-            
-            raise ProdAgentException("Submission Timed Out")
-
-        if err == -2:
-            err=p.poll()
-            logging.debug("command %s reached command output eof err=%d\n"%(command,err))
-
-        if err > 0:
-            logging.error("command %s gave %d exit code"%(command,err))
-        #    p.wait()
-            #ogging.error(p.fromchild.read())
-            
-            #eturn ""
-            raise ProdAgentException("command %s gave %d exit code"%(command,err))
-        
-        output=string.join(outc,"")
-        logging.debug("command output \n %s\n"%output)
-        return output
 registerSubmitter(LCGSubmitter, LCGSubmitter.__name__)
+
+
