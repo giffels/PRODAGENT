@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.18 2006/08/23 19:54:03 evansde Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.19 2006/09/19 13:24:37 bacchi Exp $"
 
 import os
 import logging
@@ -20,6 +20,8 @@ from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdAgentBOSS import BOSSCommands
+
 
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
@@ -257,13 +259,13 @@ class SubmitterInterface:
         #  //
         # // Invoke Hook to edit the DashboardInfo with submission 
         #//  details in plugins and then publish the dashboard info.
-        self.editDashboardInfo(self.parameters['DashboardInfo'])
-        self.publishSubmitToDashboard(self.parameters['DashboardInfo'])
         
         #  //
         # // Invoke whatever is needed to do the submission
         #//
         self.doSubmit(wrapperName, tarball)
+        self.editDashboardInfo(self.parameters['DashboardInfo'])
+        self.publishSubmitToDashboard(self.parameters['DashboardInfo'])
         
         return
 
@@ -316,8 +318,8 @@ class SubmitterInterface:
                 "SubmitterInterface: No DashboardInfo available for job"
                 )
             return
-        dashboardInfo['ApplicationVersion'] = listToString(self.parameters['AppVersions'])
-        dashboardInfo['TargetCE'] = listToString(self.parameters['Whitelist'])
+        dashboardInfo['ApplicationVersion'] = self.listToString(self.parameters['AppVersions'])
+        dashboardInfo['TargetCE'] = self.listToString(self.parameters['Whitelist'])
         dashboardInfo.addDestination("lxgate35.cern.ch", 8884)
         dashboardInfo.publish(5)
         return
@@ -334,7 +336,7 @@ class SubmitterInterface:
                                    
  
         logging.debug("SubmitterInterface:Declaring Job To BOSS")
-        bossJobId=self.BOSS4declare()
+        bossJobId=BOSSCommands.declare(self.bossCfgDir,self.parameters)
 
         ## move id file out from job-cache area
         #idFile = "%s/%sid" % (
@@ -376,90 +378,25 @@ class SubmitterInterface:
             jobId = None
         return jobId
         
-
-        
-    def BOSS4declare(self):
+    def listToString(self,listInstance):
         """
-        BOSS4declare
-
-        BOSS 4 command to declare a task
+        _listToString_
+        
+        Lists to string conversion util for Dashboard formatting
+        
         """
-        
-        bossQuery = "bossAdmin SQL -query \"select id from PROGRAM_TYPES "
-        bossQuery += "where id = 'cmssw'\" -c " + self.bossCfgDir
-        queryOut = self.executeCommand(bossQuery)
-        bossJobType = "cmssw"
-        if queryOut.find("cmssw") < 0:
-            bossJobType=""
-        
-
-        logging.debug( "bossJobType = %s"%bossJobType)
-        ## move one dir up 
-        #xmlfile = "%s/%sdeclare.xml" % (
-        #    self.parameters['JobCacheArea'], self.parameters['JobName'],
-        #    )
-        xmlfile = "%s/%sdeclare.xml"% (
-            os.path.dirname(self.parameters['Wrapper']) , self.parameters['JobName']
-            )
-        logging.debug( "xmlfile=%s"%xmlfile)
-        bossDeclare = "boss declare -xmlfile %s"%xmlfile + "  -c " + self.bossCfgDir
-        declareClad=open(xmlfile,"w")
-        declareClad.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
-        
-        declareClad.write("<task name=\"%s\">"%self.parameters['JobName'])
-        declareClad.write("<chain scheduler=\"%s\" rtupdater=\"mysql\" ch_tool_name=\"\">"%self.parameters['Scheduler'])
-        # declareClad.write(" <program exec=\"%s\" args=\"\" stderr=\"%s.stderr\" program_types=\"%s\" stdin=\"\" stdout=\"%s.stdout\"  infiles=\"%s,%s\" outfiles=\"*.root,%s.stdout,%s.stderr,FrameworkJobReport.xml\"  outtopdir=\"\"/></chain></task>"% (os.path.basename(self.parameters['Wrapper']), self.parameters['JobName'],bossJobType, self.parameters['JobName'],self.parameters['Wrapper'],self.parameters['Tarball'], self.parameters['JobName'], self.parameters['JobName']))
-        declareClad.write(" <program> <exec><![CDATA[%s]]></exec><args><![CDATA[""]]></args><stderr><![CDATA[%s.stderr]]></stderr><program_types><![CDATA[%s]]></program_types><stdin><![CDATA[""]]></stdin><stdout><![CDATA[%s.stdout]]></stdout><infiles><![CDATA[%s,%s]]></infiles><outfiles><![CDATA[*.root,%s.stdout,%s.stderr,FrameworkJobReport.xml]]></outfiles><outtopdir><![CDATA[""]]></outtopdir></program></chain></task>"% (os.path.basename(self.parameters['Wrapper']), self.parameters['JobName'],bossJobType, self.parameters['JobName'],self.parameters['Wrapper'],self.parameters['Tarball'], self.parameters['JobName'], self.parameters['JobName']))
-        declareClad.close()
-        logging.debug("SubmitterInterface:BOSS xml declare file written:%s" % xmlfile)
-
-        #  //
-        # // Do BOSS Declare
-        #//
-        bossJobId = self.executeCommand(bossDeclare)
-        logging.debug( bossJobId)
-        try:
-            #bossJobId = bossJobId.split("TASK_ID:")[1].split("\n")[0].strip()
-            bossJobId = bossJobId.split(":")[1].split("\n")[0].strip()
-        except StandardError, ex:
-            logging.debug("SubmitterInterface:BOSS Job ID: %s. BossJobId set to 0\n" % bossJobId)
-            raise ProdAgentException("Job Declaration Failed")
-        #os.remove(xmlfile)
-        return bossJobId
-        
-
+        result = str(listInstance)
+        result = result.replace('[', '')
+        result = result.replace(']', '')
+        result = result.replace(' ', '')
+        result = result.replace('\'', '')
+        return result
 
         
-
-
-    def BOSS4submit(self,bossJobId):
-        """
-        BOSS4submit
-
-        BOSS 4 command to submit a task
-        """
-        bossSubmit = "boss submit "
-        bossSubmit += "-taskid %s " % bossJobId
-        bossSubmit += "-scheduler %s " %  self.parameters['Scheduler']
-        bossSubmit += " -c " + self.bossCfgDir + " "
-        return bossSubmit
                 
 
 
-def listToString(listInstance):
-    """
-    _listToString_
-
-    Lists to string conversion util for Dashboard formatting
-
-    """
-    result = str(listInstance)
-    result = result.replace('[', '')
-    result = result.replace(']', '')
-    result = result.replace(' ', '')
-    result = result.replace('\'', '')
-    return result
-
+     
 def createTarball(targetDir, sourceDir, tarballName):
     """
     _createTarball_
