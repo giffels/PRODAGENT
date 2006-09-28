@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.26 2006/09/04 14:42:36 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.28 2006/09/19 13:24:37 bacchi Exp $"
 
 import socket
 import time
@@ -41,7 +41,8 @@ from JobState.JobStateAPI import JobStateChangeAPI
 from JobState.JobStateAPI import JobStateInfoAPI 
 import select
 import fcntl
-
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
+from ProdAgentBOSS import BOSSCommands
 class TrackingComponent:
     """
     _TrackingComponent_
@@ -95,24 +96,15 @@ class TrackingComponent:
         self.bossCfgDir = bossConfig['configDir'] 
         logging.info("Using BOSS configuration from " + self.bossCfgDir)
 
-# The rest of the initialization
-        ##AF: get boss version from "boss v"
-##         outf=os.popen4("boss v -c " + self.bossCfgDir)[1].read()
-##         version=outf.split("BOSS Version")[1].strip()
-##         self.BossVersion="v"+version.split('_')[1] 
-
-        #number of iterations after which failed jobs are purged from DB
-#        self.failedJobsPublishedTTL = 180
-        #dictionary containing failed jobs: the key is jobid and value is a counter
-#        self.bossJobScheduler={"v3":self.BOSS3scheduler,"v4":self.BOSS4scheduler}
-        #self.bossJobSpecId={"v3":self.BOSS3JobSpecId,"v4":self.BOSS4JobSpecId}
-        #self.bossGetoutput={"v3":self.BOSS3getoutput,"v4":self.BOSS4getoutput}
-        #self.bossReportFileName={"v3":self.BOSS3reportfilename,"v4":self.BOSS4reportfilename}
         self.failedJobsPublished = {}
         self.cmsErrorJobs = {}
+        self.runningJobs = {}
+
         self.directory=self.args["ComponentDir"]
         self.loadDict(self.failedJobsPublished,"failedJobsPublished")
         self.loadDict(self.cmsErrorJobs,"cmsErrorJobs")
+        #self.loadDict(self.runningJobs,"runningJobs")
+
         self.verbose=(self.args["verbose"]==1)
 
         logging.info("JobTracking Component Started...")
@@ -163,7 +155,7 @@ class TrackingComponent:
 
         jobNumber=300
         timeout=0
-        outfile=self.executeCommand("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j\" -c " + self.bossCfgDir)
+        outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j\" -c " + self.bossCfgDir)
         try:
             jobNumber=len(outfile.split('\n'))-2
             logging.debug("JobNumber = %s\n"%jobNumber)
@@ -172,9 +164,7 @@ class TrackingComponent:
             logging.debug(outfile)
             logging.debug("\n")
 
-#        outfile=self.executeCommand("bossAdmin SQL -query \"select MAX(TASK_ID),'-',MIN(TASK_ID)  from  JOB where GETOUT_T=0 and SCHED_ID!='' \" -c " + self.bossCfgDir)
-        outfile=self.executeCommand("bossAdmin SQL -query \"select max(j.TASK_ID),'-',min(j.TASK_ID) from JOB j\" -c "+ self.bossCfgDir)
-#        outfile=self.executeCommand("bossAdmin SQL -query \"select MAX(TASK_ID),'-',MIN(TASK_ID)  from  (select TASK_ID,CHAIN_ID,MAX(ID),sum(GETOUT_T) GETOUT_T from  JOB group by TASK_ID,CHAIN_ID having GETOUT_T=0) a \" -c " + self.bossCfgDir)
+        outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select max(j.TASK_ID),'-',min(j.TASK_ID) from JOB j\" -c "+ self.bossCfgDir)
 
         try:
             lines=outfile.split("\n")
@@ -198,12 +188,12 @@ class TrackingComponent:
             timeout=600
         logging.debug("number of jobs %d; timeout set to %d\n"%(jobNumber,timeout))
 
-        outfile=self.executeCommand("boss RTupdate -jobid all -c " + self.bossCfgDir)
+        outfile=BOSSCommands.executeCommand("boss RTupdate -jobid all -c " + self.bossCfgDir)
         
         while startId <= maxId :
             logging.debug("from taskid %d to taskid %d, maxId %d \n"%(startId,endId,maxId))
 #            outfile=self.executeCommand("boss q -submitted -statusOnly -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
-            outfile=self.executeCommand("boss q -submitted -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
+            outfile=BOSSCommands.executeCommand("boss q -submitted -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
             startId=endId+1
             endId=startId+float(self.args["jobsToPoll"])
             logging.debug("dentro while startId = %d\n"%startId)
@@ -279,11 +269,14 @@ class TrackingComponent:
         
             #if the job is ok for the scheduler retrieve output
 
-            outp=self.BOSS4getoutput(jobId)
+#            outp=self.BOSS4getoutput(jobId)
+            outp=BOSSCommands.getoutput(jobId,self.directory,self.bossCfgDir)
             logging.debug("BOSS Getoutput ")
+            self.dashboardPublish(jobId[0],"ENDED_")
             logging.debug(outp)
             if (outp.find("-force")<0 and outp.find("error")< 0 and outp.find("already been retrieved") < 0 ):
-                self.reportfilename=self.BOSS4reportfilename(jobId)
+                #self.reportfilename=self.BOSS4reportfilename(jobId)
+                self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
                 logging.debug("%s exists=%s"%(self.reportfilename,os.path.exists(self.reportfilename)))
                 if os.path.exists(self.reportfilename):
                     #AF: remove the notifyJobState since it's blocking the rest of the code
@@ -318,6 +311,7 @@ class TrackingComponent:
                     logging.error(outp)
 
         logging.debug("failed jobs"+str(len(badJobs)))
+
         for jobId in badJobs:
             logging.debug(jobId)
             
@@ -326,7 +320,9 @@ class TrackingComponent:
             try:
                 self.failedJobsPublished[jobId[0]]+=0
             except StandardError,ex:
-                self.reportfilename=self.BOSS4reportfilename(jobId)
+                #self.reportfilename=self.BOSS4reportfilename(jobId)
+                self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
+
                 logging.info("Creating directory %s"%os.path.dirname(self.reportfilename))
                 try:
                     os.makedirs(os.path.dirname(self.reportfilename))
@@ -335,23 +331,25 @@ class TrackingComponent:
                 
                 logging.info( "Creating FrameworkReport %s" %self.reportfilename )
                 fwjr=FwkJobReport()
-                fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
+                #fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
+                logging.info("JobSpecId=%s"%BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir))
+                fwjr.jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
                 fwjr.exitCode=-1
                 fwjr.status="Failed"
                 fwjr.write(self.reportfilename)
                 if jobId[1]=="SA":
-                    jobScheduler=self.BOSS4scheduler(jobId[0])
+                    jobScheduler=BOSSCommands.scheduler(jobId[0],self.bossCfgDir)
                     logging.debug("JobScheduler=%s"%jobScheduler)
                     if jobScheduler=="edg":
-                        sched_id=self.BOSS4schedulerId(jobId[0])
+                        sched_id=BOSSCommands.schedulerId(jobId[0],self.bossCfgDir)
                         logging.info("Aborted Job Sched_id=%s"%sched_id)
                         if sched_id!="":
-                            self.executeCommand("edg-job-get-logging-info -v 2 %s > %s/edgLoggingInfo.log"%(sched_id,os.path.dirname(self.reportfilename)))
+                            BOSSCommands.executeCommand("edg-job-get-logging-info -v 2 %s > %s/edgLoggingInfo.log"%(sched_id,os.path.dirname(self.reportfilename)))
                     elif jobScheduler=="glite":
-                        sched_id=self.BOSS4schedulerId(jobId[0])
+                        sched_id=BOSSCommands.schedulerId(jobId[0],self.bossCfgDir)
                         logging.info("Aborted Job Sched_id=%s"%sched_id)
                         if sched_id!="":
-                            self.executeCommand("glite-wms-job-logging-info -v 2 %s > %s/gliteLoggingInfo.log"%(sched_id,os.path.dirname(self.reportfilename)))
+                            BOSSCommands.executeCommand("glite-wms-job-logging-info -v 2 %s > %s/gliteLoggingInfo.log"%(sched_id,os.path.dirname(self.reportfilename)))
 
                 self.jobFailed(jobId)
                 
@@ -399,7 +397,57 @@ class TrackingComponent:
         time.sleep(float(self.args["PollInterval"]))
         return
     
+    def dashboardPublish(self,jobId,ended=""):
+        """
+        _dashboardPublish_
+        
+        publishes dashboard info
+        """
+        logging.debug("inside dashboardPublis")
+        logging.debug("jobid=%s"%jobId)
 
+        taskid=jobId.split('.')[0]
+        chainid=jobId.split('.')[1]
+        resub=jobId.split('.')[2]
+        dashboardInfoFile = BOSSCommands.subdir(jobId,self.bossCfgDir)+"/DashboardInfo%s_%s_%s.xml"%(taskid,chainid,resub)
+        logging.debug("dashboardinfofile=%s"%dashboardInfoFile)
+        logging.debug("dashboardinfofile exist =%s"%os.path.exists(dashboardInfoFile))
+        logging.debug("ended  ='%s'"%ended)
+
+        
+        if os.path.exists(dashboardInfoFile):
+            dashboardInfo = DashboardInfo()
+            dashboardInfo.read(dashboardInfoFile)
+            dashboardInfo.clear()
+            logging.debug("dashboardInfoJob=%s"%dashboardInfo.job)
+            logging.debug("retrieving scheduler")
+            logging.debug("jobid=%s"%jobId)
+            scheduler=BOSSCommands.scheduler(jobId,self.bossCfgDir,ended)
+            logging.debug("scheduler=%s"%scheduler)
+            schedulerI=BOSSCommands.schedulerInfo(self.bossCfgDir,jobId,scheduler,ended)
+            logging.debug("schedulerinfo%s"%schedulerI.__str__())
+            for k,v in schedulerI.items():
+                dashboardInfo[k]=v
+            logging.debug("dashboardinfo%s"%dashboardInfo.__str__())
+
+#             ks=schedulerI.keys()
+#             vs=schedulerI.values()
+#             a=ks.__iter__()
+#             b=vs.__iter__()
+#             while 1: 
+#                 try:
+#                     dashboardInfo[a.next()]=b.next()
+#                 except:
+#                     break
+                #logging.info("%s = %s"%(k,v))
+            dashboardInfo.publish(5)
+
+        return
+
+
+        
+            
+    
     def resubmit(self,jobId):
         """
         _resubmit_
@@ -417,8 +465,9 @@ class TrackingComponent:
             logging.info( "%s - %d no FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
             logging.info( "%s - %d Creating FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
             fwjr=FwkJobReport()
-            fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
-            self.reportfilename=self.BOSS4reportfilename(jobId)
+            #fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
+            fwjr.jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
+            self.reportfilename=BOSSCommand.reportfilename(jobId,self.directory)
             fwjr.exitCode=-1
             fwjr.status="Failed"
             fwjr.write(self.reportfilename)
@@ -580,15 +629,7 @@ class TrackingComponent:
             logging.error("error removing chainDir %s"%chainDir)
         if success=="Success":
             try:
-                logging.debug("bossAdmin SQL -query \"select SUB_PATH from TASK where ID='%s'\""%(taskid) + " -c " + self.bossCfgDir)
-
-                outfile=self.executeCommand("bossAdmin SQL -query \"select SUB_PATH from TASK where ID='%s'\""%(taskid) + " -c " + self.bossCfgDir)
-                subPath=outfile
-            except:
-                subPath=""
-                
-            try:
-                subPath=subPath.split("SUB_PATH")[1].strip()
+                subPath=BOSSCommands.subdir(jobId[0],self.bossCfgDir)
             except:
                 subPath=""
             logging.debug("SubmissionPath '%s'"%subPath)
@@ -597,7 +638,7 @@ class TrackingComponent:
 #                os.remove("%s/BossArchive_%s_g0.tar"%(subPath,taskid))
 #                logging.debug("removed %s/BossArchive_%s_g0.tar"%(subPath,taskid))
 #                os.remove("%s/BossClassAdFile_%s"%(subPath,taskid))
-                logging.debug("removed %s"%(subPath,taskid))
+                logging.info("removed %s"%(subPath,taskid))
             except:
                 logging.error("Failed to remove submission files")
         return
@@ -627,57 +668,6 @@ class TrackingComponent:
             self.failedJobsPublished[jobId[0]] = 1
            
         return
-
-    def executeCommand(self,command,timeout=600):
-        """
-        _executeCommand_
-        
-        Util it execute the command provided in a popen object with a timeout
-        
-        """
-
-       
-        p=Popen4(command)
-        p.tochild.close()
-	outfd=p.fromchild
-	outfno=outfd.fileno()
-	fl=fcntl.fcntl(outfno,fcntl.F_GETFL)
- 	try:
-	    fcntl.fcntl(outfno,fcntl.F_SETFL, fl | os.O_NDELAY)
-        except AttributeError:
-            fcntl.fcntl(outfno,fcntl.F_SETFL, fl | os.FNDELAY)
-	err = -1
-        outc = []
-        outfeof = 0
-        maxt=time.time()+timeout
-        logging.debug("from time %d to time %d"%(time.time(),maxt))
-        pid=p.pid
-        logging.debug("process id of %s = %d"%(command,pid))
-        while time.time() < maxt :
-            ready=select.select([outfno],[],[])
-            if outfno in ready[0]:
-                outch=outfd.read()
-                if outch=='':
-                    outfeof=1
-                outc.append(outch)
-            if outfeof:
-                err=p.wait()
-                break
-            time.sleep(.1)
-    
-        if err == -1:
-            logging.error("command %s timed out. timeout %d\n"%(command,timeout))
-            return ""
-        if err > 0:
-            logging.error("command %s gave %d exit code"%(command,err))
-        #    p.wait()
-            #ogging.error(p.fromchild.read())
-            
-            #eturn ""
-        
-        output=string.join(outc,"")
-        logging.debug("command output \n %s"%output)
-        return output
 
 
     def saveDict(self,d,filename):
@@ -749,152 +739,18 @@ class TrackingComponent:
 
     
         
-    def BOSS4getoutput(self,jobId):
-        """
-        BOSS4getoutput
-
-        Boss 4 command to retrieve output
-        """
-        logging.debug("Boss4 getoutput start %s "%jobId)
-        try:
-            taskid = jobId[0].split('.')[0]
-            chainid=jobId[0].split('.')[1]
-            resub=jobId[0].split('.')[2]
-        except:
-            logging.error("Boss 4 getoutput - split error %s"%jobId)
-##         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID  from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
-##         outp=outfile
-        
-##         try:
-##             resub=outp.split("ID")[1].strip()
-##         except:
-##             logging.debug(outp)
-        
-        getoutpath="%s/BossJob_%s_%s/Submission_%s/" %(self.directory, taskid,chainid,resub)
-        outfile=self.executeCommand("boss getOutput -outdir "+getoutpath+ " -taskid %s -jobid %s"%(taskid,chainid) + " -c " + self.bossCfgDir)
-        outp=outfile
-        return outp
     
 
-    def BOSS4reportfilename(self,jobId):
-        """
-        BOSS4reportfilename
-
-        Boss 4 command to define the correct FrameworkJobReport Location
-        """
-        try:
-            taskid = jobId[0].split('.')[0]
-            chainid=jobId[0].split('.')[1]
-            resub=jobId[0].split('.')[2]
-        except:
-            logging.debug("Boss 4 reportfilename - split error %s"%jobId)
-
-##         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
-##         outp=outfile
-##         try:
-##             resub=outp.split("ID")[1].strip()
-##         except:
-##             print outp
-        return "%s/BossJob_%s_%s/Submission_%s/FrameworkJobReport.xml" %(self.directory, taskid,chainid,resub)
 
         
-    def BOSS4JobSpecId(self,id):
-        """
-        BOSS4JobSpecId
-
-        BOSS 4 command to retrieve JobSpecID from BOSS db
-        """
-        try:
-            taskid=id.split('.')[0]
-        except:
-            logging.error("Boss4 JobSpecId splitting error")
-            return ""
-        outfile=self.executeCommand("bossAdmin SQL -query \"select TASK_NAME from TASK where id='%s'\""%taskid + " -c " + self.bossCfgDir)
-            
-        outp=outfile
-        try:
-            outp=outp.split("TASK_NAME")[1].strip()
-        except:
-            outp=""
-            
-        return outp
 
     
 
-    def BOSS4scheduler(self,id):
-        """
-        BOSS4scheduler
-
-        Boss 4 command which retrieves the scheduler used to submit job
-        """
-        #logging.debug("BOSS4scheduler")
-        try:
-            taskid=id.split('.')[0]
-            chainid=id.split('.')[1]
-            resub=id.split('.')[2]
-            
-        except:
-            logging.error("Boss4 Jobid splitting error")
-            return ""
-        
-##         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
-##         outp=outfile
-##         try:
-##             resub=outp.split("ID")[1].strip()
-##         except:
-##             print outp
-##             resub="0"
 
 
-        try:
-            outfile=self.executeCommand("bossAdmin SQL -query \"select SCHEDULER from JOB where TASK_ID='%s' and CHAIN_ID='%s' and ID='%s'\""%(taskid,chainid,resub) + " -c " + self.bossCfgDir)
-            outp=outfile
-        except:
-            outp=""
-            
-        try:
-            outp=outp.split("SCHEDULER")[1].strip()
-        except:
-            outp=""
-        logging.debug("BOSS4scheduler outp '%s'"%outp)    
-            
-        return outp
 
-    def BOSS4schedulerId(self,id):
-        """
-        BOSS4schedulerId
 
-        Boss 4 command which retrieves the scheduler used to submit job
-        """
-        try:
-            taskid=id.split('.')[0]
-            chainid=id.split('.')[1]
-            resub=id.split('.')[2]
-        except:
-            logging.error("Boss4 Jobid splitting error")
-            return ""
 
-##         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
-##         outp=outfile
-##         try:
-##             resub=outp.split("ID")[1].strip()
-##         except:
-##             resub="0"
-##             print outp
-
-        
-        try:
-            outfile=self.executeCommand("bossAdmin SQL -query \"select SCHED_ID from JOB where TASK_ID='%s' and CHAIN_ID='%s' and ID='%s'\""%(taskid,chainid,resub) + " -c " + self.bossCfgDir)
-            outp=outfile
-        except:
-            outp=""
-            
-        try:
-            outp=outp.split("SCHED_ID")[1].strip()
-        except:
-            outp=""
-        logging.debug("BOSS4schedulerId outp '%s'"%outp)    
-        return outp
 
         
 
