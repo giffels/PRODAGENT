@@ -68,7 +68,9 @@ class InputSource:
             fnames.append(fname)
         self.data['fileNames'] = ('vstring', 'untracked', fnames)
         
-            
-        
-
+    def setFileMatchMode(self, matchMode):
+        """set file match mode for reading files in same job"""
+        if not isQuoted(matchMode):
+          matchMode =  "\'%s\'" % matchMode
+        self.data['fileMatchMode'] = ('string', 'untracked', matchMode)
 
