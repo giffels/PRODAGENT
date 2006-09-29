@@ -176,6 +176,8 @@ def countJobs(ownerId):
     Get the number of jobs for the ownerId available
 
     """
+    if ownerId == None:
+        return 0
     sqlStr = """select COUNT(*) from di_job_queue
                   where owner_index=%s;""" % ownerId
     
@@ -188,6 +190,26 @@ def countJobs(ownerId):
 
     return count
 
+
+def listKnownFileblocks(ownerId):
+    """
+    _listKnownFileblocks_
+
+    Get a list of all known fileblocks for the ownerId provided
+
+    """
+    sqlStr = """SELECT DISTINCT(fileblock) FROM di_job_queue
+                    WHERE owner_index=%s;""" % ownerId
+    
+    connection = connect()
+    dbCur = connection.cursor()
+    dbCur.execute(sqlStr)
+    blocks = dbCur.fetchall()
+    dbCur.close()
+    result = []
+    for block in blocks:
+        result.append(str(block[0]))
+    return result
 
 def makeJobDef(rawDict):
     """
@@ -222,7 +244,9 @@ def retrieveJobDefs(ownerId, limit=100):
     """
     result = []
     sqlStr = """select * from di_job_queue
-                  where owner_index=%s order by time limit %s;""" % (
+                  where owner_index=%s
+                  and status="new" 
+                  order by time limit %s;""" % (
         ownerId, limit)
     #  //
     # // retrieve job defs from DB
@@ -242,10 +266,10 @@ def retrieveJobDefs(ownerId, limit=100):
         result.append(makeJobDef(row))
 
     #  //
-    # // delete the entries using the id values
+    # // update the entries using the id values
     #//
     if len(entryIndices) > 0:
-        delStr = """delete from di_job_queue
+        delStr = """update di_job_queue SET status="used" 
              where owner_index=%s AND job_id IN """ % ownerId
     
         delStr += "( "
@@ -260,7 +284,7 @@ def retrieveJobDefs(ownerId, limit=100):
         except StandardError, ex:
             dbCur.execute("ROLLBACK")
             dbCur.close()
-            msg = "Failed to delete jobs for owner index %s\n" % ownerId
+            msg = "Failed to update jobs for owner index %s\n" % ownerId
             msg += str(ex)
             raise RuntimeError, msg
 

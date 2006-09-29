@@ -226,7 +226,7 @@ class DatasetIterator:
             msg += "Unable to inject empty dataset..."
             logging.error(msg)
             return 1
-        
+
         #  //
         # // Create entry in DB for workflow name
         #//
@@ -238,6 +238,19 @@ class DatasetIterator:
             msg += str(ex)
             logging.error(msg)
             return 1
+
+        return self.insertSplitter(splitter, owner)
+
+    
+
+    def insertSplitter(self, splitter, owner):
+        """
+        _insertSplitter_
+
+        Insert the contents of the JobSplitter instance provided for the
+        owner provided.
+        
+        """
         #  //
         # // Now insert data into DB
         #//
@@ -334,6 +347,74 @@ class DatasetIterator:
         """
         DatabaseAPI.dropOwner(self.workflowSpec.workflowName())
         return
+
+
+    def updateDataset(self):
+        """
+        _updateDataset_
+
+        Look for new fileblocks not in the DB for this dataset and
+        import them
+
+        """
+        owner = DatabaseAPI.ownerIndex(self.workflowSpec.workflowName())
+        if owner == None:
+            knownBlocks = []
+        else:
+            knownBlocks = DatabaseAPI.listKnownFileblocks(owner)
+
+        logging.info("knownBlocks: %s" % str(knownBlocks))
+        
+        
+        #  //
+        # // Create a new splitter from the DBS/DLS containing all
+        #//  current fileblocks and filter out the blocks that are
+        #  //already known.
+        # //
+        #//
+        try:
+            splitter = createJobSplitter(self.inputDataset(),
+                                         **self.dbsdlsContact)
+        except Exception, ex:
+            msg = "Unable to extract details from DBS/DLS for dataset:\n"
+            msg += "%s\n" % self.inputDataset()
+            msg += "Unable to update dataset: %s\n" % (
+                self.workflowSpec.workflowName(),
+                )
+            msg += str(ex)
+            logging.error(msg)
+            return
+        
+        #  //
+        # // filter out known blocks
+        #//
+        for fileblock in knownBlocks:
+            if fileblock in splitter.fileblocks.keys():
+                del splitter.fileblocks[fileblock]
+
+        if len(splitter.fileblocks.keys()) == 0:
+            #  //
+            # // No new blocks
+            #//
+            msg = "There are no new blocks found for %s\n" % (
+                self.workflowSpec.workflowName(),
+                )
+            msg += "Already up to date\n"
+            logging.info(msg)
+            return
+        #  //
+        # // Insert contents of splitter.
+        #//
+        logging.info("%s New fileblocks found for %s\n" % (
+            len(splitter.fileblocks.keys()),
+            self.workflowSpec.workflowName(),
+            )
+                     )
+        logging.debug("New Blocks:\n %s\n" % str(splitter.fileblocks.keys()))
+        self.insertSplitter(splitter, owner)
+        return
+    
+
 
     def save(self, directory):
         """

@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.2 2006/08/30 20:14:02 evansde Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.3 2006/08/31 16:37:19 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -91,6 +91,12 @@ class DatasetInjectorComponent:
         if event == "DatasetInjector:SelectWorkflow":
             self.selectWorkflow(payload)
             return
+        if event == "DatasetInjector:UpdateWorkflow":
+            self.updateWorkflow(payload)
+            return
+        if event == "DatasetInjector:RemoveWorkflow":
+            self.removeWorkflow(payload)
+            return
         
         if event == "DatasetInjector:ReleaseJobs":
             self.releaseJobs(payload)
@@ -149,8 +155,23 @@ class DatasetInjectorComponent:
         _loadWorkflows_
 
         """
-        pass
+        logging.debug("Loading Workflows")
+        self.iterator = None
+        self.iterators = {}
+        fileList = os.listdir(self.args['WorkflowCache'])
+        for item in fileList:
+            if not item.endswith(".xml"):
+                continue
+            pathname = os.path.join(self.args['WorkflowCache'], item)
+            if not os.path.exists(pathname):
+                continue
 
+            newIterator = DatasetIterator(pathname,
+                                          self.args['ComponentDir'] )
+            self.iterators[item] = newIterator
+        return
+    
+            
     def selectWorkflow(self, payload):
         """
         _selectWorkflow_
@@ -169,6 +190,42 @@ class DatasetInjectorComponent:
         logging.debug("Iterator set to: %s" % payload)
         return
         
+
+    def updateWorkflow(self, payload):
+        """
+        _updateWorkflow_
+
+        """
+        iterator = self.iterators.get(payload, None)
+        if iterator == None:
+            msg = "No DatasetIterator found for workflow name: %s\n" % payload
+            msg += "Unable to update Workflow...\n"
+            logging.error(msg)
+            return
+
+        iterator.updateDataset()
+        return
+        
+
+    def removeWorkflow(self, payload):
+        """
+        _removeWorkflow_
+
+        Remove the workflow entries from the DB and workflow cache
+
+        """
+        workflowFile = os.path.join(self.args['WorkflowCache'], payload)
+        iterator = self.iterators.get(payload, None)
+        if os.path.exists(workflowFile):
+            os.remove(workflowFile)
+
+        if iterator != None:
+            iterator.cleanup()
+            del self.iterators[payload]
+        return
+    
+        
+    
         
     def releaseJobs(self, payload):
         """
@@ -192,6 +249,20 @@ class DatasetInjectorComponent:
             msg += "value passed: %s\n" % payload
             logging.error(msg)
             return
+        #  //
+        # // Check to see if dataset is complete. 
+        #//  If not, then we cant create more jobs for it
+        #  //unless it gets updated.
+        # //
+        #//
+        if self.iterator.isComplete():
+            msg = "Unable to release jobs for workflow: %s\n" % (
+                
+                self.iterator.workflowSpec.workflowName(),
+                )
+            msg += "There are no jobs available to release"
+            logging.warning(msg)
+            return
         logging.debug("Releasing %s jobs for %s" % (
             numJobs, self.iterator.workflowSpec.workflowName(),
             )
@@ -205,13 +276,8 @@ class DatasetInjectorComponent:
             self.ms.publish("CreateJob", jobSpec)
             self.ms.commit()
             
-        #  //
-        # // Check to see if dataset is complete. If so, remove it
-        #//  and delete the iterator
-        if self.iterator.isComplete():
-            self.iterator.cleanup()
-            del self.iterators[os.path.basename(self.iterator.workflow)]
-            self.iterator = None
+        
+        
         return
         
         
@@ -239,6 +305,8 @@ class DatasetInjectorComponent:
         self.ms.subscribeTo("DatasetInjector:SelectWorkflow")
         self.ms.subscribeTo("DatasetInjector:LoadWorkflows")
         self.ms.subscribeTo("DatasetInjector:ReleaseJobs")
+        self.ms.subscribeTo("DatasetInjector:UpdateWorkflow")
+        self.ms.subscribeTo("DatasetInjector:RemoveWorkflow")
         
         
         # wait for messages
