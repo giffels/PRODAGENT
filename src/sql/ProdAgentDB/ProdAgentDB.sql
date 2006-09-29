@@ -513,7 +513,7 @@ CREATE TABLE di_job_queue(
   lfns BLOB,
   max_events INT DEFAULT NULL,
   skip_events INT DEFAULT NULL,
-    
+  status ENUM ("new", "used") DEFAULT "new",
   
   PRIMARY KEY (job_id),
   FOREIGN KEY (owner_index)
