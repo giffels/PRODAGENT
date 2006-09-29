@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.28 2006/09/19 13:24:37 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.29 2006/09/28 14:00:00 bacchi Exp $"
 
 import socket
 import time
@@ -467,7 +467,7 @@ class TrackingComponent:
             fwjr=FwkJobReport()
             #fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
             fwjr.jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
-            self.reportfilename=BOSSCommand.reportfilename(jobId,self.directory)
+            self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
             fwjr.exitCode=-1
             fwjr.status="Failed"
             fwjr.write(self.reportfilename)
