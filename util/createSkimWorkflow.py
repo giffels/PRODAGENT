@@ -21,7 +21,7 @@ from MCPayloads.DatasetExpander import splitMultiTier
 valid = ['cfg=', 'version=', 'category=', 'name=', 'dataset=',
          'split-type=', 'split-size=',
          'only-blocks=', 'only-sites=',
-         '--dbs-address=', '--dbs-url=', '--dls-type=', '--dls-address=',
+         'dbs-address=', 'dbs-url=', 'dls-type=', 'dls-address=',
          
          ]
 
@@ -36,10 +36,10 @@ usage += "                                --split-size=<Integer split size>\n"
 usage += "   Options:\n"
 usage += "                                --only-blocks=<List of fileblocks>\n"
 usage += "                                --only-sites=<List of sites>\n"
-usage += "                                --dbs-address=<DBSAddress>\n",
-usage += "                                --dbs-url=<DBSUrl>\n",
-usage += "                                --dls-address=<DLSAddress>\n",
-usage += "                                --dls-type=<DLSType>\n",
+usage += "                                --dbs-address=<DBSAddress>\n"
+usage += "                                --dbs-url=<DBSUrl>\n"
+usage += "                                --dls-address=<DLSAddress>\n"
+usage += "                                --dls-type=<DLSType>\n"
 
 
 options = \
