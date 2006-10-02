@@ -79,6 +79,7 @@ def loadRemoteDBSDLS(**args):
     as arguments.
     
     """
+    logging.info("loadRemoteDBSDLS: %s" % args)
     dlsConfig = {
         "DLSType" : args['DLSType'],
         "DLSAddress" : args['DLSAddress'],
@@ -268,6 +269,6 @@ class RemoteDBSDLSToolkit(DBSDLSBaseToolkit):
     """
     def __init__(self, **args):
         DBSDLSBaseToolkit.__init__(self)
-        self._DLS, self._DBS, self._DLSConf, self._DBSConf= loadRemoteDBSDLS()
-
+        self._DLS, self._DBS, self._DLSConf, self._DBSConf= loadRemoteDBSDLS(**args)
+        
 
