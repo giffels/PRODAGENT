@@ -83,7 +83,7 @@ class DatasetIterator:
         for item in ['DBSURL', 'DBSAddress', 'DLSType', 'DLSAddress']:
             value = self.workflowSpec.parameters.get(item, None)
             if value != None:
-                self.dlsdbsContact[item] = value
+                self.dbsdlsContact[item] = value
         
     def __call__(self, jobDef):
         """
