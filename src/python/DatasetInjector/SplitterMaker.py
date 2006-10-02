@@ -8,7 +8,7 @@ For a given dataset, create and return a JobSplitter instance
 
 """
 
-
+import logging
 
 from PhEDExInterface.DBSDLSToolkit import DBSDLSToolkit, RemoteDBSDLSToolkit
 from DatasetInjector.JobSplitter import JobSplitter
@@ -28,11 +28,12 @@ def createJobSplitter(dataset, **dbsdlsContacts):
     from the cfg file and used.
 
     """
-
     if len(dbsdlsContacts) == 0:
+        logging.info("Using Local DBS/DLS")
         toolkit = DBSDLSToolkit()
     else:
-        toolkit = RemoteDBSDLSToolkit(*dbsdlsContacts)
+        logging.info("Using Remote DBS/DLS: %s" % dbsdlsContacts)
+        toolkit = RemoteDBSDLSToolkit(**dbsdlsContacts)
     
     result = JobSplitter(dataset)
 

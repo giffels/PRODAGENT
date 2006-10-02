@@ -210,7 +210,7 @@ class DatasetIterator:
         """
         try:
             splitter = createJobSplitter(self.inputDataset(),
-                                         **self.dbsdlsContact)
+                                     **self.dbsdlsContact)
         except Exception, ex:
             msg = "Unable to extract details from DBS/DLS for dataset:\n"
             msg += "%s\n" % self.inputDataset()
