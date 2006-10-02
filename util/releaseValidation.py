@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: releaseValidation.py,v 1.4 2006/07/14 14:25:18 hufnagel Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: releaseValidation.py,v 1.5 2006/07/18 17:57:20 evansde Exp $"
 
 
 import os
@@ -18,7 +18,7 @@ import sys
 import getopt
 import popen2
 import time
-import xmlrpclib
+import re
 
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
@@ -29,13 +29,14 @@ from MCPayloads.DatasetExpander import splitMultiTier
 
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
-         'testretrieval', 'testpython']
+         'testretrieval', 'testpython', "cvs-tag="]
 
 usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
 usage += "                            --version=<CMSSW version to be used>\n"
 usage += "                            --relvalversion=<version to be used in spec file>\n"
 usage += "                            --events=<events per job>\n"
 usage += "                            --run=<first run number>\n"
+usage += "                            --cvs-tag=<CVS Tag of cfg files if not same as version>\n"
 usage += "     Options:\n"
 usage += "                            --testretrieval\n"
 usage += "                            --testpython\n"
@@ -59,6 +60,7 @@ except getopt.GetoptError, ex:
 
 xmlFile = None
 version = None
+cvsTag = None
 relvalVersion = None
 category = "RelVal"
 timestamp = int(time.time())
@@ -87,6 +89,8 @@ for opt, arg in opts:
         xmlFile = arg
     if opt == "--version":
         version = arg
+    if opt == "--cvs-tag":
+        cvsTag = arg
     if opt == "--relvalversion":
         relvalVersion = arg
     if opt == "--events":
@@ -108,6 +112,9 @@ if version == None:
 if relvalVersion == None:
     msg = "--relvalVersion not provided, falling back to: %s" % version
     print msg
+
+if cvsTag == None:
+    cvsTag = version
 
 try:
     relValSpec = getRelValSpecForVersion(xmlFile, relvalVersion)
@@ -132,11 +139,23 @@ summaryEvents = 0
 
 
 for relTest in relValSpec:
-    cfgUrl = "\"%s\"" % relTest['CfgUrl']
     prodName = relTest['Name']
     prodName = prodName.replace("RelVal", "RelVal%s" % reduceVersion(version) )
     cfgFile = os.path.join(os.getcwd(), "%s.cfg" % prodName)
-    numberOfJobs = int( int(relTest['Events']) / eventsPerJob) + 1
+    if relTest['NumJobs'] != None:
+        numberOfJobs = int(relTest['NumJobs'])
+        eventCount = int(relTest['Events'])
+    else:
+        numberOfJobs = int( int(relTest['Events']) / eventsPerJob) + 1
+        eventCount = eventsPerJob
+
+    urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/ReleaseValidation/data/"
+
+    cfgUrl = "%s%s" % (urlBase, relTest['CfgUrl'])
+    cfgUrl += "?only_with_tag=%s" % cvsTag
+    
+    
+
     wgetCommand = "wget %s -O %s" % (cfgUrl, cfgFile)
     
     pop = popen2.Popen4(wgetCommand)
@@ -147,6 +166,9 @@ for relTest in relValSpec:
         msg = "Error creating retrieving cfg file: %s\n" % cfgUrl
         msg += pop.fromchild.read()
         raise RuntimeError, msg
+
+
+   
     
     if testRetrievalMode:
         print "Test Retrieval Mode:"
@@ -159,6 +181,21 @@ for relTest in relValSpec:
     if not os.path.exists(cfgFile):
         msg = "Cfg File Not Found: %s" % cfgFile
         raise RuntimeError, msg
+
+    #  //
+    # // Make sure PSet ends up with unique hash
+    #//
+    cfgFileContent = file(cfgFile).read()
+    replacer=re.compile("\}[\s]*$")
+    psetHackString = "\n  PSet psetHack = { string relval = \"%s\"  }\n}\n" % (
+        prodName,
+        )
+    cfgFileContent = replacer.sub(psetHackString, cfgFileContent)
+    handle = open(cfgFile, 'w')
+    handle.write(cfgFileContent)
+    handle.close()
+    
+
 
     #  //
     # // Cleanup existing files
@@ -291,7 +328,7 @@ for relTest in relValSpec:
     print "Created: %s-Workflow.xml" % prodName
     print "Created: %s " % pycfgFile
     print "Created: %s " % hashFile
-    print "From: %s " % cfgFile
+    print "From Tag: %s Of %s " % (cvsTag, cfgFile )
     print "Output Datasets:"
     for item in datasetList:
         print " ==> %s" % item
@@ -334,7 +371,7 @@ for relTest in relValSpec:
     ms.publish("RequestInjector:NewDataset",'')
     # Set first run and number of events per job
     ms.publish("RequestInjector:SetInitialRun", str(run))
-    ms.publish("RequestInjector:SetEventsPerJob", str(eventsPerJob))
+    ms.publish("RequestInjector:SetEventsPerJob", str(eventCount))
     time.sleep(1)
 
     # Loop over jobs
