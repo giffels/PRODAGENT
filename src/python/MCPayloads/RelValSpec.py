@@ -27,13 +27,16 @@ class RelValTest(dict):
         self.setdefault('Events' , None)
         self.setdefault('Name', None)
         self.setdefault("CfgUrl", None)
+        self.setdefault("NumJobs", None)
 
     def save(self):
         """self to improv"""
         result = IMProvNode("Test", self["CfgUrl"],
                             Events = str(self['Events']),
-                            Name = str(self['Name'])
+                            Name = str(self['Name']),
                             )
+        if self['NumJobs'] != None:
+            result.attrs['NumJobs'] = str(self['NumJobs'])
         return result
 
     def load(self, improvNode):
@@ -41,6 +44,8 @@ class RelValTest(dict):
         self['Events'] = str(improvNode.attrs["Events"])
         self['Name'] = str(improvNode.attrs['Name'])
         self['CfgUrl'] = str(improvNode.chardata)
+        if improvNode.attrs.has_key("NumJobs"):
+            self['NumJobs'] = str(improvNode.attrs['NumJobs'])
         return
 
 
