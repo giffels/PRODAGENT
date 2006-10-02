@@ -284,7 +284,7 @@ if onlySites != None:
 
 if customDBSDLS:
     spec.parameters['DBSAddress'] = dbsAddress
-    spec.parameters['DBSUrl'] = dbsUrl
+    spec.parameters['DBSURL'] = dbsUrl
     spec.parameters['DLSType'] = dlsType
     spec.parameters['DLSAddress'] = dlsAddress
 
