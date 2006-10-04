@@ -22,7 +22,7 @@ valid = ['cfg=', 'version=', 'category=', 'name=', 'dataset=',
          'split-type=', 'split-size=',
          'only-blocks=', 'only-sites=',
          'dbs-address=', 'dbs-url=', 'dls-type=', 'dls-address=',
-         
+         'same-primary-dataset',
          ]
 
 
@@ -36,6 +36,7 @@ usage += "                                --split-size=<Integer split size>\n"
 usage += "   Options:\n"
 usage += "                                --only-blocks=<List of fileblocks>\n"
 usage += "                                --only-sites=<List of sites>\n"
+usage += "                                --same-primary-dataset\n"
 usage += "                                --dbs-address=<DBSAddress>\n"
 usage += "                                --dbs-url=<DBSUrl>\n"
 usage += "                                --dls-address=<DLSAddress>\n"
@@ -67,6 +68,12 @@ options = \
     the site name, which will be the SE Name for that site
     Eg: --only-sites=site1,site2 will process only files that are available
     at the specified list of sites.
+
+  --same-primary-dataset  Switch means that the output datasets will be
+    added to the same primary dataset as the input dataset if provided.
+    If not provided, then a completely new Primary dataset will be created
+    using the --name value.
+    
 
   Specifying a DBS/DLS containing the dataset. Usually data is looked up
   in the ProdAgents own DBS/DLS. If you want a dataset from different DBS/DLS
@@ -105,6 +112,7 @@ dbsAddress = None
 dbsUrl = None
 dlsAddress = None
 dlsType = None
+samePrimaryDataset = False
 
 primaryDataset = None
 dataTier = None
@@ -129,6 +137,8 @@ for opt, arg in opts:
         onlyBlocks = arg
     if opt == "--only-sites":
         onlySites = arg
+    if opt == "--same-primary-dataset":
+        samePrimaryDataset = True
     if opt == '--dbs-address':
         dbsAddress = arg
     if opt == '--dbs-url':
@@ -204,6 +214,7 @@ if len(datasetSplit) != 3:
     msg = "Cant extract primary, processed and data tier from dataset:\n"
     msg += datasetOrig
     raise RuntimeError, msg
+
 primaryDataset = datasetSplit[0]
 dataTier = datasetSplit[1]
 processedDataset = datasetSplit[2]
@@ -324,9 +335,14 @@ for outModName, val in cfgInt.outputModules.items():
     for outDataTier in tierList:
         processedDS = "%s-%s-%s" % (
             cmsRun.application['Version'], outModName, timestamp)
-        outDS = cmsRun.addOutputDataset(prodName, 
-                                        processedDS,
-                                        outModName)
+        if samePrimaryDataset:
+            outDS = cmsRun.addOutputDataset(primaryDataset,
+                                            processedDS,
+                                            outModName)
+        else:
+            outDS = cmsRun.addOutputDataset(prodName, 
+                                            processedDS,
+                                            outModName)
         outDS['DataTier'] = outDataTier
         outDS["ApplicationName"] = cmsRun.application["Executable"]
         outDS["ApplicationProject"] = cmsRun.application["Project"]
