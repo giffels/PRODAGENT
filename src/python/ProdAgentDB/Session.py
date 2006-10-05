@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+import logging
+
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Connect import connect as dbConnect
 
@@ -53,7 +56,7 @@ def rollback(sessionID=None):
        raise ProdAgentException("commit: First create connection",3002)
    if not session[sessionID]['state']=='start_transaction':
        raise ProdAgentException("commit: First start transaction",3003)
-   session[sessionID].execute("ROLLBACK")
+   session[sessionID]['cursor'].execute("ROLLBACK")
    session[sessionID]['state']='commit'
 
 def close(sessionID=None):
