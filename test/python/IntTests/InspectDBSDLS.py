@@ -26,7 +26,7 @@ url = "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery"
 dbinstance = None
 dlsendpoint = None
 dlstype = None
-dataset = None
+datasetPath = None
 sename = None
 
 for opt, arg in opts:
@@ -39,14 +39,14 @@ for opt, arg in opts:
     if opt == "--DLSType":
         dlstype = arg
     if opt == "--datasetPath":
-        dataset = arg
+        datasetPath = arg
     if opt == "--SE":
         sename = arg
     if opt == "--help":
         print usage
         sys.exit(1)
 
-if dataset == None:
+if datasetPath == None:
     print "--datasetPath option not provided. For example : --datasetPath /primarydataset/datatier/processeddataset"
     print usage
     sys.exit(1)
@@ -89,28 +89,48 @@ except dlsApi.DlsApiError, inst:
   print msg
   sys.exit(1)
 
+
+
+#  //
+# // Get list of datasets
+#//
+try:
+   if datasetPath:
+     datasets = dbsapi.listProcessedDatasets(datasetPath)
+   else:
+     datasets = dbsapi.listProcessedDatasets("/*/*/*")
+except dbsCgiApi.DbsCgiToolError , ex:
+  print "%s: %s " %(ex.getClassName(),ex.getErrorMessage())
+  print "exiting..."
+  sys.exit(1)
+
+
+for dataset in datasets:
 #  //
 # // Get list of blocks for the dataset and their location
 #//
-try:
+ dataset=dataset.get('datasetPathName')
+ print "===== dataset %s"%dataset
+ try:
   fileBlockList = dbsapi.getDatasetFileBlocks(dataset)
-except DbsException, ex:
+ except DbsException, ex:
   print "DbsException for DBS API getDatasetFileBlocks(%s): %s %s" %(dataset,ex.getClassName(), ex.getErrorMessage())
   sys.exit(1)
 
-if sename != None:
- primdataset=dataset.split('/')[1]
- fileName="%s_SE%s.lfns"%(primdataset,sename)
- LFNsatSEfile = open(fileName, 'w')
- SEblocks=[]
+ if sename != None:
+  primdataset=dataset.split('/')[1]
+  fileName="%s_SE%s.lfns"%(primdataset,sename)
+  LFNsatSEfile = open(fileName, 'w')
+  SEblocks=[]
 
-for fileBlock in fileBlockList:
+ for fileBlock in fileBlockList:
         entryList=[]
         try:
          entryList=dlsapi.getLocations(fileBlock.get('blockName'))
         except dlsApi.DlsApiError, inst:
           msg = "Error in the DLS query: %s." % str(inst)
-          print msg
+          ##print msg
+          print "== File block %s has no location found in DLS"%fileBlock.get('blockName')
           if "DLS Server don't respond" in msg:
             print msg
             sys.exit(1)
@@ -119,11 +139,11 @@ for fileBlock in fileBlockList:
         for entry in entryList:
          for loc in entry.locations:
           SEList.append(str(loc.host))
-         print "-----------------------------------------------"
+         print "== File block %s is located at: %s"%(fileBlock.get('blockName'),SEList)
          print "File block name: ", fileBlock.get('blockName')
          print "Number of files: ", fileBlock.get('numberOfFiles')
          print "Number of Bytes: ", fileBlock.get('numberOfBytes')
-         print "File block %s is located at: %s"%(fileBlock.get('blockName'),SEList)
+
          if sename != None: 
           if SEList.count(sename)>0:
             print " Writing LFN list at SE %s "%sename 
@@ -131,15 +151,15 @@ for fileBlock in fileBlockList:
                 LFNsatSEfile.write("%s\n"%file.get('logicalFileName'))
             SEblocks.append(fileBlock.get('blockName'))
 
-## get total number of events
-nevttot=0
-for block in dbsapi.getDatasetContents(dataset):
+ ## get total number of events
+ nevttot=0
+ for block in dbsapi.getDatasetContents(dataset):
    for evc in block.get('eventCollectionList'):
      nevttot = nevttot + evc.get('numberOfEvents')
 
-if sename != None:
+ if sename != None:
   LFNsatSEfile.close()
-## get number of events at the given SE
+ ## get number of events at the given SE
   nevtsatSE=0
   for block in dbsapi.getDatasetContents(dataset):
          try:
@@ -153,7 +173,7 @@ if sename != None:
             nevtsatSE = nevtsatSE + evc.get('numberOfEvents')
 
   print "\n File %s written : contains LFNs at SE %s - for a total of %s events "%(fileName,sename,nevtsatSE)                                                                                                  
-print "\n total events: %s in dataset: %s\n"%(nevttot,dataset)
+ print "\n total events: %s in dataset: %s\n"%(nevttot,dataset)
 
 
 
