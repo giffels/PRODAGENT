@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.3 2006/08/31 16:37:19 evansde Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.4 2006/09/29 18:10:59 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -130,8 +130,17 @@ class DatasetInjectorComponent:
         workflowName = os.path.basename(workflowFile)
         workflowPath = os.path.join( self.args['WorkflowCache'], workflowName)
         logging.debug("Instantiating DatasetIterator for %s" % workflowPath)
-        newIterator = DatasetIterator(workflowPath,
-                                      self.args['ComponentDir'] )
+
+        try:
+            newIterator = DatasetIterator(workflowPath,
+                                          self.args['ComponentDir'] )
+        except Exception, ex:
+            msg = "ERROR: Unable to Instantiate a DatasetIterator\n"
+            msg += "For file:\n%s\n" % workflowPath
+            msg += "Error: %s\n" % str(ex)
+            logging.error(msg)
+            return
+            
         logging.debug("Importing Dataset: %s" % newIterator.inputDataset())
         importResult = newIterator.importDataset()
         if importResult:
@@ -165,9 +174,15 @@ class DatasetInjectorComponent:
             pathname = os.path.join(self.args['WorkflowCache'], item)
             if not os.path.exists(pathname):
                 continue
-
-            newIterator = DatasetIterator(pathname,
-                                          self.args['ComponentDir'] )
+            try:
+                newIterator = DatasetIterator(pathname,
+                                              self.args['ComponentDir'] )
+            except Exception, ex:
+                msg = "ERROR: Unable to Instantiate a DatasetIterator\n"
+                msg += "For file:\n%s\n" % pathname
+                msg += "Error: %s\n" % str(ex)
+                logging.error(msg)
+                continue
             self.iterators[item] = newIterator
         return
     
