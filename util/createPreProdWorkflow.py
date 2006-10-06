@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: createPreProdWorkflow.py,v 1.3 2006/05/25 16:26:49 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: createPreProdWorkflow.py,v 1.4 2006/07/17 14:23:04 evansde Exp $"
 
 
 import os
@@ -55,7 +55,7 @@ for opt, arg in opts:
         cfgFile = arg
     if opt == "--version":
         version = arg
-    if opt == "--catgory":
+    if opt == "--category":
         category = arg
     if opt == "--name":
         prodName = arg
