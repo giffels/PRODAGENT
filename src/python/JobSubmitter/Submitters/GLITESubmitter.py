@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.16 2006/08/23 11:14:46 bacchi Exp $"
+__revision__ = "$Id: GLITESubmitter.py,v 1.1 2006/09/28 13:59:07 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -308,7 +308,7 @@ class GLITESubmitter(SubmitterInterface):
           usingDashboard = dashboardCfg.get("UseDashboard", "False")
           DashboardAddress = dashboardCfg.get("DestinationHost")
           DashboardPort=dashboardCfg.get("DestinationPort")
-          dashboardInfo.addDestination(DashboardAddress, DashboardPort)
+          dashboardInfo.addDestination(DashboardAddress, int(DashboardPort))
 
           logging.debug("DashboardInfo=%s"%dashboardInfo.__str__())
         except:

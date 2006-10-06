@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.17 2006/09/19 13:24:37 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.18 2006/09/28 13:58:25 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -232,7 +232,7 @@ class LCGSubmitter(SubmitterInterface):
           usingDashboard = dashboardCfg.get("UseDashboard", "False")
           DashboardAddress = dashboardCfg.get("DestinationHost")
           DashboardPort=dashboardCfg.get("DestinationPort")
-          dashboardInfo.addDestination(DashboardAddress, DashboardPort)
+          dashboardInfo.addDestination(DashboardAddress, int(DashboardPort))
           logging.debug("DashboardInfo=%s"%dashboardInfo.__str__())
         except:
           logging.info("No Dashboard section in SubmitterPluginConfig")
