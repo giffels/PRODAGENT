@@ -4,6 +4,7 @@ import time
 import random
 import md5
 import socket
+import popen2
 
 def uuid( *args ):
     """
@@ -20,4 +21,19 @@ def uuid( *args ):
     data = str(t)+' '+str(r)+' '+str(a)+' '+str(args)
     data = md5.md5(data).hexdigest()
     return data
+
+
+
+def uuidgen():
+    """
+    Try to create a uuid with uuidgen if available, returns None if not
+    """
+    pop = popen2.Popen4("uuidgen")
+    pop.wait()
+    exitCode = pop.poll()
+    if exitCode:
+        return None
+    hash = pop.fromchild.read().strip()
+    return hash
+
 
