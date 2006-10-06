@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.29 2006/09/28 14:00:00 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.30 2006/09/29 12:07:51 bacchi Exp $"
 
 import socket
 import time
@@ -99,10 +99,13 @@ class TrackingComponent:
         self.failedJobsPublished = {}
         self.cmsErrorJobs = {}
         self.runningJobs = {}
+        self.submittedJobs = {}
 
         self.directory=self.args["ComponentDir"]
         self.loadDict(self.failedJobsPublished,"failedJobsPublished")
         self.loadDict(self.cmsErrorJobs,"cmsErrorJobs")
+        self.loadDict(self.submittedJobs,"submittedJobs")
+        
         #self.loadDict(self.runningJobs,"runningJobs")
 
         self.verbose=(self.args["verbose"]==1)
@@ -207,6 +210,7 @@ class TrackingComponent:
             #logging.debug("boss q -statusOnly -all -c " + self.bossCfgDir)
             logging.debug(lines)
             # fill job lists
+            newSubmittedJobs={}
             for j in lines[1:]:
                 j=j.strip()
                 try:
@@ -217,6 +221,13 @@ class TrackingComponent:
                     logging.debug("Incorrect JobId \n %s \n skipping line"%j)
                     jid=''
                     st=''
+                if jid !='':
+                    try:
+                        newSubmittedJobs[jid]=self.submittedJobs[jid]
+                    except StandardError,ex:
+                        newSubmittedJobs[jid]=0
+                        self.dashboardPublish(jid)
+
                 if st == 'E':
                     pass
                 elif st=='' and jid=='':
@@ -243,6 +254,12 @@ class TrackingComponent:
                     checkpointed.append([jid,st])
                 else:
                     unknown.append([jid,st])
+
+                    
+
+        self.submittedJobs=   newSubmittedJobs
+
+        self.saveDict(self.submittedJobs,"submittedJobs")
        
 
         return success, failure, running, pending, waiting, scheduled, submitted, cleared, checkpointed, unknown 
@@ -261,8 +278,9 @@ class TrackingComponent:
             goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs = self.pollBOSSDB()
         except StandardError, ex:
             return 0
-# here we manage jobs
+        # here we manage jobs
         
+
         logging.debug("Success Jobs "+  str(len(goodJobs)))
         
         for jobId in goodJobs:
@@ -322,6 +340,9 @@ class TrackingComponent:
             except StandardError,ex:
                 #self.reportfilename=self.BOSS4reportfilename(jobId)
                 self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
+                self.dashboardPublish(jobId[0])
+                
+                self.dashboardPublish(jobId[0],"ENDED_")
 
                 logging.info("Creating directory %s"%os.path.dirname(self.reportfilename))
                 try:
@@ -379,6 +400,7 @@ class TrackingComponent:
         logging.debug("Submitted Jobs "+  str(len(subJobs)))
         for jobId in subJobs:
             logging.debug(jobId)
+        
 
 
         logging.debug("Cleared Jobs "+  str(len(cJobs)))
@@ -426,9 +448,14 @@ class TrackingComponent:
             logging.debug("scheduler=%s"%scheduler)
             schedulerI=BOSSCommands.schedulerInfo(self.bossCfgDir,jobId,scheduler,ended)
             logging.debug("schedulerinfo%s"%schedulerI.__str__())
-            for k,v in schedulerI.items():
-                dashboardInfo[k]=v
-            logging.debug("dashboardinfo%s"%dashboardInfo.__str__())
+            try:
+                dashboardInfo['StatusEnterTime']=time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(float(schedulerI['LAST_T'])))
+                dashboardInfo['StatusValue']=schedulerI['SCHED_STATUS']
+                dashboardInfo['StatusValueReason']=schedulerI['STATUS_REASON'].replace('-',' ')
+                dashboardInfo['StatusDestination']=schedulerI['DEST_CE']+"/"+schedulerI['DEST_QUEUE']
+                dashboardInfo['SubTimeStamp']=time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(float(schedulerI['SUBMITTED'])))
+            
+                logging.debug("dashboardinfo%s"%dashboardInfo.__str__())
 
 #             ks=schedulerI.keys()
 #             vs=schedulerI.values()
@@ -440,7 +467,10 @@ class TrackingComponent:
 #                 except:
 #                     break
                 #logging.info("%s = %s"%(k,v))
-            dashboardInfo.publish(5)
+                dashboardInfo.publish(5)
+            except:
+                logging.debug("dashboardinfo%s"%dashboardInfo.__str__())
+                
 
         return
 
