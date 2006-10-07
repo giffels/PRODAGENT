@@ -12,18 +12,22 @@ and report back details of completed jobs
 
 import os
 import time
-from MessageService.MessageService import MessageService
 
 import logging
 from logging.handlers import RotatingFileHandler
 
-from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdMgrInterface.PriorityQueue import PriorityQueue
-from ProdMgrInterface.AllocationQueue import AllocationQueue
-from ProdMgrInterface.JobQueue import JobQueue
-import ProdMgrInterface.Interface as ProdMgrAPI
+from MessageService.MessageService import MessageService
 
-from ProdAgentDB.Session import *
+from ProdAgentDB import Session
+from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdAgentCore.Codes import errors
+from ProdMgrInterface import Allocation
+from ProdMgrInterface import MessageQueue
+from ProdMgrInterface import Job
+from ProdMgrInterface import Request
+from ProdMgrInterface import State
+
+import ProdMgrInterface.Interface as ProdMgrAPI
 
 
 class ProdMgrComponent:
@@ -54,14 +58,7 @@ class ProdMgrComponent:
             logHandler.setFormatter(logFormatter)
             logging.getLogger().addHandler(logHandler)
             logging.getLogger().setLevel(logging.DEBUG)
-    
             logging.info("ProdMgrComponent Started...")
-    
-            # priorities hold requests while the 
-            # job queue holds job information 
-            self.priorityQueue          = PriorityQueue()
-            self.allocationQueue        = AllocationQueue()
-            self.jobQueue               = JobQueue()
        except Exception,ex:
             logging.debug("ERROR: "+str(ex))     
             raise
@@ -116,116 +113,100 @@ class ProdMgrComponent:
 
         
         """
-        #  //
-        # // Talk to the ProdMgr:
-        #//
-        # 1. Is work available  for the top request
-        #    No => continue try other request.
-        #    Yes => Get work and break this loop if we have the maximum number of jobs
-        #           Then publish CreateJob for all job specs
+        # the algorithms works as follows:
+        # check the last logged state. If it is start, check if there is anything 
+        # left in the queue that failed when interacting with another application (prodmgr)
+        # if not, proceed from the beginning, else proceed from the state that has
+        # been logged.
 
-        # our first approximation will not deal with failure modes. Once we have
-        # this working we added more failure handling to it. 
-
-        # we do not know if we recovered from a failure, thus we check to see
-        # the last call we made that has not been commited. If there is none, it means
-        # that we can proceed from the start. If there is one it describes the state
-        # we where at the time of the crash.
-
-        #NOTE: persistency actions part of the global schema should be committed 
-        #NOTE: immetiately, while persitency actions part of the local schema
-        #NOTE: should be committed at the end of handling this.
-        
-
-        #retrieve state from the database, if not start take appropiate action.
-        #NOTE: the states should be made persistent in the database.
-
-        # keep track of a black list. If we have problem connecting with a server
-        # we avoid using it again during handling this event.
-        #NOTE: we might make this persitent so we can use coolof periods
-        prodMgrBlackList={}
-
-        # we have a session for default (set by the message service)
-        # and one for the states, as we commit in between
-        # logging calls and setting the explicit state can create
-        # and close their own connections not using a session.
-
-        # we use our own session instead of the default set by the message service.
+        # we have a session for default 
+        # and one for the states (called "ProdMgrInterface"), as we commit in between
+        # logging calls and setting the explicit state
 
         # retrieve state (from database)
         # the state determines where we need to start.
-        componentState="start"
-        stateParameters={'requestIndex':0}
- 
-        logging.debug("ProdMgrInterface state set to: "+str(componentState))
 
+        Session.connect("ProdMgrInterface")
+        Session.set_current("ProdMgrInterface")
+
+        # if this is the first time create the start state
+        componentStateInfo=State.get("ProdMgrInterface")      
+        if componentStateInfo=={}:
+             logging.debug("ProdMgrInterface state creation")
+             State.insert("ProdMgrInterface","start",{'requestIndex':0})
+             componentState="start"
+             requestIndex=0
+        else:
+             componentState=componentStateInfo['state']
+             if componentStateInfo['parameters'].has_key('requestIndex'):
+                 requestIndex=componentStateInfo['parameters']['requestIndex']
+             else: 
+                 requestIndex=0
+        logging.debug("ProdMgrInterface state is: "+str(componentState))
         recover=False
+
         if componentState!='start':
             recover=True
-         
+        else:
+            componentState="startAllocation"
 
+        Session.commit()
+         
         try:
             logging.debug("Retrieve work for "+str(numberOfJobs)+" jobs")
-            logging.debug("There are "+str(len(self.priorityQueue))+" requests in the queue ")
+            logging.debug("There are "+str(Request.size())+" requests in the queue ")
+            Session.commit()
            
-            # a mapping we use later on for job allocations
-            # so we do not have to query the database twice.
-            requestIndex=stateParameters['requestIndex']
-    
-            if componentState in ["start","acquireAllocation","acquireJob","downloadJobSpec"]:
-
-               if componentState=="start":
+            if componentState in ["startAllocation","acquireAllocation","acquireJob","downloadJobSpec"]:
                   # use two persistent queues for accounting in case
                   # of a crash.
-                  self.workAllocationQueue    = AllocationQueue()
- 
-               while (len(self.workAllocationQueue)<int(numberOfJobs)):
-                  self.sessionAllocationQueue = AllocationQueue()
-                  self.sessionJobQueue        = JobQueue()
+               while (Allocation.size("messageLevel")<int(numberOfJobs)):
+                  Session.commit()
                   # get request with highest priority:
-                  # check if the request is not on the blacklist:
-
-                  if componentState=="start":
-                     # order requests as we want to take higher priorities first.
-                     self.priorityQueue.orderRequests()
-
+                  # check if the prodmgr url of this request is not on the blacklist:
+                  if componentState=="startAllocation":
                      # get request with highest priority:
-                     request=self.priorityQueue[requestIndex]
-
-  
-                     while prodMgrBlackList.has_key(request['ProdMgrURL']) and\
-                          (len(self.priorityQueue)<(requestIndex+1)):
-                          request=self.priorityQueue[requestIndex]
-                          requestIndex+=1
+                     request=Request.getHighestPriority(requestIndex)
+                     # if this url is on the black list look for next one
+                     while MessageQueue.hasURL(request['url']) and\
+                          Request.size()<(requestIndex+1):
+                          requestIndex+1 
+                          request=Request.getHighestPriority(requestIndex)
+                          State.setParameters("ProdMgrInterface",{'requestIndex':requestIndex})
                      # check if there are requests left:
-                     if (len(self.priorityQueue)<(requestIndex+1)):
-                          break
-   
-                     logging.debug("ProdMgrInterface state set to: acquireAllocation")
-                     componentState="acquireAllocation"
-                     stateParameters={'RequestID':request['RequestID'],'ProdMgrURL':request['ProdMgrURL'],'requestIndex':requestIndex}
-
-                  # do we have enough total allocations?
-                  if (len(self.priorityQueue)<(requestIndex+1)):
-                      logging.debug("We have no more requests in our queue for allocations"+\
+                     if (Request.size())<(requestIndex+1):
+                         # reset the index for next time
+                         State.setParameters("ProdMgrInterface",{'requestIndex':0})
+                         Session.commit()
+                         logging.debug("We have no more requests in our queue for allocations"+\
                          " and jobs, bailing out")
-                      break
+                         break
 
+                     # set parameters and state and commit for next session
+                     parameters={'RequestID':request['id'],'ProdMgrURL':request['url'],'requestIndex':requestIndex}
+                     State.setParameters("ProdMgrInterface",parameters)
+                     componentState="acquireAllocation"
+                     State.setState("ProdMgrInterface",componentState)
+                     Session.commit() 
+                     logging.debug("ProdMgrInterface state set to: acquireAllocation")
+
+
+                  # part of these states will make calls to another server so we have a try except in 
+                  # case this fails after which we need to take appropiate action. 
                   try:
-   
                    if componentState=="acquireAllocation":
-   
+                      stateParameters=State.get("ProdMgrInterface")['parameters']
                       # check how many allocations we have from this request:
                       logging.debug("Checking allocations for request "+str(stateParameters['RequestID']))
-                      idleRequestAllocations=self.allocationQueue.getIdle(stateParameters['RequestID'])
-                      if ( (len(idleRequestAllocations)+len(self.workAllocationQueue) )<numberOfJobs):
-                          logging.debug("Not enough idle allocations request "+request['RequestID']+\
+                      idleRequestAllocations=Allocation.get('prodagentLevel','idle',str(stateParameters['RequestID']))
+                      if ( ( (len(idleRequestAllocations)+Allocation.size("messageLevel")) )<numberOfJobs):
+                          logging.debug("Not enough idle allocations for request "+stateParameters['RequestID']+\
                               ", will acquire more")
                           logging.debug("Contacting: "+stateParameters['ProdMgrURL']+" with payload "+\
-                              stateParameters['RequestID']+','+str(int(numberOfJobs)-len(idleRequestAllocations)-len(self.sessionAllocationQueue)))
+                              stateParameters['RequestID']+','+str(int(numberOfJobs)-len(idleRequestAllocations)-Allocation.size("messageLevel")))
                           # only request the extra allocations if we have spare idle ones.
-                          # the return format is an array of allocations ids
-                          # we might get less allocations back then we asked for, if there are not 
+                          # the return format is an array of allocations ids we might get 
+                          # less allocations back then we asked for, if there are not 
                           # enought available.
 
                           # if we crashed we might not have retrieved the last call.
@@ -237,55 +218,66 @@ class ProdMgrComponent:
                                       logging.debug("No uncommited service calls: "+str(ex))
                                       allocations=ProdMgrAPI.acquireAllocation(stateParameters['ProdMgrURL'],\
                                       stateParameters['RequestID'],\
-                                      int(numberOfJobs)-len(idleRequestAllocations)-len(self.workAllocationQueue),\
+                                      int(numberOfJobs)-len(idleRequestAllocations)-Allocation.size("messageLevel"),\
                                       "ProdMgrInterface")
                               except Exception,ex:
+                                  # there is a problem connecting wrap up all relevant information and put
+                                  # it in a queue for later insepection
                                   raise
                           else:
-                              allocations=ProdMgrAPI.acquireAllocation(stateParameters['ProdMgrURL'],\
-                                  stateParameters['RequestID'],\
-                                  int(numberOfJobs)-len(idleRequestAllocations)-len(self.workAllocationQueue),\
-                                  "ProdMgrInterface")
+                              try:
+                                  allocations=ProdMgrAPI.acquireAllocation(stateParameters['ProdMgrURL'],\
+                                      stateParameters['RequestID'],\
+                                      int(numberOfJobs)-len(idleRequestAllocations)-Allocation.size("messageLevel"),\
+                                      "ProdMgrInterface")
+                              except Exception,ex:
+                                  # there is a problem connecting wrap up all relevant information and put
+                                  # it in a queue for later insepection
+                                  Session.rollback()
+                                  MessageQueue.insert("ProdMgrInterface","retrieveWork",stateParameters['ProdMgrURL'],"acquireAllocation",stateParameters)
+                                  Session.commit()
+                                  raise
                           recover=False
 
                           # check if we got allocations back
                           if type(allocations)==bool:
                               if not allocations:
-                                 self.priorityQueue.delRequest(stateParameters['RequestID']) 
-                                 self.workAllocationQueue.delAllocations(stateParameters['RequestID'])
-                                 # request has finished
+                          #       Request.rm([stateParameters['RequestID']])
+                          #       Allocation.rm('messageLevel',stateParameters['RequestID']) 
+                                 # request has finished?
+                                 i='do_nothing'
                           else: 
                               logging.debug("Acquired allocations: "+str(allocations)) 
                               # we acquired allocations, update our own accounting:
-                              self.allocationQueue.add(allocations)
-                              idleRequestAllocations=self.allocationQueue.getIdle(stateParameters['RequestID'])
-                              self.workAllocationQueue.add(idleRequestAllocations)
-                              self.sessionAllocationQueue.add(idleRequestAllocations) 
-                               # we can commit as we made everything persistent at the client side.
+                              Allocation.insert("prodagentLevel",allocations,stateParameters['RequestID'])
+                              idleRequestAllocations=Allocation.get('prodagentLevel','idle',(stateParameters['RequestID']))
+                              Allocation.insert("messageLevel",idleRequestAllocations,stateParameters['RequestID'])
+                              Allocation.insert("requestLevel",idleRequestAllocations,stateParameters['RequestID'])
+                              # we can commit as we made everything persistent at the client side.
                           ProdMgrAPI.commit()
                       else:
-                          diff=numberOfJobs-len(self.workAllocationQueue)
-                          self.sessionAllocationQueue.add(idleRequestAllocations[0:diff])
-                          self.workAllocationQueue.add(idleRequestAllocations[0:diff])
+                          diff=numberOfJobs-len(Allocation.size("WorkfAllocation"))
+                          Allocation.insert("messageLevel",idleRequestAllocations[0:diff])
+                          Allocation.insert("requestLevel",idleRequestAllocations[0:diff])
                           logging.debug("Sufficient allocations acquired, proceeding with acquiring jobs")
 
-                      logging.debug("ProdMgrInterface state set to: acquireJob")
                       componentState="acquireJob"
-                      stateParameters={'requestIndex':requestIndex}
+                      State.setState("ProdMgrInterface",componentState)
+                      Session.commit() 
+                      logging.debug("ProdMgrInterface state set to: acquireJob")
    
                    if(componentState in ["acquireJob","downloadJobSpec","jobSubmission"]):
    
                       # only acquire jobs if there are more than 0 allocations:
-                      if (len(self.sessionAllocationQueue)>0):
-    
+                      if (Allocation.size("requestLevel"))>0:
+                          logging.debug("More than 1 allocation for which we need to retrieve a job") 
+
                           if componentState=="acquireJob":
-                              part=self.sessionAllocationQueue[0]['AllocationID'].split('/')
-                              # part 0 is the request id
-                              request_id=part[0]
-                              parameters={'numberOfJobs':len(self.sessionAllocationQueue),
+                              stateParameters=State.get("ProdMgrInterface")['parameters']
+                              request_id=Allocation.getRequest('requestLevel')
+                              parameters={'numberOfJobs':Allocation.size('requestLevel'),
                                   'prefix':'job'}   
-                              requestURL=self.priorityQueue.retrieveRequest(request_id)['ProdMgrURL']
-                              
+                              requestURL=Request.getUrl(request_id)
                               if recover:
                                   try:
                                       jobs=ProdMgrAPI.retrieve(requestURL,"acquireJob","ProdMgrInterface")
@@ -294,97 +286,137 @@ class ProdMgrComponent:
                                           logging.debug("No uncommited service calls: "+str(ex))
                                           jobs=ProdMgrAPI.acquireJob(requestURL,request_id,parameters)
                                   except Exception,ex:
+                                  # there is a problem connecting wrap up all relevant information and put
+                                  # it in a queue for later insepection
                                       raise
                               else:
-                                  jobs=ProdMgrAPI.acquireJob(requestURL,request_id,parameters)
+                                  try:
+                                      jobs=ProdMgrAPI.acquireJob(requestURL,request_id,parameters)
+                                  except Exception,ex:
+                                  # there is a problem connecting wrap up all relevant information and put
+                                  # it in a queue for later insepection
+                                      # NOTE: move the allocations associated from message and request level to 
+                                      # NOTE: something else
+                                      Session.rollback()
+                                      MessageQueue.insert("ProdMgrInterface","retrieveWork",requestURL,"acquireJob",stateParameters)
+                                      Session.commit()
+                                      raise
                               recover=False
-
-                              self.sessionJobQueue.add(jobs)
-                              self.jobQueue.add(jobs)
-                              # we can now savely remove the sessionAllocationQueue
-                              del self.sessionAllocationQueue
+                              Job.insert('requestLevel',jobs,request_id)
+                              # we can now savely remove the request level allocation queue 
+                              Allocation.rm('requestLevel')
                               ProdMgrAPI.commit()
-                              logging.debug("Acquired the following jobs: "+str(self.sessionJobQueue)) 
+                              logging.debug("Acquired the following jobs: "+str(jobs)) 
                               # we have the jobs, lets download there job specs and if finished emit
                               # a new job event. 
-
-                              logging.debug("ProdMgrInterface state set to: downloadJobSpec")
                               componentState="downloadJobSpec"
-                              stateParameters={'requestIndex':requestIndex}
+                              State.setState("ProdMgrInterface",componentState)
+                              Session.commit() 
+                              logging.debug("ProdMgrInterface state set to: "+componentState)
 
                           if componentState in ["downloadJobSpec","jobSubmission"]:
-   
+                              stateParameters=State.get("ProdMgrInterface")['parameters']
                               logging.debug("Downloading files to : "+self.args['JobSpecDir'])
-                              for job in self.sessionJobQueue:
+                              jobs=Job.get('requestLevel')
+                              for job in jobs:
                                   if componentState=="downloadJobSpec":
+                                      stateParameters=State.get("ProdMgrInterface")['parameters']
+                                      # we ignore the recover attribute as we check if something is downloaded
                                       recover=False
-                                      if not self.sessionJobQueue.isDownloaded(job['JobSpecID']):
-                                          targetDir=self.args['JobSpecDir']+'/'+job['JobSpecID'].replace('/','_')
+                                      if not Job.isDownloaded('requestLevel',job['jobSpecId']):
+                                          targetDir=self.args['JobSpecDir']+'/'+job['jobSpecId'].replace('/','_')
                                           try:
                                               os.makedirs(targetDir)
                                           except:
                                               pass
-                                          targetFile=job['JobSpecURL'].split('/')[-1]
-                                          logging.debug("Downloading: "+str(job['JobSpecURL']))
+                                          targetFile=job['URL'].split('/')[-1]
+                                          logging.debug("Downloading: "+str(job['URL']))
                                           try:
-                                              ProdMgrAPI.retrieveFile(job['JobSpecURL'],targetDir+'/'+targetFile)
+                                              ProdMgrAPI.retrieveFile(job['URL'],targetDir+'/'+targetFile)
                                           except Exception,ex:
+                                              # there is a problem connecting wrap up all relevant information and put
+                                              # it in a queue for later insepection
+                                              # NOTE: move job from request level to something else
+                                              Session.rollback()
+                                              MessageQueue.insert("ProdMgrInterface","retrieveWork",requestURL,"downloadJobSpec",stateParameters)
+                                              Session.commit()
                                               raise
 
-                                          self.sessionJobQueue.downloaded(job['JobSpecID'])
+                                          Job.downloaded('requestLevel',job['jobSpecId'])
                                           ProdMgrAPI.commit()
                                          
-
-                                          logging.debug("ProdMgrInterface state set to: emit JobSubmission events")
                                           componentState="jobSubmission"
-                                          stateParameters={'JobSpecID':job['JobSpecID'],'targetFile':targetDir+'/'+targetFile,'requestIndex':requestIndex}
+                                          State.setState("ProdMgrInterface",componentState)
+                                          stateParameters={'jobSpecId':job['jobSpecId'],'targetFile':targetDir+'/'+targetFile,'requestIndex':requestIndex}
+                                          State.setParameters("ProdMgrInterface",stateParameters)
+                                          Session.commit() 
+                                          logging.debug("ProdMgrInterface state set to: "+componentState)
+
    
                                   if componentState=="jobSubmission":
                                        recover=False
-
-                                       # emit event and delete job from session entry.
+                                       stateParameters=State.get("ProdMgrInterface")['parameters']
+                                       # emit event and delete job from request level.
                                        # we do not keep track of a job queue (like with allocations), as 
                                        # jobs are managed by other (persistent) parts of the ProdAgent
-                                       #NOTE: we also need to update the allocations and set the one
-                                       #NOTE: associated to this job to active
-                                       self.sessionJobQueue.delJob(stateParameters['JobSpecID'])
+
+                                       # we retrieve the allocation id of this job from its id:
+                                       allocation_id=stateParameters['jobSpecId'].split('/')[1]+'/'+\
+                                           stateParameters['jobSpecId'].split('/')[3]
+                                       logging.debug("Activating allocation: "+allocation_id+" for job: "+\
+                                           stateParameters['jobSpecId'])
+                                       Allocation.setState('prodagentLevel',allocation_id,'active') 
+                                       Job.rm('requestLevel',stateParameters['jobSpecId'])
                                        self.ms.publish("CreateJob",stateParameters['targetFile']) 
-                                       self.jobQueue.delJob(stateParameters['JobSpecID'])
-                                       logging.debug("ProdMgrInterface state set to: downloadJobSpec")
+                                       # NOTE this commit needs to be done under the ProdMgrInterface session
+                                       # NOTE: not the default session
+                                       self.ms.commit()
+
                                        componentState="downloadJobSpec"
+                                       State.setState("ProdMgrInterface",componentState)
                                        stateParameters={'requestIndex':requestIndex}
+                                       State.setParameters("ProdMgrInterface",stateParameters)
+                                       Session.commit() 
+                                       logging.debug("ProdMgrInterface state set to: downloadJobSpec")
 
-                              
-                              logging.debug("ProdMgrInterface state set to: start")
-                              componentState="start"
-                              requestIndex+=1
-
+                      stateParameters=State.get("ProdMgrInterface")['parameters']
+                      Job.rm('requestLevel') 
+                      componentState="startAllocation"
+                      requestIndex=stateParameters['requestIndex']+1
+                      stateParameters={'requestIndex':requestIndex}
+                      State.setState("ProdMgrInterface",componentState)
+                      State.setParameters("ProdMgrInterface",stateParameters)
+                      Session.commit() 
+                      logging.debug("ProdMgrInterface state set to: "+componentState)
+                      
                   except Exception,ex:
-                      # a problem occured, see what error it is
-                      # and handle it.
-                      logging.debug("ERROR: "+str(ex))
-                      prodMgrBlackList[request['ProdMgrURL']]='off'
+                      # if an error occured here we assume it is something with connecting to a prodmgr.
+                      # the state has been recorded in the queue for later use
+                      logging.debug("A problem occured, most likeley while connecting to the prodmgr: "+str(ex))
+                      logging.debug("The state has been saved in a queue and appropiate action has been taken")
                       time.sleep(100)
+                      pass
 
-               logging.debug("ProdMgrInterface state set to: cleanup")
                componentState="cleanup"
+               State.setState("ProdMgrInterface",componentState)
+               stateParameters={}
+               State.setParameters("ProdMgrInterface",stateParameters)
+               logging.debug("ProdMgrInterface state set to: "+componentState)
+               Session.commit() 
 
             if componentState=="cleanup":
-                recover=False
-
-                # if we have suceeded until here we can remove the workQueues and sessionQueues
-                logging.debug("ResourcesAvailable Event was able to generate "+str(len(self.workAllocationQueue))+" Jobs")
-                del self.workAllocationQueue 
-
-                logging.debug("ProdMgrInterface state set to: start")
-                componentState="start"
-                stateParameters={'requestIndex':0}
-
+               Job.rm('requestLevel') 
+               Allocation.rm('requestLevel') 
+               Allocation.rm('messageLevel') 
+               componentState="start"
+               State.setState("ProdMgrInterface",componentState)
+               Session.commit() 
+               logging.debug("ProdMgrInterface state set to: "+componentState)
+               # set session back to default
+               Session.set_current("default")
         except Exception,ex:
-           # depending on the error we need to rollback things
-            rollback_all()
-#            logging.debug("HANDLE THIS BY LOOKING AT THE  ERROR CODE: "+str(ex.args[0].faultCode))
-            logging.debug("HANDLE THIS BY LOOKING AT THE  ERROR CODE: "+str(ex))
+            # depending on the error we need to rollback things
+            raise ProdAgentException(errors[3004]+' '+str(ex),3004)
 
 
     def addRequest(self, requestURL):
@@ -399,7 +431,6 @@ class ProdMgrComponent:
         Eg:
         https://cmsprodmgr.somehost.com?RequestID=1234&Priority=5
  
- 
         """
         #  //
         # // Parse the URL. 
@@ -410,8 +441,8 @@ class ProdMgrComponent:
             requestId=components[1].split("=")[1]
             priority=components[2].split("=")[1]
             logging.debug("Add request: "+requestId+" with priority "+priority+" for prodmgr: "+prodMgr)
-            self.priorityQueue.addRequest(requestId, prodMgr, priority)
-            logging.debug("Added request. There are now "+str(len(self.priorityQueue))+" requests in the queue ")
+            Request.insert(requestId,priority,prodMgr)
+            logging.debug("Added request. There are now "+str(Request.size())+" requests in the queue ")
         except Exception,ex:
             logging.debug("ERROR "+str(ex))
 
@@ -467,21 +498,26 @@ class ProdMgrComponent:
             
             # wait for messages
             while True:
-                # SESSION: the message service uses the default session
+                # SESSION: the message service uses the current session
+                Session.connect()
+                Session.start_transaction()
+
                 type, payload = self.ms.get()
                 logging.debug("Message type: "+str(type)+", payload: "+str(payload))
                 self.__call__(type, payload)
                 # we want to commit after the call has been sucessfuly completed
                 # as this message will tell us the state of the component when
                 # it crashed.
-                # SESSION: when the message service commits it uses the default session
-                # SESSION: all actions in between that use the default session are commited
-                # SESSION: or rolled back if necessary.
+
+                # SESSION: when the message service commits it uses the current session
+                # SESSION: this enables us to events and committing them without
+                # SESSION: committing the event that initiated the handler.
                 logging.debug("Committing Event "+str(type))
                 self.ms.commit()
+
                 # SESSION: commit and close remaining sessions
-                commit_all()
-                close_all()
+                Session.commit_all()
+                Session.close_all()
                 logging.debug("Finished handling event of type "+str(type))
         except Exception,ex:
             logging.debug("ERROR: "+str(ex))     
