@@ -39,12 +39,21 @@ def createJobSplitter(dataset, **dbsdlsContacts):
 
 
     blocks =  toolkit.listFileBlocksForDataset(dataset)
-
     events =  toolkit.getDatasetFiles(dataset)
 
+    
+    
     for block in blocks:
         blockName = block['blockName']
-        locations = toolkit.getFileBlockLocation(blockName)
+        try:
+            locations = toolkit.getFileBlockLocation(blockName)
+        except Exception, ex:
+            msg = "Unable to find DLS Locations for Block: %s\n" %  blockName
+            msg += str(ex)
+            msg += "\nSkipping import of this block..."
+            logging.warning(msg)
+            continue
+            
         newBlock = result.newFileblock(blockName, * locations)
         for fileEntry in block['fileList']:
             lfn = fileEntry['logicalFileName']
