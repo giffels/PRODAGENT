@@ -33,6 +33,7 @@ class FwkJobReport:
         self.exitCode = 0
         self.siteDetails = {}
         self.timing = {}
+        self.storageStatistics = None
 
     def wasSuccess(self):
         """
@@ -184,6 +185,14 @@ class FwkJobReport:
         result.addNode(timing)
         for key, value in self.timing.items():
             timing.addNode(IMProvNode(key, None, Value=str(value) ))
+
+        #  //
+        # // Save Storage Statistics
+        #//
+        if self.storageStatistics != None:
+            result.addNode(
+                IMProvNode("StorageStatistics", self.storageStatistics))
+            
         
         return result
 

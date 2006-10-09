@@ -70,6 +70,7 @@ class FwkJobRepHandler(ContentHandler):
             "SiteDetail" : self.siteDetail,
             "FrameworkError" : self.frameworkError,
             "TimingService" : self.timingService,
+            "StorageStatistics" : self.noResponse,
             }
 
         #  //
@@ -93,6 +94,7 @@ class FwkJobRepHandler(ContentHandler):
             "SiteDetail" : self.noResponse,
             "FrameworkError" : self.endFrameworkError,
             "TimingService" : self.endTimingService,
+            "StorageStatistics" : self.storageStatistics,
             }
 
     def noResponse(self, name, attrs = {}):
@@ -418,7 +420,17 @@ class FwkJobRepHandler(ContentHandler):
         self.currentDict = None
         return
     
-    
+    def storageStatistics(self, name):
+        """
+        _storageStatistics_
+
+        Big blob of chardata...
+
+        """
+        if self.currentReport == None:
+            return
+        self.currentReport.storageStatistics = str(self._CharCache)
+        return
         
 def readJobReport(filename):
     """
