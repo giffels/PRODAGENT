@@ -104,7 +104,7 @@ def populateCMSRunNode(payloadNode, nodeName, version, pyCfgFile, hashValue,
         #//
         tierList = splitMultiTier(outModName)
         for dataTier in tierList:
-            processedDS = "%s-%s-%s" % (
+            processedDS = "%s-%s-%s-unmerged" % (
                 payloadNode.application['Version'], outModName, timestamp)
             outDS = payloadNode.addOutputDataset(prodName,
                                             processedDS,
