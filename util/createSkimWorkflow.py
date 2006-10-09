@@ -333,7 +333,7 @@ for outModName, val in cfgInt.outputModules.items():
 
     tierList = splitMultiTier(outModName)    
     for outDataTier in tierList:
-        processedDS = "%s-%s-%s" % (
+        processedDS = "%s-%s-%s-unmerged" % (
             cmsRun.application['Version'], outModName, timestamp)
         if samePrimaryDataset:
             outDS = cmsRun.addOutputDataset(primaryDataset,
