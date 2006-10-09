@@ -91,4 +91,54 @@ class OutputModule:
     def __str__(self):
         return str(self.data)
     
+
+
+    def datasets(self):
+        """
+        _datasets_
+
+        Extract a list of datasets from this module based on the
+        contents of a dataset PSet if it exists.
+
+        The return value is a list of dictionaries containing dataset
+        information. 
+
+        """
+        result = []
+        if not self.data.has_key("datasets"):
+            return result
+        for dsEntry in self.data['datasets'][2].keys():
+            content = self.data['datasets'][2][dsEntry][2]
+            output = {}
+        
+            for key, value in content.items():
+                output[key] = value[2].replace("\"", "")
+            result.append(output)
+
+        return result
+        
+        
+    def addDataset(self, entryName, **datasetParams):
+        """
+        _addDataset_
+
+        Add Dataset information to this cfg file. Each key, value pair
+        provided in dataset Params is added as an untracked string to
+        the datasets PSet in a PSet named entryName
+
+        """
+        if not self.data.has_key("datasets"):
+            self.data['datasets'] = ('PSet', 'untracked', {})
+
+        if not self.data['datasets'][2].has_key(entryName):
+            self.data['datasets'][2][entryName] = ('PSet', 'untracked', {})
+        datasetDict = self.data['datasets'][2][entryName][2]
+
+        for key, value in datasetParams.items():
+            datasetDict[key] = ('string', 'untracked', '\"%s\"' % value)
+
+        return
     
+            
+        
+
