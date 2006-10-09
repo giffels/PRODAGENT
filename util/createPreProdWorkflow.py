@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: createPreProdWorkflow.py,v 1.4 2006/07/17 14:23:04 evansde Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: createPreProdWorkflow.py,v 1.5 2006/10/06 16:14:37 evansde Exp $"
 
 
 import os
@@ -172,7 +172,7 @@ for outModName, val in cfgInt.outputModules.items():
 
     tierList = splitMultiTier(outModName)    
     for dataTier in tierList:
-        processedDS = "%s-%s-%s" % (
+        processedDS = "%s-%s-%s-unmerged" % (
             cmsRun.application['Version'], outModName, timestamp)
         outDS = cmsRun.addOutputDataset(prodName, 
                                         processedDS,

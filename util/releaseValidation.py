@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: releaseValidation.py,v 1.5 2006/07/18 17:57:20 evansde Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: releaseValidation.py,v 1.6 2006/10/02 18:07:23 evansde Exp $"
 
 
 import os
@@ -298,7 +298,7 @@ for relTest in relValSpec:
 
         tierList = splitMultiTier(outModName)    
         for dataTier in tierList:
-            processedDS = "%s-%s-%s" % (
+            processedDS = "%s-%s-%s-unmerged" % (
                 cmsRun.application['Version'], outModName, timestamp)
             outDS = cmsRun.addOutputDataset(prodName, 
                                             processedDS,
