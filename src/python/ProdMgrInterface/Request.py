@@ -23,10 +23,9 @@ def getUrl(request_id):
 
 def getHighestPriority(index=0):
     sqlStr='SELECT id,url,priority FROM pm_request ORDER by priority;'
-    logging.debug("test123 "+sqlStr+' '+str(index))
     Session.execute(sqlStr)
     rows=Session.fetchall()
-    if len(rows)==0:
+    if index>(len(rows)-1):
         return {}
     return {'id':rows[index][0],'url':rows[index][1],'priority':rows[index][2]}
 

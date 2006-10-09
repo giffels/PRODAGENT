@@ -73,8 +73,6 @@ def logCall(serverUrl,method_name,args,componentID="defaultComponent",tag="0"):
        conn=connect(False)
        dbCur=conn.cursor()
        dbCur.execute("START TRANSACTION")
-       # NOTE: this should be done differently, we do this to keep the log
-       # NOTE: unqiue
        sqlStr="""INSERT INTO ws_last_call(server_url,component_id,service_call,service_parameters,call_state,tag)
            VALUES("%s","%s","%s","%s","%s","%s") ON DUPLICATE KEY UPDATE
            service_parameters="%s", call_state="%s", tag="%s";
