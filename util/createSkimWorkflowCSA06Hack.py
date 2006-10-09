@@ -342,7 +342,7 @@ for outModName, val in cfgInt.outputModules.items():
         outDS = cmsRun.addOutputDataset(prodName, 
                                         processedDS,
                                         outModName)
-    outDS['DataTier'] = outModName
+    outDS['DataTier'] = dataTier
     outDS["ApplicationName"] = cmsRun.application["Executable"]
     outDS["ApplicationProject"] = cmsRun.application["Project"]
     outDS["ApplicationVersion"] = cmsRun.application["Version"]
