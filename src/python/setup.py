@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.21 2006/09/26 19:07:11 evansde Exp $"
+__revision__ = "$Id: setup.py,v 1.22 2006/09/28 11:16:16 bacchi Exp $"
 
 from distutils.core import setup
 
@@ -46,11 +46,11 @@ packages = [
     'ProdAgentDB',
     'ProdAgentCore',
     'ProdMgrInterface',
+    'ProdMgrInterface.States',
     'PhEDExInterface',
     'RequestInjector',
     'RunRes',
     'SeedGen',
-    'ProdMgrInterface',
     'ShLogger',
     'ShLogger.log_adapters',
     'ShREEK',
