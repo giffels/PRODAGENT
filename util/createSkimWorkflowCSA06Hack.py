@@ -346,7 +346,7 @@ for outModName, val in cfgInt.outputModules.items():
     outDS["ApplicationName"] = cmsRun.application["Executable"]
     outDS["ApplicationProject"] = cmsRun.application["Project"]
     outDS["ApplicationVersion"] = cmsRun.application["Version"]
-    outDS["ApplicationFamily"] = dataTier
+    outDS["ApplicationFamily"] = "Skimming"
     outDS['PSetHash'] = PSetHash
     datasetList.append(outDS.name())
 
