@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.15 2006/09/01 12:57:02 ckavka Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: Dataset.py,v 1.16 2006/09/05 09:04:19 ckavka Exp $"
+__version__ = "$Revision: 1.16 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -20,9 +20,6 @@ from MergeSensor.MergeSensorError import MergeSensorError, \
                                          MergeSensorDBError, \
                                          InvalidDataset, \
                                          NonMergeableDataset
-
-# workflow specifications
-from MCPayloads.WorkflowSpec import WorkflowSpec
 
 ##############################################################################
 # Dataset class
@@ -56,7 +53,7 @@ class Dataset:
     # Dataset initialization
     ##########################################################################
 
-    def __init__(self, info, fromFile = False):
+    def __init__(self, info, outputModule = None, fromFile = False):
         """
 
         Initialize a Dataset. 
@@ -67,7 +64,8 @@ class Dataset:
          
         Arguments:
             
-          info -- the workflow specification file or the dataset name
+          info -- the workflow specification or the dataset name
+          outputModule -- the output module name
           fromFile -- indicates if initialization is from a workflow
                       file or from the database
 
@@ -92,26 +90,22 @@ class Dataset:
                 
             # dataset loaded
             return 
-        
-        # it is a new dataset, read the WorkflowSpecFile
+                        
         try:
-            wfile = WorkflowSpec()
-            wfile.load(info)
-
-        # wrong dataset file
-        except Exception, msg:
-            raise InvalidDataset, \
-                  "Error loading workflow specifications from %s" % info
-
-        # get output datasets
-        try:
-            outputDatasetsList = wfile.outputDatasets()
             
+            # get output datasets
+            outputDatasetsList = info.outputDatasets()
+
+            # select the ones associated to the current output module
+            datasetsToProcess = [ outDS \
+                                  for outDS in outputDatasetsList \
+                                  if outDS['OutputModuleName'] == outputModule]
+
             # the first one
-            outputDataset = outputDatasetsList[0]
+            outputDataset = datasetsToProcess[0]
             
             # the others
-            others = outputDatasetsList[1:]
+            others = datasetsToProcess[1:]
             secondaryOutputTiers = [outDS['DataTier'] for outDS in others]
             
         except (IndexError, KeyError):
@@ -134,8 +128,8 @@ class Dataset:
 
         # verify if valid
         if not self.validDataTier(dataTier):
-            raise InvalidDataTier( \
-              "MergeSensor exception: invalid DataTier %s" % dataTier)
+            self.logging.info( \
+              "Not valid dataTier %s, continuing..." % dataTier)
          
         # get poll datatier
         pollTier = dataTier.split("-")[0]
@@ -158,14 +152,14 @@ class Dataset:
         
         # get Merged LFN base
         try:
-            mergedLFNBase = wfile.parameters['MergedLFNBase']
+            mergedLFNBase = info.parameters['MergedLFNBase']
         except KeyError:
             mergedLFNBase = ''
             
         # get workflow name, category and time stamp
-        workflowName = wfile.workflowName()
-        category = wfile.requestCategory()
-        timeStamp = wfile.requestTimestamp()
+        workflowName = info.workflowName()
+        category = info.requestCategory()
+        timeStamp = info.requestTimestamp()
         
         # get application version
         try:
