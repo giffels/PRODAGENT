@@ -250,12 +250,9 @@ pycfgFile = WorkflowTools.createPythonConfig(cfgFile)
 # // Generate PSet Hash
 #//
 
-if not fakePSetHash:
-    PSetHash = WorkflowTools.createPSetHash(cfgFile)
-else:
-    PSetHash = MCPayloadsUUID.uuidgen()
-    if PSetHash == None:
-        PSetHash = MCPayloadsUUDI.uuid()
+
+RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
+
         
 
 #  //
@@ -316,17 +313,27 @@ for outModName, val in cfgInt.outputModules.items():
         PSetHash = MCPayloadsUUID.uuidgen()
         if PSetHash == None:
             PSetHash = MCPayloadsUUID.uuid()
+        PSetHash = "hash=%s;guid=%s" % (RealPSetHash, PSetHash)
+    else:
+        PSetHash = RealPSetHash
         
-
-    processedDS = "%s-%s-%s" % (
+    processedDS = "%s-%s-%s-unmerged" % (
         cmsRun.application['Version'], outModName, timestamp)
     
 
     if val.data.has_key("filterName"):
         filterName = val.data['filterName'][2]
         filterName = filterName.replace("\"", "")
-        processedDS = "%s-%s" % (cmsRun.application['Version'], filterName)
+
+        processedDS = "%s-%s-%s-unmerged" % (
+            cmsRun.application['Version'], filterName, timestamp)
         
+    if val.data.has_key("dataTier"):
+        dataTier = val.data['dataTier'][2]
+        dataTier = dataTier.replace("\"", "")
+    else:
+        dataTier = outModName
+    
     if samePrimaryDataset:
         outDS = cmsRun.addOutputDataset(primaryDataset,
                                         processedDS,
@@ -339,7 +346,7 @@ for outModName, val in cfgInt.outputModules.items():
     outDS["ApplicationName"] = cmsRun.application["Executable"]
     outDS["ApplicationProject"] = cmsRun.application["Project"]
     outDS["ApplicationVersion"] = cmsRun.application["Version"]
-    outDS["ApplicationFamily"] = outModName
+    outDS["ApplicationFamily"] = dataTier
     outDS['PSetHash'] = PSetHash
     datasetList.append(outDS.name())
 
