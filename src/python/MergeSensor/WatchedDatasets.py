@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.6 2006/09/01 12:57:23 ckavka Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.7 2006/09/05 09:03:53 ckavka Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
@@ -16,6 +16,9 @@ from MergeSensor.Dataset import Dataset
 from MergeSensor.MergeSensorError import MergeSensorError, \
                                          InvalidDataset, \
                                          NonMergeableDataset
+
+# workflow specifications
+from MCPayloads.WorkflowSpec import WorkflowSpec
 
 ##############################################################################
 # WatchedDatasets class
@@ -125,30 +128,63 @@ class WatchedDatasets:
 
         """
 
-        # create a new dataset
+        # read the WorkflowSpecFile
         try:
-            dataset = Dataset(workflowFile, fromFile = True)
-        except InvalidDataset, message:
-            self.logging.error(message)
-            return None
-        except NonMergeableDataset, message:
-            self.logging.info(message)
-            return None
-            
-        # get dataset name
-        datasetId = dataset.getName()
-        
-        # check: dataset should not exist, ignore if it is registered
-        if datasetId in self.datasets.keys():
-            self.logging.info("Ignoring workflow %s, is currently watched" % \
-                              workflowFile)
-            return None
+            wfile = WorkflowSpec()
+            wfile.load(workflowFile)
 
-        # add it
-        self.datasets[datasetId] = dataset
+        # wrong dataset file
+        except Exception, msg:
+            raise InvalidDataset, \
+                  "Error loading workflow specifications from %s" % workflowFile
+
+        # get output modules
+        try:
+            outputDatasetsList = wfile.outputDatasets()
+            
+            outputModules = [outDS['OutputModuleName'] \
+                             for outDS in outputDatasetsList]
+            
+            # remove duplicates
+            outputModulesList = {}
+            for module in outputModules:
+                outputModulesList[module] = module
+            outputModulesList = outputModulesList.values()
+            
+        except (IndexError, KeyError):
+            raise MergeSensorError( \
+                    "MergeSensor exception: wrong output dataset specification")
+
+        # list of watched datasets
+        datasetIdList = []
         
-        # return its name
-        return datasetId
+        # create a dataset instances for each output module
+        for outputModule in outputModulesList:
+            
+            try:
+                dataset = Dataset(wfile, outputModule=outputModule, fromFile = True)
+            except InvalidDataset, message:
+                self.logging.error(message)
+                continue
+            except NonMergeableDataset, message:
+                self.logging.info(message)
+                continue
+            
+            # get dataset name
+            datasetId = dataset.getName()
+        
+            # check: dataset should not exist, ignore if it is registered
+            if datasetId in self.datasets.keys():
+                self.logging.info("Ignoring workflow %s, is currently watched" % \
+                                  workflowFile)
+                continue
+
+            # add it
+            self.datasets[datasetId] = dataset
+            datasetIdList.append(datasetId)
+            
+        # return list of added datasets
+        return datasetIdList
         
     ##########################################################################
     # remove a dataset
