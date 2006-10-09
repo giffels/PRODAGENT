@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.31 2006/09/28 13:37:10 ckavka Exp $"
+__version__ = "$Revision: 1.31 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -20,7 +20,8 @@ import sys
 from MergeSensor.WatchedDatasets import WatchedDatasets
 from MergeSensor.MergeSensorError import MergeSensorError, \
                                          InvalidDataTier, \
-                                         MergeSensorDBError
+                                         MergeSensorDBError, \
+                                         InvalidDataset
 from MessageService.MessageService import MessageService
 from MergeSensor.Dataset import Dataset
 from MergeSensor.MergeSensorDB import MergeSensorDB
@@ -369,8 +370,8 @@ class MergeSensorComponent:
                                                                                 
         # add info
         try:
-            datasetId = self.datasets.add(workflowFile)
-        except (InvalidDataTier, MergeSensorError), ex:
+            datasetIdList = self.datasets.add(workflowFile)
+        except (InvalidDataTier, MergeSensorError, InvalidDataset), ex:
             self.cond.release()
             logging.error(ex)
             return
@@ -379,34 +380,35 @@ class MergeSensorComponent:
         self.cond.release()
                                                                                 
         # ignore not accepted datasets, logging messages already displayed
-        if datasetId is None:
+        if datasetIdList == []:
             return
         
         # log information
-        logging.info("New Dataset %s" % datasetId)
+        logging.info("New Datasets: %s" % datasetIdList)
 
-        # create workflow specification for new dataset
+        # create workflow specification for new datasets
         spec = WorkflowSpec()
                                                                                 
         # critical region start
         self.cond.acquire()
                                                                                 
-        # get parameters from source dataset
-        properties = self.datasets.getProperties(datasetId)
+        # get parameters from source datasets
+        properties = {}
+        for datasetId in datasetIdList:
+            properties[datasetId] = self.datasets.getProperties(datasetId)
         
         # critical region end
         self.cond.release()
                                                                                 
-        # get dataset info
-        primary = properties["primaryDataset"]
-        processed = properties["processedDataset"]
-        tier = properties["dataTier"]
-        workflowName = properties["workflowName"]
-        category = properties["category"]
-        version = properties["version"]
-        timeStamp = properties["timeStamp"]
-        psethash = properties["PSetHash"]
-        secondaryOutputTiers = properties["secondaryOutputTiers"]
+        # get common dataset info from first dataset
+        firstDatasetId = datasetIdList[0]
+        
+        primary = properties[firstDatasetId]["primaryDataset"]
+        workflowName = properties[firstDatasetId]["workflowName"]
+        category = properties[firstDatasetId]["category"]
+        version = properties[firstDatasetId]["version"]
+        timeStamp = properties[firstDatasetId]["timeStamp"]
+        psethash = properties[firstDatasetId]["PSetHash"]
                                                  
         # set workflow values
         spec.setWorkflowName(workflowName)
@@ -424,29 +426,38 @@ class MergeSensorComponent:
         dummyTask.application["Architecture"] = "slc3_ia32_gcc323"
         dummyTask.application["Executable"] = "cmsRun"
                                                                                 
-        # define output dataset
-        out = dummyTask.addOutputDataset(primary, processed + "-merged", \
-                                         "Merged")
-        # define output dataset properties
-        out["DataTier"] = tier
-        out["ApplicationName"] = dummyTask.application["Executable"]
-        out["ApplicationProject"] = dummyTask.application["Project"]
-        out["ApplicationVersion"] = dummyTask.application["Version"]
-        out["ApplicationFamily"] = "Merged"
-        out["PSetHash"] = psethash;
+        # define output datasets
+        for datasetId in datasetIdList:
+        
+            # get information about dataset
+            processed = properties[datasetId]["processedDataset"]
+            tier = properties[datasetId]["dataTier"]
+            secondaryOutputTiers = properties[datasetId]["secondaryOutputTiers"]
 
-        # add secondary output datasets
-        for outDS in secondaryOutputTiers:
+            # create output dataset
             out = dummyTask.addOutputDataset(primary, processed + "-merged", \
-                                             "Merged")
-
+                                         "Merged")
+            
             # define output dataset properties
-            out["DataTier"] = outDS
+            out["DataTier"] = tier
             out["ApplicationName"] = dummyTask.application["Executable"]
             out["ApplicationProject"] = dummyTask.application["Project"]
             out["ApplicationVersion"] = dummyTask.application["Version"]
             out["ApplicationFamily"] = "Merged"
-            out["PSetHash"] = psethash; 
+            out["PSetHash"] = psethash;
+
+            # add secondary output datasets
+            for outDS in secondaryOutputTiers:
+                out = dummyTask.addOutputDataset(primary, processed + "-merged", \
+                                                 "Merged")
+
+                # define output dataset properties
+                out["DataTier"] = outDS
+                out["ApplicationName"] = dummyTask.application["Executable"]
+                out["ApplicationProject"] = dummyTask.application["Project"]
+                out["ApplicationVersion"] = dummyTask.application["Version"]
+                out["ApplicationFamily"] = "Merged"
+                out["PSetHash"] = psethash; 
            
         # set empty configuration
         dummyTask.configuration = ""
