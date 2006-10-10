@@ -22,6 +22,16 @@ from DatasetInjector.SplitterMaker import createJobSplitter
 import DatasetInjector.DatasetInjectorDB as DatabaseAPI
 
 
+class FilterSites:
+    """
+    Functor for filtering site lists
+    """
+    def __init__(self, allowed):
+        self.allowed = allowed
+    def __call__(self, object):
+        return object in self.allowed
+
+
 class DatasetIterator:
     """
     _DatasetIterator_
@@ -277,10 +287,19 @@ class DatasetIterator:
                         siteOK = True
                 if not siteOK:
                     msg = "Fileblock not at allowed site: %s\n" % block
-                    msg += "Sites : %s\n" %  blockInstance.seNames
+                    msg += "@Sites : %s\n" %  blockInstance.seNames
+                    msg += "Allowed Sites: %s\n" % self.allowedSites
                     msg += "This block will not be imported"
                     logging.info(msg)
                     continue
+                #  //
+                # // Filter seNames so that only requested sites
+                #//   are included
+                blockInstance.seNames = filter(
+                    FilterSites(self.allowedSites),
+                    blockInstance.seNames
+                    )
+                
             
             #  //
             # // Check for empty file blocks
