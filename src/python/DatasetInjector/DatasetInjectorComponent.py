@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.4 2006/09/29 18:10:59 evansde Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.5 2006/10/05 18:22:40 evansde Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -177,6 +177,7 @@ class DatasetInjectorComponent:
             try:
                 newIterator = DatasetIterator(pathname,
                                               self.args['ComponentDir'] )
+                newIterator.load(self.args['WorkflowCache'])
             except Exception, ex:
                 msg = "ERROR: Unable to Instantiate a DatasetIterator\n"
                 msg += "For file:\n%s\n" % pathname
@@ -184,6 +185,16 @@ class DatasetInjectorComponent:
                 logging.error(msg)
                 continue
             self.iterators[item] = newIterator
+
+        currWorkflow = os.path.join(self.args['WorkflowCache'],
+                                    "current.workflow")
+        if os.path.exists(currWorkflow):
+            content = file(currWorkflow).read()
+            content = content.strip()
+            logging.debug(
+                "Current Workflow File exists: Contents: %s" % content)
+            self.selectWorkflow(content)
+            
         return
     
             
@@ -202,6 +213,11 @@ class DatasetInjectorComponent:
             self.iterator = None
             return
         self.iterator = self.iterators[payload]
+        currWorkflow = os.path.join(self.args['WorkflowCache'],
+                                    "current.workflow")
+        handle = open(currWorkflow, 'w')
+        handle.write(payload)
+        handle.close()
         logging.debug("Iterator set to: %s" % payload)
         return
         
@@ -290,8 +306,11 @@ class DatasetInjectorComponent:
             logging.debug("Publishing CreateJob: %s" % jobSpec)
             self.ms.publish("CreateJob", jobSpec)
             self.ms.commit()
-            
-        
+
+        #  //
+        # // Save current run
+        #//
+        self.iterator.save(self.args['WorkflowCache'])
         
         return
         

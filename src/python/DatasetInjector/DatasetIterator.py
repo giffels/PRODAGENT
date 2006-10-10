@@ -424,7 +424,16 @@ class DatasetIterator:
         the basename of the workflow file
 
         """
-      
+        workflowName =  self.workflowSpec.workflowName()
+        fileBase = os.path.join(directory, workflowName)
+
+        runFile = "%s.count" % fileBase
+        
+        handle = open(runFile, 'w')
+        handle.write(str(self.count))
+        handle.close()
+        
+        
         return
 
 
@@ -437,7 +446,31 @@ class DatasetIterator:
         settings
 
         """
+        workflowName =  self.workflowSpec.workflowName()
+        fileBase = os.path.join(directory, workflowName)
+        runFile = "%s.count" % fileBase
+
+        runContent = readStringFromFile(runFile)
+        logging.debug("Loaded Run number for workflow: %s" % runContent)
+        if runContent != None:
+            self.count = int(runContent)
+        
         return
+    
+
+def readStringFromFile(filename):
+    """
+    _readStringFromFile_
+
+    util to extract file content as a string
+
+    """
+    if not os.path.exists(filename):
+        return None
+    content = file(filename).read()
+    content = content.strip()
+    return content
+
         
         
                                          
