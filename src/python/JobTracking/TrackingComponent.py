@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.30 2006/09/29 12:07:51 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.31 2006/10/06 14:43:18 bacchi Exp $"
 
 import socket
 import time
@@ -440,6 +440,7 @@ class TrackingComponent:
         if os.path.exists(dashboardInfoFile):
             dashboardInfo = DashboardInfo()
             dashboardInfo.read(dashboardInfoFile)
+            gridJobId=dashboardInfo['GridJobID']
             dashboardInfo.clear()
             logging.debug("dashboardInfoJob=%s"%dashboardInfo.job)
             logging.debug("retrieving scheduler")
@@ -454,6 +455,7 @@ class TrackingComponent:
                 dashboardInfo['StatusValueReason']=schedulerI['STATUS_REASON'].replace('-',' ')
                 dashboardInfo['StatusDestination']=schedulerI['DEST_CE']+"/"+schedulerI['DEST_QUEUE']
                 dashboardInfo['SubTimeStamp']=time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(float(schedulerI['SUBMITTED'])))
+                dashboardInfo['GridJobID']=gridJobId
             
                 logging.debug("dashboardinfo%s"%dashboardInfo.__str__())
 

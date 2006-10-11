@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.18 2006/09/28 13:58:25 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.19 2006/10/06 10:12:56 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -219,7 +219,7 @@ class LCGSubmitter(SubmitterInterface):
         dashboardInfo['TargetCE'] = self.listToString(self.parameters['Whitelist'])
         dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
          
-        dashboardInfo.job=dashboardInfo.job+"_"+jobGridId
+        # dashboardInfo.job=dashboardInfo.job+"_"+jobGridId
         dashboardInfo['Scheduler']='LCG'
         dashboardInfo['GridJobID']=jobGridId
         dashboardInfo['RBname']=rbName
@@ -293,7 +293,7 @@ class LCGSubmitter(SubmitterInterface):
         requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) %s;\n'%(user_requirements,swversion,anyMatchrequirements)
         logging.debug('%s'%requirements)
         declareClad.write(requirements)
-          
+        declareClad.write("Environment = {\"PRODAGENT_DASHBOARD_ID=%s\"};\n"%self.parameters['DashboardID'])
         declareClad.write("VirtualOrganisation = \"cms\";\n")
 
         ## change the RB according to user provided RB configuration files
