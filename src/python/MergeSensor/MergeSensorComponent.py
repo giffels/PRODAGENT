@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.31 2006/09/28 13:37:10 ckavka Exp $"
-__version__ = "$Revision: 1.31 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.32 2006/10/09 08:18:48 ckavka Exp $"
+__version__ = "$Revision: 1.32 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -30,6 +30,7 @@ from MergeSensor.MergeSensorDB import MergeSensorDB
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
 from CMSConfigTools.CfgInterface import CfgInterface
+from CMSConfigTools.cmsconfig import cmsconfig
 
 # DBS CGI API
 from dbsCgiApi import DbsCgiApi
@@ -365,7 +366,13 @@ class MergeSensorComponent:
           
         """
        
-        # critical region start
+        # do not merge merged datasets
+        if workflowFile.endswith("-merge.xml"):
+            logging.info("Ignoring workflow file %s, it is a merged dataset" \
+                         % workflowFile)
+            return
+        
+         # critical region start
         self.cond.acquire()
                                                                                 
         # add info
@@ -985,11 +992,15 @@ class MergeSensorComponent:
             
             # dataset name
             dataset = Dataset.getNameComponents(datasetPath)
+
+            # target dataset
+            targetDatasetPath = properties['targetDatasetPath']
+            targetDataset = Dataset.getNameComponents(targetDatasetPath)
             
             # build workflow and job specifications
             jobSpecFile = self.buildWorkflowSpecFile(jobId,
-                                   selectedSet, dataset, outFile,
-                                   fileBlockId, properties, seList)
+                                   selectedSet, dataset, targetDataset,
+                                   outFile, fileBlockId, properties, seList)
 
             # publish CreateJob event
             self.publishCreateJob(jobSpecFile)
@@ -998,11 +1009,11 @@ class MergeSensorComponent:
             logging.info("Merge job started:")
             logging.info("  input dataset:  %s files: %s" % \
                       (datasetPath, str(selectedSet)))
-            logging.info("  output dataset: /%s/%s/%s-merged file: %s" % \
-                      (dataset[0],dataTier,dataset[2],outFile))
+            logging.info("  output dataset: %s file: %s" % \
+                      (targetDatasetPath, outFile))
             for secondaryTier in secondaryOutputTiers:
-                logging.info("  output dataset: /%s/%s/%s-merged file: %s" % \
-                          (dataset[0],secondaryTier,dataset[2],outFile))
+                logging.info("  output dataset: %s file: %s" % \
+                          (targetDatasetPath,outFile))
 
             # update dataset status
             newStatus = {}
@@ -1059,7 +1070,7 @@ class MergeSensorComponent:
     # build the merge job specification file
     ##########################################################################
 
-    def buildWorkflowSpecFile(self, jobId, fileList, dataset,
+    def buildWorkflowSpecFile(self, jobId, fileList, dataset, targetDataset,
                               outputFile, fileBlockId, properties,
                               seList):
         """
@@ -1075,6 +1086,7 @@ class MergeSensorComponent:
           jobId -- the name of the job
           fileList -- the list of files to be merged
           dataset -- the name of the dataset
+          targetDataset -- the target dataset name
           outputFile -- the name of the merged file
           fileBlockId -- the file block id
           properties -- dataset properties
@@ -1124,22 +1136,34 @@ class MergeSensorComponent:
         inputDataset["DataTier"] = pollTier         
         
         # output dataset (primary, processed, module name, tier)
-        outputDataset = cmsRun.addOutputDataset(dataset[0], \
-                                                dataset[2]+"-merged", \
+        outputDataset = cmsRun.addOutputDataset(targetDataset[0], \
+                                                targetDataset[2], \
                                                 "Merged")
         outputDataset["DataTier"] = tier
         outputDataset["PSetHash"] = psethash
 
         # add secondary output datasets
         for outDS in secondaryOutputTiers:
-            outputDataset = cmsRun.addOutputDataset(dataset[0],
-                                                    dataset[2]+"-merged", \
+            outputDataset = cmsRun.addOutputDataset(targetDataset[0],
+                                                    targetDataset[2], \
                                                    "Merged")
             outputDataset["DataTier"] = outDS
             outputDataset["PSetHash"] = psethash
            
+        # define process name as MERGE+timestamp
+        processName = "MERGE-" + str(time.time())
+        
+        try:
+            workflowDict = eval(self.mergeWorkflow)
+            workflowDict['procname'] = processName
+            workflowString = workflowDict.__str__()
+        except Exception, ex:
+            logging.error("Cannot update configuration for merge jobs: %s" \
+                          %  ex)
+            raise
+        
         # get PSet
-        cfg = CfgInterface(self.mergeWorkflow, True)
+        cfg = CfgInterface(workflowString, True)
         
         # set output module
         outModule = cfg.outputModules['Merged']
