@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.16 2006/09/05 09:04:19 ckavka Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: Dataset.py,v 1.17 2006/10/09 08:20:13 ckavka Exp $"
+__version__ = "$Revision: 1.17 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -88,6 +88,24 @@ class Dataset:
                     "Cannot initialize dataset %s from database (%s)" % \
                     (info, msg))
                 
+            # compute target dataset path
+            primaryDataset = self.data['primaryDataset']
+            processedDataset = self.data['processedDataset']
+            dataTier = self.data['dataTier']
+            
+            if processedDataset.endswith('-unmerged'):
+                targetDatasetPath = "/" + primaryDataset + "/" + \
+                                    dataTier + "/" + \
+                                    str.replace(processedDataset,'-unmerged','')
+            else:
+                targetDatasetPath = "/" + primaryDataset + "/" + \
+                                    dataTier + "/" + \
+                                    processedDataset + '-merged'
+                                    
+            self.data['targetDatasetPath'] = targetDatasetPath
+            
+            print 'targetDatasetPath: ', targetDatasetPath
+                                    
             # dataset loaded
             return 
                         
@@ -174,15 +192,23 @@ class Dataset:
             psethash = "12345678901234567890"
 
         # initialize it
-        #date = time.asctime(time.localtime(time.time()))
         date = time.strftime('%Y-%m-%d %H:%M:%S')
         
+        # define target dataset path
+        if processedDataset.endswith('-unmerged'):
+            targetDatasetPath = "/" + primaryDataset + "/" + dataTier + "/" + \
+                                str.replace(processedDataset,'-unmerged','')
+        else:
+            targetDatasetPath = "/" + primaryDataset + "/" + dataTier + "/" + \
+                                processedDataset + '-merged'
+                                
         self.data = {'name' : name,
                      'primaryDataset' : primaryDataset,
                      'dataTier' : dataTier,
                      'pollTier' : pollTier,
                      'secondaryOutputTiers' : secondaryOutputTiers,
                      'processedDataset' : processedDataset,
+                     'targetDatasetPath' : targetDatasetPath,
                      'PSetHash' : psethash,
                      'version' : version,
                      'workflowName' : workflowName,
