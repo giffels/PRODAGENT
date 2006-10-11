@@ -46,16 +46,19 @@ argsDict = {"DBSAddress" : None,
             "ComponentDir" : os.getcwd(),
             "PollInterval" : 30,
             "StartMode" : 'warm',
-            "MergeFileSize" : 2000000000,
+            "MaxMergeFileSize" : 2000000000,
+            "MinMergeFileSize" : 1500000000,
             "MergeSiteBlacklist" : "",
             "MergeSiteWhitelist" : "",
             "FastMerge" : "No"
             }
 
 # options
-valid = ['DBSAddress=', 'DBSType=', 'ComponentDir=', 'MergeFileSize=',
-         'PollInterval=', 'StartMode=', 'DLSType=', 'DLSAddress=',
-         'MergeSiteBlacklist=', 'MergeSiteWhitelist=', 'FastMerge=']
+valid = ['DBSAddress=', 'DBSType=', 'ComponentDir=', 'MaxMergeFileSize=',
+         'MinMergeFileSize=', 'PollInterval=', 'StartMode=', 'DLSType=',
+         'DLSAddress=', 'MergeSiteBlacklist=', 'MergeSiteWhitelist=',
+         'FastMerge='
+         ]
 
 # get options
 try:

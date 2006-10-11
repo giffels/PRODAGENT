@@ -177,7 +177,8 @@ componentFields = {
     "ComponentDir" : None,
     "StartMode" : "warm",
     "PollInterval": 30,
-    "MergeFileSize" : 1000000000,
+    "MaxMergeFileSize" : 2000000000,
+    "MinMergeFileSize" : 1500000000,
     "MergeSiteWhitelist" : None,
     "MergeSiteBlacklist" : None,
     "FastMerge": "no"
