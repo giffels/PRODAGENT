@@ -841,6 +841,7 @@ class MergeSensorDB:
                       WHERE dataset='""" + str(datasetId) + """'
                         AND block='""" + str(block['block'])  + """'
                         AND status='unmerged'
+                   ORDER BY filesize
                      """
                        
             # execute command
