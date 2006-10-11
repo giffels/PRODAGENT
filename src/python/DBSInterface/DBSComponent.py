@@ -541,7 +541,11 @@ class DBSComponent:
         fileBlock = self.dbsinfo.addFileBlock(fileinfo,datasetPath)
         if fileBlock is not None :
          ## add the fileblock-SE entry to DLS
-         dlsinfo.addEntryinDLS(fileBlock.get('blockName'),SEname)        
+         try:
+           dlsinfo.addEntryinDLS(fileBlock.get('blockName'),SEname)        
+         except:
+           return None
+
         return fileBlock
 
 

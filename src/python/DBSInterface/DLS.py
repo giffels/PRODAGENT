@@ -14,6 +14,26 @@ import dlsClient
 from dlsDataObjects import *
 
 import logging
+
+# ##############
+class addDLSError(exceptions.Exception):
+  def __init__(self,errmsg):
+   args= errmsg
+   exceptions.Exception.__init__(self, args)
+   pass
+                                                                                
+                                                                                
+  def getClassName(self):
+   """ Return class name. """
+   return "%s" % (self.__class__.__name__)
+                                                                                
+                                                                                
+  def getErrorMessage(self):
+   """ Return exception error. """
+   return "%s" % (self.args)
+                                                                                
+
+
 # ##############
 class DLS:
   """
@@ -73,10 +93,12 @@ class DLS:
         location=DlsLocation(SE)
         entry=DlsEntry(fblock,[location])
         try:
-          self.dlsapi.add([entry])
+          self.dlsapi.add([entry],errorTolerant=False)
+          #self.dlsapi.add([entry])
         except dlsApi.DlsApiError, inst:
           msg = "Error adding a DLS entry: %s." % str(inst)
-          print msg
+          logging.error(msg)
+          raise addDLSError(msg)
 
         return
 
