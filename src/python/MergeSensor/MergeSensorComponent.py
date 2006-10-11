@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.32 2006/10/09 08:18:48 ckavka Exp $"
-__version__ = "$Revision: 1.32 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -30,7 +30,6 @@ from MergeSensor.MergeSensorDB import MergeSensorDB
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
 from CMSConfigTools.CfgInterface import CfgInterface
-from CMSConfigTools.cmsconfig import cmsconfig
 
 # DBS CGI API
 from dbsCgiApi import DbsCgiApi
@@ -91,7 +90,8 @@ class MergeSensorComponent:
         self.args.setdefault("DBSDataTier", "GEN,SIM,DIGI")
         self.args.setdefault("DLSType", None)
         self.args.setdefault("DLSAddress", None)
-        self.args.setdefault("MergeFileSize", 1000000000)
+        self.args.setdefault("MaxMergeFileSize", None)
+        self.args.setdefault("MinMergeFileSize", None)
 
         # default SE white/black lists are empty
         self.args.setdefault("MergeSiteWhitelist", None)
@@ -102,9 +102,6 @@ class MergeSensorComponent:
         
         # update parameters
         self.args.update(args)
-
-        # merge file size
-        self.args["MergeFileSize"] = int(self.args["MergeFileSize"])
 
         # white list
         if self.args['MergeSiteWhitelist'] == None or \
@@ -152,10 +149,28 @@ class MergeSensorComponent:
         logging.getLogger().addHandler(logHandler)
         logging.getLogger().setLevel(logging.INFO)
 
+        # merge file size 
+        if self.args["MaxMergeFileSize"] is None:
+            self.args["MaxMergeFileSize"] = 2000000000
+        else: 
+            self.args["MaxMergeFileSize"] = int(self.args["MaxMergeFileSize"])
+ 
+        if self.args["MinMergeFileSize"] is None:
+            self.args["MinMergeFileSize"] = \
+                int(self.args["MaxMergeFileSize"] * 0.75)
+        else: 
+            self.args["MinMergeFileSize"] = int(self.args["MinMergeFileSize"])
+ 
+        if self.args["MaxMergeFileSize"] <=  self.args["MinMergeFileSize"]:
+            logging.error("Wrong file size specifications, please check!") 
+
         # inital log information
         logging.info("MergeSensor starting... in >> %s << mode" % 
                      self.args["StartMode"])
-        logging.info("with MergeFileSize = %s" % self.args['MergeFileSize'])
+        logging.info("with MaxMergeFileSize = %s" % \
+                     self.args['MaxMergeFileSize'])
+        logging.info("     MinMergeFileSize = %s" % \
+                     self.args['MinMergeFileSize'])
         logging.info("     MergeSiteWhitelist = %s" % self.seWhitelist)
         logging.info("     MergeSiteBlacklist = %s" % self.seBlacklist)
         if self.fastMerge:
@@ -1716,7 +1731,8 @@ class MergeSensorComponent:
             return
         
         # set merged file size
-        Dataset.setMergeFileSize(int(self.args['MergeFileSize']))
+        Dataset.setMergeFileSize(int(self.args['MaxMergeFileSize']), \
+                                 int(self.args['MinMergeFileSize']))
 
         # set Datatier possible names
         Dataset.setDataTierList(self.args['DBSDataTier'])
