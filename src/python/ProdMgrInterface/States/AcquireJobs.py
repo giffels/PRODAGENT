@@ -23,22 +23,30 @@ class AcquireJobs(StateInterface):
    def execute(self):
        logging.debug("Executing state: AcquireJobs")
        stateParameters=State.get("ProdMgrInterface")['parameters']
-       request_id=Allocation.getRequest('requestLevel')
+       request_id=stateParameters['RequestID']
+
+       # if it is queue, restore the message and request level
+       # allocations 
+       if stateParameters['stateType']=='queue':
+           Allocation.mv('requestLevelQueued','requestLevel',request_id)
+           Allocation.mv('messageLevelQueued','messageLevel',request_id)
+           Session.commit()
+           # now everything is back to normal, we do not have to recover
+           # as making the call is what went wrong.
+           stateParameters['stateType']=='normal'
+          
        parameters={'numberOfJobs':Allocation.size('requestLevel'),
            'prefix':'job'}
        requestURL=Request.getUrl(request_id)
+
        if stateParameters['stateType']=='recover':
            try:
                jobs=ProdMgrAPI.retrieve(requestURL,"acquireJob","ProdMgrInterface")
            except ProdAgentException,ex:
                if ex['ErrorNr']==3000:
                    logging.debug("No uncommited service calls: "+str(ex))
-                   jobs=ProdMgrAPI.acquireJob(requestURL,request_id,parameters)
-           except Exception,ex:
-           # there is a problem connecting wrap up all relevant information and put
-           # it in a queue for later insepection
-               raise
-       else:
+                   stateParameters['stateType']='normal'
+       elif stateParameters['stateType']=='normal':
            try:
                jobs=ProdMgrAPI.acquireJob(requestURL,request_id,parameters)
            except Exception,ex:
@@ -47,12 +55,14 @@ class AcquireJobs(StateInterface):
                # NOTE: move the allocations associated from message and request level to
                # NOTE: something else
                Session.rollback()
-               stateParameters['requestIndex']=-1
-               MessageQueue.insert("ProdMgrInterface","retrieveWork",requestURL,"EvaluateJobs",stateParameters)
+               Allocation.mv('requestLevel','requestLevelQueued',request_id)
+               Allocation.mv('messageLevel','messageLevelQueued',request_id)
+               MessageQueue.insert("ProdMgrInterface","retrieveWork",requestURL,"AcquireJobs",stateParameters)
                componentState="AcquireRequest"
                State.setState("ProdMgrInterface",componentState)
                Session.commit()
                return componentState
+
        stateParameters['stateType']='normal'
        stateParameters['jobIndex']=0
        Job.insert('requestLevel',jobs,request_id)

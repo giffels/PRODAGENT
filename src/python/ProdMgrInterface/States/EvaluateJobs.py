@@ -29,6 +29,9 @@ class EvaluateJobs(StateInterface):
            State.setState("ProdMgrInterface","EvaluateAllocations")
            stateParameters['requestIndex']+=1
            State.setParameters("ProdMgrInterface",stateParameters)
+           # purge the queues we used for this request
+           Job.rm('requestLevel')
+           Allocation.rm('requestLevel')
            Session.commit()
            return "EvaluateAllocations" 
        State.setState("ProdMgrInterface","DownloadJobSpec")

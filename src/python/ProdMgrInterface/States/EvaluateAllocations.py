@@ -22,8 +22,16 @@ class EvaluateAllocations(StateInterface):
 
    def execute(self):
        componentStateInfo=State.get('ProdMgrInterface')
-       logging.debug("Executing state: EvaluateAllocations "+str(componentStateInfo))
+       logging.debug("Executing state: EvaluateAllocations ")
        if Allocation.size("messageLevel")<int(componentStateInfo['parameters']['numberOfJobs']):
+           if componentStateInfo['parameters']['queueIndex']>-1:
+               State.setState("ProdMgrInterface","QueuedResources") 
+               Session.commit()
+               return 'QueuedResources'
+           # reset the request index as this is the first time we 
+           # start to use it:
+           componentStateInfo['parameters']['requestIndex']=0
+           State.setParameters("ProdMgrInterface",componentStateInfo['parameters'])
            State.setState("ProdMgrInterface","AcquireRequest") 
            Session.commit()
            return 'AcquireRequest'

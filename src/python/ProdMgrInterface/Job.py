@@ -36,6 +36,13 @@ def rm(catagory,request_id=None):
             """ %(catagory)
     Session.execute(sqlStr)
 
+def mv(source_cat,target_cat,request_id):
+    sqlStr="""UPDATE pm_job SET catagory="%s" WHERE
+        catagory="%s" AND request_id="%s";
+        """ %(target_cat,source_cat,request_id)
+    Session.execute(sqlStr)
+
+
 def insert(catagory,jobs,request_id):
     if len(jobs)>0:
         sqlStr="INSERT INTO pm_job(id,request_id,catagory,url) VALUES"

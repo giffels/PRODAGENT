@@ -39,6 +39,12 @@ def rm(catagory,request_id=None):
             """ %(catagory)
     Session.execute(sqlStr)
 
+def mv(source_cat,target_cat,request_id):
+    sqlStr="""UPDATE pm_allocation SET catagory="%s" WHERE
+        catagory="%s" AND request_id="%s";
+        """ %(target_cat,source_cat,request_id)
+    Session.execute(sqlStr)
+
 def insert(catagory,allocations,request_id):
     if len(allocations)>0:
         sqlStr="INSERT INTO pm_allocation(id,request_id,catagory,state) VALUES"

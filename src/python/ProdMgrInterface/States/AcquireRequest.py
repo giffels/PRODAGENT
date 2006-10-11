@@ -6,6 +6,7 @@ from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB import Session
 from ProdMgrInterface import Allocation
+from ProdMgrInterface import Cooloff
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
@@ -21,6 +22,9 @@ class AcquireRequest(StateInterface):
 
    def execute(self):
        logging.debug("Executing state: AcquireRequest")
+       # remove potential server urls from the cooloff state
+       Cooloff.remove()
+       Session.commit()
        # get request with highest priority:
        componentState=State.get("ProdMgrInterface")
        requestIndex=componentState['parameters']['requestIndex']
@@ -31,8 +35,16 @@ class AcquireRequest(StateInterface):
            Session.commit()
            return "Cleanup"
  
-       # if this url is on the black list look for next one
+       # if this url is available in the message queue do not
+       # use it  
        while MessageQueue.hasURL(request['url']) and\
+           Request.size()<(requestIndex+1):
+           requestIndex=requestIndex+1
+           request=Request.getHighestPriority(requestIndex)
+
+       # if this url is available in the cooloff table do not
+       # use it either:
+       while Cooloff.hasURL(request['url']) and\
            Request.size()<(requestIndex+1):
            requestIndex=requestIndex+1
            request=Request.getHighestPriority(requestIndex)

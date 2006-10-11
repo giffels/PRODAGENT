@@ -6,6 +6,7 @@ from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB import Session
 from ProdMgrInterface import Allocation
+from ProdMgrInterface import Cooloff
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
@@ -45,39 +46,49 @@ class AcquireAllocations(StateInterface):
                except ProdAgentException,ex:
                    if ex['ErrorNr']==3000:
                        logging.debug("No uncommited service calls: "+str(ex))
-                       allocations=ProdMgrAPI.acquireAllocation(stateParameters['ProdMgrURL'],\
-                       stateParameters['RequestID'],\
-                       int(numberOfJobs)-len(idleRequestAllocations)-Allocation.size("messageLevel"),\
-                       "ProdMgrInterface")
-               except Exception,ex:
-                   # there is a problem connecting wrap up all relevant information and put
-                   # it in a queue for later insepection
-                   raise
-           else:
+                       stateParametes['stateType']='normal'
+           elif stateParameters['stateType']=='normal':
                try:
                    allocations=ProdMgrAPI.acquireAllocation(stateParameters['ProdMgrURL'],\
                        stateParameters['RequestID'],\
                        int(numberOfJobs)-len(idleRequestAllocations)-Allocation.size("messageLevel"),\
                        "ProdMgrInterface")
                except Exception,ex:
+                   if ex.faultCode==2009:
+                       Session.rollback()
+                       logging.debug("This prodagent is set in cooloff state with "+stateParameters['ProdMgrURL'])
+                       logging.debug("Trying to acquire other allocations")
+                       Cooloff.insert(stateParameters['ProdMgrURL'],"00:10:00")
+                       stateParameters['requestIndex']+=1
+                       State.setParameters("ProdMgrInterface",stateParameters)
+                       componentState="AcquireRequest"
+                       State.setState("ProdMgrInterface",componentState)
+                       Session.commit()
+                       return componentState
                    # there is a problem connecting wrap up all relevant information and put
                    # it in a queue for later inspection
                    # NOTE: we need to distinguish between coolof exceptions and other errors.
-                   # 
+                   # NOTE: we need to proper handle other exceptions (e.g. move things to a proper state)
+                   #
+                   # on this level there might be a connection problem. We do not need to save any state
+                   # information yet but can just throw it in the cooloff as this is the first call in the 
+                   # the handler. 
                    Session.rollback()
-                   MessageQueue.insert("ProdMgrInterface","retrieveWork",stateParameters['ProdMgrURL'],"AcquireAllocations",stateParameters)
                    logging.debug("Problem connecting to server "+stateParameters['ProdMgrURL']+" : "+str(ex))
+                   Cooloff.insert(stateParameters['ProdMgrURL'],"00:01:00")
+                   stateParameters['requestIndex']+=1
+                   State.setParameters("ProdMgrInterface",stateParameters)
                    componentState="AcquireRequest"
                    State.setState("ProdMgrInterface",componentState)
                    Session.commit()
                    return componentState
+
+
            stateParameters['stateType']='normal'
            # check if we got allocations back
            if type(allocations)==bool:
                if not allocations:
-                  # NOTE:       Request.rm([stateParameters['RequestID']])
-                  # NOTE: Allocation.rm('messageLevel',stateParameters['RequestID'])
-                  # request has finished?
+                  # everything is allocated for this request
                   stateParameters['requestIndex']+=1
                   State.setParameters("ProdMgrInterface",stateParameters) 
                   componentState="AcquireRequest"
@@ -103,6 +114,7 @@ class AcquireAllocations(StateInterface):
        State.setState("ProdMgrInterface",componentState)
        Session.commit()
        return componentState
+
 
 registerHandler(AcquireAllocations(),"AcquireAllocations")
 

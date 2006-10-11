@@ -7,4 +7,8 @@ import DownloadJobSpec
 import EvaluateAllocations
 import EvaluateJobs
 import JobSubmission
+import QueuedJobResults 
+import QueuedResources
+import ReportJobSuccess
+import ReportJobFailure 
  

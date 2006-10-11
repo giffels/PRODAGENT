@@ -28,6 +28,18 @@ class DownloadJobSpec(StateInterface):
        job=Job.get('requestLevel')[stateParameters['jobIndex']]
        targetDir=stateParameters['jobSpecDir']+'/'+job['jobSpecId'].replace('/','_')
        targetFile=job['URL'].split('/')[-1]
+
+       # if it is queue, restore the message and request level
+       # allocations
+       if stateParameters['stateType']=='queue':
+           Allocation.mv('requestLevelQueued','requestLevel',request_id)
+           Allocation.mv('messageLevelQueued','messageLevel',request_id)
+           Session.commit()
+           # now everything is back to normal, we do not have to recover
+           # as making the call is what went wrong.
+           stateParameters['stateType']=='normal'
+
+
        if not Job.isDownloaded('requestLevel',job['jobSpecId']):
            logging.debug("Downloading specification file to: "+str(targetDir))
            try:
@@ -43,8 +55,11 @@ class DownloadJobSpec(StateInterface):
                # it in a queue for later insepection
                # NOTE: move job from request level to something else
                Session.rollback()
+               request_id=stateParameters['jobSpecDir'].split('/')[1]
+               Job.mv('requestLevel','requestLevelQueued',request_id)
+               Allocation.mv('messageLevel','messageLevelQueued',request_id)
                stateParameters['requestIndex']=-1
-               MessageQueue.insert("ProdMgrInterface","retrieveWork",requestURL,"EvaluateJobs",stateParameters)
+               MessageQueue.insert("ProdMgrInterface","retrieveWork",requestURL,"DownloadJobSpec",stateParameters)
                componentState="AcquireRequest"
                State.setState("ProdMgrInterface",componentState)
                Session.commit()

@@ -145,6 +145,7 @@ class ProdMgrComponent:
                    componentStateInfo['parameters']={}
                    componentStateInfo['parameters']['numberOfJobs']=numberOfJobs 
                    componentStateInfo['parameters']['requestIndex']=0
+                   componentStateInfo['parameters']['queueIndex']=0
                    componentStateInfo['parameters']['stateType']='normal'
                    componentStateInfo['parameters']['jobSpecDir']=self.args['JobSpecDir']
                    State.setParameters("ProdMgrInterface",componentStateInfo['parameters'])
@@ -202,8 +203,35 @@ class ProdMgrComponent:
         
         """
         logging.debug("Reporting Job Success "+frameworkJobReport)
+        Session.connect("ProdMgrInterface")
+        Session.set_current("ProdMgrInterface")
+        componentStateInfo=State.get("ProdMgrInterface")      
+        # if this is the first time create the start state
+        if componentStateInfo=={}:
+             logging.debug("ProdMgrInterface state creation")
+             State.insert("ProdMgrInterface","start",{})
+             componentStateInfo['state']="start"
+             requestIndex=0
+        if componentStateInfo.has_key('state'):
+            if componentStateInfo['state']=='start':
+                componentStateInfo['parameters']={}
+                componentStateInfo['parameters']['stateType']='normal'
+                componentStateInfo['parameters']['jobType']='success'
+                componentStateInfo['parameters']['jobReport']=frameworkJobReport
+                State.setParameters("ProdMgrInterface",componentStateInfo['parameters'])
+        logging.debug("ProdMgrInterface state is: "+str(componentStateInfo['state']))
 
-    def reportFailure(self, frameworkJobReport):
+        # first check if there are any queued events as a prodmgr might have been offline
+        componentState=componentStateInfo['state']
+        if componentStateInfo['state']=='start':
+            componentState="QueuedJobResults"
+        Session.commit()
+        while componentState!='start':
+            state=retrieveHandler(componentState)
+            componentState=state.execute()
+        logging.debug("reportJobSuccess event handled")
+
+    def reportJobFailure(self, frameworkJobReport):
         """
         _reportJobFailure_
 
@@ -211,6 +239,33 @@ class ProdMgrComponent:
 
         """
         logging.debug("Reporting Job Failure"+frameworkJobReport)
+        Session.connect("ProdMgrInterface")
+        Session.set_current("ProdMgrInterface")
+        componentStateInfo=State.get("ProdMgrInterface")      
+        # if this is the first time create the start state
+        if componentStateInfo=={}:
+             logging.debug("ProdMgrInterface state creation")
+             State.insert("ProdMgrInterface","start",{})
+             componentStateInfo['state']="start"
+             requestIndex=0
+        if componentStateInfo.has_key('state'):
+            if componentStateInfo['state']=='start':
+                componentStateInfo['parameters']={}
+                componentStateInfo['parameters']['stateType']='normal'
+                componentStateInfo['parameters']['jobType']='failure'
+                componentStateInfo['parameters']['jobReport']=frameworkJobReport
+                State.setParameters("ProdMgrInterface",componentStateInfo['parameters'])
+        logging.debug("ProdMgrInterface state is: "+str(componentStateInfo['state']))
+
+        # first check if there are any queued events as a prodmgr might have been offline
+        componentState=componentStateInfo['state']
+        if componentStateInfo['state']=='start':
+            componentState="QueuedJobResults"
+        Session.commit()
+        while componentState!='start':
+            state=retrieveHandler(componentState)
+            componentState=state.execute()
+        logging.debug("reportJobFailure event handled")
         
         
         
