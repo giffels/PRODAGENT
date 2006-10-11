@@ -7,6 +7,7 @@ StageOut processes in a job
 
 """
 
+import logging
 import inspect
 import os
 import JobCreator.RuntimeTools.RuntimeStageOut as OldRuntimeStageOut
@@ -14,6 +15,9 @@ import StageOut.RuntimeStageOut as NewRuntimeStageOut
 from MB.FileMetaBroker import FileMetaBroker
 from MB.Persistency import save as saveMetabroker
 from IMProv.IMProvDoc import IMProvDoc
+from xml.sax import make_parser
+from IMProv.IMProvLoader import IMProvHandler
+from IMProv.IMProvQuery import IMProvQuery
 
 
 class InsertStageOut:
@@ -257,6 +261,44 @@ class NewPopulateStageOut:
         runres.addPath(paramBase)
 
         runres.addData("/%s/StageOutFor" % paramBase, stageOutFor)
+
+        #  //
+        # // Is there an override for this in the JobSpec??
+        #//
+        cfgStr = taskObject['JobSpecNode'].configuration
+
+        if len(cfgStr) == 0:
+            return
+        
+        handler = IMProvHandler()
+        parser = make_parser()
+        parser.setContentHandler(handler)
+        try:
+            parser.feed(cfgStr)
+        except Exception, ex:
+            # No xml data, no override, nothing to be done...
+            return
+
+        logging.debug("StageOut Override provided")
+        override = handler._ParentDoc
+        commandQ = IMProvQuery("/Override/command[text()]")
+        optionQ = IMProvQuery("/Override/option[text()]")
+        seNameQ = IMProvQuery("/Override/se-name[text()]")
+        lfnPrefixQ = IMProvQuery("/Override/lfn-prefix[text()]")
+        
+        command = commandQ(override)[0]
+        option = optionQ(override)[0]
+        seName = seNameQ(override)[0]
+        lfnPrefix = lfnPrefixQ(override)[0]
+        
+        logging.debug("%s %s %s %s " % (command, option, seName, lfnPrefix))
+        overrideBase = "/%s/StageOutParameters/Override" % toName
+        runres.addPath(overrideBase)
+        runres.addData("/%s/command" % overrideBase, command)
+        runres.addData("/%s/option" % overrideBase, option)
+        runres.addData("/%s/se-name" % overrideBase, seName)
+        runres.addData("/%s/lfn-prefix" % overrideBase, lfnPrefix)
+        
         return
                        
                         

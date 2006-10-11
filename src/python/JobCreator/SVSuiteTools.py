@@ -13,6 +13,9 @@ from SVSuite.Configuration import Configuration
 import SVSuite.RuntimeSVSuite as RuntimeSVSuite
 from JobCreator.AppTools import _StandardPreamble
 
+from ShREEK.ControlPoints.CondImpl.CheckExitCode import CheckExitCode
+from ShREEK.ControlPoints.ActionImpl.BasicActions import KillJob 
+
 class InsertSVSuiteDetails:
     """
     _InsertSVSuiteDetails_
@@ -81,6 +84,15 @@ class InsertSVSuiteDetails:
             return
         taskObject['SVSuiteInput'] = parent['Name']
 
+        #  //
+        # // Insert End Control Point check on exit status
+        #//
+        controlP = taskObject['ShREEKTask'].endControlPoint
+        exitCheck = CheckExitCode()
+        exitCheck.attrs['OnFail'] = "killJob"
+        exitAction = KillJob("killJob")
+        controlP.addConditional(exitCheck)
+        controlP.addAction(exitAction)
         
         return
     
