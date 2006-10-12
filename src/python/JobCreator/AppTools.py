@@ -35,6 +35,7 @@ import inspect
 import os
 import JobCreator.RuntimeTools.RuntimePSetPrep as RuntimePSetModule
 import JobCreator.RuntimeTools.RuntimeFwkJobRep as RuntimeFwkJobRep
+from JobCreator.FastMergeTools import installFastMerge
 
 from ShREEK.ControlPoints.CondImpl.CheckExitCode import CheckExitCode
 from ShREEK.ControlPoints.ActionImpl.BasicActions import KillJob 
@@ -124,8 +125,10 @@ class InsertAppDetails:
         taskObject.addStructuredFile("PSet.cfg")
         taskObject['CMSCommandLineArgs'] = " PSet.cfg "
         
-        
-        
+
+     
+            
+            
         #  //
         # // Add structures to enable manipulation of task main script
         #//  These fields are used to add commands and script calls
@@ -136,6 +139,9 @@ class InsertAppDetails:
         taskObject['PostTaskCommands'] = []
         taskObject['PreAppCommands'] = []
         taskObject['PostAppCommands'] = []
+
+        if taskObject['CMSExecutable'] == "EdmFastMerge":  
+            installFastMerge(taskObject)
 
         #  //
         # // Insert End Control Point check on exit status
