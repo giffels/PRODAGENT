@@ -41,8 +41,8 @@ def createPSetHash(cfgFile):
         msg += pop.fromchild.read()
         raise RuntimeError, msg
 
-
-    return file(hashFile).read()
+    content = file(hashFile).read()
+    return content.strip()
 
 
 def createPythonConfig(cfgFile):
