@@ -430,7 +430,6 @@ class MergeSensorComponent:
         category = properties[firstDatasetId]["category"]
         version = properties[firstDatasetId]["version"]
         timeStamp = properties[firstDatasetId]["timeStamp"]
-        psethash = properties[firstDatasetId]["PSetHash"]
                                                  
         # set workflow values
         spec.setWorkflowName(workflowName)
@@ -457,6 +456,7 @@ class MergeSensorComponent:
             processed = targetDataset[2]
             tier = properties[datasetId]["dataTier"]
             secondaryOutputTiers = properties[datasetId]["secondaryOutputTiers"]
+            psethash = properties[datasetId]["PSetHash"]
 
             # create output dataset
             out = dummyTask.addOutputDataset(primary, processed, \
