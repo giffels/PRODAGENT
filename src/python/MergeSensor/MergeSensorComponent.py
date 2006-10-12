@@ -452,12 +452,14 @@ class MergeSensorComponent:
         for datasetId in datasetIdList:
         
             # get information about dataset
-            processed = properties[datasetId]["processedDataset"]
+            targetDatasetPath = properties[datasetId]["targetDatasetPath"]
+            targetDataset = Dataset.getNameComponents(targetDatasetPath)
+            processed = targetDataset[2]
             tier = properties[datasetId]["dataTier"]
             secondaryOutputTiers = properties[datasetId]["secondaryOutputTiers"]
 
             # create output dataset
-            out = dummyTask.addOutputDataset(primary, processed + "-merged", \
+            out = dummyTask.addOutputDataset(primary, processed, \
                                          "Merged")
             
             # define output dataset properties
@@ -470,7 +472,7 @@ class MergeSensorComponent:
 
             # add secondary output datasets
             for outDS in secondaryOutputTiers:
-                out = dummyTask.addOutputDataset(primary, processed + "-merged", \
+                out = dummyTask.addOutputDataset(primary, processed, \
                                                  "Merged")
 
                 # define output dataset properties
