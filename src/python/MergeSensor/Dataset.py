@@ -639,25 +639,18 @@ class Dataset:
                     continue
 
                 # continue filling it
-                while totalSize <= minMergeFileSize and \
+                while totalSize < maxMergeFileSize and \
                       leftIndex < numFiles: 
             
                     # attempt to add other file
                     newSize = totalSize + files[leftIndex][1]
 
-                    # check if goes over minimum
-                    if newSize >= minMergeFileSize:
+                    # check if we have not gone over maximum
+                    if newSize < maxMergeFileSize:
 
-                        # check if we have not gone over maximum
-                        if newSize < maxMergeFileSize:
-
-                            # great, add it an exit
-                            selectedSet.append(files[leftIndex][0])
-                            totalSize = newSize
-                            break
-
-                        # too big, exit without adding
-                        break
+                        # great, add it an exit
+                        selectedSet.append(files[leftIndex][0])
+                        totalSize = newSize
                    
                     # still space, try to add the next one
                     leftIndex = leftIndex + 1
