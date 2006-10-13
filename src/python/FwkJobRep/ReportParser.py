@@ -65,7 +65,8 @@ class FwkJobRepHandler(ContentHandler):
             "Inputs" : self.noResponse,
             "Runs" : self.noResponse,
             "Run" : self.noResponse,
-            "SkippedEvent" : self.skippedEvent,
+            "SkippedEvent" : self.skippedFile,
+            "SkippedFile" : self.skippedFile,
             "Checksum" : self.checksum,
             "SiteDetail" : self.siteDetail,
             "FrameworkError" : self.frameworkError,
@@ -90,6 +91,7 @@ class FwkJobRepHandler(ContentHandler):
             "Runs" : self.noResponse,
             "Run" : self.endRun,
             "SkippedEvent" : self.noResponse,
+            "SkippedFile" : self.noResponse,
             "Checksum" : self.endChecksum,
             "SiteDetail" : self.noResponse,
             "FrameworkError" : self.endFrameworkError,
@@ -323,6 +325,20 @@ class FwkJobRepHandler(ContentHandler):
             return
         self.currentReport.addSkippedEvent(str(run), str(event))
         return
+
+    def skippedFile(self, name, attrs):
+        """skipped file node"""
+        if self.currentReport == None:
+            return
+        pfn = attrs.get("Pfn", None)
+        lfn = attrs.get("Lfn", None)
+        if pfn == None:
+            return
+        if lfn == None:
+            return
+        self.currentReport.addSkippedFile(str(pfn), str(lfn))
+        return
+        
 
     def checksum(self, name, attrs):
         """
