@@ -252,8 +252,21 @@ class OSGCreator(CreatorInterface):
         Handle a CleanUp task object
 
         """
-        print ">>>>>>>>>>>>>>>>>>>>>>handleCleanUp:", taskObject
-
+        
+        stageOutSetup = self.pluginConfig['StageOut']['SetupCommand']
+        parentVersion = None
+        if taskObject.parent != None:
+            if taskObject.parent.has_key("CMSProjectVersion"):
+                parentVersion = taskObject.parent["CMSProjectVersion"]
+        if parentVersion != None:
+            stageOutSetup = stageOutSetup.replace("$CMSSWVERSION",
+                                                  parentVersion)
+            
+        logging.debug("CleanUp Software Setup Command: %s" % stageOutSetup)
+        taskObject['PreCleanUpCommands'].append(
+            stageOutSetup
+            )
+        return
     
 
     def installMonitor(self, taskObject):

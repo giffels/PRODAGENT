@@ -9,9 +9,7 @@ CleanUp processes in a job
 
 import inspect
 import os
-import JobCreator.RuntimeTools.RuntimeCleanUp as RuntimeCleanUp
-from MB.FileMetaBroker import FileMetaBroker
-
+import StageOut.RuntimeCleanUp as RuntimeCleanUp
 
 
 class InsertCleanUp:

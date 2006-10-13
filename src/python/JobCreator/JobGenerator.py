@@ -33,6 +33,7 @@ from JobCreator.StageOutTools import PopulateStageOut, NewPopulateStageOut
 from JobCreator.StageOutTools import StoreStageOutTemplates
 from JobCreator.DashboardTools import installDashboardInfo, writeDashboardInfo
 from JobCreator.SVSuiteTools import InsertSVSuiteDetails, PopulateSVSuite
+from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
 
 import inspect
 import os
@@ -143,6 +144,7 @@ class JobGenerator:
         taskObject(InstallRunResComponent())
         taskObject(InsertSVSuiteDetails())
         taskObject(InsertJobReportTools())
+        taskObject(InsertCleanUp())
 
 
         if _UseNewStageOut:
@@ -167,6 +169,7 @@ class JobGenerator:
         taskObject(InsertPythonPSet())
         taskObject(PopulateMainScript())
         taskObject(PopulateSVSuite())
+        taskObject(PopulateCleanUp())
         if _UseNewStageOut:
             taskObject(NewPopulateStageOut())
         else:
