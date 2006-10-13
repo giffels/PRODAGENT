@@ -137,6 +137,24 @@ def addStageOutNode(cmsRunNode, nodeName):
 
     return
 
+def addCleanUpNode(cmsRunNode, nodeName):
+    """
+    _addCleanUpNode_
+
+    Add a clean up task following a cmsRun node. This will trigger a removal
+    attempt on each of the inpiy files to the cmsRun Node.
+
+    """
+    cleanUp = cmsRunNode.newNode(nodeName)
+    cleanUp.type = "CleanUp"
+    cleanUp.application["Project"] = ""
+    cleanUp.application["Version"] = ""
+    cleanUp.application["Architecture"] = ""
+    cleanUp.application["Executable"] = "RuntimeCleanUp.py" # binary name
+    cleanUp.configuration = ""
+    return
+
+
 def addStageOutOverride(stageOutNode, command, option, seName, lfnPrefix):
     """
     _addStageOutOverride_
