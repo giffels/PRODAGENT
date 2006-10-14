@@ -1168,7 +1168,9 @@ class MergeSensorComponent:
             outputDataset["PSetHash"] = psethash
            
         # define process name as MERGE+timestamp
-        processName = "MERGE-" + str(time.time())
+        currentTime = str(time.time())
+        currentTime = currentTime.replace('.', '')
+        processName = "MERGE-" + currentTime
         
         try:
             workflowDict = eval(self.mergeWorkflow)
