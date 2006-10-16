@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: Dataset.py,v 1.20 2006/10/13 16:51:28 ckavka Exp $"
+__version__ = "$Revision: 1.20 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -592,7 +592,10 @@ class Dataset:
         Return:
             
           the list of files to be merged and their fileBlockId
-          
+
+          Algorithm is now reduced, not trying to do best fit,
+          due to some changes in requirements. See CVS history
+          for best fit bin allocation.          
         """
 
         # get file size
@@ -639,7 +642,8 @@ class Dataset:
                     continue
 
                 # continue filling it
-                while totalSize < maxMergeFileSize and \
+                while totalSize < minMergeFileSize and \
+                      totalSize < maxMergeFileSize and \
                       leftIndex < numFiles: 
             
                     # attempt to add other file
@@ -648,31 +652,12 @@ class Dataset:
                     # check if we have not gone over maximum
                     if newSize < maxMergeFileSize:
 
-                        # great, add it an exit
+                        # great, add it
                         selectedSet.append(files[leftIndex][0])
                         totalSize = newSize
                    
                     # still space, try to add the next one
                     leftIndex = leftIndex + 1
-
-                # try to add smallerfiles to fill the bin
-                rightIndex = numFiles - 1
-
-                # try, without going over limit
-                while rightIndex >= leftIndex and \
-                      totalSize < maxMergeFileSize:
-
-                    # attempt to add other file
-                    newSize = totalSize + files[rightIndex][1]
-
-                    # check limit
-                    if newSize > maxMergeFileSize:
-                        break
-
-                    # add it
-                    selectedSet.append(files[rightIndex][0])
-                    totalSize = newSize
-                    rightIndex = rightIndex - 1
 
                 # verify results
                 if totalSize >= minMergeFileSize and \
