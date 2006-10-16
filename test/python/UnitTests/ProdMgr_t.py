@@ -15,23 +15,23 @@ class ProdMgrUnitTests(unittest.TestCase):
 
     def setUp(self):
         print('set up')
-        self.serverURL="https://rick.ultralight.org:8444/"
+        self.serverURL="https://localhost:8444/"
         self.request_id='myRequest'
     
     def testA(self):
         x=raw_input("This rest requires a prodmgr exposes as a service and have the "+\
-           " prodAgentClient.py and  schedulerClient.py web service unit test run to prepare "+\
+           " requestClient.py and  schedulerClient.py web service unit test run to prepare "+\
            " the prodmgr state to deal with the prodagent input (press any key to continue)")
 
         print('testA')
-        result=ProdMgrAPI.userID(self.serverURL) 
+        result=ProdMgrAPI.userID(self.serverURL,"component-1") 
 
         print("Pretending that the client side is crashing!!")
-        retrievedResult=ProdMgrAPI.retrieve()
+        retrievedResult=ProdMgrAPI.retrieve(None,None,"component-1")
         self.assertEqual(result,retrievedResult[0])
-        retrievedResult=ProdMgrAPI.retrieve(self.serverURL)
+        retrievedResult=ProdMgrAPI.retrieve(self.serverURL,None,"component-1")
         self.assertEqual(result,retrievedResult[0])
-        retrievedResult=ProdMgrAPI.retrieve(self.serverURL,'userID')
+        retrievedResult=ProdMgrAPI.retrieve(self.serverURL,'userID',"component-1")
         self.assertEqual(result,retrievedResult[0])
         print("Recovered data lost in last service call")
 
@@ -41,14 +41,14 @@ class ProdMgrUnitTests(unittest.TestCase):
 
     def testB(self):
         print('testB')
-        allocations=ProdMgrAPI.acquireAllocation(self.serverURL,self.request_id,15)
+        allocations=ProdMgrAPI.acquireAllocation(self.serverURL,self.request_id,15,"component-2")
 
         print("Pretending that the client side is crashing!!")
-        retrievedResult=ProdMgrAPI.retrieve()
+        retrievedResult=ProdMgrAPI.retrieve(None,None,"component-2")
         self.assertEqual(allocations,retrievedResult[0])
-        retrievedResult=ProdMgrAPI.retrieve(self.serverURL)
+        retrievedResult=ProdMgrAPI.retrieve(self.serverURL,None,"component-2")
         self.assertEqual(allocations,retrievedResult[0])
-        retrievedResult=ProdMgrAPI.retrieve(self.serverURL,'acquireAllocation')
+        retrievedResult=ProdMgrAPI.retrieve(self.serverURL,'acquireAllocation',"component-2")
         self.assertEqual(allocations,retrievedResult[0])
         print("Recovered data lost in last service call")
 
