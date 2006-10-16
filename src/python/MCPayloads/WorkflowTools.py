@@ -15,6 +15,7 @@ from MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
 from CMSConfigTools.CfgInterface import CfgInterface
 from MCPayloads.DatasetExpander import splitMultiTier
 
+from IMProv.IMProvNode import IMProvNode
 
 
 
@@ -40,8 +41,8 @@ def createPSetHash(cfgFile):
         msg += pop.fromchild.read()
         raise RuntimeError, msg
 
-
-    return file(hashFile).read()
+    content = file(hashFile).read()
+    return content.strip()
 
 
 def createPythonConfig(cfgFile):
@@ -136,6 +137,23 @@ def addStageOutNode(cmsRunNode, nodeName):
 
     return
 
+def addStageOutOverride(stageOutNode, command, option, seName, lfnPrefix):
+    """
+    _addStageOutOverride_
+
+    Given the stageout node provided, add an Override to its configuration
+    attribute
+
+    """
+    
+    override = IMProvNode("Override")
+
+    override.addNode(IMProvNode("command", command))
+    override.addNode(IMProvNode("option" , option))
+    override.addNode(IMProvNode("se-name" , seName))
+    override.addNode(IMProvNode("lfn-prefix", lfnPrefix))
+    stageOutNode.configuration = override.makeDOMElement().toprettyxml()
+    return
 
 def generateFilenames(workflowSpec):
     """

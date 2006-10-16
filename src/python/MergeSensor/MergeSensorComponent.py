@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.37 2006/10/14 15:39:48 ckavka Exp $"
+__version__ = "$Revision: 1.37 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -430,7 +430,6 @@ class MergeSensorComponent:
         category = properties[firstDatasetId]["category"]
         version = properties[firstDatasetId]["version"]
         timeStamp = properties[firstDatasetId]["timeStamp"]
-        psethash = properties[firstDatasetId]["PSetHash"]
                                                  
         # set workflow values
         spec.setWorkflowName(workflowName)
@@ -452,12 +451,15 @@ class MergeSensorComponent:
         for datasetId in datasetIdList:
         
             # get information about dataset
-            processed = properties[datasetId]["processedDataset"]
+            targetDatasetPath = properties[datasetId]["targetDatasetPath"]
+            targetDataset = Dataset.getNameComponents(targetDatasetPath)
+            processed = targetDataset[2]
             tier = properties[datasetId]["dataTier"]
             secondaryOutputTiers = properties[datasetId]["secondaryOutputTiers"]
+            psethash = properties[datasetId]["PSetHash"]
 
             # create output dataset
-            out = dummyTask.addOutputDataset(primary, processed + "-merged", \
+            out = dummyTask.addOutputDataset(primary, processed, \
                                          "Merged")
             
             # define output dataset properties
@@ -470,7 +472,7 @@ class MergeSensorComponent:
 
             # add secondary output datasets
             for outDS in secondaryOutputTiers:
-                out = dummyTask.addOutputDataset(primary, processed + "-merged", \
+                out = dummyTask.addOutputDataset(primary, processed, \
                                                  "Merged")
 
                 # define output dataset properties
@@ -1166,7 +1168,9 @@ class MergeSensorComponent:
             outputDataset["PSetHash"] = psethash
            
         # define process name as MERGE+timestamp
-        processName = "MERGE-" + str(time.time())
+        currentTime = str(time.time())
+        currentTime = currentTime.replace('.', '')
+        processName = "MERGE-" + currentTime
         
         try:
             workflowDict = eval(self.mergeWorkflow)
@@ -1198,7 +1202,8 @@ class MergeSensorComponent:
         inputFiles = ["%s" % fileName for fileName in fileList]
 
         inModule.setFileNames(*inputFiles)
-        inModule.setFileMatchMode('strict')
+        # remove the strict check when merging : temporary fix 
+        #inModule.setFileMatchMode('strict')
 
         # get configuration from template
         cmsRun.configuration = str(cfg)

@@ -114,7 +114,7 @@ class DBSComponent:
         self.args.setdefault("DBSType", "CGI")
         self.args.setdefault("Logfile", None)
         self.args.setdefault("BadReportfile", None)
-        self.args.setdefault("DBSDataTier", 'GEN,SIM,DIGI,RECO')
+        self.args.setdefault("DBSDataTier", 'GEN,SIM,DIGI,RECO,HLT,ALCARECO,FEVT,AOD,RAW,USER,RECOSIM,AODSIM')
         self.args.setdefault("MaxBlockSize", None)  # No check on fileblock size
 
         self.args.update(args)
@@ -279,7 +279,8 @@ class DBSComponent:
         dbsinfo.insertPrimaryDataset(datasetinfo['PrimaryDataset'])
 
         ## define app family from OutputModuleName
-        applicationfamily = datasetinfo['OutputModuleName']
+        #applicationfamily = datasetinfo['OutputModuleName']
+        applicationfamily = datasetinfo['ApplicationFamily']
         ## check datatier
         datatier = self.getDataTier(datasetinfo['DataTier'], self.args['DBSDataTier'])
         logging.debug(" - ApplicationFamily %s" % applicationfamily)
