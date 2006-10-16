@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.37 2006/10/14 15:39:48 ckavka Exp $"
+__version__ = "$Revision: 1.37 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1202,7 +1202,8 @@ class MergeSensorComponent:
         inputFiles = ["%s" % fileName for fileName in fileList]
 
         inModule.setFileNames(*inputFiles)
-        inModule.setFileMatchMode('strict')
+        # remove the strict check when merging : temporary fix 
+        #inModule.setFileMatchMode('strict')
 
         # get configuration from template
         cmsRun.configuration = str(cfg)
