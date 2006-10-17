@@ -36,6 +36,7 @@
 , 'services': {
 'MessageLogger': {'@classname':('string', 'tracked', 'MessageLogger')
 , 'fwkJobReports': ('vstring', 'untracked', ['"FrameworkJobReport.xml"']) }
+, 'AdaptorConfig': {'@classname': ('string', 'tracked', 'AdaptorConfig')}
 } #end of es_modules
 # schedule
 , 'schedule': 'outpath'
