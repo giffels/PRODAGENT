@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.7 2006/09/05 09:03:53 ckavka Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.8 2006/10/09 08:19:42 ckavka Exp $"
+__version__ = "$Revision: 1.8 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
@@ -162,7 +162,8 @@ class WatchedDatasets:
         for outputModule in outputModulesList:
             
             try:
-                dataset = Dataset(wfile, outputModule=outputModule, fromFile = True)
+                dataset = Dataset(wfile, outputModule=outputModule, \
+                                  fromFile = True)
             except InvalidDataset, message:
                 self.logging.error(message)
                 continue
@@ -175,8 +176,9 @@ class WatchedDatasets:
         
             # check: dataset should not exist, ignore if it is registered
             if datasetId in self.datasets.keys():
-                self.logging.info("Ignoring workflow %s, is currently watched" % \
-                                  workflowFile)
+                self.logging.info( \
+                       "Ignoring workflow %s, is currently watched" % \
+                       workflowFile)
                 continue
 
             # add it
@@ -210,8 +212,8 @@ class WatchedDatasets:
             raise MergeSensorError, \
                   'cannot remove dataset %s, it does not exist' % datasetId   
         
-        # remove its information from the database (to be done!!!!!!)
-        #self.datasets[datasetId].remove()
+        # remove its information from the database
+        self.datasets[datasetId].remove()
          
         # remove it from dataset structure
         del self.datasets[datasetId]
