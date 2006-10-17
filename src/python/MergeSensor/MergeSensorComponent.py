@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.37 2006/10/14 15:39:48 ckavka Exp $"
-__version__ = "$Revision: 1.37 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -20,11 +20,13 @@ import sys
 from MergeSensor.WatchedDatasets import WatchedDatasets
 from MergeSensor.MergeSensorError import MergeSensorError, \
                                          InvalidDataTier, \
-                                         MergeSensorDBError, \
-                                         InvalidDataset
-from MessageService.MessageService import MessageService
+                                         InvalidDataset, \
+                                         DatasetNotInDatabase
 from MergeSensor.Dataset import Dataset
 from MergeSensor.MergeSensorDB import MergeSensorDB
+
+# Message service import
+from MessageService.MessageService import MessageService
 
 # Workflow and Job specification
 from MCPayloads.WorkflowSpec import WorkflowSpec
@@ -240,6 +242,9 @@ class MergeSensorComponent:
         # by default merge is not forced for any dataset
         self.forceMergeList = []
 
+        # dataset to be removed
+        self.toBeRemoved = []
+        
     ##########################################################################
     # add SE names to white list
     ##########################################################################
@@ -355,6 +360,11 @@ class MergeSensorComponent:
         # resubmit a Merge job
         if event == "MergeSensor:ReSubmit":
             self.reSubmit(payload)
+            return
+
+        # close a dataset
+        if event == "MergeSensor:CloseDataset":
+            self.stopWatching(payload)
             return
 
         # wrong event
@@ -608,7 +618,7 @@ class MergeSensorComponent:
             datasetInfo = database.getDatasetInfo(datasetName)
         
         # it does not exist
-        except MergeSensorDBError, msg:
+        except DatasetNotInDatabase, msg:
             
             logging.error( \
               "Processing on dataset %s cannot be blocked, not watched." \
@@ -700,7 +710,7 @@ class MergeSensorComponent:
             datasetInfo = database.getDatasetInfo(datasetName)
         
         # it does not exist
-        except MergeSensorDBError, msg:
+        except DatasetNotInDatabase, msg:
             
             logging.error( \
               "Processing on dataset %s cannot be restarted, not watched." \
@@ -875,6 +885,54 @@ class MergeSensorComponent:
         database.closeDatabaseConnection()
 
     ##########################################################################
+    # handle close dataset event
+    ##########################################################################
+
+    def stopWatching(self, datasetPath):
+        """
+        _stopWatching_
+
+        Stop watching dataset, removing all associated information from the
+        list of watched datasets, and also from the database.
+ 
+        Arguments:
+
+          datasetPath -- The dataset path
+
+        Return:
+
+          none
+
+        """
+
+        # critical region start
+        self.cond.acquire()
+
+        # get list of datasets
+        datasetList = self.datasets.list()
+
+        # critical region end
+        self.cond.release()
+
+        # verify if it is currently watched
+        if not datasetPath in datasetList:
+            logging.error("Cannot stop watching non watched dataset %s" %
+                          datasetPath)
+            return
+
+        # critical region start
+        self.cond.acquire()
+
+        # add it to the list of datasets to be removed
+        self.toBeRemoved.append(datasetPath)
+
+        # critical region end
+        self.cond.release()
+        
+        logging.info("Dataset %s scheduled for closing operation." % \
+                     datasetPath)
+
+    ##########################################################################
     # poll DBS
     ##########################################################################
 
@@ -896,15 +954,44 @@ class MergeSensorComponent:
           none
           
         """
-                
+      
+        # critical region start
+        self.cond.acquire()
+
+        # verify if the dataset has to be removed
+        if (datasetPath in self.toBeRemoved):
+            
+            # remove it
+            self.datasets.remove(datasetPath)
+            
+            # also from the list
+            self.toBeRemoved.remove(datasetPath)
+            
+            # critical region end
+            self.cond.release()
+            
+            logging.info("Dataset %s closed." % datasetPath)
+            
+            return
+        
+        # critical region end
+        self.cond.release()
+              
         # check for limits
         if status["limited"] == "yes" and status["remainingjobs"] == 0:
             
             # nothing to do (log message displayed before)
             return
 
+        # get dataset information
+        try:
+            datasetStatus = self.database.getDatasetInfo(datasetPath)
+        
+        # removed
+        except DatasetNotInDatabase, msg:
+            raise
+
         # check for blocked condition
-        datasetStatus = self.database.getDatasetInfo(datasetPath)
         if datasetStatus['status'] == 'closed':
             logging.info("Polling DBS for %s blocked" % datasetPath)
             return
@@ -924,7 +1011,7 @@ class MergeSensorComponent:
         # critical region end
         self.cond.release()
 
-        # get file list in dataset        
+        # get file list in dataset
         fileList = self.getFileListFromDBS(datasetPath)
        
         # ignore empty sets
@@ -1202,7 +1289,7 @@ class MergeSensorComponent:
         inputFiles = ["%s" % fileName for fileName in fileList]
 
         inModule.setFileNames(*inputFiles)
-        # remove the strict check when merging : temporary fix 
+        # remove the strict check when merging : temporary fix
         #inModule.setFileMatchMode('strict')
 
         # get configuration from template
@@ -1434,7 +1521,13 @@ class MergeSensorComponent:
         for dataset in datasetList:
             
             # poll dataset
-            self.pollDBS(dataset, status)
+            try:
+                self.pollDBS(dataset, status)
+                
+            # dataset was removed
+            except DatasetNotInDatabase, msg:
+                logging.warning(msg)
+                continue
             
             # critical region start
             self.cond.acquire()
@@ -1760,7 +1853,8 @@ class MergeSensorComponent:
         self.ms.subscribeTo("MergeSensor:LimitNumberOfJobs")
         self.ms.subscribeTo("MergeSensor:NoJobLimits")
         self.ms.subscribeTo("MergeSensor:ReSubmit")
-
+        self.ms.subscribeTo("MergeSensor:CloseDataset")
+        
         # start polling thread
         pollingThread = PollDBS(self.poll)
         pollingThread.start()
