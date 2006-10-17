@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorDB.py,v 1.5 2006/10/11 17:22:24 ckavka Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -15,7 +15,8 @@ import MySQLdb
 
 from ProdAgentDB.Connect import connect
 from MergeSensor.Dataset import Dataset
-from MergeSensor.MergeSensorError import MergeSensorDBError
+from MergeSensor.MergeSensorError import MergeSensorDBError, \
+                                         DatasetNotInDatabase
 
 ##############################################################################
 # MergeSensorDB class
@@ -473,7 +474,7 @@ class MergeSensorDB:
         
         # dataset not registered
         if rows == 0:
-            raise MergeSensorDBError, \
+            raise DatasetNotInDatabase, \
                    'Dataset %s is not registered in database' % datasetName    
 
         # store information        
@@ -1906,6 +1907,104 @@ class MergeSensorDB:
                    'Cannot close dataset %s, not registered in database' \
                         % datasetName    
 
+    ##########################################################################
+    # remove dataset
+    ##########################################################################
+                                                                                
+    def removeDataset(self, datasetName): 
+        """
+        __removeDataset__
+        
+        Remove a dataset and all its associated files
+        
+        Be carefull: removes the dataset, plus all input files information
+        and also all output file (jobs) information associated to it.
+        
+        Arguments:
+        
+          datasetName -- the name of the dataset
+          
+        Return:
+            
+          none
+
+        """
+        
+        # get name components
+        (prim, tier, processed) = Dataset.getNameComponents(datasetName)
+        
+        # get cursor
+        try:
+            self.conn = self.connect()
+            cursor = self.conn.cursor()
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+            cursor = self.conn.cursor()
+        
+        # remove dataset + all input files associated to the
+        # dataset + all output files (merge jobs) associated
+        # to the dataset
+        sqlCommand = """
+                       DELETE FROM merge_dataset
+                       WHERE prim='""" + prim + """'
+                         AND tier='""" + tier + """'
+                         AND processed='""" + processed + """'
+                     """
+        
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # get cursor
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+            
+        # process results
+        rows = cursor.rowcount
+        
+        # dataset not registered 
+        if rows == 0:
+            raise MergeSensorDBError, \
+                   'Cannot remove dataset %s, not registered in database' \
+                        % datasetName    
+
+        # remove now all orphan fileblocks
+        sqlCommand = """
+                     DELETE FROM merge_fileblock
+                      WHERE NOT EXISTS
+                            (SELECT NULL
+                               FROM merge_inputfile
+                              WHERE merge_fileblock.id=merge_inputfile.block);
+                     """
+                       
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # get cursor
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+        
     ##########################################################################
     # get merge sensor status
     ##########################################################################

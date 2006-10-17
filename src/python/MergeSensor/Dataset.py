@@ -10,16 +10,16 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.20 2006/10/13 16:51:28 ckavka Exp $"
-__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
 from MergeSensor.MergeSensorError import MergeSensorError, \
                                          InvalidDataTier, \
-                                         MergeSensorDBError, \
                                          InvalidDataset, \
-                                         NonMergeableDataset
+                                         NonMergeableDataset, \
+                                         DatasetNotInDatabase
 
 ##############################################################################
 # Dataset class
@@ -86,7 +86,7 @@ class Dataset:
             try:
                 self.data = self.database.getDatasetInfo(info)
                 
-            except MergeSensorDBError, msg:
+            except DatasetNotInDatabase, msg:
                 self.logging.error( \
                     "Cannot initialize dataset %s from database (%s)" % \
                     (info, msg))
@@ -107,8 +107,6 @@ class Dataset:
                                     
             self.data['targetDatasetPath'] = targetDatasetPath
             
-            print 'targetDatasetPath: ', targetDatasetPath
-                                    
             # dataset loaded
             return 
                         
@@ -229,7 +227,7 @@ class Dataset:
             info = self.database.getDatasetInfo(name)
 
         # not there, fine
-        except MergeSensorDBError:
+        except DatasetNotInDatabase, msg:
             pass
 
         # it was registered before
@@ -859,6 +857,36 @@ class Dataset:
         import copy
         return copy.deepcopy(self.data)
 
+    ##########################################################################
+    # remove dataset
+    ##########################################################################
+
+    def remove(self):
+        """
+        _getStatus_
+        
+        Remove all information from database
+        
+        Arguments:
+            
+          none
+                    
+        Return:
+            
+          none
+          
+        """
+        
+        # start transaction
+        self.database.startTransaction()
+        
+        # remove all information
+        self.database.removeDataset(self.data['name'])
+        
+        # commit changes
+        self.database.commit()
+        
+    
     ##########################################################################
     # convert dataset to a string
     ##########################################################################
