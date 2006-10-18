@@ -113,6 +113,7 @@ class StageOutImpl:
             except StageOutError, ex:
                 msg = "Attempted stage out %s failed\n" % retryCount
                 msg += "Automatically retrying in %s secs\n " % self.retryPause
+                msg += "Error details:\n%s\n" % str(ex)
                 print msg
                 if retryCount == self.numRetries :
                     #  //

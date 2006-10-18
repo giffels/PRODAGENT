@@ -38,8 +38,8 @@ class SRMImpl(StageOutImpl):
         Build an srmcp command
 
         """
-
-        result = "REPORT_FILE=`pwd`/srm.report.$$\n"
+        result = "#!/bin/sh\n"
+        result += "REPORT_FILE=`pwd`/srm.report.$$\n"
         result += "srmcp -report=$REPORT_FILE "
         
         if options != None:
@@ -50,7 +50,7 @@ class SRMImpl(StageOutImpl):
         result += """
         EXIT_STATUS=`cat $REPORT_FILE | cut -f3 -d" "`
         echo "srmcp exit status: $EXIT_STATUS"
-        if (( $EXIT_STATUS != 0 )); then
+        if [[ $EXIT_STATUS != 0 ]]; then
             echo "Non-zero srmcp Exit status!!!"
             exit $EXIT_STATUS
         fi
@@ -68,8 +68,8 @@ class SRMImpl(StageOutImpl):
         do
            SRM_SIZE=`srm-get-metadata -retry_num=0 %s 2>/dev/null | grep 'size :[0-9]' | cut -f2 -d":"`
            echo "SRM Size is $SRM_SIZE"
-           if (( $SRM_SIZE > 0 )); then
-              if (( $SRM_SIZE == $FILE_SIZE )); then
+           if [[ $SRM_SIZE > 0 ]]; then
+              if [[ $SRM_SIZE == $FILE_SIZE ]]; then
                  exit 0
               else
                  echo "Error: Size Mismatch between local and SE"

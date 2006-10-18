@@ -9,6 +9,7 @@ import os
 import popen2
 import fcntl, select, sys
 
+
 from StageOut.StageOutError import StageOutError
 
 def makeNonBlocking(fd):
@@ -48,17 +49,27 @@ def runCommand(command):
     while 1:
 	ready = select.select([outfd,errfd],[],[]) # wait for input
 	if outfd in ready[0]:
-	    outchunk = outfile.read()
+            try:
+                outchunk = outfile.read()
+            except Exception, ex:
+                msg = "Unable to read stdout chunk... skipping"
+                print msg
+                outchunk = ''
 	    if outchunk == '': outeof = 1
 	    sys.stdout.write(outchunk)
 	if errfd in ready[0]:
-	    errchunk = errfile.read()
+            try:
+                errchunk = errfile.read()
+            except Exception, ex:
+                msg = "Unable to read stderr chunk... skipping"
+                print msg, str(ex)
+                errchunk = ""
 	    if errchunk == '': erreof = 1
             sys.stderr.write(errchunk)
 	if outeof and erreof: break
 	select.select([],[],[],.1) # give a little time for buffers to fill
+        
     err = child.wait()
-    
     return err
 
 
@@ -72,13 +83,19 @@ def execute(command):
     """
     try:
         exitCode = runCommand(command)
+        msg = "Command :\n%s\n exited with status: %s" % (command, exitCode)
+        print msg
     except Exception, ex:
         msg = "Exception while invoking command:\n"
         msg += "%s\n" % command
         msg += "Exception: %s\n" % str(ex)
+        print "ERROR: Exception During Stage Out:\n"
+        print msg
         raise StageOutError(msg, Command = command, ExitCode = 60311)
     if exitCode:
         msg = "Command exited non-zero"
+        print "ERROR: Exception During Stage Out:\n"
+        print msg
         raise StageOutError(msg, Command = command, ExitCode = exitCode)
     return
 
