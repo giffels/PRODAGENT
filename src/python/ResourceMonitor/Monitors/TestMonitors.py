@@ -15,6 +15,8 @@ into the ground.
 from ResourceMonitor.Monitors.MonitorInterface import MonitorInterface
 from ResourceMonitor.Registry import registerMonitor
 
+
+
 import random
 
 #  //
@@ -37,7 +39,9 @@ class FixedMonitor(MonitorInterface):
 
         Fake callout to check a batch system
         """
-        return _FixedValue
+        constraint = self.newConstraint()
+        constraint['count'] = _FixedValue
+        return constraint
 
 
 
@@ -57,7 +61,9 @@ class RandomMonitor(MonitorInterface):
 
         Fake callout to check a batch system
         """
-        return int(abs(random.gauss(_GaussMean, _GaussStdDev)))
+        constraint = self.newConstraint()
+        constraint['count'] = int(abs(random.gauss(_GaussMean, _GaussStdDev)))
+        return constraint
 
 
 

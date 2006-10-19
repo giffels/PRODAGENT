@@ -6,8 +6,8 @@ Interface class for Monitor plugins.
 
 Interface is pretty simple:
 
-Override the Call method to return an integer, which is the number of
-resources available for jobs.
+Override the Call method to return a ResourceConstraint instance,
+which is the number of resources available for jobs and constraints.
 
 The PluginConfig mechanism is used for this as well, so you can read
 dynamic parameters from self.pluginConfig
@@ -17,6 +17,7 @@ dynamic parameters from self.pluginConfig
 
 import logging
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
+from ProdAgentCore.ResourceConstraint import ResourceConstraint
 
 class MonitorInterface:
     """
@@ -42,6 +43,15 @@ class MonitorInterface:
             
         self.checkPluginConfig()
 
+    def newConstraint(self):
+        """
+        _newConstraint_
+
+        Factory method, returns a new, empty constraint
+
+        """
+        return ResourceConstraint()
+
     
     def checkPluginConfig(self):
         """
@@ -64,11 +74,9 @@ class MonitorInterface:
         Override this method to make whatever callouts you need to
         determine that you have resources available
 
-        Should return an integer value, which is the number of
-        jobs available. Return 0 if there arent any.
-        Anything > 0 will be converted into that many ResourcesAvailable
-        messages published.
+        Should return a ResourceConstraint instance that will be published
+        as a ResourceAvailable event
         """
-        return 0
+        return ResourceConstraint()
 
     

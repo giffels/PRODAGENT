@@ -19,6 +19,8 @@ import ResourceMonitor.Monitors
 from ResourceMonitor.Registry import retrieveMonitor
 
 
+from ProdAgentCore.ResourceConstraint import ResourceConstraint
+
 class ResourceMonitorComponent:
     """
     _ResourceMonitorComponent_
@@ -121,15 +123,16 @@ class ResourceMonitorComponent:
             return None
         return monitor
 
-    def publishResources(self, numResources):
+    def publishResources(self, constraint):
         """
         _publishResources_
 
         """
-        for i in range(0, numResources):
-            self.ms.publish("ResourcesAvailable", "")
-            self.ms.commit()
-            time.sleep(.1)
+        if constraint['count'] == 0:
+            return
+        self.ms.publish("ResourcesAvailable", str(constraint))
+        self.ms.commit()
+        time.sleep(.1)
         return
 
     def startComponent(self):
@@ -179,16 +182,17 @@ class ResourceMonitorComponent:
             monitor = self.loadMonitor()
             if monitor != None:
                 try:
-                    numResources = monitor()
+                    resourceConstraint = monitor()
                 except StandardError, ex:
                     msg = "Error invoking monitor:"
                     msg += self.args['MonitorName']
                     msg += "\n%s\n" % str(ex)
                     logging.error(msg)
-                    numResources = 0
-                logging.debug("%s Resources Available" % numResources)
-            
-                self.publishResources(numResources)
+                    resourceConstraint = ResourceConstraint()
+                    resourceConstraint['count'] = 0
+                logging.debug("%s Resources Available" % resourceConstraint)
+                
+                self.publishResources(resourceConstraint)
                 
             self.cond.release()
         time.sleep(self.args['PollInterval'])
