@@ -545,14 +545,13 @@ class Dataset:
         # create outputFile
         (instance, fileId) = self.database.addOutputFile(datasetId, \
                                                 outputFile, jobId)
-        
+                
         # mark input files as merged for new created output file
         if instance == 0:
             for aFile in fileList:    
                 self.database.updateInputFile(datasetId, aFile, \
                                               status = "merged", \
                                               mergedFile = fileId)
-
         else:
             
             # add instance number to output file in case of resubmission
@@ -563,7 +562,8 @@ class Dataset:
         self.data['last_update'] = date
 
         # update dataset
-        self.database.updateDataset(self.data['name'])
+        self.database.updateDataset(self.data['name'], \
+                                    sequenceNumber=self.data['outSeqNumber'])
         
         # commit changes
         self.database.commit()
