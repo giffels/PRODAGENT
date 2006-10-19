@@ -141,6 +141,7 @@ for dataset in datasets:
           SEList.append(str(loc.host))
          print "== File block %s is located at: %s"%(fileBlock.get('blockName'),SEList)
          print "File block name: ", fileBlock.get('blockName')
+         print "File block status: ", fileBlock.get('blockStatus')
          print "Number of files: ", fileBlock.get('numberOfFiles')
          print "Number of Bytes: ", fileBlock.get('numberOfBytes')
 
