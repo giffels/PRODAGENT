@@ -8,9 +8,11 @@ JobCreator component
 import socket
 import urllib2
 import logging
-from logging.handlers import RotatingFileHandler
+
 import os
 
+
+import ProdAgentCore.LoggingUtils as LoggingUtils
 
 from MCPayloads.JobSpec import JobSpec
 from JobCreator.JobGenerator import JobGenerator
@@ -43,12 +45,7 @@ class JobCreatorComponent:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
 
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
+        LoggingUtils.installLogHandler(self)
         logging.info("JobCreator Component Started...")
 
         #  //
