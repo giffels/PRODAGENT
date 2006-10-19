@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGSubmitter.py,v 1.7 2006/07/17 22:04:24 evansde Exp $"
+__revision__ = "$Id: OSGSubmitter.py,v 1.8 2006/08/23 19:54:03 evansde Exp $"
 
 import os
 import logging
@@ -112,6 +112,12 @@ class OSGSubmitter(SubmitterInterface):
         
         if self.pluginConfig['OSG']['GlobusScheduler'].endswith("jobmanager-pbs"):
             jdl.append("GlobusRSL=(jobtype=single)\n")
+
+        #  //
+        # // Add in parameters that indicate prodagent job types etc
+        #//
+        jdl.append("+ProdAgent_JobID = \"%s\"\n" % self.parameters['JobName'])
+        jdl.append("+ProdAgent_JobType = \"%s\"\n" % self.parameters['JobSpecInstance'].parameters['JobType'])
         
         jdl.append("Queue\n")
         
