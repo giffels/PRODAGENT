@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.5 2006/10/11 17:22:24 ckavka Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -1695,7 +1695,7 @@ class MergeSensorDB:
     # no checks are done since consecutive updates do not affect rows
     ##########################################################################
             
-    def updateDataset(self, datasetName):
+    def updateDataset(self, datasetName, sequenceNumber = None):
         """
         __updateDataset__
         
@@ -1704,6 +1704,7 @@ class MergeSensorDB:
         Arguments:
         
           datasetName -- the dataset name
+          sequenceNumber -- the sequence number
           
         Return:
             
@@ -1714,6 +1715,12 @@ class MergeSensorDB:
         # get name components
         (prim, tier, processed) = Dataset.getNameComponents(datasetName)
         
+        # build sequence update string
+        if sequenceNumber is not None:
+            sequenceString = ", sequence=" + str(sequenceNumber)
+        else:
+            sequenceString = ""
+            
         # get cursor
         try:
             self.conn = self.connect()
@@ -1729,6 +1736,7 @@ class MergeSensorDB:
                      UPDATE merge_dataset
                         SET status='open',
                             updated=current_timestamp
+                     """ + sequenceString + """
                       WHERE prim='""" + prim + """'
                         AND tier='""" + tier + """'
                         AND processed='""" + processed + """'
