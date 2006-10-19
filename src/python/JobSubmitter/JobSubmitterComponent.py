@@ -15,13 +15,13 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.4 2006/06/28 15:10:17 evansde Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.5 2006/06/29 20:01:46 evansde Exp $"
 
 import os
 import logging
-from logging.handlers import RotatingFileHandler
 
+import ProdAgentCore.LoggingUtils  as LoggingUtils
 
 from MessageService.MessageService import MessageService
 
@@ -52,12 +52,7 @@ class JobSubmitterComponent:
 
         
             
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
+        LoggingUtils.installLogHandler(self)
         logging.info("JobSubmitter Component Started...")
         
         
