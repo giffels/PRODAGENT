@@ -15,7 +15,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 import JobQueue.JobQueueAPI  as JobQueueAPI
-from JobQueue.ResourceConstraint import ResourceConstraint
+from ProdAgentCore.ResourceConstraint import ResourceConstraint
 
 
 class JobQueueComponent:
