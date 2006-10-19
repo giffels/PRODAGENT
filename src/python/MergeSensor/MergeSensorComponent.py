@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.39 2006/10/17 16:38:52 ckavka Exp $"
+__version__ = "$Revision: 1.39 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -32,6 +32,7 @@ from MessageService.MessageService import MessageService
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
 from CMSConfigTools.CfgInterface import CfgInterface
+import MCPayloads.WorkflowTools as MCWorkflowTools
 
 # DBS CGI API
 from dbsCgiApi import DbsCgiApi
@@ -101,6 +102,9 @@ class MergeSensorComponent:
 
         # fastMerge
         self.args.setdefault("FastMerge", None)
+
+        # cleanup
+        self.args.setdefault("CleanUp", None)
         
         # update parameters
         self.args.update(args)
@@ -132,6 +136,13 @@ class MergeSensorComponent:
             self.fastMerge = False
         else:
             self.fastMerge = True
+
+
+        # cleanup
+        if str(self.args['CleanUp']).lower() in ("true", "yes"):
+            self.doCleanUp = True
+        else:
+            self.doCleanUp = False
         
         # server directory
         self.args.setdefault("MergeJobSpecs", os.path.join(
@@ -179,6 +190,11 @@ class MergeSensorComponent:
             logging.info("Using EDM fast merge.")
         else:
             logging.info("Using cmsRun merge.")
+            
+        if self.doCleanUp:
+            logging.info("Using Auto CleanUp")
+        else:
+            logging.info("Auto CleanUp disabled.")
             
         # check DBS type
         if self.args['DBSType'] != 'CGI':
@@ -469,9 +485,14 @@ class MergeSensorComponent:
             psethash = properties[datasetId]["PSetHash"]
 
             # create output dataset
+            #  //
+            # // If fast merge is used, output module name needs to be
+            #//  EdmFastMerge, since this is what EdmFastMerge uses
+            outputModuleName = "Merged"
+            if self.fastMerge:
+                outputModuleName = "EdmFastMerge"
             out = dummyTask.addOutputDataset(primary, processed, \
-                                         "Merged")
-            
+                                         outputModuleName)
             # define output dataset properties
             out["DataTier"] = tier
             out["ApplicationName"] = dummyTask.application["Executable"]
@@ -483,7 +504,7 @@ class MergeSensorComponent:
             # add secondary output datasets
             for outDS in secondaryOutputTiers:
                 out = dummyTask.addOutputDataset(primary, processed, \
-                                                 "Merged")
+                                                 outputModuleName)
 
                 # define output dataset properties
                 out["DataTier"] = outDS
@@ -1232,8 +1253,10 @@ class MergeSensorComponent:
         # specify merge job type
         if self.fastMerge:
             cmsRun.application["Executable"] = "EdmFastMerge"
+            outputModuleName = "EdmFastMerge"
         else:
             cmsRun.application["Executable"] = "cmsRun"
+            outputModuleName = "Merged"
             
         # input dataset (primary, processed)
         inputDataset = cmsRun.addInputDataset(dataset[0], dataset[2])
@@ -1242,7 +1265,7 @@ class MergeSensorComponent:
         # output dataset (primary, processed, module name, tier)
         outputDataset = cmsRun.addOutputDataset(targetDataset[0], \
                                                 targetDataset[2], \
-                                                "Merged")
+                                                outputModuleName)
         outputDataset["DataTier"] = tier
         outputDataset["PSetHash"] = psethash
 
@@ -1250,7 +1273,7 @@ class MergeSensorComponent:
         for outDS in secondaryOutputTiers:
             outputDataset = cmsRun.addOutputDataset(targetDataset[0],
                                                     targetDataset[2], \
-                                                   "Merged")
+                                                   outputModuleName)
             outputDataset["DataTier"] = outDS
             outputDataset["PSetHash"] = psethash
            
@@ -1308,6 +1331,10 @@ class MergeSensorComponent:
         stageOut.application["Architecture"] = ""
         stageOut.application["Executable"] = "RuntimeStageOut.py" 
         stageOut.configuration = ""
+
+        # add auto cleanup if reqd.
+        if self.doCleanUp:
+            MCWorkflowTools.addCleanUpNode(cmsRun, "cleanUp1")
         
         # Clone the workflow into a job spec and set the job name
         jobSpec = spec.createJobSpec()
