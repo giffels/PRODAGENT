@@ -17,12 +17,14 @@ from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import mergedLFNBase,unmergedLFNBase
 from CMSConfigTools.CfgInterface import CfgInterface
 from MCPayloads.DatasetExpander import splitMultiTier
+import MCPayloads.WorkflowTools as WorkflowTools
+import MCPayloads.UUID as MCPayloadsUUID
 
 valid = ['cfg=', 'version=', 'category=', 'name=', 'dataset=',
          'split-type=', 'split-size=',
          'only-blocks=', 'only-sites=',
          'dbs-address=', 'dbs-url=', 'dls-type=', 'dls-address=',
-         'same-primary-dataset',
+         'same-primary-dataset', "fake-hash",
          ]
 
 
@@ -113,6 +115,7 @@ dbsUrl = None
 dlsAddress = None
 dlsType = None
 samePrimaryDataset = False
+fakeHash = False
 
 primaryDataset = None
 dataTier = None
@@ -147,6 +150,8 @@ for opt, arg in opts:
         dlsType = arg
     if opt == '--dls-address':
         dlsAddress = arg
+    if opt == '--fake-hash':
+        fakeHash = True
 
 if cfgFile == None:
     msg = "--cfg option not provided: This is required"
@@ -232,50 +237,20 @@ if os.path.exists(pycfgFile):
 if os.path.exists(hashFile):
     os.remove(hashFile)
 
-#  //
-# // Generate python cfg file
-#//
-pop = popen2.Popen4("EdmConfigToPython < %s > %s " % (cfgFile, pycfgFile))
-while pop.poll() == -1:
-    exitStatus = pop.poll()
-exitStatus = pop.poll()
-if exitStatus:
-    msg = "Error creating Python cfg file:\n"
-    msg += pop.fromchild.read()
-    raise RuntimeError, msg
-
+pycfgFile = WorkflowTools.createPythonConfig(cfgFile)
 
 #  //
 # // Generate PSet Hash
 #//
-pop = popen2.Popen4("EdmConfigHash < %s > %s " % (cfgFile, hashFile))
-while pop.poll() == -1:
-    exitStatus = pop.poll()
-exitStatus = pop.poll()
-if exitStatus:
-    msg = "Error creating PSet Hash file:\n"
-    msg += pop.fromchild.read()
-    raise RuntimeError, msg
+RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
 
 #  //
 # // Existence checks for created files
 #//
-for item in (cfgFile, pycfgFile, hashFile):
+for item in (cfgFile, pycfgFile):
     if not os.path.exists(item):
         msg = "File Not Found: %s" % item
         raise RuntimeError, msg
-
-#  //
-# // Check that python file is valid
-#//
-pop = popen2.Popen4("python %s" % pycfgFile) 
-while pop.poll() == -1:
-    exitStatus = pop.poll()
-exitStatus = pop.poll()
-if exitStatus:
-    msg = "Error importing Python cfg file:\n"
-    msg += pop.fromchild.read()
-    raise RuntimeError, msg
 
 
 
@@ -302,7 +277,7 @@ if customDBSDLS:
 #  //
 # // This value was created by running the EdmConfigHash tool
 #//  on the original cfg file.
-PSetHashValue = file(hashFile).read()
+
 
 cmsRun = spec.payload
 cmsRun.name = "cmsRun1"
@@ -348,7 +323,16 @@ for outModName, val in cfgInt.outputModules.items():
         outDS["ApplicationProject"] = cmsRun.application["Project"]
         outDS["ApplicationVersion"] = cmsRun.application["Version"]
         outDS["ApplicationFamily"] = outModName
-        outDS['PSetHash'] = PSetHashValue
+        
+        if fakeHash:
+            guid = MCPayloadsUUID.uuidgen()
+            if guid == None:
+                guid = MCPayloadsUUID.uuid()
+            hashValue = "hash=%s;guid=%s" % (RealPSetHash, guid)
+            outDS['PSetHash'] = hashValue
+        else:
+            outDS['PSetHash'] = RealPSetHash
+
         datasetList.append(outDS.name())
 
 stageOut = cmsRun.newNode("stageOut1")
