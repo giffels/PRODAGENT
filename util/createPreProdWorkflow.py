@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: createPreProdWorkflow.py,v 1.5 2006/10/06 16:14:37 evansde Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: createPreProdWorkflow.py,v 1.6 2006/10/09 16:04:33 evansde Exp $"
 
 
 import os
@@ -22,13 +22,15 @@ from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
 from CMSConfigTools.CfgInterface import CfgInterface
 from MCPayloads.DatasetExpander import splitMultiTier
+import MCPayloads.WorkflowTools as WorkflowTools
+import MCPayloads.UUID as MCPayloadsUUID
 
-
-valid = ['cfg=', 'version=', 'category=', 'name=' ]
+valid = ['cfg=', 'version=', 'category=', 'name=', 'fake-hash' ]
 usage = "Usage: createPreProdWorkflow.py --cfg=<cfgFile>\n"
 usage += "                                --version=<CMSSW version>\n"
 usage += "                                --name=<Workflow Name>\n"
 usage += "                                --category=<Production category>\n"
+usage += "                                --fake-hash\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
 usage += "Workflow Name is the name of the Workflow/Request/Primary Dataset\n"
@@ -49,7 +51,7 @@ prodName = None
 version = None
 category = "PreProd"
 timestamp = int(time.time())
-
+fakeHash = False
 for opt, arg in opts:
     if opt == "--cfg":
         cfgFile = arg
@@ -59,6 +61,8 @@ for opt, arg in opts:
         category = arg
     if opt == "--name":
         prodName = arg
+    if opt == "--fake-hash":
+        fakeHash = True
 
 if cfgFile == None:
     msg = "--cfg option not provided: This is required"
@@ -79,58 +83,17 @@ if not os.path.exists(cfgFile):
     msg = "Cfg File Not Found: %s" % cfgFile
     raise RuntimeError, msg
 
-#  //
-# // Cleanup existing files
-#//
-if os.path.exists(pycfgFile):
-    os.remove(pycfgFile)
-if os.path.exists(hashFile):
-    os.remove(hashFile)
 
 #  //
 # // Generate python cfg file
 #//
-pop = popen2.Popen4("EdmConfigToPython < %s > %s " % (cfgFile, pycfgFile))
-while pop.poll() == -1:
-    exitStatus = pop.poll()
-exitStatus = pop.poll()
-if exitStatus:
-    msg = "Error creating Python cfg file:\n"
-    msg += pop.fromchild.read()
-    raise RuntimeError, msg
+pycfgFile = WorkflowTools.createPythonConfig(cfgFile)
 
 
 #  //
 # // Generate PSet Hash
 #//
-pop = popen2.Popen4("EdmConfigHash < %s > %s " % (cfgFile, hashFile))
-while pop.poll() == -1:
-    exitStatus = pop.poll()
-exitStatus = pop.poll()
-if exitStatus:
-    msg = "Error creating PSet Hash file:\n"
-    msg += pop.fromchild.read()
-    raise RuntimeError, msg
-
-#  //
-# // Existence checks for created files
-#//
-for item in (cfgFile, pycfgFile, hashFile):
-    if not os.path.exists(item):
-        msg = "File Not Found: %s" % item
-        raise RuntimeError, msg
-
-#  //
-# // Check that python file is valid
-#//
-pop = popen2.Popen4("python %s" % pycfgFile) 
-while pop.poll() == -1:
-    exitStatus = pop.poll()
-exitStatus = pop.poll()
-if exitStatus:
-    msg = "Error importing Python cfg file:\n"
-    msg += pop.fromchild.read()
-    raise RuntimeError, msg
+RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
 
 #  // 
 # // Create a new WorkflowSpec and set its name
@@ -143,7 +106,7 @@ spec.setRequestTimestamp(timestamp)
 #  //
 # // This value was created by running the EdmConfigHash tool
 #//  on the original cfg file.
-PSetHashValue = file(hashFile).read()
+
 
 cmsRun = spec.payload
 cmsRun.name = "cmsRun1" # every node in the workflow needs a unique name
@@ -177,12 +140,20 @@ for outModName, val in cfgInt.outputModules.items():
         outDS = cmsRun.addOutputDataset(prodName, 
                                         processedDS,
                                         outModName)
+                                        
         outDS['DataTier'] = dataTier
         outDS["ApplicationName"] = cmsRun.application["Executable"]
         outDS["ApplicationProject"] = cmsRun.application["Project"]
         outDS["ApplicationVersion"] = cmsRun.application["Version"]
         outDS["ApplicationFamily"] = outModName
-        outDS['PSetHash'] = PSetHashValue
+        if fakeHash:
+            guid = MCPayloadsUUID.uuidgen()
+            if guid == None:
+                guid = MCPayloadsUUID.uuid()
+            hashValue = "hash=%s;guid=%s" % (RealPSetHash, guid)
+            outDS['PSetHash'] = hashValue
+        else:
+            outDS['PSetHash'] = RealPSetHash
         datasetList.append(outDS.name())
 
 stageOut = cmsRun.newNode("stageOut1")

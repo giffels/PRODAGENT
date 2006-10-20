@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: releaseValidation.py,v 1.6 2006/10/02 18:07:23 evansde Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: releaseValidation.py,v 1.7 2006/10/09 16:04:33 evansde Exp $"
 
 
 import os
@@ -26,10 +26,11 @@ from MCPayloads.RelValSpec import getRelValSpecForVersion
 from CMSConfigTools.CfgInterface import CfgInterface
 from MessageService.MessageService import MessageService
 from MCPayloads.DatasetExpander import splitMultiTier
-
+import MCPayloads.WorkflowTools as WorkflowTools
+import MCPayloads.UUID as MCPayloadsUUID
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
-         'testretrieval', 'testpython', "cvs-tag="]
+         'testretrieval', 'testpython', "cvs-tag=", "fake-hash"]
 
 usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
 usage += "                            --version=<CMSSW version to be used>\n"
@@ -68,6 +69,7 @@ eventsPerJob = 100
 run = 5000
 testRetrievalMode = False
 testPythonMode = False
+fakeHash = False
 
 def reduceVersion(versString):
     """
@@ -101,6 +103,8 @@ for opt, arg in opts:
         testRetrievalMode = True
     if opt == "--testpython":
         testPythonMode = True
+    if opt == "--fake-hash":
+        fakeHash = True
 
 if xmlFile == None:
     msg = "--url option not provided: This is required"
@@ -176,7 +180,7 @@ for relTest in relValSpec:
         print "Cfg File is %s " % cfgFile
         continue
     pycfgFile = "%s.pycfg" % prodName
-    hashFile = "%s.hash" % prodName
+    
 
     if not os.path.exists(cfgFile):
         msg = "Cfg File Not Found: %s" % cfgFile
@@ -202,60 +206,32 @@ for relTest in relValSpec:
     #//
     if os.path.exists(pycfgFile):
         os.remove(pycfgFile)
-    if os.path.exists(hashFile):
-        os.remove(hashFile)
-
+    
     #  //
     # // Generate python cfg file
     #//
-    pop = popen2.Popen4("EdmConfigToPython < %s > %s " % (cfgFile, pycfgFile))
-    while pop.poll() == -1:
-        exitStatus = pop.poll()
-    exitStatus = pop.poll()
-    if exitStatus:
-        msg = "Error creating Python cfg file:\n"
-        msg += pop.fromchild.read()
-        raise RuntimeError, msg
-
-
+    WorkflowTools.createPythonConfig(cfgFile)
+    
     #  //
     # // Generate PSet Hash
     #//
-    pop = popen2.Popen4("EdmConfigHash < %s > %s " % (cfgFile, hashFile))
-    while pop.poll() == -1:
-        exitStatus = pop.poll()
-    exitStatus = pop.poll()
-    if exitStatus:
-        msg = "Error creating PSet Hash file:\n"
-        msg += pop.fromchild.read()
-        raise RuntimeError, msg
+    RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
 
     #  //
     # // Existence checks for created files
     #//
-    for item in (cfgFile, pycfgFile, hashFile):
+    for item in (cfgFile, pycfgFile):
         if not os.path.exists(item):
             msg = "File Not Found: %s" % item
             raise RuntimeError, msg
 
-    #  //
-    # // Check that python file is valid
-    #//
-    pop = popen2.Popen4("python %s" % pycfgFile) 
-    while pop.poll() == -1:
-        exitStatus = pop.poll()
-    exitStatus = pop.poll()
-    if exitStatus:
-        msg = "Error importing Python cfg file:\n"
-        msg += pop.fromchild.read()
-        raise RuntimeError, msg
-
+        
 
     if testPythonMode:
         print "Test Python Mode:"
         print "EdmConfigToPython and EdmConfigHash successful for %s" % prodName
         print "Python Config File: %s" % pycfgFile
-        print "Config Hash File: %s" % hashFile
+        print "Hash: %s" % RealPSetHash
         continue
     
     #  // 
@@ -266,10 +242,6 @@ for relTest in relValSpec:
     spec.setRequestCategory(category)
     spec.setRequestTimestamp(timestamp)
 
-    #  //
-    # // This value was created by running the EdmConfigHash tool
-    #//  on the original cfg file.
-    PSetHashValue = file(hashFile).read()
 
     cmsRun = spec.payload
     cmsRun.name = "cmsRun1" # every node in the workflow needs a unique name
@@ -308,7 +280,15 @@ for relTest in relValSpec:
             outDS["ApplicationProject"] = cmsRun.application["Project"]
             outDS["ApplicationVersion"] = cmsRun.application["Version"]
             outDS["ApplicationFamily"] = outModName
-            outDS['PSetHash'] = PSetHashValue
+            if fakeHash:
+                guid = MCPayloadsUUID.uuidgen()
+                if guid == None:
+                    guid = MCPayloadsUUID.uuid()
+                hashValue = "hash=%s;guid=%s" % (RealPSetHash, guid)
+                outDS['PSetHash'] = hashValue
+            else:
+                outDS['PSetHash'] = RealPSetHash
+                outDS['PSetHash'] = PSetHashValue
             datasetList.append(outDS.name())
     
     stageOut = cmsRun.newNode("stageOut1")
@@ -327,7 +307,6 @@ for relTest in relValSpec:
 
     print "Created: %s-Workflow.xml" % prodName
     print "Created: %s " % pycfgFile
-    print "Created: %s " % hashFile
     print "From Tag: %s Of %s " % (cvsTag, cfgFile )
     print "Output Datasets:"
     for item in datasetList:
@@ -380,7 +359,7 @@ for relTest in relValSpec:
         summaryEvents += eventsPerJob
         
         time.sleep(1)
-        ms.publish("ResourcesAvailable","none")
+        ms.publish("RequestInjector:ResourcesAvailable","none")
         ms.commit()
 
 print "Total Jobs Created: %s" % summaryJobs
