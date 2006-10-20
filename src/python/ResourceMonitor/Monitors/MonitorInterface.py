@@ -74,9 +74,9 @@ class MonitorInterface:
         Override this method to make whatever callouts you need to
         determine that you have resources available
 
-        Should return a ResourceConstraint instance that will be published
-        as a ResourceAvailable event
+        Should return a list of ResourceConstraint instances that will be
+        published as  ResourceAvailable events
         """
-        return ResourceConstraint()
+        return [ResourceConstraint() ]
 
     

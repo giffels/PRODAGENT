@@ -8,3 +8,4 @@ Plugins for ResourceMonitor
 __all__ = []
 
 import TestMonitors
+import CondorMonitor

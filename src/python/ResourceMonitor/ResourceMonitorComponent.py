@@ -33,7 +33,7 @@ class ResourceMonitorComponent:
         self.args = {}
         self.args['MonitorName'] = None
         self.args['Logfile'] = None
-        self.args.setdefault("PollInterval", 10 )
+        self.args.setdefault("PollInterval", 600 )
         self.args.update(args)
         self.args['PollInterval'] = float(self.args['PollInterval'])
         #  //
@@ -123,17 +123,19 @@ class ResourceMonitorComponent:
             return None
         return monitor
 
-    def publishResources(self, constraint):
+    def publishResources(self, constraints):
         """
         _publishResources_
 
         """
-        if constraint['count'] == 0:
-            return
-        self.ms.publish("ResourcesAvailable", str(constraint))
-        self.ms.commit()
-        time.sleep(.1)
+        for constraint in constraints:
+            if constraint['count'] == 0:
+                continue
+            self.ms.publish("ResourcesAvailable", str(constraint))
+            self.ms.commit()
+            time.sleep(.1)
         return
+
 
     def startComponent(self):
         """
@@ -182,17 +184,18 @@ class ResourceMonitorComponent:
             monitor = self.loadMonitor()
             if monitor != None:
                 try:
-                    resourceConstraint = monitor()
+                    resourceConstraints = monitor()
                 except StandardError, ex:
                     msg = "Error invoking monitor:"
                     msg += self.args['MonitorName']
                     msg += "\n%s\n" % str(ex)
                     logging.error(msg)
-                    resourceConstraint = ResourceConstraint()
-                    resourceConstraint['count'] = 0
-                logging.debug("%s Resources Available" % resourceConstraint)
+                    resourceConstr = ResourceConstraint()
+                    resourceConstr['count'] = 0
+                    resourceConstraints = [resourceConstr]
+                logging.debug("%s Resources Available" % resourceConstraints)
                 
-                self.publishResources(resourceConstraint)
+                self.publishResources(resourceConstraints)
                 
             self.cond.release()
         time.sleep(self.args['PollInterval'])

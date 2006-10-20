@@ -41,7 +41,7 @@ class FixedMonitor(MonitorInterface):
         """
         constraint = self.newConstraint()
         constraint['count'] = _FixedValue
-        return constraint
+        return [constraint]
 
 
 
@@ -63,7 +63,7 @@ class RandomMonitor(MonitorInterface):
         """
         constraint = self.newConstraint()
         constraint['count'] = int(abs(random.gauss(_GaussMean, _GaussStdDev)))
-        return constraint
+        return [constraint]
 
 
 
