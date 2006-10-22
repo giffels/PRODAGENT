@@ -105,5 +105,5 @@ print " Trying to submit %s jobs with %s events each starting from %s"%(njobs,st
 
 njobs=njobs+1
 for i in range(1, njobs):
- ms.publish("ResourcesAvailable","none")
+ ms.publish("RequestInjector:ResourcesAvailable","none")
  ms.commit()
