@@ -13,6 +13,7 @@ import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
+from ProdAgentCore.PostMortem import runWithPostMortem
 from ErrorHandler.ErrorHandlerComponent import ErrorHandlerComponent
 
 #  //
@@ -35,4 +36,4 @@ compCfg['jobReportLocation'] = compCfg['ComponentDir']+'/JobReports'
 #//
 createDaemon(compCfg['ComponentDir'])
 component = ErrorHandlerComponent(**dict(compCfg))
-component.startComponent()
+runWithPostMortem(component, compCfg['ComponentDir'])
