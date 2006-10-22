@@ -12,8 +12,8 @@ from dbsFileBlock import DbsFileBlock
 import string,sys,os,getopt,time
 
 
-usage="\n Usage: python closeDBSFileBlock.py <options> \n Options: \n --DBSAddress=<MCLocal/Writer> \t\t DBS database instance \n --DBSURL=<URL> \t\t DBS URL \n --block=<fileblock> \t\t fileblock \n --blockFileList=<filewithblocklist> \t\t File with the list of fileblocks \n"
-valid = ['DBSAddress=','DBSURL=','block=','blockFileList=','valid']
+usage="\n Usage: python closeDBSFileBlock.py <options> \n Options: \n --DBSAddress=<MCLocal/Writer> \t\t DBS database instance \n --DBSURL=<URL> \t\t\t DBS URL \n --block=<fileblock> \t\t\t close this fileblock \n --blockFileList=<filewithblocklist> \t close all fileblocks listed in this file \n --datasetPath=/<primarydataset>/<datatier>/<procdataset>  close all fileblocks for this dataset"
+valid = ['DBSAddress=','DBSURL=','block=','blockFileList=','datasetPath=','valid']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -25,12 +25,15 @@ url = "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery"
 dbinstance = None
 block = None
 blockFileList = None
+datasetPath = None
 
 for opt, arg in opts:
     if opt == "--block":
         block = arg
     if opt == "--blockFileList":
         blockFileList = arg
+    if opt == "--datasetPath":
+        datasetPath = arg
     if opt == "--DBSAddress":
         dbinstance = arg
     if opt == "--DBSURL":
@@ -41,12 +44,12 @@ if dbinstance == None:
     print usage
     sys.exit(1)
 
-if (block == None) and (blockFileList == None) :
-    print "\n either --block or --blockFileList option has to be provided"
+if (block == None) and (blockFileList == None) and (datasetPath == None):
+    print "\n either --block or --blockFileList or --datasetPath option has to be provided"
     print usage
     sys.exit(1)
-if (block != None) and (blockFileList != None) :
-    print "\n options --block or --blockFileList are mutually exclusive"
+if (block != None) and (blockFileList != None) and (datasetPath != None):
+    print "\n options --block or --blockFileList or --datasetPath are mutually exclusive"
     print usage
     sys.exit(1)
 
@@ -59,16 +62,18 @@ args = {'instance' : dbinstance}
 dbsapi = dbsCgiApi.DbsCgiApi(url, args)
 
 #  //
-# // Close FileBlock
+# // Close FileBlock method
 #//
 def closeDBSFileBlock(ablock):   
   print "Closing block %s"%ablock
   dbsblock = DbsFileBlock (blockName = ablock)
   dbsapi.closeFileBlock(dbsblock)
 
+### --block option: close single block
 if (block != None):
   closeDBSFileBlock(block)
 
+## --blockFileList option: close list of blocks from a file
 if (blockFileList != None) :
  expand_blockFileList=os.path.expandvars(os.path.expanduser(blockFileList))
  if not os.path.exists(expand_blockFileList):
@@ -81,5 +86,32 @@ if (blockFileList != None) :
    closeDBSFileBlock(block)
  blocklist_file.close()
 
+## --datasetPath: close all blocks for a dataset
+if (datasetPath != None):
 
+  #  //
+  # // Get list of datasets
+  #//
+  try:
+    datasets = dbsapi.listProcessedDatasets(datasetPath)
+  except dbsCgiApi.DbsCgiToolError , ex:
+    print "%s: %s " %(ex.getClassName(),ex.getErrorMessage())
+    print "exiting..."
+    sys.exit(1)
+
+  for dataset in datasets:
+  #  //
+  # // Get list of blocks for the dataset and their location
+  #//
+    dataset=dataset.get('datasetPathName')
+    print "===== dataset %s"%dataset
+    try:
+      fileBlockList = dbsapi.getDatasetFileBlocks(dataset)
+    except DbsException, ex:
+      print "DbsException for DBS API getDatasetFileBlocks(%s): %s %s" %(dataset,ex.getClassName(), ex.getErrorMessage())
+      sys.exit(1)
+
+    for fileBlock in fileBlockList:
+       block=fileBlock.get('blockName')
+       closeDBSFileBlock(block)
 
