@@ -146,13 +146,16 @@ for relTest in relValSpec:
     prodName = relTest['Name']
     prodName = prodName.replace("RelVal", "RelVal%s" % reduceVersion(version) )
     cfgFile = os.path.join(os.getcwd(), "%s.cfg" % prodName)
-    if relTest['NumJobs'] != None:
-        numberOfJobs = int(relTest['NumJobs'])
-        eventCount = int(relTest['Events'])
-    else:
-        numberOfJobs = int( int(relTest['Events']) / eventsPerJob) + 1
-        eventCount = eventsPerJob
 
+    numberOfJobs = int( int(relTest['Events']) / eventsPerJob) + 1
+    eventCount = eventsPerJob
+
+    if relTest['FractionSelected'] != None:
+        efficiency = float(relTest['FractionSelected'])
+        eventCount = int(eventCount / efficiency) + 1
+        print " ==>Selection Efficiency Found: %s " % efficiency
+        print " ==>Events Per Job Adjusted To: %s" % eventCount
+        
     urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/ReleaseValidation/data/"
 
     cfgUrl = "%s%s" % (urlBase, relTest['CfgUrl'])

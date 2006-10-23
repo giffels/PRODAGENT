@@ -27,7 +27,7 @@ class RelValTest(dict):
         self.setdefault('Events' , None)
         self.setdefault('Name', None)
         self.setdefault("CfgUrl", None)
-        self.setdefault("NumJobs", None)
+        self.setdefault("FractionSelected", None)
 
     def save(self):
         """self to improv"""
@@ -35,8 +35,8 @@ class RelValTest(dict):
                             Events = str(self['Events']),
                             Name = str(self['Name']),
                             )
-        if self['NumJobs'] != None:
-            result.attrs['NumJobs'] = str(self['NumJobs'])
+        if self['FactionSelected'] != None:
+            result.attrs['FractionSelected'] = str(self['FractionSelected'])
         return result
 
     def load(self, improvNode):
@@ -44,8 +44,8 @@ class RelValTest(dict):
         self['Events'] = str(improvNode.attrs["Events"])
         self['Name'] = str(improvNode.attrs['Name'])
         self['CfgUrl'] = str(improvNode.chardata)
-        if improvNode.attrs.has_key("NumJobs"):
-            self['NumJobs'] = str(improvNode.attrs['NumJobs'])
+        if improvNode.attrs.has_key("FractionSelected"):
+            self['FractionSelected'] = str(improvNode.attrs['FractionSelected'])
         return
 
 
