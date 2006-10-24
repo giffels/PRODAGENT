@@ -20,6 +20,7 @@ from ResourceMonitor.Registry import retrieveMonitor
 
 
 from ProdAgentCore.ResourceConstraint import ResourceConstraint
+import ProdAgentCore.LoggingUtils as LoggingUtils
 
 class ResourceMonitorComponent:
     """
@@ -44,16 +45,15 @@ class ResourceMonitorComponent:
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
-        logging.info("ResourceMonitor Component Started...")
+
+        LoggingUtils.installLogHandler(self)
+        msg = "ResourceMonitor Component Started:\n"
+        msg += " ==> Monitor = %s\n" % self.args['MonitorName']
+        msg += " ==> PollInterval = %s s\n" % self.args['PollInterval']
+        logging.info(msg)
         self.cond = Condition()
         
-        logging.getLogger().setLevel(logging.DEBUG)
+
         
     def __call__(self, event, payload):
         """

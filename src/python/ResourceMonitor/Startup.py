@@ -13,6 +13,7 @@ import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
+from ProdAgentCore.PostMortem import runWithPostMortem
 from ResourceMonitor.ResourceMonitorComponent import ResourceMonitorComponent
 
 #  //
@@ -36,4 +37,5 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 print "Starting ResourceMonitor Component..."
 createDaemon(compCfg['ComponentDir'])
 component = ResourceMonitorComponent(**dict(compCfg))
-component.startComponent()
+runWithPostMortem(component, compCfg['ComponentDir'])
+
