@@ -6,12 +6,13 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.22 2006/09/28 11:16:16 bacchi Exp $"
+__revision__ = "$Id: setup.py,v 1.23 2006/10/09 05:01:57 fvlingen Exp $"
 
 from distutils.core import setup
 
 packages = [
     'AdminControl',
+    'AdminControl.Bots',
     'CMSConfigTools',
     'CondorTracker',
     'DBSInterface',
@@ -26,6 +27,8 @@ packages = [
     'JobCreator',
     'JobCreator.Creators',
     'JobCreator.RuntimeTools',
+    'JobQueue',
+    'JobQueue.Prioritisers',
     'JobSubmitter',
     'JobSubmitter.Submitters',
     'JobTracking',
@@ -49,6 +52,8 @@ packages = [
     'ProdMgrInterface.States',
     'PhEDExInterface',
     'RequestInjector',
+    'ResourceMonitor',
+    'ResourceMonitor.Monitors',
     'RunRes',
     'SeedGen',
     'ShLogger',
