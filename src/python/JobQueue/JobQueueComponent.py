@@ -15,8 +15,11 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 import JobQueue.JobQueueAPI  as JobQueueAPI
-from ProdAgentCore.ResourceConstraint import ResourceConstraint
+import JobQueue.Prioritisers
+from JobQueue.Registry import retrievePrioritiser
 
+from ProdAgentCore.ResourceConstraint import ResourceConstraint
+import ProdAgentCore.LoggingUtils as LoggingUtils
 
 class JobQueueComponent:
     """
@@ -29,27 +32,23 @@ class JobQueueComponent:
         self.args.setdefault("Logfile", None)
         self.args.setdefault("ProcessingPriority", 10)
         self.args.setdefault("MergePriority", 15)
+        self.args.setdefault('Prioritiser', "Default")
         self.args.update(args)
-
-        
 
         if self.args['Logfile'] == None:
            self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
-        #  //
-        # // Log Handler is a rotating file that rolls over when the
-        #//  file hits 1MB size, 3 most recent files are kept
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-        #  //
-        # // Set up formatting for the logger and set the 
-        #//  logging level to info level
-        logFormatter = logging.Formatter("%(asctime)s:%(module)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.DEBUG)
-        
-        logging.info("JobQueueComponent Started...")
+
+        LoggingUtils.installLogHandler(self)
+
+        msg = "JobQueueComponent Started:\n"
+        msg += " ==> ProcessingPriority = "
+        msg += "%s\n" % self.args['ProcessingPriority']
+        msg += " ==> MergePriority = "
+        msg += "%s\n" % self.args['MergePriority']
+        msg += " ==> Prioritiser = "
+        msg += "%s\n" % self.args['Prioritiser']
+        logging.info(msg)
 
         
         
@@ -77,6 +76,26 @@ class JobQueueComponent:
             return
         if event == "JobQueue:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
+            return
+        if event == "JobQueue:SetPrioritiser":
+            self.args['Prioritiser'] = payload
+            return
+
+        if event == "JobQueue:SetMergePriority":
+            try:
+                self.args['MergePriority'] = int(payload)
+            except ValueError, ex:
+                msg = "Unable to set merge prioroty, "
+                msg += "payload is not an integer"
+                logging.error(msg)
+            return
+        if event == "JobQueue:SetProcessingPriority":
+            try:
+                self.args['ProcessingPriority'] = int(payload)
+            except ValueError, ex:
+                msg = "Unable to set processing prioroty, "
+                msg += "payload is not an integer"
+                logging.error(msg)
             return
         
         return
@@ -115,9 +134,38 @@ class JobQueueComponent:
 
         logging.debug(
             "Constraint Created for ResourcesAvailable: %s" % constraint)
-        
 
+        logging.debug(
+            "Loading Prioritiser Plugin: %s" % self.args['Prioritiser'])
 
+        try:
+            plugin = retrievePrioritiser(self.args['Prioritiser'])
+            logging.debug("Plugin loaded successfully")
+        except Exception, ex:
+            msg = "Error loading Prioritiser Plugin:"
+            msg += " %s\n" % self.args['Prioritiser']
+            msg += str(ex)
+            logging.error(msg)
+            return
+        logging.debug("Invoking Plugin on constraint")
+        try:
+            jobspecs = plugin(constraint)
+            logging.debug("Plugin returned %s job specs" % len(jobspecs))
+        except Exception, ex:
+            msg = "Error Calling Prioritiser Plugin:"
+            msg += " %s\n" % self.args['Prioritiser']
+            msg += " On constraint: %s\n" % constraint
+            msg += str(ex)
+            logging.error(msg)
+            return
+
+        for job in jobspecs:
+            logging.info("publishing CreateJob %s" % job)
+            self.ms.publish("CreateJob", job)
+            self.ms.commit()
+            
+        return
+            
     def startComponent(self):
         """
         _startComponent_
@@ -133,6 +181,9 @@ class JobQueueComponent:
         # subscribe to messages
         self.ms.subscribeTo("JobQueue:StartDebug")
         self.ms.subscribeTo("JobQueue:EndDebug")
+        self.ms.subscribeTo("JobQueue:SetPrioritiser")
+        self.ms.subscribeTo("JobQueue:SetMergePriority")
+        self.ms.subscribeTo("JobQueue:SetProcessingPriority")
         self.ms.subscribeTo("ResourcesAvailable")
         self.ms.subscribeTo("QueueJob")
         
