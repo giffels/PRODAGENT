@@ -14,8 +14,9 @@ _inst  = SystemRandom()
 
 #  //
 # // Max bit mask size for 32 bit integers
-#//
-_MAXINT = 2147483645
+#//  This is required to be max 900M for CMSSW
+#_MAXINT = 2147483645
+_MAXINT = 900000000
 
 _SvcName = "RandomNumberGeneratorService"
 
