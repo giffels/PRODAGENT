@@ -6,8 +6,8 @@ stdout/stderr etc
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: TestComponent.py,v 1.4 2006/10/11 17:22:45 ckavka Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -50,14 +50,15 @@ argsDict = {"DBSAddress" : None,
             "MinMergeFileSize" : 1500000000,
             "MergeSiteBlacklist" : "",
             "MergeSiteWhitelist" : "",
-            "FastMerge" : "No"
+            "FastMerge" : "No",
+            "MaxInputAccessFailures" : 1
             }
 
 # options
 valid = ['DBSAddress=', 'DBSType=', 'ComponentDir=', 'MaxMergeFileSize=',
          'MinMergeFileSize=', 'PollInterval=', 'StartMode=', 'DLSType=',
          'DLSAddress=', 'MergeSiteBlacklist=', 'MergeSiteWhitelist=',
-         'FastMerge='
+         'FastMerge=', 'MaxInputAccessFailures='
          ]
 
 # get options
