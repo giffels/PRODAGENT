@@ -394,8 +394,9 @@ Fields:
  id       internal output file id
  name     file name
  instance creation instance number
- status   status (merged or to be done again)
+ status   output file status status
  dataset  dataset id
+ failures failures counter
 
 */
 
@@ -404,9 +405,11 @@ CREATE TABLE merge_outputfile
     id int NOT NULL auto_increment,
     name text NOT NULL default '',
     instance int NOT NULL default '1',
-    status enum("merged", "do_it_again") default "merged",
+    status enum("merged", "do_it_again", "failed", "undermerge")
+           default "undermerge",
     mergejob varchar(255) NOT NULL default '',
     dataset int NOT NULL default '0',
+    failures int NOT NULL default '0',
 
     PRIMARY KEY(id),
 
@@ -442,9 +445,12 @@ Fields:
  id         internal input file id
  name       file name
  block      block name as returned by DBS
- status     status (merged or blocked)
+ status     input file status
  dataset    dataset id
  mergedfile associated output merged file id
+ filesize   input file size
+ failures   access failures counter
+ instance   number of merge jobs created for it
 
 */
 
@@ -453,10 +459,13 @@ CREATE TABLE merge_inputfile
     id int NOT NULL auto_increment,
     name text NOT NULL default '',
     block int NOT NULL default '0',
-    status enum("unmerged", "merged", "invalid") default "unmerged",
+    status enum("unmerged", "undermerge", "merged", "invalid")
+           default "unmerged",
     dataset int NOT NULL default '0',
     mergedfile int default NULL,
     filesize int NOT NULL default '0',
+    failures int NOT NULL default '0',
+    instance int NOT NULL default '0',
 
     PRIMARY KEY(id),
 
