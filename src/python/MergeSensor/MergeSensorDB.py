@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorDB.py,v 1.7 2006/10/19 08:37:29 ckavka Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -949,6 +949,7 @@ class MergeSensorDB:
         
         # get output file id
         fileId = rows['fileid']
+        result['fileId'] = fileId
         
         # get now all associated input files
         sqlCommand = """
@@ -1144,6 +1145,91 @@ class MergeSensorDB:
                    'Insertion of file %s failed' % fileName
 
     ##########################################################################
+    # get input file information
+    ##########################################################################
+
+    def getInputFileInfo(self, datasetId, fileName):
+        """
+        __getFileInfo__
+
+        Get input file information.
+
+        Arguments:
+
+          datasetId -- the dataset id in database
+          fileName -- the file name used to update
+
+        Return:
+
+          A dictionary with input file information
+
+        """
+
+        try:
+            self.conn = self.connect()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+        # get input file information
+        sqlCommand = """
+                     SELECT merge_inputfile.id as id,
+                            merge_inputfile.status as status,
+                            merge_inputfile.failures as failures,
+                            merge_inputfile.instance as instance,
+                            merge_inputfile.mergedfile as mergedfile,
+                            merge_fileblock.name as block,
+                            merge_dataset.prim as prim,
+                            merge_dataset.tier as tier,
+                            merge_dataset.processed as processed
+                       FROM merge_inputfile,
+                            merge_dataset,
+                            merge_fileblock
+                      WHERE merge_inputfile.dataset='""" + str(datasetId) + """'
+                        AND merge_inputfile.name='""" + fileName + """'
+                        AND merge_inputfile.dataset=merge_dataset.id
+                        AND merge_inputfile.block=merge_fileblock.id
+                     """
+
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+             # get cursor
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlCommand)
+
+        # process results
+        rows = cursor.rowcount
+
+        # file does not exist
+        if rows == 0:
+            return None
+
+        # get information
+        row = cursor.fetchone()
+
+        # process it
+        row['dataset'] = '/' + row['prim'] + '/' + row['tier'] + '/' + \
+                         row['processed']
+        del row['prim']
+        del row['tier']
+        del row['processed']
+
+        # return it
+        return row
+   
+    ##########################################################################
     # update input file information
     #
     # no checking is performed since nothing prevent to update it to the same
@@ -1151,18 +1237,31 @@ class MergeSensorDB:
     ##########################################################################
             
     def updateInputFile(self, datasetId, fileName, status = "merged", \
-                        mergedFile = None):
+                        mergedFile = None, maxAttempts = None):
         """
         __updateInputFile__
         
         Update input file information, file should exist
         
+        If the transition is from 'merged' to 'unmerged' status,
+        increment instance counter.
+
+        If the transition is from 'undermerge' to 'unmerged',
+        increment failures counter.
+
+        if maxAttempts is specified and number of failures is exceeded,
+        set to 'invalid'
+
+        No checking is performed on the update result, since nothing
+        prevent to update it to the same status.
+
         Arguments:
         
           datasetId -- the dataset id in database
           fileName -- the file name used to update
           status -- new status (if any)
           mergedFile -- the merged output file id (if any)
+          maxAttempts -- number of maximum failures allowed (if any)
           
         Return:
             
@@ -1173,24 +1272,82 @@ class MergeSensorDB:
         # get cursor
         try:
             self.conn = self.connect()
-            cursor = self.conn.cursor()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
             self.conn = self.connect(invalidate = True)
-            cursor = self.conn.cursor()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
     
-        # define mergedFileInformation
+         # get input file information
+        sqlCommand = """
+                     SELECT status, failures
+                       FROM merge_inputfile
+                      WHERE dataset='""" + str(datasetId) + """'
+                        AND name='""" + fileName + """'
+                     """
+
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # get cursor
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlCommand)
+
+        # process results
+        rows = cursor.rowcount
+
+        # file does not exist
+        if rows == 0:
+            raise MergeSensorDBError, \
+             'Cannot update file %s, not registered in dataset.' % fileName
+
+       # define mergedFileInformation
         if mergedFile is None:
             mergedFileUpdate = ''
         else:
             mergedFileUpdate = ", mergedfile='" + str(mergedFile) + "' "
             
+        # increment instance counter for transitions from 'merged' to
+        # 'unmerged'
+        row = cursor.fetchone()
+        oldStatus = row['status']
+        if oldStatus == 'merged' and status == 'unmerged':
+            instanceUpdate = ', instance=instance+1'
+        else:
+            instanceUpdate = ''
+
+        # increment failures counter for transitions from 'undermerge' to
+        # 'unmerged'
+        if oldStatus == 'undermerge' and status == 'unmerged':
+            failuresUpdate = ', failures=failures+1'
+
+            # verify exceeded failures condition
+            failures = row['failures'] + 1
+
+            if maxAttempts is not None:
+                if failures >= maxAttempts:
+                    status = "invalid"
+
+        # no failures
+        else:
+            failuresUpdate = ''
+
         # insert dataset information
         sqlCommand = """
                      UPDATE merge_inputfile
                         SET status='""" + status + "'" + \
-                        mergedFileUpdate + """
+                          mergedFileUpdate + \
+                          instanceUpdate + \
+                          failuresUpdate + """
                       WHERE dataset='""" + str(datasetId) + """'
                         AND name='""" + fileName + """'
                      """
@@ -1211,7 +1368,82 @@ class MergeSensorDB:
             # retry
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
-            
+
+    ##########################################################################
+    # update output file information
+    ##########################################################################
+
+    def updateOutputFile(self, datasetId, fileName = '', jobName = '', \
+                         status = "merged", incrementFailures = False):
+        """
+        __updateOutputFile__
+
+        Update output file information. Assume that the file exists.
+
+        No checking is performed on the update result, since nothing
+        prevent to update it to the same status.
+
+        Arguments:
+
+          datasetId -- the dataset id in database
+          fileName -- the file name used to update or...
+          jobName -- ...equivalently, the job name can be used
+                     (fileName has precedence)
+          status -- new status (if any)
+          incrementFailures -- indicates if failures counter must be
+                               incremented
+        Return:
+
+          none
+
+        """
+
+        # get fileName or jobName
+        if fileName != '':
+            checkCondition = "name='" + fileName + "'"
+        else:
+            checkCondition = "mergejob='" + jobName + "'"
+
+        # increment failures if required
+        if incrementFailures:
+            failuresUpdate = ', failures=failures+1'
+        else:
+            failuresUpdate = ''
+
+        # get cursor
+        try:
+            self.conn = self.connect()
+            cursor = self.conn.cursor()
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+            cursor = self.conn.cursor()
+
+        # insert dataset information
+        sqlCommand = """
+                     UPDATE merge_outputfile
+                        SET status='""" + status + "'" + \
+                        failuresUpdate + """
+                      WHERE dataset='""" + str(datasetId) + """'
+                        AND """ + checkCondition
+
+        # execute command
+        try:
+
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+            # get cursor
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+
     ##########################################################################
     # invalidate input file
     ##########################################################################
@@ -1431,7 +1663,7 @@ class MergeSensorDB:
         # update output file informarion
         sqlCommand = """
                      UPDATE merge_outputfile
-                        SET status='merged',
+                        SET status='undermerge',
                             instance=instance+1,
                             mergejob='""" + jobId + """'
                       WHERE name='""" + fileName + """'
@@ -1624,6 +1856,13 @@ class MergeSensorDB:
         
         Flag job to be redone
         
+        Only succesfully finished jobs can be re-executed or
+        failed jobs with invalid input files.
+
+        Note that even if a job has failed, but its files are
+        still valid, next jobs will try to remerge them.
+
+        
         Arguments:
         
           jobName -- the job name
@@ -1647,6 +1886,59 @@ class MergeSensorDB:
             raise MergeSensorDBError, \
                "Job %s is already flagged for resubmission" % jobName
                
+        # verify that is not runnig now
+        if jobInfo['status'] == 'undermerge':
+            raise MergeSensorDBError, \
+               "Cannot resubmit job %s, it has not finished yet." % jobName
+
+        # if it has failed, check input files. Should be all invalid.
+        if jobInfo['status'] == 'failed':
+
+            # get cursor
+            try:
+               self.conn = self.connect()
+               cursor = self.conn.cursor()
+            except MySQLdb.Error:
+
+                # if it does not work, we lost connection to database.
+                self.conn = self.connect(invalidate = True)
+                cursor = self.conn.cursor()
+
+            # get associated input file information
+            sqlCommand = """
+                         SELECT merge_inputfile.id
+                           FROM merge_inputfile, merge_outputfile
+                          WHERE merge_inputfile.mergedfile=""" + \
+                                                str(jobInfo['fileId']) + """
+                            AND merge_inputfile.status!='invalid'
+                         """
+
+            # execute command
+            try:
+
+                cursor.execute(sqlCommand)
+                self.transaction.append(sqlCommand)
+            except MySQLdb.Error:
+
+                # if it does not work, we lost connection to database.
+                self.conn = self.connect(invalidate = True)
+
+                # get cursor
+                cursor = self.conn.cursor()
+
+                # retry
+                cursor.execute(sqlCommand)
+
+            # process results
+            rows = cursor.rowcount
+
+            # no files should be in a valid state
+            if rows != 0:
+
+                raise MergeSensorDBError, \
+                   "Cannot resubmit failed job %s, files not yet invalidated." \
+                   % jobName
+
         # get cursor
         try:
             self.conn = self.connect()
