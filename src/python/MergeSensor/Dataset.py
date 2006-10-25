@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: Dataset.py,v 1.23 2006/10/19 08:36:59 ckavka Exp $"
+__version__ = "$Revision: 1.23 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -438,6 +438,30 @@ class Dataset:
         cls.database = dbInstance
 
     ##########################################################################
+    # set maximum attempts for reading input files
+    ##########################################################################
+
+    @classmethod
+    def setMaxInputFailures(cls, value):
+        """
+        _setMaxInputFailures_
+
+        Set maximum attempts for reading input files that are causing
+        troubles.
+
+        Arguments:
+
+          value -- the value for the attempts number
+
+        Return:
+
+          none
+
+        """
+
+        cls.maxInputAccessFailures = value
+
+    ##########################################################################
     # set the list of files in a dataset
     ##########################################################################
 
@@ -550,7 +574,7 @@ class Dataset:
         if instance == 0:
             for aFile in fileList:    
                 self.database.updateInputFile(datasetId, aFile, \
-                                              status = "merged", \
+                                              status = "undermerge", \
                                               mergedFile = fileId)
         else:
             
