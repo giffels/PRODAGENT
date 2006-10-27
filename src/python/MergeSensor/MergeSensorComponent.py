@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.41 2006/10/25 16:21:31 ckavka Exp $"
-__version__ = "$Revision: 1.41 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1460,8 +1460,8 @@ class MergeSensorComponent:
         psethash = properties["PSetHash"]
         secondaryOutputTiers = properties["secondaryOutputTiers"]
 
-        # update LFN to include sequence number
-        lfnBase = lfnBase + '-' + str(status['mergedjobs'] // 1000).zfill(4)
+        # compute LFN group based on merge jobs counter
+        group = str(status['mergedjobs'] // 1000).zfill(4)
 
         # create a new workflow
         spec = WorkflowSpec()
@@ -1548,7 +1548,8 @@ class MergeSensorComponent:
         cmsRun.configuration = str(cfg)
 
         # generate merge and unmerged specifications
-        mergedLFNBase(spec)
+        mergedLFNBase(spec, lfnGroup = group)
+
         unmergedLFNBase(spec)
 
 
