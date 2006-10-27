@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: releaseValidation.py,v 1.7 2006/10/09 16:04:33 evansde Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: releaseValidation.py,v 1.9 2006/10/23 19:29:55 evansde Exp $"
 
 
 import os
@@ -22,7 +22,7 @@ import re
 
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
-from MCPayloads.RelValSpec import getRelValSpecForVersion
+from MCPayloads.RelValSpec import getRelValSpecForVersion, listAllVersions
 from CMSConfigTools.CfgInterface import CfgInterface
 from MessageService.MessageService import MessageService
 from MCPayloads.DatasetExpander import splitMultiTier
@@ -30,6 +30,7 @@ import MCPayloads.WorkflowTools as WorkflowTools
 import MCPayloads.UUID as MCPayloadsUUID
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
+         'subpackage=', 'alltests',
          'testretrieval', 'testpython', "cvs-tag=", "fake-hash"]
 
 usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
@@ -62,11 +63,13 @@ except getopt.GetoptError, ex:
 xmlFile = None
 version = None
 cvsTag = None
-relvalVersion = None
+relvalVersions = []
+allTests = False
 category = "RelVal"
 timestamp = int(time.time())
 eventsPerJob = 100
 run = 5000
+subpackage = "ReleaseValidation"
 testRetrievalMode = False
 testPythonMode = False
 fakeHash = False
@@ -94,7 +97,8 @@ for opt, arg in opts:
     if opt == "--cvs-tag":
         cvsTag = arg
     if opt == "--relvalversion":
-        relvalVersion = arg
+        relvalVersions = [ i for i in args.split(',') if i != "" ]
+        
     if opt == "--events":
         eventsPerJob = int(arg)
     if opt == "--run":
@@ -105,6 +109,10 @@ for opt, arg in opts:
         testPythonMode = True
     if opt == "--fake-hash":
         fakeHash = True
+    if opt == "--alltests":
+        allTests = True
+    if opt == "--subpackage":
+        subpackage = arg
 
 if xmlFile == None:
     msg = "--url option not provided: This is required"
@@ -113,15 +121,20 @@ if xmlFile == None:
 if version == None:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
-if relvalVersion == None:
-    msg = "--relvalVersion not provided, falling back to: %s" % version
-    print msg
+
+if not allTests:
+    if relvalVersions == []:
+        msg = "--relvalVersion not provided, You need to provide a list of"
+        msg += "comma seperated test names or set the --alltests flag"
+        raise RuntimeError, msg
+else:
+    relvalVersions = listAllVersions(xmlFile)
 
 if cvsTag == None:
     cvsTag = version
 
 try:
-    relValSpec = getRelValSpecForVersion(xmlFile, relvalVersion)
+    relValSpec = getRelValSpecForVersion(xmlFile, *relvalVersions)
 except StandardError, ex:
     msg = "Error retrieving Release Validation Spec File:\n"
     msg += "%s\n" % xmlFile
@@ -132,7 +145,7 @@ except StandardError, ex:
 if relValSpec == None:
     msg =  "Unable to extract release validation spec from file:\n"
     msg += "%s\n" % xmlFile
-    msg += "Release Validation Version requested: %s\n " % relvalVersion
+    msg += "Release Validation Versions requested: %s\n " % relvalVersions
     msg += "You may need to provide --relvalversion as a command line option"
     print msg
     sys.exit(1)
@@ -145,6 +158,7 @@ summaryEvents = 0
 for relTest in relValSpec:
     prodName = relTest['Name']
     prodName = prodName.replace("RelVal", "RelVal%s" % reduceVersion(version) )
+    prodName = prodName.replace("PhysVal", "PhysVal%s" % reduceVersion(version) )
     cfgFile = os.path.join(os.getcwd(), "%s.cfg" % prodName)
 
     numberOfJobs = int( int(relTest['Events']) / eventsPerJob) + 1
@@ -156,7 +170,7 @@ for relTest in relValSpec:
         print " ==>Selection Efficiency Found: %s " % efficiency
         print " ==>Events Per Job Adjusted To: %s" % eventCount
         
-    urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/ReleaseValidation/data/"
+    urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/%s/data/" % subpackage
 
     cfgUrl = "%s%s" % (urlBase, relTest['CfgUrl'])
     cfgUrl += "?only_with_tag=%s" % cvsTag
