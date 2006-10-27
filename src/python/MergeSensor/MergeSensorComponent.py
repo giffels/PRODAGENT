@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.40 2006/10/19 20:25:56 evansde Exp $"
-__version__ = "$Revision: 1.40 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.41 2006/10/25 16:21:31 ckavka Exp $"
+__version__ = "$Revision: 1.41 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1440,6 +1440,15 @@ class MergeSensorComponent:
           
         """
 
+        # critical region start
+        self.cond.acquire()
+
+        # get Merge Sensor status
+        status = self.database.getStatus()
+
+        # critical region end
+        self.cond.release()
+
         # get dataset properties
         workflowName = properties['workflowName']
         tier = properties['dataTier']
@@ -1447,9 +1456,12 @@ class MergeSensorComponent:
         category = properties["category"]
         version = properties["version"]
         timeStamp = properties["timeStamp"]
-        lfnBase = properties["mergedLFNBase"]
+        lfnBase = properties["mergedLFNBase"] 
         psethash = properties["PSetHash"]
         secondaryOutputTiers = properties["secondaryOutputTiers"]
+
+        # update LFN to include sequence number
+        lfnBase = lfnBase + '-' + str(status['mergedjobs'] // 1000).zfill(4)
 
         # create a new workflow
         spec = WorkflowSpec()
