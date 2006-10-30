@@ -32,6 +32,7 @@ class AcquireAllocations(StateInterface):
        if ( ( (len(idleRequestAllocations)+Allocation.size("messageLevel")) )<numberOfJobs):
            logging.debug("Not enough idle allocations for request "+stateParameters['RequestID']+\
                ", will acquire more")
+           
            logging.debug("Contacting: "+stateParameters['ProdMgrURL']+" with payload "+\
                stateParameters['RequestID']+','+str(int(numberOfJobs)-len(idleRequestAllocations)-Allocation.size("messageLevel")))
            # only request the extra allocations if we have spare idle ones.

@@ -150,12 +150,15 @@ class ProdMgrComponent:
                    componentStateInfo['parameters']['jobSpecDir']=self.args['JobSpecDir']
                    State.setParameters("ProdMgrInterface",componentStateInfo['parameters'])
            logging.debug("ProdMgrInterface state is: "+str(componentStateInfo['state']))
+           
 
            # go to first state that is needed for the retrieveWork handling event
            componentState=componentStateInfo['state']
            if componentStateInfo['state']=='start':
                componentState="EvaluateAllocations"
            Session.commit()
+           componentStateInfo=State.get("ProdMgrInterface")      
+           
            while componentState!='start':
                state=retrieveHandler(componentState)
                componentState=state.execute()
