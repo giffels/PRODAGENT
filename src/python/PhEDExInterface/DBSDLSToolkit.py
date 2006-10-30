@@ -119,8 +119,7 @@ def extractFile(evColl):
     """
     name = evColl['collectionName']
     count = evColl['numberOfEvents']
-    name = name.split("_", 1)[1]
-    name += ".root"
+    name = evColl['fileList'][-1]['logicalFileName']
     return name, count
 
 
