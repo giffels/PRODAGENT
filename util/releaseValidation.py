@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.9 $"
-__revision__ = "$Id: releaseValidation.py,v 1.9 2006/10/23 19:29:55 evansde Exp $"
+__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: releaseValidation.py,v 1.10 2006/10/27 17:04:39 evansde Exp $"
 
 
 import os
@@ -30,7 +30,7 @@ import MCPayloads.WorkflowTools as WorkflowTools
 import MCPayloads.UUID as MCPayloadsUUID
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
-         'subpackage=', 'alltests',
+         'subpackage=', 'alltests', "site-pref=",
          'testretrieval', 'testpython', "cvs-tag=", "fake-hash"]
 
 usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
@@ -73,6 +73,7 @@ subpackage = "ReleaseValidation"
 testRetrievalMode = False
 testPythonMode = False
 fakeHash = False
+sitePref = None
 
 def reduceVersion(versString):
     """
@@ -113,6 +114,8 @@ for opt, arg in opts:
         allTests = True
     if opt == "--subpackage":
         subpackage = arg
+    if opt == "--site-pref":
+        sitePref = arg
 
 if xmlFile == None:
     msg = "--url option not provided: This is required"
@@ -329,7 +332,6 @@ for relTest in relValSpec:
     for item in datasetList:
         print " ==> %s" % item
 
-
     #  //
     # // Inject the workflow into the ProdAgent and trigger job creation
     #//
@@ -339,6 +341,8 @@ for relTest in relValSpec:
 
     print "Creating Jobs..."
     print "%s jobs being created for workflow: %s" % (numberOfJobs, workflowBase)
+    if sitePref != None:
+        print " Jobs created for site: %s" % sitePref
 
     # use MessageService
     ms = MessageService()
@@ -363,11 +367,17 @@ for relTest in relValSpec:
     # Set Workflow and NewDataset
     ms.publish("RequestInjector:SetWorkflow", workflow)
     ms.publish("RequestInjector:SelectWorkflow", workflowBase)
+    ms.commit()
     time.sleep(1)
     ms.publish("RequestInjector:NewDataset",'')
+    ms.commit()
+    if sitePref != None:
+        ms.publish("RequestInjector:SetSitePref", sitePref)
+        ms.commit()
     # Set first run and number of events per job
     ms.publish("RequestInjector:SetInitialRun", str(run))
     ms.publish("RequestInjector:SetEventsPerJob", str(eventCount))
+    ms.commit()
     time.sleep(1)
 
     # Loop over jobs
