@@ -31,7 +31,8 @@ from MessageService.MessageService import MessageService
 from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 import logging
-from logging.handlers import RotatingFileHandler
+import ProdAgentCore.LoggingUtils  as LoggingUtils
+#from logginghandlers import RotatingFileHandler
 
 ## temporary waiting for SEname in FWKJobReport 
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
@@ -122,19 +123,25 @@ class DBSComponent:
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
+
+
+# use the LoggingUtils
+        LoggingUtils.installLogHandler(self)
+        logging.info("DBSComponent Started...")
+
         #  //
         # // Log Handler is a rotating file that rolls over when the
         #//  file hits 1MB size, 3 most recent files are kept
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
+#        logHandler = RotatingFileHandler(self.args['Logfile'],
+#                                         "a", 1000000, 3)
         #  //
         # // Set up formatting for the logger and set the 
         #//  logging level to info level
         #logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logFormatter = logging.Formatter("%(asctime)s:%(module)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
+#        logFormatter = logging.Formatter("%(asctime)s:%(module)s:%(message)s")
+#        logHandler.setFormatter(logFormatter)
+#        logging.getLogger().addHandler(logHandler)
+#        logging.getLogger().setLevel(logging.INFO)
 
         #  //
         # // Log Failed FWJobReport registration into DBS
@@ -145,7 +152,6 @@ class DBSComponent:
 
         self.BadReport = open(self.args['BadReportfile'],'a')
         
-        logging.info("DBSComponent Started...")
         
     def __call__(self, event, payload):
         """
@@ -206,10 +212,16 @@ class DBSComponent:
             except NoFileBlock, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
+                ## add the FWKJobReport to the failed list
+                self.BadReport.write("%s\n" % payload)
+                self.BadReport.flush()
                 return
             except StandardError, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("StandardError Details:%s" % str(ex))
+                ## add the FWKJobReport to the failed list
+                self.BadReport.write("%s\n" % payload)
+                self.BadReport.flush()
                 return
 
         if event == "DBSInterface:RetryFailures":
