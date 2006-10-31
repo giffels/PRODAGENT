@@ -43,6 +43,7 @@ class QueuedJobResults(StateInterface):
                           Allocation.rm(request_id)
                        MessageQueue.remove(message['id'])
                        allocation_id=message['parameters']['jobSpecId'].split('/')[1]+'/'+\
+                       message['parameters']['jobSpecId'].split('/')[2]+'/'+\
                        message['parameters']['jobSpecId'].split('/')[3]
                        Allocation.setState('prodagentLevel',allocation_id,'idle')
                        Session.commit()

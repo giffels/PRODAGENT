@@ -53,7 +53,6 @@ class ReportJobFailure(StateInterface):
            Request.rm(request_id)
            Allocation.rm(request_id)
        allocation_id=report[-1].jobSpecId.split('/')[1]+'/'+\
-       report[-1].jobSpecId.split('/')[2]+'/'+\
        report[-1].jobSpecId.split('/')[3]
        Allocation.setState('prodagentLevel',allocation_id,'idle')
        Session.commit()

@@ -29,7 +29,6 @@ class JobSubmission(StateInterface):
 
        # we retrieve the allocation id of this job from its id:
        allocation_id=stateParameters['jobSpecId'].split('/')[1]+'/'+\
-           stateParameters['jobSpecId'].split('/')[2]+'/'+\
            stateParameters['jobSpecId'].split('/')[3]
        logging.debug("Activating allocation: "+allocation_id+" for job: "+\
            stateParameters['jobSpecId'])
