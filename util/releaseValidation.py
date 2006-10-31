@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: releaseValidation.py,v 1.11 2006/10/30 15:54:51 evansde Exp $"
+__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: releaseValidation.py,v 1.12 2006/10/31 08:48:31 evansde Exp $"
 
 
 import os
@@ -35,18 +35,33 @@ valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
 
 usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
 usage += "                            --version=<CMSSW version to be used>\n"
-usage += "                            --relvalversion=<version to be used in spec file>\n"
+usage += "                            --relvalversion=<comma separated list  of versions to be used in spec file>\n"
 usage += "                            --events=<events per job>\n"
 usage += "                            --run=<first run number>\n"
 usage += "                            --cvs-tag=<CVS Tag of cfg files if not same as version>\n"
-usage += "     Options:\n"
+usage += "                            --fake-hash\n"
+usage += "                            --no-recreate\n"
+usage += "                            --site-pref=<Site Name>\n"
+usage += "                            --sites=<comma seperated list of sites to run relval at>\n"
+usage += "                            --alltests\n"
+usage += "                            --cvs-tag=<CVS Tag of cfg files if not same as version>\n"
+
+
+
+usage += "    Test mode Options:\n"
 usage += "                            --testretrieval\n"
 usage += "                            --testpython\n"
 usage += "                            "
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
 usage += "Events per job defaults to 100 for faster finishing jobs\n"
-usage += "First run number defaults to 5000"
+usage += "First run number defaults to 5000\n"
+usage += " --fake-hash will generate a fake PSet Hash for each dataset\n"
+usage += " --site-pref sets the site name to run jobs on\n"
+usage += " --sites allows you to provide a list of sites to run all the samples on\n"
+usage += " --no-recreate assumes that the workflows are already in the ProdAgent and creates more jobs from them\n"
+usage += " --relvalversion is a list of Validate tag versions to run in the spec file\n"
+usage += " --alltests means use all tests found in the spec file\n"
 usage += "If --testretrieval is provided only parsing the XML spec and \n"
 usage += "retrieving the cfg files is performed\n"
 usage += "If --testpython is provided the cfg files will be retrieved \n"
