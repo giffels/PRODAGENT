@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: releaseValidation.py,v 1.10 2006/10/27 17:04:39 evansde Exp $"
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: releaseValidation.py,v 1.11 2006/10/30 15:54:51 evansde Exp $"
 
 
 import os
@@ -30,7 +30,7 @@ import MCPayloads.WorkflowTools as WorkflowTools
 import MCPayloads.UUID as MCPayloadsUUID
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
-         'subpackage=', 'alltests', "site-pref=",
+         'subpackage=', 'alltests', "site-pref=", "sites=", "no-recreate",
          'testretrieval', 'testpython', "cvs-tag=", "fake-hash"]
 
 usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
@@ -73,7 +73,10 @@ subpackage = "ReleaseValidation"
 testRetrievalMode = False
 testPythonMode = False
 fakeHash = False
+siteList = []
 sitePref = None
+noRecreate = False
+
 
 def reduceVersion(versString):
     """
@@ -98,7 +101,9 @@ for opt, arg in opts:
     if opt == "--cvs-tag":
         cvsTag = arg
     if opt == "--relvalversion":
-        relvalVersions = [ i for i in args.split(',') if i != "" ]
+        relvalVersions = [ i for i in arg.split(',') if i != "" ]
+    if opt == "--sites":
+        siteList = [ i for i in arg.split(',') if i != "" ]
         
     if opt == "--events":
         eventsPerJob = int(arg)
@@ -112,6 +117,8 @@ for opt, arg in opts:
         fakeHash = True
     if opt == "--alltests":
         allTests = True
+    if opt == "--no-recreate":
+        noRecreate = True
     if opt == "--subpackage":
         subpackage = arg
     if opt == "--site-pref":
@@ -179,17 +186,17 @@ for relTest in relValSpec:
     cfgUrl += "?only_with_tag=%s" % cvsTag
     
     
-
-    wgetCommand = "wget %s -O %s" % (cfgUrl, cfgFile)
+    if not noRecreate:
+        wgetCommand = "wget %s -O %s" % (cfgUrl, cfgFile)
     
-    pop = popen2.Popen4(wgetCommand)
-    while pop.poll() == -1:
+        pop = popen2.Popen4(wgetCommand)
+        while pop.poll() == -1:
+            exitStatus = pop.poll()
         exitStatus = pop.poll()
-    exitStatus = pop.poll()
-    if exitStatus:
-        msg = "Error creating retrieving cfg file: %s\n" % cfgUrl
-        msg += pop.fromchild.read()
-        raise RuntimeError, msg
+        if exitStatus:
+            msg = "Error creating retrieving cfg file: %s\n" % cfgUrl
+            msg += pop.fromchild.read()
+            raise RuntimeError, msg
 
 
    
@@ -209,33 +216,35 @@ for relTest in relValSpec:
     #  //
     # // Make sure PSet ends up with unique hash
     #//
-    cfgFileContent = file(cfgFile).read()
-    replacer=re.compile("\}[\s]*$")
-    psetHackString = "\n  PSet psetHack = { string relval = \"%s\"  }\n}\n" % (
-        prodName,
-        )
-    cfgFileContent = replacer.sub(psetHackString, cfgFileContent)
-    handle = open(cfgFile, 'w')
-    handle.write(cfgFileContent)
-    handle.close()
-    
+    RealPSetHash = None
+    if not noRecreate:
+        cfgFileContent = file(cfgFile).read()
+        replacer=re.compile("\}[\s]*$")
+        psetHackString = "\n  PSet psetHack = { string relval = \"%s\"  }\n}\n" % (
+            prodName,
+            )
+        cfgFileContent = replacer.sub(psetHackString, cfgFileContent)
+        handle = open(cfgFile, 'w')
+        handle.write(cfgFileContent)
+        handle.close()    
 
 
-    #  //
-    # // Cleanup existing files
-    #//
-    if os.path.exists(pycfgFile):
-        os.remove(pycfgFile)
+        #  //
+        # // Cleanup existing files
+        #//
     
-    #  //
-    # // Generate python cfg file
-    #//
-    WorkflowTools.createPythonConfig(cfgFile)
+        if os.path.exists(pycfgFile):
+            os.remove(pycfgFile)
     
-    #  //
-    # // Generate PSet Hash
-    #//
-    RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
+        #  //
+        # // Generate python cfg file
+        #//
+        WorkflowTools.createPythonConfig(cfgFile)
+    
+        #  //
+        # // Generate PSet Hash
+        #//
+        RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
 
     #  //
     # // Existence checks for created files
@@ -322,72 +331,85 @@ for relTest in relValSpec:
     mergedLFNBase(spec)
     unmergedLFNBase(spec)
 
-    spec.save("%s-Workflow.xml" % prodName)
 
-
-    print "Created: %s-Workflow.xml" % prodName
-    print "Created: %s " % pycfgFile
-    print "From Tag: %s Of %s " % (cvsTag, cfgFile )
-    print "Output Datasets:"
-    for item in datasetList:
-        print " ==> %s" % item
-
-    #  //
-    # // Inject the workflow into the ProdAgent and trigger job creation
-    #//
-    
-    workflowBase = "%s-Workflow.xml" % prodName
-    workflow = os.path.join(os.getcwd(), workflowBase)
-
-    print "Creating Jobs..."
-    print "%s jobs being created for workflow: %s" % (numberOfJobs, workflowBase)
-    if sitePref != None:
-        print " Jobs created for site: %s" % sitePref
 
     # use MessageService
     ms = MessageService()
     # register message service instance as "Test"
     ms.registerAs("Test")
-
-    # Debug level
-    #ms.publish("RequestInjector:StartDebug","none")
-    #ms.publish("JobCreator:StartDebug","none")
-    #ms.publish("JobSubmitter:StartDebug","none")
-    #ms.publish("TrackingComponent:StartDebug","none")
     
-    #  //
-    # // These should come from the ProdAgentConfig
-    #//
-    # Set Creator
-    #ms.publish("JobCreator:SetCreator","LCGCreator")
-    # Set Submitter
-    #ms.publish("JobSubmitter:SetSubmitter","LCGSubmitter")
+    workflowBase = "%s-Workflow.xml" % prodName
+    workflow = os.path.join(os.getcwd(), workflowBase)
 
 
-    # Set Workflow and NewDataset
-    ms.publish("RequestInjector:SetWorkflow", workflow)
-    ms.publish("RequestInjector:SelectWorkflow", workflowBase)
-    ms.commit()
-    time.sleep(1)
-    ms.publish("RequestInjector:NewDataset",'')
-    ms.commit()
+
+
+    if not noRecreate:
+        spec.save("%s-Workflow.xml" % prodName)
+
+
+        print "Created: %s-Workflow.xml" % prodName
+        print "Created: %s " % pycfgFile
+        print "From Tag: %s Of %s " % (cvsTag, cfgFile )
+        print "Output Datasets:"
+        for item in datasetList:
+            print " ==> %s" % item
+
+            
+
+        #  //
+        # // Inject the workflow into the ProdAgent and trigger job creation
+        #//
+    
+
+        # Set Workflow and NewDataset
+        ms.publish("RequestInjector:SetWorkflow", workflow)
+        ms.publish("RequestInjector:SelectWorkflow", workflowBase)
+        ms.publish("RequestInjector:SetInitialRun", str(run))
+        ms.commit()
+        time.sleep(1)
+        ms.publish("RequestInjector:NewDataset",'')
+        ms.commit()
+    
+
+    else:
+        print "Using: %s-Workflow.xml" % prodName
+
+        
+        
     if sitePref != None:
         ms.publish("RequestInjector:SetSitePref", sitePref)
         ms.commit()
     # Set first run and number of events per job
-    ms.publish("RequestInjector:SetInitialRun", str(run))
+    ms.publish("RequestInjector:SelectWorkflow", workflowBase)
     ms.publish("RequestInjector:SetEventsPerJob", str(eventCount))
     ms.commit()
     time.sleep(1)
 
-    # Loop over jobs
-    for i in range(0, numberOfJobs):
-        summaryJobs += 1
-        summaryEvents += eventsPerJob
-        
-        time.sleep(1)
-        ms.publish("RequestInjector:ResourcesAvailable","none")
-        ms.commit()
+
+    # Loop over sites
+    sitesToLoop = [None]
+    if len(siteList) > 0:
+        sitesToLoop = siteList
+    for siteName in sitesToLoop:
+        # Loop over jobs
+        if siteName != None:
+            ms.publish("RequestInjector:SetSitePref", siteName)
+            ms.commit()
+
+
+        for i in range(0, numberOfJobs):
+            summaryJobs += 1
+            summaryEvents += eventsPerJob
+            
+            time.sleep(1)
+            ms.publish("RequestInjector:ResourcesAvailable","none")
+            ms.commit()
+
+
+        print "Created Jobs..."
+        print "%s jobs being created for workflow: %s" % (numberOfJobs, workflowBase)
+        print "Target Site: %s" % siteName
 
 print "Total Jobs Created: %s" % summaryJobs
 print "Total Events for all jobs: %s" % summaryEvents
