@@ -129,21 +129,21 @@ class WorkflowSpec:
         handle.close()
         return
 
-    def load(self, filename):
-        """
-        _load_
 
-        Load a saved WorkflowSpec from a File
-
+    def loadFromNode(self, improvNode):
         """
-        node = loadIMProvFile(filename)
+        _loadFromNode_
+
+        Populate this object based on content of improvNode provided
+        
+        """
         paramQ = IMProvQuery("/WorkflowSpec/Parameter")
         payloadQ = IMProvQuery("/WorkflowSpec/Payload/PayloadNode")
 
         #  //
         # // Extract Params
         #//
-        paramNodes = paramQ(node)
+        paramNodes = paramQ(improvNode)
         for item in paramNodes:
             paramName = item.attrs.get("Name", None)
             if paramName == None:
@@ -155,10 +155,25 @@ class WorkflowSpec:
         #  //
         # // Extract Payload Nodes
         #//
-        payload = payloadQ(node)[0]
+        payload = payloadQ(improvNode)[0]
         self.payload = PayloadNode()
         self.payload.populate(payload)
         return
+        
+        
+
+    def load(self, filename):
+        """
+        _load_
+
+        Load a saved WorkflowSpec from a File
+
+        """
+        node = loadIMProvFile(filename)
+        self.loadFromNode(node)
+        return
+        
+
         
     def createJobSpec(self):
         """
