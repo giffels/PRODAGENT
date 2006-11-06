@@ -21,6 +21,7 @@ import  MCPayloads.DatasetTools as DatasetTools
 
 from IMProv.IMProvNode import IMProvNode
 from IMProv.IMProvLoader import loadIMProvFile
+from IMProv.IMProvLoader import loadIMProvString
 from IMProv.IMProvQuery import IMProvQuery
 
 class WorkflowSpec:
@@ -170,6 +171,17 @@ class WorkflowSpec:
 
         """
         node = loadIMProvFile(filename)
+        self.loadFromNode(node)
+        return
+
+    def loadString(self, xmlString):
+        """
+        _load_
+
+        Load a saved WorkflowSpec from a File
+
+        """
+        node = loadIMProvString(xmlString)
         self.loadFromNode(node)
         return
         
