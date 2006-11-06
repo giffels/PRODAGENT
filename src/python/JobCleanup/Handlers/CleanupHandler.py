@@ -54,13 +54,14 @@ class CleanupHandler(HandlerInterface):
                  for root, dirs, files in os.walk(cacheDirLocation, topdown=False):
                      for name in files:
                          if root==cacheDirLocation:
+                             short_root=cacheDirLocation.split('/')[-1]
                              #NOTE: should be done with regular expressions.
                              extensions=['.xml','.tar.gz']
                              for extension in extensions:
                                  pos1=name.rfind(extension)
                                  pos2=len(name)-len(extension)
                                  if(pos1==pos2):
-                                     tar.add(os.path.join(root,name))
+                                     tar.add(os.path.join(root,name),os.path.join(short_root,name))
                                      break
                          os.remove(os.path.join(root, name))
                      for name in dirs:
