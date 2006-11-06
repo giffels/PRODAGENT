@@ -243,9 +243,12 @@ def workflowSummary(workflowSpec, interval = "72:00:00"):
     else:
         result['PercentFailed'] = int(totalAttempts/totalFailed) * 100
 
-    percentMerges = int(float(totalMerges)/float(totalAttempts) * 100)
+    if totalAttempts == 0:
+        percentMerges = 0
+    else:
+        percentMerges = int(float(totalMerges)/float(totalAttempts) * 100)
     percentProc = 100 - percentMerges
-
+    
     result['PercentMerge'] = percentMerges
     result['PrecentProcessing'] = percentProc
     
