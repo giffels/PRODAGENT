@@ -189,8 +189,8 @@ def jobTypeCounts(workflowSpec):
 
     """
     result = {}
-    failures = jobTypeFailures()
-    success = jobTypeSuccess()
+    failures = jobTypeFailures(workflowSpec)
+    success = jobTypeSuccess(workflowSpec)
 
     allTypes = failures.keys()
     for typeVal in success.keys():
@@ -203,3 +203,131 @@ def jobTypeCounts(workflowSpec):
 
     return result
         
+
+def workflowSummary(workflowSpec, interval = "72:00:00"):
+    """
+    _workflowSummary_
+
+    Generate a general summary of all jobs for the workflow provided
+    including type counts, success and failure counts by type etc
+    
+    """
+    totalSuccess =  successfulJobCount(workflowSpec)
+    totalFailed = failedJobCount(workflowSpec)
+    typeCounts =  jobTypeCounts(workflowSpec)
+
+    totalAttempts = totalSuccess + totalFailed
+    totalMerges = typeCounts.get('Merge_success', 0) + \
+                  typeCounts.get('Merge_failure', 0)
+    totalProc = typeCounts.get('Processing_success', 0) + \
+                typeCounts.get('Processing_failure', 0)
+    result = {
+        "TotalJobs" : int(totalAttempts),
+        "TotalSuccess" : int(totalSuccess),
+        "TotalFailure" : int(totalFailed),
+        "TotalMerge" : totalMerges,
+        "TotalProcessing" : totalProc,
+        "MergeFailed" : typeCounts.get('Merge_failure', 0),
+        "MergeSuccess" : typeCounts.get('Merge_success', 0),
+        "ProcessingFailed" : typeCounts.get('Processing_failure', 0),
+        "ProcessingSuccess" : typeCounts.get('Processing_success', 0),
+        }
+
+    if totalSuccess == 0:
+        result['PercentSuccess'] = 0
+    else:
+        result['PercentSuccess'] = int(totalAttempts/totalSuccess) * 100
+
+    if totalFailed == 0:
+        result['PercentFailed'] = 0
+    else:
+        result['PercentFailed'] = int(totalAttempts/totalFailed) * 100
+
+    percentMerges = int(float(totalMerges)/float(totalAttempts) * 100)
+    percentProc = 100 - percentMerges
+
+    result['PercentMerge'] = percentMerges
+    result['PrecentProcessing'] = percentProc
+    
+    #  //
+    # // Sites 
+    #//
+    failed = jobFailureDetails(workflowSpec, interval)
+    succeeded = jobSuccessDetails(workflowSpec, interval)
+    sites = [ i['site_name'] for i in succeeded ]
+    sites.extend( [ i['site_name'] for i in failed ])
+    uniqueSites = {}
+    for site in sites:
+        uniqueSites[site] = 1
+    result['Sites'] = uniqueSites.keys()
+
+    #  //
+    # // Events
+    #//
+    proc = processingSuccessDetails(workflowSpec, interval)
+    procTotalRead = 0
+    procTotalWrite = 0
+    for pjob in proc:
+        procTotalWrite += pjob['events_written']
+        procTotalRead += pjob['events_read']
+
+    merged = mergeSuccessDetails(workflowSpec, interval)
+
+    mergeTotalRead = 0
+    mergeTotalWrite = 0
+    for mjob in merged:
+        mergeTotalRead += mjob['events_read']
+        mergeTotalWrite +=  mjob['events_written']
+
+    result['MergeEventsRead'] = int(mergeTotalRead)
+    result['MergeEventsWritten'] = int(mergeTotalWrite)
+    result['ProcessingEventsRead'] = int(procTotalRead)
+    result['ProcessingEventsWritten'] = int(procTotalWrite)
+
+    if procTotalWrite == 0:
+        percentMergedEvents = 0
+    else:
+        percentMergedEvents = int(float(mergeTotalRead)/float(procTotalWrite)*100)
+    
+    result['PercentMergedEvents'] = percentMergedEvents
+    
+    return result
+    
+    
+
+
+def shortTextWorkflowSummary(workflow, interval = "72:00:00"):
+    """
+    _shortTextWorkflowSummary_
+
+    Create a summary string with formatting providing a concise short
+    formatted string summarising the state of the workflow
+
+    """
+    summary = workflowSummary(workflow, interval)
+
+    result = "Success:\t  %s/%s  (%s" % ( 
+        summary['TotalSuccess'], summary['TotalJobs'],
+        summary['PercentSuccess']
+        )
+    result += "%)"
+    result += "  (Processing: %s/%s, Merges %s/%s)\n"%(
+        summary['ProcessingSuccess'], summary['TotalProcessing'],
+        summary['MergeSuccess'], summary['TotalMerge']
+        
+        )
+
+    result += "Failures:\t  %s     (Processing %s, Merges %s)\n" % (
+        summary['TotalFailure'],
+        summary['ProcessingFailed'],
+        summary['MergeFailed'],
+        )
+
+    result += "Events:  \t  %s/%s (%s" % (
+        summary['MergeEventsRead'],
+        summary['ProcessingEventsWritten'],
+        summary['PercentMergedEvents'])
+    result += "%)  (Merged/Unmerged)\n"
+    
+    
+    return result
