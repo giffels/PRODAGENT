@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.43 2006/10/27 14:41:40 ckavka Exp $"
+__version__ = "$Revision: 1.43 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1462,7 +1462,8 @@ class MergeSensorComponent:
 
         # compute LFN group based on merge jobs counter
         group = str(status['mergedjobs'] // 1000).zfill(4)
-
+        lfnBase = "%s/%s" % (lfnBase, group)
+        
         # create a new workflow
         spec = WorkflowSpec()
         
@@ -1548,8 +1549,8 @@ class MergeSensorComponent:
         cmsRun.configuration = str(cfg)
 
         # generate merge and unmerged specifications
-        mergedLFNBase(spec, lfnGroup = group)
-
+        mergedLFNBase(spec, group)
+        
         unmergedLFNBase(spec)
 
 
