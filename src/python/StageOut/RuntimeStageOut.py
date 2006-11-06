@@ -163,7 +163,10 @@ class StageOutManager:
             msg += str(self.config['StageOutParameters'])
             raise StageOutInitError(msg)
         if overrideConf.has_key('option'):
-            overrideParams['option'] = overrideConf['option'][-1]
+            if len(overrideConf['option']) > 0:
+                overrideParams['option'] = overrideConf['option'][-1]
+            else:
+                overrideParams['option'] = ""
         
         msg = "=======StageOut Override Initialised:================\n"
         for key, val in overrideParams.items():
