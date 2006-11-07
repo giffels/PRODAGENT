@@ -12,6 +12,7 @@ from MessageService.MessageService import MessageService
 
 from FwkJobRep.FwkJobReport import FwkJobReport
 from FwkJobRep.ReportParser import readJobReport
+from MCPayloads.JobSpec import JobSpec
 
 
 
@@ -32,6 +33,7 @@ class ProdMgrUnitTests(unittest.TestCase):
         # so we can verify this in the database
         self.ms.subscribeTo("CreateJob")
         self.requests=5
+#        self.prodMgrUrl='https://stein.ultralight.org:8444/'
         self.prodMgrUrl='https://localhost:8444/'
         self.jobReportDir='/tmp/prodAgent/ProdMgrInterface/jobReportDir'
         try:
@@ -72,9 +74,9 @@ class ProdMgrUnitTests(unittest.TestCase):
                 type, payload = self.ms.get()
                 print("Message type: "+str(type)+", payload: "+str(payload))
                 # retrieve the job spec id (jobname)
-                dom=parse(payload)
-                jobspecs=dom.getElementsByTagName("jobspec")
-                ProdMgrUnitTests.__jobSpecId.append(jobspecs[0].getAttribute("JobName"))
+                jobspec=JobSpec()
+                jobspec.load(payload)
+                ProdMgrUnitTests.__jobSpecId.append(jobspec.parameters['JobName'])
                 self.ms.commit()
             print("More Resources Available: ######################")
             # again publish resources available.
@@ -82,11 +84,11 @@ class ProdMgrUnitTests(unittest.TestCase):
             self.ms.commit()
             for i in xrange(0,30): 
                 type, payload = self.ms.get()
-                print("Message type: "+str(type)+", payload: "+str(payload))
+                print("Message "+str(i)+" type: "+str(type)+", payload: "+str(payload))
                 # retrieve the job spec id (jobname)
-                dom=parse(payload)
-                jobspecs=dom.getElementsByTagName("jobspec")
-                ProdMgrUnitTests.__jobSpecId.append(jobspecs[0].getAttribute("JobName"))
+                jobspec=JobSpec()
+                jobspec.load(payload)
+                ProdMgrUnitTests.__jobSpecId.append(jobspec.parameters['JobName'])
                 self.ms.commit()
             #self.ms.publish("JobSuccess", "ASuccessJobSpecID")
             #self.ms.publish("GeneralJobFailure", "AFailedJobSpecID")
@@ -119,7 +121,7 @@ class ProdMgrUnitTests(unittest.TestCase):
            raw_input("Please shutdown the server we are interacting with so to "+\
                "test the messaging queing functionality. Before doing this check the"+\
                " ProdMgrInterface log file for any anomalies (errors) and check the "+\
-               " pm_allocation table to see if allocations are set to idle. ")
+               " pm_allocation table to see if allocations are set to idle. Wait until nothing is being written in the log file (might take a few seconds). ")
            for jobspecid in ProdMgrUnitTests.__jobSpecId[20:27]:
               print("handling jobspecid: "+str(jobspecid))
               reportFile='FrameworkJobReport.xml'
@@ -136,7 +138,7 @@ class ProdMgrUnitTests(unittest.TestCase):
            raw_input("Please start the server again to resume with job success reports."+\
               " Before doing this you can check the ws_queue table, and the ProdMgrInterface"+\
               " log to view how the lack of a connection was handled. There should be several "+\
-              " entries in the ws_queue table.")
+              " entries in the ws_queue table.Wait a +/- 60 seconds (see log file) before restarting and watch the entries in the log file ")
            for jobspecid in ProdMgrUnitTests.__jobSpecId[27:30]:
               print("handling jobspecid: "+str(jobspecid))
               reportFile='FrameworkJobReport.xml'
@@ -173,6 +175,7 @@ class ProdMgrUnitTests(unittest.TestCase):
             self.fail(msg)
 
     def testC(self):
+        return
         try:
             print("start resources available test2")
             self.ms.publish("ResourcesAvailable", str(15))
