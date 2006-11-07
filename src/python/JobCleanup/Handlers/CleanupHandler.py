@@ -47,7 +47,8 @@ class CleanupHandler(HandlerInterface):
              tar=tarfile.open(self.successArchive+'/'+str(payload)+'.tar.gz','w:gz')
              # there might not be a job tracking dir.
              try:
-                 tar.add(cacheDirLocation+'/JobTracking')
+                 short_cacheDirLocation=cacheDirLocation.split('/')[-1]
+                 tar.add(cacheDirLocation+'/JobTracking',short_cacheDirLocation+'/JobTracking')
              except:
                  pass
              try:
