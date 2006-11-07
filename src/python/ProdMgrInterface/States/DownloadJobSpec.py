@@ -28,6 +28,7 @@ class DownloadJobSpec(StateInterface):
        job=Job.get('requestLevel')[stateParameters['jobIndex']]
        targetDir=stateParameters['jobSpecDir']+'/'+job['jobSpecId'].replace('/','_')
        targetFile=job['URL'].split('/')[-1]
+       logging.debug("targetFile for download is: "+targetFile)
 
        # if it is queue, restore the message and request level
        # allocations
@@ -73,6 +74,7 @@ class DownloadJobSpec(StateInterface):
        State.setState("ProdMgrInterface",componentState)
        stateParameters['jobSpecId']=job['jobSpecId']
        stateParameters['targetFile']=targetDir+'/'+targetFile
+       logging.debug("Absolute targetFile = "+stateParameters['targetFile'])
        State.setParameters("ProdMgrInterface",stateParameters)
        Session.commit()
        return componentState
