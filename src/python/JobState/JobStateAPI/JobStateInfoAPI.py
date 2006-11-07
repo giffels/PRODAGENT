@@ -95,7 +95,5 @@ def startedJobs(daysBack):
       futher than the number of days specified.
 
       """
-      print('test')
-
       return JobStateInfoAPIMySQL.startedJobs(daysBack)
 

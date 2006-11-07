@@ -1,6 +1,10 @@
 #!/usr/bin/env python
+from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Config import defaultConfig
 from ProdAgentDB import Mysql
+
+cursorCache={}
+connectionCache={}
 
 def connect(cache=True):
      """
@@ -30,4 +34,5 @@ def connect(cache=True):
          return conn
      except:
          raise
+
 
