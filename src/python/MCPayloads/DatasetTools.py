@@ -34,6 +34,22 @@ def getOutputDatasets(payloadNode):
         
     return result
 
+def getPileupDatasets(payloadNode):
+    """
+    _getPileupDatasets_
+
+    Extract all pileup dataset info from the node provided.
+    Returns a list of dataset info objects
+
+    """
+    result = []
+    for item in payloadNode._PileupDatasets:
+        resultEntry = DatasetInfo()
+        resultEntry.update(item)
+        resultEntry['NodeName'] = payloadNode.name
+        result.append(resultEntry)
+    return result
+
 
 class Accumulator:
     """
@@ -70,7 +86,18 @@ def getOutputDatasetsFromTree(topPayloadNode):
     topPayloadNode.operate(accum)
     return accum.result
 
+def getPileupDatasetsFromTree(topPayloadNode):
+    """
+    _getPileupDatasetsFromTree_
 
+    Traverse a PayloadNode tree with the getPileupDatasets method
+    and accumulate the datasets from all nodes, to be returned as a list
+
+    """
+    accum = Accumulator(getPileupDatasets)
+    topPayloadNode.operate(accum)
+    return accum.result
+    
 
 def getOutputDatasetDetails(jobSpecNode):
     """

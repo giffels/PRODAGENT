@@ -252,6 +252,15 @@ class WorkflowSpec:
         return result
     
     
+    def pileupDatasets(self):
+        """
+        _pileupDataset_
+
+        Get a list of all pileup datasets required by this workflow
+
+        """
+        return DatasetTools.getPileupDatasetsFromTree(self.payload)
+    
 
 def updateWorkflowName(payloadNode, workflowName):
     """
