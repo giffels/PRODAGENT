@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGSubmitter.py,v 1.8 2006/08/23 19:54:03 evansde Exp $"
+__revision__ = "$Id: OSGSubmitter.py,v 1.9 2006/10/19 14:23:37 evansde Exp $"
 
 import os
 import logging
@@ -109,9 +109,14 @@ class OSGSubmitter(SubmitterInterface):
             jdl.append("environment = \" PRODAGENT_DASHBOARD_ID=%s \"\n" % (
                 self.parameters['DashboardID'])
                        )
-        
+            
         if self.pluginConfig['OSG']['GlobusScheduler'].endswith("jobmanager-pbs"):
             jdl.append("GlobusRSL=(jobtype=single)\n")
+
+        else:
+            jdl.append("""globusrsl=(condor_submit=('+SubmitterJobId' '\\"$ENV(HOSTNAME)#$(Cluster).$(Process)\\"')) """)
+            jdl.append("\n")
+            
 
         #  //
         # // Add in parameters that indicate prodagent job types etc
