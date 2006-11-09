@@ -179,6 +179,39 @@ class PileupDataset(list):
         handle.close()
         return
 
+
+
+def createPileupDatasets(workflowSpec):
+    """
+    _createPileupDatasets_
+
+    Create PileupTools.PileupDataset instances for each of
+    the pileup datasets in the workflowSpec.
+
+    Return a dictionary mapping the payload node name to the
+    PileupDataset instance
+
+    """
+    result = {}
+    puDatasets = workflowSpec.pileupDatasets()
+    for puDataset in puDatasets:
+        pudInstance = PileupDataset(puDataset.name(),
+                                    int(puDataset['FilesPerJob']))
+
+        if puDataset.has_key("DBSAddress"):
+            args = {"DBSAddress" : puDataset['DBSAddress'],
+                    "DBSURL" : puDataset['DBSURL'],
+                    'DLSType' : puDataset['DLSType'],
+                    'DLSAddress' : puDataset['DLSAddress']}
+            pudInstance.loadLFNs(**args)
+        else:
+            pudInstance.loadLFNs()
+
+        result[puDataset['NodeName']] = pudInstance
+        
+    return result
+
+
 if __name__ == '__main__':
     
     dataset = "/MC-110-os-minbias/SIM/CMSSW_1_1_0-GEN-SIM-1161611489"
