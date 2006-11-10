@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.6 2006/07/14 14:16:46 evansde Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.7 2006/08/23 20:03:38 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -20,6 +20,7 @@ from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 import os
 import time
 import socket
+import popen2
 
 _GridJobIDPriority = [
     'EDG_WL_JOBID',
@@ -27,6 +28,44 @@ _GridJobIDPriority = [
     'GLOBUS_GRAM_JOB_CONTACT',
     ]
 
+
+def getSyncCE():
+    """
+    _getSyncCE_
+
+    Extract the SyncCE from GLOBUS_GRAM_JOB_CONTACT if available for OSG,
+    otherwise broker info for LCG
+
+    """
+    result = socket.gethostname()
+
+    if os.environ.has_key('GLOBUS_GRAM_JOB_CONTACT'):
+        #  //
+        # // OSG, Sync CE from Globus ID
+        #//
+        val = os.environ['GLOBUS_GRAM_JOB_CONTACT']
+        try:
+            host = val.split("https://", 1)[1]
+            host = host.split(":")[0]
+            result = host
+        except:
+            pass
+        return result
+    if os.environ.has_key('EDG_WL_JOBID'):
+        #  //
+        # // LCG, Sync CE from edg command
+        #//
+        command = "edg-brokerinfo getCE"
+        pop = popen2.Popen3(command)
+        pop.wait()
+        exitCode = pop.poll()
+        if exitCode:
+            return result 
+        
+        content = pop.fromchild.read()
+        result = content.strip()
+        return result
+    return result
 
 class DashboardMonitor(ShREEKMonitor):
     """
@@ -94,7 +133,7 @@ class DashboardMonitor(ShREEKMonitor):
             self.dashboardInfo.job = "%s_%s" % (self.dashboardInfo.job, gridJobId)
         self.dashboardInfo['GridJobID'] = gridJobId
         self.dashboardInfo['JobStarted'] = time.time()
-        self.dashboardInfo['SyncCE'] = socket.gethostname()
+        self.dashboardInfo['SyncCE'] = getSyncCE()
         self.dashboardInfo.publish(5)
         return
 
