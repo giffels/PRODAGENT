@@ -11,10 +11,17 @@ The jobs are JobSpec instances created from the WorkflowSpec
 """
 
 import os
+import logging
 
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import createUnmergedLFNs
 from CMSConfigTools.CfgGenerator import CfgGenerator
+from PileupTools.PileupDataset import PileupDataset, createPileupDatasets
+
+from IMProv.IMProvDoc import IMProvDoc
+from IMProv.IMProvNode import IMProvNode
+from IMProv.IMProvQuery import IMProvQuery
+from IMProv.IMProvLoader import loadIMProvFile
 
 
 class RequestIterator:
@@ -31,6 +38,7 @@ class RequestIterator:
         self.count = 0
         self.currentJob = None
         self.sitePref = None
+        self.pileupDatasets = {}
 
         #  //
         # // Initially hard coded, should be extracted from Component Config
@@ -41,6 +49,23 @@ class RequestIterator:
         self.workflowSpec.load(workflowSpecFile)
         
 
+
+
+    def loadPileupDatasets(self):
+        """
+        _loadPileupDatasets_
+
+        Are we dealing with pileup? If so pull in the file list
+        
+        """
+        puDatasets = self.workflowSpec.pileupDatasets()
+        if len(puDatasets) > 0:
+            logging.info("Found %s Pileup Datasets for Workflow: %s" % (
+                len(puDatasets), self.workflowSpec.workflowName(),
+                ))
+            self.pileupDatasets = createPileupDatasets(self.workflowSpec)
+        return
+            
     def __call__(self):
         """
         _operator()_
@@ -72,8 +97,8 @@ class RequestIterator:
         jobSpec.setJobType("Processing")
         jobSpec.parameters['RunNumber'] = self.count
 
-        
-        jobSpec.payload.operate(self.generateJobConfig)
+    
+        jobSpec.payload.operate(self.generateJobConfig)            
         jobSpecFile = os.path.join(self.workingDir,
                                    "%s-JobSpec.xml" % jobName)
 
@@ -118,8 +143,106 @@ class RequestIterator:
                            maxEvents = self.eventsPerJob,
                            firstRun = self.count)
 
+        #  //
+        # // Is there pileup for this node?
+        #//
+        if self.pileupDatasets.has_key(jobSpecNode.name):
+            puDataset = self.pileupDatasets[jobSpecNode.name]
+            logging.debug("Node: %s has a pileup dataset: %s" % (
+                jobSpecNode.name,  puDataset.dataset,
+                ))
+            mixingModules = jobCfg.mixingModules()
+            fileList = puDataset.getPileupFiles()
+            quotedFiles = [ "\"%s\"" % i for i in fileList ]
+            for mixMod in mixingModules:
+                inpPSet = mixMod['input'][2]
+                inpPSet['fileNames'] = ('vstring', 'untracked', quotedFiles)
+            
+            
+        
         jobSpecNode.configuration = jobCfg.cmsConfig.asPythonString()
         jobSpecNode.loadConfiguration()
         
         return
+
+
+    def save(self, directory):
+        """
+        _save_
+
+        Persist this objects state into an XML file and save
+        it in the directory provided
+
+        """
+        doc = IMProvDoc("RequestIterator")
+        node = IMProvNode(self.workflowSpec.workflowName())
+        doc.addNode(node)
+
+        node.addNode(IMProvNode("Run", None, Value = str(self.count)))
+        node.addNode(
+            IMProvNode("EventsPerJob", None, Value = str(self.eventsPerJob))
+            )
+        node.addNode(IMProvNode("SitePref", None, Value = str(self.sitePref)))
+
+        pu = IMProvNode("Pileup")
+        node.addNode(pu)
+        for key, value in self.pileupDatasets.items():
+            puNode = value.save()
+            puNode.attrs['PayloadNode'] = key
+            pu.addNode(puNode)
+
+        fname = os.path.join(
+            directory,
+            "%s-Persist.xml" % self.workflowSpec.workflowName()
+            )
+        handle = open(fname, 'w')
+        handle.write(doc.makeDOMDocument().toprettyxml())
+        handle.close()
+        return
+
+
+    def load(self, directory):
+        """
+        _load_
+
+        Load this instance given the workflow and directory containing
+        the persistency file
+
+        """
+        fname = os.path.join(
+            directory,
+            "%s-Persist.xml" % self.workflowSpec.workflowName()
+            )
+        
+        node = loadIMProvFile(fname)
+
+        qbase = "/RequestIterator/%s" % self.workflowSpec.workflowName()
+
+        runQ = IMProvQuery("%s/Run[attribute(\"Value\")]" % qbase)
+        eventQ = IMProvQuery("%s/EventsPerJob[attribute(\"Value\")]" % qbase)
+        siteQ = IMProvQuery("%s/SitePref[attribute(\"Value\")]" % qbase)
+
+        runVal = int(runQ(node)[-1])
+        eventVal = int(eventQ(node)[-1])
+        siteVal = str(siteQ(node)[-1])
+        if siteVal.lower() == "none":
+            siteVal = None
+
+        self.count = runVal
+        self.eventsPerJob = eventVal
+        self.sitePref = siteVal
+        
+        puQ = IMProvQuery("%s/Pileup/*" % qbase)
+        puNodes = puQ(node)
+        for puNode in puNodes:
+            payloadNode = str(puNode.attrs.get("PayloadNode"))
+            puDataset = PileupDataset("dummy", 1)
+            puDataset.load(puNode)
+            self.pileupDatasets[payloadNode] = puDataset
+
+        return
     
+            
+        
+        
+        

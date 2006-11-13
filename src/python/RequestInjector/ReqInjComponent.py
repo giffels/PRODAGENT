@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.9 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.9 2006/10/10 19:53:08 evansde Exp $"
+__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.10 2006/10/20 21:41:15 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -146,6 +146,7 @@ class ReqInjComponent:
                                       self.args['ComponentDir'] )
         self.iterators[workflowName] = newIterator
         self.iterator = newIterator
+        self.iterator.loadPileupDatasets()
         return
 
     def selectWorkflow(self, workflowName):
@@ -189,16 +190,7 @@ class ReqInjComponent:
             logging.warning(msg)
             return
         self.iterator.sitePref = sitePrefName
-        #  //
-        # // Save site pref in WorkflowCache area
-        #//
-        workflowSitePref = os.path.join(
-            self.args['WorkflowCache'],
-            "%s%s"  % (os.path.basename(self.iterator.workflow), ".sitepref") )
-        handle = open(workflowSitePref, 'w')
-        handle.write("%s" % self.iterator.sitePref)
-        handle.close()
-        logging.debug("Site Pref Saved: %s" % workflowSitePref) 
+        self.iterator.save(self.args['WorkflowCache'])
         return
     
     def newJob(self):
@@ -217,16 +209,11 @@ class ReqInjComponent:
             msg += "With the file containing the workflow as the payload"
             logging.warning(msg)
             return
+
+        self.iterator.load(self.args['WorkflowCache'])
         jobSpec = self.iterator()
-        #  //
-        # // Save last known counter in WorkflowCache area for workflow
-        #//
-        workflowCount = os.path.join(
-            self.args['WorkflowCache'],
-            "%s%s"  % (os.path.basename(self.iterator.workflow), ".counter") )
-        handle = open(workflowCount, 'w')
-        handle.write("%s" % self.iterator.count)
-        handle.close()
+        self.iterator.save(self.args['WorkflowCache'])
+
         
         if self.job_state:
             try: 
@@ -260,15 +247,7 @@ class ReqInjComponent:
             logging.warning(msg)
             return
         self.iterator.eventsPerJob = eventsPerJob
-        #  //
-        # // Save last known events per job in WorkflowCache area for workflow
-        #//
-        workflowEvents = os.path.join(
-            self.args['WorkflowCache'],
-            "%s%s"  % (os.path.basename(self.iterator.workflow), ".events") )
-        handle = open(workflowEvents, 'w')
-        handle.write("%s" % self.iterator.eventsPerJob)
-        handle.close()
+        self.iterator.save(self.args['WorkflowCache'])
         return
 
     def setInitialRun(self, initialRun):
@@ -291,15 +270,7 @@ class ReqInjComponent:
             logging.warning(msg)
             return
         self.iterator.count = run
-        #  //
-        # // Save last known counter in WorkflowCache area for workflow
-        #//
-        workflowCount = os.path.join(
-            self.args['WorkflowCache'],
-            "%s%s"  % (os.path.basename(self.iterator.workflow), ".counter") )
-        handle = open(workflowCount, 'w')
-        handle.write("%s" % self.iterator.count)
-        handle.close()
+        self.iterator.save(self.args['WorkflowCache'])
         return
 
     def loadWorkflows(self):
@@ -319,6 +290,9 @@ class ReqInjComponent:
         for item in fileList:
             if not item.endswith(".xml"):
                 continue
+            if item.endswith("-Persist.xml"):
+                # persistency file, not a workflow
+                continue
             pathname = os.path.join(self.args['WorkflowCache'], item)
             if not os.path.exists(pathname):
                 continue
@@ -336,34 +310,8 @@ class ReqInjComponent:
             #  //
             # // try and load event and run count.
             #//
-            eventsFile = os.path.join(self.args['WorkflowCache'],
-                                      "%s.events" % item)
-            counterFile = os.path.join(self.args['WorkflowCache'],
-                                       "%s.counter" % item)
-            sitePrefFile = os.path.join(self.args['WorkflowCache'],
-                                        "%s.sitepref" % item)
-            eventsValue = readIntFromFile(eventsFile)
-            counterValue = readIntFromFile(counterFile)
-            sitePrefValue = readStringFromFile(sitePrefFile)
-            logging.debug("EventCounter for workflow %s = %s" % (
-                item, eventsValue)
-                          )
-            logging.debug("RunCounter for workflow %s = %s" % (
-                item, counterValue)
-                          )
-            logging.debug("SitePref for workflow %s = %s" % (
-                item, sitePrefValue)
-                          )
+            iterator.load( self.args['WorkflowCache'])
             
-            if eventsValue != None:
-                iterator.eventsPerJob = eventsValue
-
-            if counterValue != None:
-                iterator.count = counterValue
-
-            if sitePrefValue != None:
-                iterator.sitePref = sitePrefValue
-
         currWorkflow = os.path.join( self.args['WorkflowCache'],
                                      "current.workflow")
         if os.path.exists(currWorkflow):
