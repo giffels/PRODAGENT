@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: createPreProdWorkflow.py,v 1.6 2006/10/09 16:04:33 evansde Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: createPreProdWorkflow.py,v 1.7 2006/10/20 21:43:48 evansde Exp $"
 
 
 import os
@@ -25,7 +25,10 @@ from MCPayloads.DatasetExpander import splitMultiTier
 import MCPayloads.WorkflowTools as WorkflowTools
 import MCPayloads.UUID as MCPayloadsUUID
 
-valid = ['cfg=', 'version=', 'category=', 'name=', 'fake-hash' ]
+valid = ['cfg=', 'version=', 'category=', 'name=', 'fake-hash',
+         'pileup-dataset=', 'pileup-files-per-job=',
+         'pu-dbs-address=', 'pu-dbs-url=', 'pu-dls-type=', 'pu-dls-address=',
+         ]
 usage = "Usage: createPreProdWorkflow.py --cfg=<cfgFile>\n"
 usage += "                                --version=<CMSSW version>\n"
 usage += "                                --name=<Workflow Name>\n"
@@ -52,6 +55,14 @@ version = None
 category = "PreProd"
 timestamp = int(time.time())
 fakeHash = False
+pileupDS = None
+pileupFilesPerJob = 1
+dbsAddress = None
+dbsUrl = None
+dlsAddress = None
+dlsType = None
+
+
 for opt, arg in opts:
     if opt == "--cfg":
         cfgFile = arg
@@ -64,6 +75,19 @@ for opt, arg in opts:
     if opt == "--fake-hash":
         fakeHash = True
 
+    if opt == '--pileup-dataset':
+        pileupDS = arg
+    if opt == '--pileup-files-per-job':
+        pileupFilesPerJob = arg   
+    if opt == '--pu-dbs-address':
+        dbsAddress = arg
+    if opt == '--pu-dbs-url':
+        dbsUrl = arg
+    if opt == '--pu-dls-type':
+        dlsType = arg
+    if opt == '--pu-dls-address':
+        dlsAddress = arg
+    
 if cfgFile == None:
     msg = "--cfg option not provided: This is required"
     raise RuntimeError, msg
@@ -83,6 +107,24 @@ if not os.path.exists(cfgFile):
     msg = "Cfg File Not Found: %s" % cfgFile
     raise RuntimeError, msg
 
+#  //
+# // Are we using a custom dbs/dls for pileup??
+#//
+dbsdlsInfo = {'--pu-dbs-address' : dbsAddress,
+              '--pu-dls-address' : dlsAddress,
+              '--pu-dls-type' : dlsType,
+              '--pu-dbs-url' : dbsUrl}
+customDBSDLS = False
+if dbsdlsInfo.values() != [None, None, None, None]:
+    customDBSDLS = True
+    for key, val in dbsdlsInfo.items():
+        if val == None:
+            msg = "Missing Argument for Pileup DBS/DLS Custom setup:\n"
+            msg += "%s Is not set" % key
+            msg += "For Pileup DBS/DLS you must supply all of:\n"
+            msg += "%s\n" % dbsdlsInfo.keys()
+            raise RuntimeError, msg
+    
 
 #  //
 # // Generate python cfg file
@@ -116,6 +158,23 @@ cmsRun.application["Version"] = version # version
 cmsRun.application["Architecture"] = "slc3_ia32_gcc323" # arch (not needed)
 cmsRun.application["Executable"] = "cmsRun" # binary name
 cmsRun.configuration = file(pycfgFile).read() # Python PSet file
+
+
+#  //
+# // Pileup sample?
+#//
+if pileupDS != None:
+    puPrimary = pileupDS.split("/")[1]
+    puTier = pileupDS.split("/")[2]
+    puProc = pileupDS.split("/")[3]
+    puDataset = cmsRun.addPileupDataset(puPrimary, puTier, puProc)
+    puDataset['FilesPerJob'] = pileupFilesPerJob
+    if customDBSDLS:
+        puDataset['DBSAddress'] = dbsAddress
+        puDataset['DBSURL'] = dbsUrl
+        puDataset['DLSType'] = dlsType
+        puDataset['DLSAddress'] = dlsAddress
+
 
 #  //
 # // Pull all the output modules from the configuration file,
