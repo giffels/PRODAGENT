@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.5 2006/06/29 20:01:46 evansde Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.6 2006/10/19 14:22:29 evansde Exp $"
 
 import os
 import logging
@@ -30,6 +30,7 @@ from MCPayloads.JobSpec import JobSpec
 from JobState.JobStateAPI import JobStateChangeAPI
 from JobState.JobStateAPI import JobStateInfoAPI
 from ProdAgentCore.ProdAgentException import ProdAgentException
+from JobSubmitter.JSException import JSException
 
 class JobSubmitterComponent:
     """
@@ -198,6 +199,13 @@ class JobSubmitterComponent:
                 jobToSubmit, jobSpecId,
                 JobSpecInstance = jobSpecInstance
                 )
+        except JSException, ex:
+            msg = "Submission Failed for job %s\n" % jobSpecId
+            msg += str(ex)
+            logging.error(msg)
+            self.ms.publish("SubmissionFailed", jobSpecId)
+            self.ms.commit()
+            return
         except ProdAgentException, ex:
             msg = "Submission Failed for job %s\n" % jobSpecId
             msg += str(ex)
