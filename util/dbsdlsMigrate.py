@@ -71,7 +71,7 @@ for opt, arg in opts:
     if opt == "--OutputDLSAddress":
         outputdlsendpoint = arg
     if opt == "--OutputDLSType":
-        outptdlstype = arg
+        outputdlstype = arg
     if opt == "--help":
         print usage
         sys.exit(1)
