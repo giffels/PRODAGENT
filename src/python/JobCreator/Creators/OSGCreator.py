@@ -8,6 +8,7 @@ Creator plugin for generating generic OSG jobs
 
 import os
 import logging
+import socket
 
 from JobCreator.Registry import registerCreator
 from JobCreator.Creators.CreatorInterface import CreatorInterface
@@ -16,6 +17,9 @@ from JobCreator.JCException import JCException
 from JobCreator.ScramSetupTools import setupScramEnvironment
 from JobCreator.ScramSetupTools import scramProjectCommand
 from JobCreator.ScramSetupTools import scramRuntimeCommand
+
+from IMProv.IMProvNode import IMProvNode
+
 
 
 validator = lambda x: x in ("", None, "None", "none")
@@ -234,13 +238,7 @@ class OSGCreator(CreatorInterface):
         taskObject['PreStageOutCommands'].append(
             stageOutSetup
             )
-        #template = taskObject['StageOutTemplates'][0]
-        #template['TargetHostName'] = \
-        #            self.pluginConfig['StageOut']['TargetHostName']
-        #template['TargetPathName'] = \
-        #            self.pluginConfig['StageOut']['TargetPathName']
-        #template['TransportMethod'] = \
-        #            self.pluginConfig['StageOut']['TransportMethod']
+        
         
         return
     
@@ -282,6 +280,7 @@ class OSGCreator(CreatorInterface):
         # // Insert list of plugin modules to be used
         #//
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.DashboardMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.EventMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobMonMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.CMSMetrics")
@@ -335,6 +334,33 @@ class OSGCreator(CreatorInterface):
                 ServerPort = dashboardCfg['DestinationPort'],
                 DashboardInfo = taskObject['DashboardInfoLocation'])
             shreekConfig.addMonitorCfg(dashboard)
+
+        #  //
+        # // Run & Event monitoring via MonALISA
+        #//
+        evLog = self.pluginConfig.get("EventLogger", {})
+        evLogDest = self.pluginConfig.get("EventLoggerDestinations", {})
+        usingEvLog = evLog.get("UseEventLogger", "False")
+        if usingEvLog.lower() == "true":
+            evlogger = shreekConfig.newMonitorCfg()
+            evlogger.setMonitorName("cmseventlogger-1")
+            evlogger.setMonitorType("event")
+
+            prodAgentName = self.prodAgentConfig['ProdAgent']['ProdAgentName']
+            hostname = socket.gethostname()
+            if hostname not in prodAgentName:
+                prodAgentName = "%s@%s" % (prodAgentName, socket.gethostname())
+
+            
+            evlogger.addKeywordArg(
+                ProdAgentID = prodAgentName,
+                ProdAgentJobID = taskObject['JobName'],
+                EventFile = "EventLogger.log"
+                )
+            for dest, port in evLogDest.items():
+                evlogger.addNode(IMProvNode("Destination", None,
+                                            Host = dest, Port = port))
+            shreekConfig.addMonitorCfg(evlogger)
         return
     
     

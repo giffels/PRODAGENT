@@ -12,7 +12,7 @@ as needed and register their implementation with the Creator Registry
 import logging
 
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
-
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 class CreatorInterface:
     """
@@ -30,7 +30,7 @@ class CreatorInterface:
     """
     def __init__(self):
         self.pluginConfig = None
-
+        self.prodAgentConfig = loadProdAgentConfiguration()
         try:
             #  //
             # // Always searches in JobCreator Config Block
