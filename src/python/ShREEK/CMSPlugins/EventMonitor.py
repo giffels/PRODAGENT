@@ -56,21 +56,11 @@ class EventMonitor(ShREEKMonitor):
         Periodic update.
         """
         self._LoadEventLogger()
-        print ">>>>>>>>>>>>>>>>>>>>>>>>>>>> periodic update"
-        if self.eventLogger == None:
-            print "No Event Logger"
-            return
+        self._CheckEvents()
 
-        try:
-            self.eventLogger()
-        except Exception:
-            print "Error Calling Event Logger:", ex
-            pass
+        if self.eventLogger == None:
+            return
         
-        print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-        print self.eventLogger.latestRun, self.eventLogger.latestEvent
-        
-        print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>"
         self.apmon.connect()
         timenow = int(time.time())
         self.apmon.send(EventUpdate = timenow,
@@ -120,13 +110,26 @@ class EventMonitor(ShREEKMonitor):
         """
         Tasked ended notifier.
         """
+        self._LoadEventLogger()
+        self._CheckEvents()
+
+        
+        lastRun = 0
+        lastEvent = 0
+        if self.eventLogger != None:
+            lastRun = self.eventLogger.latestRun
+            lastEvent = self.eventLogger.latestEvent
+            
         self.eventLogger = None
         self.apmon.connect()
         timenow = int(time.time())
         for i in range(0, 5):
-            self.apmon.send(TaskFinished = timenow,
-                            TaskName = str(task.taskname()),
-                            ExitStatus = exitCode)
+            self.apmon.send(
+                RunNumber = lastRun,
+                EventNumber = lastEvent,
+                TaskFinished = timenow,
+                TaskName = str(task.taskname()),
+                ExitStatus = exitCode)
             
         self.apmon.disconnect()
 
@@ -151,11 +154,29 @@ class EventMonitor(ShREEKMonitor):
         """
         if self.eventLogger != None:
             return
-        filePath = os.path.join(self.currentTask.directory(), self.eventFile)
-        if not os.path.exists(filePath):
+        if not os.path.exists(self.eventFile):
             self.eventLogger = None
         else:
-            self.eventLogger = EventLogger(filename)
+            self.eventLogger = EventLogger(self.eventFile)
         return
+
+    def _CheckEvents(self):
+        """
+        _CheckEvents_
+
+        Get last available run/event number
+
+        """
+        if self.eventLogger == None:
+            print "No Event Logger"
+            return
+
+        try:
+            self.eventLogger()
+        except Exception:
+            print "Error Calling Event Logger:", ex
+            pass
+        return 
+
 
 registerShREEKMonitor(EventMonitor, 'event')

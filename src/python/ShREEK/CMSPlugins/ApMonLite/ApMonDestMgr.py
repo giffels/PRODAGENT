@@ -81,7 +81,6 @@ class ApMonDestMgr(list):
 
         """
         for dest in self:
-            print dest
             dest.send(**args)
         return
     

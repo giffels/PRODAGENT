@@ -43,6 +43,7 @@ class EventLogger:
             if MatchRunEvent.search(line.strip()):
                 matches = MatchRunEvent.findall(line.strip())
                 lastMatch = matches[-1]
+                
 
         if lastMatch != None:
             #  //
