@@ -45,14 +45,13 @@ class Default(PrioritiserInterface):
         workflow = constraint['workflow']
         sites = []
         if constraint['site'] != None:
-            sitelist = sites.split(",")
+            sitelist = constraint['site'].split(",")
             for site in sitelist:
                 if site.strip() != "":
                     sites.append(site.strip())
-
+                    
 
         jobs = self.retrieveJobsFromDB(count, jobtype, workflow, *sites)
-
         msg = "Retrieved %s jobs matching %s" % (len(jobs), constraint)
         logging.info(msg)
 
