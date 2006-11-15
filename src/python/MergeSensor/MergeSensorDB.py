@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.7 2006/10/19 08:37:29 ckavka Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.8 2006/10/25 16:22:47 ckavka Exp $"
+__version__ = "$Revision: 1.8 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -438,6 +438,7 @@ class MergeSensorDB:
                             tier as dataTier,
                             processed as processedDataset,
                             polltier as pollTier,
+                            secondarytiers as secondaryOutputTiers,
                             psethash as PSetHash,
                             status,
                             started,
@@ -483,7 +484,7 @@ class MergeSensorDB:
         # add extra fields
         datasetInfo['name'] = datasetName
         datasetInfo['secondaryOutputTiers'] = \
-               datasetInfo['dataTier'].split("-")[1:]
+               datasetInfo['secondaryOutputTiers'].split("-")
 
         # return it
         return datasetInfo
@@ -1896,8 +1897,8 @@ class MergeSensorDB:
 
             # get cursor
             try:
-               self.conn = self.connect()
-               cursor = self.conn.cursor()
+                self.conn = self.connect()
+                cursor = self.conn.cursor()
             except MySQLdb.Error:
 
                 # if it does not work, we lost connection to database.
@@ -2079,18 +2080,22 @@ class MergeSensorDB:
             # if it does not work, we lost connection to database.
             self.conn = self.connect(invalidate = True)
             cursor = self.conn.cursor()
-            
+           
+        # build secondary datatiers
+        secondaryTiers = "-".join(data['secondaryOutputTiers'])
+
         # insert dataset information
         sqlCommand = """
                      INSERT
                        INTO merge_dataset
-                            (prim,tier,processed,polltier,psethash,
-                             started,updated,version,workflow,mergedlfnbase,
-                             category,timestamp,sequence)
+                            (prim,tier,processed,polltier,secondarytiers,
+                             psethash,started,updated,version,workflow,
+                             mergedlfnbase,category,timestamp,sequence)
                       VALUES ('""" + data['primaryDataset'] + """',
                               '""" + data['dataTier'] + """',
                               '""" + data['processedDataset'] + """',
                               '""" + data['pollTier'] + """',
+                              '""" + secondaryTiers + """',
                               '""" + str(data['PSetHash']) + """',
                               '""" + data['started'] + """',
                               '""" + data['lastUpdated'] + """',
