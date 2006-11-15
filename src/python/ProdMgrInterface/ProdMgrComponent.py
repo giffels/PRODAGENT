@@ -46,6 +46,7 @@ class ProdMgrComponent:
        try:
             self.args = {}
             self.args['Logfile'] = None
+            self.args['JobSize']=100
             self.args.update(args)
             if self.args['Logfile'] == None:
                self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
@@ -100,11 +101,13 @@ class ProdMgrComponent:
                 payloadVal = 1
             self.retrieveWork(payloadVal)
             return
-
+        if event =="ProdMgrInterface:JobSize":
+            logging.debug("Setting job size to: "+str(payload))
+            self.args['JobSize']=int(payload)
+            return
         if event == "JobSuccess":
             self.reportJobSuccess(payload)
             return
-
         if event == "GeneralJobFailure":
             self.reportJobFailure(payload)
             return
@@ -143,6 +146,7 @@ class ProdMgrComponent:
            if componentStateInfo.has_key('state'):
                if componentStateInfo['state']=='start':
                    componentStateInfo['parameters']={}
+                   componentStateInfo['parameters']['jobSize']=self.args['JobSize']
                    componentStateInfo['parameters']['numberOfJobs']=numberOfJobs 
                    componentStateInfo['parameters']['requestIndex']=0
                    componentStateInfo['parameters']['queueIndex']=0
@@ -299,6 +303,7 @@ class ProdMgrComponent:
             self.ms.subscribeTo("ProdMgrInterface:EndDebug")
             self.ms.subscribeTo("ProdMgrInterface:AddRequest")
             self.ms.subscribeTo("ProdMgrInterface:ResourcesAvailable")
+            self.ms.subscribeTo("ProdMgrInterface:JobSize")
             self.ms.subscribeTo("JobSuccess")
             self.ms.subscribeTo("GeneralJobFailure")
             logging.debug("Subscription completed ")

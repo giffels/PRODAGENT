@@ -33,7 +33,7 @@ def setState(catagory,allocation_id,state):
 def rm(catagory,request_id=None,allocation_id=None):
     if allocation_id!=None:
         sqlStr="""DELETE FROM pm_allocation WHERE 
-            AND id="%s" """ %(str(allocation_id))
+            id="%s" """ %(str(allocation_id))
     elif request_id!=None:
         sqlStr="""DELETE FROM pm_allocation WHERE catagory="%s"
             AND request_id="%s" """ %(catagory,request_id)

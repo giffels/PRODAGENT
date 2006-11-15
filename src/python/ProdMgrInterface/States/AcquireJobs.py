@@ -36,7 +36,7 @@ class AcquireJobs(StateInterface):
            # now everything is back to normal, we do not have to recover
            # as making the call is what went wrong.
            stateParameters['stateType']=='normal'
-          
+       logging.debug("Acquiring jobs with a maximum size of: "+str(stateParameters['jobSize'])+" events ")
        parameters={'numberOfJobs':Allocation.size('requestLevel'),
            'prefix':'job'}
        requestURL=Request.getUrl(request_id)
