@@ -93,7 +93,7 @@ class ProdMgrComponent:
         #  //
         # // Actual work done by this component
         #//
-        if event == "ResourcesAvailable":
+        if event == "ProdMgrInterface:ResourcesAvailable":
             try:
                 payloadVal = int(payload)
             except ValueError:
@@ -298,7 +298,7 @@ class ProdMgrComponent:
             self.ms.subscribeTo("ProdMgrInterface:StartDebug")
             self.ms.subscribeTo("ProdMgrInterface:EndDebug")
             self.ms.subscribeTo("ProdMgrInterface:AddRequest")
-            self.ms.subscribeTo("ResourcesAvailable")
+            self.ms.subscribeTo("ProdMgrInterface:ResourcesAvailable")
             self.ms.subscribeTo("JobSuccess")
             self.ms.subscribeTo("GeneralJobFailure")
             logging.debug("Subscription completed ")

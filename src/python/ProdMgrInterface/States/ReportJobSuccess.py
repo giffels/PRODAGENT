@@ -33,7 +33,7 @@ class ReportJobSuccess(StateInterface):
            if  fileinfo['TotalEvents'] != None:
               total+=int(fileinfo['TotalEvents'])
        logging.debug('JobReport has been read processed: '+str(total)+' events')
-       request_id=report[-1].jobSpecId.split('/')[1] 
+       request_id=report[-1].jobSpecId.split('_')[1] 
        prodMgrUrl=Request.getUrl(request_id)
        logging.debug('Attempting to contact: '+prodMgrUrl)
 
@@ -52,15 +52,28 @@ class ReportJobSuccess(StateInterface):
            Session.set_current("default")
            return 'start'
 
-       if finished:
+       if finished==1:
+           logging.debug("Request "+str(request_id)+" is completed. Removing all allocations and request")
            # if the request is finished, remove it from our queue
            # NOTE: perhaps we should send a kill event for remaining jobs?
-           request_id=message['parameters']['jobSpecId'].split('/')[1]
+           request_id=message['parameters']['jobSpecId'].split('_')[1]
            Request.rm(request_id)
            Allocation.rm(request_id)
-       allocation_id=report[-1].jobSpecId.split('/')[1]+'/'+\
-       report[-1].jobSpecId.split('/')[3]
-       Allocation.setState('prodagentLevel',allocation_id,'idle')
+       elif finished==2:
+           allocation_id=report[-1].jobSpecId.split('_')[1]+'/'+\
+               report[-1].jobSpecId.split('_')[3]
+           logging.debug("Request "+str(request_id)+" is not completed but allocation is: "+str(allocation_id))
+           Allocation.rm('',None,allocation_id)
+       elif finished==0:
+           allocation_id=report[-1].jobSpecId.split('_')[1]+'/'+\
+               report[-1].jobSpecId.split('_')[3]
+           logging.debug("Request "+str(request_id)+" and allocation  "+str(allocation_id)+" not completed")
+           Allocation.setState('prodagentLevel',allocation_id,'idle')
+       elif finished==3:
+           logging.debug("Request "+str(request_id)+" failed")
+           request_id=message['parameters']['jobSpecId'].split('_')[1]
+           Request.rm(request_id)
+           Allocation.rm(request_id)
        Session.commit()
        # set session back to default
        Session.set_current("default")

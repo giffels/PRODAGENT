@@ -56,7 +56,7 @@ class DownloadJobSpec(StateInterface):
                # it in a queue for later insepection
                # NOTE: move job from request level to something else
                Session.rollback()
-               request_id=stateParameters['jobSpecDir'].split('/')[1]
+               request_id=job['jobSpecId'].split('_')[1]
                Job.mv('requestLevel','requestLevelQueued',request_id)
                Allocation.mv('messageLevel','messageLevelQueued',request_id)
                stateParameters['requestIndex']=-1

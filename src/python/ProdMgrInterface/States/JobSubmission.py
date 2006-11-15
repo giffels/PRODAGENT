@@ -28,14 +28,14 @@ class JobSubmission(StateInterface):
        # jobs are managed by other (persistent) parts of the ProdAgent
 
        # we retrieve the allocation id of this job from its id:
-       allocation_id=stateParameters['jobSpecId'].split('/')[1]+'/'+\
-           stateParameters['jobSpecId'].split('/')[3]
+       allocation_id=stateParameters['jobSpecId'].split('_')[1]+'/'+\
+           stateParameters['jobSpecId'].split('_')[3]
        logging.debug("Activating allocation: "+allocation_id+" for job: "+\
            stateParameters['jobSpecId'])
        logging.debug('test: prodagentLevel '+allocation_id+' active')
        Allocation.setState('prodagentLevel',allocation_id,'active')
        Job.rm('requestLevel',stateParameters['jobSpecId'])
-
+       logging.debug("Emitting <CreateJob> event with payload: "+str(stateParameters['targetFile']))
        self.ms.publish("CreateJob",stateParameters['targetFile'])
 
        stateParameters['jobIndex']+=1

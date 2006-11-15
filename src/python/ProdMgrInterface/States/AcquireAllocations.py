@@ -29,6 +29,7 @@ class AcquireAllocations(StateInterface):
        # check how many allocations we have from this request:
        logging.debug("Checking allocations for request "+str(stateParameters['RequestID']))
        idleRequestAllocations=Allocation.get('prodagentLevel','idle',str(stateParameters['RequestID']))
+       logging.debug("Found the following ide allocations: "+str(idleRequestAllocations))
        if ( ( (len(idleRequestAllocations)+Allocation.size("messageLevel")) )<numberOfJobs):
            logging.debug("Not enough idle allocations for request "+stateParameters['RequestID']+\
                ", will acquire more")
@@ -87,8 +88,9 @@ class AcquireAllocations(StateInterface):
 
            stateParameters['stateType']='normal'
            # check if we got allocations back
-           if type(allocations)==bool:
-               if not allocations:
+           logging.debug("Checking new retrieved allocations")
+           if type(allocations)==int:
+               if allocations==0:
                   # everything is allocated for this request
                   stateParameters['requestIndex']+=1
                   State.setParameters("ProdMgrInterface",stateParameters) 
@@ -106,9 +108,12 @@ class AcquireAllocations(StateInterface):
            # we can commit as we made everything persistent at the client side.
            ProdMgrAPI.commit()
        else:
-           diff=numberOfJobs-len(Allocation.size("WorkfAllocation"))
-           Allocation.insert("messageLevel",idleRequestAllocations[0:diff])
-           Allocation.insert("requestLevel",idleRequestAllocations[0:diff])
+           logging.debug("No new allocations needed")
+           diff=numberOfJobs-Allocation.size("WorkAllocation")
+           logging.debug("Using Additional "+str(diff)+" idle allocations")
+           Allocation.insert("messageLevel",idleRequestAllocations[0:diff],stateParameters['RequestID'])
+           logging.debug("Inserted idle allocation on message level")
+           Allocation.insert("requestLevel",idleRequestAllocations[0:diff],stateParameters['RequestID'])
            logging.debug("Sufficient allocations acquired, proceeding with acquiring jobs")
        componentState="AcquireJobs"
        State.setParameters("ProdMgrInterface",stateParameters)

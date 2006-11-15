@@ -56,7 +56,7 @@ class AcquireRequest(StateInterface):
            logging.debug("We have no more requests in our queue for allocations"+\
                " and jobs, bailing out")
            return "Cleanup"
-
+       logging.debug("Found request: "+str(request['id']))
        # set parameters and state and commit for next session
        componentState['parameters']['RequestID']=request['id']
        componentState['parameters']['ProdMgrURL']=request['url']

@@ -27,7 +27,7 @@ class ReportJobFailure(StateInterface):
        jobReport=stateParameters['jobReport']
        # retrieve relevant information:
        report=readJobReport(jobReport)
-       request_id=report[-1].jobSpecId.split('/')[1]
+       request_id=report[-1].jobSpecId.split('_')[1]
        prodMgrUrl=Request.getUrl(request_id)
        logging.debug('Attempting to contact: '+prodMgrUrl)
        # set session back to default
@@ -46,15 +46,16 @@ class ReportJobFailure(StateInterface):
            Session.commit()
            Session.set_current("default")
            return 'start'
-       if finished:
+       if finished==1 or finished==3:
            # if the request is finished, remove it from our queue
            # NOTE: perhaps we should send a kill event for remaining jobs?
-           request_id=message['parameters']['jobSpecId'].split('/')[1]
+           request_id=message['parameters']['jobSpecId'].split('_')[1]
            Request.rm(request_id)
            Allocation.rm(request_id)
-       allocation_id=report[-1].jobSpecId.split('/')[1]+'/'+\
-       report[-1].jobSpecId.split('/')[3]
-       Allocation.setState('prodagentLevel',allocation_id,'idle')
+       elif finished==0:
+           allocation_id=report[-1].jobSpecId.split('_')[1]+'/'+\
+           report[-1].jobSpecId.split('_')[3]
+           Allocation.setState('prodagentLevel',allocation_id,'idle')
        Session.commit()
        # set session back to default
        Session.set_current("default")

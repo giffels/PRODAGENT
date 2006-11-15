@@ -38,13 +38,13 @@ class QueuedJobResults(StateInterface):
                        if finished:
                           # if the request is finished, remove it from our queue
                           # NOTE: perhaps we should send a kill event for remaining jobs?
-                          request_id=message['parameters']['jobSpecId'].split('/')[1]
+                          request_id=message['parameters']['jobSpecId'].split('_')[1]
                           Request.rm(request_id)
                           Allocation.rm(request_id)
                        MessageQueue.remove(message['id'])
-                       allocation_id=message['parameters']['jobSpecId'].split('/')[1]+'/'+\
-                       message['parameters']['jobSpecId'].split('/')[2]+'/'+\
-                       message['parameters']['jobSpecId'].split('/')[3]
+                       allocation_id=message['parameters']['jobSpecId'].split('_')[1]+'/'+\
+                       message['parameters']['jobSpecId'].split('_')[2]+'/'+\
+                       message['parameters']['jobSpecId'].split('_')[3]
                        Allocation.setState('prodagentLevel',allocation_id,'idle')
                        Session.commit()
                    except ProdAgentException, ex:
