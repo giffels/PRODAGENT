@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.8 2006/10/25 16:22:47 ckavka Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.9 2006/11/15 10:03:27 ckavka Exp $"
+__version__ = "$Revision: 1.9 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -485,6 +485,10 @@ class MergeSensorDB:
         datasetInfo['name'] = datasetName
         datasetInfo['secondaryOutputTiers'] = \
                datasetInfo['secondaryOutputTiers'].split("-")
+
+        # check for empty list
+        if datasetInfo['secondaryOutputTiers'] == [""]:
+            datasetInfo['secondaryOutputTiers'] = []
 
         # return it
         return datasetInfo
