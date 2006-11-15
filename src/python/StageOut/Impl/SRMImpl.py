@@ -52,7 +52,7 @@ class SRMImpl(StageOutImpl):
         echo "srmcp exit status: $EXIT_STATUS"
         if [[ $EXIT_STATUS != 0 ]]; then
             echo "Non-zero srmcp Exit status!!!"
-            exit $EXIT_STATUS
+            exit 60311
         fi
         
         """

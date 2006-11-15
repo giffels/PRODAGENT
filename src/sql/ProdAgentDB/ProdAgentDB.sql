@@ -368,6 +368,7 @@ CREATE TABLE merge_dataset
     tier varchar(255) NOT NULL default '',
     processed varchar(255) NOT NULL default '',
     polltier varchar(255) NOT NULL default '',
+    secondarytiers varchar(255) NOT NULL default '',
     psethash varchar(255) NOT NULL default '',
     status enum("open", "closed") default 'open',
     started timestamp NOT NULL default '0000-00-00 00:00:00',
