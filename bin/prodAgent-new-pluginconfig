@@ -89,13 +89,13 @@ creatorTemplate = {
     #//  to MonALISA
     "EventLogger" : {
     "UseEventLogger" : "False",
-    }
+    },
     "EventLoggerDestinations" : {
     "cmsosgce.fnal.gov" : "58884",
     "cmsitbsrv01.fnal.gov" : "58884",
-    }
+    },
     
-
+    
 
     #  //
     # // Software Setup settings
