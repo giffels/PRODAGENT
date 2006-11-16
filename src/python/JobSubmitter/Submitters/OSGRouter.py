@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGRouter.py,v 1.3 2006/08/11 15:47:46 evansde Exp $"
+__revision__ = "$Id: OSGRouter.py,v 1.4 2006/08/11 20:05:18 evansde Exp $"
 
 import os
 import logging
@@ -111,7 +111,13 @@ class OSGRouter(SubmitterInterface):
             
             if self.pluginConfig['OSG']['GlobusScheduler'].endswith("jobmanager-pbs"):
                 jdl.append("GlobusRSL=(jobtype=single)\n")
-                
+
+
+            #  //
+            # // Add in parameters that indicate prodagent job types etc
+            #//
+            jdl.append("+ProdAgent_JobID = \"%s\"\n" % self.parameters['JobName'])
+            jdl.append("+ProdAgent_JobType = \"%s\"\n" % self.parameters['JobSpecInstance'].parameters['JobType'])
             jdl.append("Queue\n")
         
         else:
@@ -137,6 +143,13 @@ class OSGRouter(SubmitterInterface):
             jdl.append("Output = %s-condor.out\n" % jobname)
             jdl.append("Error = %s-condor.err\n" %  jobname)
             jdl.append("Log = %s-condor.log\n" % jobname)
+
+            #  //
+            # // Add in parameters that indicate prodagent job types etc
+            #//
+            jdl.append("+ProdAgent_JobID = \"%s\"\n" % self.parameters['JobName'])
+            jdl.append("+ProdAgent_JobType = \"%s\"\n" % self.parameters['JobSpecInstance'].parameters['JobType'])
+            
             jdl.append("Queue\n")
             
             
