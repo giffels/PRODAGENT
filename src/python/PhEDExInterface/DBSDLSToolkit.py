@@ -85,6 +85,11 @@ def loadGlobalDBSDLS():
         logging.error(msg)
         raise RuntimeError, msg
 
+    if not config.has_key("GlobalDBSDLS"):
+       msg = "Configuration block GlobalDBSDLS is missing from $PRODAGENT_CONFIG"
+       logging.error(msg)
+       raise RuntimeError, msg
+
     try:
         globalConfig = config.getConfig("GlobalDBSDLS")
     except StandardError, ex:
@@ -92,6 +97,7 @@ def loadGlobalDBSDLS():
         msg += str(ex)
         logging.error(msg)
         raise RuntimeError, msg
+    
     logging.debug("GlobalDBSDLS Config: %s" % globalConfig)
 
 
