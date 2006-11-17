@@ -110,7 +110,7 @@ class DBSComponent:
     def __init__(self, **args):
         self.args = {}
 
-        self.args.setdefault("DBSURL","http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery")
+        self.args.setdefault("DBSURL","http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery")
         self.args.setdefault("DBSAddress", None)
         self.args.setdefault("DBSType", "CGI")
         self.args.setdefault("Logfile", None)
