@@ -70,6 +70,58 @@ def loadDBSDLS():
 
     return dlsapi, dbsApi, dlsConfig, dbsConfig
 
+def loadGlobalDBSDLS():
+    """
+    _loadGlobalDBSDLSConfig_
+                                                                                                               
+    Extract the global DBS and DLS contact information from the prod agent config
+                                                                                                               
+    """
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    try:
+        globalConfig = config.getConfig("GlobalDBSDLS")
+    except StandardError, ex:
+        msg = "Error reading configuration for GlobalDBSDLS:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+    logging.debug("GlobalDBSDLS Config: %s" % globalConfig)
+
+
+    dlsConfig = {
+        "DLSType" : globalConfig['DLSType'],
+        "DLSAddress" : globalConfig['DLSAddress'],
+        }
+    dbsConfig = {
+        'DBSURL' : globalConfig['DBSURL'],
+        'DBSAddress' : globalConfig['DBSAddress'],
+        }
+
+    try:
+        dlsapi = dlsClient.getDlsApi(dls_type = dlsConfig['DLSType'],
+                                     dls_endpoint = dlsConfig['DLSAddress'])
+    except dlsApi.DlsApiError, inst:
+        msg = "Error when binding the DLS interface: " + str(inst)
+        logging.error(msg)
+        raise RuntimeError, msg
+                                                                                                               
+    try:
+        dbsApi = dbsCgiApi.DbsCgiApi(dbsConfig['DBSURL'],
+                                 { 'instance': dbsConfig['DBSAddress']})
+    except StandardError, ex:
+        msg = "Error when binding the DBS interface"
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    return dlsapi, dbsApi, dlsConfig, dbsConfig
+
 
 def loadRemoteDBSDLS(**args):
     """
@@ -249,6 +301,25 @@ class DBSDLSToolkit(DBSDLSBaseToolkit):
     _DLS, _DBS, _DLSConf, _DBSConf= loadDBSDLS()
     
 
+    def __init__(self):
+        DBSDLSBaseToolkit.__init__(self)
+        pass
+
+
+class GlobalDBSDLSToolkit(DBSDLSBaseToolkit):
+    """
+    _DBSDLSToolkit_
+                                                                                                           
+    Tools for extracting data from DBS and DLS, using a static DLS api and
+    DBS api  instances embedded in the class.
+                                                                                                           
+    This uses the ProdAgent Configuration to get the contact details
+    for the global DBS/DLS
+                                                                                                           
+    """
+    _DLS, _DBS, _DLSConf, _DBSConf= loadGlobalDBSDLS()
+                                                                                                           
+                                                                                                           
     def __init__(self):
         DBSDLSBaseToolkit.__init__(self)
         pass
