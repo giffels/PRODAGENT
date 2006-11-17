@@ -130,6 +130,14 @@ coreFields = {
     "DBSAddress": None,
     "DBSType" : "CGI",
     },
+
+    "GlobalDBSDLS" : {
+    "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
+    "DBSAddress": "MCGlobal/Writer",
+    "DBSType": "CGI",
+    "DLSAddress" : "prod-lfc-cms-central.cern.ch/grid/cms/DLS/LFC",
+    "DLSType" : "DLS_TYPE_LFC",
+    },
     
     }# end core Fields
 
@@ -210,14 +218,6 @@ componentFields = {
     "ComponentDir" : None,
     "PhEDExDropBox" : None,
     },
-    "GlobalDBSDLS" : {
-    "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
-    "DBSAddress": "MCGlobal/Writer",
-    "DBSType": "CGI",
-    "DLSAddress" : "prod-lfc-cms-central.cern.ch/grid/cms/DLS/LFC",
-    "DLSType" : "DLS_TYPE_LFC",
-    },
-
     "ProdMgrInterface" : {
     "ComponentDir" : None,
     "JobSpecDir" : '/tmp',
