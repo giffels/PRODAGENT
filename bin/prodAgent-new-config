@@ -126,7 +126,7 @@ coreFields = {
     },
 
     'LocalDBS' :{
-    "DBSURL": "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery",
+    "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
     "DBSAddress": None,
     "DBSType" : "CGI",
     },
