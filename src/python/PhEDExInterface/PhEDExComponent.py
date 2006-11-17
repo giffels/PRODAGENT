@@ -14,8 +14,8 @@ from MessageService.MessageService import MessageService
 import logging
 from logging.handlers import RotatingFileHandler
 
-
-from PhEDExInterface.DBSDLSToolkit import DBSDLSToolkit
+## use Global DBS/DLS from PheDEX injection
+from PhEDExInterface.DBSDLSToolkit import GlobalDBSDLSToolkit as DBSDLSToolkit 
 from PhEDExInterface.InjectionSpec import InjectionSpec
 from PhEDExInterface.PhEDExNodeMap import PhEDExNodeMap
 
