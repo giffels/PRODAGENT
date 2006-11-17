@@ -30,8 +30,8 @@ intParamValue = int( componentSettings["SomeInteger"] )
 
 
 """
-__revision__ = "$Id: Configuration.py,v 1.6 2006/05/08 13:42:42 evansde Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: Configuration.py,v 1.7 2006/05/11 19:38:14 fvlingen Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -104,6 +104,7 @@ class ProdAgentConfiguration(dict):
         self.setdefault("JobStates", ConfigBlock("JobStates"))
         self.setdefault("MessageService", ConfigBlock("MessageService"))
         self.setdefault("LocalDBS", ConfigBlock("LocalDBS"))
+        self.setdefault("GlobalDBSDLS", ConfigBlock("GlobalDBSDLS"))
         
     def save(self):
         """
