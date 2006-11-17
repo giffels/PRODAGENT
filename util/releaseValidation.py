@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.12 $"
-__revision__ = "$Id: releaseValidation.py,v 1.12 2006/10/31 08:48:31 evansde Exp $"
+__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: releaseValidation.py,v 1.13 2006/10/31 08:59:49 evansde Exp $"
 
 
 import os
@@ -31,7 +31,11 @@ import MCPayloads.UUID as MCPayloadsUUID
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
          'subpackage=', 'alltests', "site-pref=", "sites=", "no-recreate",
-         'testretrieval', 'testpython', "cvs-tag=", "fake-hash"]
+         'testretrieval', 'testpython', "cvs-tag=", "fake-hash",
+         'pileup-dataset=', 'pileup-files-per-job=',
+         'data-dir=', 'create-workflows-only',
+
+         ]
 
 usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
 usage += "                            --version=<CMSSW version to be used>\n"
@@ -87,10 +91,24 @@ run = 5000
 subpackage = "ReleaseValidation"
 testRetrievalMode = False
 testPythonMode = False
+workflowsOnly = False
 fakeHash = False
 siteList = []
 sitePref = None
 noRecreate = False
+dataDir = "data"
+
+pileupDataset = None
+pileupFilesPerJob = 1
+
+globalDBS = {
+    "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
+    "DBSAddress": "MCGlobal/Writer",
+    "DBSType": "CGI",
+    "DLSAddress" : "prod-lfc-cms-central.cern.ch/grid/cms/DLS/LFC",
+    "DLSType" : "DLS_TYPE_LFC",
+    
+    }
 
 
 def reduceVersion(versString):
@@ -138,6 +156,14 @@ for opt, arg in opts:
         subpackage = arg
     if opt == "--site-pref":
         sitePref = arg
+    if opt == '--pileup-dataset':
+        pileupDataset = arg
+    if opt == '--pileup-files-per-job':
+        pileupFilesPerJob = arg
+    if opt == '--data-dir':
+        dataDir = arg
+    if opt == '--create-workflows-only':
+        workflowsOnly = True
 
 if xmlFile == None:
     msg = "--url option not provided: This is required"
@@ -184,6 +210,7 @@ for relTest in relValSpec:
     prodName = relTest['Name']
     prodName = prodName.replace("RelVal", "RelVal%s" % reduceVersion(version) )
     prodName = prodName.replace("PhysVal", "PhysVal%s" % reduceVersion(version) )
+    prodName = prodName.replace("HLTVal", "HLTVal%s" % reduceVersion(version) )
     cfgFile = os.path.join(os.getcwd(), "%s.cfg" % prodName)
 
     numberOfJobs = int( int(relTest['Events']) / eventsPerJob) + 1
@@ -195,7 +222,7 @@ for relTest in relValSpec:
         print " ==>Selection Efficiency Found: %s " % efficiency
         print " ==>Events Per Job Adjusted To: %s" % eventCount
         
-    urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/%s/data/" % subpackage
+    urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/%s/%s/" % (subpackage, dataDir)
 
     cfgUrl = "%s%s" % (urlBase, relTest['CfgUrl'])
     cfgUrl += "?only_with_tag=%s" % cvsTag
@@ -295,7 +322,21 @@ for relTest in relValSpec:
     cmsRun.application["Architecture"] = "slc3_ia32_gcc323" # arch (not needed)
     cmsRun.application["Executable"] = "cmsRun" # binary name
     cmsRun.configuration = file(pycfgFile).read() # Python PSet file
-    
+
+
+    #  //
+    # // Pileup??
+    #//
+    if pileupDataset != None:
+        puPrimary = pileupDataset.split("/")[1]
+        puTier = pileupDataset.split("/")[2]
+        puProc = pileupDataset.split("/")[3]
+        puDataset = cmsRun.addPileupDataset(puPrimary, puTier, puProc)
+        puDataset['FilesPerJob'] = pileupFilesPerJob
+        puDataset['DBSAddress'] = globalDBS['DBSAddress']
+        puDataset['DBSURL'] = globalDBS['DBSURL']
+        puDataset['DLSType'] = globalDBS['DLSType']
+        puDataset['DLSAddress'] = globalDBS['DLSAddress']
     #  //
     # // Pull all the output modules from the configuration file,
     #//  treat the output module name as DataTier and AppFamily,
@@ -370,28 +411,23 @@ for relTest in relValSpec:
         for item in datasetList:
             print " ==> %s" % item
 
-            
-
-        #  //
-        # // Inject the workflow into the ProdAgent and trigger job creation
-        #//
-    
-
-        # Set Workflow and NewDataset
-        ms.publish("RequestInjector:SetWorkflow", workflow)
-        ms.publish("RequestInjector:SelectWorkflow", workflowBase)
-        ms.publish("RequestInjector:SetInitialRun", str(run))
-        ms.commit()
-        time.sleep(1)
-        ms.publish("RequestInjector:NewDataset",'')
-        ms.commit()
+        if not workflowsOnly:
+            # Set Workflow and NewDataset
+            ms.publish("RequestInjector:SetWorkflow", workflow)
+            ms.publish("RequestInjector:SelectWorkflow", workflowBase)
+            ms.publish("RequestInjector:SetInitialRun", str(run))
+            ms.commit()
+            time.sleep(1)
+            ms.publish("RequestInjector:NewDataset",'')
+            ms.commit()
     
 
     else:
         print "Using: %s-Workflow.xml" % prodName
 
         
-        
+    if workflowsOnly:
+        continue 
     if sitePref != None:
         ms.publish("RequestInjector:SetSitePref", sitePref)
         ms.commit()
