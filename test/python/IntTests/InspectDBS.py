@@ -17,7 +17,7 @@ except getopt.GetoptError, ex:
     sys.exit(1)
 
 # default URL
-url = "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery"
+url = "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery"
 # default instance to "MCLocal/Writer"
 dbinstance = "MCLocal/Writer"
 full=False         

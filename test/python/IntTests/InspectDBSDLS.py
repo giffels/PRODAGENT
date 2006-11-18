@@ -22,7 +22,7 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-url = "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery"
+url = "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery"
 dbinstance = None
 dlsendpoint = None
 dlstype = None
