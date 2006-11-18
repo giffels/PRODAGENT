@@ -118,7 +118,9 @@ class PhEDExComponent:
         #  //
         # // add the block information to the spec
         #//
+        logging.info("AFAF block LIST: %s"%blocks) 
         for block in blocks:
+            logging.info("AFAF block is: %s"%block)
             #  //
             # // Grab the se-name from DLS
             #//
@@ -134,7 +136,13 @@ class PhEDExComponent:
                 dbsdls.dlsName(),
                 datasetName,
                 )
-            blockEntry = spec.getFileblock(block['blockName'])
+##AF: if the block is closed inject it to PheDEX as closed 
+            if block['blockStatus']=="closed": 
+                isOpen="n"
+            else:
+                isOpen="y"
+            blockEntry = spec.getFileblock(block['blockName'],isOpen) 
+#            blockEntry = spec.getFileblock(block['blockName'])
             
             #  //
             # // Add each file to the fileBlock.
