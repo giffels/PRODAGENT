@@ -8,8 +8,11 @@ import xml.sax
 from dbsCgiApi import DbsCgiApi, DbsCgiDatabaseError
 from dbsException import DbsException
 from dbsApi import DbsApi, DbsApiException, InvalidDataTier
+from dbsFileBlock import DbsFileBlock
 
 ## DLS API
+import warnings
+warnings.filterwarnings("ignore","Python C API version mismatch for module _lfc",RuntimeWarning)
 import dlsClient
 from dlsDataObjects import *
 
@@ -165,27 +168,35 @@ def UploadDBSBlock(i,blocks):
     """
 ## Fetch
     blockName =  blocks[str(i)]['blockName'].replace('/', '_')
-    print "Fetching information for Block %s " %  blocks[str(i)]['blockName']
+    print "\n o Fetching information for Block %s " %  blocks[str(i)]['blockName']
     xmlinput = api.getDatasetInfo(datasetPath,  blocks[str(i)]['blockName'])
                                                                                                         
     f = open(name +  blockName + ".xml", "w");
     f.write(xmlinput)
     f.close()
 
-    print "Dataset information fetched from " + inargs['instance'] + " in XML format is saved in " + name +  blockName +  ".xml"
+    print "o Dataset information fetched from " + inargs['instance'] + " in XML format is saved in " + name +  blockName +  ".xml"
     ## replace family 
     if newfamily != None:
-       print "Replacing family with %s"%newfamily
+       print "o Replacing family with %s"%newfamily
        xmlinput = replacefamily(name +  blockName + ".xml",newfamily)
        #print xmlinput
 
 ## Upload
-    flog =  open(name + blockName + ".log", "w");
-    flog.write(api_out.insertDatasetInfo(xmlinput))
-    flog.close()
-    print "***** DBSupload:  \n The transfer log for " + outargs['instance'] + " in XML format is saved in " + name + blockName + ".log"
-    print "\n*****"
+    try:
+      flog =  open(name + blockName + ".log", "w");
+      flog.write(api_out.insertDatasetInfo(xmlinput))
+      flog.close()
+      print "***** DBSupload:  \n The transfer log for " + outargs['instance'] + " in XML format is saved in " + name + blockName + ".log"
+      print "\n*****"
+    except:
+       print "***** DBSupload FAILED"
+       return
 
+## close the block in OutputDBS
+    dbsblock = DbsFileBlock (blockName = blocks[str(i)]['blockName'])
+    api_out.closeFileBlock(dbsblock)
+    print "o Closed block %s "%blocks[str(i)]['blockName']
 
 # ##############################
 def UploadtoDBS(datasetPath):
@@ -230,7 +241,7 @@ def UploadDLSBlock(fileblock):
      print msg
      return
   for entry in entryList:
-    print "***** DLSupload: \n = fileblock: %s in DLS %s "%(entry.fileBlock.name,inputdlsendpoint)
+    print "***** DLSupload: \n o fileblock: %s in DLS %s "%(entry.fileBlock.name,inputdlsendpoint)
     for loc in entry.locations:
       #print " %s"%loc.host
       locationList.append(DlsLocation(loc.host))
