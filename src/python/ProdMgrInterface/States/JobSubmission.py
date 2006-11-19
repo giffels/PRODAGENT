@@ -5,8 +5,6 @@ import logging
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB import Session
-from ProdMgrInterface import Allocation
-from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
@@ -23,21 +21,8 @@ class JobSubmission(StateInterface):
    def execute(self):
        logging.debug("Executing state: JobSubmission")
        stateParameters=State.get("ProdMgrInterface")['parameters']
-       # emit event and delete job from request level.
-       # we do not keep track of a job queue (like with allocations), as
-       # jobs are managed by other (persistent) parts of the ProdAgent
-
-       # we retrieve the allocation id of this job from its id:
-       allocation_id=stateParameters['jobSpecId'].split('_')[1]+'/'+\
-           stateParameters['jobSpecId'].split('_')[3]
-       logging.debug("Activating allocation: "+allocation_id+" for job: "+\
-           stateParameters['jobSpecId'])
-       logging.debug('test: prodagentLevel '+allocation_id+' active')
-       Allocation.setState('prodagentLevel',allocation_id,'active')
-       Job.rm('requestLevel',stateParameters['jobSpecId'])
        logging.debug("Emitting <CreateJob> event with payload: "+str(stateParameters['targetFile']))
        self.ms.publish("CreateJob",stateParameters['targetFile'])
-
        stateParameters['jobIndex']+=1
        componentState="EvaluateJobs"
        State.setState("ProdMgrInterface",componentState)

@@ -5,7 +5,6 @@ import logging
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB import Session
-from ProdMgrInterface import Allocation
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
@@ -22,9 +21,6 @@ class Cleanup(StateInterface):
 
    def execute(self):
        logging.debug("Executing state: Cleanup")
-       Job.rm('requestLevel')
-       Allocation.rm('requestLevel')
-       Allocation.rm('messageLevel')
        componentState="start"
        componentStateParameters={}
        State.setState("ProdMgrInterface",componentState)

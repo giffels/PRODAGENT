@@ -9,9 +9,19 @@ def size():
     result=int(rows[0][0])
     return result
 
+def has(request_id):
+    sqlStr="""SELECT COUNT(*) FROM pm_request
+        WHERE id="%s" """ %(str(request_id))
+    Session.execute(sqlStr)
+    rows=Session.fetchall()
+    result=int(rows[0][0])
+    if result==1:
+        return True
+    return False 
+
 def insert(request_id,priority,prodMgr):
     sqlStr="""INSERT INTO pm_request(id,url,priority) 
-        VALUES("%s","%s","%s"); """ %(request_id,prodMgr,str(priority))
+        VALUES("%s","%s","%s") ON DUPLICATE KEY UPDATE priority="%s"; """ %(request_id,prodMgr,str(priority),str(priority))
     Session.execute(sqlStr)
 
 def getUrl(request_id):

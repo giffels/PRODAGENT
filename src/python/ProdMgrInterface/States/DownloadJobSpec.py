@@ -7,8 +7,6 @@ import os
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB import Session
-from ProdMgrInterface import Allocation
-from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
@@ -30,17 +28,6 @@ class DownloadJobSpec(StateInterface):
        targetFile=job['URL'].split('/')[-1]
        logging.debug("targetFile for download is: "+targetFile)
 
-       # if it is queue, restore the message and request level
-       # allocations
-       if stateParameters['stateType']=='queue':
-           Allocation.mv('requestLevelQueued','requestLevel',request_id)
-           Allocation.mv('messageLevelQueued','messageLevel',request_id)
-           Session.commit()
-           # now everything is back to normal, we do not have to recover
-           # as making the call is what went wrong.
-           stateParameters['stateType']=='normal'
-
-
        if not Job.isDownloaded('requestLevel',job['jobSpecId']):
            logging.debug("Downloading specification file to: "+str(targetDir))
            try:
@@ -58,7 +45,6 @@ class DownloadJobSpec(StateInterface):
                Session.rollback()
                request_id=job['jobSpecId'].split('_')[1]
                Job.mv('requestLevel','requestLevelQueued',request_id)
-               Allocation.mv('messageLevel','messageLevelQueued',request_id)
                stateParameters['requestIndex']=-1
                MessageQueue.insert("ProdMgrInterface","retrieveWork",requestURL,"DownloadJobSpec",stateParameters)
                componentState="AcquireRequest"
@@ -66,10 +52,8 @@ class DownloadJobSpec(StateInterface):
                Session.commit()
                logging.debug("Problem connecting to server "+stateParameters['ProdMgrURL']+" : "+str(ex))
                return componentState
-
            Job.downloaded('requestLevel',job['jobSpecId'])
            ProdMgrAPI.commit()
-
        componentState="JobSubmission"
        State.setState("ProdMgrInterface",componentState)
        stateParameters['jobSpecId']=job['jobSpecId']

@@ -5,7 +5,6 @@ import logging
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB import Session
-from ProdMgrInterface import Allocation
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
@@ -28,12 +27,12 @@ class EvaluateJobs(StateInterface):
        if (Job.size("requestLevel")-1)<stateParameters['jobIndex']:
            State.setState("ProdMgrInterface","EvaluateAllocations")
            stateParameters['requestIndex']+=1
+           logging.debug('Setting request index :'+str(stateParameters['requestIndex']))
            State.setParameters("ProdMgrInterface",stateParameters)
            # purge the queues we used for this request
-           Job.rm('requestLevel')
-           Allocation.rm('requestLevel')
+           Job.mv('requestLevel','active')
            Session.commit()
-           return "EvaluateAllocations" 
+           return "AcquireRequest" 
        State.setState("ProdMgrInterface","DownloadJobSpec")
        Session.commit()
        return "DownloadJobSpec" 

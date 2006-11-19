@@ -25,7 +25,6 @@ from ProdAgentCore.Codes import errors
 from ProdMgrInterface.Registry import retrieveHandler
 from ProdMgrInterface.Registry import Registry
 
-from ProdMgrInterface import Allocation
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
@@ -82,13 +81,14 @@ class ProdMgrComponent:
         if event == "ProdMgrInterface:StartDebug":
             logging.getLogger().setLevel(logging.DEBUG)
             return
-
         if event == "ProdMgrInterface:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
             return
-
         if event == "ProdMgrInterface:AddRequest":
             self.addRequest(payload)
+            return
+        if event == "ProdMgrInterface:RemoveIdlingAllocs":
+            self.removeIdling(payload)
             return
 
         #  //
@@ -111,8 +111,6 @@ class ProdMgrComponent:
         if event == "GeneralJobFailure":
             self.reportJobFailure(payload)
             return
-
-
 
     def retrieveWork(self, numberOfJobs):
        """
@@ -154,23 +152,24 @@ class ProdMgrComponent:
                    componentStateInfo['parameters']['jobSpecDir']=self.args['JobSpecDir']
                    State.setParameters("ProdMgrInterface",componentStateInfo['parameters'])
            logging.debug("ProdMgrInterface state is: "+str(componentStateInfo['state']))
-           
-
            # go to first state that is needed for the retrieveWork handling event
            componentState=componentStateInfo['state']
            if componentStateInfo['state']=='start':
-               componentState="EvaluateAllocations"
+               componentState="AcquireRequest"
            Session.commit()
            componentStateInfo=State.get("ProdMgrInterface")      
-           
            while componentState!='start':
                state=retrieveHandler(componentState)
                componentState=state.execute()
-   
            logging.debug("retrieveWork event handled")
        except Exception,ex:
            logging.debug("ERROR "+str(ex))              
 
+    def removeIdling(self,payload):
+        # we not need any state info here 
+        # as it is not a problem if it does not succeed.
+        # we try again during the next get idling event.
+        pass
 
     def addRequest(self, requestURL):
         """
@@ -199,8 +198,6 @@ class ProdMgrComponent:
         except Exception,ex:
             logging.debug("ERROR "+str(ex))
 
-
-
     def reportJobSuccess(self, frameworkJobReport):
         """
         _reportJobSuccess_
@@ -218,7 +215,6 @@ class ProdMgrComponent:
              logging.debug("ProdMgrInterface state creation")
              State.insert("ProdMgrInterface","start",{})
              componentStateInfo['state']="start"
-             requestIndex=0
         if componentStateInfo.has_key('state'):
             if componentStateInfo['state']=='start':
                 componentStateInfo['parameters']={}
@@ -231,12 +227,13 @@ class ProdMgrComponent:
         # first check if there are any queued events as a prodmgr might have been offline
         componentState=componentStateInfo['state']
         if componentStateInfo['state']=='start':
-            componentState="QueuedJobResults"
+            queued_events=retrieveHandler('QueuedMessages')
+            queued_events.execute()
         Session.commit()
-        while componentState!='start':
-            state=retrieveHandler(componentState)
-            componentState=state.execute()
+        state=retrieveHandler('ReportJobSuccess')
+        state.execute()
         logging.debug("reportJobSuccess event handled")
+        Session.set_current("default")
 
     def reportJobFailure(self, frameworkJobReport):
         """
@@ -254,7 +251,6 @@ class ProdMgrComponent:
              logging.debug("ProdMgrInterface state creation")
              State.insert("ProdMgrInterface","start",{})
              componentStateInfo['state']="start"
-             requestIndex=0
         if componentStateInfo.has_key('state'):
             if componentStateInfo['state']=='start':
                 componentStateInfo['parameters']={}
@@ -267,17 +263,14 @@ class ProdMgrComponent:
         # first check if there are any queued events as a prodmgr might have been offline
         componentState=componentStateInfo['state']
         if componentStateInfo['state']=='start':
-            componentState="QueuedJobResults"
+            queued_events=retrieveHandler('QueuedMessages')
+            queued_events.execute()
         Session.commit()
-        while componentState!='start':
-            state=retrieveHandler(componentState)
-            componentState=state.execute()
+        state=retrieveHandler('ReportJobSuccess')
+        state.execute()
         logging.debug("reportJobFailure event handled")
+        Session.set_current("default")
         
-        
-        
-        
-
     def startComponent(self):
         """
         _startComponent_
@@ -302,6 +295,7 @@ class ProdMgrComponent:
             self.ms.subscribeTo("ProdMgrInterface:StartDebug")
             self.ms.subscribeTo("ProdMgrInterface:EndDebug")
             self.ms.subscribeTo("ProdMgrInterface:AddRequest")
+            self.ms.subscribeTo("ProdMgrInterface:RemoveIdlingAllocs")
             self.ms.subscribeTo("ProdMgrInterface:ResourcesAvailable")
             self.ms.subscribeTo("ProdMgrInterface:JobSize")
             self.ms.subscribeTo("JobSuccess")

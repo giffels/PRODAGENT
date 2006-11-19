@@ -5,9 +5,7 @@ import logging
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB import Session
-from ProdMgrInterface import Allocation
 from ProdMgrInterface import Cooloff
-from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
@@ -25,8 +23,14 @@ class AcquireRequest(StateInterface):
        # remove potential server urls from the cooloff state
        Cooloff.remove()
        Session.commit()
-       # get request with highest priority:
        componentState=State.get("ProdMgrInterface")
+       #check if we reached our threshold. if so quit.
+       if int(componentState['parameters']['numberOfJobs']==0):
+           State.setState("ProdMgrInterface","Cleanup")
+           Session.commit()
+           return 'Cleanup'
+       # get request with highest priority:
+       logging.debug("Getting request with index: "+str(componentState['parameters']['requestIndex']))
        requestIndex=componentState['parameters']['requestIndex']
        request=Request.getHighestPriority(requestIndex)
        # if this is true we have no more requests to check:
@@ -34,23 +38,16 @@ class AcquireRequest(StateInterface):
            State.setState("ProdMgrInterface","Cleanup")
            Session.commit()
            return "Cleanup"
- 
-       # if this url is available in the message queue do not
-       # use it  
-       while MessageQueue.hasURL(request['url']) and\
-           Request.size()<(requestIndex+1):
-           requestIndex=requestIndex+1
-           request=Request.getHighestPriority(requestIndex)
-
        # if this url is available in the cooloff table do not
-       # use it either:
-       while Cooloff.hasURL(request['url']) and\
-           Request.size()<(requestIndex+1):
-           requestIndex=requestIndex+1
-           request=Request.getHighestPriority(requestIndex)
-
+       # use it :
+       if request!={}:
+           while Cooloff.hasURL(request['url']) :
+               requestIndex=requestIndex+1
+               request=Request.getHighestPriority(requestIndex)
+               if request=={}:
+                   break
        # check if there are requests left:
-       if (Request.size())<(requestIndex+1):
+       if (request=={}):
            State.setState("ProdMgrInterface","Cleanup")
            Session.commit()
            logging.debug("We have no more requests in our queue for allocations"+\
@@ -64,7 +61,7 @@ class AcquireRequest(StateInterface):
        State.setParameters("ProdMgrInterface",componentState['parameters'])
        State.setState("ProdMgrInterface","AcquireAllocations")
        Session.commit()
-       return "AcquireAllocations"
+       return "AcquireJobs"
 
 
 registerHandler(AcquireRequest(),"AcquireRequest")

@@ -1,3 +1,5 @@
+import logging
+
 from ProdAgentDB import Session
 
 def hasURL(url):
@@ -11,7 +13,7 @@ def hasURL(url):
 
 def insert(url,delay="00:00:00"):
     sqlStr="""INSERT INTO pm_cooloff(url,delay) 
-        VALUES("%s","%s"); """ %(url,delay)
+        VALUES("%s","%s") ON DUPLICATE KEY UPDATE delay="%s"; """ %(url,delay,delay)
     Session.execute(sqlStr)
 
 def remove():

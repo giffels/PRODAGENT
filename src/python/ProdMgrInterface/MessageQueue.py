@@ -1,4 +1,6 @@
+
 import cPickle
+import logging
 from ProdAgentDB import Session
 
 def hasURL(url):
@@ -15,15 +17,15 @@ def insert(component_id,handler_id,server_url,state,parameters,delay="00:00:00")
         VALUES("%s","%s","%s","%s","%s","%s"); """ %(component_id,handler_id,server_url,state,str(cPickle.dumps(parameters)),delay)
     Session.execute(sqlStr)
 
-def retrieve(component_id,handler_id,index=None):
-   if index==None:
+def retrieve(component_id,handler_id,start=None,amount=None):
+   if start==None:
        sqlStr="""SELECT server_url,state,parameters,id FROM ws_queue WHERE
            component_id="%s" AND handler_id="%s" AND
            ADDTIME(log_time,delay)<= CURRENT_TIMESTAMP """ %(component_id,handler_id)
    else:
        sqlStr="""SELECT server_url,state,parameters,id FROM ws_queue WHERE
            component_id="%s" AND handler_id="%s" AND
-           ADDTIME(log_time,delay)<= CURRENT_TIMESTAMP LIMIT %s,0; """ %(component_id,handler_id,str(index))
+           ADDTIME(log_time,delay)<= CURRENT_TIMESTAMP LIMIT %s,%s; """ %(component_id,handler_id,str(start),str(amount))
    Session.execute(sqlStr)
    rows=Session.fetchall()
    if len(rows)==0:

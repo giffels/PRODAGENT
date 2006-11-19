@@ -6,7 +6,6 @@ from FwkJobRep.ReportParser import readJobReport
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB import Session
-from ProdMgrInterface import Allocation
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
@@ -27,59 +26,63 @@ class ReportJobSuccess(StateInterface):
        jobReport=stateParameters['jobReport']
        # retrieve relevant information:
        report=readJobReport(jobReport)
+       logging.debug('jobreport is: '+str(jobReport))
        logging.debug('jobspecid is: '+str(report[-1].jobSpecId))
        total = 0
        for fileinfo in report[-1].files:
            if  fileinfo['TotalEvents'] != None:
               total+=int(fileinfo['TotalEvents'])
        logging.debug('JobReport has been read processed: '+str(total)+' events')
+       if stateParameters['jobType']=='failure':
+           logging.debug("This job failed so we register 0 events")
+           total=0
        request_id=report[-1].jobSpecId.split('_')[1] 
-       prodMgrUrl=Request.getUrl(request_id)
-       logging.debug('Attempting to contact: '+prodMgrUrl)
+       prodMgrUrl=Job.getUrl(report[-1].jobSpecId)
+       Job.rm(report[-1].jobSpecId)
 
-       # for this queue it does not matter in what order they are delivered.
-       try:
-           finished=ProdMgrAPI.releaseJob(prodMgrUrl,str(report[-1].jobSpecId),total,"ProdMgrInterface")
-       except Exception,ex:
-           # there is a problem connecting wrap up all relevant information and put
-           # it in a queue for later inspection
-           stateParameters['jobSpecId']=str(report[-1].jobSpecId)
-           stateParameters['events']=total
-           MessageQueue.insert("ProdMgrInterface","reportJobSuccess",prodMgrUrl,"ReportJobSuccess",stateParameters,"00:00:10")
-           logging.debug("Problem connecting to server "+prodMgrUrl+" : "+str(ex))
-           logging.debug("Attempt stored in job queue for later retries")
-           Session.commit()
-           Session.set_current("default")
-           return 'start'
-
-       if finished==1:
-           logging.debug("Request "+str(request_id)+" is completed. Removing all allocations and request")
-           # if the request is finished, remove it from our queue
-           # NOTE: perhaps we should send a kill event for remaining jobs?
-           request_id=message['parameters']['jobSpecId'].split('_')[1]
-           Request.rm(request_id)
-           Allocation.rm(request_id)
-       elif finished==2:
-           allocation_id=report[-1].jobSpecId.split('_')[1]+'/'+\
-               report[-1].jobSpecId.split('_')[3]
-           logging.debug("Request "+str(request_id)+" is not completed but allocation is: "+str(allocation_id))
-           Allocation.rm('',None,allocation_id)
-       elif finished==0:
-           allocation_id=report[-1].jobSpecId.split('_')[1]+'/'+\
-               report[-1].jobSpecId.split('_')[3]
-           logging.debug("Request "+str(request_id)+" and allocation  "+str(allocation_id)+" not completed")
-           Allocation.setState('prodagentLevel',allocation_id,'idle')
-       elif finished==3:
-           logging.debug("Request "+str(request_id)+" failed")
-           request_id=message['parameters']['jobSpecId'].split('_')[1]
-           Request.rm(request_id)
-           Allocation.rm(request_id)
+       parameters={}
+       parameters['jobSpecId']=str(report[-1].jobSpecId)
+       parameters['events']=total
+       parameters['request_id']=request_id
+       result=self.sendMessage(prodMgrUrl,parameters)
+       parameters['result']=result['result']
+       newState=self.handleResult(parameters)
        Session.commit()
-       # set session back to default
-       Session.set_current("default")
+
+   def sendMessage(self,url,parameters):
+       try:
+           logging.debug("Attempting to connect to server : "+url)
+           finished=ProdMgrAPI.releaseJob(url,str(parameters['jobSpecId']),\
+               int(parameters['events']),"ProdMgrInterface")
+           # check if the associated allocation needs to be released.
+           request_id=parameters['jobSpecId'].split('_')[1]
+           return {'result':finished,'url':'fine'}
+       except ProdAgentException, ex:
+           logging.debug("Problem connecting to server: "+url+" "+str(ex))
+           message={}
+           message['server_url']=url
+           message['type']='ReportJobSuccess'
+           message['state']='reportJobSuccess'
+           message['parameters']=parameters 
+           self.storeMessage(message)
+           return {'result':'start','url':'failed'}
+
+   def handleResult(self,parameters):
+       if parameters['result']=='start':
+           return
+       logging.debug("Handling result: "+str(parameters['result']))
+       finished=int(parameters['result'])
+       if finished==1:
+           logging.debug("Request "+str(parameters['request_id'])+" is completed. Removing all allocations and request")
+           Request.rm(parameters['request_id'])
+       elif finished==2:
+           logging.debug("Request "+str(parameters['request_id'])+" is not completed but allocation is")
+       elif finished==0:
+           logging.debug("Request "+str(parameters['request_id'])+" and allocation not completed")
+       elif finished==3:
+           logging.debug("Request "+str(parameters['request_id'])+" failed")
+           Request.rm(parameters['request_id'])
        return "start"
-
-
 
 registerHandler(ReportJobSuccess(),"ReportJobSuccess")
 

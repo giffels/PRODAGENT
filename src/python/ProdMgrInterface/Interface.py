@@ -11,10 +11,10 @@ service_map={'userID':'prodMgrRequest.userID',\
 
 def userID(serverUrl,componentID="defaultComponent"):
    return Management.executeCall(serverUrl,"prodMgrRequest.userID",[],componentID)
-   
+
 def acquireAllocation(serverUrl,request_id,amount,componentID="defaultComponent"):
    return Management.executeCall(serverUrl,"prodMgrProdAgent.acquireAllocation",[request_id,amount],componentID)
-
+   
 def acquireJob(serverUrl,request_id,parameters,componentID="defaultComponent"):
    return Management.executeCall(serverUrl,"prodMgrProdAgent.acquireJob",[request_id,parameters],componentID)
 
