@@ -16,7 +16,7 @@ import logging
 from MCPayloads.WorkflowSpec import WorkflowSpec
 from MCPayloads.LFNAlgorithm import createUnmergedLFNs
 from CMSConfigTools.CfgGenerator import CfgGenerator
-from PileupTools.PileupDataset import PileupDataset, createPileupDatasets
+from PileupTools.PileupDataset import PileupDataset, createPileupDatasets, getPileupSites
 
 from IMProv.IMProvDoc import IMProvDoc
 from IMProv.IMProvNode import IMProvNode
@@ -65,6 +65,25 @@ class RequestIterator:
                 ))
             self.pileupDatasets = createPileupDatasets(self.workflowSpec)
         return
+
+    def loadPileupSites(self):
+        """
+        _loadPileupSites_
+                                                                                                              
+        Are we dealing with pileup? If so pull in the site list
+                                                                                                              
+        """
+        sites = []
+        puDatasets = self.workflowSpec.pileupDatasets()
+        if len(puDatasets) > 0:
+            logging.info("Found %s Pileup Datasets for Workflow: %s" % (
+                len(puDatasets), self.workflowSpec.workflowName(),
+                ))
+            sites = getPileupSites(self.workflowSpec)
+        return sites
+                                                                                                              
+
+
             
     def __call__(self):
         """
@@ -111,7 +130,12 @@ class RequestIterator:
         # // Add site pref if set
         #//
         if self.sitePref != None:
-            jobSpec.addWhitelistSite(self.sitePref)
+#
+#AF:  Allow site pref to be a comma separated list of sites, each one
+#     added in the Whitelist:
+#            jobSpec.addWhitelistSite(self.sitePref)
+          for siteWhite in self.sitePref.split(","): 
+            jobSpec.addWhitelistSite(siteWhite)
             
         
         jobSpec.save(jobSpecFile)

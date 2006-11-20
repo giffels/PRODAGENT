@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.10 2006/10/20 21:41:15 evansde Exp $"
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.11 2006/11/13 20:48:17 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -147,6 +147,10 @@ class ReqInjComponent:
         self.iterators[workflowName] = newIterator
         self.iterator = newIterator
         self.iterator.loadPileupDatasets()
+        SEnames=self.iterator.loadPileupSites()
+        if len(SEnames) > 0:
+         site=",".join(SEnames)
+         self.setSitePref(site) 
         return
 
     def selectWorkflow(self, workflowName):
