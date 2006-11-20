@@ -12,7 +12,6 @@ Provides randomisation of access to the files, with two modes:
 
 
 """
-
 import random
 
 from IMProv.IMProvNode import IMProvNode
@@ -105,7 +104,28 @@ class PileupDataset(list):
         return
 
     
-    
+    def loadSites(self, **dbsContacts):
+        """
+        Get the list of sites hosting the PU from DBS/DLS
+                                                                                                              
+        """
+        if len(dbsContacts) > 0:
+            toolkit = RemoteDBSDLSToolkit(**dbsContacts)
+        else:
+            toolkit = DBSDLSToolkit()
+
+        blocks =  toolkit.listFileBlocksForDataset(self.dataset)
+     
+        for block in blocks:
+           blockName = block['blockName']
+           try:
+              locations = toolkit.getFileBlockLocation(blockName)
+           except Exception, ex:
+              msg = "Unable to find DLS Locations for Block: %s\n" %  blockName
+              msg += str(ex)
+              logging.warning(msg)
+              continue
+        return locations 
 
     def save(self):
         """
@@ -207,9 +227,44 @@ def createPileupDatasets(workflowSpec):
         else:
             pudInstance.loadLFNs()
 
+
         result[puDataset['NodeName']] = pudInstance
-        
+
     return result
+
+
+def getPileupSites(workflowSpec):
+    """
+    _getPileupSites_
+                                                                                                              
+    Create PileupTools.PileupDataset instances for each of
+    the pileup datasets in the workflowSpec.
+                                                                                                              
+    Return a list of sites 
+
+    """
+    allsites = []
+    puDatasets = workflowSpec.pileupDatasets()
+    for puDataset in puDatasets:
+        pudInstance = PileupDataset(puDataset.name(),
+                                    int(puDataset['FilesPerJob']))
+                                                                                                              
+        if puDataset.has_key("DBSAddress"):
+            args = {"DBSAddress" : puDataset['DBSAddress'],
+                    "DBSURL" : puDataset['DBSURL'],
+                    'DLSType' : puDataset['DLSType'],
+                    'DLSAddress' : puDataset['DLSAddress']}
+            sites = pudInstance.loadSites(**args)
+        else:
+            sites = pudInstance.loadSites()
+     
+        for site in sites:
+          allsites.append(site)              
+                                                                                      
+    return allsites
+
+
+
 
 
 if __name__ == '__main__':
