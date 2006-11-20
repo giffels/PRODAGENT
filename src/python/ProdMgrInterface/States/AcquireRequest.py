@@ -59,7 +59,7 @@ class AcquireRequest(StateInterface):
        componentState['parameters']['ProdMgrURL']=request['url']
        componentState['parameters']['requestIndex']=requestIndex
        State.setParameters("ProdMgrInterface",componentState['parameters'])
-       State.setState("ProdMgrInterface","AcquireAllocations")
+       State.setState("ProdMgrInterface","AcquireJobs")
        Session.commit()
        return "AcquireJobs"
 
