@@ -9,6 +9,8 @@ DLS Interface tools for PhEDEx Interface component
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 import logging
+import warnings
+warnings.filterwarnings("ignore","Python C API version mismatch for module _lfc",RuntimeWarning)
 import dlsClient
 from dlsDataObjects import *
 
