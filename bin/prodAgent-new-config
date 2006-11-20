@@ -126,9 +126,17 @@ coreFields = {
     },
 
     'LocalDBS' :{
-    "DBSURL": "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery",
+    "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
     "DBSAddress": None,
     "DBSType" : "CGI",
+    },
+
+    "GlobalDBSDLS" : {
+    "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
+    "DBSAddress": "MCGlobal/Writer",
+    "DBSType": "CGI",
+    "DLSAddress" : "prod-lfc-cms-central.cern.ch/grid/cms/DLS/LFC",
+    "DLSType" : "DLS_TYPE_LFC",
     },
     
     }# end core Fields

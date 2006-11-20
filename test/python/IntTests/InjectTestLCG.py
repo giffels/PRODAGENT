@@ -7,9 +7,9 @@ from MessageService.MessageService import MessageService
 import sys,os,getopt,time
 
 
-usage="\n Usage: python InjectTest.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow file \n --nevts=<NumberofEvent> \t\t number of events per job \n --njobs=<NumberofEvent> \t\t number of jobs \n --run=<firstRun> \t\t\t first run number \n\n *Note* that if no run number is provided the last run from the given workflow is taken [This assume that the given workflow already exists]."
+usage="\n Usage: python InjectTest.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow file \n --nevts=<NumberofEvent> \t\t number of events per job \n --njobs=<NumberofEvent> \t\t number of jobs \n --site-pref=<StorageElement name>  storage element name \n --run=<firstRun> \t\t\t first run number \n\n *Note* that if no run number is provided the last run from the given workflow is taken [This assume that the given workflow already exists]."
 
-valid = ['workflow=', 'run=', 'nevts=' , 'njobs=']
+valid = ['workflow=', 'run=', 'nevts=' , 'njobs=', 'site-pref=']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -21,6 +21,7 @@ workflow = None
 run = None
 nevts = None
 njobs = None
+sitePref = None
 
 for opt, arg in opts:
     if opt == "--workflow":
@@ -31,7 +32,9 @@ for opt, arg in opts:
         nevts = int(arg)
     if opt == "--njobs":
         njobs = int(arg)
-
+    if opt == "--site-pref":
+        sitePref = arg
+ 
 
 if workflow == None:
     print "--workflow option not provided"
@@ -71,6 +74,7 @@ ms.commit()
 ms.publish("JobCreator:SetCreator","LCGCreator")
 ## Set Submitter
 ms.publish("JobSubmitter:SetSubmitter","LCGSubmitter")
+
 ## Set Workflow 
 if run != None: 
  ## if run number is provided set the workflow and its initial run
@@ -87,6 +91,12 @@ else:
   workflowBase=os.path.basename(workflow)
   ms.publish("RequestInjector:SelectWorkflow", workflowBase)
   ms.commit()
+
+
+if sitePref != None:
+   ms.publish("RequestInjector:SetSitePref", sitePref)
+   ms.commit()
+   time.sleep(0.1)
 
 ms.publish("RequestInjector:SetEventsPerJob", str(nevts))
 ms.commit()

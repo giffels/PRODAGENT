@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.43 2006/10/27 14:41:40 ckavka Exp $"
-__version__ = "$Revision: 1.43 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.44 2006/11/06 20:44:12 evansde Exp $"
+__version__ = "$Revision: 1.44 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -389,12 +389,12 @@ class MergeSensorComponent:
 
         # a job has finished
         if event == "JobSuccess":
-              self.jobSuccess(payload)
+              #self.jobSuccess(payload)
               return
 
         # a job has failed
         if event == "GeneralJobFailure":
-              self.jobFailed(payload)
+              #self.jobFailed(payload)
               return
 
         # wrong event
