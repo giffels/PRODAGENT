@@ -13,7 +13,7 @@ Provides randomisation of access to the files, with two modes:
 
 """
 import random
-
+import logging
 from IMProv.IMProvNode import IMProvNode
 from IMProv.IMProvDoc import IMProvDoc
 from IMProv.IMProvQuery import IMProvQuery
@@ -114,8 +114,9 @@ class PileupDataset(list):
         else:
             toolkit = DBSDLSToolkit()
 
+        locations = []        
         blocks =  toolkit.listFileBlocksForDataset(self.dataset)
-     
+
         for block in blocks:
            blockName = block['blockName']
            try:
@@ -125,6 +126,7 @@ class PileupDataset(list):
               msg += str(ex)
               logging.warning(msg)
               continue
+
         return locations 
 
     def save(self):
@@ -248,7 +250,11 @@ def getPileupSites(workflowSpec):
     for puDataset in puDatasets:
         pudInstance = PileupDataset(puDataset.name(),
                                     int(puDataset['FilesPerJob']))
-                                                                                                              
+
+        if puDataset.has_key("SkipLocation"):  
+          if puDataset['SkipLocation']: # if there a pu dataset to skip location, skip for all 
+             return None
+
         if puDataset.has_key("DBSAddress"):
             args = {"DBSAddress" : puDataset['DBSAddress'],
                     "DBSURL" : puDataset['DBSURL'],
@@ -258,6 +264,7 @@ def getPileupSites(workflowSpec):
         else:
             sites = pudInstance.loadSites()
      
+        ## fixme: it should be the intersection of sites
         for site in sites:
           allsites.append(site)              
                                                                                       
