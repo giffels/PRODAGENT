@@ -11,7 +11,7 @@ def size(catagory):
     return result
 
 def get(catagory):
-    sqlStr="""SELECT id,url FROM pm_job WHERE
+    sqlStr="""SELECT id,job_spec_url FROM pm_job WHERE
         catagory="%s" """ %(str(catagory))
     Session.execute(sqlStr)
     rows=Session.fetchall()
@@ -34,6 +34,13 @@ def getUrl(job_id):
     rows=Session.fetchall()
     return rows[0][0]
 
+def getLocation(job_id):
+    sqlStr="""SELECT job_spec_location FROM pm_job WHERE id="%s";
+        """ %(str(job_id))
+    Session.execute(sqlStr)
+    rows=Session.fetchall()
+    return rows[0][0]
+
 def rm(job_id):
     sqlStr="""DELETE FROM pm_job WHERE id="%s"
         """ %(job_id)
@@ -45,10 +52,14 @@ def mv(source_cat,target_cat):
         """ %(target_cat,source_cat)
     Session.execute(sqlStr)
 
+def registerJobSpecLocation(job_id,job_spec_location):
+    sqlStr="""UPDATE pm_job SET job_spec_location="%s"
+       WHERE id="%s" """ %(str(job_spec_location),str(job_id))
+    Session.execute(sqlStr)
 
 def insert(catagory,jobs,request_id,server_url):
     if len(jobs)>0:
-        sqlStr="INSERT INTO pm_job(id,request_id,catagory,url,server_url) VALUES"
+        sqlStr="INSERT INTO pm_job(id,request_id,catagory,job_spec_url,server_url) VALUES"
         comma=0
         for job in jobs:
             if comma==1:

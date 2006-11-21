@@ -601,8 +601,9 @@ CREATE TABLE pm_job
    (
     id                    varchar(150)    not null,
     request_id            varchar(150)    not null,
-    url                   varchar(150)    not null,
-    server_url            varchar(150)    not null,
+    job_spec_url          varchar(255)    not null,
+    job_spec_location     varchar(255)    not null default 'None',
+    server_url            varchar(255)    not null,
     downloaded            int(11)         not null default 0,
     catagory              varchar(150)    not null
    ) Type=InnoDB;

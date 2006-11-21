@@ -24,7 +24,8 @@ class DownloadJobSpec(StateInterface):
        logging.debug("Executing state: DownloadJobSpec")
        stateParameters=State.get("ProdMgrInterface")['parameters']
        job=Job.get('requestLevel')[stateParameters['jobIndex']]
-       targetDir=stateParameters['jobSpecDir']+'/'+job['jobSpecId'].replace('/','_')
+#       targetDir=stateParameters['jobSpecDir']+'/'+job['jobSpecId'].replace('/','_')
+       targetDir=stateParameters['jobSpecDir']
        targetFile=job['URL'].split('/')[-1]
        logging.debug("targetFile for download is: "+targetFile)
 
@@ -38,6 +39,7 @@ class DownloadJobSpec(StateInterface):
            logging.debug(" Downloading: "+str(job['URL']))
            try:
                ProdMgrAPI.retrieveFile(job['URL'],targetDir+'/'+targetFile)
+               Job.registerJobSpecLocation(job['jobSpecId'],targetDir+'/'+targetFile)
            except Exception,ex:
                # there is a problem connecting wrap up all relevant information and put
                # it in a queue for later insepection

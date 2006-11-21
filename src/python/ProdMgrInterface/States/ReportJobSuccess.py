@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging 
+import os
 
 from FwkJobRep.ReportParser import readJobReport
 from ProdAgentCore.Codes import errors
@@ -38,7 +39,9 @@ class ReportJobSuccess(StateInterface):
            total=0
        request_id=report[-1].jobSpecId.split('_')[1] 
        prodMgrUrl=Job.getUrl(report[-1].jobSpecId)
+       job_spec_location=Job.getLocation(report[-1].jobSpecId)
        Job.rm(report[-1].jobSpecId)
+       os.remove(job_spec_location)
 
        parameters={}
        parameters['jobSpecId']=str(report[-1].jobSpecId)
