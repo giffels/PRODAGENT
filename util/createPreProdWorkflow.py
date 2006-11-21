@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: createPreProdWorkflow.py,v 1.7 2006/10/20 21:43:48 evansde Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: createPreProdWorkflow.py,v 1.8 2006/11/13 20:52:03 evansde Exp $"
 
 
 import os
@@ -28,7 +28,7 @@ import MCPayloads.UUID as MCPayloadsUUID
 valid = ['cfg=', 'version=', 'category=', 'name=', 'fake-hash',
          'pileup-dataset=', 'pileup-files-per-job=',
          'pu-dbs-address=', 'pu-dbs-url=', 'pu-dls-type=', 'pu-dls-address=',
-         ]
+         'pu-skip-location',]
 usage = "Usage: createPreProdWorkflow.py --cfg=<cfgFile>\n"
 usage += "                                --version=<CMSSW version>\n"
 usage += "                                --name=<Workflow Name>\n"
@@ -61,7 +61,7 @@ dbsAddress = None
 dbsUrl = None
 dlsAddress = None
 dlsType = None
-
+pileupSkipLocation = False
 
 for opt, arg in opts:
     if opt == "--cfg":
@@ -87,7 +87,9 @@ for opt, arg in opts:
         dlsType = arg
     if opt == '--pu-dls-address':
         dlsAddress = arg
-    
+    if opt == '--pu-skip-location':
+        pileupSkipLocation = True
+
 if cfgFile == None:
     msg = "--cfg option not provided: This is required"
     raise RuntimeError, msg
@@ -174,7 +176,8 @@ if pileupDS != None:
         puDataset['DBSURL'] = dbsUrl
         puDataset['DLSType'] = dlsType
         puDataset['DLSAddress'] = dlsAddress
-
+    if pileupSkipLocation:
+        puDataset['SkipLocation'] = pileupSkipLocation 
 
 #  //
 # // Pull all the output modules from the configuration file,

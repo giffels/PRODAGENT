@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.13 $"
-__revision__ = "$Id: releaseValidation.py,v 1.13 2006/10/31 08:59:49 evansde Exp $"
+__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: releaseValidation.py,v 1.14 2006/11/17 16:36:23 evansde Exp $"
 
 
 import os
@@ -109,7 +109,8 @@ globalDBS = {
     "DLSType" : "DLS_TYPE_LFC",
     
     }
-
+# for RelVal assume the PU is at the sites to run on:  
+pileupSkipLocation = True 
 
 def reduceVersion(versString):
     """
@@ -337,6 +338,8 @@ for relTest in relValSpec:
         puDataset['DBSURL'] = globalDBS['DBSURL']
         puDataset['DLSType'] = globalDBS['DLSType']
         puDataset['DLSAddress'] = globalDBS['DLSAddress']
+        if pileupSkipLocation:
+          puDataset['SkipLocation'] = pileupSkipLocation
     #  //
     # // Pull all the output modules from the configuration file,
     #//  treat the output module name as DataTier and AppFamily,
