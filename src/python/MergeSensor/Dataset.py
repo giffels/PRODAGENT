@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.23 2006/10/19 08:36:59 ckavka Exp $"
-__version__ = "$Revision: 1.23 $"
+__revision__ = "$Id: Dataset.py,v 1.24 2006/10/25 16:22:24 ckavka Exp $"
+__version__ = "$Revision: 1.24 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -90,6 +90,7 @@ class Dataset:
                 self.logging.error( \
                     "Cannot initialize dataset %s from database (%s)" % \
                     (info, msg))
+                raise
                 
             # compute target dataset path
             primaryDataset = self.data['primaryDataset']
