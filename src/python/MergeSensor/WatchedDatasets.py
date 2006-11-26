@@ -7,15 +7,16 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.8 2006/10/09 08:19:42 ckavka Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.9 2006/10/17 16:39:11 ckavka Exp $"
+__version__ = "$Revision: 1.9 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
 from MergeSensor.Dataset import Dataset
 from MergeSensor.MergeSensorError import MergeSensorError, \
                                          InvalidDataset, \
-                                         NonMergeableDataset
+                                         NonMergeableDataset, \
+                                         DatasetNotInDatabase
 
 # workflow specifications
 from MCPayloads.WorkflowSpec import WorkflowSpec
@@ -77,10 +78,18 @@ class WatchedDatasets:
             
             # get information for database
             oldDatasets = self.database.getDatasetList()
+
             for datasetId in oldDatasets:
 
                 # get database information
-                dataset = Dataset(datasetId)
+                try:
+                    dataset = Dataset(datasetId)
+                
+                except DatasetNotInDatabase, msg:
+
+                    # does not exist, ignore it!
+                    continue;
+
                 self.datasets[datasetId] = dataset
 
         # cold mode: close all open datasets
