@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.14 $"
-__revision__ = "$Id: releaseValidation.py,v 1.14 2006/11/17 16:36:23 evansde Exp $"
+__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: releaseValidation.py,v 1.15 2006/11/21 14:47:12 afanfani Exp $"
 
 
 import os
@@ -226,12 +226,12 @@ for relTest in relValSpec:
     urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/%s/%s/" % (subpackage, dataDir)
 
     cfgUrl = "%s%s" % (urlBase, relTest['CfgUrl'])
-    cfgUrl += "?only_with_tag=%s" % cvsTag
-    
+## replace restriction only_with_tag with rev :
+#    cfgUrl += "?only_with_tag=%s" % cvsTag
+    cfgUrl += "?rev=%s" % cvsTag   
     
     if not noRecreate:
         wgetCommand = "wget %s -O %s" % (cfgUrl, cfgFile)
-    
         pop = popen2.Popen4(wgetCommand)
         while pop.poll() == -1:
             exitStatus = pop.poll()
