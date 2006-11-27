@@ -38,7 +38,7 @@ class ApMonDestination(dict):
         self.setdefault("Passwd", destPasswd)
         self.setdefault("Cluster" , cluster)
         self.setdefault("Node", node)
-        self.setdefault("Timestamp", True)
+        self.setdefault("Timestamp", False)
         self.setdefault("InstanceID", random.randint(0, 0x7FFFFFFE))
         self.setdefault("SequenceNumber", 0)
         self.udpSocket = None
