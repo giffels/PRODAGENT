@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.44 2006/11/06 20:44:12 evansde Exp $"
-__version__ = "$Revision: 1.44 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.45 2006/11/20 07:41:36 ckavka Exp $"
+__version__ = "$Revision: 1.45 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1195,7 +1195,7 @@ class MergeSensorComponent:
       
         # critical region start
         self.cond.acquire()
-
+        
         # verify if the dataset has to be removed
         if (datasetPath in self.toBeRemoved):
             
@@ -2179,7 +2179,36 @@ class PollDBS(Thread):
 
         """
 
-        # performs DBS polling indefinitely
+        # at most three consecutive failed attempts to run the polling thread
+        failed_attempts = 0
         
+        # performs DBS polling indefinitely
         while True:
-            self.poll()
+            
+            # perform dataset polling
+            try:
+                self.poll()
+                
+            # error
+            except Exception, ex:
+                
+                # log error message
+                logging.error("Error in polling thread: " + str(ex))
+                
+                # try at most 3 times
+                if failed_attempts == 3:
+                    
+                    logging.error("Cannot restart polling. Aborting")
+                    logging.error("\nWarning: Polling thread is not running!")
+                    sys.exit(1)
+                    
+                # increment failure counter
+                failed_attempts += 1
+                
+                logging.error("Trying to restart polling... " + \
+                              "(attempt %s)" % failed_attempts)
+                
+            # no errors, reset failure counter
+            else:
+                failed_attempts = 0
+                
