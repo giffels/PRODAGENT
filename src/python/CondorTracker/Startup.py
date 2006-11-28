@@ -14,6 +14,7 @@ import getopt
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
 from CondorTracker.CondorTrackerComponent import CondorTrackerComponent
+from ProdAgentCore.PostMortem import runWithPostMortem
 
 #  //
 # // Find and load the Configuration
@@ -36,4 +37,4 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 print "Starting CondorTracker Component..."
 createDaemon(compCfg['ComponentDir'])
 component = CondorTrackerComponent(**dict(compCfg))
-component.startComponent()
+runWithPostMortem(component, compCfg['ComponentDir'])

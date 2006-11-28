@@ -10,15 +10,22 @@ import os
 import time
 import logging
 from logging.handlers import RotatingFileHandler
-from threading import Thread, Condition
+
 
 from MessageService.MessageService import MessageService
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
-from FwkJobRep.ReportState import checkSuccess
+from ProdAgentCore.LoggingUtils import installLogHandler
+from ProdAgentCore.ProdAgentException import ProdAgentException
 
-makePath = lambda x, y: os.path.join(x, y)
-checkRep = lambda x: os.path.exists(os.path.join(x, "FrameworkJobReport.xml"))
-beenChecked = lambda x: not os.path.exists(os.path.join(x, "CondorTracker"))
+from FwkJobRep.ReportState import checkSuccess
+from FwkJobRep.FwkJobReport import FwkJobReport
+
+import JobState.JobStateAPI.JobStateInfoAPI as JobStateInfoAPI
+import JobState.JobStateAPI.JobStateChangeAPI as JobStateChangeAPI
+
+from CondorTracker.Registry import retrieveTracker
+import  CondorTracker.CondorTrackerDB as TrackerDB
+import CondorTracker.Trackers
 
 class CondorTrackerComponent:
     """
@@ -30,27 +37,19 @@ class CondorTrackerComponent:
     def __init__(self, **args):
         self.args = {}
         self.args['Logfile'] = None
-        self.args.setdefault("PollInterval", 10 )
+        self.args['TrackerPlugin'] = None
         self.args.update(args)
-        self.args['PollInterval'] = float(self.args['PollInterval'])
-        #  //
-        # // Default is to start polling resources right away
-        #//
-        self.activePolling = True
-
+       
+       
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
-        logging.info("CondorTrackin Component Started...")
-        self.cond = Condition()
-        self.pollingThread = Poll(self.pollCondor)
-        logging.getLogger().setLevel(logging.DEBUG)
+
+        installLogHandler(self)
+        msg = "CondorTracker Started\n"
+        msg += " ==> Tracker Plugin: %s\n" % self.args['TrackerPlugin']
+        logging.info(msg)
+        
         
     def __call__(self, event, payload):
         """
@@ -62,28 +61,138 @@ class CondorTrackerComponent:
         logging.debug("Recieved Event: %s" % event)
         logging.debug("Payload: %s" % payload)
         
-        if event == "CondorTracker:Start":
-            logging.info("Starting Condor Tracker...")
-            self.activePolling = True
+        if event == "SubmitJob":
+            self.jobSubmitted(payload)
+            return
+
+        if event == "SubmissionFailed":
+            self.submitFailed(payload)
+            return
+
+        if event == "CondorTracker:Update":
+            self.update()
+            return
+        
+        
 
 
-
-        if event == "CondorTracker:Stop":
-            logging.info("Stopping RM...")
-            self.activePolling = False
-
-            
-
+        #  //
+        # // Control Stuff
+        #//
+        if event == "CondorTracker:SetTracker":
+            self.args['TrackerPlugin'] = payload
+            return
         if event == "CondorTracker:StartDebug":
             logging.getLogger().setLevel(logging.DEBUG)
             return
-        elif event == "CondorTracker:EndDebug":
+        if event == "CondorTracker:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
             return
 
         
+    def jobSubmitted(self, jobSpecId):
+        """
+        _jobSubmitted_
 
-                
+        Start watching for submitted job
+
+        """
+        logging.info("--> Start Watching: %s" % jobSpecId)
+        TrackerDB.submitJob(jobSpecId)
+        return
+    
+
+    def submitFailed(self, jobSpecId):
+        """
+        _submitFailed_
+
+        Stop tracking job
+
+        """
+        logging.info("--> Stop Watching: %s" % jobSpecId)
+        TrackerDB.removeJob(jobSpecId)
+
+    def update(self):
+        """
+        _update_
+
+        Update the state of all jobs
+
+        """
+        try:
+            tracker = retrieveTracker(self.args['TrackerPlugin'])
+        except Exception, ex:
+            msg = "Unable to Retrieve Tracker Plugin named: %s\n" % (
+                self.args['TrackerPlugin'])
+            msg += "Cant perform update..."
+            logging.error(msg)
+            return
+        
+        try:
+            tracker()
+        except Exception, ex:
+            msg = "Error invoking Tracker Plugin: %s\n" % (
+                self.args['TrackerPlugin'],
+                )
+            msg += str(ex)
+            logging.error(msg)
+            return
+
+        #  //
+        # // Trawl list of completed jobs and publish events
+        #//  for them
+        completeJobs = TrackerDB.getJobsByState("complete")
+        for jobspec, jobindex in completeJobs.items():
+            self.jobCompletion(jobspec)
+            TrackerDB.removeJob(jobspec)
+            logging.info("--> Stop Watching: %s" % jobspec)
+        return
+
+    
+
+    def jobCompletion(self, jobSpecId):
+        """
+        _jobCompletion_
+
+        Handle a completion for the jobSpecId provided
+
+        """
+        try:
+            jobState = JobStateInfoAPI.general(jobSpecId)
+            jobCache = jobState['CacheDirLocation']
+        except ProdAgentException, ex:
+            msg = "Unable to Publish Report for %s\n" % jobSpecId
+            msg += "Since It is not known to the JobState System:\n"
+            msg += str(ex)
+            logging.error(msg)
+            return
+        jobReport = "%s/FrameworkJobReport.xml" % jobCache
+        if not os.path.exists(jobReport):
+            logging.info("Missing Report for %s" % jobSpecId)
+            badReport = FwkJobReport(jobSpecId)
+            badReport.status = "Failed"
+            badReport.exitCode = 999
+            err = badReport.addError(999, "MissingJobReport")
+            errDesc = "Framework Job Report was not returned "
+            errDesc += "on completion of job"
+            err['Description'] = errDesc
+            badReport.write(jobReport)
+            self.ms.publish("JobFailed" ,jobReport)
+            self.ms.commit()
+            logging.info("JobFailed Published For %s" % jobSpecId)
+            return
+        if checkSuccess(jobReport):
+            self.ms.publish("JobSuccess", jobReport)
+            self.ms.commit()
+            logging.info("JobSuccess Published For %s" % jobSpecId)
+            return
+        else:
+            self.ms.publish("JobFailed" ,jobReport)
+            self.ms.commit()
+            logging.info("JobFailed Published For %s" % jobSpecId)
+            return
+        
+        
 
     def startComponent(self):
         """
@@ -95,16 +204,16 @@ class CondorTrackerComponent:
        
         # create message server
         self.ms = MessageService()
-                                                                                
+                                                             
         # register
         self.ms.registerAs("CondorTracker")
-        self.ms.subscribeTo("CondorTracker:Start")
-        self.ms.subscribeTo("CondorTracker:Stop")
         self.ms.subscribeTo("CondorTracker:StartDebug")
         self.ms.subscribeTo("CondorTracker:EndDebug")
+        self.ms.subscribeTo("CondorTracker:Update")
+        self.ms.subscribeTo("CondorTracker:SetTracker")
+        self.ms.subscribeTo("SubmitJob")
+        self.ms.subscribeTo("SubmissionFailed")
         
-        # start polling thread
-        self.pollingThread.start()
         
         # wait for messages
         while True:
@@ -113,134 +222,5 @@ class CondorTrackerComponent:
             logging.debug("CondorTracker: %s, %s" % (type, payload))
             self.__call__(type, payload)
             
-
-    def listCacheDirs(self):
-        """
-        _listCacheDirs_
-
-        Generate a list of all cache dirs in the JobCreator area
-
-        """
-        config = loadProdAgentConfiguration()
-        compCfg = config.getConfig("JobCreator")
-        if compCfg == None:
-            logging.warning("JobCreator config not found")
-            return []
-        cacheDir = compCfg.get('ComponentDir', None)
-        if cacheDir == None:
-            logging.warning("No Cache Dir found for JobCreator")
-            return []
-
-        results = [ makePath(cacheDir, x) for x in os.listdir(cacheDir) \
-                    if os.path.isdir(makePath(cacheDir, x))]
-        results = filter(checkRep, results)
-        results = filter(beenChecked, results)
-        return results
-        
-
-    def isComplete(self, cacheDir):
-        """
-        _isComplete_
-
-        Look at the Cache Dir and determine wether it is complete or not
-
-        TODO: Based on file size of JobReport.
-        
-        """
-        jobReport = os.path.join(cacheDir, "FrameworkJobReport.xml")
-        if os.stat(jobReport)[6] == 0:
-            return False
-        logging.debug("Complete:%s" % cacheDir)
-        return True
-
-    def handleCompletion(self, cacheDir):
-        """
-        _handleCompletion_
-
-        Check the completed job report, write the
-        CondorTracker file into the cache
-        """
-        report = os.path.join(cacheDir, "FrameworkJobReport.xml")
-        logging.debug("handleCompletion: %s" % report)
-        if checkSuccess(report):
-            logging.info("JobSuccess: %s" % report)
-            self.ms.publish("JobSuccess", report)
-            self.ms.commit()
-            logging.debug("Success published for %s" % report)
-        else:
-            logging.info("JobFailed: %s" % report)
-            self.ms.publish("JobFailed", report)
-            self.ms.commit()
-            logging.debug("Failure published for %s" % report)
-            
-        #  //
-        # // Mark job as logged already
-        #//
-        checked = os.path.join(cacheDir, "CondorTracker")
-        logging.debug("Creating file: %s" % checked)
-        handle = open(checked, 'w')
-        handle.write(str(time.time()))
-        handle.close()
-        logging.debug("Created file: %s" % checked)
-        return
-        
-
-    def pollCondor(self):
-        """
-        _pollCondor_
-
-        Find finished Jobs, publish success or failed events
-
-        """
-        returnValue = 0
-        if not self.activePolling:
-            logging.debug("pollCondor:Inactive")
-        else:
-            logging.debug("pollCondor:Active")
-            self.cond.acquire()
-            completeCache = []
-            #  //
-            # // Get list of completed jobs 
-            #//
-            completeCache = [i for i in self.listCacheDirs() \
-                             if self.isComplete(i)]
-            #  //
-            # // For each completed job, publish the
-            #//  appropriate event and write a file into the cache
-            #  // to show it has been handled.
-            # // 
-            #//
-            for item in completeCache:
-                logging.debug("handleCompletion: %s" %item)
-                self.handleCompletion(item)
-            logging.debug("finished cycle")
-            self.cond.release()
-        time.sleep(self.args['PollInterval'])
-        return returnValue
-    
     
         
-class Poll(Thread):
-    """
-    Thread that performs polling
-    """
-
-    
-
-    def __init__(self, poll):
-        """
-        __init__
-
-        Initialize thread and set polling callback
-        """
-        Thread.__init__(self)
-        self.poll = poll;
-
-    def run(self):
-        """
-        __run__
-
-        Performs polling 
-        """
-        while True:
-            self.poll()
