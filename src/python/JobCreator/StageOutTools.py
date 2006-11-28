@@ -18,7 +18,7 @@ from IMProv.IMProvDoc import IMProvDoc
 from xml.sax import make_parser
 from IMProv.IMProvLoader import IMProvHandler
 from IMProv.IMProvQuery import IMProvQuery
-
+from ProdAgentCore.PluginConfiguration import loadPluginConfig
 
 class InsertStageOut:
     """
@@ -262,6 +262,22 @@ class NewPopulateStageOut:
 
         runres.addData("/%s/StageOutFor" % paramBase, stageOutFor)
 
+        #  //
+        # // Configuration for retries?
+        #//
+        try:
+            creatorCfg = loadPluginConfig("JobCreator", "Creator")
+            stageOutCfg = creatorCfg.get("StageOut", {})
+            numRetres = int(stageOutCfg.get("NumberOfRetries", 3))
+            retryPause = int(stageOutCfg.get("RetryPauseTime", 600))
+            runres.addData("%s/RetryPauseTime" % paramBase, retryPause)
+            runres.addData("%s/NumberOfRetries" % paramBase, numRetries)
+            msg = "Stage Out Retries = %s; Pause = %s" % (
+                numRetries, retryPause)
+            logging.debug(msg)
+        except:
+            logging.debug("No Retry/Pause Stage Out cfg found")
+        
         #  //
         # // Is there an override for this in the JobSpec??
         #//
