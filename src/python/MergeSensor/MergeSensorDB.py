@@ -6,11 +6,10 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.9 2006/11/15 10:03:27 ckavka Exp $"
-__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.10 2006/11/15 14:27:15 ckavka Exp $"
+__version__ = "$Revision: 1.10 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
-import time
 import MySQLdb
 
 from ProdAgentDB.Connect import connect
@@ -50,15 +49,8 @@ class MergeSensorDB:
  
         """
 
-        # parameters
-        self.refreshPeriod = 60 * 60 * 12 # 12 hours connections
-
         # force open connection
-        self.connectionTime = 0
-        self.conn = self.connect(invalidate = True)
-
-        # database connection
-        self.database = None
+        self.conn = self.connect()
         
         # current transaction
         self.transaction = []
@@ -67,53 +59,35 @@ class MergeSensorDB:
     # get an open connection to the database
     ##########################################################################
                                                                                 
-    def connect(self, invalidate = False): 
+    def connect(self): 
         """
         __connect__
                                                                                 
-        return a DB connection, reusing old one if still valid. Create a new
-        one if requested so or if old one expired.
+        return a DB connection
 
         Arguments:
         
-          invalidate -- used to force reconnection
+          none
           
         Return:
             
           none
  
         """
-
-        # is it necessary to refresh the connection?
         
-        if (time.time() - self.connectionTime > self.refreshPeriod 
-            or invalidate):
-            
-            #  close current connection (if any)
-            try:
-                self.conn.close()
-
-            # cannot close, just ignore and get a fresh one
-            except (MySQLdb.Error, AttributeError):
-                pass
-            
-            # create a new one    
-            conn = connect(False)
-            self.connectionTime = time.time()
+        # create a new one    
+        conn = connect(False)
                 
-            # set transaction properties
-            cursor = conn.cursor()
-            cursor.execute(\
-                 "SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
-            cursor.execute("SET AUTOCOMMIT=0")
-            cursor.close()
+        # set transaction properties
+        cursor = conn.cursor()
+        cursor.execute(\
+             "SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
+        cursor.execute("SET AUTOCOMMIT=0")
+        cursor.close()
             
-            # return connection handler
-            return conn
+        # return connection handler
+        return conn
         
-        # return old one
-        return self.conn
-
     ##########################################################################
     # commit method 
     ##########################################################################
@@ -122,8 +96,9 @@ class MergeSensorDB:
         """
         __commit__
         
-        The operation commit closes the current transaction, making all
-        operations to take place as a single atomic operation.
+        The operation commit closes the current transaction,
+        making all operations to take place as a single atomic
+        operation.
 
         Arguments:
         
@@ -138,12 +113,11 @@ class MergeSensorDB:
         # commit
         try:
             self.conn.commit()
+            
         except MySQLdb.Error:
 
             # lost connection with database, reopen it
-            self.conn = self.connect(invalidate = True)
-
-            # redo operations in interrupted transaction
+            self.conn = self.connect()
             self.redo()
 
             # try to commit
@@ -151,9 +125,6 @@ class MergeSensorDB:
 
         # erase redo list
         self.transaction = []
-
-        # refresh connection
-        self.conn = self.connect()
 
     ##########################################################################
     # start transaction
@@ -163,7 +134,8 @@ class MergeSensorDB:
         """
         __startTransaciton__
         
-        Start a transaction, performing an implicit commit if necessary.
+        Start a transaction, performing an implicit commit if
+        necessary.
 
         Arguments:
         
@@ -180,12 +152,11 @@ class MergeSensorDB:
             # commit
             try:
                 self.conn.commit()
+                
             except MySQLdb.Error:
 
                 # lost connection with database, reopen it
-                self.conn = self.connect(invalidate = True)
-
-                # redo operations in interrupted transaction
+                self.conn = self.connect()
                 self.redo()
 
                 # try to commit
@@ -193,9 +164,6 @@ class MergeSensorDB:
 
         # erase redo list
         self.transaction = []
-
-        # refresh connection
-        self.conn = self.connect()
 
     ##########################################################################
     # rollback method 
@@ -221,17 +189,17 @@ class MergeSensorDB:
         # roll back
         try:
             self.conn.rollback()
+            
         except MySQLdb.Error:
             # lost connection con database, just get a new connection
             # the effect of rollback is then automatic
 
-            pass
-
+            # refresh connection
+            self.conn = self.connect()
+            
         # erase redo list
         self.transaction = []
 
-        # refresh connection
-        self.conn = self.connect()
 
     ##########################################################################
     # redo method
@@ -241,10 +209,8 @@ class MergeSensorDB:
         """
         __redo__
         
-        Tries to redo all operations pending (uncomitted) performed during
-        an interrupted transaction.
-
-        Only called with a fresh valid connection
+        Tries to redo all operations pending (uncomitted)
+        performed during an interrupted transaction.
 
         Arguments:
         
@@ -257,8 +223,15 @@ class MergeSensorDB:
         """
 
         # get cursor
-        cursor = self.conn.cursor()
+        try:
+            cursor = self.conn.cursor()
 
+        except MySQLdb.Error:
+
+            # lost connection with database, reopen it
+            self.conn = self.connect()
+            cursor = self.conn.cursor()
+            
         # perform all operations in current newly created transaction
         for sqlOperation in self.transaction:
             cursor.execute(sqlOperation)
@@ -292,12 +265,12 @@ class MergeSensorDB:
 
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor()
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
             cursor = self.conn.cursor()
             
         # for all databases (order is important due to foreign keys)
@@ -316,19 +289,20 @@ class MergeSensorDB:
 
                 cursor.execute(sqlCommand)
                 self.transaction.append(sqlCommand)
+                
             except MySQLdb.Error:
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-
-                # redo operations in interrupted transaction
+                self.conn = self.connect()
                 self.redo()
-            
-                # get cursor
                 cursor = self.conn.cursor()
 
                 # retry
                 cursor.execute(sqlCommand)
+                self.transaction.append(sqlCommand)
+
+        # close cursor
+        cursor.close()
 
         # commit changes
         self.commit()
@@ -355,15 +329,16 @@ class MergeSensorDB:
         
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor()
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
             
-        # delete all contents
+        # select open datasets
         sqlCommand = """
                      SELECT prim, tier, processed
                        FROM merge_dataset
@@ -372,14 +347,13 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
@@ -390,12 +364,20 @@ class MergeSensorDB:
         
         # return empty list if no watched datasets
         if rows == 0:
+            
+            # close cursor
+            cursor.close()
+
+            # emtpy list
             return []
         
         # build list
         rows = cursor.fetchall()
         datasetList = ["/%s/%s/%s" % elem for elem in rows]
         
+        # close cursor
+        cursor.close()
+
         # return it
         return datasetList
         
@@ -424,12 +406,13 @@ class MergeSensorDB:
         
         # get dictionary based cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
             
         # get information
@@ -457,15 +440,14 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
-            cursor = self.conn.cursor()
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
             cursor.execute(sqlCommand)
@@ -475,6 +457,11 @@ class MergeSensorDB:
         
         # dataset not registered
         if rows == 0:
+            
+            # close cursor
+            cursor.close()
+
+            # generate exception
             raise DatasetNotInDatabase, \
                    'Dataset %s is not registered in database' % datasetName    
 
@@ -489,6 +476,9 @@ class MergeSensorDB:
         # check for empty list
         if datasetInfo['secondaryOutputTiers'] == [""]:
             datasetInfo['secondaryOutputTiers'] = []
+
+        # close cursor
+        cursor.close()
 
         # return it
         return datasetInfo
@@ -518,12 +508,13 @@ class MergeSensorDB:
         
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
             
         # get dataset id
@@ -536,14 +527,13 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -554,6 +544,11 @@ class MergeSensorDB:
         
         # it does not exist!
         if rows == 0:
+
+            # close cursor
+            cursor.close()
+
+            # nothing
             return None
         
         # get id, status
@@ -563,6 +558,9 @@ class MergeSensorDB:
         if dataset['status'] == 'closed':
             return None
             
+        # close cursor
+        cursor.close()
+
         return dataset['id']
     
     ##########################################################################
@@ -614,12 +612,13 @@ class MergeSensorDB:
 
        # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
         # get all files associated to dataset
@@ -635,14 +634,13 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -653,11 +651,19 @@ class MergeSensorDB:
         
         # return empty list
         if rows == 0:
-            return ()
+            
+            # close cursor
+            cursor.close()
+
+            # empty set
+            return []
         
         # build list
         rows = cursor.fetchall()
         
+        # close cursor
+        cursor.close()
+
         # return it
         return rows
     
@@ -685,12 +691,13 @@ class MergeSensorDB:
         
        # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor()
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
         # get merge jobs in dataset
@@ -701,14 +708,13 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
@@ -719,7 +725,12 @@ class MergeSensorDB:
         
         # return empty list
         if rows == 0:
-            return ()
+            
+            # close cursor
+            cursor.close()
+
+            # empty set
+            return []
         
         # build list
         mergeJobs = cursor.fetchall()
@@ -727,6 +738,9 @@ class MergeSensorDB:
         # remove extra level in lists
         mergeJobs = [job[0] for job in mergeJobs]
         
+        # close cursor
+        cursor.close()
+
         # return it
         return mergeJobs
 
@@ -780,12 +794,13 @@ class MergeSensorDB:
 
        # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
         # get file blocks in dataset
@@ -801,14 +816,13 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -819,26 +833,35 @@ class MergeSensorDB:
         
         # return empty list
         if rows == 0:
-            return ()
+            
+            # close cursor
+            cursor.close()
+            
+            # empty set
+            return []
         
         # build list
         blocks = cursor.fetchall()
+
+        # close cursor
+        cursor.close()
+
+       # get cursor
+        try:
+            cursor = self.conn.cursor()
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
 
         # start building resulting list
         fileList = []
         
         for block in blocks:
             
-            # get cursor
-            try:
-                self.conn = self.connect()
-                cursor = self.conn.cursor()
-            except MySQLdb.Error:
-
-                # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-                cursor = self.conn.cursor()
-
             # get all unmerged files in a particular fileblock
             sqlCommand = """
                      SELECT name,
@@ -857,9 +880,8 @@ class MergeSensorDB:
             except MySQLdb.Error:
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-
-                # get cursor
+                self.conn = self.connect()
+                self.redo()
                 cursor = self.conn.cursor()
    
                 # retry
@@ -871,6 +893,9 @@ class MergeSensorDB:
             # append to list
             fileList.append((block['name'], rows))
             
+        # close cursor
+        cursor.close()
+
         # return it
         return fileList
 
@@ -899,12 +924,13 @@ class MergeSensorDB:
        
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
         # get main properties
@@ -922,14 +948,13 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -940,6 +965,11 @@ class MergeSensorDB:
         
         # return no data
         if rows == 0:
+            
+            # close cursor
+            cursor.close()
+
+            # nothing
             return None
         
         # get information
@@ -969,14 +999,13 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -987,6 +1016,11 @@ class MergeSensorDB:
 
         # something wrong if not a single input file...
         if rows == 0:
+            
+            # close cursor
+            cursor.close()
+
+            # nothing
             return None
         
         # get information
@@ -995,6 +1029,9 @@ class MergeSensorDB:
         # add to result
         result['inputFiles'] = [aFile['filename'] for aFile in rows]
         result['fileBlock'] = rows[0]['blockname']
+        
+        # close cursor
+        cursor.close()
         
         # return it
         return result
@@ -1025,12 +1062,13 @@ class MergeSensorDB:
         
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor()
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
             
         # get file block
@@ -1042,14 +1080,13 @@ class MergeSensorDB:
                                                     
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
@@ -1069,15 +1106,14 @@ class MergeSensorDB:
                      """
             # execute command
             try:
-
                 cursor.execute(sqlCommand)
                 self.transaction.append(sqlCommand)
+                
             except MySQLdb.Error:
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-
-                # get cursor
+                self.conn = self.connect()
+                self.redo()
                 cursor = self.conn.cursor()
 
                 # retry
@@ -1089,6 +1125,11 @@ class MergeSensorDB:
             
             # wrong insert?
             if rows == 0:
+
+                # close cursor
+                cursor.close()
+
+                # generate exception
                 raise MergeSensorDBError, \
                    'Insertion of file block %s failed' % fileBlock
             
@@ -1097,14 +1138,13 @@ class MergeSensorDB:
             
             # execute command
             try:
-
                 cursor.execute(sqlCommand)
+                
             except MySQLdb.Error:
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-
-                # get cursor
+                self.conn = self.connect()
+                self.redo()
                 cursor = self.conn.cursor()
 
                 # retry
@@ -1126,16 +1166,15 @@ class MergeSensorDB:
                                                                          
         # execute command
         try:
-
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
-            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
 
             # retry
             cursor.execute(sqlCommand)
@@ -1143,6 +1182,9 @@ class MergeSensorDB:
              
         # process results
         rows = cursor.rowcount
+
+        # close cursor
+        cursor.close()
         
         # cannot be inserted
         if rows == 0:
@@ -1171,12 +1213,13 @@ class MergeSensorDB:
         """
 
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
         # get input file information
@@ -1201,14 +1244,13 @@ class MergeSensorDB:
 
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-             # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -1219,6 +1261,11 @@ class MergeSensorDB:
 
         # file does not exist
         if rows == 0:
+
+            # close cursor
+            cursor.close()
+            
+            # nothing
             return None
 
         # get information
@@ -1230,6 +1277,9 @@ class MergeSensorDB:
         del row['prim']
         del row['tier']
         del row['processed']
+
+        # close cursor
+        cursor.close()
 
         # return it
         return row
@@ -1276,12 +1326,13 @@ class MergeSensorDB:
     
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
     
          # get input file information
@@ -1294,14 +1345,13 @@ class MergeSensorDB:
 
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -1312,6 +1362,11 @@ class MergeSensorDB:
 
         # file does not exist
         if rows == 0:
+            
+            # close cursor
+            cursor.close()
+
+            # generate exception
             raise MergeSensorDBError, \
              'Cannot update file %s, not registered in dataset.' % fileName
 
@@ -1362,17 +1417,20 @@ class MergeSensorDB:
 
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
-            cursor = self.conn.cursor()
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+
+        # close cursor
+        cursor.close()
 
     ##########################################################################
     # update output file information
@@ -1417,12 +1475,13 @@ class MergeSensorDB:
 
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor()
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
         # insert dataset information
@@ -1435,19 +1494,22 @@ class MergeSensorDB:
 
         # execute command
         try:
-
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+
+        # close cursor
+        cursor.close()
 
     ##########################################################################
     # invalidate input file
@@ -1475,12 +1537,13 @@ class MergeSensorDB:
         
        # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
         # get input file information
@@ -1493,14 +1556,13 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -1511,6 +1573,11 @@ class MergeSensorDB:
         
         # file does not exist
         if rows == 0:
+            
+            # close cursor
+            cursor.close()
+
+            # generate exception
             raise MergeSensorDBError, \
              'Cannot invalidate file %s, not registered in dataset %s.' \
                  % (fileName, datasetName)
@@ -1525,20 +1592,22 @@ class MergeSensorDB:
                      
         # execute command
         try:
-
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
-            cursor = self.conn.cursor()
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+
+        # close cursor
+        cursor.close()
 
     ##########################################################################
     # add output file
@@ -1566,15 +1635,16 @@ class MergeSensorDB:
         
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
             
-        # get file block
+        # get output file information
         sqlCommand = """
                      SELECT *
                        FROM merge_outputfile
@@ -1584,14 +1654,13 @@ class MergeSensorDB:
                                                     
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -1613,15 +1682,14 @@ class MergeSensorDB:
                      """
             # execute command
             try:
-
                 cursor.execute(sqlCommand)
                 self.transaction.append(sqlCommand)
+                
             except MySQLdb.Error:
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-
-                # get cursor
+                self.conn = self.connect()
+                self.redo()
                 cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
                 # retry
@@ -1633,6 +1701,11 @@ class MergeSensorDB:
             
             # wrong insert?
             if rows == 0:
+
+                # close cursor
+                cursor.close()
+
+                # generate exception
                 raise MergeSensorDBError, \
                    'Insertion of outputfile %s failed' % fileName
             
@@ -1641,14 +1714,13 @@ class MergeSensorDB:
             
             # execute command
             try:
-
                 cursor.execute(sqlCommand)
+
             except MySQLdb.Error:
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-
-                # get cursor
+                self.conn = self.connect()
+                self.redo()
                 cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
                 # retry
@@ -1656,6 +1728,9 @@ class MergeSensorDB:
 
             # get file id
             fileId = (cursor.fetchone()).values()[0]
+            
+            # close cursor
+            cursor.close()
             
             # return file id of a newly created file, 0 = first instance
             return (0, fileId)
@@ -1677,15 +1752,14 @@ class MergeSensorDB:
                                                                          
         # execute command
         try:
-
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -1695,10 +1769,15 @@ class MergeSensorDB:
         # process results
         rows = cursor.rowcount
         
-        # cannot be uupdated
+        # close cursor
+        cursor.close()
+
+        # cannot be updated
         if rows == 0:
+
+            # generate exception
             raise MergeSensorDBError, \
-                   'Update operaion on file %s failed' % fileName
+                   'Update operation on file %s failed' % fileName
 
         # return file id of updated file and instance number
         return (instance, fileId)
@@ -1727,15 +1806,16 @@ class MergeSensorDB:
         
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
             
-        # get file block
+        # get output file information
         sqlCommand = """
                      SELECT id,
                             name
@@ -1747,14 +1827,13 @@ class MergeSensorDB:
         
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -1766,6 +1845,9 @@ class MergeSensorDB:
         # any file?
         if rows == 0:
             
+            # close cursor
+            cursor.close()
+
             # no
             return None
         
@@ -1787,14 +1869,13 @@ class MergeSensorDB:
         
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -1806,6 +1887,9 @@ class MergeSensorDB:
         # any file?
         if rows == 0:
             
+            # close cursor
+            cursor.close()
+
             # no input files, should not be the case, ignore
             return None
 
@@ -1824,14 +1908,13 @@ class MergeSensorDB:
         
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -1842,12 +1925,20 @@ class MergeSensorDB:
 
         # nothing, mmm, something wrong, just ignore
         if rows == 0:
+            
+            # close cursor
+            cursor.close()
+            
+            # nothing
             return None
         
         # get block name
         row = cursor.fetchone()
         blockName =  row['name']
         
+        # close cursor
+        cursor.close()
+
         # pack and return everything
         return (fileList, blockName, fileName)
     
@@ -1896,18 +1987,19 @@ class MergeSensorDB:
             raise MergeSensorDBError, \
                "Cannot resubmit job %s, it has not finished yet." % jobName
 
+        # get cursor
+        try:
+            cursor = self.conn.cursor()
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+            
         # if it has failed, check input files. Should be all invalid.
         if jobInfo['status'] == 'failed':
-
-            # get cursor
-            try:
-                self.conn = self.connect()
-                cursor = self.conn.cursor()
-            except MySQLdb.Error:
-
-                # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-                cursor = self.conn.cursor()
 
             # get associated input file information
             sqlCommand = """
@@ -1920,15 +2012,13 @@ class MergeSensorDB:
 
             # execute command
             try:
-
                 cursor.execute(sqlCommand)
-                self.transaction.append(sqlCommand)
+                
             except MySQLdb.Error:
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-
-                # get cursor
+                self.conn = self.connect()
+                self.redo()
                 cursor = self.conn.cursor()
 
                 # retry
@@ -1940,20 +2030,14 @@ class MergeSensorDB:
             # no files should be in a valid state
             if rows != 0:
 
+                # close cursor
+                cursor.close()
+
+                # generate exception
                 raise MergeSensorDBError, \
                    "Cannot resubmit failed job %s, files not yet invalidated." \
                    % jobName
 
-        # get cursor
-        try:
-            self.conn = self.connect()
-            cursor = self.conn.cursor()
-        except MySQLdb.Error:
-
-            # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-            cursor = self.conn.cursor()
-            
         # update output file informarion
         sqlCommand = """
                      UPDATE merge_outputfile
@@ -1963,15 +2047,14 @@ class MergeSensorDB:
                                                                          
         # execute command
         try:
-
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
@@ -1981,6 +2064,9 @@ class MergeSensorDB:
         # process results
         rows = cursor.rowcount
         
+        # close cursor
+        cursor.close()
+
         # cannot be uupdated
         if rows == 0:
             raise MergeSensorDBError, \
@@ -2020,12 +2106,13 @@ class MergeSensorDB:
             
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor()
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
             
         # insert dataset information
@@ -2044,18 +2131,21 @@ class MergeSensorDB:
 
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
             
+        # close cursor
+        cursor.close()
+
     ##########################################################################
     # update dataset information
     ##########################################################################
@@ -2077,12 +2167,13 @@ class MergeSensorDB:
         """
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor()
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
            
         # build secondary datatiers
@@ -2113,15 +2204,14 @@ class MergeSensorDB:
         
         # execute command
         try:
-
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
@@ -2141,6 +2231,9 @@ class MergeSensorDB:
 
         # check for insertion status
         rows = cursor.rowcount
+
+        # close cursor
+        cursor.close()
 
         # problems
         if rows == 0:        
@@ -2173,12 +2266,13 @@ class MergeSensorDB:
         
         # get dictionary based cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor()
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
             
         # get information
@@ -2192,15 +2286,14 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
@@ -2210,6 +2303,9 @@ class MergeSensorDB:
         # process results
         rows = cursor.rowcount
         
+        # close cursor
+        cursor.close()
+
         # dataset not registered
         if rows == 0:
             raise MergeSensorDBError, \
@@ -2244,12 +2340,13 @@ class MergeSensorDB:
         
         # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor()
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
         
         # remove dataset + all input files associated to the
@@ -2264,15 +2361,14 @@ class MergeSensorDB:
         
         # execute command
         try:
-
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
@@ -2284,6 +2380,11 @@ class MergeSensorDB:
         
         # dataset not registered 
         if rows == 0:
+
+            # close cursor
+            cursor.close()
+
+            # generate exception
             raise MergeSensorDBError, \
                    'Cannot remove dataset %s, not registered in database' \
                         % datasetName    
@@ -2299,21 +2400,23 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
         
+        # close cursor
+        cursor.close()
+
     ##########################################################################
     # get merge sensor status
     ##########################################################################
@@ -2336,12 +2439,13 @@ class MergeSensorDB:
 
        # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
         # get status information
@@ -2352,14 +2456,13 @@ class MergeSensorDB:
                        
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
             # retry
@@ -2380,24 +2483,30 @@ class MergeSensorDB:
         
             # execute command
             try:
-
                 cursor.execute(sqlCommand)
+                self.transaction.append(sqlCommand)
+                
             except MySQLdb.Error:
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-
-                # get cursor
-                cursor = self.conn.cursor()
+                self.conn = self.connect()
+                self.redo()
+                cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
                 # retry
                 cursor.execute(sqlCommand)
+                self.transaction.append(sqlCommand)
 
             # check for insertion status
             rows = cursor.rowcount
 
             # problems
             if rows == 0:        
+                
+                # close cursor
+                cursor.close()
+
+                # generate exception
                 raise MergeSensorDBError, \
                        'Insertion of MergeSensor status into database failed'
 
@@ -2412,14 +2521,13 @@ class MergeSensorDB:
                        
             # execute command
             try:
-
                 cursor.execute(sqlCommand)
+                
             except MySQLdb.Error:
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
-
-                # get cursor
+                self.conn = self.connect()
+                self.redo()
                 cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
                 # retry
@@ -2433,6 +2541,9 @@ class MergeSensorDB:
             del rows['id']
         except KeyError:
             pass
+
+        # close cursor
+        cursor.close()
 
         # return it
         return rows
@@ -2474,14 +2585,15 @@ class MergeSensorDB:
         if updates == '':
             return
         
-        # get dictionary based cursor
+        # get cursor
         try:
-            self.conn = self.connect()
             cursor = self.conn.cursor()
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
         # get information
@@ -2491,18 +2603,22 @@ class MergeSensorDB:
 
         # execute command
         try:
-
             cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # get cursor
+            self.conn = self.connect()
+            self.redo()
             cursor = self.conn.cursor()
 
             # retry
             cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+
+        # close cursor
+        cursor.close()
             
         # commit changes
         self.commit()
@@ -2529,6 +2645,6 @@ class MergeSensorDB:
     
         # close connection (ignoring errors if any)
         try:
-            self.database.close()
-        except:
+            self.conn.close()
+        except MySQLdb.Error:
             pass
