@@ -10,7 +10,7 @@ from StageOut.Registry import registerStageOutImpl
 from StageOut.StageOutImpl import StageOutImpl
 
 
-
+_CheckExitCodeOption = True
 
 
 
@@ -40,22 +40,25 @@ class SRMImpl(StageOutImpl):
         """
         result = "#!/bin/sh\n"
         result += "REPORT_FILE=`pwd`/srm.report.$$\n"
-        result += "srmcp -report=$REPORT_FILE "
+        result += "srmcp -report=$REPORT_FILE -retry_num=0 "
         
         if options != None:
             result += " %s " % options
         result += " %s " % sourcePFN
         result += " %s \n" % targetPFN
 
-        result += """
-        EXIT_STATUS=`cat $REPORT_FILE | cut -f3 -d" "`
-        echo "srmcp exit status: $EXIT_STATUS"
-        if [[ $EXIT_STATUS != 0 ]]; then
-            echo "Non-zero srmcp Exit status!!!"
-            exit 60311
-        fi
+        if _CheckExitCodeOption:
+            result += """
+            EXIT_STATUS=`cat $REPORT_FILE | cut -f3 -d" "`
+            echo "srmcp exit status: $EXIT_STATUS"
+            if [[ $EXIT_STATUS != 0 ]]; then
+               echo "Non-zero srmcp Exit status!!!"
+               echo "Cleaning up failed file:"
+               srm-advisory-delete %s 
+               exit 60311
+            fi
         
-        """
+            """ % targetPFN
         
         
         fileAbsPath = sourcePFN.replace("file://", "")
@@ -73,15 +76,19 @@ class SRMImpl(StageOutImpl):
                  exit 0
               else
                  echo "Error: Size Mismatch between local and SE"
+                 echo "Cleaning up failed file:"
+                 srm-advisory-delete %s 
                  exit 60311
               fi 
            else
               sleep 2
            fi
         done
+        echo "Cleaning up failed file:"
+        srm-advisory-delete %s 
         exit 60311
 
-        """ % targetPFN
+        """ % ( targetPFN, targetPFN, targetPFN)
         result += metadataCheck
         
         return result
