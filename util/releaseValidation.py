@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.15 $"
-__revision__ = "$Id: releaseValidation.py,v 1.15 2006/11/21 14:47:12 afanfani Exp $"
+__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: releaseValidation.py,v 1.16 2006/11/26 12:25:17 afanfani Exp $"
 
 
 import os
@@ -34,6 +34,7 @@ valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
          'testretrieval', 'testpython', "cvs-tag=", "fake-hash",
          'pileup-dataset=', 'pileup-files-per-job=',
          'data-dir=', 'create-workflows-only',
+         'category=',
 
          ]
 
@@ -165,6 +166,8 @@ for opt, arg in opts:
         dataDir = arg
     if opt == '--create-workflows-only':
         workflowsOnly = True
+    if opt == '--category':
+        category = arg
 
 if xmlFile == None:
     msg = "--url option not provided: This is required"
