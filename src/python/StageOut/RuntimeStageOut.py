@@ -74,8 +74,14 @@ class StageOutManager:
         #//
         self.tfc = None
         self.siteCfg = self.state.getSiteConfig()
-        
 
+        self.numberOfRetries = int(
+            self.config['StageOutParameters'].get('NumberOfRetries', 3)
+            )
+        self.retryPauseTime = int(
+            self.config['StageOutParameters'].get('NumberOfRetries', 600)
+            )
+        
         #  //
         # // If override isnt None, we dont need SiteCfg, if it is
         #//  then we need siteCfg otherwise we are dead.
@@ -293,6 +299,9 @@ class StageOutManager:
             msg += "%s\n" % fbParams['command']
             raise StageOutFailure(msg, Command = fbParams['command'],
                                   LFN = lfn, ExceptionDetail = str(ex))
+
+        impl.numRetries = self.numberOfRetries
+        impl.retryPause = self.retryPauseTime
         
         try:
             impl(fbParams['command'], localPfn, pfn, fbParams['option'])
@@ -330,6 +339,8 @@ class StageOutManager:
                 command,)
             raise StageOutFailure(msg, Command = command,
                                   LFN = lfn, ExceptionDetail = str(ex))
+        impl.numRetries = self.numberOfRetries
+        impl.retryPause = self.retryPauseTime
         
         try:
             impl(protocol, localPfn, pfn, options)
