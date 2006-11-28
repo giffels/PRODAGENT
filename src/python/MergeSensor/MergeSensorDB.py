@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.10 2006/11/15 14:27:15 ckavka Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -1012,23 +1012,23 @@ class MergeSensorDB:
             cursor.execute(sqlCommand)
 
         # process results
-        rows = cursor.rowcount
-
-        # something wrong if not a single input file...
-        if rows == 0:
-            
-            # close cursor
-            cursor.close()
-
-            # nothing
-            return None
+        rowscount = cursor.rowcount
         
-        # get information
-        rows = cursor.fetchall()
-
         # add to result
-        result['inputFiles'] = [aFile['filename'] for aFile in rows]
-        result['fileBlock'] = rows[0]['blockname']
+        if rowscount != 0:
+            
+            # get information
+            rows = cursor.fetchall()
+
+            # store input file information
+            result['inputFiles'] = [aFile['filename'] for aFile in rows]
+            result['fileBlock'] = rows[0]['blockname']
+            
+        else:
+            
+            # no information (failed job)
+            result['inputFiles'] = []
+            result['fileBlock'] = ''
         
         # close cursor
         cursor.close()
