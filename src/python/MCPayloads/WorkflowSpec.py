@@ -250,7 +250,27 @@ class WorkflowSpec:
         for dataset in allDatasets:
             result.extend(expandDatasetInfo(dataset, self.requestTimestamp()))
         return result
-    
+
+    def outputDatasetsWithPSet(self):
+        """
+        _outputDatasetsWithPSet_
+
+        returns a list of MCPayload.DatasetInfo objects (essentially
+        just dictionaries) containing all of the output datasets
+        in all nodes of this WorkflowSpec, including a PSetContent key
+        that contains the PSet {{}} string.
+
+
+        """
+        allDatasets = DatasetTools.getOutputDatasetsWithPSetFromTree(
+            self.payload)
+        result = []
+        #  //
+        # // Split multi tiers into basic tiers
+        #//
+        for dataset in allDatasets:
+            result.extend(expandDatasetInfo(dataset, self.requestTimestamp()))
+        return result
     
     def pileupDatasets(self):
         """
