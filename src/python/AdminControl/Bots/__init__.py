@@ -12,6 +12,8 @@ __all__ = []
 
 
 import RestartBot
+import MessageBot
+
 
 
 
