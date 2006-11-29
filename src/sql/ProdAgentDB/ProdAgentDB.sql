@@ -652,7 +652,7 @@ CREATE TABLE jq_queue(
 CREATE TABLE ct_job(
   job_index INT NOT NULL AUTO_INCREMENT,
   job_spec_id VARCHAR(255) NOT NULL,
-  job_state ENUM("submitted", "running", "killed", "complete") DEFAULT "submitted",
+  job_state ENUM("submitted", "running", "killed", "complete", "failed") DEFAULT "submitted",
   time timestamp NOT NULL default CURRENT_TIMESTAMP
      ON UPDATE CURRENT_TIMESTAMP,	
   UNIQUE (job_spec_id),
