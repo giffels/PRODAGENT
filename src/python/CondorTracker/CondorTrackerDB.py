@@ -253,9 +253,45 @@ def killJob(jobSpecId):
     """
     connection = connect()
     jobIndex = getJobIndex(jobSpecId, connection)
-    changeJobState(jobIndex, "killed", connection)
-    return 
+    
+    sqlStr = """UPDATE ct_job SET job_killed=\"true\"
+                 WHERE job_index=%s;""" % jobIndex
+    
+    dbCur = connection.cursor()
+    try:
+        dbCur.execute("BEGIN")
+        dbCur.execute(sqlStr)
+        dbCur.execute("COMMIT")
+        dbCur.close()
+    except StandardError, ex:
+        dbCur.execute("ROLLBACK")
+        dbCur.close()
+        msg = "Error Setting job_killed for Job: %s \n" % jobSpecId 
+        msg += "In table ct_job\n"
+        msg += str(ex)
+        raise RuntimeError, msg
+    return
+    
 
+def killedJobs():
+    """
+    _killedJobs_
+
+    Get a list of all job spec IDs flagged to be killed
+
+    """
+    connection = connect()
+    sqlStr = """SELECT job_spec_id, job_index FROM ct_job
+                   WHERE job_killed="true"; """
+    
+    dbCur = connection.cursor()
+    dbCur.execute(sqlStr)
+    pairs = dbCur.fetchall()
+    dbCur.close()
+    result = {}
+    for pair in pairs:
+        result[str(pair[0])] = int(pair[1])
+    return result
     
 
 def jobRunning(jobSpecId, **attrs):
@@ -286,7 +322,20 @@ def jobComplete(jobSpecId, **attrs):
         addJobAttrs(jobIndex, connection, **attrs)
     changeJobState(jobIndex, "complete", connection)
     return
-    
+
+def jobFailed(jobSpecId, **attrs):
+    """
+    _jobFailed_
+
+    Flag a job as failed
+
+    """
+    connection = connect()
+    jobIndex = getJobIndex(jobSpecId, connection)
+    if attrs != {}:
+        addJobAttrs(jobIndex, connection, **attrs)
+    changeJobState(jobIndex, "failed", connection)
+    return
 
 def removeJob(jobSpecId):
     """

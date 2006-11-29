@@ -19,6 +19,7 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
 
 from FwkJobRep.ReportState import checkSuccess
 from FwkJobRep.FwkJobReport import FwkJobReport
+from FwkJobRep.ReportParser import readJobReport
 
 import JobState.JobStateAPI.JobStateInfoAPI as JobStateInfoAPI
 import JobState.JobStateAPI.JobStateChangeAPI as JobStateChangeAPI
@@ -144,13 +145,25 @@ class CondorTrackerComponent:
 
         #  //
         # // Trawl list of completed jobs and publish events
-        #//  for them
+        #//  for them. Note that completed means they succeeded as
+        #  //jobs, the report must still be checked for success
+        # //
+        #//
         completeJobs = TrackerDB.getJobsByState("complete")
         for jobspec, jobindex in completeJobs.items():
             self.jobCompletion(jobspec)
             TrackerDB.removeJob(jobspec)
             logging.info("--> Stop Watching: %s" % jobspec)
 
+        #  //
+        # // Trawl list of failed jobs and publish events for them.
+        #//  Failed here means a failure in middleware/batch system
+        failedJobs = TrackerDB.getJobsByState("failed")
+        for jobspec, jobindex in failedJobs.items():
+            self.jobFailure(jobspec)
+            TrackerDB.removeJob(jobspec)
+            logging.info("--> Stop Watching: %s" % jobspec)
+            
         self.ms.publish("CondorTracker:Update", "", self.args['PollInterval'])
         self.ms.commit()
         return
@@ -198,8 +211,41 @@ class CondorTrackerComponent:
             self.ms.commit()
             logging.info("JobFailed Published For %s" % jobSpecId)
             return
+
+    def jobFailure(self, jobSpecId):
+        """
+        _jobFailure_
+
+        Handle a job that failed in middleware/batch
+        for the jobSpecId provided
+
+        """
+        try:
+            jobState = JobStateInfoAPI.general(jobSpecId)
+            jobCache = jobState['CacheDirLocation']
+        except ProdAgentException, ex:
+            msg = "Unable to Publish Report for %s\n" % jobSpecId
+            msg += "Since It is not known to the JobState System:\n"
+            msg += str(ex)
+            logging.error(msg)
+            return
+        jobReport = "%s/FrameworkJobReport.xml" % jobCache
         
+        logging.info("Creating Failure Report for %s" % jobSpecId)
+        badReport = FwkJobReport(jobSpecId)
+        badReport.status = "Failed"
+        badReport.exitCode = 998
+        err = badReport.addError(998, "BatchMiddlewareFailure")
+        errDesc = "Failure in Batch or Middleware Layer \n"
+        errDesc  += "No job report produced/retrieved"
+        err['Description'] = errDesc
+        badReport.write(jobReport)
+        self.ms.publish("JobFailed" ,jobReport)
+        self.ms.commit()
+        logging.info("JobFailed Published For %s" % jobSpecId)
+        return
         
+            
 
     def startComponent(self):
         """

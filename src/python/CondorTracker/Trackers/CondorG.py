@@ -8,12 +8,35 @@ Tracker for CondorG submissions
 """
 
 import logging
-
+import popen2
 from CondorTracker.TrackerPlugin import TrackerPlugin
 from CondorTracker.Registry import registerTracker
 
 from ResourceMonitor.Monitors.CondorQ import condorQ
 
+
+def condorHistoryStatus(clusterId):
+    """
+    _condorHistoryStatus_
+
+    Get the exit status of the job from condor_history
+
+    """
+    command = "condor_history %s" % clusterId
+    command += " -format \"%d\n\" JobStatus"
+    pop = popen2.Popen4(command)
+    pop.wait()
+    status = pop.poll()
+    if status:
+        return None
+    output = pop.fromchild.read().strip()
+    try:
+        result = int(output)
+        return result
+    except ValueError, ex:
+        return None
+    
+    
 
 
 class CondorG(TrackerPlugin):
@@ -70,11 +93,18 @@ class CondorG(TrackerPlugin):
                 #//
                 self.TrackerDB.jobRunning(subId)
                 continue
-            if status in (5, 6):
+            if status == 5:
                 #  //
-                # // Held or Error
+                # // Held 
                 #//
+                self.TrackerDB.jobFailed(subId)
                 self.TrackerDB.killJob(subId)
+                continue
+            if status in (3, 6):
+                #  //
+                # // Error or Removed
+                #//
+                self.TrackerDB.jobFailed(subId)
                 continue
             
         return
@@ -93,14 +123,34 @@ class CondorG(TrackerPlugin):
             if classad == None:
                 #  //
                 # // No longer in queue => Finished
-                #//
-                self.TrackerDB.jobComplete(runId)
+                #//  Check History to see how it finished
+                dbData = self.TrackerDB.getJob(runId, True)
+                clusterId = dbData['job_attrs']["CondorID"][-1]
+                historyStatus = condorHistoryStatus(clusterId)
+                if historyStatus != 4:
+                    self.TrackerDB.jobFailed(runId)
+                else:
+                    self.TrackerDB.jobComplete(runId)
                 continue
             #  //
             # // If still here, check status for held jobs etc and
             #//  kill/clean them out
             status = classad['JobStatus']
-                
+            if status in (3, 6):
+                #  //
+                # // Removed or Error
+                #//
+                self.TrackerDB.jobFailed(runId)
+                continue
+            if status == 5:
+                #  //
+                # // Held
+                #//
+                self.TrackerDB.jobFailed(runId)
+                self.TrackerDB.killJob(runId)
+                continue
+            
+            
     def updateComplete(self, *complete):
         """
         _updateComplete_
@@ -115,6 +165,23 @@ class CondorG(TrackerPlugin):
             return
         summary = "Jobs Completed:\n"
         for compId in complete:
+            summary += " -> %s\n" % compId
+        logging.info(summary)
+        return
+
+    def updateFailed(self, *failed):
+        """
+        _updateFailed_
+
+        Take any required action for failed jobs on completion
+
+        """
+        if len(failed) == 0:
+            return
+        summary = "Jobs Failed:\n"
+        for compId in failed:
+            
+            
             summary += " -> %s\n" % compId
         logging.info(summary)
         return

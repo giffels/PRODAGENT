@@ -23,9 +23,6 @@ class TrackerPlugin:
     
 
 
-
-
-
     def __call__(self):
         """
         _operator()_
@@ -35,7 +32,7 @@ class TrackerPlugin:
         1. updateSubmitted - call with all submitted state job IDs
         2. updateRunning - call with all running state job IDs
         3. updateComplete - call with all complete state job IDs
-        4. kill - call with all job IDs to be killed
+        4. updateFailed -call with all failed state job IDs
         
         """
 
@@ -50,8 +47,8 @@ class TrackerPlugin:
         self.updateRunning(*runningJobs.keys())
         completeJobs = TrackerDB.getJobsByState("complete")
         self.updateComplete(*completeJobs.keys())
-        killJobs = TrackerDB.getJobsByState("killed")
-        self.kill(*killJobs.keys())
+        failedJobs = TrackerDB.getJobsByState("failed")
+        self.updateFailed(*failedJobs.keys())
         self.cleanup()
 
         return
@@ -115,6 +112,19 @@ class TrackerPlugin:
         """
         logging.debug("TrackerPlugin.updateComplete")
         for compId in complete:
+            logging.debug(" ==> %s" % compId)
+        return
+
+    def updateFailed(self, *failed):
+        """
+        _updateFailed_
+
+        Override to look at each failed state job spec id provided
+        and change its status if reqd.
+
+        """
+        logging.debug("TrackerPlugin.updateFailed")
+        for compId in failed:
             logging.debug(" ==> %s" % compId)
         return
 
