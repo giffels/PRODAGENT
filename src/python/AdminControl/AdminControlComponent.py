@@ -13,9 +13,10 @@ import time
 
 from logging.handlers import RotatingFileHandler
 from MessageService.MessageService import MessageService
+import ProdAgentCore.LoggingUtils as LoggingUtils
 
 from AdminControl.Registry import retrieveBot
-
+import AdminControl.Bots
 
 class AdminControlComponent:
     """
@@ -29,16 +30,12 @@ class AdminControlComponent:
         self.args = {}
         self.args['Logfile'] = None
         self.args['Bots'] = ""
-        self.args['BotPeriod'] = None
+        self.args['BotPeriod'] = "01:00:00"
         self.args.update(args)
 
         self.botList = []
         self.bots = {}
-
-        self.lastCycleTime = time.time()
-
-        if self.args['BotPeriod'] != None:
-            self.args['BotPeriod'] = int(self.args['BotPeriod'])
+        self.stopBots = False
             
         
         for botname in self.args['Bots'].split(','):
@@ -49,14 +46,12 @@ class AdminControlComponent:
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
-            
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
-        logging.info("AdminControl Component Started...")                                
+        LoggingUtils.installLogHandler(self)
+
+        msg = "AdminControl Component Started"
+        msg += " => Bot Update Period: %s\n " % self.args['BotPeriod']
+        msg += " => Bots: %s\n " % self.botList
+        logging.info(msg)
 
     def __call__(self, event, payload):
         """
@@ -108,10 +103,13 @@ class AdminControlComponent:
                 logging.info("Bot Started: %s" % bot)
             except Exception, ex:
                 msg = "Error retrieving Bot: %s\n" % bot
+                msg += str(ex)
                 logging.error(msg)
                 continue
             self.bots[bot] = newBot
-            
+
+        self.ms.publish("AdminControl:BotCycle", "", self.args['BotPeriod'])
+        self.ms.commit()
         return
 
     def stopBots(self):
@@ -121,6 +119,7 @@ class AdminControlComponent:
         Shut Down and delete Bot Instances
 
         """
+        self.stopBots = True
         for botname in self.bots.keys():
             logging.info("Bot Stopped: %s" % botname)
             del self.bots[botname]
@@ -168,9 +167,13 @@ class AdminControlComponent:
         Run one bot cycle
 
         """
+        if self.stopBots:
+            self.stopBots = False
+            return
         for bot in self.bots.values():
             bot.run()
-
+        self.ms.publish("AdminControl:BotCycle", "", self.args['BotPeriod'])
+        self.ms.commit()
         return
     
     
@@ -199,6 +202,3 @@ class AdminControlComponent:
             self.ms.commit()
         
 
-if __name__ == '__main__':
-    comp = AdminControlComponent()
-    comp.startComponent()

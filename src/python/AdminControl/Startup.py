@@ -14,6 +14,7 @@ import getopt
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
 from AdminControl.AdminControlComponent import AdminControlComponent
+from ProdAgentCore.PostMortem import runWithPostMortem
 
 #  //
 # // Find and load the Configuration
@@ -37,4 +38,4 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 print "Starting AdminControl Component..."
 createDaemon(compCfg['ComponentDir'])
 component = AdminControlComponent(**dict(compCfg))
-component.startComponent()
+runWithPostMortem(component, compCfg['ComponentDir'])

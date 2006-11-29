@@ -30,7 +30,7 @@ class RestartBot(BotInterface):
     """
     def __init__(self):
         BotInterface.__init__(self)
-        self.skipCycles = 5
+        self.skipCycles = 2
 
 
 
@@ -44,6 +44,7 @@ class RestartBot(BotInterface):
         cfgObject = loadProdAgentConfiguration()
         components = cfgObject.listComponents()
         for component in components:
+            logging.info("RestartBot: Checking %s" % component)
             compCfg = cfgObject.getConfig(component)
             compDir = compCfg['ComponentDir']
             compDir = os.path.expandvars(compDir)
@@ -72,6 +73,9 @@ class RestartBot(BotInterface):
                 logging.info( "Starting Component %s:" % component)
                 logging.info( "With: %s" % startup)
                 os.system("%s %s " % (sys.executable, startup))
+            else:
+                logging.info("RestartBot: Component %s Running" % component)
+        return
                 
                 
             

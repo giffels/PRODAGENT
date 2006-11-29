@@ -11,5 +11,7 @@ ProdAgent periodically.
 __all__ = []
 
 
+import RestartBot
+
 
 

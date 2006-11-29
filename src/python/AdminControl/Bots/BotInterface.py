@@ -43,7 +43,7 @@ class BotInterface:
                 self.__call__()
                 logging.info("Bot %s Completed" % self.__class__.__name__)
             except Exception, ex:
-                msg = "Error invoking Bot: %s\n" % self.__class__.__name__)
+                msg = "Error invoking Bot: %s\n" % self.__class__.__name__
                 msg += str(ex)
                 logging.error(ex)
             self.cycleCount = 0
