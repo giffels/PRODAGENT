@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.24 2006/10/24 20:06:50 evansde Exp $"
+__revision__ = "$Id: setup.py,v 1.25 2006/11/08 14:44:49 evansde Exp $"
 
 from distutils.core import setup
 
@@ -15,6 +15,7 @@ packages = [
     'AdminControl.Bots',
     'CMSConfigTools',
     'CondorTracker',
+    'CondorTracker.Trackers',
     'DBSInterface',
     'DLSInterface',
     'DatasetInjector',
