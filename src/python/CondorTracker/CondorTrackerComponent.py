@@ -38,9 +38,12 @@ class CondorTrackerComponent:
         self.args = {}
         self.args['Logfile'] = None
         self.args['TrackerPlugin'] = None
+        self.args['PollInterval'] = "00:01:00"
         self.args.update(args)
-       
-       
+        
+
+
+        
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
@@ -48,6 +51,7 @@ class CondorTrackerComponent:
         installLogHandler(self)
         msg = "CondorTracker Started\n"
         msg += " ==> Tracker Plugin: %s\n" % self.args['TrackerPlugin']
+        msg += " ==> Poll Interval: %s\n" % self.args['PollInterval']
         logging.info(msg)
         
         
@@ -146,6 +150,9 @@ class CondorTrackerComponent:
             self.jobCompletion(jobspec)
             TrackerDB.removeJob(jobspec)
             logging.info("--> Stop Watching: %s" % jobspec)
+
+        self.ms.publish("CondorTracker:Update", "", self.args['PollInterval'])
+        self.ms.commit()
         return
 
     
