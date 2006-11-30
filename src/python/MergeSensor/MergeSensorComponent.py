@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.45 2006/11/20 07:41:36 ckavka Exp $"
-__version__ = "$Revision: 1.45 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -52,6 +52,12 @@ from threading import Thread, Condition
 # logging
 import logging
 from logging.handlers import RotatingFileHandler
+
+# trigger api
+from Trigger.TriggerAPI.TriggerAPI import TriggerAPI 
+
+# ProdAgent exception
+from ProdAgentCore.ProdAgentException import ProdAgentException
 
 ##############################################################################
 # MergeSensorComponent class
@@ -389,12 +395,12 @@ class MergeSensorComponent:
 
         # a job has finished
         if event == "JobSuccess":
-              #self.jobSuccess(payload)
+              self.jobSuccess(payload)
               return
 
         # a job has failed
         if event == "GeneralJobFailure":
-              #self.jobFailed(payload)
+              self.jobFailed(payload)
               return
 
         # wrong event
@@ -1029,6 +1035,14 @@ class MergeSensorComponent:
                           % (jobReport, msg))
             return
 
+        # files can be cleaned up now
+        logging.info("trigger cleanup for: %s" % jobName)
+        
+        try:
+            self.trigger.setFlag("cleanup", jobName, "MergeSensor")
+        except ProdAgentException, ex:
+            logging.error("trying to continue processing success event")
+            
         # ignore non merge jobs
         if jobName.find('mergejob') == -1:
             logging.debug("Ignoring job %s, since it is not a merge job" \
@@ -1061,7 +1075,7 @@ class MergeSensorComponent:
 
         # check status
         if jobInfo['status'] != 'undermerge':
-            logging.error("5. Cannot process JobSuccess event for job %s: %s" \
+            logging.error("Cannot process JobSuccess event for job %s: %s" \
                   % (jobName, "the job is not currently running"))
             database.closeDatabaseConnection()
             return
@@ -1112,6 +1126,14 @@ class MergeSensorComponent:
 
         """
 
+        # files can be cleaned up now
+        logging.info("trigger cleanup for: %s" % jobName)
+
+        try:
+            self.trigger.setFlag("cleanup", jobName, "MergeSensor")
+        except ProdAgentException, ex:
+            logging.error("trying to continue processing failure event")
+
         # ignore non merge jobs
         if jobName.find('mergejob') == -1:
             logging.debug("Ignoring job %s, since it is not a merge job" \
@@ -1138,7 +1160,7 @@ class MergeSensorComponent:
 
         # check that job exists
         if jobInfo is None:
-            logging.error("Job %s does not exists." % jobName)
+            logging.error("Job %s does not exist." % jobName)
             database.closeDatabaseConnection()
             return
 
@@ -2118,6 +2140,9 @@ class MergeSensorComponent:
         self.ms.subscribeTo("JobSuccess")
         self.ms.subscribeTo("GeneralJobFailure")
        
+        # set trigger access for cleanup
+        self.trigger=TriggerAPI(self.ms) 
+        
         # start polling thread
         pollingThread = PollDBS(self.poll)
         pollingThread.start()
