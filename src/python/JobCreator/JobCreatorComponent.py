@@ -51,8 +51,7 @@ class JobCreatorComponent:
         #  //
         # // Components needing cleanup flags set for each job
         #//  TODO: get this from configuration somehow...
-        self.cleanupFlags = ['StatTracker', 'DBSInterface']
-        
+        self.cleanupFlags = ['StatTracker', 'DBSInterface', 'MergeSensor']
 
     def __call__(self, event, payload):
         """
