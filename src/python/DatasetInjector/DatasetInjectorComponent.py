@@ -11,18 +11,17 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.5 2006/10/05 18:22:40 evansde Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.6 2006/10/10 14:18:25 evansde Exp $"
+__version__ = "$Revision: 1.6 $"
 __author__ = "evansde@fnal.gov"
 
 
 import os
 import logging
-from logging.handlers import RotatingFileHandler
-
 
 from MessageService.MessageService import MessageService
 
+import ProdAgentCore.LoggingUtils as LoggingUtils
 
 from DatasetInjector.DatasetIterator import DatasetIterator
 
@@ -40,19 +39,19 @@ class DatasetInjectorComponent:
         self.args['ComponentDir'] = None
         self.args['Logfile'] = None
         self.args['WorkflowCache'] = None
+        self.args['QueueJobMode'] = False
         self.args.update(args)
-        
+
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.DEBUG)
+        LoggingUtils.installLogHandler(self)
+        self.queueMode = False
+        if str(self.args['QueueJobMode']).lower() == "true":
+            self.queueMode = True
+            
         self.ms = None
-
+        
         if self.args['WorkflowCache'] == None:
             self.args['WorkflowCache'] = os.path.join(
                 self.args['ComponentDir'], "WorkflowCache")
@@ -62,9 +61,9 @@ class DatasetInjectorComponent:
         self.iterators = {}
         self.iterator = None
         
-        logging.info("DatasetInjector Component Started")
-
-
+        msg = "DatasetInjector Component Started\n"
+        msg += " => QueueMode: %s\n" % self.queueMode
+        logging.info(msg)
 
     def __call__(self, event, payload):
         """
@@ -303,8 +302,14 @@ class DatasetInjectorComponent:
 
         for jdef in jobDefs:
             jobSpec = self.iterator(jdef)
-            logging.debug("Publishing CreateJob: %s" % jobSpec)
-            self.ms.publish("CreateJob", jobSpec)
+
+            if self.queueMode:
+                logging.debug("Publishing QueueJob: %s" % jobSpec)
+                self.ms.publish("QueueJob", jobSpec)
+            else:
+                logging.debug("Publishing CreateJob: %s" % jobSpec)
+                self.ms.publish("CreateJob", jobSpec)
+
             self.ms.commit()
 
         #  //
