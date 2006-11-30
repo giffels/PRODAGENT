@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.5 2006/08/16 15:24:21 ckavka Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: MessageService.py,v 1.6 2006/08/16 20:56:02 fvlingen Exp $"
+__version__ = "$Revision: 1.6 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -616,6 +616,52 @@ class MessageService:
         sqlCommand = """
                      DELETE 
                        FROM ms_message
+                     """
+        cursor.execute(sqlCommand)
+
+        # drop transaction status, no recover possible
+        self.transaction = []
+
+        # commit
+        self.conn.commit()
+
+        # return 
+        cursor.close()
+        return 
+
+    ##########################################################################
+    # remove messages in history
+    ##########################################################################
+
+    def cleanHistory(self, hours):
+        """
+        __cleanHistory__
+        
+        Delete history messages older than the number of hours
+        specified.
+        
+        Performs an implicit commit operation.
+        
+        Arguments:
+        
+            hours -- the number of hours.
+        
+        """
+
+        # logging
+        logging.debug("MS: clean history requested")
+
+        # get cursor
+        cursor = self.conn.cursor()
+
+        # remove all messsages
+        sqlCommand = """
+                     DELETE 
+                       FROM ms_history
+                       WHERE
+                          time < TIMESTAMPADD(HOUR,""" + \
+                                                         str(-1 * hours) + \
+                                                    """,CURRENT_TIMESTAMP);
                      """
         cursor.execute(sqlCommand)
 
