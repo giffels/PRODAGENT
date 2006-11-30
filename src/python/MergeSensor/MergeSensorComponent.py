@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.47 2006/11/30 08:59:29 ckavka Exp $"
+__version__ = "$Revision: 1.47 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -115,6 +115,9 @@ class MergeSensorComponent:
 
         # cleanup
         self.args.setdefault("CleanUp", None)
+
+        # QueueJobMode
+        self.args.setdefault('QueueJobMode', False)
         
         # update parameters
         self.args.update(args)
@@ -153,6 +156,12 @@ class MergeSensorComponent:
             self.doCleanUp = True
         else:
             self.doCleanUp = False
+
+        # queue mode
+        self.queueMode = False
+        if str(self.args['QueueJobMode']).lower() == "true":
+            self.queueMode = True
+
         
         # server directory
         self.args.setdefault("MergeJobSpecs", os.path.join(
@@ -205,6 +214,7 @@ class MergeSensorComponent:
             logging.info("Using Auto CleanUp")
         else:
             logging.info("Auto CleanUp disabled.")
+
             
         # check DBS type
         if self.args['DBSType'] != 'CGI':
@@ -1629,7 +1639,10 @@ class MergeSensorComponent:
         """
 
         # publish event
-        self.msThread.publish("CreateJob", mergeSpecURL)
+        if self.queueMode:
+            self.msThread.publish("QueueJob", mergeSpecURL)
+        else:
+            self.msThread.publish("CreateJob", mergeSpecURL)
         self.msThread.commit()
 
         return
