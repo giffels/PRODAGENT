@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.7 2006/08/23 20:03:38 evansde Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.8 2006/11/10 22:31:02 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -16,6 +16,9 @@ from ShREEK.ShREEKMonitor import ShREEKMonitor
 from ShREEK.ShREEKPluginMgr import registerShREEKMonitor
 
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
+from ShREEK.CMSPlugins.ApMonLite.ApMonDestMgr import ApMonDestMgr
+from ShREEK.CMSPlugins.EventLogger import EventLogger
+from IMProv.IMProvQuery import IMProvQuery
 
 import os
 import time
@@ -81,7 +84,11 @@ class DashboardMonitor(ShREEKMonitor):
         self.destHost = None
         self.dashboardInfo = None
         self.lastExitCode = None
-        
+        self.eventFile = "EventLogger.log"
+        self.eventLogger = None
+        self.currentTask = None
+        self.apmon = None
+        self.syncCE = getSyncCE()
 
     def initMonitor(self, *args, **kwargs):
         """
@@ -105,8 +112,18 @@ class DashboardMonitor(ShREEKMonitor):
             msg += "Unable to communicate to Dashboard\n"
             print msg
             self.dashboardInfo = None
-        
+            return
 
+        cluster = self.dashboardInfo.task
+        node = kwargs['ProdAgentJobID']
+        self.apmon = ApMonDestMgr(cluster, node)
+        destQ = IMProvQuery("ShREEKMonitorCfg/EventDestination")
+        dests = destQ(self.monitorConfig)
+        for dest in dests:
+            destPort = int(dest.attrs['Port'])
+            destHost = str(dest.attrs['Host'])
+            self.apmon.newDestination(destHost, destPort)
+            
     def shutdown(self):
         """
         Shutdown method, will be called before object is deleted
@@ -146,7 +163,7 @@ class DashboardMonitor(ShREEKMonitor):
         """
         if self.dashboardInfo == None:
             return
-
+        self.currentTask = task
         newInfo = self.dashboardInfo.emptyClone()
         newInfo.addDestination(self.destHost, self.destPort)
         newInfo['ExeStart'] = task.taskname()
@@ -178,6 +195,25 @@ class DashboardMonitor(ShREEKMonitor):
         newInfo['ExeFinishTime'] = time.time()
         newInfo['ExeExitStatus'] = exitValue
         newInfo.publish(5)
+
+
+
+        self._LoadEventLogger()
+        self._CheckEvents()
+        lastRun = 0
+        lastEvent = 0
+        if self.eventLogger != None:
+            lastRun = self.eventLogger.latestRun
+            lastEvent = self.eventLogger.latestEvent
+            
+        self.eventLogger = None
+        self.apmon.connect()
+        for i in range(0, 5):
+            self.apmon.send(
+                 SyncCE = self.syncCE,
+                 NEvents = lastEvent)            
+        self.apmon.disconnect()
+        
         return
 
     def jobEnd(self):
@@ -191,6 +227,59 @@ class DashboardMonitor(ShREEKMonitor):
         newInfo['JobExitStatus'] = self.lastExitCode
         newInfo['JobFinished'] = time.time()
         newInfo.publish(5)
-        
+
+    def periodicUpdate(self, monitorState):
+        """
+        Periodic update.
+        """
+        self._LoadEventLogger()
+        self._CheckEvents()
+
+
+        if self.eventLogger == None:
+            return
+
+        self.apmon.connect()
+        self.apmon.send(
+            SyncCE = self.syncCE,
+            NEvents = self.eventLogger.latestEvent)
+        #RunNumber = self.eventLogger.latestRun,
+        self.apmon.disconnect()
+        return
+    
+    def _LoadEventLogger(self):
+        """
+        _LoadEventLogger_
+
+        Look for file and load it if it exists
+
+        """
+        if self.eventLogger != None:
+            return
+        if not os.path.exists(self.eventFile):
+            self.eventLogger = None
+        else:
+            self.eventLogger = EventLogger(self.eventFile)
+        return
+
+    def _CheckEvents(self):
+        """
+        _CheckEvents_
+
+        Get last available run/event number
+
+        """
+        if self.eventLogger == None:
+            print "No Event Logger"
+            return
+
+        try:
+            self.eventLogger()
+        except Exception:
+            print "Error Calling Event Logger:", ex
+            pass
+        return 
+
+
         
 registerShREEKMonitor(DashboardMonitor, 'dashboard')
