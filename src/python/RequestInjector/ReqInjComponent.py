@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.12 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.12 2006/11/20 01:42:30 afanfani Exp $"
+__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.13 2006/11/21 14:52:10 afanfani Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -19,6 +19,7 @@ from RequestInjector.RequestIterator import RequestIterator
 from MessageService.MessageService import MessageService
 from JobState.JobStateAPI import JobStateChangeAPI
 
+import ProdAgentCore.LoggingUtils as LoggingUtils
 
 class ReqInjComponent:
     """
@@ -33,18 +34,19 @@ class ReqInjComponent:
         self.args['Logfile'] = None
         self.args['JobState'] = True
         self.args['WorkflowCache'] = None
+        self.args['QueueJobMode'] = False
         self.args.update(args)
         self.job_state = self.args['JobState']
         
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
+
+        LoggingUtils.installLogHandler(self)
+
+        self.queueMode = False
+        if str(self.args['QueueJobMode']).lower() == "true":
+            self.queueMode = True
 
         if self.args['WorkflowCache'] == None:
             self.args['WorkflowCache'] = os.path.join(
@@ -55,7 +57,9 @@ class ReqInjComponent:
         self.iterators = {}
         self.iterator = None
         self.ms = None
-        logging.info("RequestInjector Component Started")
+        msg = "RequestInjector Component Started\n"
+        msg += " => QueueMode: %s\n" % self.queueMode
+        logging.info(msg)
         
     def __call__(self, event, payload):
         """
@@ -227,8 +231,10 @@ class ReqInjComponent:
                 JobStateChangeAPI.cleanout(jobSpecID)
             except StandardError, ex:
                 logging.error('ERROR: '+str(ex))
-        
-        self.ms.publish("CreateJob", jobSpec)
+        if self.queueMode:
+            self.ms.publish("QueueJob", jobSpec)
+        else:
+            self.ms.publish("CreateJob", jobSpec)
         self.ms.commit()
         return
 
