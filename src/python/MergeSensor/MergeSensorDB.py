@@ -1842,7 +1842,7 @@ class MergeSensorDB:
         # check for file block
         rows = cursor.rowcount
         
-        # any file?
+        # any job?
         if rows == 0:
             
             # close cursor
@@ -1864,7 +1864,6 @@ class MergeSensorDB:
                        FROM merge_inputfile
                       WHERE dataset='""" + str(datasetId) + """'
                         AND mergedfile='""" + str(fileId) + """'
-                        AND status!='invalid'
                      """
         
         # execute command
