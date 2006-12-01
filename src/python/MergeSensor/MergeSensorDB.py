@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorDB.py,v 1.13 2006/11/30 11:42:45 ckavka Exp $"
+__version__ = "$Revision: 1.13 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -2647,3 +2647,72 @@ class MergeSensorDB:
             self.conn.close()
         except MySQLdb.Error:
             pass
+
+    ##########################################################################
+    # get version information
+    ##########################################################################
+
+    @classmethod
+    def getVersionInfo(cls):
+        """
+        _getVersionInfo_
+        
+        return version information
+        """
+        
+        return __version__
+
+    ##########################################################################
+    # get version information
+    ##########################################################################
+
+    @classmethod
+    def getSchema(cls):
+        """
+        _getSchema_
+        
+        return schema information
+        
+        Creates its own new connection. Intended to be used
+        from outside PA in order to get information on the
+        current database schema.
+        """
+        
+       # get cursor
+        try:
+
+            conn = connect(False)
+            cursor = conn.cursor()
+
+        except MySQLdb.Error, msg:
+
+            return "Cannot connect to DB: " + str(msg)
+
+        # get schema information
+        sqlCommand = """
+                    SELECT *
+                      FROM information_schema.columns
+                     WHERE table_name like 'merge_%'
+                  ORDER BY table_name;
+                 """
+                       
+        # execute command
+        try:
+            cursor.execute(sqlCommand)
+            
+        except MySQLdb.Error, msg:
+
+            return "Cannot execute query: " + str(msg)
+
+        # get all rows
+        rows = cursor.fetchall()
+        
+        # close cursor
+        cursor.close()
+
+        # close connection
+        conn.close()
+        
+        # return it
+        return rows
+
