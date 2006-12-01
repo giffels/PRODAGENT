@@ -82,7 +82,9 @@ def indexDict(modName, modRef):
         if not isPset:
             #  //
             # // This is not a PSet, index it
-            #//  Drop it if it is untracked
+            #//  Drop it if it is untracked, or an internal key (@)
+            if key.startswith("@"):
+                continue
             if value[1] == "untracked":
                 continue
             result.append("%s.%s=%s" % (modName, key, value[2]))
@@ -90,7 +92,7 @@ def indexDict(modName, modRef):
             #  //
             # // Recursively descend into PSet
             #//
-            children = indexDict(value[1], value[2])
+            children = indexDict(key, value[2])
             [ result.append( "%s.%s" % (modName, i)) for i in children ]
             
     return result
