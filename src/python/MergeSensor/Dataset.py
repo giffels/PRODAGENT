@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.24 2006/10/25 16:22:24 ckavka Exp $"
-__version__ = "$Revision: 1.24 $"
+__revision__ = "$Id: Dataset.py,v 1.25 2006/11/26 16:48:58 ckavka Exp $"
+__version__ = "$Revision: 1.25 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -51,6 +51,9 @@ class Dataset:
     
     # database instance
     database = None
+    
+    # maximum allowed input file failures
+    maxInputAccessFailures = None
 
     ##########################################################################
     # Dataset initialization
@@ -936,3 +939,17 @@ class Dataset:
         return string + "\n".join(["%s: %s" % (key, value) for (key, value) 
                                                            in self.data.items()
                                                            if key != "name"])
+
+    ##########################################################################
+    # get version information
+    ##########################################################################
+
+    @classmethod
+    def getVersionInfo(cls):
+        """
+        _getVersionInfo_
+        
+        return version information
+        """
+        
+        return __version__

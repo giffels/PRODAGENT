@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.9 2006/10/17 16:39:11 ckavka Exp $"
-__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.10 2006/11/26 16:48:23 ckavka Exp $"
+__version__ = "$Revision: 1.10 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
@@ -459,3 +459,17 @@ class WatchedDatasets:
         """
         return "\n\n".join([str(dataset) for dataset in self.datasets.values()])
         
+    ##########################################################################
+    # get version information
+    ##########################################################################
+
+    @classmethod
+    def getVersionInfo(cls):
+        """
+        _getVersionInfo_
+        
+        return version information
+        """
+        
+        return __version__
+

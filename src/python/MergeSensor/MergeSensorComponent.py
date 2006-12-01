@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.47 2006/11/30 08:59:29 ckavka Exp $"
-__version__ = "$Revision: 1.47 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.48 2006/11/30 17:21:03 evansde Exp $"
+__version__ = "$Revision: 1.48 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -280,6 +280,9 @@ class MergeSensorComponent:
 
         # dataset to be removed
         self.toBeRemoved = []
+
+        # trigger
+        self.trigger = None
         
     ##########################################################################
     # add SE names to white list
@@ -405,13 +408,13 @@ class MergeSensorComponent:
 
         # a job has finished
         if event == "JobSuccess":
-              self.jobSuccess(payload)
-              return
+            self.jobSuccess(payload)
+            return
 
         # a job has failed
         if event == "GeneralJobFailure":
-              self.jobFailed(payload)
-              return
+            self.jobFailed(payload)
+            return
 
         # wrong event
         logging.debug("Unexpected event %s, ignored" % event)
@@ -2154,7 +2157,7 @@ class MergeSensorComponent:
         self.ms.subscribeTo("GeneralJobFailure")
        
         # set trigger access for cleanup
-        self.trigger=TriggerAPI(self.ms) 
+        self.trigger = TriggerAPI(self.ms) 
         
         # start polling thread
         pollingThread = PollDBS(self.poll)
@@ -2166,6 +2169,24 @@ class MergeSensorComponent:
             self.ms.commit()
             self.__call__(messageType, payload)
         
+    ##########################################################################
+    # get version information
+    ##########################################################################
+
+    @classmethod
+    def getVersionInfo(cls):
+        """
+        _getVersionInfo_
+        
+        return version information of all components used by
+        the MergeSensor
+        """
+        
+        return "MergeSensor: " + __version__ + \
+            "\nWatchedDatasets: " + WatchedDatasets.getVersionInfo() + \
+            "\nDataset: " + Dataset.getVersionInfo() + \
+            "\nMergeSensorDB: " + MergeSensorDB.getVersionInfo() + "\n"
+    
 ##############################################################################
 # PollDBS class
 ##############################################################################
@@ -2218,7 +2239,7 @@ class PollDBS(Thread):
         """
 
         # at most three consecutive failed attempts to run the polling thread
-        failed_attempts = 0
+        failedAttempts = 0
         
         # performs DBS polling indefinitely
         while True:
@@ -2234,19 +2255,19 @@ class PollDBS(Thread):
                 logging.error("Error in polling thread: " + str(ex))
                 
                 # try at most 3 times
-                if failed_attempts == 3:
+                if failedAttempts == 3:
                     
                     logging.error("Cannot restart polling. Aborting")
                     logging.error("\nWarning: Polling thread is not running!")
                     sys.exit(1)
                     
                 # increment failure counter
-                failed_attempts += 1
+                failedAttempts += 1
                 
                 logging.error("Trying to restart polling... " + \
-                              "(attempt %s)" % failed_attempts)
+                              "(attempt %s)" % failedAttempts)
                 
             # no errors, reset failure counter
             else:
-                failed_attempts = 0
+                failedAttempts = 0
                 
