@@ -51,7 +51,7 @@ class JobCreatorComponent:
         #  //
         # // Components needing cleanup flags set for each job
         #//  TODO: get this from configuration somehow...
-        self.cleanupFlags = ['StatTracker', 'DBSInterface', 'MergeSensor']
+        self.cleanupFlags = ['StatTracker', 'DBSInterface']
 
     def __call__(self, event, payload):
         """
@@ -117,6 +117,7 @@ class JobCreatorComponent:
             logging.error("Unable to Create Job for: %s" % jobSpecFile)
             return
         jobname = jobSpec.parameters['JobName']
+        jobType = jobSpec.parameters['JobType']
         #  //
         # // Initialise the JobBuilder
         #//
@@ -159,12 +160,19 @@ class JobCreatorComponent:
                 JobStateChangeAPI.inProgress(jobname)
 
                 logging.debug(" Adding cleanup triggers for %s" % self.cleanupFlags)
-                for component in self.cleanupFlags:
+
+                cleanFlags = self.cleanupFlags
+                if jobType == "Merge":
+                    logging.debug("Adding MergeSensor Cleanup Flag to Merge type job")
+                    cleanFlags.append("MergeSensor")
+
+                for component in cleanFlags:
                     logging.debug("trigger.addFlag(cleanup, %s, %s" % (
                         jobname, component)
                                   )
                     self.trigger.addFlag("cleanup", jobname, component)
-                if len(self.cleanupFlags) > 0:
+                    
+                if len(cleanFlags) > 0:
                     #  //
                     # // Only set the action if there are components
                     #//  that need it.
