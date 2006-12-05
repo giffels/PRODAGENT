@@ -112,6 +112,8 @@ class CMSSWRunResDB:
         runresComp.addPath("/%s/Output/Datasets" % objName)
         datasets = getOutputDatasetDetails(taskObject['JobSpecNode'])
         for dataset in datasets:
+            if dataset['DataTier'] == "":
+                continue
             dsPath = "/%s/Output/Datasets%s" % (
                 objName, dataset.name())
             runresComp.addPath(dsPath)
