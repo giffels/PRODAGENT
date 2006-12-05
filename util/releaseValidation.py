@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.16 $"
-__revision__ = "$Id: releaseValidation.py,v 1.16 2006/11/26 12:25:17 afanfani Exp $"
+__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: releaseValidation.py,v 1.17 2006/11/28 16:02:02 evansde Exp $"
 
 
 import os
@@ -225,8 +225,9 @@ for relTest in relValSpec:
         eventCount = int(eventCount / efficiency) + 1
         print " ==>Selection Efficiency Found: %s " % efficiency
         print " ==>Events Per Job Adjusted To: %s" % eventCount
-        
-    urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/%s/%s/" % (subpackage, dataDir)
+    urlBase = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/*checkout*/CMSSW/Configuration/%s/%s/" % (subpackage, dataDir)
+    #urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/%s/%s/" 
+    #urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/%s/%s/" % (subpackage, dataDir)
 
     cfgUrl = "%s%s" % (urlBase, relTest['CfgUrl'])
 ## replace restriction only_with_tag with rev :
