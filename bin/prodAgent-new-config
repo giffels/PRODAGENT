@@ -146,7 +146,7 @@ componentFields = {
 
     "RequestInjector" : {
     "ComponentDir" : None,
-    "QueueJobMode", "False",
+    "QueueJobMode": "False",
     },
 
     "JobCreator" : {
@@ -192,7 +192,7 @@ componentFields = {
     "MergeSiteBlacklist" : None,
     "FastMerge" : "no",
     "MaxInputAccessFailures" : 1,
-    "QueueJobMode", "False",
+    "QueueJobMode": "False",
     # Local DBS settings come from LocalDBS core block 
     },
 
@@ -226,7 +226,7 @@ componentFields = {
     },
     "DatasetInjector" : {
     "ComponentDir" : None,
-    "QueueJobMode", "False",
+    "QueueJobMode": "False",
     },
 
     }# end componentFields
