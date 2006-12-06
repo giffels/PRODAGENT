@@ -14,9 +14,9 @@ import os
 import logging
 
 
-from MCPayloads.WorkflowSpec import WorkflowSpec
-from MCPayloads.LFNAlgorithm import createUnmergedLFNs
-from CMSConfigTools.CfgGenerator import CfgGenerator
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.LFNAlgorithm import createUnmergedLFNs
+from ProdCommon.CMSConfigTools.CfgGenerator import CfgGenerator
 
 from DatasetInjector.SplitterMaker import createJobSplitter
 import DatasetInjector.DatasetInjectorDB as DatabaseAPI
