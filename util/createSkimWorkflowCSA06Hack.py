@@ -13,12 +13,12 @@ import popen2
 import time
 
 
-from MCPayloads.WorkflowSpec import WorkflowSpec
-from MCPayloads.LFNAlgorithm import mergedLFNBase,unmergedLFNBase
-from CMSConfigTools.CfgInterface import CfgInterface
-from MCPayloads.DatasetExpander import splitMultiTier
-import MCPayloads.WorkflowTools as WorkflowTools
-import MCPayloads.UUID as MCPayloadsUUID
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.LFNAlgorithm import mergedLFNBase,unmergedLFNBase
+from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
+from ProdCommon.MCPayloads.DatasetExpander import splitMultiTier
+import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
+import ProdCommon.MCPayloads.UUID as MCPayloadsUUID
 
 
 valid = ['cfg=', 'version=', 'category=', 'name=', 'dataset=',

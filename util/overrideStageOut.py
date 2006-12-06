@@ -13,10 +13,10 @@ import getopt
 
 
 
-from MCPayloads.WorkflowSpec import WorkflowSpec
-from MCPayloads.JobSpec import JobSpec
-from MCPayloads.PayloadNode import listAllNames
-from MCPayloads.WorkflowTools import addStageOutOverride
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.JobSpec import JobSpec
+from ProdCommon.MCPayloads.PayloadNode import listAllNames
+from ProdCommon.MCPayloads.WorkflowTools import addStageOutOverride
 
 
 valid = ['workflow-spec=', 'job-spec=', 'stage-out-node=',

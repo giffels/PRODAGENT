@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.8 $"
-__revision__ = "$Id: createPreProdWorkflow.py,v 1.8 2006/11/13 20:52:03 evansde Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: createPreProdWorkflow.py,v 1.9 2006/11/21 14:47:12 afanfani Exp $"
 
 
 import os
@@ -18,12 +18,12 @@ import getopt
 import popen2
 import time
 
-from MCPayloads.WorkflowSpec import WorkflowSpec
-from MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
-from CMSConfigTools.CfgInterface import CfgInterface
-from MCPayloads.DatasetExpander import splitMultiTier
-import MCPayloads.WorkflowTools as WorkflowTools
-import MCPayloads.UUID as MCPayloadsUUID
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
+from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
+from ProdCommon.MCPayloads.DatasetExpander import splitMultiTier
+import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
+import ProdCommon.MCPayloads.UUID as MCPayloadsUUID
 
 valid = ['cfg=', 'version=', 'category=', 'name=', 'fake-hash',
          'pileup-dataset=', 'pileup-files-per-job=',

@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.17 $"
-__revision__ = "$Id: releaseValidation.py,v 1.17 2006/11/28 16:02:02 evansde Exp $"
+__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: releaseValidation.py,v 1.18 2006/12/05 17:50:20 evansde Exp $"
 
 
 import os
@@ -20,14 +20,14 @@ import popen2
 import time
 import re
 
-from MCPayloads.WorkflowSpec import WorkflowSpec
-from MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
-from MCPayloads.RelValSpec import getRelValSpecForVersion, listAllVersions
-from CMSConfigTools.CfgInterface import CfgInterface
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
+from ProdCommon.MCPayloads.RelValSpec import getRelValSpecForVersion, listAllVersions
+from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
 from MessageService.MessageService import MessageService
-from MCPayloads.DatasetExpander import splitMultiTier
-import MCPayloads.WorkflowTools as WorkflowTools
-import MCPayloads.UUID as MCPayloadsUUID
+from ProdCommon.MCPayloads.DatasetExpander import splitMultiTier
+import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
+import ProdCommon.MCPayloads.UUID as MCPayloadsUUID
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
          'subpackage=', 'alltests', "site-pref=", "sites=", "no-recreate",

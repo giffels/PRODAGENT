@@ -41,8 +41,8 @@ for opt, arg in opts:
 
 
 
-from MCPayloads.WorkflowSpec import WorkflowSpec
-from CMSConfigTools.CfgInterface import CfgInterface
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
 
 
 
