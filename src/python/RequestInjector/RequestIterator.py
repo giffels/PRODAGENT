@@ -13,9 +13,9 @@ The jobs are JobSpec instances created from the WorkflowSpec
 import os
 import logging
 
-from MCPayloads.WorkflowSpec import WorkflowSpec
-from MCPayloads.LFNAlgorithm import createUnmergedLFNs
-from CMSConfigTools.CfgGenerator import CfgGenerator
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.LFNAlgorithm import createUnmergedLFNs
+from ProdCommon.CMSConfigTools.CfgGenerator import CfgGenerator
 from PileupTools.PileupDataset import PileupDataset, createPileupDatasets, getPileupSites
 
 from IMProv.IMProvDoc import IMProvDoc
