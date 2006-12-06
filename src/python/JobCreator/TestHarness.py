@@ -23,7 +23,7 @@ import logging
 logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler())
 
-from MCPayloads.JobSpec import JobSpec
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 from JobCreator.JobGenerator import JobGenerator
 import JobCreator.Creators
 

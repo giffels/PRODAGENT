@@ -12,7 +12,7 @@ from RunRes.RunResComponent import RunResComponent
 from IMProv.IMProvNode import IMProvNode
 from IMProv.IMProvDoc import IMProvDoc
 
-from MCPayloads.DatasetTools import getOutputDatasetDetails
+from ProdCommon.MCPayloads.DatasetTools import getOutputDatasetDetails
 
 
 def unquote(strg):

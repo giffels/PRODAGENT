@@ -6,7 +6,7 @@ Utils for configuring fast merge jobs
 
 """
 import logging
-from CMSConfigTools.CfgInterface import CfgInterface
+from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
 
 def installFastMerge(taskObject):
     """

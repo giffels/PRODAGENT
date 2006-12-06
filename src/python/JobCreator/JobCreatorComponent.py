@@ -14,7 +14,7 @@ import os
 
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
-from MCPayloads.JobSpec import JobSpec
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 from JobCreator.JobGenerator import JobGenerator
 from JobCreator.JCException import JCException
 from MessageService.MessageService import MessageService

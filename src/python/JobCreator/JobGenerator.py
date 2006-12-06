@@ -39,18 +39,18 @@ import inspect
 import os
 import logging
 
+import ProdCommon
 import ShREEK
-import MB
 import ShLogger
 import IMProv
-import CMSConfigTools
+import ProdCommon.CMSConfigTools 
 import RunRes
 import FwkJobRep
 import StageOut
 import SVSuite
 
-_StandardPackages = [ShREEK, MB, ShLogger, IMProv, StageOut,
-                     CMSConfigTools, RunRes, FwkJobRep, SVSuite]
+_StandardPackages = [ShREEK, ShLogger, IMProv, StageOut,
+                     ProdCommon.CMSConfigTools, RunRes, FwkJobRep, SVSuite]
 
 
 #  //
@@ -234,17 +234,25 @@ class JobGenerator:
         #//
         taskObj = TaskObject(jobname)
         pythonObj = TaskObject("localPython")
+        prodCommonObj = TaskObject("ProdCommon")
         binObj = TaskObject("localBin")
         taskObj.addChild(pythonObj)
         taskObj.addChild(binObj)
+        pythonObj.addChild(prodCommonObj)
 
+        prodCommonInit = inspect.getsourcefile(ProdCommon)
+        prodCommonObj.attachFile(prodCommonInit)
+        
         #  //
         # // Attach standard python packages and shreek binary
         #//
         for pkg in _StandardPackages:
             srcfile = inspect.getsourcefile(pkg)
-            pythonObj.attachFile(os.path.dirname(srcfile))
-
+            if pkg.__name__.startswith("ProdCommon."):
+                prodCommonObj.attachFile(os.path.dirname(srcfile))
+            else:
+                pythonObj.attachFile(os.path.dirname(srcfile))
+            
         shreekBin = os.path.join(
             os.path.dirname(inspect.getsourcefile(ShREEK)), "shreek")
         binObj.attachFile(shreekBin)

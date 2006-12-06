@@ -12,7 +12,7 @@ of env vars to be done here in support of chained jobs.
 
 import sys
 
-from CMSConfigTools.CfgInterface import CfgInterface
+from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
 
 
 if __name__ == '__main__':
