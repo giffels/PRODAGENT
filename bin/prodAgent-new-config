@@ -223,6 +223,7 @@ componentFields = {
     "ProdMgrInterface" : {
     "ComponentDir" : None,
     "JobSpecDir" : '/tmp',
+    "JobSize" : '500',
     },
     "DatasetInjector" : {
     "ComponentDir" : None,
@@ -281,6 +282,8 @@ are tarred and moved to an archive for possible post mortem analysis.
 """
 -JobSpecDir: The location to which the job specs will be downloaded created
 at the prodmgr.
+-JobSize: the size (in events). ProdAgent retrieves jobspecs from the prodmgr 
+which it will "cut" into smaller jobs using the JobSize parameter
 """
     }
 
