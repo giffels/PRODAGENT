@@ -7,11 +7,12 @@ General Exception class for Job Submitter modules
 """
 
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: JSException.py,v 1.1 2006/04/10 18:42:44 evansde Exp $"
+__revision__ = "$Id: JSException.py,v 1.1 2006/06/01 16:46:08 evansde Exp $"
 
 import exceptions
 import inspect
 import logging
+
 
 class JSException(exceptions.Exception):
     """

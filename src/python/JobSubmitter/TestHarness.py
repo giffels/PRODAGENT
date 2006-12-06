@@ -25,7 +25,7 @@ logging.getLogger().addHandler(logging.StreamHandler())
 
 import JobSubmitter
 from JobSubmitter.Registry import retrieveSubmitter
-from MCPayloads.JobSpec import JobSpec
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 if __name__ == '__main__':
     usage = "Usage: TestHarness.py --dir=<job dir>\n"

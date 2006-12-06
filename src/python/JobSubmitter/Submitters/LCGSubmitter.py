@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.19 2006/10/06 10:12:56 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.20 2006/10/11 11:25:33 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -25,7 +25,7 @@ import os
 import sys
 import logging
 import exceptions
-from MCPayloads.JobSpec import JobSpec
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException

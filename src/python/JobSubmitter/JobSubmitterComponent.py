@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.6 2006/10/19 14:22:29 evansde Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.7 2006/11/13 20:45:20 evansde Exp $"
 
 import os
 import logging
@@ -26,7 +26,7 @@ import ProdAgentCore.LoggingUtils  as LoggingUtils
 from MessageService.MessageService import MessageService
 
 from JobSubmitter.Registry import retrieveSubmitter
-from MCPayloads.JobSpec import JobSpec
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 from JobState.JobStateAPI import JobStateChangeAPI
 from JobState.JobStateAPI import JobStateInfoAPI
 from ProdAgentCore.ProdAgentException import ProdAgentException
