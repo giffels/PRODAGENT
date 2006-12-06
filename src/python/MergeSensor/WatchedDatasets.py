@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.10 2006/11/26 16:48:23 ckavka Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.11 2006/12/01 10:40:52 ckavka Exp $"
+__version__ = "$Revision: 1.11 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
@@ -19,7 +19,7 @@ from MergeSensor.MergeSensorError import MergeSensorError, \
                                          DatasetNotInDatabase
 
 # workflow specifications
-from MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
 ##############################################################################
 # WatchedDatasets class

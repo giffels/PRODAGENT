@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.48 2006/11/30 17:21:03 evansde Exp $"
-__version__ = "$Revision: 1.48 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.49 2006/12/01 10:40:20 ckavka Exp $"
+__version__ = "$Revision: 1.49 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -29,10 +29,10 @@ from MergeSensor.MergeSensorDB import MergeSensorDB
 from MessageService.MessageService import MessageService
 
 # Workflow and Job specification
-from MCPayloads.WorkflowSpec import WorkflowSpec
-from MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
-from CMSConfigTools.CfgInterface import CfgInterface
-import MCPayloads.WorkflowTools as MCWorkflowTools
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
+from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
+import ProdCommon.MCPayloads.WorkflowTools as MCWorkflowTools
 
 # Job report
 from FwkJobRep.ReportParser import readJobReport

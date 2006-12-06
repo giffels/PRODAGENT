@@ -5,7 +5,7 @@ from MergeSensor.MergeSensorDB import MergeSensorDB
 from MergeSensor.MergeSensorError import MergeSensorError, \
                                          InvalidDataset, \
                                          NonMergeableDataset
-from MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 import logging
 from logging.handlers import RotatingFileHandler
 
