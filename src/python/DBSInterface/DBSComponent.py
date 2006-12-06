@@ -24,7 +24,7 @@ JobSuccess - Job completed, this event will include a ref to a Framework
 import string
 import socket
 
-from MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 import os,base64,time,exceptions
 from FwkJobRep.ReportParser import readJobReport
 from MessageService.MessageService import MessageService
