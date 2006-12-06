@@ -608,6 +608,15 @@ CREATE TABLE pm_job
     catagory              varchar(150)    not null
    ) Type=InnoDB;
 
+CREATE TABLE pm_job_cut
+   (
+    id                    varchar(150)    not null,
+    job_id                varchar(150)    not null,
+    status                enum("running", "finished") default 'running',
+    events_processed      int             
+   ) Type=InnoDB;
+
+
 CREATE TABLE pm_cooloff
    (
     url                   varchar(150)    not null,
