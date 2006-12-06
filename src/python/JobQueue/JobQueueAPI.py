@@ -8,7 +8,7 @@ Public API for interacting with the JobQueue
 import logging
 import JobQueue.JobQueueDB as JobQueueDB
 
-from MCPayloads.JobSpec import JobSpec
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 
 def queueJob(jobSpecFile, priorityMap):
