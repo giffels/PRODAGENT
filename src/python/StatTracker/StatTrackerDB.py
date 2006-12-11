@@ -445,6 +445,8 @@ def intersection(list1, list2):
     return intDict.keys()
 
 
+
+
 def removeTuple(objectInATuple):
     """
     _removeTuple_
@@ -463,7 +465,7 @@ def listWorkflowSpecs():
     """
     
     sqlStr1 = """ select DISTINCT workflow_spec_id FROM st_job_success;"""
-    sqlStr2 = """ select DISTINCT workflow_spec_id FROM st_job_success;"""
+    sqlStr2 = """ select DISTINCT workflow_spec_id FROM st_job_failure;"""
 
     connection = connect()
     dbCur = connection.cursor()
@@ -472,7 +474,12 @@ def listWorkflowSpecs():
     dbCur.execute(sqlStr2)
     list2 = dbCur.fetchall()
     dbCur.close()
-    return intersection(map(removeTuple, list1), map(removeTuple, list2))
+    list1 = map(removeTuple, list1)
+    list2 = map(removeTuple, list2)
+    for item in list2:
+        if item not in list1:
+            list1.append(item)
+    return list1
     
 removeBlobs = lambda x: x.__setitem__('attr_value', x['attr_value'].tostring())
 def getJobAttrs(jobIndex):
