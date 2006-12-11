@@ -223,7 +223,9 @@ componentFields = {
     "ProdMgrInterface" : {
     "ComponentDir" : None,
     "JobSpecDir" : '/tmp',
-    "JobSize" : '500',
+    "JobSize" : '-1',
+    "JobCutSize" : '500',
+    "ProdMgrs":'https://localhost:8443/clarens/'
     },
     "DatasetInjector" : {
     "ComponentDir" : None,
@@ -282,8 +284,17 @@ are tarred and moved to an archive for possible post mortem analysis.
 """
 -JobSpecDir: The location to which the job specs will be downloaded created
 at the prodmgr.
--JobSize: the size (in events). ProdAgent retrieves jobspecs from the prodmgr 
-which it will "cut" into smaller jobs using the JobSize parameter
+-JobSize: size (in events). ProdAgent retrieves jobspecs from the prodmgr 
+associated to an allocation. If the JobSize is set the jobspecs associated
+to an allocation will have this number of events (or less if there are not
+enough events in the allocation. If the parameter is set to -1 it will use the 
+size of the allocation the job is associated to.
+-JobCutSize: size (in events) the job associated to an allocation, retrieved
+ from the prodmgr will be cut to. E.g.: If JobCutSize=12, and the jobspec
+retrieved from the prodmgr associated to an allocation is 100, this will result
+in 9 jobs. 8 with 12 events and one with 4 events.
+-ProdMgrs: The prodmgrs this prodagent will receive requests from. This is a comma
+separated list of urls.
 """
     }
 
