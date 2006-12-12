@@ -14,7 +14,7 @@ from MessageService.MessageService import MessageService
 
 from FwkJobRep.FwkJobReport import FwkJobReport
 from FwkJobRep.ReportParser import readJobReport
-from MCPayloads.JobSpec import JobSpec
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 
 
@@ -48,15 +48,21 @@ class ProdMgrUnitTests(unittest.TestCase):
             ###shell start####
             self.ms.publish("ProdMgrInterface:StartDebug",'')
             self.ms.commit()
-            self.ms.publish("ProdMgrInterface:JobSize",'3')
+            # this means we are using the size the allocation gives us
+            self.ms.publish("ProdMgrInterface:JobSize",'-1')
             self.ms.commit()
+            # this means that if we get a job from the prodmgr we cut it in jobs with this number
+            # of events.
+            self.ms.publish("ProdMgrInterface:JobCutSize",'12')
+            self.ms.commit()
+
             self.ms.publish("ProdMgrInterface:AddRequest",'https://localhost:8443/clarens/?Request_id=requestID0?Priority=3')
             self.ms.commit()
             self.ms.publish("ProdMgrInterface:ResourcesAvailable",'4')
             self.ms.commit()
-            print('Waiting for 4 creatjobs')
+            print('Waiting for 4*9=36 creatjobs')
             ###shell end ####
-            for i in xrange(0,4): 
+            for i in xrange(0,36): 
                 type, payload = self.ms.get()
                 print("Message type: "+str(type)+", payload: "+str(payload))
                 # retrieve the job spec id (jobname)
@@ -70,7 +76,7 @@ class ProdMgrUnitTests(unittest.TestCase):
               report=readJobReport(reportFile)
               for fileinfo in report[-1].files:
                   if  fileinfo['TotalEvents'] != None:
-                      fileinfo['TotalEvents'] = 3
+                      fileinfo['TotalEvents'] = 9
               report[-1].jobSpecId=jobspecid
               report[-1].status="Success"
               reportLocation=self.jobReportDir+'/'+jobspecid.replace('/','_')+".xml"
@@ -78,12 +84,12 @@ class ProdMgrUnitTests(unittest.TestCase):
               self.ms.publish("JobSuccess", reportLocation)
               self.ms.commit()
             ###shell start####
-            self.ms.publish("ProdMgrInterface:ResourcesAvailable",'2')
+            self.ms.publish("ProdMgrInterface:ResourcesAvailable",'10')
             self.ms.commit()
-            print('Waiting for 2 creatjobs')
+            print('Waiting for 10*9=90 creatjobs')
             ###shell end ####
             ProdMgrUnitTests.__jobSpecId=[]
-            for i in xrange(0,2): 
+            for i in xrange(0,90): 
                 type, payload = self.ms.get()
                 print("Message type: "+str(type)+", payload: "+str(payload))
                 # retrieve the job spec id (jobname)
@@ -97,13 +103,14 @@ class ProdMgrUnitTests(unittest.TestCase):
               report=readJobReport(reportFile)
               for fileinfo in report[-1].files:
                   if  fileinfo['TotalEvents'] != None:
-                      fileinfo['TotalEvents'] = 3
+                      fileinfo['TotalEvents'] = 9
               report[-1].jobSpecId=jobspecid
               report[-1].status="Success"
               reportLocation=self.jobReportDir+'/'+jobspecid.replace('/','_')+".xml"
               report[-1].write(reportLocation)
               self.ms.publish("JobSuccess", reportLocation)
               self.ms.commit()
+            sys.exit(0)
             ###shell start####
             self.ms.publish("ProdMgrInterface:AddRequest",'https://localhost:8443/clarens/?Request_id=requestID1?Priority=4')
             self.ms.commit()
