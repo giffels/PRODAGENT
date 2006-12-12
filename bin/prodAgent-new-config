@@ -225,7 +225,9 @@ componentFields = {
     "JobSpecDir" : '/tmp',
     "JobSize" : '-1',
     "JobCutSize" : '500',
-    "ProdMgrs":'https://localhost:8443/clarens/'
+    "ProdMgrs":'https://localhost:8443/clarens/',
+    "RetrievalInterval":"01:00:00",
+    "AgentTag":"please insert a proper value",
     },
     "DatasetInjector" : {
     "ComponentDir" : None,
@@ -295,6 +297,13 @@ retrieved from the prodmgr associated to an allocation is 100, this will result
 in 9 jobs. 8 with 12 events and one with 4 events.
 -ProdMgrs: The prodmgrs this prodagent will receive requests from. This is a comma
 separated list of urls.
+-RetrievalInterval: The time between retrievals of requests from prodmgrs using the 
+HH:MM:SS format. Every so often the prodagent will contact its associated prodmgrs
+to retrieve requests if available.
+-AgentTag: the id used to identify the agent. Although the DN of the ProdAgent certificate
+uniquely identifies the prodagent, the AgentTag is a short hand version that is used for
+request retrieval. Potentially multiple prodagents can have the same agent tag (which means
+they will be handling the same requests)
 """
     }
 
