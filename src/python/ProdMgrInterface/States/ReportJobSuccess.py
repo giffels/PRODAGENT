@@ -9,6 +9,7 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB import Session
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
+from ProdMgrInterface import JobCut
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
 from ProdMgrInterface.Registry import registerHandler
@@ -37,20 +38,42 @@ class ReportJobSuccess(StateInterface):
        if stateParameters['jobType']=='failure':
            logging.debug("This job failed so we register 0 events")
            total=0
-       request_id=report[-1].jobSpecId.split('_')[1] 
-       prodMgrUrl=Job.getUrl(report[-1].jobSpecId)
-       job_spec_location=Job.getLocation(report[-1].jobSpecId)
-       Job.rm(report[-1].jobSpecId)
-       os.remove(job_spec_location)
 
-       parameters={}
-       parameters['jobSpecId']=str(report[-1].jobSpecId)
-       parameters['events']=total
-       parameters['request_id']=request_id
-       result=self.sendMessage(prodMgrUrl,parameters)
-       parameters['result']=result['result']
-       newState=self.handleResult(parameters)
-       Session.commit()
+       # remove the job cut spec file.
+       logging.debug("removing job cut spec file")
+       request_id=report[-1].jobSpecId.split('_')[1] 
+       job_spec_location=JobCut.getLocation(report[-1].jobSpecId)
+       os.remove(job_spec_location)
+       # update the events processed by this jobcut
+       JobCut.eventsProcessed(report[-1].jobSpecId,total)
+
+       logging.debug("Evaluate job associated to job cut "+str(report[-1].jobSpecId))
+       jobId=Job.id(report[-1].jobSpecId)
+       logging.debug("Associated job is: "+str(jobId)) 
+       if Job.jobCutsFinished(jobId):
+         # retrieve the number of processed events
+           events=JobCut.events(jobId)
+         # remove all entries associated to job in job_cuts
+           JobCut.rm(jobId)
+         # remove the job information and files
+           request_id=jobId.split('_')[1] 
+           prodMgrUrl=Job.getUrl(jobId)
+           job_spec_location=Job.getLocation(jobId)
+           Job.rm(jobId)
+           os.remove(job_spec_location)
+           logging.debug("All cuts have finished, contacting prodmgr")
+         # send a message to prodmgr on the status of the allocated job.
+           parameters={}
+           parameters['jobSpecId']=str(jobId)
+           parameters['events']=events
+           parameters['request_id']=request_id
+           result=self.sendMessage(prodMgrUrl,parameters)
+           parameters['result']=result['result']
+           newState=self.handleResult(parameters)
+           Session.commit()
+       else:
+           logging.debug("Not all job cuts for this job have finised. Not contacting prodmgr")
+           Session.commit()
 
    def sendMessage(self,url,parameters):
        try:

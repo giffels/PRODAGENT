@@ -7,7 +7,8 @@ service_map={'userID':'prodMgrRequest.userID',\
              'acquireAllocation':'prodMgrProdAgent.acquireAllocation',\
              'acquireJob':'prodMgrProdAgent.acquireJob',\
              'releaseJob':'prodMgrProdAgent.releaseJob',\
-             'releaseAllocation':'prodMgrProdAgent.releaseAllocation'}
+             'releaseAllocation':'prodMgrProdAgent.releaseAllocation',\
+             'getRequests':'prodMgrProdAgent.getRequests'}
 
 def userID(serverUrl,componentID="defaultComponent"):
    return Management.executeCall(serverUrl,"prodMgrRequest.userID",[],componentID)
@@ -23,6 +24,9 @@ def releaseJob(serverUrl,jobspec,events_completed,componentID="defaultComponent"
 
 def releaseAllocation(serverUrl,allocation_id,componentID="defaultComponent"):
    return Management.executeCall(serverUrl,"prodMgrProdAgent.releaseAllocation",[allocation_id],componentID)
+
+def getRequests(serverUrl,agent_tag,componentID="defaultComponent"):
+   return Management.executeCall(serverUrl,"prodMgrProdAgent.getRequests",[agent_tag],componentID)
 
 def commit(serverUrl=None,method_name=None,componentID=None):
    Management.commit(serverUrl,method_name,componentID)

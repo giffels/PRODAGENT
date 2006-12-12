@@ -11,24 +11,22 @@ and report back details of completed jobs
 
 
 import os
-import time
-
+import random
 import logging
 from logging.handlers import RotatingFileHandler
+import time
 
 from MessageService.MessageService import MessageService
-
 from ProdAgentDB import Session
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentCore.Codes import errors
-
 from ProdMgrInterface.Registry import retrieveHandler
 from ProdMgrInterface.Registry import Registry
-
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
+from ProdMgrInterface import Interface as ProdMgr
 
 import ProdMgrInterface.Interface as ProdMgrAPI
 
@@ -101,9 +99,16 @@ class ProdMgrComponent:
                 payloadVal = 1
             self.retrieveWork(payloadVal)
             return
+        if event =="ProdMgrInterface:AcquireRequests":
+            logging.debug("Contacting prodmgrs to acquire new requests")
+            self.acquireRequests(payload)
         if event =="ProdMgrInterface:JobSize":
             logging.debug("Setting job size to: "+str(payload))
             self.args['JobSize']=int(payload)
+            return
+        if event =="ProdMgrInterface:JobCutSize":
+            logging.debug("Setting job cut size to: "+str(payload))
+            self.args['JobCutSize']=int(payload)
             return
         if event == "JobSuccess":
             self.reportJobSuccess(payload)
@@ -145,6 +150,7 @@ class ProdMgrComponent:
                if componentStateInfo['state']=='start':
                    componentStateInfo['parameters']={}
                    componentStateInfo['parameters']['jobSize']=self.args['JobSize']
+                   componentStateInfo['parameters']['jobCutSize']=self.args['JobCutSize']
                    componentStateInfo['parameters']['numberOfJobs']=numberOfJobs 
                    componentStateInfo['parameters']['requestIndex']=0
                    componentStateInfo['parameters']['queueIndex']=0
@@ -270,6 +276,20 @@ class ProdMgrComponent:
         state.execute()
         logging.debug("reportJobFailure event handled")
         Session.set_current("default")
+
+    def acquireRequests(self,payload):
+        interval=self.args['RetrievalInterval']
+        # we do not need any robustness scenarios or queing of messages for this one.
+        prodmgrs=self.args['ProdMgrs'].split(',')
+        for prodmgr in prodmgrs:
+            requests=ProdMgr.getRequests(prodmgr,self.args['AgentTag'])
+            for request in requests['keep']:
+                Request.insert(request[0],request[1],prodmgr)
+            logging.debug("Retrieved: "+str(len(requests['keep']))+' requests')
+        if payload==self.args['RandomCheck']:
+            self.args['RandomCheck']=str(random.random())
+            logging.debug("Contacting prodmgrs again in (HH:MM:SS): "+str(interval))
+            self.ms.publish("ProdMgrInterface:AcquireRequests",str(self.args['RandomCheck']),interval)
         
     def startComponent(self):
         """
@@ -295,14 +315,22 @@ class ProdMgrComponent:
             self.ms.subscribeTo("ProdMgrInterface:StartDebug")
             self.ms.subscribeTo("ProdMgrInterface:EndDebug")
             self.ms.subscribeTo("ProdMgrInterface:AddRequest")
+            self.ms.subscribeTo("ProdMgrInterface:AcquireRequests")
             self.ms.subscribeTo("ProdMgrInterface:RemoveIdlingAllocs")
             self.ms.subscribeTo("ProdMgrInterface:ResourcesAvailable")
             self.ms.subscribeTo("ProdMgrInterface:JobSize")
+            self.ms.subscribeTo("ProdMgrInterface:JobCutSize")
             self.ms.subscribeTo("JobSuccess")
             self.ms.subscribeTo("GeneralJobFailure")
             logging.debug("Subscription completed ")
             
-            
+            # emit a acquire requests message.
+            # add a random number to distinguish between requests injected
+            # by persons and by this component.
+            self.args['RandomCheck']=str(random.random()) 
+            self.ms.publish("ProdMgrInterface:AcquireRequests",str(self.args['RandomCheck']))
+            self.ms.commit()
+ 
             # wait for messages
             while True:
                 # SESSION: the message service uses the current session
@@ -310,7 +338,8 @@ class ProdMgrComponent:
                 Session.start_transaction()
 
                 type, payload = self.ms.get()
-                logging.debug("Message type: "+str(type)+", payload: "+str(payload))
+                logging.debug("Receiving message of type: "+str(type)+\
+                   ", payload: "+str(payload))
                 self.__call__(type, payload)
                 # we want to commit after the call has been sucessfuly completed
                 # as this message will tell us the state of the component when
@@ -319,13 +348,13 @@ class ProdMgrComponent:
                 # SESSION: when the message service commits it uses the current session
                 # SESSION: this enables us to events and committing them without
                 # SESSION: committing the event that initiated the handler.
-                logging.debug("Committing Event "+str(type))
+                logging.debug("Committing message of type "+str(type))
                 self.ms.commit()
 
                 # SESSION: commit and close remaining sessions
                 Session.commit_all()
                 Session.close_all()
-                logging.debug("Finished handling event of type "+str(type))
+                logging.debug("Finished handling message of type "+str(type))
         except Exception,ex:
             logging.debug("ERROR: "+str(ex))     
             raise

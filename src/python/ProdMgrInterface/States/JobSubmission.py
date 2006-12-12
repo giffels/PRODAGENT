@@ -8,10 +8,10 @@ from ProdAgentDB import Session
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
+from ProdMgrInterface.JobCutter import cut
 from ProdMgrInterface.Registry import registerHandler
 from ProdMgrInterface.States.StateInterface import StateInterface 
 import ProdMgrInterface.Interface as ProdMgrAPI
-
 
 class JobSubmission(StateInterface):
 
@@ -21,8 +21,16 @@ class JobSubmission(StateInterface):
    def execute(self):
        logging.debug("Executing state: JobSubmission")
        stateParameters=State.get("ProdMgrInterface")['parameters']
-       logging.debug("Emitting <CreateJob> event with payload: "+str(stateParameters['targetFile']))
-       self.ms.publish("CreateJob",stateParameters['targetFile'])
+
+       # START JOBCUTTING HERE
+       logging.debug("Starting job cutting")
+       jobcuts=cut(stateParameters['targetFile'],int(stateParameters['jobCutSize']))
+       for jobcut in jobcuts:
+           logging.debug("Emitting <CreateJob> event with payload: "+\
+               str(jobcut['spec']))
+           self.ms.publish("CreateJob",jobcut['spec'])
+       # END JOBCUTTING HERE
+
        stateParameters['jobIndex']+=1
        componentState="EvaluateJobs"
        State.setState("ProdMgrInterface",componentState)
