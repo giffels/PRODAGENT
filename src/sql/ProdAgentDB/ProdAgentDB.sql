@@ -612,8 +612,9 @@ CREATE TABLE pm_job_cut
    (
     id                    varchar(150)    not null,
     job_id                varchar(150)    not null,
+    job_cut_spec_location varchar(255)    not null default 'None',
     status                enum("running", "finished") default 'running',
-    events_processed      int             
+    events_processed      int             default 0             
    ) Type=InnoDB;
 
 
