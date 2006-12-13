@@ -271,7 +271,7 @@ def UploadtoDLS(datasetPath):
  try:
   fileBlockList = api_out.getDatasetFileBlocks(datasetPath) # from Output DBS
  except DbsException, ex:
-  print "DbsException for DBS API getDatasetFileBlocks(%s): %s %s" %(dataset,ex.getClassName(), ex.getErrorMessage())
+  print "DbsException for DBS API getDatasetFileBlocks(%s): %s %s" %(datasetPath,ex.getClassName(), ex.getErrorMessage())
   sys.exit(1)
                                                                                                         
  for fileBlock in fileBlockList:
