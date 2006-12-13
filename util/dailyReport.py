@@ -112,6 +112,7 @@ class Successes(dict):
         self.setdefault("Datasets", [])
         self.setdefault("SENames", [])
         self.setdefault("Timing", [])
+        self.setdefault("StageOutTiming", [])
 
     def __call__(self, jobInfo):
         datasets = jobInfo['Attrs']['output_datasets']
@@ -128,7 +129,11 @@ class Successes(dict):
         timeTaken = int(appEnd) - int(appStart)
         timePerEvent = float(timeTaken) / float(events)
         self['Timing'].append(int(timePerEvent))
-        
+
+        soStart = jobInfo['Attrs']['timing']['StageOutStart']
+        soEnd = jobInfo['Attrs']['timing']['StageOutEnd']
+        soTime = int(soEnd) - int(soStart )
+        self['StageOutTiming'].append(soTime)
 
     def __str__(self):
         result = "Success Summary for %s Type jobs:\n" % self['Type']
@@ -142,6 +147,13 @@ class Successes(dict):
             minProcTime =  min(self['Timing'])
             result += "Timing: \tAvg Ev/sec %s \tMin: %s \tMax: %s\n" % (avgProcTime, minProcTime, maxProcTime)
 
+        if len(self['StageOutTiming']) > 0:
+            avgSO = float(sum(self['StageOutTiming']))/float(len(self['StageOutTiming']))
+            maxSO = max(self['StageOutTiming'])
+            minSO = min(self['StageOutTiming'])
+            result += "StageOut: \tAvg PerJob %s " % avgSO
+            result += "\tMin: %s \tMax: %s\n" % (minSO, maxSO)
+            
         result += "Storage Elements: %s\n" % listToString(self['SENames'])
         for ds in self['Datasets']:
             result += "Output Dataset: %s\n" % ds
