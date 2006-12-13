@@ -36,6 +36,8 @@ print header
 
 workflows = StatsDB.activeWorkflowSpecs(interval)
 
+
+
 def listToString(l):
     s = str(l)
     s = s.replace("[", "")
@@ -168,7 +170,7 @@ for wf in workflows:
         mergeSSummary = Successes("Merge")
         for mergeSuccess in mergeS:
             mergeSuccess['Attrs'] = StatsAPI.successfulJobProperties(mergeSuccess['job_index'])
-            mergeSSummary(procSuccess)
+            mergeSSummary(mergeSuccess)
         print mergeSSummary
         
     if len(procF) > 0:
