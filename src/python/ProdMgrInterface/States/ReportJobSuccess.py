@@ -100,9 +100,13 @@ class ReportJobSuccess(StateInterface):
        finished=int(parameters['result'])
        if finished==1:
            logging.debug("Request "+str(parameters['request_id'])+" is completed. Removing all allocations and request")
+           self.ms.publish("RequestFinished",parameters['request_id'])
+           logging.debug("Emitting RequestFinished event")
            Request.rm(parameters['request_id'])
        elif finished==2:
            logging.debug("Request "+str(parameters['request_id'])+" is not completed but allocation is")
+           logging.debug("Emitting AllocationFinished event")
+           self.ms.publish("AllocationFinished",parameters['request_id'])
        elif finished==0:
            logging.debug("Request "+str(parameters['request_id'])+" and allocation not completed")
        elif finished==3:

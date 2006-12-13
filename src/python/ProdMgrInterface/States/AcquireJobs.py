@@ -75,8 +75,11 @@ class AcquireJobs(StateInterface):
                if ex.faultCode==2002 or ex.faultCode==2032:
                    Session.rollback()
                    logging.debug("Request: "+str(request_id)+" does not exists or has finished")
-                   logging.debug("Removing request")
+                   logging.debug("Removing request "+str(request_id))
                    Request.rm(request_id)
+                   # emit request finished event
+                   logging.debug("Emitting RequestFinished event")
+                   self.ms.publish("RequestFinished",request_id)
                    State.setParameters("ProdMgrInterface",stateParameters)
                    componentState="AcquireRequest"
                    State.setState("ProdMgrInterface",componentState)

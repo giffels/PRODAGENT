@@ -99,6 +99,9 @@ class ProdMgrComponent:
                 payloadVal = 1
             self.retrieveWork(payloadVal)
             return
+        if event =="ProdMgrInterface:SetLocations":
+            logging.debug("Contacting prodmgrs to set locations")
+            self.setLocations(payload)
         if event =="ProdMgrInterface:AcquireRequests":
             logging.debug("Contacting prodmgrs to acquire new requests")
             self.acquireRequests(payload)
@@ -277,15 +280,43 @@ class ProdMgrComponent:
         logging.debug("reportJobFailure event handled")
         Session.set_current("default")
 
+    def setLocations(self,payload):
+        # check if payload contains user defined location
+        # if not use the ones defined in the configuration file
+        if payload=='':
+           locations=self.args['Locations'].split(',')
+        else:
+           locations=payload.split(',')
+        # retrieve prodmgrs this prodagent is associated to
+        prodmgrs=self.args['ProdMgrs'].split(',')
+        retry=False
+        for prodmgr in prodmgrs:
+            try:
+                ProdMgr.setLocations(prodmgr,locations)
+                ProdMgr.commit()
+            except Exception,ex:
+                retry=True
+                logging.debug("WARNING: Could not set locations for "\
+                   +prodmgr+"  "+str(ex))
+        if retry: 
+            logging.debug("Setting locations was not successful. I will try "+\
+                "again later (HH:MM:SS) 00:05:00 ")
+            self.ms.publish("ProdMgrInterface:SetLocations",payload,"00:05:00")
+
     def acquireRequests(self,payload):
         interval=self.args['RetrievalInterval']
         # we do not need any robustness scenarios or queing of messages for this one.
         prodmgrs=self.args['ProdMgrs'].split(',')
         for prodmgr in prodmgrs:
-            requests=ProdMgr.getRequests(prodmgr,self.args['AgentTag'])
-            for request in requests['keep']:
-                Request.insert(request[0],request[1],prodmgr)
-            logging.debug("Retrieved: "+str(len(requests['keep']))+' requests')
+            try:
+                requests=ProdMgr.getRequests(prodmgr,self.args['AgentTag'])
+                for request in requests['keep']:
+                    Request.insert(request[0],request[1],prodmgr)
+                logging.debug("Retrieved: "+str(len(requests['keep']))+' requests')
+                ProdMgr.commit()
+            except Exception,ex:
+                logging.debug("WARNING: Could not retrieve requests for "\
+                   +prodmgr+"  "+str(ex))
         if payload==self.args['RandomCheck']:
             self.args['RandomCheck']=str(random.random())
             logging.debug("Contacting prodmgrs again in (HH:MM:SS): "+str(interval))
@@ -318,6 +349,7 @@ class ProdMgrComponent:
             self.ms.subscribeTo("ProdMgrInterface:AcquireRequests")
             self.ms.subscribeTo("ProdMgrInterface:RemoveIdlingAllocs")
             self.ms.subscribeTo("ProdMgrInterface:ResourcesAvailable")
+            self.ms.subscribeTo("ProdMgrInterface:SetLocations")
             self.ms.subscribeTo("ProdMgrInterface:JobSize")
             self.ms.subscribeTo("ProdMgrInterface:JobCutSize")
             self.ms.subscribeTo("JobSuccess")
@@ -329,6 +361,7 @@ class ProdMgrComponent:
             # by persons and by this component.
             self.args['RandomCheck']=str(random.random()) 
             self.ms.publish("ProdMgrInterface:AcquireRequests",str(self.args['RandomCheck']))
+            self.ms.publish("ProdMgrInterface:SetLocations",'')
             self.ms.commit()
  
             # wait for messages
