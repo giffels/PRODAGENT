@@ -196,7 +196,9 @@ class DatasetIterator:
         args = {
             'fileNames' : self.currentJobDef['LFNS'],
             }
-    
+            
+        if self.splitType == "file":
+           maxEvents = -1
         if maxEvents != None:
             args['maxEvents'] = maxEvents
         if skipEvents != None:
@@ -249,7 +251,15 @@ class DatasetIterator:
             logging.error(msg)
             return 1
 
-        return self.insertSplitter(splitter, owner)
+        insertSplitterholder = self.insertSplitter(splitter, owner) 
+        jobsleft=DatabaseAPI.countJobs(owner)
+        msg = "There are now %i" % jobsleft
+        msg+= " jobs to release\n"
+        logging.info(msg) 
+        return insertSplitterholder
+
+
+
 
     
 
