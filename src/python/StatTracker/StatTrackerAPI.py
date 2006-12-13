@@ -215,7 +215,7 @@ def workflowSummary(workflowSpec, interval = "72:00:00"):
     totalSuccess =  successfulJobCount(workflowSpec)
     totalFailed = failedJobCount(workflowSpec)
     typeCounts =  jobTypeCounts(workflowSpec)
-
+    
     totalAttempts = totalSuccess + totalFailed
     totalMerges = typeCounts.get('Merge_success', 0) + \
                   typeCounts.get('Merge_failure', 0)
@@ -233,15 +233,18 @@ def workflowSummary(workflowSpec, interval = "72:00:00"):
         "ProcessingSuccess" : typeCounts.get('Processing_success', 0),
         }
 
-    if totalSuccess == 0:
+    if totalAttempts == 0:
         result['PercentSuccess'] = 0
-    else:
-        result['PercentSuccess'] = int(totalAttempts/totalSuccess) * 100
-
-    if totalFailed == 0:
         result['PercentFailed'] = 0
     else:
-        result['PercentFailed'] = int(totalAttempts/totalFailed) * 100
+        result['PercentSuccess'] = int(float(totalSuccess)/float(totalAttempts) * 100)
+        result['PercentFailed'] = int(float(totalFailed)/float(totalAttempts) * 100 )
+        
+        
+
+
+
+
 
     if totalAttempts == 0:
         percentMerges = 0
