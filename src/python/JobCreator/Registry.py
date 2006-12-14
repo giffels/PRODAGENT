@@ -32,7 +32,8 @@ class Registry:
     
     """
     CreatorRegistry = {}
-   
+    GeneratorRegistry = {}
+    
     def __init__(self):
         msg = "JobCreator.Registry should not be initialised"
         raise RuntimeError, msg
@@ -89,4 +90,35 @@ def retrieveCreator(name):
         return registeredObject()
     return registeredObject
 
+
+def registerGenerator(classRef, name):
+    """
+    _regsiterGenerator_
+
+    Register a JobGenerator Plugin Class with the name provided
+
+    """
+    if name in Registry.GeneratorRegistry.keys():
+        msg = "Duplicate Name used to registerGenerator object:\n"
+        msg += "%s already exists\n"
+        raise RuntimeError, msg
+    
+    Registry.GeneratorRegistry[name] = classRef
+    return
+
+
+def retrieveGenerator(name):
+    """
+    _retrieveGenerator_
+
+    Instantiate and return an instance of the Generator registered with the name provided
+
+    """
+    if name not in Registry.GeneratorRegistry.keys():
+        msg = "Name: %s not a registered Generator\n" % name
+        msg += "No object registered with that name in JobCreator Registry"
+        raise RuntimeError, msg
+
+    classRef = Registry.GeneratorRegistry[name]
+    return classRef()
 
