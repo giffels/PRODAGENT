@@ -87,13 +87,13 @@ def indexDict(modName, modRef):
                 continue
             if value[1] == "untracked":
                 continue
-            result.append("%s.%s=%s" % (modName, key, value[2]))
+            result.append((value[0], "%s.%s=%s" % ( modName, key, value[2])))
         else:
             #  //
             # // Recursively descend into PSet
             #//
             children = indexDict(key, value[2])
-            [ result.append( "%s.%s" % (modName, i)) for i in children ]
+            [ result.append( (i[0], "%s.%s" % (modName, i[1]))) for i in children ]
             
     return result
     
@@ -134,7 +134,7 @@ def actOnCfg(nodename, cfgInt):
     indexFile = "%s.index" % cfgFile
     handle = open(indexFile, 'w')
     for line in indices:
-        handle.write("%s\n" % line)
+        handle.write("%s %s\n" % (line[0], line[1]))
     handle.close()
     print "Wrote index file: %s" % indexFile
     return
