@@ -65,6 +65,7 @@ def dropOwner(ownerName):
         dbCur.execute("BEGIN")
         dbCur.execute(sqlStr)
         dbCur.execute("COMMIT")
+        dbCur.close()
     except StandardError, ex:
         dbCur.execute("ROLLBACK")
         dbCur.close()
@@ -115,13 +116,14 @@ def directInsertJobs(ownerIndex, *jobDefs):
 
     sqlStr = sqlStr[0:-1]
     sqlStr += ";"
-
+    
     connection = connect()
     dbCur = connection.cursor()
     try:
         dbCur.execute("BEGIN")
         dbCur.execute(sqlStr)
         dbCur.execute("COMMIT")
+        dbCur.close()
     except StandardError, ex:
         dbCur.execute("ROLLBACK")
         dbCur.close()
@@ -281,6 +283,7 @@ def retrieveJobDefs(ownerId, limit=100):
             dbCur.execute("BEGIN")
             dbCur.execute(delStr)
             dbCur.execute("COMMIT")
+            dbCur.close()
         except StandardError, ex:
             dbCur.execute("ROLLBACK")
             dbCur.close()
