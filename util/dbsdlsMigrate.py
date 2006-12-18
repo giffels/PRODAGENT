@@ -42,8 +42,8 @@ except getopt.GetoptError, ex:
     print usage
     print str(ex)
     sys.exit(1)
-                                                                                                        
-DEFAULT_URL ="http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery"
+ 
+DEFAULT_URL ="http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery"
 inputdbinstance = None
 outputdbinstance = None
 datasetPath = None
