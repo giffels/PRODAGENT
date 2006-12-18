@@ -100,7 +100,7 @@ def indexDict(modName, modRef):
 
 
 
-def actOnCfg(nodename, cfgInt):
+def actOnCfg(nodename, cfgInt, hashValue):
     """
     _actOnCfg_
 
@@ -117,7 +117,7 @@ def actOnCfg(nodename, cfgInt):
     if not doIndex:
         return
     print "Generating Index..."
-    indices = []
+    indices = [("PSetHash", "PSetHash=\"%s\"" % hashValue)]
     #  //
     # // Go through module by module and generate index
     #//
@@ -147,12 +147,13 @@ def findCfgFiles(node):
 
     """
     try:
+        hash = node._OutputDatasets[0]['PSetHash'] 
         cfg = CfgInterface(node.configuration, True)
     except Exception, ex:
         # Not a cfg file
         return
     
-    actOnCfg(node.name, cfg)
+    actOnCfg(node.name, cfg, hash)
     return
 
     
