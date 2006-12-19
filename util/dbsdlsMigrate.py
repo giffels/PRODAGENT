@@ -205,21 +205,14 @@ def UploadtoDBS(datasetPath):
   """
   try:
         blocks = api.listBlocks(datasetPath)
-        aclosedblock=False
         for i in blocks.keys():
           if blocks[str(i)]['status']=="closed": # consider only closed blocks
               UploadDBSBlock(i,blocks)
-              aclosedblock=True 
           else:
-              print "Warning: SKIP the upload of fileblock %s because is not closed!"%i
-          #if skipStatusCheck:
-          #    UploadDBSBlock(i)
-          #else:
-          #  if blocks[str(i)]['status']=="closed": # consider only closed blocks
-          #    UploadDBSBlock(i)
-          print "ERROR: no fileblocks are uploaded because none of them is closed!"
-          sys.exit(1)           
-                                                                                             
+              print "Warning: Fileblock %s was not closed, is being closed now"%i
+              dbsblock = DbsFileBlock (blockName = blocks[str(i)]['blockName'])
+              api.closeFileBlock(dbsblock)
+              UploadDBSBlock(i,blocks)                                                                                        
   except DbsCgiDatabaseError,e:
     print e
   except InvalidDataTier, ex:
