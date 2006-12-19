@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.18 $"
-__revision__ = "$Id: releaseValidation.py,v 1.18 2006/12/05 17:50:20 evansde Exp $"
+__version__ = "$Revision: 1.19 $"
+__revision__ = "$Id: releaseValidation.py,v 1.19 2006/12/06 14:48:58 evansde Exp $"
 
 
 import os
@@ -107,7 +107,7 @@ globalDBS = {
     "DBSAddress": "MCGlobal/Writer",
     "DBSType": "CGI",
     "DLSAddress" : "prod-lfc-cms-central.cern.ch/grid/cms/DLS/LFC",
-    "DLSType" : "DLS_TYPE_LFC",
+    "DLSType" : "DLS_TYPE_DLI",
     
     }
 # for RelVal assume the PU is at the sites to run on:  
@@ -233,7 +233,8 @@ for relTest in relValSpec:
 ## replace restriction only_with_tag with rev :
 #    cfgUrl += "?only_with_tag=%s" % cvsTag
     cfgUrl += "?rev=%s" % cvsTag   
-    
+    print "AFAF cfgUrl %s"%cfgUrl
+
     if not noRecreate:
         wgetCommand = "wget %s -O %s" % (cfgUrl, cfgFile)
         pop = popen2.Popen4(wgetCommand)
