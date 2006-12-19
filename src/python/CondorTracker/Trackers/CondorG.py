@@ -14,28 +14,56 @@ from CondorTracker.Registry import registerTracker
 
 from ResourceMonitor.Monitors.CondorQ import condorQ
 
+#def condorHistoryStatus(clusterId):
+# Changed this to key off the prodAgent ID which
+# is actually saved under they key: ProdAgent_JobID
 
-def condorHistoryStatus(clusterId):
+def condorHistoryStatus(paId):
     """
     _condorHistoryStatus_
 
     Get the exit status of the job from condor_history
 
     """
-    command = "condor_history %s" % clusterId
-    command += " -format \"%d\n\" JobStatus"
+#  this was the old command    
+#    command = "condor_history %s" % clusterId
+#    command += " -format \"%d\n\" JobStatus"
+
+    command = "condor_history -constraint 'ProdAgent_JobID == \""
+    command += paId
+    command += "\"' -format \"%d\\n\" JobStatus"
+ 
     pop = popen2.Popen4(command)
     pop.wait()
     status = pop.poll()
     if status:
+        logging.debug("condor_history status... %s" %status)
+        output = pop.fromchild.read().strip()
+        logging.debug("output was: %s" % output)
         return None
     output = pop.fromchild.read().strip()
     try:
         result = int(output)
+        logging.debug("condor_history returned: %s" % result)
         return result
+
+ #  if the condor_history file becomes corrupted the call throws
+ #  an exception, but still can return the right number.  For
+ #  now we scream but forge ahead
     except ValueError, ex:
-        return None
-    
+        lines=output.split("\n")
+        lines.reverse()
+        retval=int(lines.pop(0).strip())
+        msg = "Exceptions were thrown in the condor_history call:\n"
+        for line in lines:
+            msg += line
+        logging.warning(msg)
+        if retval!=None:
+          return retval
+        else:
+          msg="Retval was %s"%retval
+          logging.debug(msg)
+          return None
     
 
 
@@ -78,20 +106,31 @@ class CondorG(TrackerPlugin):
             if classad == None:
                 # wait for it to show up?? Cooloff period??
                 # Set to complete?? Cant kill without Id...
+                historyStatus = condorHistoryStatus(subId)
+                # Catching jobs failed more or less spectacularly
+                logging.warning("Job %s doesn't have a classad...status=%s" % (subId,historyStatus))
+                # if there's no classad and there's nothing in the history, it evaporated
+                logging.warning("Job %s also wasn't in condor_history -- declaring Failure" % (subId))
+                self.TrackerDB.jobFailed(subId)
                 continue
 
+
+                
             status = classad['JobStatus']
             
             dbData = self.TrackerDB.getJob(subId, True)
             if not dbData['job_attrs'].has_key("CondorID"):
                 condorId = classad['ClusterId']
                 self.TrackerDB.addJobAttributes(subId, CondorID = condorId)
-            
+            if status == 1:
+                logging.debug("Job %s is pending" % (subId))
+                continue
             if status in (2, 4):
                 #  //
                 # // Is Runnning or Complete
                 #//
                 self.TrackerDB.jobRunning(subId)
+                logging.debug("Job %s is running or complete" % (subId))
                 continue
             if status == 5:
                 #  //
@@ -99,12 +138,15 @@ class CondorG(TrackerPlugin):
                 #//
                 self.TrackerDB.jobFailed(subId)
                 self.TrackerDB.killJob(subId)
+                logging.debug("Job %s is held, killed from DB" % (subId))
+                
                 continue
             if status in (3, 6):
                 #  //
                 # // Error or Removed
                 #//
                 self.TrackerDB.jobFailed(subId)
+                logging.debug("Job %s has failed" % (subId))
                 continue
             
         return
@@ -126,11 +168,13 @@ class CondorG(TrackerPlugin):
                 #//  Check History to see how it finished
                 dbData = self.TrackerDB.getJob(runId, True)
                 clusterId = dbData['job_attrs']["CondorID"][-1]
-                historyStatus = condorHistoryStatus(clusterId)
-                if historyStatus != 4:
+                historyStatus = condorHistoryStatus(runId)
+                if historyStatus != 4:               
                     self.TrackerDB.jobFailed(runId)
+                    logging.debug("Job %s has failed, status=%s, clusterId=%s" % (runId,historyStatus,clusterId))
                 else:
                     self.TrackerDB.jobComplete(runId)
+                    logging.debug("Job %s is complete" % (runId))
                 continue
             #  //
             # // If still here, check status for held jobs etc and
@@ -141,6 +185,10 @@ class CondorG(TrackerPlugin):
                 # // Removed or Error
                 #//
                 self.TrackerDB.jobFailed(runId)
+                if status == 3:
+                     logging.debug("Job %s was removed" % (runId))
+                else:
+                     logging.debug("Job %s had an error" % (runId))
                 continue
             if status == 5:
                 #  //
@@ -148,7 +196,16 @@ class CondorG(TrackerPlugin):
                 #//
                 self.TrackerDB.jobFailed(runId)
                 self.TrackerDB.killJob(runId)
+                logging.debug("Job %s is held, killed from database" % (runId))
                 continue
+            if status == 2:
+                logging.debug("Job %s is running" % (runId))
+            if status == 4:
+                logging.debug("Job %s is complete" % (runId))
+            if status == 1:
+                logging.debug("Job %s is idle?" % (runId))
+            if status > 6:
+                logging.debug("Job %s status was %i" % (runId,status))
             
             
     def updateComplete(self, *complete):

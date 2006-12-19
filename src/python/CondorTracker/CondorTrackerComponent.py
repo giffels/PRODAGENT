@@ -230,9 +230,10 @@ class CondorTrackerComponent:
             logging.error(msg)
             return
         jobReport = "%s/FrameworkJobReport.xml" % jobCache
-        
         logging.info("Creating Failure Report for %s" % jobSpecId)
         badReport = FwkJobReport(jobSpecId)
+        badReport.jobSpecId = jobSpecId
+        badReport.jobType = "Processing"
         badReport.status = "Failed"
         badReport.exitCode = 998
         err = badReport.addError(998, "BatchMiddlewareFailure")
