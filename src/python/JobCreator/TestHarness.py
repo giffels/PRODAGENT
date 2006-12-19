@@ -129,6 +129,7 @@ if not os.path.exists(wfCache):
 gen = retrieveGenerator(generator)
 creatorInst = retrieveCreator(creator)
 gen.creator = creatorInst
+print "Generator on Workflow Spec:"
 gen.actOnWorkflowSpec(workflowSpec, wfCache)
 
 

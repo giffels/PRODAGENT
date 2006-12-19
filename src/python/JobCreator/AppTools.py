@@ -100,6 +100,9 @@ class InsertAppDetails:
     a standard exec script framework in the TaskObject.
     
     """
+    def __init__(self, nodeType = "JobSpecNode"):
+        self.nodeType = nodeType
+        
     def __call__(self, taskObject):
         """
         _operator()_
@@ -109,7 +112,7 @@ class InsertAppDetails:
         the main Executable script that will be invoked by ShREEK
 
         """
-        jobSpec = taskObject['JobSpecNode']
+        jobSpec = taskObject[self.nodeType]
         if jobSpec.type != "CMSSW":
             return
         appDetails = jobSpec.application
