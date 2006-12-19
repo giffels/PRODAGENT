@@ -42,8 +42,8 @@ except getopt.GetoptError, ex:
     print usage
     print str(ex)
     sys.exit(1)
-                                                                                                        
-DEFAULT_URL ="http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery"
+ 
+DEFAULT_URL ="http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery"
 inputdbinstance = None
 outputdbinstance = None
 datasetPath = None
@@ -208,13 +208,11 @@ def UploadtoDBS(datasetPath):
         for i in blocks.keys():
           if blocks[str(i)]['status']=="closed": # consider only closed blocks
               UploadDBSBlock(i,blocks)
-
-          #if skipStatusCheck:
-          #    UploadDBSBlock(i)
-          #else:
-          #  if blocks[str(i)]['status']=="closed": # consider only closed blocks
-          #    UploadDBSBlock(i)
-                                                                                                        
+          else:
+              print "Warning: Fileblock %s was not closed, is being closed now"%i
+              dbsblock = DbsFileBlock (blockName = blocks[str(i)]['blockName'])
+              api.closeFileBlock(dbsblock)
+              UploadDBSBlock(i,blocks)                                                                                        
   except DbsCgiDatabaseError,e:
     print e
   except InvalidDataTier, ex:
@@ -271,7 +269,7 @@ def UploadtoDLS(datasetPath):
  try:
   fileBlockList = api_out.getDatasetFileBlocks(datasetPath) # from Output DBS
  except DbsException, ex:
-  print "DbsException for DBS API getDatasetFileBlocks(%s): %s %s" %(dataset,ex.getClassName(), ex.getErrorMessage())
+  print "DbsException for DBS API getDatasetFileBlocks(%s): %s %s" %(datasetPath,ex.getClassName(), ex.getErrorMessage())
   sys.exit(1)
                                                                                                         
  for fileBlock in fileBlockList:
