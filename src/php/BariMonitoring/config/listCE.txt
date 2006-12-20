@@ -1,0 +1,10 @@
+gridba2.ba.infn.it
+ce03-lcg.cr.cnaf.infn.it
+prod-ce-01.pd.infn.it
+gridce.pi.infn.it
+cmsrm-ce01.roma1.infn.it
+t2-ce-02.lnl.infn.it
+lcgce01.gridpp.rl.ac.uk
+grid109.kfki.hu
+gw39.hep.ph.ic.ac.uk
+heplnx201.pp.rl.ac.uk

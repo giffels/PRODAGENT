@@ -1,0 +1,1 @@
+Requirements = ((other.GlueCEInfoHostName == "lcgce01.gridpp.rl.ac.uk") || (other.GlueCEInfoHostName == "gridce.pi.infn.it") && (other.GlueCEPolicyMaxWallClockTime>=3000));

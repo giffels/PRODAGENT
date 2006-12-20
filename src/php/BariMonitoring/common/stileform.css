@@ -1,0 +1,16 @@
+form {font-family:Verdana,Arial,Geneva,sans-serif;width:650px;}
+legend {font-size:100%;border:1px solid #000;background:#efefef;color:#c00;padding:3px;}
+
+fieldset {padding:10px;}
+
+fieldset.pubblicazione legend {font-size:70%;color:#000;}
+fieldset.pubblicazione input {margin:0px;margin-top:10px;}
+
+fieldset.notizia {padding:15px;}
+fieldset.notizia textarea {border:1px solid #000;background:#dedede;}
+
+fieldset.submit {text-align:right;}
+fieldset.submit input{border:1px solid #777;background:#efefef;cursor:hand;pointer:hand;}
+
+input.testo {font-size:85%;border:1px solid #000;background:#dedede;}
+select.testo {font-size:85%;border:1px solid #000;background:#dedede;}
