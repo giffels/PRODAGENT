@@ -210,8 +210,16 @@ class JobCreatorComponent:
             logging.debug(
                 " Adding cleanup triggers for %s" % self.cleanupFlags
                 )
+          
+        except Exception, ex:
+            # NOTE: we can have different errors here 
+            # NOTE: transition, submission, other...
+            logging.error("JobState Error:%s" % str(ex))
+            return
 
-            cleanFlags = self.cleanupFlags
+        try:
+            cleanFlags = []
+            cleanFlags.extend(self.cleanupFlags)
             if jobType == "Merge":
                 logging.debug(
                     "Adding MergeSensor Cleanup Flag to Merge type job")
@@ -228,14 +236,13 @@ class JobCreatorComponent:
                 # // Only set the action if there are components
                 #//  that need it.
                 self.trigger.setAction(jobname,"cleanup","jobCleanAction")
-                
-                
         except Exception, ex:
             # NOTE: we can have different errors here 
             # NOTE: transition, submission, other...
-            logging.error("JobState Error:%s" % str(ex))
+            logging.error("Cleanup flag Error:%s" % str(ex))
             return
         
+      
         #  //
         # // Publish SubmitJob event
         #//
