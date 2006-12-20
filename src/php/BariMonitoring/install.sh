@@ -255,11 +255,11 @@ echo "your Production Agent configuration file."
 echo     
 echo "mysql> UPDATE mysql.user"
 echo "         SET Password = OLD_PASSWORD('ProdAgentPassword')"
-echo "         WHERE Host = 'localhost' AND User = 'ProdAgentUser' "
+echo "         WHERE Host = 'localhost' AND User = 'ProdAgentUser'; "
 echo "mysql> FLUSH PRIVILEGES; "
 echo
 echo "Start the deamon to get component log messages updated regularly :"
-echo "  sh ${BASEDIR}/apache/htdocs/PA/ComponentLog.sh &"
+echo "  (cd ${BASEDIR}/apache/htdocs/PA; nohup sh ComponentLog.sh &)"
 echo
 echo "Start apache:"
 echo "  ${BASEDIR}/apache/bin/apachectl start"
