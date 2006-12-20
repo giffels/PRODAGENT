@@ -215,8 +215,23 @@ class LCGCreator(CreatorInterface):
             dashboard.addKeywordArg(
                 ServerHost = dashboardCfg['DestinationHost'],
                 ServerPort = dashboardCfg['DestinationPort'],
+                ProdAgentJobID = taskObject['JobName'],
                 DashboardInfo = taskObject['DashboardInfoLocation'])
+
+            
+            #  //
+            # // Use realtime event monitoring?
+            #//
+            evHost = dashboardCfg.get("EventDestinationHost", None)
+            evPort = dashboardCfg.get("EventDestinationPort", None)
+            if evPort and evHost:
+                dashboard.addNode(IMProvNode("EventDestination", None,
+                                             Host = evHost, Port = evPort))
+
+
             shreekConfig.addMonitorCfg(dashboard)
+            
+
 
         return
     
