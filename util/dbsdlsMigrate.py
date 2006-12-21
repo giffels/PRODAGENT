@@ -17,7 +17,7 @@ import dlsClient
 from dlsDataObjects import *
 
 usage="\n Purpose of the script is Migrate a dataset to global DBS/DLS:\n " + \
-"   - fetch from input DBS the contents (closed blocks) of the dataset, save it in a xml file and then write the contents of that xml to output DBS (modifying the family name if provided)\n " + \
+"   - fetch from input DBS the contents (closed blocks) of the dataset, save it in a xml file and then write the contents of that xml to output DBS (modifying the family name)\n " + \
 "   - get the fileblocks in the output DBS for a given dataset \n " + \
 "   - migrate those fileblock locations from an input DLS to a destination DLS \n " + \
 " \n Usage: python dbsMigrateBlocks.py <options> " + \
@@ -26,7 +26,6 @@ usage="\n Purpose of the script is Migrate a dataset to global DBS/DLS:\n " + \
 " --DBSURL=<URL> \t\t\t\t\t DBS URL \n " + \
 " --InputDBSAddress=MCLocal_X/Writer\t input DBS instance \n " + \
 " --OutputDBSAddress=MCGlobal/Writer\t output DBS instance \n " + \
-" --family=<application family> \t new family to use in the output DBS \n " + \
 " --InputDLSAddress=<lfc-cms-test.cern.ch/grid/cms/DLS/MCLocal_Test>\t input DLS instance \n " + \
 " --InputDLSType=<DLS_TYPE_LFC> \t\t\t\t DLS type \n " + \
 " --OutputDLSAddress=<lfc-cms-test.cern.ch/grid/cms/DLS/LFC>\t output DLS instance \n " + \
@@ -35,7 +34,7 @@ usage="\n Purpose of the script is Migrate a dataset to global DBS/DLS:\n " + \
 " --help \t\t\t\t\t print this help \n\n " + \
 " For example: \n  python dbsdlsMigrate.py --InputDBSAddress=MCLocal_4/Writer --OutputDBSAddress=Dev/fanfani --family=Skimming --InputDLSAddress=prod-lfc-cms-central.cern.ch/grid/cms/DLS/MCLocal_4 --InputDLSType DLS_TYPE_LFC --OutputDLSAddress=prod-lfc-cms-central.cern.ch/grid/cms/DLS/MCLocal_Test --datasetPath=/CSA06-103-os-EWKSoup0-0/RECOSIM/CMSSW_1_0_4-hg_HiggsWW_WWFilter-1161045561 \n"
 
-valid = ['DBSURL=','InputDBSAddress=','OutputDBSAddress=','InputDLSAddress=','InputDLSType=','OutputDLSAddress=','OutputDLSType=','datasetPath=','family=','blockcheck','help']
+valid = ['DBSURL=','InputDBSAddress=','OutputDBSAddress=','InputDLSAddress=','InputDLSType=','OutputDLSAddress=','OutputDLSType=','datasetPath=','blockcheck','help']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -47,7 +46,6 @@ DEFAULT_URL ="http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery"
 inputdbinstance = None
 outputdbinstance = None
 datasetPath = None
-newfamily = None
 StatusCheck = False
 inputdlsendpoint = None
 outputdlsendpoint = None
@@ -63,8 +61,6 @@ for opt, arg in opts:
         outputdbinstance = arg
     if opt == "--datasetPath":
         datasetPath = arg
-    if opt == "--family":
-        newfamily = arg
     if opt == "--blockcheck":
         StatusCheck = True
     if opt == "--InputDLSAddress":
@@ -176,11 +172,27 @@ def UploadDBSBlock(i,blocks):
     f.close()
 
     print "o Dataset information fetched from " + inargs['instance'] + " in XML format is saved in " + name +  blockName +  ".xml"
+
+    try:
+      swversion=string.split(datasetPath,"/")[3].split("-")[0] # extract CMSSW version
+    except:
+      swversion="*"   # look for all CMSSW version
+    appPath="/%s/*/cmsRun"%swversion
+    unmerged_datasetPath="%s-unmerged"%datasetPath
+    datasetsFromApp = api.listDatasetsFromApp(appPath)
+    newfamily = None
+    for appdata in datasetsFromApp:
+     if appdata['datasetPathName'] == unmerged_datasetPath:
+       newfamily = appdata['application']['family']
+
     ## replace family 
     if newfamily != None:
        print "o Replacing family with %s"%newfamily
        xmlinput = replacefamily(name +  blockName + ".xml",newfamily)
        #print xmlinput
+    else:
+       print "WARNING: family is not replaced because NO application _family_ was found for the unmerged dataset %s "%unmerged_datasetPath
+
 
 ## Upload
     try:
