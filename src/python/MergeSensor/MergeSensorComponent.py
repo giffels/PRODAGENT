@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.49 2006/12/01 10:40:20 ckavka Exp $"
-__version__ = "$Revision: 1.49 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.50 2006/12/06 14:18:59 evansde Exp $"
+__version__ = "$Revision: 1.50 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -92,7 +92,7 @@ class MergeSensorComponent:
         # initialize the server
         self.args = {}
         self.args.setdefault("DBSURL",
-          "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery")
+          "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery")
         self.args.setdefault("DBSAddress", None)
         self.args.setdefault("DBSType", "CGI")
         self.args.setdefault("ComponentDir", None)
@@ -406,14 +406,27 @@ class MergeSensorComponent:
             self.stopWatching(payload)
             return
 
+        # close a request
+        if event == "CloseRequest":
+            self.closeRequest(payload)
+            return
+
         # a job has finished
         if event == "JobSuccess":
-            self.jobSuccess(payload)
+            try:
+                self.jobSuccess(payload)
+            except:
+                logging.error("Unexpected error when handling a " + \
+                              "JobSuccess event: " + sys.exc_info()[0])
             return
 
         # a job has failed
         if event == "GeneralJobFailure":
-            self.jobFailed(payload)
+            try:
+                self.jobFailed(payload)
+            except:
+                logging.error("Unexpected error when handling a " + \
+                              "GeneralFailure event: " + sys.exc_info()[0])
             return
 
         # wrong event
@@ -985,6 +998,80 @@ class MergeSensorComponent:
         
         logging.info("Dataset %s scheduled for closing operation." % \
                      datasetPath)
+
+    ##########################################################################
+    # handle close request event
+    ##########################################################################
+
+    def closeRequest(self, workflowFile):
+        """
+        _closeRequest_
+
+        Stop watching request, removing all associated information from the
+        list of watched datasets, and also from the database for all
+        datasets involved in the request
+ 
+        Arguments:
+
+          workFlow file -- The workflow file
+
+        Return:
+
+          none
+
+        """
+
+        # read the WorkflowSpecFile
+        try:
+            wfile = WorkflowSpec()
+            wfile.load(workflowFile)
+
+        # wrong dataset file
+        except Exception, msg:
+            logging.error("Error loading workflow specifications from %s" \
+                          % workflowFile)
+            return
+
+        # get output dataset names
+        try:
+            outputDatasetsList = wfile.outputDatasets()
+            
+            outputDatasetsList = ["/%s/%s/%s" % (ds['PrimaryDataset'], \
+                                                    ds['DataTier'], \
+                                                    ds['ProcessedDataset']) \
+                                   for ds in outputDatasetsList]
+            
+        except Exception, msg:
+            
+            logging.error("Error getting output datasets from %s" \
+                          % workflowFile)
+            return
+
+        # critical region start
+        self.cond.acquire()
+
+        # get list of currently watched datasets
+        datasetList = self.datasets.list()
+        
+        toBeRemovedList = []
+        
+        # verify list of datasets to be removed
+        for ds in outputDatasetsList:
+            
+            # if found, then add to the list of datasets to be removed
+            if ds in datasetList:
+                
+                toBeRemovedList.append(ds)
+                
+        # add refined list
+        self.toBeRemoved.extend(toBeRemovedList)
+
+        # critical region end
+        self.cond.release()
+        
+
+        logging.info("Datasets %s scheduled for closing operation." % \
+                     toBeRemovedList)
 
     ##########################################################################
     # handle a JobSuccess event
@@ -2153,6 +2240,7 @@ class MergeSensorComponent:
         self.ms.subscribeTo("MergeSensor:NoJobLimits")
         self.ms.subscribeTo("MergeSensor:ReSubmit")
         self.ms.subscribeTo("MergeSensor:CloseDataset")
+        self.ms.subscribeTo("CloseRequest")
         self.ms.subscribeTo("JobSuccess")
         self.ms.subscribeTo("GeneralJobFailure")
        
