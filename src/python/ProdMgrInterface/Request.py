@@ -19,9 +19,9 @@ def has(request_id):
         return True
     return False 
 
-def insert(request_id,priority,prodMgr):
-    sqlStr="""INSERT INTO pm_request(id,url,priority) 
-        VALUES("%s","%s","%s") ON DUPLICATE KEY UPDATE priority="%s"; """ %(request_id,prodMgr,str(priority),str(priority))
+def insert(request_id,priority,request_type,prodMgr):
+    sqlStr="""INSERT INTO pm_request(id,url,request_type,priority) 
+        VALUES("%s","%s","%s","%s") ON DUPLICATE KEY UPDATE priority="%s"; """ %(request_id,prodMgr,str(request_type),str(priority),str(priority))
     Session.execute(sqlStr)
 
 def getUrl(request_id):

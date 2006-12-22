@@ -5,7 +5,7 @@ from ProdMgrInterface import Management
 
 service_map={'userID':'prodMgrRequest.userID',\
              'acquireAllocation':'prodMgrProdAgent.acquireAllocation',\
-             'acquireJob':'prodMgrProdAgent.acquireJob',\
+             'acquireEventJob':'prodMgrProdAgent.acquireEventJob',\
              'releaseJob':'prodMgrProdAgent.releaseJob',\
              'releaseAllocation':'prodMgrProdAgent.releaseAllocation',\
              'getRequests':'prodMgrProdAgent.getRequests',\
@@ -17,8 +17,8 @@ def userID(serverUrl,componentID="defaultComponent"):
 def acquireAllocation(serverUrl,request_id,amount,componentID="defaultComponent"):
    return Management.executeCall(serverUrl,"prodMgrProdAgent.acquireAllocation",[request_id,amount],componentID)
    
-def acquireJob(serverUrl,request_id,parameters,componentID="defaultComponent"):
-   return Management.executeCall(serverUrl,"prodMgrProdAgent.acquireJob",[request_id,parameters],componentID)
+def acquireEventJob(serverUrl,request_id,parameters,componentID="defaultComponent"):
+   return Management.executeCall(serverUrl,"prodMgrProdAgent.acquireEventJob",[request_id,parameters],componentID)
 
 def releaseJob(serverUrl,jobspec,events_completed,componentID="defaultComponent"):
    return Management.executeCall(serverUrl,"prodMgrProdAgent.releaseJob",[str(jobspec),events_completed],componentID)

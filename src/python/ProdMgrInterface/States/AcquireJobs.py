@@ -26,12 +26,12 @@ class AcquireJobs(StateInterface):
        request_id=stateParameters['RequestID']
        logging.debug("Acquiring jobs with a maximum size of: "+str(stateParameters['jobSize'])+" events ")
        parameters={'numberOfJobs':stateParameters['numberOfJobs'],\
-           'prefix':'job','event_count':int(stateParameters['jobSize'])}
+           'prefix':'job','eventsPerJob':int(stateParameters['jobSize'])}
        requestURL=Request.getUrl(request_id)
        if stateParameters['stateType']=='recover':
            logging.debug("stateType is recover")
            try:
-               jobs=ProdMgrAPI.retrieve(requestURL,"acquireJob","ProdMgrInterface")
+               jobs=ProdMgrAPI.retrieve(requestURL,"acquireEventJob","ProdMgrInterface")
            except ProdAgentException,ex:
                if ex['ErrorNr']==3000:
                    logging.debug("No uncommited service calls: "+str(ex))
@@ -40,12 +40,13 @@ class AcquireJobs(StateInterface):
            try:
                logging.debug("Acquiring jobs from request : "+str(request_id)+\
                    " with parameters "+str(parameters))
-               jobs=ProdMgrAPI.acquireJob(requestURL,request_id,parameters)
+               jobs=ProdMgrAPI.acquireEventJob(requestURL,request_id,parameters)
                logging.debug("Acquired jobs: "+str(jobs))
            except ProdAgentException,ex:
                    Session.rollback()
                    logging.debug("Problem connecting to server "+stateParameters['ProdMgrURL']+" : "+str(ex))
                    stateParameters['requestIndex']+=1
+                   Cooloff.insert(stateParameters['ProdMgrURL'],"00:10:00")
                    State.setParameters("ProdMgrInterface",stateParameters)
                    componentState="AcquireRequest"
                    State.setState("ProdMgrInterface",componentState)
@@ -55,6 +56,7 @@ class AcquireJobs(StateInterface):
                if str(ex).find('Connection refused')>-1:
                    logging.debug("Problem connecting to url: "+str(ex))
                    Session.rollback()
+                   Cooloff.insert(stateParameters['ProdMgrURL'],"00:10:00")
                    componentState="AcquireRequest"
                    State.setState("ProdMgrInterface",componentState)
                    stateParameters['requestIndex']+=1

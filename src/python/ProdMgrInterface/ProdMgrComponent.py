@@ -201,8 +201,9 @@ class ProdMgrComponent:
             prodMgr=components[0]
             requestId=components[1].split("=")[1]
             priority=components[2].split("=")[1]
+            request_type=components[3].split("=")[1]
             logging.debug("Add request: "+requestId+" with priority "+priority+" for prodmgr: "+prodMgr)
-            Request.insert(requestId,priority,prodMgr)
+            Request.insert(requestId,priority,request_type,prodMgr)
             logging.debug("Added request. There are now "+str(Request.size())+" requests in the queue ")
         except Exception,ex:
             logging.debug("ERROR "+str(ex))
@@ -300,7 +301,7 @@ class ProdMgrComponent:
                    +prodmgr+"  "+str(ex))
         if retry: 
             logging.debug("Setting locations was not successful. I will try "+\
-                "again later (HH:MM:SS) 00:05:00 ")
+                "again later (HH:MM:SS) 00:10:00 ")
             self.ms.publish("ProdMgrInterface:SetLocations",payload,"00:05:00")
 
     def acquireRequests(self,payload):
@@ -311,7 +312,7 @@ class ProdMgrComponent:
             try:
                 requests=ProdMgr.getRequests(prodmgr,self.args['AgentTag'])
                 for request in requests['keep']:
-                    Request.insert(request[0],request[1],prodmgr)
+                    Request.insert(request[0],request[1],request[2],prodmgr)
                 logging.debug("Retrieved: "+str(len(requests['keep']))+' requests')
                 ProdMgr.commit()
             except Exception,ex:
