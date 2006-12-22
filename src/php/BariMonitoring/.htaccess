@@ -1,3 +1,0 @@
-php_value include_path ".:./common:./local:../adodb:./modules"
-
-
