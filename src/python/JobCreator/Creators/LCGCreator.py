@@ -16,6 +16,7 @@ from JobCreator.ScramSetupTools import setupScramEnvironment
 from JobCreator.ScramSetupTools import scramProjectCommand
 from JobCreator.ScramSetupTools import scramRuntimeCommand
 
+from IMProv.IMProvNode import IMProvNode
 
 class LCGCreator(CreatorInterface):
     """
