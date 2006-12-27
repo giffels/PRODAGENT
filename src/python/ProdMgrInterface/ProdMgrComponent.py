@@ -44,6 +44,7 @@ class ProdMgrComponent:
             self.args = {}
             self.args['Logfile'] = None
             self.args['JobSize']=100
+            self.args['Locations']='none'
             self.args.update(args)
             if self.args['Logfile'] == None:
                self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
@@ -285,6 +286,8 @@ class ProdMgrComponent:
         # check if payload contains user defined location
         # if not use the ones defined in the configuration file
         if payload=='':
+           if self.args['Locations']=='':
+               return
            locations=self.args['Locations'].split(',')
         else:
            locations=payload.split(',')
