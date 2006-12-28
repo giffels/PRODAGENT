@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.19 $"
-__revision__ = "$Id: releaseValidation.py,v 1.19 2006/12/06 14:48:58 evansde Exp $"
+__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: releaseValidation.py,v 1.20 2006/12/19 14:02:19 afanfani Exp $"
 
 
 import os
@@ -360,14 +360,25 @@ for relTest in relValSpec:
         #  //And create a different tier for each basic tier
         # //
         #//
+        datasets = val.datasets()
+        for outDataset in datasets:
+            dataTier = outDataset['dataTier']
 
-        tierList = splitMultiTier(outModName)    
-        for dataTier in tierList:
             processedDS = "%s-%s-%s-unmerged" % (
                 cmsRun.application['Version'], outModName, timestamp)
-            outDS = cmsRun.addOutputDataset(prodName, 
+
+            if outDataset.has_key("processedDataset"):
+                processedDS = outDataset['processedDataset']
+
+            primaryName = prodName
+            if outDataset.has_key("primaryDataset"):
+                primaryName = outDataset['primaryDataset']
+        
+
+            outDS = cmsRun.addOutputDataset(primaryName, 
                                             processedDS,
                                             outModName)
+                                        
             outDS['DataTier'] = dataTier
             outDS["ApplicationName"] = cmsRun.application["Executable"]
             outDS["ApplicationProject"] = cmsRun.application["Project"]
@@ -381,8 +392,30 @@ for relTest in relValSpec:
                 outDS['PSetHash'] = hashValue
             else:
                 outDS['PSetHash'] = RealPSetHash
-                outDS['PSetHash'] = PSetHashValue
             datasetList.append(outDS.name())
+        
+##        tierList = splitMultiTier(outModName)    
+##        for dataTier in tierList:
+##            processedDS = "%s-%s-%s-unmerged" % (
+##                cmsRun.application['Version'], outModName, timestamp)
+##            outDS = cmsRun.addOutputDataset(prodName, 
+##                                            processedDS,
+##                                            outModName)
+##            outDS['DataTier'] = dataTier
+##            outDS["ApplicationName"] = cmsRun.application["Executable"]
+##            outDS["ApplicationProject"] = cmsRun.application["Project"]
+##            outDS["ApplicationVersion"] = cmsRun.application["Version"]
+##            outDS["ApplicationFamily"] = outModName
+##            if fakeHash:
+##                guid = MCPayloadsUUID.uuidgen()
+##                if guid == None:
+##                    guid = MCPayloadsUUID.uuid()
+##                hashValue = "hash=%s;guid=%s" % (RealPSetHash, guid)
+##                outDS['PSetHash'] = hashValue
+##            else:
+##                outDS['PSetHash'] = RealPSetHash
+##                outDS['PSetHash'] = PSetHashValue
+##            datasetList.append(outDS.name())
     
     stageOut = cmsRun.newNode("stageOut1")
     stageOut.type = "StageOut"
