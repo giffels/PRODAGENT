@@ -45,6 +45,7 @@ class JobCreatorComponent:
         self.args['Logfile'] = None
         self.args['JobState'] = True
         self.args['maxRetries'] = 3
+        self.args['HashDirs'] = True
         self.args.update(args)
         self.job_state = self.args['JobState']
         if self.args['Logfile'] == None:
@@ -175,10 +176,23 @@ class JobCreatorComponent:
         jobname = jobSpec.parameters['JobName']
         jobType = jobSpec.parameters['JobType']
         workflowName = jobSpec.payload.workflow
-
-        jobCache = os.path.join(self.args['ComponentDir'],
-                                workflowName,
-                                jobname)
+        
+        
+        if self.args['HashDirs']:
+            runNum = jobSpec.parameters.get("RunNumber", None)
+            if runNum == None:
+                runNum = abs(hash(jobname))
+                runNum = "m%s" % runNum
+            jobCache = os.path.join(self.args['ComponentDir'],
+                                    workflowName,
+                                    str(runNum))
+        else:
+            jobCache = os.path.join(self.args['ComponentDir'],
+                                    workflowName,
+                                    jobname)
+            
+        
+        
         if not os.path.exists(jobCache):
             os.makedirs(jobCache)
 
