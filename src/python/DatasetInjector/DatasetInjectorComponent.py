@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.6 2006/10/10 14:18:25 evansde Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.7 2006/11/30 17:13:28 evansde Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -148,11 +148,19 @@ class DatasetInjectorComponent:
             logging.error(msg)
             return
         logging.debug("Import successful")
+
+        newIterator.loadPileupDatasets()
+        #SEnames=self.iterator.loadPileupSites()
+        #if (isinstance(SEnames,list)) and len(SEnames) > 0:
+        #   site=",".join(SEnames)
+        #   self.setSitePref(site) 
+        
         #  //
         # // Keep ref to iterator
         #//
         self.iterators[workflowName] = newIterator
         self.iterator = newIterator
+        self.iterator.save(self.args['WorkflowCache'])
         return
 
     
@@ -297,9 +305,13 @@ class DatasetInjectorComponent:
             numJobs, self.iterator.workflowSpec.workflowName(),
             )
                       )
+
+
+        self.iterator.load(self.args['WorkflowCache'])
         jobDefs = self.iterator.releaseJobs(numJobs)
         logging.debug("Released %s jobs" % len(jobDefs))
-
+        self.iterator.save(self.args['WorkflowCache'])
+        
         for jdef in jobDefs:
             jobSpec = self.iterator(jdef)
 
@@ -312,11 +324,7 @@ class DatasetInjectorComponent:
 
             self.ms.commit()
 
-        #  //
-        # // Save current run
-        #//
-        self.iterator.save(self.args['WorkflowCache'])
-        
+     
         return
         
         

@@ -17,10 +17,15 @@ import logging
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.LFNAlgorithm import createUnmergedLFNs
 from ProdCommon.CMSConfigTools.CfgGenerator import CfgGenerator
+from PileupTools.PileupDataset import PileupDataset, createPileupDatasets, getPileupSites
 
 from DatasetInjector.SplitterMaker import createJobSplitter
 import DatasetInjector.DatasetInjectorDB as DatabaseAPI
 
+from IMProv.IMProvDoc import IMProvDoc
+from IMProv.IMProvNode import IMProvNode
+from IMProv.IMProvQuery import IMProvQuery
+from IMProv.IMProvLoader import loadIMProvFile
 
 class FilterSites:
     """
@@ -54,7 +59,7 @@ class DatasetIterator:
         self.splitType = \
                 self.workflowSpec.parameters.get("SplitType", "file").lower()
         self.splitSize = int(self.workflowSpec.parameters.get("SplitSize", 1))
-        
+        self.pileupDatasets = {}
         #  //
         # // Does the workflow contain a block restriction??
         #//
@@ -108,6 +113,39 @@ class DatasetIterator:
         newJobSpec = self.createJobSpec(jobDef)
         self.count += 1
         return newJobSpec
+
+
+    def loadPileupDatasets(self):
+        """
+        _loadPileupDatasets_
+        
+        Are we dealing with pileup? If so pull in the file list
+        
+        """
+        puDatasets = self.workflowSpec.pileupDatasets()
+        if len(puDatasets) > 0:
+            logging.info("Found %s Pileup Datasets for Workflow: %s" % (
+                len(puDatasets), self.workflowSpec.workflowName(),
+                ))
+            self.pileupDatasets = createPileupDatasets(self.workflowSpec)
+        return
+
+    def loadPileupSites(self):
+        """
+        _loadPileupSites_
+                                                                                                              
+        Are we dealing with pileup? If so pull in the site list
+                                                                                                              
+        """
+        sites = []
+        puDatasets = self.workflowSpec.pileupDatasets()
+        if len(puDatasets) > 0:
+            logging.info("Found %s Pileup Datasets for Workflow: %s" % (
+                len(puDatasets), self.workflowSpec.workflowName(),
+                ))
+            sites = getPileupSites(self.workflowSpec)
+        return sites
+                               
 
     def inputDataset(self):
         """
@@ -203,9 +241,25 @@ class DatasetIterator:
             args['maxEvents'] = maxEvents
         if skipEvents != None:
             args['skipEvents'] = skipEvents
-        
-        
+
         jobCfg = generator(self.currentJob, **args)
+        #  //
+        # // Is there pileup for this node?
+        #//
+        if self.pileupDatasets.has_key(jobSpecNode.name):
+            puDataset = self.pileupDatasets[jobSpecNode.name]
+            logging.debug("Node: %s has a pileup dataset: %s" % (
+                jobSpecNode.name,  puDataset.dataset,
+                ))
+            mixingModules = jobCfg.mixingModules()
+            fileList = puDataset.getPileupFiles()
+            quotedFiles = [ "\"%s\"" % i for i in fileList ]
+            for mixMod in mixingModules:
+                inpPSet = mixMod['input'][2]
+                inpPSet['fileNames'] = ('vstring', 'untracked', quotedFiles)
+            
+            
+
         
         jobSpecNode.configuration = jobCfg.cmsConfig.asPythonString()
         jobSpecNode.loadConfiguration()
@@ -453,13 +507,30 @@ class DatasetIterator:
         the basename of the workflow file
 
         """
-        workflowName =  self.workflowSpec.workflowName()
-        fileBase = os.path.join(directory, workflowName)
+        doc = IMProvDoc("DatasetIterator")
+        node = IMProvNode(self.workflowSpec.workflowName())
+        doc.addNode(node)
 
-        runFile = "%s.count" % fileBase
+        node.addNode(IMProvNode("Run", None, Value = str(self.count)))
+
+        node.addNode(IMProvNode("SplitType", None, Value = str(self.splitType)))
+        node.addNode(IMProvNode("SplitSize", None, Value = str(self.splitSize)))
+
         
-        handle = open(runFile, 'w')
-        handle.write(str(self.count))
+
+        pu = IMProvNode("Pileup")
+        node.addNode(pu)
+        for key, value in self.pileupDatasets.items():
+            puNode = value.save()
+            puNode.attrs['PayloadNode'] = key
+            pu.addNode(puNode)
+
+        fname = os.path.join(
+            directory,
+            "%s-Persist.xml" % self.workflowSpec.workflowName()
+            )
+        handle = open(fname, 'w')
+        handle.write(doc.makeDOMDocument().toprettyxml())
         handle.close()
         
         
@@ -475,15 +546,37 @@ class DatasetIterator:
         settings
 
         """
-        workflowName =  self.workflowSpec.workflowName()
-        fileBase = os.path.join(directory, workflowName)
-        runFile = "%s.count" % fileBase
-
-        runContent = readStringFromFile(runFile)
-        logging.debug("Loaded Run number for workflow: %s" % runContent)
-        if runContent != None:
-            self.count = int(runContent)
+        fname = os.path.join(
+            directory,
+            "%s-Persist.xml" % self.workflowSpec.workflowName()
+            )
         
+        node = loadIMProvFile(fname)
+
+        qbase = "/DatasetIterator/%s" % self.workflowSpec.workflowName()
+        
+        runQ = IMProvQuery("%s/Run[attribute(\"Value\")]" % qbase)
+        splitTQ = IMProvQuery("%s/SplitType[attribute(\"Value\")]" % qbase)
+        splitSQ = IMProvQuery("%s/SplitSize[attribute(\"Value\")]" % qbase)
+        
+        runVal = int(runQ(node)[-1])
+
+        splitT = str(splitTQ(node)[-1])
+        splitS = int(splitSQ(node)[-1])
+      
+
+        self.count = runVal
+        self.splitType = splitT
+        self.splitSize = splitS
+        
+        puQ = IMProvQuery("%s/Pileup/*" % qbase)
+        puNodes = puQ(node)
+        for puNode in puNodes:
+            payloadNode = str(puNode.attrs.get("PayloadNode"))
+            puDataset = PileupDataset("dummy", 1)
+            puDataset.load(puNode)
+            self.pileupDatasets[payloadNode] = puDataset
+
         return
     
 
