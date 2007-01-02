@@ -14,8 +14,12 @@ import os
 
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
-from MCPayloads.JobSpec import JobSpec
-from JobCreator.JobGenerator import JobGenerator
+from ProdCommon.MCPayloads.JobSpec import JobSpec
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+
+from JobCreator.Registry import retrieveGenerator
+from JobCreator.Registry import retrieveCreator
+
 from JobCreator.JCException import JCException
 from MessageService.MessageService import MessageService
 from JobState.JobStateAPI import JobStateChangeAPI
@@ -23,6 +27,7 @@ from JobState.JobStateAPI import JobStateInfoAPI
 from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 import JobCreator.Creators
+import JobCreator.Generators
 
 
 class JobCreatorComponent:
@@ -36,9 +41,11 @@ class JobCreatorComponent:
     def __init__(self, **args):
         self.args = {}
         self.args['CreatorName'] = "testCreator"
+        self.args['GeneratorName'] = "Default"
         self.args['Logfile'] = None
         self.args['JobState'] = True
         self.args['maxRetries'] = 3
+        self.args['HashDirs'] = True
         self.args.update(args)
         self.job_state = self.args['JobState']
         if self.args['Logfile'] == None:
@@ -46,13 +53,17 @@ class JobCreatorComponent:
                                                 "ComponentLog")
 
         LoggingUtils.installLogHandler(self)
-        logging.info("JobCreator Component Started...")
+        msg = "JobCreator Started:\n"
+        msg += " Generator: %s\n" % self.args['GeneratorName']
+        msg += " Creator: %s \n" % self.args['CreatorName']
 
+        logging.info(msg)
+        
         #  //
         # // Components needing cleanup flags set for each job
         #//  TODO: get this from configuration somehow...
         self.cleanupFlags = ['StatTracker', 'DBSInterface']
-
+        
     def __call__(self, event, payload):
         """
         _operator()_
@@ -60,9 +71,10 @@ class JobCreatorComponent:
         Define response to an Event and payload
 
         """
-        logging.debug("Recieved Event: %s" % event)
-        logging.debug("Payload: %s" % payload)
-        logging.debug("Current Creator: %s" % self.args['CreatorName'])
+        msg = "Recieved Event: %s" % event
+        msg += "Payload: %s" % payload
+        msg += "Current Creator: %s" % self.args['CreatorName']
+        logging.debug(msg)
 
         
         if event == "CreateJob":
@@ -71,8 +83,20 @@ class JobCreatorComponent:
                 self.createJob(payload)
                 return
             except StandardError, ex:
-                logging.error("Failed to Create Job: %s" % payload)
-                logging.error("Details: %s" % str(ex))
+                msg = "Failed to Create Job: %s\n" % payload
+                msg += "Details: %s" % str(ex)
+                logging.error(msg)
+                return
+
+        if event == "NewWorkflow":
+            logging.info("JobCreator:NewWorkflow: %s" % payload)
+            try:
+                self.newWorkflow(payload)
+                return
+            except Exception, ex:
+                msg = "Failed to handle NewWorkflow: %s\n" % payload
+                msg += str(ex)
+                logging.error(msg)
                 return
             
         elif event == "JobCreator:SetCreator":
@@ -89,6 +113,39 @@ class JobCreatorComponent:
         elif event == "JobCreator:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
             return
+        
+
+    def newWorkflow(self, workflowSpec):
+        """
+        _newWorkflow_
+
+        Read the new workflow file and generate a cache area for it
+
+        """
+        spec = WorkflowSpec()
+        try:
+            spec.load(workflowSpec)
+        except Exception, ex:
+            msg = "Unable to read WorkflowSpec file:\n"
+            msg += "%s\n" % workflowSpec
+            msg += str(ex)
+            logging.error(msg)
+            return
+
+        wfname = spec.workflowName()
+        wfCache = os.path.join(self.args['ComponentDir'],
+                               wfname)
+        if not os.path.exists(wfCache):
+            os.makedirs(wfCache)
+
+        
+        gen = retrieveGenerator(self.args['GeneratorName'])
+        creator = retrieveCreator(self.args['CreatorName'])
+        gen.creator = creator
+        gen.actOnWorkflowSpec(spec, wfCache)
+
+        return
+    
         
         
             
@@ -118,79 +175,92 @@ class JobCreatorComponent:
             return
         jobname = jobSpec.parameters['JobName']
         jobType = jobSpec.parameters['JobType']
-        #  //
-        # // Initialise the JobBuilder
-        #//
-        logging.debug("Instantiating Generator for JobSpec: %s" % jobname)
-        jobGen = JobGenerator(jobSpec, self.args)
-        #  //
-        # // Create the Job
-        #//
+        workflowName = jobSpec.payload.workflow
+        
+        
+        if self.args['HashDirs']:
+            runNum = jobSpec.parameters.get("RunNumber", None)
+            if runNum == None:
+                runNum = abs(hash(jobname))
+                runNum = "m%s" % runNum
+            jobCache = os.path.join(self.args['ComponentDir'],
+                                    workflowName,
+                                    str(runNum))
+        else:
+            jobCache = os.path.join(self.args['ComponentDir'],
+                                    workflowName,
+                                    jobname)
+            
+        
+        
+        if not os.path.exists(jobCache):
+            os.makedirs(jobCache)
+
+
         try:
-            logging.debug("Calling Generator...")
-            cacheArea = jobGen()
-        except StandardError, ex:
+            gen = retrieveGenerator(self.args['GeneratorName'])
+            creator = retrieveCreator(self.args['CreatorName'])
+            gen.creator = creator
+            gen.actOnJobSpec(jobSpec, jobCache)
+        except Exception, ex:
             logging.error("Failed to create Job: %s\n%s" % (jobname, ex))
             self.ms.publish("CreateFailed", jobname)
             self.ms.commit()
             return
-        
-        if self.job_state:
-            try:
-                #  // 
-                # // Register job creation for jobname, provide Cache Area
-                #//  and set job state to InProgress
 
-                # NOTE: racers is fixed but should
-                # NOTE: configurable
 
-                # NOTE: does this component only handle processing jobs?
-                # NOTE: if not we need to differentiate between processing
-                # NOTE: and merging jobs
-                
-                # we only register once. The second time will give
-                # an error which we will pass. Historically registration
-                # was part of the request injector, and would not clash
-                # with re-job creation.
-                if not JobStateInfoAPI.isRegistered(jobname):
-                    JobStateChangeAPI.register(jobname, 'Processing',
-                                               int(self.args['maxRetries']),
-                                               1)
-                JobStateChangeAPI.create(jobname, cacheArea)
-                JobStateChangeAPI.inProgress(jobname)
+        try:
+            #  // 
+            # // Register job creation for jobname, provide Cache Area
+            #//  and set job state to InProgress
 
-                logging.debug(" Adding cleanup triggers for %s" % self.cleanupFlags)
+            if not JobStateInfoAPI.isRegistered(jobname):
+                JobStateChangeAPI.register(jobname, 'Processing',
+                                           int(self.args['maxRetries']),
+                                           1)
+            JobStateChangeAPI.create(jobname, jobCache)
+            JobStateChangeAPI.inProgress(jobname)
+            
+            logging.debug(
+                " Adding cleanup triggers for %s" % self.cleanupFlags
+                )
+          
+        except Exception, ex:
+            # NOTE: we can have different errors here 
+            # NOTE: transition, submission, other...
+            logging.error("JobState Error:%s" % str(ex))
+            return
 
-                cleanFlags = []
-                cleanFlags.extend(self.cleanupFlags)
-                if jobType == "Merge":
-                    logging.debug("Adding MergeSensor Cleanup Flag to Merge type job")
-                    cleanFlags.append("MergeSensor")
+        try:
+            cleanFlags = []
+            cleanFlags.extend(self.cleanupFlags)
+            if jobType == "Merge":
+                logging.debug(
+                    "Adding MergeSensor Cleanup Flag to Merge type job")
+                cleanFlags.append("MergeSensor")
 
-                for component in cleanFlags:
-                    logging.debug("trigger.addFlag(cleanup, %s, %s" % (
-                        jobname, component)
-                                  )
-                    self.trigger.addFlag("cleanup", jobname, component)
+            for component in cleanFlags:
+                logging.debug("trigger.addFlag(cleanup, %s, %s" % (
+                    jobname, component)
+                              )
+                self.trigger.addFlag("cleanup", jobname, component)
                     
-                if len(cleanFlags) > 0:
-                    #  //
-                    # // Only set the action if there are components
-                    #//  that need it.
-                    self.trigger.setAction(jobname,"cleanup","jobCleanAction")
-                    
-                
-            except Exception, ex:
-                # NOTE: we can have different errors here 
-                # NOTE: transition, submission, other...
-                logging.error("JobState Error:%s" % str(ex))
-                return
+            if len(cleanFlags) > 0:
+                #  //
+                # // Only set the action if there are components
+                #//  that need it.
+                self.trigger.setAction(jobname,"cleanup","jobCleanAction")
+        except Exception, ex:
+            # NOTE: we can have different errors here 
+            # NOTE: transition, submission, other...
+            logging.error("Cleanup flag Error:%s" % str(ex))
+            return
         
+      
         #  //
         # // Publish SubmitJob event
         #//
         logging.debug("Publishing SubmitJob: %s" % jobname)
-       
         self.ms.publish("SubmitJob", jobname)
         self.ms.commit()
         return
@@ -233,6 +303,7 @@ class JobCreatorComponent:
 
         # subscribe to messages
         self.ms.subscribeTo("CreateJob")
+        self.ms.subscribeTo("NewWorkflow")
         self.ms.subscribeTo("JobCreator:SetCreator")
         self.ms.subscribeTo("JobCreator:StartDebug")
         self.ms.subscribeTo("JobCreator:EndDebug")
