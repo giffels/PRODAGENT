@@ -445,6 +445,8 @@ def intersection(list1, list2):
     return intDict.keys()
 
 
+
+
 def removeTuple(objectInATuple):
     """
     _removeTuple_
@@ -463,7 +465,7 @@ def listWorkflowSpecs():
     """
     
     sqlStr1 = """ select DISTINCT workflow_spec_id FROM st_job_success;"""
-    sqlStr2 = """ select DISTINCT workflow_spec_id FROM st_job_success;"""
+    sqlStr2 = """ select DISTINCT workflow_spec_id FROM st_job_failure;"""
 
     connection = connect()
     dbCur = connection.cursor()
@@ -472,7 +474,12 @@ def listWorkflowSpecs():
     dbCur.execute(sqlStr2)
     list2 = dbCur.fetchall()
     dbCur.close()
-    return intersection(map(removeTuple, list1), map(removeTuple, list2))
+    list1 = map(removeTuple, list1)
+    list2 = map(removeTuple, list2)
+    for item in list2:
+        if item not in list1:
+            list1.append(item)
+    return list1
     
 removeBlobs = lambda x: x.__setitem__('attr_value', x['attr_value'].tostring())
 def getJobAttrs(jobIndex):
@@ -491,3 +498,33 @@ def getJobAttrs(jobIndex):
     dbCur.close()
     map(removeBlobs, rows)
     return rows
+
+
+def activeWorkflowSpecs(interval="24:00:00"):
+    """
+    _activeWorkflowSpecs_
+
+    Return a list of workflow specs that have had an entry created in the
+    time interval provided until now
+
+    """
+    
+    sqlStr1 = """ select DISTINCT workflow_spec_id FROM st_job_success
+                   WHERE time > ADDTIME(CURRENT_TIMESTAMP,'-%s');""" % interval
+    sqlStr2 = """ select DISTINCT workflow_spec_id FROM st_job_failure
+                   WHERE time > ADDTIME(CURRENT_TIMESTAMP,'-%s');""" % interval
+
+    
+    connection = connect()
+    dbCur = connection.cursor()
+    dbCur.execute(sqlStr1)
+    list1 = dbCur.fetchall()
+    dbCur.execute(sqlStr2)
+    list2 = dbCur.fetchall()
+    dbCur.close()
+    list1 = map(removeTuple, list1)
+    list2 = map(removeTuple, list2)
+    for item in list2:
+        if item not in list1:
+            list1.append(item)
+    return list1
