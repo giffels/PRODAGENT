@@ -223,7 +223,7 @@ componentFields = {
     "ProdMgrInterface" : {
     "ComponentDir" : None,
     "JobSpecDir" : '/tmp',
-    "JobSize" : '-1',
+    "JobSize" : '10',
     "JobCutSize" : '500',
     "ProdMgrs":'https://localhost:8443/clarens/',
     "RetrievalInterval":"01:00:00",
