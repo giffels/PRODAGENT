@@ -62,6 +62,8 @@ class ProdMgrComponent:
             logging.getLogger().addHandler(logHandler)
             logging.getLogger().setLevel(logging.DEBUG)
             logging.info("ProdMgrComponent Started...")
+            if(self.args['JobSize']<1):
+               raise ProdAgentException("ERROR: JobSize is smaller than 1 :"+str(self.args['JobSize']))
        except Exception,ex:
             logging.debug("ERROR: "+str(ex))     
             raise
