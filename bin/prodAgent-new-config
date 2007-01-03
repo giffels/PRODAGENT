@@ -228,6 +228,7 @@ componentFields = {
     "ProdMgrs":'https://localhost:8443/clarens/',
     "RetrievalInterval":"01:00:00",
     "AgentTag":"please insert a proper value",
+    "Locations":"please insert a proper value",
     },
     "DatasetInjector" : {
     "ComponentDir" : None,
@@ -304,6 +305,10 @@ to retrieve requests if available.
 uniquely identifies the prodagent, the AgentTag is a short hand version that is used for
 request retrieval. Potentially multiple prodagents can have the same agent tag (which means
 they will be handling the same requests)
+-Locations: This parameter contains a comma separated lists of locations (storage elements)
+this prodagent has access to. The elements in this list have to correspond with the entries
+found in the DLS associated to fileblocks (otherwise this prodagent will not get work
+for file based requests).
 """
     }
 
