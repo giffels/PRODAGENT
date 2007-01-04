@@ -594,6 +594,7 @@ CREATE TABLE pm_request
     id                    varchar(150)    not null,
     url                   varchar(150)    not null,
     priority              int(11)         not null,
+    request_type          enum("event", "file") default 'event',
     primary key(id,url)
    ) Type=InnoDB;
 
