@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.8 2006/12/28 22:54:52 evansde Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.9 2007/01/05 16:17:40 evansde Exp $"
+__version__ = "$Revision: 1.9 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -177,6 +177,8 @@ class DatasetInjectorComponent:
         fileList = os.listdir(self.args['WorkflowCache'])
         for item in fileList:
             if not item.endswith(".xml"):
+                continue
+            if item.endswith("Persist.xml"):
                 continue
             pathname = os.path.join(self.args['WorkflowCache'], item)
             if not os.path.exists(pathname):
