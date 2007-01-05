@@ -210,8 +210,8 @@ def getJobsByState(state, cooloff = "00:00:00"):
     connection = connect()
 
     sqlStr = """SELECT job_spec_id, job_index FROM ct_job
-                   WHERE job_state="%s"  ;
-                      AND time < ADDTIME(CURRENT_TIMESTAMP,'-%s') """ % (
+                   WHERE job_state="%s"
+                      AND time < ADDTIME(CURRENT_TIMESTAMP,'-%s'); """ % (
                        state, cooloff)
     
     dbCur = connection.cursor()
