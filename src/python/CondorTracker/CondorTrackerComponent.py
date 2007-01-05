@@ -268,7 +268,8 @@ class CondorTrackerComponent:
         self.ms.subscribeTo("SubmitJob")
         self.ms.subscribeTo("SubmissionFailed")
         
-        
+        self.ms.publish("CondorTracker:Update", "", self.args['PollInterval'])
+        self.ms.commit()
         # wait for messages
         while True:
             type, payload = self.ms.get()

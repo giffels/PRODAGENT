@@ -77,7 +77,7 @@ class CondorG(TrackerPlugin):
     def __init__(self):
         TrackerPlugin.__init__(self)
         self.classads = None
-
+        self.cooloff = "00:10:00"
 
     def initialise(self):
         """

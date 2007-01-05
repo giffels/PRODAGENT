@@ -20,7 +20,7 @@ class TrackerPlugin:
     """
     def __init__(self):
         self.TrackerDB = TrackerDB
-    
+        self.cooloff = "00:00:00"
 
 
     def __call__(self):
@@ -41,7 +41,7 @@ class TrackerPlugin:
         #  //
         # // ToDo: Add exception wrappers for plugin calls
         #//
-        subJobs = TrackerDB.getJobsByState("submitted")
+        subJobs = TrackerDB.getJobsByState("submitted", self.cooloff)
         self.updateSubmitted(*subJobs.keys())
         runningJobs = TrackerDB.getJobsByState("running")
         self.updateRunning(*runningJobs.keys())
