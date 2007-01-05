@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.7 2006/11/30 17:13:28 evansde Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.8 2006/12/28 22:54:52 evansde Exp $"
+__version__ = "$Revision: 1.8 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -310,7 +310,7 @@ class DatasetInjectorComponent:
         self.iterator.load(self.args['WorkflowCache'])
         jobDefs = self.iterator.releaseJobs(numJobs)
         logging.debug("Released %s jobs" % len(jobDefs))
-        self.iterator.save(self.args['WorkflowCache'])
+        
         
         for jdef in jobDefs:
             jobSpec = self.iterator(jdef)
@@ -323,7 +323,7 @@ class DatasetInjectorComponent:
                 self.ms.publish("CreateJob", jobSpec)
 
             self.ms.commit()
-
+        self.iterator.save(self.args['WorkflowCache'])
      
         return
         
