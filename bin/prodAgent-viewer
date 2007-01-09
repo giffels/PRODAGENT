@@ -1,0 +1,285 @@
+#!/usr/bin/env python
+
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdCommon.Database import Session
+
+import getopt
+import sys
+
+# initialize database access
+try:
+    config = loadProdAgentConfiguration()
+    dbConfig= config.getConfig("ProdAgentDB")
+    dbConfig['dbType']='mysql'
+    Session.set_database(dbConfig)
+except StandardError, ex:
+    msg = "Error reading configuration:\n"
+    msg += str(ex)
+    raise RuntimeError, msg
+
+# generic usage message
+def usage():
+    """print usage info"""
+    strg = "Usage: ProdAgentViewer <command> <options>\n\n"
+    strg += "--listRequests --start=0 --max=0\n"
+    strg += "Lists the number of requests acquired from the prodmgrs. If\n"
+    strg += "'start' and 'max' are omitted the first 10 requests are listed,\n"
+    strg += "otherwise it returns 'max' requests that start at 'start'\n\n"
+    strg += "--listAllocatedJobs --start=0 --max=0 --short\n"
+    strg += "Lists the number of allocated jobs (aka allocations) retrieved\n"
+    strg += "from the various ProdMgrs. If 'start' and 'max' are omitted \n"
+    strg += "the first 10 requests are listed, otherwise it returns 'max' jobs \n"
+    strg += " that start at 'start'. The 'short' option displays a smaller table\n\n"
+    strg += "--listMessages --start=0 --max=0 --short\n"
+    strg += "Lists messages in the message queue in a readable format. If\n"
+    strg += "'start' and 'max' are the first 10 messages are listed\n"
+    strg += "otherwise it returns 'max' messages that start at 'start'\n"
+    strg += "The 'short' option displays a smaller table\n\n"
+    strg += "--listMessageHistory --start=0 --max=0 --short\n"
+    strg += "Lists messages in the message history queue in a readable format. If\n"
+    strg += "'start' and 'max' are omitted the first 10 messages are listed\n"
+    strg += "otherwise it returns 'max' messages that start at 'start'\n"
+    strg += "The 'short' option displays a smaller table\n\n\n"
+    strg += "Examples:\n\n"
+    strg += "prodAgent-viewer --listMessages \n\n"
+    strg += "prodAgent-viewer --listMessages --short\n\n"
+    strg += "prodAgent-viewer --listMessageHistory --start=10 --max=100\n\n"
+    strg += "prodAgent-viewer --listMessageHistory --max=100\n\n"
+
+    print strg
+
+
+class DBWrapper:
+    """
+    __DBWrapper__
+
+    database wrapper (returns unformatted data)
+
+    """
+    def __init__(self):
+       pass
+       self.count=0
+
+    def listAcquiredRequests(self,start=0,max=0,short=False):
+       # count the entries
+       sqlStr="""SELECT count(*) FROM pm_request"""
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       self.count=rows[0][0]
+       # list the entries 
+       sqlStr="""SELECT id,url,priority,request_type FROM
+           pm_request LIMIT %s,%s""" %(start,max)
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       return rows
+
+    def listAcquiredJobs(self,start=0,max=10,short=False):
+       # count the entries
+       sqlStr="""SELECT count(*) FROM pm_job """
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       self.count=rows[0][0]
+       # list the entries 
+       sqlStr="""SELECT id,request_id,job_spec_location FROM
+           pm_job LIMIT %s,%s""" %(start,max)
+       if short:
+           sqlStr="""SELECT id,request_id FROM
+               pm_job LIMIT %s,%s""" %(start,max)
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       return rows
+    
+    def listMessages(self,start=0,max=10,short=False):
+       sqlStr=""" SELECT count(*) FROM ms_type,ms_message, 
+       ms_process as source,ms_process as target WHERE ms_type.typeid=ms_message.type AND 
+       source.procid=ms_message.source AND target.procid=ms_message.dest """ 
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       self.count=rows[0][0]
+      
+       sqlStr=""" SELECT ms_type.name as event,source.name as source,target.name as dest,
+       ms_message.payload, ms_message.time,ms_message.delay FROM ms_type,ms_message, 
+       ms_process as source,ms_process as target WHERE ms_type.typeid=ms_message.type AND 
+       source.procid=ms_message.source AND target.procid=ms_message.dest LIMIT %s,%s""" %(start,max)
+       if short:
+           sqlStr=""" SELECT ms_type.name as event,source.name as source,target.name as dest,
+           ms_message.time,ms_message.delay FROM ms_type,ms_message, 
+           ms_process as source,ms_process as target WHERE ms_type.typeid=ms_message.type AND 
+           source.procid=ms_message.source AND target.procid=ms_message.dest LIMIT %s,%s""" %(start,max)
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       return rows
+
+    def listMessageHistory(self,start=0,max=10,short=False):
+       sqlStr=""" SELECT count(*) FROM ms_type,ms_history, 
+       ms_process as source,ms_process as target WHERE ms_type.typeid=ms_history.type AND 
+       source.procid=ms_history.source AND target.procid=ms_history.dest """
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       self.count=rows[0][0]
+
+       sqlStr=""" SELECT ms_type.name as event,source.name as source,target.name as dest,
+       ms_history.payload,ms_history.time FROM ms_type,ms_history, 
+       ms_process as source,ms_process as target WHERE ms_type.typeid=ms_history.type AND 
+       source.procid=ms_history.source AND target.procid=ms_history.dest LIMIT %s,%s""" %(start,max)
+       if short:
+           sqlStr=""" SELECT ms_type.name as event,source.name as source,target.name as dest,
+           ms_history.time FROM ms_type,ms_history, 
+           ms_process as source,ms_process as target WHERE ms_type.typeid=ms_history.type AND 
+           source.procid=ms_history.source AND target.procid=ms_history.dest LIMIT %s,%s""" %(start,max)
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       return rows
+
+class CLWrapper:
+    """
+    __CLWrapper__
+ 
+    Command line wrapper. formats unformatted data
+    for command line interface.
+    """
+
+    def __init__(self):
+       self.dbWrapper=DBWrapper()
+       self.heading=[]
+
+    def __columnSpacing(self,rows):
+       # determine the space for every column
+       self.column=[]
+       for column in xrange(0,len(self.heading)):
+           self.column.append(len(self.heading[column]))
+       for row in rows:
+           for column in xrange(0,len(row)):
+               if len(str(row[column]))>self.column[column]:
+                   self.column[column]=len(str(row[column]))
+           for column in xrange(0,len(self.heading)):
+               if len(str(self.heading[column]))>self.column[column]:
+                   self.column[column]=len(str(self.heading[column]))
+       # cumulate it 
+       for column in xrange(0,len(self.column)):
+           if column!=0:
+               self.column[column]=self.column[column-1]+self.column[column]+1       
+           else:
+               self.column[column]+=1
+
+    def __display(self,rows):
+       print('')
+       self.__displaySeperator()
+       self.__displayRow(self.heading)
+       self.__displaySeperator()
+       for row in rows:
+           self.__displayRow(row)
+       self.__displaySeperator()
+       sys.stdout.write('***Displayed '+str(len(rows))+' entries\n')
+       sys.stdout.write('***There are '+str(self.dbWrapper.count)+' entries in the database at the moment***\n')
+       print('')
+
+    def __displaySeperator(self):
+       position=1
+       sys.stdout.write('+') 
+       for entry in xrange(0,len(self.heading)):
+            while position<self.column[entry]:
+                sys.stdout.write('-')
+                position+=1
+            sys.stdout.write('+')
+       sys.stdout.write('\n')
+
+    def __displayRow(self,row):
+       position=1
+       sys.stdout.write('|') 
+       for entry in xrange(0,len(row)):
+            sys.stdout.write(str(row[entry]))
+            position=position+len(str(row[entry]))
+            while position<self.column[entry]:
+                sys.stdout.write(' ')
+                position+=1
+            sys.stdout.write('|')
+       sys.stdout.write('\n')
+
+    def listAcquiredRequests(self,start=0,max=0,short=False):
+       rows=self.dbWrapper.listAcquiredRequests(start,max,short)
+       self.heading=['id','url','priority','request type'] 
+       self.__columnSpacing(rows)
+       self.__display(rows)
+       
+
+    def listAcquiredJobs(self,start=0,max=10,short=False):
+       rows=self.dbWrapper.listAcquiredJobs(start,max,short)
+       self.heading=['id','request ID','jobSpec location']
+       if short:
+           self.heading=['id','request ID']
+       self.__columnSpacing(rows)
+       self.__display(rows)
+    
+    def listMessages(self,start=0,max=10,short=False):
+       rows=self.dbWrapper.listMessages(start,max,short)
+       self.heading=['event','source','dest','payload','time','delay']
+       if short:
+           self.heading=['event','source','dest','time','delay']
+       self.__columnSpacing(rows)
+       self.__display(rows)
+
+    def listMessageHistory(self,start=0,max=10,short=False):
+       rows=self.dbWrapper.listMessageHistory(start,max,short)
+       self.heading=['event','source','dest','payload','time']
+       if short:
+            self.heading=['event','source','dest','time']
+       self.__columnSpacing(rows)
+       self.__display(rows)
+
+# parse input
+valid = ["listRequests", "listAllocatedJobs","listMessages","listMessageHistory","short","start=","max="]
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "", valid)
+except getopt.GetoptError, ex:
+    usage()
+    print('***Wrong input: '+str(ex))
+    sys.exit(1)
+
+if len(opts)==0:
+    usage()
+    sys.exit(1)
+
+#prepare CLWrapper class
+clWrapper=CLWrapper()
+
+# set specific values (if supplied)
+start=0
+max=10
+short=False
+for opt in opts:
+   if opt[0]=='--start':
+       start=int(opt[1])
+   elif opt[0]=='--max':
+       max=int(opt[1])
+   elif opt[0]=='--short':
+       short=True 
+   elif opt[0] in ['listRequests','--listAllocatedJobs','--listMessages','--listMessageHistory']:
+       pass
+   else:
+       usage()
+       sys.exit(1)
+ 
+# call requested method
+if opts[0][0]=='--listRequests':
+  clWrapper.listAcquiredRequests(start,max,short)
+
+elif opts[0][0]=='--listAllocatedJobs':
+  clWrapper.listAcquiredJobs(start,max,short)
+  
+
+elif opts[0][0]=='--listMessages':
+  clWrapper.listMessages(start,max,short)
+
+elif opts[0][0]=='--listMessageHistory':
+  clWrapper.listMessageHistory(start,max,short)
+
+else:
+  usage()
+  sys.exit(1)
+
+
+    
+
+
+
