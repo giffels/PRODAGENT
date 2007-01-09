@@ -274,6 +274,8 @@ CREATE TABLE st_job_success (
 
 ) TYPE=InnoDB;
 
+create index st_success_spec_index on st_job_success (job_spec_id(255));
+
 /*
  * Table to store list based attributes of a successful Job
  *
@@ -316,6 +318,7 @@ CREATE TABLE st_job_failure (
    PRIMARY KEY (job_index)
 ) TYPE=InnoDB;
 
+create index st_failure_spec_index on st_job_failure (job_spec_id(255));
 /*
  * Table to store list based attributes of a failed Job
  *
