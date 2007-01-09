@@ -39,6 +39,7 @@ class RequestIterator:
         self.currentJob = None
         self.sitePref = None
         self.pileupDatasets = {}
+        self.ownedJobSpecs = {}
 
         #  //
         # // Initially hard coded, should be extracted from Component Config
@@ -47,8 +48,16 @@ class RequestIterator:
         
         self.workflowSpec = WorkflowSpec()
         self.workflowSpec.load(workflowSpecFile)
-        
 
+        #  //
+        # // Cache Area for JobSpecs
+        #//
+        self.specCache = os.path.join(
+            self.workingDir,
+            "%s-Cache" %self.workflowSpec.workflowName())
+        if not os.path.exists(self.specCache):
+            os.makedirs(self.specCache)
+        
 
 
     def loadPileupDatasets(self):
@@ -117,10 +126,15 @@ class RequestIterator:
         jobSpec.parameters['RunNumber'] = self.count
 
     
-        jobSpec.payload.operate(self.generateJobConfig)            
-        jobSpecFile = os.path.join(self.workingDir,
+        jobSpec.payload.operate(self.generateJobConfig)
+        
+        specCacheDir =  os.path.join(
+            self.specCache, str(self.count // 1000).zfill(4))
+        if not os.path.exists(specCacheDir):
+            os.makedirs(specCacheDir)
+        jobSpecFile = os.path.join(specCacheDir,
                                    "%s-JobSpec.xml" % jobName)
-
+        self.ownedJobSpecs[jobName] = jobSpecFile
         #  //
         # // generate LFNs for output modules
         #//
@@ -189,6 +203,25 @@ class RequestIterator:
         
         return
 
+    def removeSpec(self, jobSpecId):
+        """
+        _removeSpec_
+
+        Remove a Spec file when it has been successfully injected
+
+        """
+        if jobSpecId not in self.ownedJobSpecs.keys():
+            return
+
+        logging.info("Removing JobSpec For: %s" % jobSpecId)
+        filename = self.ownedJobSpecs[jobSpecId]
+        if os.path.exists(filename):
+            os.remove(filename)
+            del self.ownedJobSpecs[jobSpecId]
+        return
+
+        
+
 
     def save(self, directory):
         """
@@ -215,6 +248,11 @@ class RequestIterator:
             puNode.attrs['PayloadNode'] = key
             pu.addNode(puNode)
 
+        specs = IMProvNode("JobSpecs")
+        node.addNode(specs)
+        for key, val in self.ownedJobSpecs.items():
+            specs.addNode(IMProvNode("JobSpec", val, ID = key))
+            
         fname = os.path.join(
             directory,
             "%s-Persist.xml" % self.workflowSpec.workflowName()
@@ -263,6 +301,13 @@ class RequestIterator:
             puDataset = PileupDataset("dummy", 1)
             puDataset.load(puNode)
             self.pileupDatasets[payloadNode] = puDataset
+
+        specQ = IMProvQuery("%s/JobSpecs/*" % qbase)
+        specNodes = specQ(node)
+        for specNode in specNodes:
+            specId = str(specNode.attrs['ID'])
+            specFile = str(specNode.chardata).strip()
+            self.ownedJobSpecs[specId] = specFile
 
         return
     

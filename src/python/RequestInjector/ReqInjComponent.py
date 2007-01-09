@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.13 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.13 2006/11/21 14:52:10 afanfani Exp $"
+__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.14 2006/11/30 16:49:56 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -80,7 +80,10 @@ class ReqInjComponent:
         if event == "RequestInjector:SetSitePref":
             self.setSitePref(payload)
             return
-            
+
+        if event == "SubmitJob":
+            self.removeJobSpec(payload)
+            return
         if event == "RequestInjector:NewDataset":
             self.newDataset()
             return
@@ -157,6 +160,20 @@ class ReqInjComponent:
            self.setSitePref(site) 
 
         return
+
+    def removeJobSpec(self, jobSpecId):
+        """
+        _removeJobSpec_
+
+        Remove the spec file for the job spec ID provided
+
+        """
+        for iterName, iterInstance in self.iterators.items():
+            if jobSpecId.startswith(jobSpecId):
+                iterInstance.removeSpec(jobSpecId)
+                iterInstance.save(self.args['WorkflowCache'])
+        return
+    
 
     def selectWorkflow(self, workflowName):
         """
@@ -357,6 +374,7 @@ class ReqInjComponent:
         self.ms.subscribeTo("RequestInjector:SetSitePref")
         self.ms.subscribeTo("RequestInjector:StartDebug")
         self.ms.subscribeTo("RequestInjector:EndDebug")
+        self.ms.subscribeTo("SubmitJob")
         
         # wait for messages
         while True:
