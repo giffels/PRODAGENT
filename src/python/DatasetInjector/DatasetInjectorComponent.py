@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.9 2007/01/05 16:17:40 evansde Exp $"
-__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.10 2007/01/05 17:24:59 evansde Exp $"
+__version__ = "$Revision: 1.10 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -83,7 +83,10 @@ class DatasetInjectorComponent:
         if event == "DatasetInjector:SetWorkflow":
             self.setWorkflow(payload)
             return
-
+        if event == "SubmitJob":
+            self.removeJobSpec(payload)
+            return
+        
         if event == "DatasetInjector:LoadWorkflows":
             self.loadWorkflows()
             return
@@ -103,6 +106,19 @@ class DatasetInjectorComponent:
         
         return
 
+    def removeJobSpec(self, jobSpecId):
+        """
+        _removeJobSpec_
+
+        Remove the spec file for the job spec ID provided
+
+        """
+        for iterName, iterInstance in self.iterators.items():
+            if jobSpecId.startswith(jobSpecId):
+                iterInstance.removeSpec(jobSpecId)
+                iterInstance.save(self.args['WorkflowCache'])
+        return
+    
     def setWorkflow(self, workflowFile):
         """
         _setWorkflow_
@@ -356,7 +372,7 @@ class DatasetInjectorComponent:
         self.ms.subscribeTo("DatasetInjector:ReleaseJobs")
         self.ms.subscribeTo("DatasetInjector:UpdateWorkflow")
         self.ms.subscribeTo("DatasetInjector:RemoveWorkflow")
-        
+        self.ms.subscribeTo("SubmitJob")
         
         # wait for messages
         while True:
