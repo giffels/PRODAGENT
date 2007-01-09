@@ -254,7 +254,7 @@ for opt in opts:
        max=int(opt[1])
    elif opt[0]=='--short':
        short=True 
-   elif opt[0] in ['listRequests','--listAllocatedJobs','--listMessages','--listMessageHistory']:
+   elif opt[0] in ['--listRequests','--listAllocatedJobs','--listMessages','--listMessageHistory']:
        pass
    else:
        usage()
