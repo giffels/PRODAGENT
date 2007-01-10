@@ -134,6 +134,29 @@ def insertJobSuccess(jobSuccessInstance):
     
     return
 
+
+def getMergeInputFiles(jobSpecId):
+    """
+    _getMergeInputFiles_
+
+    Get the set of merge_inputfile filenames from the merge db
+    associated to the job spec ID provided.
+
+    """
+    sqlStr = """select merge_inputfile.name from merge_inputfile
+      join merge_outputfile on merge_outputfile.id = merge_inputfile.mergedfile
+        where merge_outputfile.mergejob="%s"; """ % jobSpecId
+    connection = connect()
+    dbCur = connection.cursor()
+    dbCur.execute(sqlStr)
+    rows = dbCur.fetchall()
+    dbCur.close()
+    result = []
+    for row in rows:
+        for f in row:
+            result.append(f)
+    return result
+
 def insertJobFailure(jobFailureInstance):
     """
     _insertJobFailure_
@@ -204,7 +227,12 @@ def insertJobFailure(jobFailureInstance):
             insertAttrs += "(%s, \"timing\", \"%s\", \"%s\"),\n" % (
                 jobIndex, timingValue, timingKey,
                 )
-        
+    if len(jobFailureInstance['input_files']) > 0:
+        doInsert = True
+        for inpFile in jobFailureInstance['input_files']:
+            insertAttrs += "(%s, \"input_files\", \"%s\", NULL),\n" % (
+            jobIndex, inpFile)
+            
     insertAttrs = insertAttrs.strip()[:-1]
     insertAttrs += ";"
 

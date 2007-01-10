@@ -12,7 +12,7 @@ tables for the stat information
 import logging
 
 from FwkJobRep.ReportParser import readJobReport
-from StatTracker.StatTrackerDB import insertStats
+from StatTracker.StatTrackerDB import insertStats, getMergeInputFiles
 
 
 class JobStatistics(dict):
@@ -186,8 +186,21 @@ class FailedJob(JobStatistics):
         self.setdefault("error_type", None)
         self.setdefault("error_code", 1)
         self.setdefault("error_desc", None)
-        
+        self.setdefault("input_files", [])
 
+    def recordMergeInputs(self, jobRepInst):
+        """
+        _recordMergeInputs_
+
+        If this is a failed merge job, pull in the inputfiles
+        from the merge sensor tables and record them
+
+        """
+        if jobRepInst.jobType != "Merge":
+            return
+        self['input_files'] = getMergeInputFiles(jobRepInst.jobName)
+        return
+    
 
 def jobReportToJobStats(jobRepInstance):
     """
@@ -229,6 +242,7 @@ def jobReportToFailure(jobRepInstance):
     result = FailedJob()
     result.populateCommon(jobRepInstance)
     result.recordTiming(jobRepInstance)
+    result.recordMergeInputs(jobRepInstance)
     if len(jobRepInstance.errors) > 0:
         lastError = jobRepInstance.errors[-1]
                                           
