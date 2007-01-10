@@ -327,7 +327,7 @@ CREATE TABLE st_job_fail_attr (
    attr_index INT NOT NULL AUTO_INCREMENT,
    job_index INT NOT NULL,
    attr_name VARCHAR(255),
-   attr_class ENUM("timing" ,"run_numbers"),
+   attr_class ENUM("timing" ,"run_numbers", "input_files"),
    attr_value BLOB,
    FOREIGN KEY(job_index)
      REFERENCES st_job_failure(job_index)
