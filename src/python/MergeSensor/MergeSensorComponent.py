@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.50 2006/12/06 14:18:59 evansde Exp $"
-__version__ = "$Revision: 1.50 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -34,9 +34,6 @@ from ProdCommon.MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
 from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
 import ProdCommon.MCPayloads.WorkflowTools as MCWorkflowTools
 
-# Job report
-from FwkJobRep.ReportParser import readJobReport
-
 # DBS CGI API
 from dbsCgiApi import DbsCgiApi
 from dbsException import DbsException
@@ -52,12 +49,6 @@ from threading import Thread, Condition
 # logging
 import logging
 from logging.handlers import RotatingFileHandler
-
-# trigger api
-from Trigger.TriggerAPI.TriggerAPI import TriggerAPI 
-
-# ProdAgent exception
-from ProdAgentCore.ProdAgentException import ProdAgentException
 
 ##############################################################################
 # MergeSensorComponent class
@@ -409,24 +400,6 @@ class MergeSensorComponent:
         # close a request
         if event == "CloseRequest":
             self.closeRequest(payload)
-            return
-
-        # a job has finished
-        if event == "JobSuccess":
-            try:
-                self.jobSuccess(payload)
-            except:
-                logging.error("Unexpected error when handling a " + \
-                              "JobSuccess event: " + sys.exc_info()[0])
-            return
-
-        # a job has failed
-        if event == "GeneralJobFailure":
-            try:
-                self.jobFailed(payload)
-            except:
-                logging.error("Unexpected error when handling a " + \
-                              "GeneralFailure event: " + sys.exc_info()[0])
             return
 
         # wrong event
@@ -1072,225 +1045,6 @@ class MergeSensorComponent:
 
         logging.info("Datasets %s scheduled for closing operation." % \
                      toBeRemovedList)
-
-    ##########################################################################
-    # handle a JobSuccess event
-    ##########################################################################
-
-    def jobSuccess(self, jobReport):
-        """
-        _jobSuccess_
-
-        A job has finished successfully. Non merge jobs are ignored.
-
-        If it is complete success, all input files are marked as 'merged'
-        and the output file as 'merged'.
-
-        JobSuccess for partial merge are not implemented yet!. When it
-        will be implemented, its behavior will be as follows:
-
-        It it is a partial success, merged input files are marked as
-        'merged', output file as 'partiallymerged', input files with
-        problems as 'unmerged' (which increments automatically their
-        failures counter). If limit of failures is reached, wrong
-        input files are tagged as 'invalid'
-
-        Arguments:
-
-          jobReport -- the job report file name
-
-        Return:
-
-          none
-
-        """
-
-        # remove file:// from file name (if any)
-        jobReport = jobReport.replace('file://','')
-
-        # verify the file exists
-        if not os.path.exists(jobReport):
-            logging.error("Cannot process JobSuccess event: " \
-                         + "job report %s does not exist." % jobReport)
-            return
-
-        # read the report
-        try:
-            reports = readJobReport(jobReport)
-
-        # check errors
-        except Exception, msg:
-            logging.error("Cannot process JobSuccess event for %s: %s" \
-                           % (jobReport, msg))
-            return
-
-        # get job name from first report
-        try:
-            jobName = reports[0].jobSpecId
-
-        # if cannot be done, signal error
-        except Exception, msg:
-
-            logging.error("Cannot process JobSuccess event for %s: %s" \
-                          % (jobReport, msg))
-            return
-
-        # files can be cleaned up now
-        logging.info("trigger cleanup for: %s" % jobName)
-        
-        try:
-            self.trigger.setFlag("cleanup", jobName, "MergeSensor")
-        except ProdAgentException, ex:
-            logging.error("trying to continue processing success event")
-            
-        # ignore non merge jobs
-        if jobName.find('mergejob') == -1:
-            logging.debug("Ignoring job %s, since it is not a merge job" \
-                          % jobName)
-            return
-
-        # open a new connection (to avoid interfere with transactions in the
-        # other thread)
-        database = MergeSensorDB()
-
-        # start a transaction
-        database.startTransaction()
-
-        # get job information
-        try:
-            jobInfo = database.getJobInfo(jobName)
-
-        # cannot get it!
-        except Exception, msg:
-            logging.error("Cannot process JobSuccess event for job %s: %s" \
-                  % (jobName, msg))
-            database.closeDatabaseConnection()
-            return
-
-        # check that job exists
-        if jobInfo is None:
-            logging.error("Job %s does not exists." % jobName)
-            database.closeDatabaseConnection()
-            return
-
-        # check status
-        if jobInfo['status'] != 'undermerge':
-            logging.error("Cannot process JobSuccess event for job %s: %s" \
-                  % (jobName, "the job is not currently running"))
-            database.closeDatabaseConnection()
-            return
-
-        # get dataset id
-        datasetId = database.getDatasetId(jobInfo['datasetName'])
-
-        # mark all input files as 'merged'
-        for fileName in jobInfo['inputFiles']:
-            database.updateInputFile(datasetId, fileName, status="merged")
-
-        # mark output file as 'merged'
-        database.updateOutputFile(datasetId, jobName=jobName, status='merged')
-
-        # commit changes
-        database.commit()
-
-        # log message
-        logging.info("Job %s finished succesfully, file information updated." \
-                     % jobName)
-
-        # close connection
-        database.closeDatabaseConnection()
-
-    ##########################################################################
-    # handle a general failure job event
-    ##########################################################################
-
-    def jobFailed(self, jobName):
-        """
-        _jobFailed_
-
-        A job has failed. Non merge jobs are ignored.
-
-        Since it is a general failure, the error handler has tried to submit
-        the job a number of times and it always failed. Mark then all input
-        files as 'unmerged' (which will increment their failures counter)
-        and the output file as 'failed'. If limit of failures in input files
-        is reached, they are tagged as 'invalid'
-
-        Arguments:
-
-          the job name
-
-        Return:
-
-          none
-
-        """
-
-        # files can be cleaned up now
-        logging.info("trigger cleanup for: %s" % jobName)
-
-        try:
-            self.trigger.setFlag("cleanup", jobName, "MergeSensor")
-        except ProdAgentException, ex:
-            logging.error("trying to continue processing failure event")
-
-        # ignore non merge jobs
-        if jobName.find('mergejob') == -1:
-            logging.debug("Ignoring job %s, since it is not a merge job" \
-                          % jobName)
-            return
-
-        # open a new connection (to avoid interfere with transactions in the
-        # other thread)
-        database = MergeSensorDB()
-
-        # start a transaction
-        database.startTransaction()
-
-        # get job information
-        try:
-            jobInfo = database.getJobInfo(jobName)
-
-        # cannot get it!
-        except Exception, msg:
-            logging.error("Cannot process Failure event for job %s: %s" \
-                  % (jobName, msg))
-            database.closeDatabaseConnection()
-            return
-
-        # check that job exists
-        if jobInfo is None:
-            logging.error("Job %s does not exist." % jobName)
-            database.closeDatabaseConnection()
-            return
-
-        # check status
-        if jobInfo['status'] != 'undermerge':
-            logging.error("Cannot process Failure event for job %s: %s" \
-                  % (jobName, "the job is not currently running"))
-            database.closeDatabaseConnection()
-
-            return
-
-        # get dataset id
-        datasetId = database.getDatasetId(jobInfo['datasetName'])
-
-        # mark all input files as 'unmerged'
-        for fileName in jobInfo['inputFiles']:
-            database.updateInputFile(datasetId, fileName, status="unmerged", \
-                         maxAttempts=int(self.args['MaxInputAccessFailures']))
-
-        # mark output file as 'merged'
-        database.updateOutputFile(datasetId, jobName=jobName, status='failed')
-
-        # commit changes
-        database.commit()
-
-        # log message
-        logging.info("Job %s failed, file information updated." % jobName)
-
-        # close connection
-        database.closeDatabaseConnection()
 
     ##########################################################################
     # poll DBS
@@ -2241,12 +1995,7 @@ class MergeSensorComponent:
         self.ms.subscribeTo("MergeSensor:ReSubmit")
         self.ms.subscribeTo("MergeSensor:CloseDataset")
         self.ms.subscribeTo("CloseRequest")
-        self.ms.subscribeTo("JobSuccess")
-        self.ms.subscribeTo("GeneralJobFailure")
        
-        # set trigger access for cleanup
-        self.trigger = TriggerAPI(self.ms) 
-        
         # start polling thread
         pollingThread = PollDBS(self.poll)
         pollingThread.start()
