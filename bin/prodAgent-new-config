@@ -314,6 +314,12 @@ they will be handling the same requests)
 this prodagent has access to. The elements in this list have to correspond with the entries
 found in the DLS associated to fileblocks (otherwise this prodagent will not get work
 for file based requests).
+""",
+  "MergeAccountant"     :\
+"""
+-Enabled: Set this parameter to -yes- to get full accounting support. When it is set to
+-no-, only triggering for cleanups of files will be generated, with no updates on
+internal database.
 """
     }
 
