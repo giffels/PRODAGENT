@@ -236,8 +236,8 @@ class JobCreatorComponent:
             cleanFlags.extend(self.cleanupFlags)
             if jobType == "Merge":
                 logging.debug(
-                    "Adding MergeSensor Cleanup Flag to Merge type job")
-                cleanFlags.append("MergeSensor")
+                    "Adding MergeAccountant Cleanup Flag to Merge type job")
+                cleanFlags.append("MergeAccountant")
 
             for component in cleanFlags:
                 logging.debug("trigger.addFlag(cleanup, %s, %s" % (
