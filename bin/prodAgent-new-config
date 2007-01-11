@@ -196,6 +196,11 @@ componentFields = {
     # Local DBS settings come from LocalDBS core block 
     },
 
+    'MergeAccountant' : {
+    "ComponentDir" : None,
+    "Enabled" : "yes",
+    },
+
     'ErrorHandler' : {
     "ComponentDir" : None,
     "MaxCacheDirSizeMB":80,
