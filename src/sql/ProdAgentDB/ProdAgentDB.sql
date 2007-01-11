@@ -416,7 +416,7 @@ CREATE TABLE merge_outputfile
     failures int NOT NULL default '0',
 
     PRIMARY KEY(id),
-
+    KEY (mergejob),
     FOREIGN KEY(dataset) references merge_dataset(id) ON DELETE CASCADE
   )
  TYPE = InnoDB DEFAULT CHARSET=latin1;
