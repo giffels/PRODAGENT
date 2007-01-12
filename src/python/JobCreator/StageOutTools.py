@@ -281,7 +281,10 @@ class NewPopulateStageOut:
         #  //
         # // Is there an override for this in the JobSpec??
         #//
-        cfgStr = taskObject['JobSpecNode'].configuration
+        payloadNode = taskObject.get("JobSpecNode", None)
+        if payloadNode == None:
+            payloadNode = taskObject["PayloadNode"]
+        cfgStr = payloadNode.configuration
 
         if len(cfgStr) == 0:
             return

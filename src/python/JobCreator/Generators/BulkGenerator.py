@@ -23,7 +23,15 @@ from TaskObjects.Tools.WriteShREEKConfig import writeShREEKConfig
 from TaskObjects.Tools.GenerateMainScript import GenerateMainScript
 
 from JobCreator.AppTools import InsertAppDetails, PopulateMainScript
-from JobCreator.AppTools import InsertPythonPSet, InsertJobReportTools
+from JobCreator.AppTools import InsertJobReportTools
+from JobCreator.RunResTools import InstallRunResComponent
+from JobCreator.RunResTools import AccumulateRunResDB
+from JobCreator.RunResTools import BulkCMSSWRunResDB, InsertDirInRunRes
+from JobCreator.StageOutTools import NewInsertStageOut
+from JobCreator.StageOutTools import NewPopulateStageOut
+
+from JobCreator.BulkTools import InstallUnpacker 
+
 
 import inspect
 import os
@@ -32,37 +40,44 @@ import ProdCommon
 import ShREEK
 import ShLogger
 import IMProv
-import ProdCommon.CMSConfigTools 
+import ProdCommon.CMSConfigTools
+import ProdCommon.MCPayloads
 import RunRes
 import FwkJobRep
 import StageOut
 import SVSuite
 
-_StandardPackages = [ShREEK, ShLogger, IMProv, StageOut,
+_StandardPackages = [ShREEK, ShLogger, IMProv, StageOut, ProdCommon.MCPayloads,
                      ProdCommon.CMSConfigTools, RunRes, FwkJobRep, SVSuite]
 
-def makeTaskObject(payloadNode):
-    """
-    _makeTaskObject_
 
-    Operator to act on a PayloadNode instance and generate a TaskObject
-    for it.
+class TaskObjectMaker:
+    def __init__(self, jobType = "Processing"):
+        self.jobType = jobType
 
-    """
-    taskName = payloadNode.name
-    taskObj = TaskObject(taskName)
-    taskObj['Type'] = payloadNode.type
-    taskObj['RequestName'] = payloadNode.workflow
-    taskObj['JobName'] = payloadNode.name
-    setattr(payloadNode, "taskObject", taskObj)
+    def __call__(self, payloadNode):
+        """
+        _makeTaskObject_
+        
+        Operator to act on a PayloadNode instance and generate a TaskObject
+        for it.
+        
+        """
+        taskName = payloadNode.name
+        taskObj = TaskObject(taskName)
+        taskObj['Type'] = payloadNode.type
+        taskObj['RequestName'] = payloadNode.workflow
+        taskObj['JobName'] = payloadNode.name
+        taskObj['JobType'] = self.jobType
+        setattr(payloadNode, "taskObject", taskObj)
+        
+        if payloadNode.parent != None:
+            parentTaskObj = getattr(payloadNode.parent, "taskObject")
+            parentTaskObj.addChild(taskObj)
+            
+        taskObj['PayloadNode'] = payloadNode
     
-    if payloadNode.parent != None:
-        parentTaskObj = getattr(payloadNode.parent, "taskObject")
-        parentTaskObj.addChild(taskObj)
-    
-    taskObj['PayloadNode'] = payloadNode
-    
-    return
+        return
 
 
 class BulkGenerator(GeneratorInterface):
@@ -79,7 +94,7 @@ class BulkGenerator(GeneratorInterface):
                workflowSpec, workflowCache)
             )
 
-        workflowSpec.payload.operate(makeTaskObject)
+        workflowSpec.payload.operate(TaskObjectMaker())
         jobTemplate = os.path.join(workflowCache, "template")
         
         directory = self.newJobArea(workflowSpec.workflowName(), jobTemplate)
@@ -88,21 +103,34 @@ class BulkGenerator(GeneratorInterface):
         
         taskObject(GenerateMainScript())
         taskObject(InsertAppDetails("PayloadNode"))
+        taskObject(InstallRunResComponent())
+        taskObject(InsertJobReportTools())
+        
+        taskObject(NewInsertStageOut())
+        taskObject(InstallUnpacker())
+        
         logging.debug(
             "JobGenerator: Calling Creator:")
         
-        #self.creator(taskObject)
+        self.creator(taskObject)
         logging.debug("JobGenerator: Creator finished")
  
         taskObject(BashEnvironmentMaker())
         taskObject(PopulateMainScript())
-        
-        
+        taskObject(NewPopulateStageOut())
+
         logging.debug("JobGenerator:Creating Physical Job")
         taskObject(FlatTaskDirBuilder(directory))
-       
+        taskObject(BulkCMSSWRunResDB())
+        taskObject(InsertDirInRunRes())
         taskObject(WriteStructuredFiles())
         taskObject(WriteIMProvDocs())
+
+        accumRunRes = AccumulateRunResDB()
+        taskObject(accumRunRes)
+        accumRunRes.writeMainDB(os.path.join(directory, "RunResDB.xml"))
+
+        
         writeShREEKConfig(directory, taskObject)
         
         
@@ -202,8 +230,8 @@ class BulkGenerator(GeneratorInterface):
         mainScript = taskObj.addStructuredFile("run.sh")
         mainScript.setExecutable()
         mainScript.append("#!/bin/sh")
-        mainScript.append("PRODAGENT_JOBSPEC=$1")
-        mainScript.append("echo \"$PRODAGENT_JOBSPEC\"")
+        mainScript.append("export PRODAGENT_JOBSPEC=$1")
+        mainScript.append("echo \"Job Spec: $PRODAGENT_JOBSPEC\"")
         mainScript.append(". jobEnvironment.sh")
         mainScript.append("shreek --config=./ShREEKConfig.xml")
         

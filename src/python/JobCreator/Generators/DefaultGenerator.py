@@ -62,7 +62,7 @@ def makeTaskObject(jobSpecNode):
     taskObj = TaskObject(taskName)
     taskObj['Type'] = jobSpecNode.type
     taskObj['RequestName'] = jobSpecNode.workflow
-    taskObj['JobName'] = jobSpecNode.jobName
+    taskObj['JobName'] = "%s-generic" % jobSpecNode.workflow
     taskObj['JobType'] = jobSpecNode.jobType
     setattr(jobSpecNode, "taskObject", taskObj)
     

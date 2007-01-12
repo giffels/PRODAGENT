@@ -13,7 +13,8 @@ from IMProv.IMProvNode import IMProvNode
 from IMProv.IMProvDoc import IMProvDoc
 
 from ProdCommon.MCPayloads.DatasetTools import getOutputDatasetDetails
-
+from ProdCommon.MCPayloads.DatasetTools import getOutputDatasets
+from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
 
 def unquote(strg):
     """remove leading and trailing quotes from string"""
@@ -109,8 +110,12 @@ class CMSSWRunResDB:
         #  //
         # // Datasets
         #//
+        payloadNode = taskObject.get("JobSpecNode", None)
+        if payloadNode == None:
+            payloadNode = taskObject["PayloadNode"]
+
         runresComp.addPath("/%s/Output/Datasets" % objName)
-        datasets = getOutputDatasetDetails(taskObject['JobSpecNode'])
+        datasets = getOutputDatasetDetails(payloadNode)
         for dataset in datasets:
             if dataset['DataTier'] == "":
                 continue
@@ -123,7 +128,7 @@ class CMSSWRunResDB:
         # // Output Catalogs
         #//
         runresComp.addPath("/%s/Output/Catalogs" % objName)
-        cfgInt = taskObject['JobSpecNode'].cfgInterface
+        cfgInt = payloadNode.cfgInterface
         for modName, item in cfgInt.outputModules.items():
             if item.catalog() == None:
                 continue
@@ -139,7 +144,7 @@ class CMSSWRunResDB:
         #  //
         # // Number of Events from Source
         #//
-        cfgInt = taskObject['JobSpecNode'].cfgInterface
+        cfgInt = payloadNode.cfgInterface
         inpSrc = cfgInt.inputSource 
         runresComp.addData("/%s/Input/MaxEvents" % objName, inpSrc.maxevents())
         runresComp.addData("/%s/Input/FirstRun" % objName, inpSrc.firstRun())
@@ -180,6 +185,66 @@ class InsertDirInRunRes:
                 )
         return
     
+class BulkCMSSWRunResDB:
+    """
+    _CMSSWRunResDB_
+
+    Insert information about a CMSSW Type JobSpecNode into its TaskObjects
+    RunResComponent instance.
+
+    This makes it easy to find output, catalogs, job reports etc at runtime.
+
+    """
+    def __call__(self, taskObject):
+        """
+        _operator()_
+
+        Define operation on a CMSSW type TaskObject
+
+        """
+        toType = taskObject.get("Type", None)
+        if toType != "CMSSW":
+            return
+        runresComp = taskObject['RunResDB']
+        objName = taskObject['Name']
+
+        #  // 
+        # // Application Data
+        #// 
+        runresComp.addData("/%s/Application/Executable" % objName, 
+                           taskObject['CMSExecutable'])
+        runresComp.addData("/%s/Configuration/CfgFile" % objName,
+                           "PSet.cfg")
+        runresComp.addData("/%s/Configuration/PyCfgFile" % objName,
+                           "PSet.py")
+
+        runresComp.addData("/%s/Output/FrameworkJobReport" % objName,
+                           os.path.join("$PRODAGENT_JOB_DIR",
+                                        taskObject['RuntimeDirectory'],
+                                        "FrameworkJobReport.xml"))
+
+        #  //
+        # // Datasets
+        #//
+        payloadNode = taskObject["PayloadNode"]
+            
+        runresComp.addPath("/%s/Output/Datasets" % objName)
+        datasets = getOutputDatasets(payloadNode)
+        for dataset in datasets:
+            if dataset['DataTier'] == "":
+                continue
+            dsPath = "/%s/Output/Datasets%s" % (
+                objName, dataset.name())
+            runresComp.addPath(dsPath)
+            for key, val in dataset.items():
+                runresComp.addData("/%s/%s" % (dsPath, key), unquote(str(val)))
+        #  //
+        # // Output Catalogs
+        #//
+        runresComp.addPath("/%s/Output/Catalogs" % objName)
+        
+        
+        return
             
         
 class AccumulateRunResDB:
