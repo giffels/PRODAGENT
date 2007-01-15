@@ -43,7 +43,10 @@ class ReportJobSuccess(StateInterface):
        logging.debug("removing job cut spec file")
        request_id=report[-1].jobSpecId.split('_')[1] 
        job_spec_location=JobCut.getLocation(report[-1].jobSpecId)
-       os.remove(job_spec_location)
+       try:
+          os.remove(job_spec_location)
+       except:
+          pass
        # update the events processed by this jobcut
        JobCut.eventsProcessed(report[-1].jobSpecId,total)
 
@@ -59,8 +62,12 @@ class ReportJobSuccess(StateInterface):
            request_id=jobId.split('_')[1] 
            prodMgrUrl=Job.getUrl(jobId)
            job_spec_location=Job.getLocation(jobId)
+           logging.debug('Removing Job with id: '+jobId)
            Job.rm(jobId)
-           os.remove(job_spec_location)
+           try:
+              os.remove(job_spec_location)
+           except:
+              pass
            logging.debug("All cuts have finished, contacting prodmgr")
          # send a message to prodmgr on the status of the allocated job.
            parameters={}

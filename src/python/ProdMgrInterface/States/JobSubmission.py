@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging 
+import time
 
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
@@ -9,6 +10,7 @@ from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
 from ProdMgrInterface.JobCutter import cut
+from ProdMgrInterface.JobCutter import cutFile
 from ProdMgrInterface.Registry import registerHandler
 from ProdMgrInterface.States.StateInterface import StateInterface 
 import ProdMgrInterface.Interface as ProdMgrAPI
@@ -24,7 +26,12 @@ class JobSubmission(StateInterface):
 
        # START JOBCUTTING HERE
        logging.debug("Starting job cutting")
-       jobcuts=cut(stateParameters['targetFile'],int(stateParameters['jobCutSize']))
+       if stateParameters['RequestType']=='event':
+           logging.debug('Start event cut')
+           jobcuts=cut(stateParameters['targetFile'],int(stateParameters['jobCutSize']))
+       else:
+           logging.debug('Start file cut')
+           jobcuts=cutFile(stateParameters['targetFile'],stateParameters['RequestID'])
        for jobcut in jobcuts:
            logging.debug("Emitting <CreateJob> event with payload: "+\
                str(jobcut['spec']))

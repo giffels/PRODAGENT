@@ -57,6 +57,7 @@ class AcquireRequest(StateInterface):
        # set parameters and state and commit for next session
        componentState['parameters']['RequestID']=request['id']
        componentState['parameters']['ProdMgrURL']=request['url']
+       componentState['parameters']['RequestType']=request['type']
        componentState['parameters']['requestIndex']=requestIndex
        State.setParameters("ProdMgrInterface",componentState['parameters'])
        State.setState("ProdMgrInterface","AcquireJobs")

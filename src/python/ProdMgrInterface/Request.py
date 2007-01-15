@@ -32,12 +32,12 @@ def getUrl(request_id):
     return rows[0][0]
 
 def getHighestPriority(index=0):
-    sqlStr='SELECT id,url,priority FROM pm_request ORDER by priority;'
+    sqlStr='SELECT id,url,priority,request_type FROM pm_request ORDER by priority;'
     Session.execute(sqlStr)
     rows=Session.fetchall()
     if index>(len(rows)-1):
         return {}
-    return {'id':rows[index][0],'url':rows[index][1],'priority':rows[index][2]}
+    return {'id':rows[index][0],'url':rows[index][1],'priority':rows[index][2],'type':rows[index][3]}
 
 def rm(request_id):
     sqlStr="""DELETE FROM pm_request where id="%s" """ %(request_id)

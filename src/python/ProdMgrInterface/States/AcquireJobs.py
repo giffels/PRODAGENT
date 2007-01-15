@@ -24,9 +24,18 @@ class AcquireJobs(StateInterface):
        stateParameters=State.get("ProdMgrInterface")['parameters']
        logging.debug("State parameters: "+str(stateParameters))
        request_id=stateParameters['RequestID']
-       logging.debug("Acquiring jobs with a maximum size of: "+str(stateParameters['jobSize'])+" events ")
-       parameters={'numberOfJobs':stateParameters['numberOfJobs'],\
-           'prefix':'job','eventsPerJob':int(stateParameters['jobSize'])}
+
+       ##### DIFFERENT HANDLERS FOR DIFFERENT REQUEST TYPES
+       if stateParameters['RequestType']=='event':
+           logging.debug("Acquiring jobs with a maximum size of: "+str(stateParameters['jobSize'])+" events ")
+           logging.debug('Request is of type event')
+           parameters={'numberOfJobs':stateParameters['numberOfJobs'],\
+               'prefix':'job','eventsPerJob':int(stateParameters['jobSize'])}
+       else:
+           logging.debug('Request is of type file')
+           parameters={'numberOfFiles':stateParameters['numberOfJobs'],\
+                       'prefix':'fileJob'}
+
        requestURL=Request.getUrl(request_id)
        if stateParameters['stateType']=='recover':
            logging.debug("stateType is recover")
@@ -92,12 +101,19 @@ class AcquireJobs(StateInterface):
        stateParameters['jobIndex']=0
        Job.insert('requestLevel',jobs,request_id,requestURL)
        ProdMgrAPI.commit()
-       logging.debug("Acquired the following jobs: "+str(jobs))
-       # we have the jobs, lets download there job specs and if finished emit
+
+       ##### DIFFERENT HANDLERS FOR DIFFERENT REQUEST TYPES
+       if stateParameters['RequestType']=='event':
+           logging.debug("Acquired the following jobs: "+str(jobs))
+           stateParameters['numberOfJobs']=stateParameters['numberOfJobs']-len(jobs) 
+       else:
+           logging.debug("Acquired the following file based jobs: "+str(jobs[0]['files']))
+           stateParameters['numberOfJobs']=stateParameters['numberOfJobs']-len(jobs[0]['files']) 
+
+       # we have the jobs, lets download their job specs and if finished emit
        # a new job event.
        componentState="EvaluateJobs"
        # subtract our new found jobs from the numberOfJobs we want to acquire
-       stateParameters['numberOfJobs']=stateParameters['numberOfJobs']-len(jobs) 
        State.setParameters("ProdMgrInterface",stateParameters)
        State.setState("ProdMgrInterface",componentState)
        Session.commit()

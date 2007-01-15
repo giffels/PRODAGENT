@@ -4,7 +4,10 @@ from ProdAgentDB import Session
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdCommon.MCPayloads.WorkflowSpec import JobSpec
 from ProdMgrInterface import JobCut
+from ProdMgrInterface import Job
 
+import logging
+import os
 
 jobSpecDir='/tmp'
 
@@ -59,3 +62,47 @@ def cut(jobSpecFile,jobCutSize):
     Session.commit()
     return job_cuts
 
+
+def cutFile(jobSpecFile,request_id):
+    global jobSpecDir
+    #NOTE: this needs to be replaced by the official payload package when
+    #NOTE: available.
+    file=open(jobSpecFile,'r')
+    line=file.readline()
+    job_cuts=[]
+    jobSpecID=''
+    while line:
+       if line.find('ENDFILES')>-1:
+          logging.debug('found ENDFILES')
+          jobSpecID=file.readline().split(':')[0]
+          logging.debug('JobSpecID '+str(jobSpecID))
+          break
+       segments=line.split(',')
+       element={}
+       element['id']=segments[0].split(':')[1]
+       filefile=open(jobSpecDir+'/'+element['id']+'_jobCut.xml','w')
+       filefile.write(str(element['id']+'_jobCut'))
+       filefile.close()
+       job_cut={'id':element['id']+'_jobCut',\
+             'spec':jobSpecDir+'/'+element['id']+'_jobCut.xml',\
+             'parent_id':element['id']}
+       job_cuts.append(job_cut)
+       JobCut.insert([job_cut],element['id'])
+       line=file.readline()
+    # now get the contact url from the jobspec id and register
+    # the cuts as jobs (this is different than event based jobs.
+    url=Job.getUrl(jobSpecID) 
+    Job.rm(jobSpecID)
+    try:
+        os.remove(jobSpecFile)
+    except:
+        pass
+    jobs=[]
+    for job_cut in job_cuts:
+        job={}
+        job['jobSpecId']=job_cut['parent_id']
+        job['URL']='none'
+        jobs.append(job)
+    Job.insert('active',jobs,request_id,url)
+    Session.commit()
+    return job_cuts
