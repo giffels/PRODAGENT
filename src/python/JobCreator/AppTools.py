@@ -159,7 +159,70 @@ class InsertAppDetails:
         return
 
     
+class InsertBulkAppDetails:
+    """
+    _InsertAppDetails_
+
+    TaskObject operator.
+    Extract the Application information from the JobSpec and generate
+    a standard exec script framework in the TaskObject.
+    
+    """
+    def __init__(self, nodeType = "JobSpecNode"):
+        self.nodeType = nodeType
         
+    def __call__(self, taskObject):
+        """
+        _operator()_
+
+        Act on a TaskObject, pull application details out of the JobSpec
+        it was created from and install a standard structure for generating
+        the main Executable script that will be invoked by ShREEK
+
+        """
+        jobSpec = taskObject[self.nodeType]
+        if jobSpec.type != "CMSSW":
+            return
+        appDetails = jobSpec.application
+        
+        taskObject['CMSProjectName'] = jobSpec.application['Project']
+        taskObject['CMSProjectVersion'] = jobSpec.application['Version']
+        taskObject['CMSExecutable'] = jobSpec.application['Executable']
+        taskObject['CMSPythonPSet'] = jobSpec.configuration
+        
+        #  //
+        # // Add an empty structured file to contain the PSet after
+        #//  it is converted from the Python format. 
+        taskObject.addStructuredFile("PSet.cfg")
+        taskObject['CMSCommandLineArgs'] = " PSet.cfg "
+        
+
+     
+            
+            
+        #  //
+        # // Add structures to enable manipulation of task main script
+        #//  These fields are used to add commands and script calls
+        #  //at intervals in the main script.
+        # //
+        #//
+        taskObject['PreTaskCommands'] = []
+        taskObject['PostTaskCommands'] = []
+        taskObject['PreAppCommands'] = []
+        taskObject['PostAppCommands'] = []
+
+      
+        #  //
+        # // Insert End Control Point check on exit status
+        #//
+        controlP = taskObject['ShREEKTask'].endControlPoint
+        exitCheck = CheckExitCode()
+        exitCheck.attrs['OnFail'] = "killJob"
+        exitAction = KillJob("killJob")
+        controlP.addConditional(exitCheck)
+        controlP.addAction(exitAction)
+        
+        return
         
 
 class PopulateMainScript:

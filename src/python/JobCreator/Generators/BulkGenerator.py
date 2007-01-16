@@ -22,16 +22,16 @@ from TaskObjects.Tools.WriteShREEKConfig import generateShREEKConfig
 from TaskObjects.Tools.WriteShREEKConfig import writeShREEKConfig
 from TaskObjects.Tools.GenerateMainScript import GenerateMainScript
 
-from JobCreator.AppTools import InsertAppDetails, PopulateMainScript
+from JobCreator.AppTools import InsertBulkAppDetails, PopulateMainScript
 from JobCreator.AppTools import InsertJobReportTools
 from JobCreator.RunResTools import InstallRunResComponent
 from JobCreator.RunResTools import AccumulateRunResDB
 from JobCreator.RunResTools import BulkCMSSWRunResDB, InsertDirInRunRes
 from JobCreator.StageOutTools import NewInsertStageOut
 from JobCreator.StageOutTools import NewPopulateStageOut
-
+from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
 from JobCreator.BulkTools import InstallUnpacker 
-
+from JobCreator.FastMergeTools import InstallBulkFastMerge
 
 import inspect
 import os
@@ -93,19 +93,24 @@ class BulkGenerator(GeneratorInterface):
             "BulkGenerator.actOnWorkflowSpec(%s, %s)" % (
                workflowSpec, workflowCache)
             )
+        
+        wftype = workflowSpec.parameters['WorkflowType']
 
-        workflowSpec.payload.operate(TaskObjectMaker())
-        jobTemplate = os.path.join(workflowCache, "template")
+        logging.info("Generating template for %s type jobs" % wftype)
+        workflowSpec.payload.operate(TaskObjectMaker(wftype))
+        
+        jobTemplate = os.path.join(workflowCache, wftype)
         
         directory = self.newJobArea(workflowSpec.workflowName(), jobTemplate)
         taskObject = workflowSpec.payload.taskObject
         generateShREEKConfig(taskObject)
         
         taskObject(GenerateMainScript())
-        taskObject(InsertAppDetails("PayloadNode"))
+        taskObject(InsertBulkAppDetails("PayloadNode"))
         taskObject(InstallRunResComponent())
         taskObject(InsertJobReportTools())
-        
+        taskObject(InsertCleanUp())
+        taskObject(InstallBulkFastMerge())
         taskObject(NewInsertStageOut())
         taskObject(InstallUnpacker())
         
@@ -117,6 +122,7 @@ class BulkGenerator(GeneratorInterface):
  
         taskObject(BashEnvironmentMaker())
         taskObject(PopulateMainScript())
+        taskObject(PopulateCleanUp())
         taskObject(NewPopulateStageOut())
 
         logging.debug("JobGenerator:Creating Physical Job")

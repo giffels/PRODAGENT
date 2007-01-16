@@ -70,12 +70,13 @@ if not os.path.exists(workingDir):
     sys.exit(1)
 
 if jobSpecFile == None:
-    print "No JobSpec file specified: --job-spec option is required"
-    sys.exit(1)
-if not os.path.exists(jobSpecFile):
-    print "JobSpec File does not exist:"
-    print jobSpecFile
-    sys.exit(1)
+    print "No JobSpec file specified: Skipping JobSpec call"
+
+if jobSpecFile != None:
+    if not os.path.exists(jobSpecFile):
+        print "JobSpec File does not exist:"
+        print jobSpecFile
+        sys.exit(1)
 
 if workflowSpecFile == None:
     print "No Workflow Spec file specified: --workflow-spec option is required"
@@ -86,16 +87,7 @@ if not os.path.exists(workflowSpecFile):
     sys.exit(1)
 
 
-try:
-    jobSpec = JobSpec()
-    jobSpec.load(jobSpecFile)
-except StandardError, ex:
-    msg = "Error loading job spec file:\n"
-    msg += jobSpecFile
-    msg += "\n"
-    msg += str(ex)
-    print msg
-    sys.exit(1)
+
 
 try:
     workflowSpec = WorkflowSpec()
@@ -138,6 +130,19 @@ del creatorInst
 #  //
 # // Now process the job spec 
 #//
+if jobSpecFile == None:
+    sys.exit(0)
+try:
+    jobSpec = JobSpec()
+    jobSpec.load(jobSpecFile)
+except StandardError, ex:
+    msg = "Error loading job spec file:\n"
+    msg += jobSpecFile
+    msg += "\n"
+    msg += str(ex)
+    print msg
+    sys.exit(1)
+
 jobname = jobSpec.parameters['JobName']
 jobCache = os.path.join(wfCache, jobname)
 if not os.path.exists(jobCache):
