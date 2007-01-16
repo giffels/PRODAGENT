@@ -609,7 +609,8 @@ CREATE TABLE pm_job
     job_spec_location     varchar(255)    not null default 'None',
     server_url            varchar(255)    not null,
     downloaded            int(11)         not null default 0,
-    catagory              varchar(150)    not null
+    catagory              varchar(150)    not null,
+    primary key(id)
    ) Type=InnoDB;
 
 CREATE TABLE pm_job_cut
