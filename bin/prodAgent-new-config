@@ -252,6 +252,19 @@ comments = {
     "ProdAgentDB" : \
 """
 You should only supply either the portNr OR socketFileLocation
+If you use ports put either leave the value parameter in 
+'prodAgent-edit-config' of socketFileLocation empty, or if
+you directly edit the xml config file, use a double double quote in the value attribute
+of the socketFileLocation parameter.
+
+If the mysqldb is not on the same machine, make sure the 
+permissions are set correctly (
+grant all privileges on *.* to 'root'@'machine.domain' identified by 
+'pass' with grant option;
+flush privileges;
+show grants for 'root'@'machine.domain';
+
+Beware usernames in mysql can be too long.
 """,
    "BOSS" : \
 """
@@ -259,6 +272,13 @@ Please look over these parameters carefully.
 If you are not using the Clarens based web service for database
 communication you can leave the Clarens entries empty.
 The BOSS database names will be derived from the ProdAgent DB name
+
+If the mysqldb is not on the same machine, make sure to 
+add some things to the boss config:
+prodAgent-edit-config --component=BOSS --parameter=rtDomain 
+--value=yourdomain
+prodAgent-edit-config --component=BOSS --parameter=rtHost --value=yourdbhost
+prodAgent-edit-config --component=BOSS --parameter=domain --value=yourdomain
 """,
    "JobSubmitter" : \
 """
