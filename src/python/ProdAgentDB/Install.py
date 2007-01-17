@@ -129,8 +129,12 @@ def grantUsers(dbName,socketFileLocation,portNr,host,users,installUser):
 
    for user in users.keys():
        passwd=users[user]
+
+       import socket
+       connect_from=socket.gethostname()
+       print('WARNING: using "'+connect_from +'" as hostname to grant access')
    
-       grantCommand='GRANT UPDATE,SELECT,DELETE,INSERT ON '+dbName+'.* TO \''+user+'\'@\''+host+'\' IDENTIFIED BY \''+passwd+'\';'
+       grantCommand='GRANT UPDATE,SELECT,DELETE,INSERT ON '+dbName+'.* TO \''+user+'\'@\''+connect_from+'\' IDENTIFIED BY \''+passwd+'\';'
    
        # update grant information.
    
