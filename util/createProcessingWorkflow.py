@@ -23,6 +23,7 @@ import ProdCommon.MCPayloads.UUID as MCPayloadsUUID
 valid = ['cfg=', 'version=', 'category=', 'name=', 'dataset=',
          'split-type=', 'split-size=',
          'only-blocks=', 'only-sites=',
+         'only-closed-blocks',
          'dbs-address=', 'dbs-url=', 'dls-type=', 'dls-address=',
          'same-primary-dataset', "fake-hash",
          'pileup-dataset=', 'pileup-files-per-job=',
@@ -76,7 +77,9 @@ options = \
     added to the same primary dataset as the input dataset if provided.
     If not provided, then a completely new Primary dataset will be created
     using the --name value.
-    
+
+  --only-closed-blocks  Switch that will mean that open blocks are ignored
+    by the dataset injector.
 
   Specifying a DBS/DLS containing the dataset. Usually data is looked up
   in the ProdAgents own DBS/DLS. If you want a dataset from different DBS/DLS
@@ -119,6 +122,7 @@ samePrimaryDataset = False
 fakeHash = False
 pileupDataset = None
 pileupFilesPerJob = 1
+onlyClosedBlocks = False
 
 
 primaryDataset = None
@@ -151,6 +155,8 @@ for opt, arg in opts:
         splitSize = arg
     if opt == "--only-blocks":
         onlyBlocks = arg
+    if opt == "--only-closed-blocks":
+        onlyClosedBlocks = True
     if opt == "--only-sites":
         onlySites = arg
     if opt == "--same-primary-dataset":
@@ -279,6 +285,8 @@ spec.setRequestTimestamp(timestamp)
 
 spec.parameters['SplitType'] = splitType
 spec.parameters['SplitSize'] = splitSize
+spec.parameters['OnlyClosedBlocks'] = str(onlyClosedBlocks)
+
 
 if onlyBlocks != None:
     spec.parameters['OnlyBlocks'] = onlyBlocks
