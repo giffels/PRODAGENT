@@ -26,9 +26,9 @@ BEGIN
     SET @p_start=p_start;
     SET @p_max=p_max;
     IF p_short THEN
-      PREPARE STMT FROM "SELECT ms_type.name as event,source.name as source,target.name as dest,ms_message.time,ms_message.delay FROM ms_type,ms_message, ms_process as source,ms_process as target WHERE ms_type.typeid=ms_message.type AND source.procid=ms_message.source AND target.procid=ms_message.dest LIMIT ?,?";
+      PREPARE STMT FROM "SELECT ms_type.name as event,source.name as source,target.name as dest,ms_message.time,ms_message.delay FROM ms_type,ms_message, ms_process as source,ms_process as target WHERE ms_type.typeid=ms_message.type AND source.procid=ms_message.source AND target.procid=ms_message.dest ORDER BY time LIMIT ?,?";
     ELSE
-      PREPARE STMT FROM "SELECT ms_type.name as event,source.name as source,target.name as dest, ms_message.payload, ms_message.time,ms_message.delay FROM ms_type,ms_message, ms_process as source,ms_process as target WHERE ms_type.typeid=ms_message.type AND source.procid=ms_message.source AND target.procid=ms_message.dest LIMIT ?,?";
+      PREPARE STMT FROM "SELECT ms_type.name as event,source.name as source,target.name as dest, ms_message.payload, ms_message.time,ms_message.delay FROM ms_type,ms_message, ms_process as source,ms_process as target WHERE ms_type.typeid=ms_message.type AND source.procid=ms_message.source AND target.procid=ms_message.dest  ORDER BY time LIMIT ?,?";
     END IF;
     EXECUTE STMT USING @p_start,@p_max;
     PREPARE STMT FROM "SELECT count(*) as available_messages FROM ms_type,ms_message, ms_process as source,ms_process as target WHERE ms_type.typeid=ms_message.type AND source.procid=ms_message.source AND target.procid=ms_message.dest ";
@@ -43,9 +43,9 @@ BEGIN
     SET @p_start=p_start;
     SET @p_max=p_max;
     IF p_short THEN
-      PREPARE STMT FROM "SELECT ms_type.name as event,source.name as source,target.name as dest, ms_history.time FROM ms_type,ms_history, ms_process as source,ms_process as target WHERE ms_type.typeid=ms_history.type AND source.procid=ms_history.source AND target.procid=ms_history.dest LIMIT ?,?";
+      PREPARE STMT FROM "SELECT ms_type.name as event,source.name as source,target.name as dest, ms_history.time FROM ms_type,ms_history, ms_process as source,ms_process as target WHERE ms_type.typeid=ms_history.type AND source.procid=ms_history.source AND target.procid=ms_history.dest ORDER BY time LIMIT ?,?";
     ELSE
-      PREPARE STMT FROM "SELECT ms_type.name as event,source.name as source,target.name as dest, ms_history.payload,ms_history.time FROM ms_type,ms_history, ms_process as source,ms_process as target WHERE ms_type.typeid=ms_history.type AND source.procid=ms_history.source AND target.procid=ms_history.dest LIMIT ?,?";
+      PREPARE STMT FROM "SELECT ms_type.name as event,source.name as source,target.name as dest, ms_history.payload,ms_history.time FROM ms_type,ms_history, ms_process as source,ms_process as target WHERE ms_type.typeid=ms_history.type AND source.procid=ms_history.source AND target.procid=ms_history.dest ORDER BY time LIMIT ?,?";
     END IF;
     EXECUTE STMT USING @p_start,@p_max;
       PREPARE STMT FROM "SELECT count(*) as available_messages FROM ms_type,ms_history, ms_process as source,ms_process as target WHERE ms_type.typeid=ms_history.type AND source.procid=ms_history.source AND target.procid=ms_history.dest ";
