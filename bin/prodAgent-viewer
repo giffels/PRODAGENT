@@ -100,12 +100,12 @@ class DBWrapper:
        sqlStr=""" SELECT ms_type.name as event,source.name as source,target.name as dest,
        ms_message.payload, ms_message.time,ms_message.delay FROM ms_type,ms_message, 
        ms_process as source,ms_process as target WHERE ms_type.typeid=ms_message.type AND 
-       source.procid=ms_message.source AND target.procid=ms_message.dest LIMIT %s,%s""" %(start,max)
+       source.procid=ms_message.source AND target.procid=ms_message.dest ORDER BY time LIMIT %s,%s""" %(start,max)
        if short:
            sqlStr=""" SELECT ms_type.name as event,source.name as source,target.name as dest,
            ms_message.time,ms_message.delay FROM ms_type,ms_message, 
            ms_process as source,ms_process as target WHERE ms_type.typeid=ms_message.type AND 
-           source.procid=ms_message.source AND target.procid=ms_message.dest LIMIT %s,%s""" %(start,max)
+           source.procid=ms_message.source AND target.procid=ms_message.dest ORDER BY time LIMIT %s,%s""" %(start,max)
        Session.execute(sqlStr)
        rows=Session.fetchall()
        return rows
@@ -121,12 +121,12 @@ class DBWrapper:
        sqlStr=""" SELECT ms_type.name as event,source.name as source,target.name as dest,
        ms_history.payload,ms_history.time FROM ms_type,ms_history, 
        ms_process as source,ms_process as target WHERE ms_type.typeid=ms_history.type AND 
-       source.procid=ms_history.source AND target.procid=ms_history.dest LIMIT %s,%s""" %(start,max)
+       source.procid=ms_history.source AND target.procid=ms_history.dest ORDER BY time LIMIT %s,%s""" %(start,max)
        if short:
            sqlStr=""" SELECT ms_type.name as event,source.name as source,target.name as dest,
            ms_history.time FROM ms_type,ms_history, 
            ms_process as source,ms_process as target WHERE ms_type.typeid=ms_history.type AND 
-           source.procid=ms_history.source AND target.procid=ms_history.dest LIMIT %s,%s""" %(start,max)
+           source.procid=ms_history.source AND target.procid=ms_history.dest ORDER BY time LIMIT %s,%s""" %(start,max)
        Session.execute(sqlStr)
        rows=Session.fetchall()
        return rows
