@@ -53,6 +53,12 @@ class DatasetIterator:
         self.workflowSpec.load(workflowSpecFile)
         self.currentJobDef = None
         self.count = 0
+        self.onlyClosedBlocks = False
+        if  self.workflowSpec.parameters.has_key("OnlyClosedBlocks"):
+            onlyClosed =  str(
+                self.workflowSpec.parameters["OnlyClosedBlocks"]).lower()
+            if onlyClosed == "true":
+                self.onlyClosedBlocks = True
         self.ownedJobSpecs = {}
         self.allowedBlocks = []
         self.allowedSites = []
@@ -312,7 +318,8 @@ class DatasetIterator:
         """
         try:
             splitter = createJobSplitter(self.inputDataset(),
-                                     **self.dbsdlsContact)
+                                         self.onlyClosedBlocks,
+                                         **self.dbsdlsContact)
         except Exception, ex:
             msg = "Unable to extract details from DBS/DLS for dataset:\n"
             msg += "%s\n" % self.inputDataset()
@@ -493,6 +500,7 @@ class DatasetIterator:
         #//
         try:
             splitter = createJobSplitter(self.inputDataset(),
+                                         self.onlyClosedBlocks,
                                          **self.dbsdlsContact)
         except Exception, ex:
             msg = "Unable to extract details from DBS/DLS for dataset:\n"

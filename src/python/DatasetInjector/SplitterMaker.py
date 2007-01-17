@@ -16,7 +16,7 @@ from DatasetInjector.JobSplitter import JobSplitter
 
 
 
-def createJobSplitter(dataset, **dbsdlsContacts):
+def createJobSplitter(dataset, onlyClosedBlocks = False, **dbsdlsContacts):
     """
     _createJobSplitter_
 
@@ -40,10 +40,11 @@ def createJobSplitter(dataset, **dbsdlsContacts):
 
     blocks =  toolkit.listFileBlocksForDataset(dataset)
     events =  toolkit.getDatasetFiles(dataset)
-
-    
     
     for block in blocks:
+        if onlyClosedBlocks:
+            if block['blockStatus'] != 'closed':
+                continue
         blockName = block['blockName']
         try:
             locations = toolkit.getFileBlockLocation(blockName)
