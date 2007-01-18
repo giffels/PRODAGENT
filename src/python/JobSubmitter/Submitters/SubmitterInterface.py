@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.19 2006/09/19 13:24:37 bacchi Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.20 2006/09/28 13:57:52 bacchi Exp $"
 
 import os
 import logging
@@ -237,7 +237,9 @@ class SubmitterInterface:
         if os.path.exists(dashboardInfoFile):
             dashboardInfo = DashboardInfo()
             dashboardInfo.read(dashboardInfoFile)
-            dashboardInfo.job = "%s_%s" % (dashboardInfo.job, time.time())
+            # no need to add timestamp, this makes the ID inconsistent
+            # between submission and runtime evansde 18/01/07
+            #dashboardInfo.job = "%s_%s" % (dashboardInfo.job, time.time())
             dashboardInfo['Scheduler'] = self.__class__.__name__
             self.parameters['DashboardInfo'] = dashboardInfo
             self.parameters['DashboardID'] = dashboardInfo.job
