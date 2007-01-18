@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.10 2007/01/05 17:24:59 evansde Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.11 2007/01/09 20:50:35 evansde Exp $"
+__version__ = "$Revision: 1.11 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -177,6 +177,10 @@ class DatasetInjectorComponent:
         self.iterators[workflowName] = newIterator
         self.iterator = newIterator
         self.iterator.save(self.args['WorkflowCache'])
+
+        self.ms.publish("NewWorkflow", workflowPath)
+        self.ms.commit()
+        
         return
 
     
