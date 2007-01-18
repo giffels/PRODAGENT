@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.14 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.14 2006/11/30 16:49:56 evansde Exp $"
+__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.15 2007/01/09 20:09:20 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -159,6 +159,9 @@ class ReqInjComponent:
            site=",".join(SEnames)
            self.setSitePref(site) 
 
+        
+        self.ms.publish("NewWorkflow", workflowPath)
+        self.ms.commit()     
         return
 
     def removeJobSpec(self, jobSpecId):
