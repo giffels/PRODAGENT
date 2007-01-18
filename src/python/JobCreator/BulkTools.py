@@ -8,6 +8,7 @@ Utils for Bulk style Jobs
 
 import os
 import inspect
+import logging
 import JobCreator.RuntimeTools.RuntimeUnpackJobSpec as Unpacker
 
 
@@ -36,3 +37,29 @@ class InstallUnpacker:
             )
         
         
+class InstallUserSandbox:
+
+    def __call__(self, taskObject):
+        if taskObject['Type'] != "CMSSW":
+            return
+        node = taskObject['PayloadNode']
+        if node.userSandbox == None:
+            return
+
+        if not os.path.exists(node.userSandbox):
+            msg = "Warning: Cannot find specified User Sandbox:\n"
+            msg += "%s\n" % node.userSandbox
+            logging.warning(msg)
+            return
+        
+        
+        
+        taskObject.attachFile(node.userSandbox)
+
+        runres = taskObject['RunResDB']
+        
+        runres.addData("/%s/UserSandbox" % taskObject['Name'],
+                       os.path.basename(node.userSandbox)
+                       )
+        return
+                       

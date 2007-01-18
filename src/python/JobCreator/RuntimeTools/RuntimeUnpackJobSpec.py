@@ -50,7 +50,9 @@ class JobSpecExpander:
             
         if self.config.has_key('Configuration'):
             self.createPSet()
-            
+
+        if self.config.has_key('UserSandbox'):
+            self.userSandbox()
         
             
 
@@ -70,6 +72,24 @@ class JobSpecExpander:
             self.jobSpecNode.cfgInterface.cmsConfig.asConfigurationString()
             )
         handle.close()
+        return
+        
+
+    def userSandbox(self):
+        """
+        _userSandbox_
+
+        If a User Sandbox is specified, unpack it
+
+        """
+        try:
+            sandboxName = self.config['UserSandbox'][-1]
+            command = "tar -zxf %s" % sandboxName
+            os.system(command)
+        except Exception, ex:
+            msg = "Error handling user sandbox:\n"
+            msg += str(ex)
+            print msg
         return
         
 

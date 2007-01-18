@@ -30,7 +30,7 @@ from JobCreator.RunResTools import BulkCMSSWRunResDB, InsertDirInRunRes
 from JobCreator.StageOutTools import NewInsertStageOut
 from JobCreator.StageOutTools import NewPopulateStageOut
 from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
-from JobCreator.BulkTools import InstallUnpacker 
+from JobCreator.BulkTools import InstallUnpacker, InstallUserSandbox
 from JobCreator.FastMergeTools import InstallBulkFastMerge
 
 import inspect
@@ -95,7 +95,7 @@ class BulkGenerator(GeneratorInterface):
             )
         
         wftype = workflowSpec.parameters['WorkflowType']
-
+        
         logging.info("Generating template for %s type jobs" % wftype)
         workflowSpec.payload.operate(TaskObjectMaker(wftype))
         
@@ -113,6 +113,7 @@ class BulkGenerator(GeneratorInterface):
         taskObject(InstallBulkFastMerge())
         taskObject(NewInsertStageOut())
         taskObject(InstallUnpacker())
+        taskObject(InstallUserSandbox())
         
         logging.debug(
             "JobGenerator: Calling Creator:")
