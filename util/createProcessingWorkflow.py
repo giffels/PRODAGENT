@@ -347,12 +347,22 @@ for outModName, val in cfgInt.outputModules.items():
     for outDataset in datasets:
         dataTier = outDataset['dataTier']
 
+        filterName = outDataset.get("filterName", None)
+
+
         processedDS = "%s-%s-%s-unmerged" % (
             cmsRun.application['Version'], outModName, timestamp)
 
+        if filterName != None:
+            processedDS = "%s-%s-%s-unmerged" % (
+                cmsRun.application['Version'],
+                filterName, timestamp)
+        
         if outDataset.has_key("processedDataset"):
             processedDS = outDataset['processedDataset']
 
+            
+            
         if samePrimaryDataset:
             primaryName = primaryDataset
         else:
