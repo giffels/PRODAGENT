@@ -26,6 +26,7 @@ class PhEDExNodeMap:
         "se01.cmsaf.mit.edu" : "T2_MIT_Buffer",
         "ufdcache.phys.ufl.edu" : "T2_Florida_Buffer",
         "castorsrm.pic.es" : "T1_PIC_MSS",
+        "srm-disk.pic.es" : "T1_PIC_Disk",
         "castorsrm.ciemat.es" : "T2_Spain_Buffer",
         "srm.cern.ch" : "T1_CERN_MSS",
         "ccsrm.in2p3.fr" : "T1_IN2P3_MSS",
