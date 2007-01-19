@@ -1347,6 +1347,7 @@ class MergeSensorComponent:
         spec.setWorkflowName(workflowName)
         spec.setRequestCategory(category)
         spec.setRequestTimestamp(timeStamp)
+        spec.parameters['WorkflowType'] = "Merge"
         
         # describe it as a cmsRun job
         cmsRun = spec.payload
@@ -1442,6 +1443,30 @@ class MergeSensorComponent:
         # add auto cleanup if reqd.
         if self.doCleanUp:
             MCWorkflowTools.addCleanUpNode(cmsRun, "cleanUp1")
+
+
+        # If the workflow doesnt exist in the cache,
+        # we write the WorkflowSpec and publish a NewWorkflow
+        # event for it, so that the JobCreator gets a chance
+        # to create a template for it for bulk submission
+
+        # define file name
+        wfFile = "%s/%s-Workflow.xml" %  (self.args['MergeJobSpecs'], \
+                                               workflowName)
+        
+        # insert it into the database
+        datasetPath = '/' + dataset[0] + '/' + dataset[1] + '/' + dataset[2]
+        newWorkflow = self.database.insertWorkflow(datasetPath, wfFile)
+
+        # is it new?
+        if newWorkflow:    
+        
+            self.database.commit()
+                
+            # publish the message NewWorkflow
+            spec.save(wfFile)
+            self.ms.publish("NewWorkflow", wfFile)
+            self.ms.commit() 
         
         # Clone the workflow into a job spec and set the job name
         jobSpec = spec.createJobSpec()
