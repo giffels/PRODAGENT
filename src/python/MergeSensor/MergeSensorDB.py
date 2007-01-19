@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.13 2006/11/30 11:42:45 ckavka Exp $"
-__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -274,7 +274,8 @@ class MergeSensorDB:
             cursor = self.conn.cursor()
             
         # for all databases (order is important due to foreign keys)
-        for dbname in ["merge_inputfile",
+        for dbname in ["merge_workflow",
+                       "merge_inputfile",
                        "merge_fileblock",
                        "merge_outputfile",
                        "merge_dataset"]:
@@ -2350,7 +2351,7 @@ class MergeSensorDB:
         
         # remove dataset + all input files associated to the
         # dataset + all output files (merge jobs) associated
-        # to the dataset
+        # to the dataset + all workflows
         sqlCommand = """
                        DELETE FROM merge_dataset
                        WHERE prim='""" + prim + """'
@@ -2415,6 +2416,121 @@ class MergeSensorDB:
         
         # close cursor
         cursor.close()
+
+    ##########################################################################
+    # insert workflow
+    ##########################################################################
+            
+    def insertWorkflow(self, dataset, workflow):
+        """
+        __insertWorkflow__
+        
+        insert workflow information
+        
+        Arguments:
+        
+          dataset -- the dataset name
+          workflow -- the workflow name
+          
+        Return:
+            
+          none
+
+        """
+        
+        # get dataset id
+        datasetId = self.getDatasetId(dataset)
+        
+        # get cursor
+        try:
+            cursor = self.conn.cursor()
+            
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+           
+        sqlCommand = """
+                     SELECT id
+                       FROM merge_workflow
+                      WHERE name='""" + workflow + """'
+                        AND dataset='""" + str(datasetId) + """'
+                     """
+  
+        # execute command
+        try:
+            cursor.execute(sqlCommand)
+            
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlCommand)
+
+        # check for number of workflows
+        rows = cursor.rowcount
+        
+        # the workflow is not new
+        if rows != 0:
+            
+            # close cursor and return false
+            cursor.close()
+            return False
+        
+        # insert the workflow
+        sqlCommand = """
+                     INSERT 
+                       INTO merge_workflow
+                            (name, dataset)
+                     VALUES ('""" + workflow + """',
+                             '""" + str(datasetId) + """')
+                     """
+        # execute command
+        try:
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+            
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+
+            # retry
+            try:
+                cursor.execute(sqlCommand)
+                self.transaction.append(sqlCommand)
+
+            except MySQLdb.IntegrityError, msg:
+
+                # duplicate or wrong data
+                raise MergeSensorDBError, msg
+
+        except MySQLdb.IntegrityError, msg:
+
+            # duplicate or wrong data
+            raise MergeSensorDBError, msg
+
+        # check for insertion status
+        rows = cursor.rowcount
+
+        # close cursor
+        cursor.close()
+
+        # problems
+        if rows == 0:        
+            raise MergeSensorDBError, \
+                   'Insertion of workflow %s failed' % workflow
+                   
+        # indicate a new worklow
+        return True
 
     ##########################################################################
     # get merge sensor status
