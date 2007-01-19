@@ -146,10 +146,29 @@ def grantUsers(dbName,socketFileLocation,portNr,host,users,installUser):
            if y!='':
                raise
            print('')
+           print('Provided access to database: '+dbName+' for user profile: '+user+' and host: '+connect_from)
+       except Exception,ex:
+           print(str(y))
+           print('Perhaps you do not have permission to grant access.')
+           print('Check your SQL permissions with your database administrator')
+
+   
+       grantCommand='GRANT UPDATE,SELECT,DELETE,INSERT ON '+dbName+'.* TO \''+user+'\'@\''+host+'\' IDENTIFIED BY \''+passwd+'\';'
+       print('WARNING: using "'+host +'" as hostname to grant access')
+
+       try:
+           command='mysql '+updateData+' --exec "'+grantCommand+'"'
+           stdin,stdout=os.popen4(command)
+           y=''
+           y=stdout.read()
+           if y!='':
+               raise
+           print('')
            print('Provided access to database: '+dbName+' for user profile: '+user+' and host: '+host)
        except Exception,ex:
            print(str(y))
            print('Perhaps you do not have permission to grant access.')
            print('Check your SQL permissions with your database administrator')
-   
+
+
 
