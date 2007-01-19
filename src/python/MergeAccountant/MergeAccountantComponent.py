@@ -245,19 +245,19 @@ class MergeAccountantComponent:
                           % (jobReport, msg))
             return
 
-        # files can be cleaned up now
-        logging.info("trigger cleanup for: %s" % jobName)
-        
-        try:
-            self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
-        except ProdAgentException, ex:
-            logging.error("trying to continue processing success event")
-            
         # ignore non merge jobs
         if jobName.find('mergejob') == -1:
             logging.debug("Ignoring job %s, since it is not a merge job" \
                           % jobName)
             return
+
+        # files can be cleaned up now
+        logging.info("trigger cleanup for: %s" % jobName)
+
+        try:
+            self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
+        except ProdAgentException, ex:
+            logging.error("trying to continue processing success event")
 
         # verify enable condition
         if not self.enabled:
@@ -339,6 +339,12 @@ class MergeAccountantComponent:
 
         """
 
+        # ignore non merge jobs
+        if jobName.find('mergejob') == -1:
+            logging.debug("Ignoring job %s, since it is not a merge job" \
+                          % jobName)
+            return
+
         # files can be cleaned up now
         logging.info("trigger cleanup for: %s" % jobName)
 
@@ -346,12 +352,6 @@ class MergeAccountantComponent:
             self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
         except ProdAgentException, ex:
             logging.error("trying to continue processing failure event")
-
-        # ignore non merge jobs
-        if jobName.find('mergejob') == -1:
-            logging.debug("Ignoring job %s, since it is not a merge job" \
-                          % jobName)
-            return
 
         # verify enable condition
         if not self.enabled:
