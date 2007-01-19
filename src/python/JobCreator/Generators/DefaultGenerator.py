@@ -42,12 +42,13 @@ import ShREEK
 import ShLogger
 import IMProv
 import ProdCommon.CMSConfigTools 
+import ProdCommon.MCPayloads
 import RunRes
 import FwkJobRep
 import StageOut
 import SVSuite
 
-_StandardPackages = [ShREEK, ShLogger, IMProv, StageOut,
+_StandardPackages = [ShREEK, ShLogger, IMProv, StageOut, ProdCommon.MCPayloads,
                      ProdCommon.CMSConfigTools, RunRes, FwkJobRep, SVSuite]
 
 def makeTaskObject(jobSpecNode):
@@ -62,7 +63,7 @@ def makeTaskObject(jobSpecNode):
     taskObj = TaskObject(taskName)
     taskObj['Type'] = jobSpecNode.type
     taskObj['RequestName'] = jobSpecNode.workflow
-    taskObj['JobName'] = "%s-generic" % jobSpecNode.workflow
+    taskObj['JobName'] = jobSpecNode.jobName
     taskObj['JobType'] = jobSpecNode.jobType
     setattr(jobSpecNode, "taskObject", taskObj)
     
