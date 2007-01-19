@@ -480,6 +480,29 @@ CREATE TABLE merge_inputfile
  TYPE = InnoDB DEFAULT CHARSET=latin1;
 
 /*
+A merge_workflow table stores information on workflows files associated
+to currently watched datasets.
+
+Fields:
+
+  id      internal workflow id
+  name    workflow name
+  dataset dataset id
+
+*/
+
+CREATE TABLE merge_workflow
+  (
+    id int NOT NULL auto_increment,
+    name varchar(255) NOT NULL default '',
+    dataset int NOT NULL default '0',
+    PRIMARY KEY(id),
+    INDEX name(name),
+    FOREIGN KEY(dataset) references merge_dataset(id) ON DELETE CASCADE
+  )
+  TYPE = InnoDB DEFAULT CHARSET=latin1;
+
+/*
 A merge_control table stores information on the status of the
 MergeSensor component.
 
