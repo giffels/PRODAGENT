@@ -228,6 +228,7 @@ componentFields = {
     "ProdMgrInterface" : {
     "ComponentDir" : None,
     "JobSpecDir" : '/tmp',
+    "WorkflowSpecDir" : '/tmp',
     "JobSize" : '10',
     "JobCutSize" : '500',
     "ProdMgrs":'https://localhost:8443/clarens/',

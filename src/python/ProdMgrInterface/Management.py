@@ -66,6 +66,43 @@ def executeCall(serverUrl,method_name,parameters=[],componentID="defaultComponen
    return result
 
 
+def executeRestCall(serverUrl,rest_part,componentID="defaultComponent"):
+   global prodAgentCert
+   global prodAgentKey
+   global retries
+   global timeout
+
+   attempt=0
+   while attempt<retries: 
+       try:
+           logging.debug("Setting up connection for "+serverUrl)
+           connection=ProdMgrInterface.Clarens.client(serverUrl, certfile=str(prodAgentCert),\
+               keyfile=str(prodAgentKey),debug=0)
+           logging.debug("Created connection for "+serverUrl)
+           break
+       except Exception,ex:
+           logging.debug("Clarens Server Connection Attempt "+str(attempt)+\
+               "/"+str(retries)+" Failed: "+str(ex))
+           attempt=attempt+1
+           time.sleep(timeout)
+   if attempt==retries:       
+       raise ProdAgentException("Could not establish connection with Clarens server "+\
+           serverUrl+" Please check log files for more error messages ")
+
+   method_name=rest_part.split('?')[0]
+   if method_name.find('prodCommonRecover/lastServiceCall')>-1:
+       tag=str(time.time())
+       logCall(serverUrl,method_name,[],componentID,tag)
+
+   #NOTE: rest calls are currently not properly logged!
+
+   connection.disable_deserialize() 
+   result=connection.execute_rest(rest_part)
+   #logging.debug("Retrieved result: "+str(result))
+   connection.enable_deserialize() 
+   return result
+
+
 def logCall(serverUrl,method_name,args,componentID="defaultComponent",tag="0"):
    global lastCall
 

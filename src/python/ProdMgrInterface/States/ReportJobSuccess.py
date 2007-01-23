@@ -15,6 +15,7 @@ from ProdMgrInterface import State
 from ProdMgrInterface.Registry import registerHandler
 from ProdMgrInterface.States.StateInterface import StateInterface 
 import ProdMgrInterface.Interface as ProdMgrAPI
+from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 
 class ReportJobSuccess(StateInterface):
@@ -52,6 +53,16 @@ class ReportJobSuccess(StateInterface):
 
        logging.debug("Evaluate job associated to job cut "+str(report[-1].jobSpecId))
        jobId=Job.id(report[-1].jobSpecId)
+
+       #NOTE: here we call the trigger code.
+       #try:
+          #TriggerAPI.setFlag("cleanup", jobreport[-1].jobSpecId,"ProdMgr")
+       #except Exception,ex:
+       #   logging.debug("WARNING: problem with prodmgr flag setting"+\n
+       #       +" it might be that this job was generated outside the prodmgr"+\n
+       #       +" if that is the case, do not panic")
+
+
        logging.debug("Associated job is: "+str(jobId)) 
        if Job.jobCutsFinished(jobId):
          # retrieve the number of processed events

@@ -42,3 +42,16 @@ def getHighestPriority(index=0):
 def rm(request_id):
     sqlStr="""DELETE FROM pm_request where id="%s" """ %(request_id)
     Session.execute(sqlStr)
+
+def withoutWorkflow():
+    sqlStr="""SELECT id,url,request_type FROM pm_request where retrieved_workflow='false'
+         """
+    Session.execute(sqlStr)
+    rows=Session.fetchall()
+    return rows
+
+def workflowSet(id):
+    sqlStr="""UPDATE pm_request SET  retrieved_workflow='true' 
+        WHERE id='%s' """ %(str(id))
+    Session.execute(sqlStr)
+    Session.commit()

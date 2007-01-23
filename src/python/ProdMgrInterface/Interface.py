@@ -32,6 +32,11 @@ def getRequests(serverUrl,agent_tag,componentID="defaultComponent"):
 def setLocations(serverUrl,locations=[],componentID="defaultComponent"):
    return Management.executeCall(serverUrl,"prodMgrProdAgent.setLocations",[locations],componentID)
 
+def retrieveWorkflow(serverUrl,requestID,componentID="defaultComponent"):
+   return Management.executeRestCall(serverUrl,'psp/prodMgrRequest/retrieveWorkflow.psp?RequestID='+str(requestID),componentID)
+
+
+
 
 def commit(serverUrl=None,method_name=None,componentID=None):
    Management.commit(serverUrl,method_name,componentID)

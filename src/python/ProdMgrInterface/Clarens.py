@@ -18,7 +18,7 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-# $Id: Clarens.py,v 1.1 2006/09/13 22:34:57 fvlingen Exp $
+# $Id: ClarensDpe.py,v 1.25 2005/06/04 22:28:02 gnocci-man Exp $
 
 import xmlrpclib, httplib
 xmlrpc=xmlrpclib
@@ -41,10 +41,10 @@ import socket
 client_registry={}
 
 try:
-  import json
+  import Clarens.Util.Json as json
   jsonrpc=json
 except:
-  jsonrpc=json=None
+  json=jsonrpc=None
 
 #-------------------------------------------------------------------------------
 def err_msg(mes):
@@ -77,7 +77,7 @@ def repr_headers(hdict):
   return sio.getvalue()
 
 #-------------------------------------------------------------------------------
-def parse_response_xmlrpc(f, conn, debug=0):
+def parse_response_xmlrpc(f, conn, debug=1):
     """parse_response(file_obj)
 
     Read response from input file object, and parse it
@@ -99,8 +99,8 @@ def parse_response_xmlrpc(f, conn, debug=0):
         if debug:
           s.write(response)
         p.feed(response)
-#      if debug:
-#        err_msg(s.getvalue())
+      if debug:
+        err_msg(s.getvalue())
       p.close()
       return u.close()
     except:
@@ -281,8 +281,8 @@ class client:
         self.conn=httplib.HTTPSConnection(self.host, self.port, self.keyfile, self.certfile, strict=1)
       if self.debug:
         err_msg(repr(self.conn))
+        self.conn.set_debuglevel(5)
 
-      self.debug=debug
       self.proto=string.lower(purl[0])
 
       self.conn_user=ustring
@@ -362,14 +362,59 @@ class client:
     connected=1
 
   #-----------------------------------------------------------------------------
+  def nb_dispatch_rest(self,file,timeout=5):
+    """Dispatch a HTTP request and return to the caller
+    (string) method: The remote method on the server
+    (list)   args  : A list of arguments
+    
+    Used internally
+    """
+    if self.rpc=="xmlrpc":
+      content_type="text/xml"
+    elif self.rpc=="jsonrpc":
+      content_type="text/json"
+
+
+    xmlrpc_h={"Content-Type": content_type,
+              "User-Agent": "ClarensDpe.py version 1.4",
+             }
+
+    if not self.guest:
+      xmlrpc_h["AUTHORIZATION"]="Basic %s" % string.replace(
+               encodestring("%s:%s" % (self.conn_user, self.conn_passwd)),"\012", "")
+
+    connected=0
+
+    if self.debug:
+      err_msg("sending GET request...")
+      err_msg("user=%s"%self.conn_user)
+      err_msg("pw=%s"%self.conn_passwd)
+      err_msg(repr_headers(xmlrpc_h))
+    self.conn.request("GET",self.server_path+file,None,xmlrpc_h)
+    connected=1
+
+
+  #-----------------------------------------------------------------------------
   def get_result(self):
     """Internal method to get the result object from a connection
     """
     if not self.conn.sock: return
     return self.conn.getresponse()
+
+  #-----------------------------------------------------------------------------
+  def execute_rest(self,file):
+    """Public method to request a REST URL on the remote server synchronously
+    (string) file: file portion of URL to GET, which will be appended to the 
+                   server URL
+
+    Returns the result of the method call, or raises an exception.
+    If the result is not in XMLRPC or JSON format, call the
+    disable_deserialize() method first.
+    """
+    return self.execute(file,"", rest=1)
   
   #-----------------------------------------------------------------------------
-  def execute(self,method,args):
+  def execute(self,method,args, rest=None):
     """Public method to call a method on the remote server synchronously
     (string) method: The remote method on the server
     (list)   args  : A list of arguments
@@ -377,7 +422,10 @@ class client:
     Returns the result of the method call, or raises an exception
     """
     i=0
-    self.nb_dispatch(method,args)
+    if rest==None:
+      self.nb_dispatch(method,args)
+    else:
+      self.nb_dispatch_rest(method)
     stime=0.1
     self.result_obj=None
     while not self.result_obj and i<7:
@@ -415,7 +463,7 @@ class client:
       if not self.filename:
         s=StringIO.StringIO()
       else:
-        s=open(filename,"w")
+        s=open(self.filename,"w")
       try:
         while 1:
           data = self.result_obj.read(1048576)
@@ -494,8 +542,6 @@ class client:
   #-----------------------------------------------------------------------------
   def set_writefunction(self,cb):
     """
-    NOT IMPLEMENTED USE set_file_download instead
-    
     Set the function to be called with data that is returned by the server,
     e.g. the write method of a file object
     
@@ -509,6 +555,7 @@ class client:
     This will download the remote file /index.html and write the result into
     the file myfile.dat
     """
+    self.deserialize=0
     self.writefunction=cb
     self.filename=None
 
@@ -527,6 +574,29 @@ class client:
     
     This will download the remote file /index.html and write the result into
     the file myfile.html
+    """
+  
+    self.deserialize=0
+    self.filename=filename
+    fname=os.path.split(filename)[1]
+    self.writefunction=None
+    if not self.filename: 
+      raise IOError("%s is a directory!"%filename)
+
+
+  #-----------------------------------------------------------------------------
+  def unset_file_download(self, filename):
+    """
+    When downloading a file, return file contents as a string result instead
+    of writing to a file.
+
+    Example:
+    myclient.unset_file_download()
+    data=myclient.file.read("/index.html",0,-1)
+
+    
+    This will download the remote file /index.html and write the result into
+    the string variable named 'data'.
     """
   
     self.deserialize=0
@@ -636,9 +706,11 @@ class client:
     statinfo=os.stat(filename)
     selector=path_join([self.server_path,remotename])
 
-    connected=0
+    self.echo.echo("Uploading file") # make sure socket is open
     count=0
+    connected=0
     while not connected and count<4:
+      connected=0
       try:
         if self.conn.sock==None:
           self.conn.connect()
@@ -659,6 +731,7 @@ class client:
         connected=0
         count=count+1
         continue
+      if not connected: continue        
 
       # Now send the file
       bytes_read=0
@@ -668,7 +741,7 @@ class client:
         if len(data):
           try:
             bytes_read=bytes_read+len(data)
-            self.conn.sock.send(data)
+            self.conn.send(data)
           except socket.error,v:
             if self.debug:
               err_msg("socket error: %s (%s) args=%s"%(v.args[1],v.args[0]))
@@ -681,31 +754,29 @@ class client:
             break
         else:
           break
-      if connected:
-        break
+      if not connected: continue        
 
-    # Now get the result
-    self.result_obj=None
-    count=0
-    while not self.result_obj and count<7:
+      # Now get the result
       try:
         self.result_obj=self.get_result()
         if self.debug:
           print "result_obj =",self.result_obj
-        if self.result_obj: break
         time.sleep(1)
+      except httplib.BadStatusLine:
+        self.conn=httplib.HTTPSConnection(self.host, self.port, self.keyfile, self.certfile)
       except httplib.CannotSendRequest,v:
         err_msg(repr(v)+"\n"+str(dir(v)))
         err_msg("Could not connect. Make sure certificate is still valid")
         connected=0
         return
       except httplib.ResponseNotReady:
-        pass
-      count=count+1
+        raise
+        count=count+1
+      if not self.result_obj: continue
 
-    # Return parsed response
-    retval = parse_response_xmlrpc(self.result_obj, self.conn, self.debug)
-    return retval[0]
+      # Return parsed response
+      retval = parse_response_xmlrpc(self.result_obj, self.conn, self.debug)
+      return retval[0]
 
   def upload(self,remotename,filename, timeout=5):
     return self.upload_file(filename, remotename, timeout)

@@ -20,6 +20,7 @@ from MessageService.MessageService import MessageService
 from ProdAgentDB import Session
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentCore.Codes import errors
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdMgrInterface.Registry import retrieveHandler
 from ProdMgrInterface.Registry import Registry
 from ProdMgrInterface import MessageQueue
@@ -27,6 +28,7 @@ from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
 from ProdMgrInterface import Interface as ProdMgr
+
 
 import ProdMgrInterface.Interface as ProdMgrAPI
 
@@ -323,6 +325,26 @@ class ProdMgrComponent:
             except Exception,ex:
                 logging.debug("WARNING: Could not retrieve requests for "\
                    +prodmgr+"  "+str(ex))
+        # once we have the requests retrieve if necessary their workflow.
+        # depending on the request we might already have the workflow.
+        requestIDs=Request.withoutWorkflow()
+        try:
+            os.makedirs(self.args['WorkflowSpecDir'])
+        except Exception,ex:
+            logging.debug("WARNING: directory already exists "+str(ex))
+
+        for id,url,req_type in requestIDs:
+            logging.debug('Retrieving Workflow for '+str(id))
+            rest_result=ProdMgr.retrieveWorkflow(url,id)
+            workflowSpec = WorkflowSpec()
+            workflowSpec.loadString(rest_result)
+            workflowFileName=self.args['WorkflowSpecDir']+'/'+workflowSpec.workflowName()+'.xml'
+            workflowSpec.save(workflowFileName)
+            Request.workflowSet(id)
+            #NOTE: we want to use the same session as for the workflowset call.
+            self.ms.publish("NewDataset",workflowFileName) 
+            self.ms.publish("NewWorkflow",workflowFileName) 
+              
         if payload==self.args['RandomCheck']:
             self.args['RandomCheck']=str(random.random())
             logging.debug("Contacting prodmgrs again in (HH:MM:SS): "+str(interval))

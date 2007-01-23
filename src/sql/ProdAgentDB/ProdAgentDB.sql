@@ -621,6 +621,7 @@ CREATE TABLE pm_request
     url                   varchar(150)    not null,
     priority              int(11)         not null,
     request_type          enum("event", "file") default 'event',
+    retrieved_workflow    enum("true", "false") default 'false',
     primary key(id,url)
    ) Type=InnoDB;
 
