@@ -42,7 +42,7 @@ def installFastMerge(taskObject):
     catalog = catalog.replace("\"", "")
     
     
-    commandLineArgs = " -o %s -l %s " % (pfn, lfn) 
+    commandLineArgs = " -k -o %s -l %s " % (pfn, lfn) 
     commandLineArgs += " -j FrameworkJobReport.xml "
     commandLineArgs += " -w %s -i " % catalog
     
