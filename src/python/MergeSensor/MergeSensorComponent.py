@@ -1987,7 +1987,7 @@ class MergeSensorComponent:
         try:
             self.datasets = WatchedDatasets(self.args['StartMode'])
         except MergeSensorError, message:
-            logging.error(message);
+            logging.error(message)
             return
         
         # set merged file size
@@ -2027,9 +2027,31 @@ class MergeSensorComponent:
         
         # wait for messages
         while True:
+            
+            # get a single message
             messageType, payload = self.ms.get()
+
+            # verify that the polling thread is running, if not stop the main
+            # thread also, so the whole component stops working.
+
+            # if the component is stopped, the message will be available for
+            # processing on the next restart of the component, since it is
+            # not removed from the message service
+            
+            if not pollingThread.isAlive():
+                
+                logging.error("Error: polling thread is not running, " + \
+                              "the whole component is stopped now.")
+                
+                # exit
+                sys.exit(1)
+
+            # commit the reception of the message
             self.ms.commit()
+            
+            # perform task
             self.__call__(messageType, payload)
+            
         
     ##########################################################################
     # get version information
@@ -2100,7 +2122,7 @@ class PollDBS(Thread):
 
         """
 
-        # at most three consecutive failed attempts to run the polling thread
+        # at most five consecutive failed attempts to run the polling thread
         failedAttempts = 0
         
         # performs DBS polling indefinitely
@@ -2109,15 +2131,15 @@ class PollDBS(Thread):
             # perform dataset polling
             try:
                 self.poll()
-                
+
             # error
             except Exception, ex:
                 
                 # log error message
                 logging.error("Error in polling thread: " + str(ex))
                 
-                # try at most 3 times
-                if failedAttempts == 3:
+                # try at most 5 times
+                if failedAttempts == 5:
                     
                     logging.error("Cannot restart polling. Aborting")
                     logging.error("\nWarning: Polling thread is not running!")
@@ -2126,8 +2148,11 @@ class PollDBS(Thread):
                 # increment failure counter
                 failedAttempts += 1
                 
-                logging.error("Trying to restart polling... " + \
+                logging.error("Trying to restart polling in 5 minutes... " + \
                               "(attempt %s)" % failedAttempts)
+
+                # wait for five minutes
+                time.sleep(300)                
                 
             # no errors, reset failure counter
             else:
