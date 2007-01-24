@@ -28,6 +28,7 @@ from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 import JobCreator.Creators
 import JobCreator.Generators
+from ProdMgrInterface import JobCut
 
 
 class JobCreatorComponent:
@@ -244,7 +245,13 @@ class JobCreatorComponent:
                     jobname, component)
                               )
                 self.trigger.addFlag("cleanup", jobname, component)
-                    
+
+            #NOTE: this is a check in case we use the ProdMgrInterface
+            if JobCut.hasID(jobname):
+                logging.debug("Job constructed using ProdMgr, adding extra trigger")
+                self.trigger.addFlag("cleanup", jobname, "ProdMgrInterface")
+            #END NOTE
+               
             if len(cleanFlags) > 0:
                 #  //
                 # // Only set the action if there are components

@@ -59,14 +59,16 @@ def registerJobSpecLocation(job_id,job_spec_location):
 
 def insert(catagory,jobs,request_id,server_url):
     if len(jobs)>0:
-        sqlStr="INSERT INTO pm_job(id,request_id,catagory,job_spec_url,server_url) VALUES"
+        sqlStr="INSERT INTO pm_job(id,request_id,catagory,job_spec_url,server_url,run_number,event_count,first_event) VALUES"
         comma=0
         for job in jobs:
             if comma==1:
                 sqlStr+=','
             else:
                 comma=1
-            sqlStr+='("'+str(job['jobSpecId'])+'","'+request_id+'","'+catagory+'","'+job['URL']+'","'+server_url+'")'
+            event_count=job['end_event']-job['start_event']+1
+            sqlStr+='("'+str(job['jobSpecId'])+'","'+request_id+'","'+catagory+'","'+job['URL']+'","'+server_url+'","'+\
+                str(job['start_event'])+'","'+str(event_count)+'","'+str(job['start_event'])+'")'
         sqlStr+=';'
         Session.execute(sqlStr)
 

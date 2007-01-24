@@ -41,4 +41,14 @@ def getLocation(job_cut_id):
     rows=Session.fetchall()
     return rows[0][0]
 
+def hasID(job_cut_id):
+    sqlStr="""SELECT count(*) FROM pm_job_cut WHERE id='%s'
+        """ %(str(job_cut_id))
+    Session.execute(sqlStr)
+    rows=Session.fetchall()
+    if rows[0][0]==0:
+         return False
+    return True
+
+
 

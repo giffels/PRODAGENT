@@ -50,8 +50,8 @@ def withoutWorkflow():
     rows=Session.fetchall()
     return rows
 
-def workflowSet(id):
-    sqlStr="""UPDATE pm_request SET  retrieved_workflow='true' 
-        WHERE id='%s' """ %(str(id))
+def workflowSet(id,workflow_location):
+    sqlStr="""UPDATE pm_request SET  retrieved_workflow='%s' 
+        WHERE id='%s' """ %(str(workflow_location),str(id))
     Session.execute(sqlStr)
     Session.commit()

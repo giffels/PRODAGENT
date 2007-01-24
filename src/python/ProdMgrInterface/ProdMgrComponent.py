@@ -28,6 +28,7 @@ from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
 from ProdMgrInterface import Interface as ProdMgr
+from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 
 import ProdMgrInterface.Interface as ProdMgrAPI
@@ -66,6 +67,10 @@ class ProdMgrComponent:
             logging.info("ProdMgrComponent Started...")
             if(self.args['JobSize']<1):
                raise ProdAgentException("ERROR: JobSize is smaller than 1 :"+str(self.args['JobSize']))
+            logging.info("I am going to sleep for 30 seconds to give other components the")
+            logging.info("chance to start up and subscribe to my messages, otherwise I might")
+            logging.info("send messages before components have subscribed to them")
+            time.sleep(30)     
        except Exception,ex:
             logging.debug("ERROR: "+str(ex))     
             raise
@@ -312,6 +317,7 @@ class ProdMgrComponent:
             self.ms.publish("ProdMgrInterface:SetLocations",payload,"00:05:00")
 
     def acquireRequests(self,payload):
+        
         interval=self.args['RetrievalInterval']
         # we do not need any robustness scenarios or queing of messages for this one.
         prodmgrs=self.args['ProdMgrs'].split(',')
@@ -340,7 +346,7 @@ class ProdMgrComponent:
             workflowSpec.loadString(rest_result)
             workflowFileName=self.args['WorkflowSpecDir']+'/'+workflowSpec.workflowName()+'.xml'
             workflowSpec.save(workflowFileName)
-            Request.workflowSet(id)
+            Request.workflowSet(id,workflowFileName)
             #NOTE: we want to use the same session as for the workflowset call.
             self.ms.publish("NewDataset",workflowFileName) 
             self.ms.publish("NewWorkflow",workflowFileName) 
@@ -360,10 +366,13 @@ class ProdMgrComponent:
         try:
             # create message service
             self.ms = MessageService()
+            self.trigger=TriggerAPI(self.ms)
+
 
             for handlerName in Registry.HandlerRegistry.keys():
                handler=retrieveHandler(handlerName)
                handler.ms=self.ms
+               handler.trigger=self.trigger
 
     
             # register
