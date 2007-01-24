@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.12 2006/09/19 13:23:58 gcodispo Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.13 2006/09/20 10:07:55 bacchi Exp $"
 
 import getpass
 import os
@@ -355,6 +355,8 @@ try:
       if "mysql -u root" in line :
          schemaLocation=line[line.find('MySQL'):]
          break
+      else :
+         schemaLocation="MySQLConfig.sql_1"
    y=stdout.read()
    if y!='':
       raise Exception("ERROR",str(y))
@@ -368,7 +370,7 @@ print "schemaLocation for ",dbName,": ",schemaLocation
 
 installDB(schemaLocation,dbName,prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],bossDbConfig['rtHost'],installUser)
 
-schemaLocation='MySQLConfig.sql_1_grid'
+schemaLocation=schemaLocation+'_grid'
 print "schemaLocation for ",dbName,": ",schemaLocation
 installDB(schemaLocation,'',prodAgentDbConfig['socketFileLocation'],prodAgentDbConfig['portNr'],bossDbConfig['rtHost'],installUser,False)
 
