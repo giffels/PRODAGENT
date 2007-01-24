@@ -13,11 +13,6 @@ __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
 
-# Merge sensor import
-#from MergeSensor.MergeSensorError import MergeSensorError, \
-#                                         InvalidDataTier, \
-#                                         InvalidDataset, \
-#                                         DatasetNotInDatabase
 from MergeSensor.MergeSensorDB import MergeSensorDB
 
 # Message service import
@@ -168,7 +163,7 @@ class MergeAccountantComponent:
                 self.jobSuccess(payload)
             except Exception, msg:
                 logging.error("Unexpected error when handling a " + \
-                              "JobSuccess event: " + msg)
+                              "JobSuccess event: " + str(msg))
             return
 
         # a job has failed
@@ -236,7 +231,8 @@ class MergeAccountantComponent:
 
         # get job name from first report
         try:
-            jobName = reports[0].jobSpecId
+            report = reports[0]
+            jobName = report.jobSpecId
 
         # if cannot be done, signal error
         except Exception, msg:
@@ -247,7 +243,7 @@ class MergeAccountantComponent:
 
         # ignore non merge jobs
         if jobName.find('mergejob') == -1:
-            logging.debug("Ignoring job %s, since it is not a merge job" \
+            logging.info("Ignoring job %s, since it is not a merge job" \
                           % jobName)
             return
 
@@ -262,6 +258,9 @@ class MergeAccountantComponent:
         # verify enable condition
         if not self.enabled:
             return
+        
+        # get skipped files
+        skippedFiles = [file['Lfn'] for file in report.skippedFiles]
         
         # open a DB connection 
         database = MergeSensorDB()
@@ -296,9 +295,18 @@ class MergeAccountantComponent:
         # get dataset id
         datasetId = database.getDatasetId(jobInfo['datasetName'])
 
-        # mark all input files as 'merged'
+        # update input files status
         for fileName in jobInfo['inputFiles']:
-            database.updateInputFile(datasetId, fileName, status="merged")
+            
+            if fileName not in skippedFiles:
+                
+                # set non skipped input files as 'merged'
+                database.updateInputFile(datasetId, fileName, status="merged")
+            else:
+                
+                # increment failure counter for skipped input files
+                database.updateInputFile(datasetId, fileName, status="unmerged", \
+                         maxAttempts=int(self.args['MaxInputAccessFailures']))
 
         # mark output file as 'merged'
         database.updateOutputFile(datasetId, jobName=jobName, status='merged')
@@ -306,10 +314,14 @@ class MergeAccountantComponent:
         # commit changes
         database.commit()
 
-        # log message
+        # log messages
         logging.info("Job %s finished succesfully, file information updated." \
                      % jobName)
-
+        
+        if len(skippedFiles) > 0:
+            logging.info("*** Warning: the files: " + str(skippedFiles) + \
+                         " were skipped")
+        
         # close connection
         database.closeDatabaseConnection()
 
@@ -341,7 +353,7 @@ class MergeAccountantComponent:
 
         # ignore non merge jobs
         if jobName.find('mergejob') == -1:
-            logging.debug("Ignoring job %s, since it is not a merge job" \
+            logging.info("Ignoring job %s, since it is not a merge job" \
                           % jobName)
             return
 
