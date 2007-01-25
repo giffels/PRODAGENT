@@ -91,7 +91,7 @@ class AdminControlComponent:
         _startBots_
 
         Load and Start all Bots
-
+        
         """
         if len(self.bots.keys()) > 0:
             msg = "Bots already started, cannot start Bots"
@@ -194,6 +194,8 @@ class AdminControlComponent:
         self.ms.subscribeTo("AdminControl:ActivateBot")
         self.ms.subscribeTo("AdminControl:DeactivateBot")
         self.ms.subscribeTo("AdminControl:BotCycle")
+
+        self.startBots()
         
         # wait for messages
         while True:
