@@ -448,6 +448,7 @@ Fields:
 
  id         internal input file id
  name       file name
+ eventcount number of events
  block      block name as returned by DBS
  status     input file status
  dataset    dataset id
@@ -462,6 +463,7 @@ CREATE TABLE merge_inputfile
   (
     id int NOT NULL auto_increment,
     name text NOT NULL default '',
+    eventcount int NOT NULL default '0',
     block int NOT NULL default '0',
     status enum("unmerged", "undermerge", "merged", "invalid")
            default "unmerged",
