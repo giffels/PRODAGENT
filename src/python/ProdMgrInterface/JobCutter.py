@@ -1,12 +1,17 @@
-import math
 
 from ProdAgentDB import Session
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdCommon.MCPayloads.WorkflowSpec import JobSpec
+from ProdCommon.MCPayloads.FactoriseJobSpec import factoriseJobSpec
 from ProdMgrInterface import JobCut
 from ProdMgrInterface import Job
+from ProdMgrInterface import Request
+
+
+#import ProdCommon.MCPayloads.EventJobSpec
 
 import logging
+import math
 import os
 
 jobSpecDir='/tmp'
@@ -18,11 +23,57 @@ try:
 except StandardError, ex:
     msg = "Error reading configuration:\n"
     msg += str(ex)
-    raise RuntimeError, msg
+    logging.info("WARNING: "+msg)
+
+def local_cut(job_id,request_id,jobCutSize):
+    """
+    __local_cut__
+
+    Cuts a job(spec) associated to an allocation received 
+    by a prodmgr into a number of smaller jobs as specified 
+    by the jobCutSize parameter in the prodagent config file.
+    Local cut means it generates the jobspecs locally based
+    on the downloaded workflow.
+    """
+    global jobSpecDir
+
+    jobDetails=Job.getDetails(job_id)
+    eventCount=int(jobDetails['end_event'])-int(jobDetails['start_event'])+1
+    # find out how many jobs we want to cut.
+    jobs=int(math.ceil(float(eventCount)/float(jobCutSize)))
+    # keep track of some orginal parameters as we will augment them.
+    first_event=int(jobDetails['start_event'])
+    
+    job_cuts=[]
+ 
+    start_event=first_event
+    for job in xrange(0,jobs):
+        end_event=start_event+jobCutSize-1
+        if ((end_event-first_event)>=eventCount):
+           end_event=first_event+eventCount-1
+
+        job_cut_id=job_id+'_jobCut'+str(job)
+        workflowspec=Request.getWorlflowLocation(request_id)
+        job_cut_file=job_cut_id+'.xml'
+        job_cut_location=jobSpecDir+'/'+job_cut_file
+        event_count=end_event-start_event+1
+        run_number=start_event
+
+
+        #EventJobSpec.createJobSpec(job_cut_id,workflowspec,job_cut_location,run_number,event_count,start_event)
+
+        job_cut={'id':job_cut_id,\
+             'spec':job_cut_location}
+        job_cuts.append(job_cut)
+        start_event=end_event+1
+    JobCut.insert(job_cuts,job_name_NOTE)
+    Session.commit()
+    return job_cuts
+
 
 def cut(jobSpecFile,jobCutSize):
     """
-    __jobCut__
+    __cut__
 
     Cuts a job(spec) associated to an allocation received 
     by a prodmgr into a number of smaller jobs as specified 
@@ -36,32 +87,16 @@ def cut(jobSpecFile,jobCutSize):
     eventCount=int(jobSpec.parameters['EventCount'])
     # find out how many jobs we want to cut.
     jobs=int(math.ceil(float(eventCount)/float(jobCutSize)))
-
-    # keep track of some orginal parameters as we will augment them.
-    first_event=int(jobSpec.parameters['FirstEvent'])
-    event_count=int(jobSpec.parameters['EventCount'])
-    job_name=jobSpec.parameters['JobName']
-
-    job_cuts=[]
-
-    for job in xrange(0,jobs):
-        start_event=int(jobSpec.parameters['FirstEvent'])
-        end_event=start_event+jobCutSize-1
-        if ((end_event-first_event)>=event_count):
-           end_event=first_event+event_count-1
-        jobSpec.parameters['EventCount']=end_event-start_event+1
-        jobSpec.setJobName(job_name+'_jobCut'+str(job))
-
-        jobSpec.save(jobSpecDir+'/'+jobSpec.parameters['JobName']+'.xml')
-        jobSpec.parameters['RunNumber']=int(jobSpec.parameters['RunNumber'])+1
-        jobSpec.parameters['FirstEvent']=end_event+1
-        job_cut={'id':jobSpec.parameters['JobName'],\
-             'spec':jobSpecDir+'/'+jobSpec.parameters['JobName']+'.xml'}
-        job_cuts.append(job_cut)
-    JobCut.insert(job_cuts,job_name)
+    logging.debug("Writing job cut specs to: "+str(jobSpecDir))
+    listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,jobs,jobSpec.parameters['EventCount'],\
+        RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
+    logging.debug("Registering job cuts")
+    JobCut.insert(listOfSpecs,jobSpec.parameters['JobName'])
     Session.commit()
-    return job_cuts
-
+    logging.debug("JobCuts registered")
+    for job_cut in listOfSpecs:
+        logging.debug("test_cut "+str(JobCut.hasID(job_cut['id'])))
+    return listOfSpecs 
 
 def cutFile(jobSpecFile,request_id):
     global jobSpecDir

@@ -1,3 +1,4 @@
+import cPickle
 import logging
 
 from ProdAgentDB import Session
@@ -41,6 +42,13 @@ def getLocation(job_id):
     rows=Session.fetchall()
     return rows[0][0]
 
+def getDetails(job_id):
+    sqlStr="""SELECT job_details FROM pm_job WHERE id="%s";
+        """ %(str(job_id))
+    Session.execute(sqlStr)
+    rows=Session.fetchall()
+    return cPickle.loads(rows[0][0])
+
 def rm(job_id):
     sqlStr="""DELETE FROM pm_job WHERE id="%s"
         """ %(job_id)
@@ -59,7 +67,7 @@ def registerJobSpecLocation(job_id,job_spec_location):
 
 def insert(catagory,jobs,request_id,server_url):
     if len(jobs)>0:
-        sqlStr="INSERT INTO pm_job(id,request_id,catagory,job_spec_url,server_url,run_number,event_count,first_event) VALUES"
+        sqlStr="INSERT INTO pm_job(id,request_id,catagory,job_spec_url,server_url,job_details) VALUES"
         comma=0
         for job in jobs:
             if comma==1:
@@ -68,7 +76,7 @@ def insert(catagory,jobs,request_id,server_url):
                 comma=1
             event_count=job['end_event']-job['start_event']+1
             sqlStr+='("'+str(job['jobSpecId'])+'","'+request_id+'","'+catagory+'","'+job['URL']+'","'+server_url+'","'+\
-                str(job['start_event'])+'","'+str(event_count)+'","'+str(job['start_event'])+'")'
+                str(cPickle.dumps(job))+'")'
         sqlStr+=';'
         Session.execute(sqlStr)
 

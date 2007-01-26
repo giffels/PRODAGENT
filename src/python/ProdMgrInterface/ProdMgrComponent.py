@@ -418,12 +418,12 @@ class ProdMgrComponent:
                 # SESSION: when the message service commits it uses the current session
                 # SESSION: this enables us to events and committing them without
                 # SESSION: committing the event that initiated the handler.
-                logging.debug("Committing message of type "+str(type))
-                self.ms.commit()
-
+                logging.debug("Closing all database sessions")
                 # SESSION: commit and close remaining sessions
                 Session.commit_all()
                 Session.close_all()
+                logging.debug("Committing message of type "+str(type))
+                self.ms.commit()
                 logging.debug("Finished handling message of type "+str(type))
         except Exception,ex:
             logging.debug("ERROR: "+str(ex))     

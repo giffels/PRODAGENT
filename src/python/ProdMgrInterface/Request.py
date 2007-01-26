@@ -31,6 +31,13 @@ def getUrl(request_id):
     rows=Session.fetchall()
     return rows[0][0]
 
+def getWorkflowLocation(request_id):
+    sqlStr="""SELECT retrieved_workflow FROM pm_request WHERE id="%s"
+        """ %(str(request_id))
+    Session.execute(sqlStr)
+    rows=Session.fetchall()
+    return rows[0][0]
+
 def getHighestPriority(index=0):
     sqlStr='SELECT id,url,priority,request_type FROM pm_request ORDER by priority;'
     Session.execute(sqlStr)

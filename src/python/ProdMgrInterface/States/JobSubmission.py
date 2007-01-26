@@ -9,11 +9,11 @@ from ProdAgentDB import Session
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
+#from ProdMgrInterface.JobCutter import local_cut
 from ProdMgrInterface.JobCutter import cut
 from ProdMgrInterface.JobCutter import cutFile
 from ProdMgrInterface.Registry import registerHandler
 from ProdMgrInterface.States.StateInterface import StateInterface 
-import ProdMgrInterface.Interface as ProdMgrAPI
 
 class JobSubmission(StateInterface):
 
@@ -29,6 +29,8 @@ class JobSubmission(StateInterface):
        if stateParameters['RequestType']=='event':
            logging.debug('Start event cut')
            jobcuts=cut(stateParameters['targetFile'],int(stateParameters['jobCutSize']))
+           #job=Job.get('requestLevel')[stateParameters['jobIndex']]
+           #jobcuts=local_cut(job['id'],stateParameters['RequestID'],int(stateParameters['jobCutSize']))
        else:
            logging.debug('Start file cut')
            jobcuts=cutFile(stateParameters['targetFile'],stateParameters['RequestID'])
@@ -46,7 +48,6 @@ class JobSubmission(StateInterface):
        # NOTE: not the default session. If the messesage service uses the session
        # NOTE: object the self.ms.commit() statement will be obsolete as it will
        # NOTE: be encapsulated in the Session.commit() statement.
-       self.ms.commit()
        Session.commit()
        return componentState
 
