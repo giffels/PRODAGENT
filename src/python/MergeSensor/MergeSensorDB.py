@@ -1041,7 +1041,7 @@ class MergeSensorDB:
     # add a file to a dataset
     ##########################################################################
             
-    def addFile(self, datasetId, fileName, fileSize, fileBlock):
+    def addFile(self, datasetId, fileName, fileSize, fileBlock, events):
         """
         __addFile__
         
@@ -1054,6 +1054,7 @@ class MergeSensorDB:
           fileName -- the file to add
           fileSize -- its file size
           fileBlock -- the file block name
+          evetns -- the number of events
           
         Return:
             
@@ -1158,11 +1159,12 @@ class MergeSensorDB:
         sqlCommand = """
                      INSERT
                        INTO merge_inputfile
-                            (name, block, dataset, filesize)
+                            (name, block, dataset, filesize, eventcount)
                      VALUES ('""" + fileName + """', 
                              '""" + str(block) +"""',
                              '""" + str(datasetId) + """',
-                             '""" + str(fileSize) + """')
+                             '""" + str(fileSize) + """',
+                             '""" + str(events) + """')
                      """
                                                                          
         # execute command
@@ -1226,6 +1228,7 @@ class MergeSensorDB:
         # get input file information
         sqlCommand = """
                      SELECT merge_inputfile.id as id,
+                            merge_inputfile.eventcount as eventcount,
                             merge_inputfile.status as status,
                             merge_inputfile.failures as failures,
                             merge_inputfile.instance as instance,
