@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.25 2006/11/26 16:48:58 ckavka Exp $"
-__version__ = "$Revision: 1.25 $"
+__revision__ = "$Id: Dataset.py,v 1.26 2006/12/01 10:41:59 ckavka Exp $"
+__version__ = "$Revision: 1.26 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -480,8 +480,9 @@ class Dataset:
         
         Arguments:
             
-          fileList -- a list of tuples (file,size,fileBlock) that specifies
-          the list of all files in the named dataset together with their size.
+          fileList -- a list of tuples (file,size,fileBlock, events) that
+          specifies the list of all files in the named dataset together
+          with their size, file block and number of events.
           
         Return:
             
@@ -505,7 +506,7 @@ class Dataset:
         self.database.startTransaction()
         
         # add files not present in original structure
-        for fileName, size, fileBlock in fileList:
+        for fileName, size, fileBlock, events in fileList:
 
             # verify membership
             found = False
@@ -517,7 +518,7 @@ class Dataset:
                     break
                 
             if not found:
-                self.database.addFile(datasetId, fileName, size, fileBlock)
+                self.database.addFile(datasetId, fileName, size, fileBlock, events)
                         
         # update time
         date = time.asctime(time.localtime(time.time()))
@@ -573,7 +574,10 @@ class Dataset:
         # create outputFile
         (instance, fileId) = self.database.addOutputFile(datasetId, \
                                                 outputFile, jobId)
-                
+            
+        # make changes permanent
+        self.database.commit()
+            
         # mark input files as merged for new created output file
         if instance == 0:
             for aFile in fileList:    
