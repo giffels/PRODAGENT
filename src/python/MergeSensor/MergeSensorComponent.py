@@ -1805,13 +1805,28 @@ class MergeSensorComponent:
             # add files for non blocked SE
             if seList != [] or seList == None:
             
-                # append (file name,size,fileblockId)
+                # append (file name, size, fileblockId, events)
                 # to the list of files
-                for aFile in fileBlock.get('fileList'):
+                for aFile in fileBlock.get('eventCollectionList'):
 
-                    name = aFile.get('logicalFileName')
-                    size = aFile.get('fileSize')
-                    fileList.append((name, size, fileBlockId))
+                    # get the number of events
+                    events = aFile.get('numberOfEvents')
+                    
+                    # check for files
+                    fileInfo = aFile.get('fileList')
+                    
+                    # check for empty event collection
+                    if len(fileInfo) == 0:
+                        break
+                    
+                    # there should be only one
+                    fileInfo = fileInfo[0]
+                    
+                    # get name and size
+                    name = fileInfo.get('logicalFileName')
+                    size = fileInfo.get('fileSize')
+
+                    fileList.append((name, size, fileBlockId, events))
                     
             else:
                 logging.info("fileblock %s blocked" % fileBlockId)
@@ -1905,8 +1920,8 @@ class MergeSensorComponent:
         # get information from DBS
         try:
             processed = DbsProcessedDataset(datasetPathName = path)
-            blockList = self.dbsApi.getDatasetFileBlocks(processed)
-
+            blockList = self.dbsApi.getDatasetContents(processed)
+            
         # DBS is not answering properly
         except Exception, ex:
             logging.error("DBS error (exception: %s)" % ex)
