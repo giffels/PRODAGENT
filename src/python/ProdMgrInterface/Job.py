@@ -97,7 +97,7 @@ def downloaded(catagory,job_id):
 
 def jobCutsFinished(job_id):
     sqlStr="""SELECT COUNT(*) FROM pm_job_cut WHERE job_id="%s"
-        AND status="running" """ %(job_id)
+        AND status="running" """ %(str(job_id))
     Session.execute(sqlStr)
     rows=Session.fetchall()
     if int(rows[0][0])==0:
@@ -107,9 +107,9 @@ def jobCutsFinished(job_id):
 def id(job_cut_id):
     cuts=job_cut_id.split('_')
     jobId=''
-    for i in xrange(0,len(cuts)-1):
+    for i in xrange(0,4):
         jobId+=cuts[i]
-        if i!=(len(cuts)-2):
+        if i!=3:
             jobId+='_'
     return jobId 
 

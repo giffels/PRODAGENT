@@ -71,9 +71,9 @@ class ReportJobSuccess(StateInterface):
 
        logging.debug("Associated job is: "+str(jobId)) 
        if Job.jobCutsFinished(jobId):
-         # retrieve the number of processed events
+           logging.debug("Retrieve number of processed events")
            events=JobCut.events(jobId)
-         # remove all entries associated to job in job_cuts
+           logging.debug("Remove all entries associated to job in job_cuts")
            JobCut.rm(jobId)
          # remove the job information and files
            request_id=jobId.split('_')[1] 
