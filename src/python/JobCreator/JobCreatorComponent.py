@@ -29,6 +29,8 @@ from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 import JobCreator.Creators
 import JobCreator.Generators
 from ProdMgrInterface import JobCut
+from ProdAgentDB import Session
+
 
 
 class JobCreatorComponent:
@@ -247,9 +249,16 @@ class JobCreatorComponent:
                 self.trigger.addFlag("cleanup", jobname, component)
 
             #NOTE: this is a check in case we use the ProdMgrInterface
+            logging.debug("Checking if job "+str(jobname)+" is associated to prodmgr")
+            logging.debug("Is associated: "+str(JobCut.hasID(jobname)))
+            Session.connect()
+            Session.start_transaction()
             if JobCut.hasID(jobname):
                 logging.debug("Job constructed using ProdMgr, adding extra trigger")
                 self.trigger.addFlag("cleanup", jobname, "ProdMgrInterface")
+            #NOTE: we need to make sure we commit and close this connection
+            #NOTE: eventually this needs to be the same commit/close as the message service.
+            Session.close()
             #END NOTE
                
             if len(cleanFlags) > 0:
