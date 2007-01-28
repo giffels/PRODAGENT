@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging 
+import math
 import time
 
 from ProdAgentCore.Codes import errors
@@ -27,10 +28,12 @@ class AcquireJobs(StateInterface):
 
        ##### DIFFERENT HANDLERS FOR DIFFERENT REQUEST TYPES
        if stateParameters['RequestType']=='event':
-           logging.debug("Acquiring jobs with a maximum size of: "+str(stateParameters['jobSize'])+" events ")
+           logging.debug("Acquiring jobs with a maximum size of: "+str(stateParameters['numberOfJobs'])+\
+              '*'+str(stateParameters['jobCutSize'])+" events ")
            logging.debug('Request is of type event')
-           parameters={'numberOfJobs':stateParameters['numberOfJobs'],\
-               'prefix':'job','eventsPerJob':int(stateParameters['jobSize'])}
+           eventsPerJob=int(stateParameters['numberOfJobs'])*int(stateParameters['jobCutSize']) 
+           parameters={'numberOfJobs':1,\
+               'prefix':'job','eventsPerJob':eventsPerJob}
        else:
            logging.debug('Request is of type file')
            parameters={'numberOfFiles':stateParameters['numberOfJobs'],\
@@ -88,9 +91,12 @@ class AcquireJobs(StateInterface):
                    logging.debug("Request: "+str(request_id)+" does not exists or has finished")
                    logging.debug("Removing request "+str(request_id))
                    Request.rm(request_id)
-                   # emit request finished event
-                   logging.debug("Emitting RequestFinished event")
-                   self.ms.publish("RequestFinished",request_id)
+                   # emit request finished event (if that is needed)
+                   Request.setDone(request_id)
+                   logging.debug("Checking if all jobs are finished for RequestFinished event")
+                   if Request.finishedJobs(request_id):
+                       logging.debug("Emitting RequestFinished event")
+                       self.ms.publish("RequestFinished",request_id)
                    State.setParameters("ProdMgrInterface",stateParameters)
                    componentState="AcquireRequest"
                    State.setState("ProdMgrInterface",componentState)
@@ -105,10 +111,37 @@ class AcquireJobs(StateInterface):
        ##### DIFFERENT HANDLERS FOR DIFFERENT REQUEST TYPES
        if stateParameters['RequestType']=='event':
            logging.debug("Acquired the following jobs: "+str(jobs))
-           stateParameters['numberOfJobs']=stateParameters['numberOfJobs']-len(jobs) 
+           if len(jobs)!=0:
+               potential_jobs=int(math.ceil(float((jobs[0]['end_event']-jobs[0]['start_event']+1))/float(stateParameters['jobCutSize'])))
+               stateParameters['numberOfJobs']=stateParameters['numberOfJobs']-potential_jobs
+               stateParameters['jobSpecId']=jobs[0]['jobSpecId']
+           if stateParameters['numberOfJobs']<0:
+               stateParameters['numberOfJobs']=0    
+           # now if this request does not give us any more jobs,
+           # we move on to the next request. 
+           if len(jobs)==0 and stateParameters['numberOfJobs']>0:
+               stateParameters['requestIndex']+=1
+               Request.setDone(request_id)
+               logging.debug("Checking if all jobs are finished for RequestFinished event")
+               if Request.finishedJobs(request_id):
+                   logging.debug("Emitting RequestFinished event")
+                   self.ms.publish("RequestFinished",request_id)
        else:
            logging.debug("Acquired the following file based jobs: "+str(jobs[0]['files']))
            stateParameters['numberOfJobs']=stateParameters['numberOfJobs']-len(jobs[0]['files']) 
+           if stateParameters['numberOfJobs']<0:
+               stateParameters['numberOfJobs']=0    
+           # now if this request does not give us any more jobs,
+           # we move on to the next request. 
+           if len(jobs[0]['files'])==0 and stateParameters['numberOfJobs']>0:
+               stateParameters['requestIndex']+=1
+               Request.setDone(request_id)
+               logging.debug("Checking if all jobs are finished for RequestFinished event")
+               if Request.finishedJobs(request_id):
+                   logging.debug("Emitting RequestFinished event")
+                   self.ms.publish("RequestFinished",request_id)
+       #Now did we get enough from this request? It might that we got small left overs and we can
+       #acquire more.
 
        # we have the jobs, lets download their job specs and if finished emit
        # a new job event.

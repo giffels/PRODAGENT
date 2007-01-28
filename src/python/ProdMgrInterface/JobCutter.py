@@ -2,13 +2,14 @@
 from ProdAgentDB import Session
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdCommon.MCPayloads.WorkflowSpec import JobSpec
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.FactoriseJobSpec import factoriseJobSpec
 from ProdMgrInterface import JobCut
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 
 
-#import ProdCommon.MCPayloads.EventJobSpec
+from ProdCommon.MCPayloads import EventJobSpec
 
 import logging
 import math
@@ -25,53 +26,7 @@ except StandardError, ex:
     msg += str(ex)
     logging.info("WARNING: "+msg)
 
-def local_cut(job_id,request_id,jobCutSize):
-    """
-    __local_cut__
-
-    Cuts a job(spec) associated to an allocation received 
-    by a prodmgr into a number of smaller jobs as specified 
-    by the jobCutSize parameter in the prodagent config file.
-    Local cut means it generates the jobspecs locally based
-    on the downloaded workflow.
-    """
-    global jobSpecDir
-
-    jobDetails=Job.getDetails(job_id)
-    eventCount=int(jobDetails['end_event'])-int(jobDetails['start_event'])+1
-    # find out how many jobs we want to cut.
-    jobs=int(math.ceil(float(eventCount)/float(jobCutSize)))
-    # keep track of some orginal parameters as we will augment them.
-    first_event=int(jobDetails['start_event'])
-    
-    job_cuts=[]
- 
-    start_event=first_event
-    for job in xrange(0,jobs):
-        end_event=start_event+jobCutSize-1
-        if ((end_event-first_event)>=eventCount):
-           end_event=first_event+eventCount-1
-
-        job_cut_id=job_id+'_jobCut'+str(job)
-        workflowspec=Request.getWorlflowLocation(request_id)
-        job_cut_file=job_cut_id+'.xml'
-        job_cut_location=jobSpecDir+'/'+job_cut_file
-        event_count=end_event-start_event+1
-        run_number=start_event
-
-
-        #EventJobSpec.createJobSpec(job_cut_id,workflowspec,job_cut_location,run_number,event_count,start_event)
-
-        job_cut={'id':job_cut_id,\
-             'spec':job_cut_location}
-        job_cuts.append(job_cut)
-        start_event=end_event+1
-    JobCut.insert(job_cuts,job_name_NOTE)
-    Session.commit()
-    return job_cuts
-
-
-def cut(jobSpecFile,jobCutSize):
+def cut(job_id,jobCutSize):
     """
     __cut__
 
@@ -81,12 +36,27 @@ def cut(jobSpecFile,jobCutSize):
     """
     global jobSpecDir
 
+    # generate the jobspec
+    jobDetails=Job.getDetails(job_id)
+    workflowspec=Request.getWorkflowLocation(job_id.split('_')[1])
+    first_event=int(jobDetails['start_event'])
+    event_count=int(jobDetails['end_event'])-int(jobDetails['start_event'])+1
+    run_number=int(jobDetails['start_event'])
+    start_event=run_number
+    job_file=job_id+'.xml'
+    jobSpecFile=jobSpecDir+'/'+job_file
+    Job.registerJobSpecLocation(job_id,jobSpecFile)
+    logging.debug("start with local jobspec generation")
+    EventJobSpec.createJobSpec(job_id,workflowspec,jobSpecFile,run_number,event_count,start_event,False,False)
+    logging.debug("finished with local jobspec generation")
+
     jobSpec= JobSpec()
     jobSpec.load(jobSpecFile)
 
     eventCount=int(jobSpec.parameters['EventCount'])
     # find out how many jobs we want to cut.
     jobs=int(math.ceil(float(eventCount)/float(jobCutSize)))
+    logging.debug("Starting factorization")
     logging.debug("Writing job cut specs to: "+str(jobSpecDir))
     listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,jobs,jobSpec.parameters['EventCount'],\
         RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
@@ -94,8 +64,6 @@ def cut(jobSpecFile,jobCutSize):
     JobCut.insert(listOfSpecs,jobSpec.parameters['JobName'])
     Session.commit()
     logging.debug("JobCuts registered")
-    for job_cut in listOfSpecs:
-        logging.debug("test_cut "+str(JobCut.hasID(job_cut['id'])))
     return listOfSpecs 
 
 def cutFile(jobSpecFile,request_id):

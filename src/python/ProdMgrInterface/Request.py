@@ -62,3 +62,26 @@ def workflowSet(id,workflow_location):
         WHERE id='%s' """ %(str(workflow_location),str(id))
     Session.execute(sqlStr)
     Session.commit()
+
+def finishedJobs(id):
+    sqlStr="""SELECT COUNT(*) FROM pm_job WHERE request_id='%s'
+        """ %(str(id))
+    Session.execute(sqlStr)
+    rows=Session.fetchall()
+    if rows[0][0]==0:
+        return True
+    return False
+
+def setDone(id):
+    sqlStr="""UPDATE pm_request SET done='true' WHERE id='%s'
+        """ %(str(id))
+    Session.execute(sqlStr)
+
+def isDone(id):
+    sqlStr="""SELECT done FROM pm_request WHERE id='%s'
+        """ %(str(id))
+    Session.execute(sqlStr)
+    rows=Session.fetchall()
+    if rows[0][0]=='true':
+         return True
+    return False

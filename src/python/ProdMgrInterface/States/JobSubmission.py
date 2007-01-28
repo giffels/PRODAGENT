@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging 
+import os
 import time
 
 from ProdAgentCore.Codes import errors
@@ -9,7 +10,6 @@ from ProdAgentDB import Session
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
 from ProdMgrInterface import State
-#from ProdMgrInterface.JobCutter import local_cut
 from ProdMgrInterface.JobCutter import cut
 from ProdMgrInterface.JobCutter import cutFile
 from ProdMgrInterface.Registry import registerHandler
@@ -24,13 +24,18 @@ class JobSubmission(StateInterface):
        logging.debug("Executing state: JobSubmission")
        stateParameters=State.get("ProdMgrInterface")['parameters']
 
+       try:
+           os.makedirs(stateParameters['jobSpecDir'])
+       except Exception, ex:
+           logging.debug("WARNING: "+str(ex)+". Directory probably already exists")
+           pass
+
        # START JOBCUTTING HERE
        logging.debug("Starting job cutting")
        if stateParameters['RequestType']=='event':
-           logging.debug('Start event cut')
-           jobcuts=cut(stateParameters['targetFile'],int(stateParameters['jobCutSize']))
-           #job=Job.get('requestLevel')[stateParameters['jobIndex']]
-           #jobcuts=local_cut(job['id'],stateParameters['RequestID'],int(stateParameters['jobCutSize']))
+           logging.debug('Start event cut for '+str(stateParameters['jobSpecId']))
+           #jobcuts=cut(stateParameters['targetFile'],int(stateParameters['jobCutSize']))
+           jobcuts=cut(stateParameters['jobSpecId'],int(stateParameters['jobCutSize']))
        else:
            logging.debug('Start file cut')
            jobcuts=cutFile(stateParameters['targetFile'],stateParameters['RequestID'])

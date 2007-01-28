@@ -26,16 +26,20 @@ class EvaluateJobs(StateInterface):
            str(stateParameters['jobIndex']))
        if (Job.size("requestLevel")-1)<stateParameters['jobIndex']:
            State.setState("ProdMgrInterface","EvaluateAllocations")
-           stateParameters['requestIndex']+=1
+           # we do not increase the request index, this is done
+           # only if we max out this request or the request is finished.
+           # or we can acquire 0 jobs.
+           #stateParameters['requestIndex']+=1
            logging.debug('Setting request index :'+str(stateParameters['requestIndex']))
            State.setParameters("ProdMgrInterface",stateParameters)
            # purge the queues we used for this request
            Job.mv('requestLevel','active')
            Session.commit()
            return "AcquireRequest" 
-       State.setState("ProdMgrInterface","DownloadJobSpec")
+       State.setState("ProdMgrInterface","JobSubmission")
+#       State.setState("ProdMgrInterface","DownloadJobSpec")
        Session.commit()
-       return "DownloadJobSpec" 
+       return "JobSubmission" 
 
 registerHandler(EvaluateJobs(),"EvaluateJobs")
 
