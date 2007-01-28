@@ -623,7 +623,8 @@ CREATE TABLE pm_request
     url                   varchar(150)    not null,
     priority              int(11)         not null,
     request_type          enum("event", "file") default 'event',
-    retrieved_workflow    enum("true", "false") default 'false',
+    retrieved_workflow    varchar(250)    default 'false',
+    done                  enum("true","false") default 'false',
     primary key(id,url)
    ) Type=InnoDB;
 
@@ -635,6 +636,7 @@ CREATE TABLE pm_job
     job_spec_location     varchar(255)    not null default 'None',
     server_url            varchar(255)    not null,
     downloaded            int(11)         not null default 0,
+    job_details           mediumtext      ,
     catagory              varchar(150)    not null,
     primary key(id)
    ) Type=InnoDB;
