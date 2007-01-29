@@ -21,6 +21,35 @@ from IMProv.IMProvQuery import IMProvQuery
 from ShREEK.CMSPlugins.ApMonLite.ApMonDestMgr import ApMonDestMgr
 
 
+def generateDashboardID(jobSpec):
+    """
+    _generateDashboardID_
+
+    Generate a global job ID for the dashboard
+
+    """
+    
+    prodAgentName = jobSpec.parameters['ProdAgentName']
+    jobSpecId = jobSpec.parameters['JobName']
+    jobName = jobSpecId.replace("_", "-")    
+    jobName = "ProdAgent_%s_%s" %(
+        prodAgentName,
+        jobName,
+        )
+
+    workflowId = jobSpec.payload.workflow
+    workflowId = workflowId.replace("_", "-")
+    taskName = "ProdAgent_%s_%s" % ( workflowId,
+                                     prodAgentName)
+    
+    return taskName, jobName
+
+
+
+
+
+
+
 class DashboardInfo(dict):
     """
     _DashboardInfo_
