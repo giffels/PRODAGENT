@@ -432,7 +432,8 @@ class DBSComponent:
                     firstDatasetPath,
                     SEname,
                     self.args['MaxBlockSize'],
-                    firstDataset
+                    firstDataset,
+                    jobreport.jobType
                     )
                 if fileblock is None:
                     msg = "No Fileblock found to add files to for dataset: %s SEname: %s\n" %( firstDatasetPath , SEname )
@@ -519,7 +520,7 @@ class DBSComponent:
         SEname=None
         return SEname
 
-    def checkFileBlockforSE(self,datasetPath,SEname,MaxBlockSize,fileinfo):
+    def checkFileBlockforSE(self,datasetPath,SEname,MaxBlockSize,fileinfo,jobType):
         """
          o create a file block associated to a storage element (SE) 
            and add the fileblock-SE entry in DLS if one of the following conditions holds:
@@ -543,16 +544,21 @@ class DBSComponent:
         for fileBlock in fileBlockList:
           SEList=dlsinfo.getFileBlockLocation(fileBlock.get('blockName'))
           fileBlockSize=fileBlock.get('numberOfBytes')
+          fileBlockFiles=fileBlock.get('numberOfFiles')
           # check the fileblock at SE
           if SEList.count(SEname)>0:
            # check if fileblock is closed:
            if fileBlock.get('blockStatus')!="closed":
-            logging.debug("Fileblock %s not closed , so files can be added to it "%fileBlock.get('blockName'))
-            # check block size 
-            if MaxBlockSize==None:
-              return fileBlock # found a not closed fileblock associated to SE, no check on its size is performed
-            elif fileBlockSize<=MaxBlockSize:
-              return fileBlock # found a not closed fileblock associated to SE and not full  
+            if jobType!="Merge":
+               logging.debug("Fileblock %s not closed , so files can be added to it "%fileBlock.get('blockName'))
+               return fileBlock # found a not closed fileblock to add files to
+            else: # for merged data: check block size and close the block if appropriate
+               if self.closeBlockAlgorithm(fileBlockSize,fileBlockFiles,MaxBlockSize):
+                  self.dbsinfo.closeBlock(fileBlock.get('blockName'))
+                  logging.debug("Closed Fileblock %s"%fileBlock.get('blockName'))
+               else:
+                  logging.debug("Fileblock %s not closed, so files can be added to it "%fileBlock.get('blockName'))
+                  return fileBlock # found a not closed fileblock associated to SE and not full , to add files to
 
         ## create a new fileblock with the same processing used during NewDataset
         fileBlock = self.dbsinfo.addFileBlock(fileinfo,datasetPath)
@@ -565,6 +571,23 @@ class DBSComponent:
 
         return fileBlock
 
+    def closeBlockAlgorithm(self,fileBlockSize,fileBlockFiles,MaxBlockSize):
+        """
+        Check if Close-Block condition are statisfied.
+        A FileBlock is closed if the number of its files is greater than ( MaxBlockSize / average file size) 
+        """
+        if MaxBlockSize==None or fileBlockSize<=0 or fileBlockFiles<=0:
+          return False
+        else:
+          avgfileSize=float(fileBlockSize)/float(fileBlockFiles)
+          MaxFiles=int(float(MaxBlockSize)/avgfileSize)
+          logging.debug("Close-Block Condition: Size > %s  ==> Files > %s (since average file size=%s)"%(MaxBlockSize,MaxFiles,avgfileSize))
+          if fileBlockFiles <= MaxFiles:
+            logging.debug("FileBlock has %s Files so Close-Block Condition NOT satisfied"%(fileBlockFiles,))
+            return False
+          else:
+            logging.debug("FileBlock has %s Files so Close-Block Condition satisfied"%(fileBlockFiles,))
+            return True
 
 
     def getDataTier(self,DataTier,DBSDataTier):

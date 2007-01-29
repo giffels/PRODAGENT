@@ -317,6 +317,18 @@ class DBS:
 
     return fileBlockList
 
+# ##############
+  def closeBlock(self, fileblockName):
+    """
+     close a fileblock
+    """
+    dbsblock = DbsFileBlock (blockName = fileblockName)
+    try:
+       self.api.closeFileBlock(dbsblock)
+    except DbsCgiObjectExists, ex:
+       logging.debug("Failed to close FileBlock %s"%fileblockName)
+       pass                                                                        
+
 ##############################################################################
 # Unit testing.
                                                                                 
