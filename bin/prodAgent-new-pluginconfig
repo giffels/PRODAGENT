@@ -74,6 +74,9 @@ creatorTemplate = {
     "UseDashboard" : "True",
     "DestinationHost" : "lxgate35.cern.ch",
     "DestinationPort" : "8884",
+    "EventDestinationHost" :"lxarda12.cern.ch",
+    "EventDestinationPort" : "8884",
+    
     },
 
     #  //
