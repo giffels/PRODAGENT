@@ -71,7 +71,7 @@ creatorTemplate = {
     # // Standard Settings for contacting Dashboard
     #//
     "Dashboard" : {
-    "UseDashboard" : "False",
+    "UseDashboard" : "True",
     "DestinationHost" : "lxgate35.cern.ch",
     "DestinationPort" : "8884",
     },
@@ -151,7 +151,7 @@ submitterTemplate = {
     #"twoflower.fnal.gov" : None,
     },
     "Dashboard" : {
-    "UseDashboard" : "False",
+    "UseDashboard" : "True",
     "DestinationHost" : "lxgate35.cern.ch",
     "DestinationPort" : "8884",
     },
