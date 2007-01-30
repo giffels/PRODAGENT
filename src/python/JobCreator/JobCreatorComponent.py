@@ -13,6 +13,7 @@ import os
 
 
 import ProdAgentCore.LoggingUtils as LoggingUtils
+from ProdAgentCore.Configuration import prodAgentName
 
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
@@ -50,6 +51,7 @@ class JobCreatorComponent:
         self.args['maxRetries'] = 3
         self.args['HashDirs'] = True
         self.args.update(args)
+        self.prodAgent = prodAgentName()
         self.job_state = self.args['JobState']
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
@@ -145,6 +147,7 @@ class JobCreatorComponent:
         gen = retrieveGenerator(self.args['GeneratorName'])
         creator = retrieveCreator(self.args['CreatorName'])
         gen.creator = creator
+        gen.workflowCache = wfCache
         gen.actOnWorkflowSpec(spec, wfCache)
 
         return
@@ -178,8 +181,10 @@ class JobCreatorComponent:
             return
         jobname = jobSpec.parameters['JobName']
         jobType = jobSpec.parameters['JobType']
+        jobSpec.parameters['ProdAgent'] = self.prodAgent
         workflowName = jobSpec.payload.workflow
-        
+        wfCache = os.path.join(self.args['ComponentDir'],
+                               workflowName)
         
         if self.args['HashDirs']:
             runNum = jobSpec.parameters.get("RunNumber", None)
@@ -193,17 +198,20 @@ class JobCreatorComponent:
             jobCache = os.path.join(self.args['ComponentDir'],
                                     workflowName,
                                     jobname)
-            
+
+        
         
         
         if not os.path.exists(jobCache):
             os.makedirs(jobCache)
 
-
+            
         try:
             gen = retrieveGenerator(self.args['GeneratorName'])
             creator = retrieveCreator(self.args['CreatorName'])
             gen.creator = creator
+            gen.workflowCache = wfCache
+            gen.jobCache = jobCache
             gen.actOnJobSpec(jobSpec, jobCache)
         except Exception, ex:
             logging.error("Failed to create Job: %s\n%s" % (jobname, ex))

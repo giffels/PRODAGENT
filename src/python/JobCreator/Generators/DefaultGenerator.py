@@ -9,6 +9,7 @@ JobGenerator that generates an individual sandbox for every job
 import logging
 from JobCreator.GeneratorInterface import GeneratorInterface
 from JobCreator.Registry import registerGenerator
+from ProdAgentCore.Configuration import prodAgentName
 
 
 from TaskObjects.TaskObject import TaskObject
@@ -105,8 +106,8 @@ class DefaultGenerator(GeneratorInterface):
         directory = self.newJobArea(jobname, jobCache)
         logging.debug("JobGenerator: Job Directory: %s" % directory)
         cacheDir = os.path.dirname(directory)
-
-
+        
+        jobSpec.parameters['ProdAgentName'] = prodAgentName()
         jobSpec.save("%s/%s-JobSpec.xml" % (jobCache, jobname))
 
         #  //

@@ -141,7 +141,7 @@ class OSGBulkCreator(CreatorInterface):
         Install monitors into top TaskObject
 
         """
-        #self.installMonitor(taskObjectTree)
+        self.installMonitor(taskObjectTree)
         return
         
 
@@ -279,9 +279,8 @@ class OSGBulkCreator(CreatorInterface):
         #  //
         # // Insert list of plugin modules to be used
         #//
-        shreekConfig.addPluginModule("ShREEK.CMSPlugins.DashboardMonitor")
-        shreekConfig.addPluginModule("ShREEK.CMSPlugins.EventMonitor")
-        shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobMonMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.BulkDashboardMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.BulkEventMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.CMSMetrics")
         
@@ -293,31 +292,7 @@ class OSGBulkCreator(CreatorInterface):
 
     
         
-        #  //
-        # // If the Config file says to use JobMon, then we add it
-        #//
-        jobMonCfg = self.pluginConfig.get("JobMon", {})
-        usingJobMon = jobMonCfg.get("UseJobMon", "False")
-        if usingJobMon.lower() == "true":
-            jobmon = shreekConfig.newMonitorCfg()
-            jobmon.setMonitorName("cmsjobmon-1")
-            jobmon.setMonitorType("jobmon")
-            #  //
-            # // Include the proxy file in the job so that it can be registered to 
-            #//  jobMon
-            proxyFile = "/tmp/x509up_u%s" % os.getuid()
-            taskObject.attachFile(proxyFile)
-            injobProxy = "$PRODAGENT_JOB_DIR/%s/x509_u%s" % (
-                taskObject['Name'], os.getuid(),
-                )
-            jobmon.addKeywordArg(
-                RequestName = taskObject['RequestName'],
-                JobName = taskObject['JobName'],
-                CertFile = injobProxy,
-                KeyFile = injobProxy,
-                ServerURL = self.pluginConfig['JobMon']['ServerURL']
-                )
-            shreekConfig.addMonitorCfg(jobmon)
+
         
         
         #  //
@@ -328,12 +303,12 @@ class OSGBulkCreator(CreatorInterface):
         if usingDashboard.lower() == "true":
             dashboard = shreekConfig.newMonitorCfg()
             dashboard.setMonitorName("cmsdashboard-1")
-            dashboard.setMonitorType("dashboard")
+            dashboard.setMonitorType("bulk-dashboard")
             dashboard.addKeywordArg(
                 ServerHost = dashboardCfg['DestinationHost'],
                 ServerPort = dashboardCfg['DestinationPort'],
                 DashboardInfo = taskObject['DashboardInfoLocation'])
-
+            
             #  //
             # // Use realtime event monitoring?
             #//
@@ -342,8 +317,6 @@ class OSGBulkCreator(CreatorInterface):
             if evPort and evHost:
                 dashboard.addNode(IMProvNode("EventDestination", None,
                                              Host = evHost, Port = evPort))
-                dashboard.addKeywordArg(
-                    ProdAgentJobID = taskObject['JobName'])
                 
                 
             shreekConfig.addMonitorCfg(dashboard)
@@ -359,17 +332,11 @@ class OSGBulkCreator(CreatorInterface):
         if usingEvLog.lower() == "true":
             evlogger = shreekConfig.newMonitorCfg()
             evlogger.setMonitorName("cmseventlogger-1")
-            evlogger.setMonitorType("event")
+            evlogger.setMonitorType("bulk-event")
 
-            prodAgentName = self.prodAgentConfig['ProdAgent']['ProdAgentName']
-            hostname = socket.gethostname()
-            if hostname not in prodAgentName:
-                prodAgentName = "%s@%s" % (prodAgentName, socket.gethostname())
-
+        
             
             evlogger.addKeywordArg(
-                ProdAgentID = prodAgentName,
-                ProdAgentJobID = taskObject['JobName'],
                 EventFile = "EventLogger.log"
                 )
             for dest, port in evLogDest.items():

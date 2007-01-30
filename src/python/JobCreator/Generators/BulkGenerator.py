@@ -11,6 +11,7 @@ import logging
 from JobCreator.GeneratorInterface import GeneratorInterface
 from JobCreator.Registry import registerGenerator
 
+from ProdAgentCore.Configuration import prodAgentName
 
 from TaskObjects.TaskObject import TaskObject
 from TaskObjects.Tools.TaskDirBuilder import TreeTaskDirBuilder
@@ -32,6 +33,9 @@ from JobCreator.StageOutTools import NewPopulateStageOut
 from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
 from JobCreator.BulkTools import InstallUnpacker, InstallUserSandbox
 from JobCreator.FastMergeTools import InstallBulkFastMerge
+from JobCreator.DashboardTools import installBulkDashboardInfo, writeDashboardInfo
+
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, generateDashboardID
 
 import inspect
 import os
@@ -104,7 +108,7 @@ class BulkGenerator(GeneratorInterface):
         directory = self.newJobArea(workflowSpec.workflowName(), jobTemplate)
         taskObject = workflowSpec.payload.taskObject
         generateShREEKConfig(taskObject)
-        
+        installBulkDashboardInfo(taskObject)
         taskObject(GenerateMainScript())
         taskObject(InsertBulkAppDetails("PayloadNode"))
         taskObject(InstallRunResComponent())
@@ -125,11 +129,12 @@ class BulkGenerator(GeneratorInterface):
         taskObject(PopulateMainScript())
         taskObject(PopulateCleanUp())
         taskObject(NewPopulateStageOut())
-
+        
         logging.debug("JobGenerator:Creating Physical Job")
         taskObject(FlatTaskDirBuilder(directory))
         taskObject(BulkCMSSWRunResDB())
         taskObject(InsertDirInRunRes())
+        writeDashboardInfo(taskObject, jobTemplate)
         taskObject(WriteStructuredFiles())
         taskObject(WriteIMProvDocs())
 
@@ -153,10 +158,24 @@ class BulkGenerator(GeneratorInterface):
             "BulkGenerator.actOnJobSpec(%s, %s)" % (jobSpec, jobCache)
             )
         jobname = jobSpec.parameters['JobName']
+        jobSpec.parameters['ProdAgentName'] = prodAgentName()
         jobSpec.save("%s/%s-JobSpec.xml" % (jobCache, jobname))
+
         
-
-
+        # Propagate dashboard info to job cache
+        dashboardInfoMaster = os.path.join(self.workflowCache, "Processing",
+                                           "DashboardInfo.xml")
+        print dashboardInfoMaster, os.path.exists(dashboardInfoMaster)
+        if os.path.exists(dashboardInfoMaster):
+            master = DashboardInfo()
+            master.read(dashboardInfoMaster)
+            task, job = generateDashboardID(jobSpec)
+            master.task = task
+            master.job = job
+            jobCopy = os.path.join(jobCache, "DashboardInfo.xml")
+            master.write(jobCopy)
+        
+            
 
         return
 

@@ -13,7 +13,7 @@ import os
 import socket
 import time
 
-from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, generateDashboardID
 from IMProv.IMProvDoc import IMProvDoc
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
@@ -97,6 +97,32 @@ def installDashboardInfo(taskObject):
         taskObject['Name'],
         "DashboardInfo.xml")
     return
+
+def installBulkDashboardInfo(taskObject):
+    """
+    _installDashboardInfo_
+
+    Use the Top task Object in the Tree to install the
+    DashboardInfo instance into the Job in a common place
+
+    """
+    dashboardInfo = DashboardInfo()
+    dashboardInfo.job = taskObject['JobName']
+    dashboardInfo.task = taskObject['RequestName']
+    dashboardInfo['GridUser'] = gridProxySubject()
+    dashboardInfo['User'] = os.environ.get('USER', 'ProdAgent')
+    
+    
+    taskObject['DashboardInfoInstance'] =  dashboardInfo
+    taskObject['DashboardInfo'] =  IMProvDoc("DashboardMonitoring")
+    taskObject['DashboardInfo'].addNode(dashboardInfo.save())
+    taskObject['IMProvDocs'].append('DashboardInfo')
+    taskObject['DashboardInfoLocation'] = os.path.join(
+        "$PRODAGENT_JOB_DIR", 
+        taskObject['Name'],
+        "DashboardInfo.xml")
+    return
+
 
 def writeDashboardInfo(taskObject, cacheDir):
     """
