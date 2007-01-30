@@ -35,6 +35,7 @@ class FwkJobReport:
         self.siteDetails = {}
         self.timing = {}
         self.storageStatistics = None
+        self.generatorInfo = {}
 
     def wasSuccess(self):
         """
@@ -210,6 +211,12 @@ class FwkJobReport:
         if self.storageStatistics != None:
             result.addNode(
                 IMProvNode("StorageStatistics", self.storageStatistics))
+            
+        genInfo = IMProvNode("GeneratorInfo")
+        result.addNode(genInfo)
+        for key, val in self.generatorInfo.items():
+            genInfo.addNode(IMProvNode("Data", None, Name = key,
+                                       Value = str(val)))
             
         
         return result

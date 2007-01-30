@@ -41,13 +41,14 @@ class FwkJobRepHandler(ContentHandler):
         self.currentInputDict = None
         self.currentCksum = None
         self.inTiming = False
+        self.inGenInfo = False
         self._CharCache = ""
 
         #  //
         # // container for results
         #//
         self.results = []
-
+        
 
         #  //
         # // Response methods to start of elements based on element name
@@ -72,6 +73,8 @@ class FwkJobRepHandler(ContentHandler):
             "FrameworkError" : self.frameworkError,
             "TimingService" : self.timingService,
             "StorageStatistics" : self.noResponse,
+            "GeneratorInfo" : self.generatorInfo,
+            "Data" : self.dataHandler,
             }
 
         #  //
@@ -97,6 +100,8 @@ class FwkJobRepHandler(ContentHandler):
             "FrameworkError" : self.endFrameworkError,
             "TimingService" : self.endTimingService,
             "StorageStatistics" : self.storageStatistics,
+            "GeneratorInfo" : self.endGeneratorInfo,
+            "Data": self.noResponse,
             }
 
     def noResponse(self, name, attrs = {}):
@@ -447,6 +452,44 @@ class FwkJobRepHandler(ContentHandler):
             return
         self.currentReport.storageStatistics = str(self._CharCache)
         return
+
+
+    def generatorInfo(self, name, attrs):
+        """
+        _generatorInfo_
+
+        """
+        if self.currentReport == None:
+            return
+        self.inGenInfo = True
+        self.currentDict = self.currentReport.generatorInfo
+        return
+
+    def endGeneratorInfo(self, name):
+        """
+        _endGeneratorInfo_
+
+        """
+        self.inGenInfo = False
+        self.currentDict = None
+        return
+
+    def dataHandler(self, name, attrs):
+        """
+        _dataHandler_
+
+        """
+        if self.inGenInfo:
+            if self.currentDict == None:
+                return
+            key = str(attrs['Name'])
+            val = str(attrs['Value'])
+            self.currentDict[key] = val
+            return
+        return
+    
+            
+        
         
 def readJobReport(filename):
     """
