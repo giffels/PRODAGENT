@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.15 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.15 2007/01/09 20:09:20 evansde Exp $"
+__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.16 2007/01/18 18:40:19 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -69,7 +69,13 @@ class ReqInjComponent:
         it is subscribed to
         """
         if event == "RequestInjector:ResourcesAvailable":
-            self.newJob()
+            try:
+                nCalls = int(payload)
+            except ValueError:
+                nCalls = 1
+
+            for i in range(0, nCalls):
+                self.newJob()
             return
         if event == "RequestInjector:SetWorkflow":
             self.newWorkflow(payload)
