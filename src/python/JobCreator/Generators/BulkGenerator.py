@@ -8,6 +8,8 @@ parametrized on the job spec
 
 """
 import logging
+from popen2 import Popen4
+
 from JobCreator.GeneratorInterface import GeneratorInterface
 from JobCreator.Registry import registerGenerator
 
@@ -144,7 +146,10 @@ class BulkGenerator(GeneratorInterface):
 
         
         writeShREEKConfig(directory, taskObject)
-        
+
+        tarName = "%s-%s.tar.gz" % (workflowSpec.workflowName(),
+                                    wftype)
+        createTarball(directory, tarName)
         
         return
 
@@ -279,6 +284,39 @@ class BulkGenerator(GeneratorInterface):
         #//  it can be populated with tasks
         return taskObj['Directory']['AbsName']
         
-        
+
+def createTarball(dirName, tarballName):
+    """
+    _createTarball_
+
+    Tar up the common sandbox
+
+    """
+    tarballFile = os.path.join(os.path.dirname(dirName), tarballName)
+    if os.path.exists(tarballFile):
+        logging.debug(
+            "createTarball:Tarball exists, cleaning: %s" % tarballFile)
+        os.remove(tarballFile)
+
+    tarComm = "tar -czf %s -C %s %s " % (
+        tarballFile,
+        os.path.dirname(dirName),
+        os.path.basename(dirName)
+        )
+    logging.info("Creating Tarball for workflow: %s" % tarComm)
+    pop = Popen4(tarComm)
+    while pop.poll() == -1:
+            exitCode = pop.poll()
+    exitCode = pop.poll()
+    if exitCode:
+        msg = "Error creating Tarfile:\n"
+        msg += tarComm
+        msg += "Exited with code: %s\n" % exitCode
+        msg += pop.fromchild.read()
+        logging.error("createTarball: Tarball creation failed:")
+        logging.error(msg)
+        raise RuntimeError, msg
+    return
+      
 registerGenerator(BulkGenerator, "Bulk")
 
