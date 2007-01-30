@@ -31,7 +31,7 @@ while(!$records[0]->EOF){
 </td></tr>
 <?php
 	$total+=$records[0]->Fields("PRIMDATASET_count");
-	$DC[]=$curr_site;
+	$DC[]=$curr_ce;
 	$DCE[]=$curr_ce;
 	$N_CNT[]=$records[0]->Fields("PRIMDATASET_count");
 	$N_EVT[]=$records[0]->Fields("NEVT_sum");

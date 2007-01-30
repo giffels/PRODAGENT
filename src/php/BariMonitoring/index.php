@@ -50,10 +50,12 @@ $curr_server=getenv("SERVER_NAME");
 <!--**********  Proxy status - start ************* -->
 <!?php include_once('modules/proxyStatus.php');?>
 <!--**********  Proxy status - end ************* -->
- <!--**********  Software deployment Status - start ************* -->
-<!?php include_once('modules/softwareDeploymentStatus.php');?>
+<!--**********  Software deployment Status - start ************* -->
+<?php include_once('modules/softwareDeploymentStatus.php');?>
 <!--**********  Software deployment Status - end ************* -->
-
+<!--**********  available resources - start ************* -->
+<a href="ResourcesStatus.php"><font size=+1><b>Status of the available resources</b></font></a><br>
+<!-- **********  available resources - end ************* -->
 <!--**********  plots di nicola - start ************* -->
 <!?php include_once('modules/plots.php');?>
 <!--**********  plots di nicola - end ************* -->

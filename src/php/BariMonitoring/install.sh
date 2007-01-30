@@ -106,7 +106,7 @@ if [ $SKIP_APACHE == false ]; then
  
     tar xzf $APACHE_FILE
     cd $APACHE_DIR
-    ./configure --prefix=$BASEDIR/apache --enable-module=so
+    ./configure --prefix=$BASEDIR/apache --enable-module=so --enable-module=auth
 
     if [ $? != 0 ]; then
 	echo "Error in configuration of apache"
@@ -186,8 +186,21 @@ echo "Installing Bari monitoring"
 
 cd $BASEDIR/apache/htdocs
 mkdir -p PA
-cp -r $PRODAGENT_ROOT/src/php/BariMonitoring/* PA 
 
+for dirname in `echo common config graph local menu_date modules plots restricted_folder`;do
+    cp -r $PRODAGENT_ROOT/src/php/BariMonitoring/$dirname PA 
+    if [ $? != 0 ]; then
+	echo "Error: cannot find BariMonitoring source in $PRODAGENT_ROOT/src/php"
+	exit 1
+    fi
+done
+
+cp  $PRODAGENT_ROOT/src/php/BariMonitoring/*.php PA 
+if [ $? != 0 ]; then
+    echo "Error: cannot find BariMonitoring source in $PRODAGENT_ROOT/src/php"
+    exit 1
+fi
+cp  $PRODAGENT_ROOT/src/php/BariMonitoring/*.sh PA 
 if [ $? != 0 ]; then
     echo "Error: cannot find BariMonitoring source in $PRODAGENT_ROOT/src/php"
     exit 1
@@ -205,6 +218,7 @@ touch DBSInterface.txt JobSubmitter.txt JobTracking.txt MergeSensor.txt
 
 chmod 777 plots
 chmod 777 local/ProdConfMonitor.xml
+chmod 777 local/Site.xml
 
 # uncompress jpgraph
 
@@ -230,7 +244,7 @@ fi
 
 # create temporary directory for graphics
 
-mkdir -p /tmp/adodb_cache
+mkdir -p /tmp/${PRODAGENT_WORKDIR}/adodb_cache
 
 # update local PA configuration
 
@@ -238,6 +252,16 @@ cd $BASEDIR/apache/htdocs/PA/local
 sed -e s%DUMMY\_ROOT%$PRODAGENT_ROOT% PAConfig.xml.dummy | \
 sed -e s%DUMMY\_WORKDIR%$PRODAGENT_WORKDIR% | \
 sed -e s%DUMMY\_CONFIG%$PRODAGENT_CONFIG% > PAConfig.xml
+
+# setup .htaccess file in the restricted folder
+cd $BASEDIR/apache/htdocs/PA/restricted_folder
+
+cat <<EOF >> .htaccess
+AuthName "Restricted Area"
+AuthType Basic
+AuthUserFile $BASEDIR/apache/htdocs/PA/restricted_folder/.htpasswd
+require valid-user
+EOF
 
 # go back to top directory
 
@@ -263,6 +287,9 @@ echo "  (cd ${BASEDIR}/apache/htdocs/PA; nohup sh ComponentLog.sh &)"
 echo
 echo "Start apache:"
 echo "  ${BASEDIR}/apache/bin/apachectl start"
+echo
+echo "Set the password for restricted area:"
+echo "  ${BASEDIR}/apache/bin/htpasswd -n prodagent >> ${BASEDIR}/apache/htdocs/PA/restricted_folder/.htpasswd "
 echo
 echo "Point your browser to http://localhost:8080/PA/index.php"
 echo

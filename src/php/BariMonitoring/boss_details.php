@@ -1,6 +1,5 @@
 <link rel="stylesheet" type="text/css" media="all" href="modules/style.css" />
 <?
-include_once ("dbLib-FTS.php");
 $src_jpg='jpgraph/src/';
 include_once ($src_jpg."jpgraph.php");
 include_once ($src_jpg."jpgraph_line.php");
@@ -8,7 +7,7 @@ include_once ($src_jpg."jpgraph_bar.php");
 ?>
 <HTML>
 <HEAD>
-<TITLE>BOSS-GridICE data integration</TITLE>
+<TITLE>BOSS job detail</TITLE>
 </HEAD>
 <body bgcolor=#EBFAFC>
 <form name=kill action=kill_jobs.php method=POST>

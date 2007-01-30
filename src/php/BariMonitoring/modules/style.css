@@ -29,7 +29,7 @@ tr.prodAgentNotRunning{
 }
 TR.hd { border: 1px solid green;background-color: rgb(153, 255, 153); font-weight: bold; font-size: 14pt;}
 TR.hd2 { border: 1px solid green;background-color: rgb(103, 205, 103); font-weight:bold; font-size: 13pt;}
-tr {background: #eeeeee;}
+tr {background: #ffffff;}
 
 tr.off {background: #eeeeee;}
 tr.on {background: #EAF946;}

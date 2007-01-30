@@ -1,22 +1,34 @@
 <?php 
 include_once("common/dbLib-FTS.php");
-include_once("local/monParams-FTS.php");
-$site_array=checkSiteNamebyCE($production);
+$records=getAllCE($production);
+$ce_ceck_array=array();
+if($records)
+while(!$records->EOF){ 
+	$ce_ceck_tmp	=	$records->Fields("destce");
+	array_push($ce_ceck_array,$ce_ceck_tmp);
+	$records->MoveNext();
+}
+
+//$site_array=checkSiteNamebyCE($production);
+$xml_file="local/Site.xml";
+$Name_list="sitename";
+$Name_list2="ce";
+$site_array=select_name_prod($xml_file,$Name_list,$Name_list2);
+sort($site_array);
 ?>
 <table border=1>
 <tr><td colspan=2>
 <font size +2>Site:</font><select name=site onChange="this.form.submit()">
 <?php
-//row1cell2,3
-			if($site=="all"){echo "<option selected>all";}else{echo "<option>all";}
-				for($i=0;$i<count($site_array);$i++){
-				if($site==$site_array[$i]){echo "<option selected>$site_array[$i]";}
-				else{echo "<option>$site_array[$i]";}
-				}
+if($site=="all"){echo "<option selected>all";}else{echo "<option>all";}
+for($i=0;$i<count($site_array);$i++){
+	if($site==$site_array[$i]){echo "<option selected>$site_array[$i]";}
+	else{echo "<option>$site_array[$i]";}
+}
 ?>
 </select>
 </td><td colspan=10>
-<font size +2>Production:</font><select name=production onChange="javascript:if(this.form.production.value=='ALL')if(this.form.site.value=='all'){alert('Please: select a site');return 0};this.form.submit()">
+<font size +2>Production:</font><select name=production onChange="javascript:/*if(this.form.production.value=='ALL')if(this.form.site.value=='all'){alert('Please: select a site');return 0};*/this.form.submit()">
 <?php
 for($i=0;$i<count($production_list);$i++){
 	if($production==$production_list[$i]){echo "<option selected>$production_list[$i]";}
@@ -102,6 +114,7 @@ $fl['merge'][0]=0;$fl['merge'][1]=0;$fl['merge'][2]=0;$fl['merge'][3]=0;$fl['mer
 
 $cnt_field="
 INTERVAL(SUBT,$tmeno6,$tmeno5,$tmeno4,$tmeno3,$tmeno2,$tmeno1,$t0,$tpiu1) as days, 
+count(LOGFILE) as sum_submitted,
 sum(STATUS='running') as sum_running,
 sum(STATUS='scheduled') as sum_scheduled,
 sum(STATUS='aborted') as sum_aborted,
@@ -113,8 +126,7 @@ $group_par="GROUP BY  days,LOGFILE_group";
 $order_by=" order by LOGFILE_group,days";
 
 $records="false";
-
-if($DB_type==2)
+if($DB_type==2 || $production=="ALL")
 $records=getJobDetails_allStatus($production_plus,$prod_failed_job_cond,$job_status,$job_type,$lower_limit,$upper_limit,$ended_site_query_ce,$query_id,$cnt_field,$group_par,$order_by);
 else
 $records=getJobDetails_allStatus_old($production,$prod_failed_job_cond,$job_status,$job_type,$lower_limit,$upper_limit,$ended_site_query_ce,$query_id,$cnt_field,$group_par,$order_by);
@@ -131,12 +143,19 @@ while(!$records->EOF){
 			$type_prod='merge';
 		}
 		$days=$records->Fields("days");
+		$sum_submitted=$records->Fields("sum_submitted")-$records->Fields("sum_success")-$records->Fields("sum_failed");
 		$sum_running=$records->Fields("sum_running");
 		$sum_scheduled=$records->Fields("sum_scheduled");
 		$sum_aborted=$records->Fields("sum_aborted");
 		$sum_failed=$records->Fields("sum_failed");
 		$sum_success=$records->Fields("sum_success");
-		$sum_submitted=$sum_running+$sum_scheduled+$sum_aborted+$sum_failed+$sum_success;
+			
+		$records->MoveNext();
+		if($days==8){
+			continue;
+		}
+
+		//$sum_submitted=$sum_running+$sum_scheduled+$sum_aborted+$sum_failed+$sum_success;
 		
 		$sb[$type_prod][$days]=$sum_submitted;
 		$sb[$type_prod][8]+=$sum_submitted;		
@@ -150,7 +169,6 @@ while(!$records->EOF){
 		$fl[$type_prod][8]+=$sum_failed;		
 		$sc[$type_prod][$days]=$sum_success;
 		$sc[$type_prod][8]+=$sum_success;		
-$records->MoveNext();
 }
 
 
@@ -158,6 +176,7 @@ $records->MoveNext();
 
 $cnt_field="
 INTERVAL(SUBT,".($now-3600).",$now) as days, 
+count(LOGFILE) as sum_submitted,
 sum(STATUS='running') as sum_running,
 sum(STATUS='scheduled') as sum_scheduled,
 sum(STATUS='aborted') as sum_aborted,
@@ -169,7 +188,7 @@ $group_par="GROUP BY  days,LOGFILE_group";
 $order_by=" order by LOGFILE_group,days";
 $records="false";
 //if(strpos($production, 'EWKSoup0')>0)
-if($DB_type==2)
+if($DB_type==2 || $production=='ALL')
 $records=getJobDetails_allStatus($production_plus,$prod_failed_job_cond,$job_status,$job_type,$lower_limit,$upper_limit,$ended_site_query_ce,$query_id,$cnt_field,$group_par,$order_by);
 else
 $records=getJobDetails_allStatus_old($production,$prod_failed_job_cond,$job_status,$job_type,$lower_limit,$upper_limit,$ended_site_query_ce,$query_id,$cnt_field,$group_par,$order_by);
@@ -181,12 +200,13 @@ while(!$records->EOF){
 			$type_prod='merge';
 		}
 		$days=$records->Fields("days");
+		$sum_submitted=$records->Fields("sum_submitted")-$records->Fields("sum_success")-$records->Fields("sum_failed");
 		$sum_running=$records->Fields("sum_running");
 		$sum_scheduled=$records->Fields("sum_scheduled");
 		$sum_aborted=$records->Fields("sum_aborted");
 		$sum_failed=$records->Fields("sum_failed");
 		$sum_success=$records->Fields("sum_success");
-		$sum_submitted=$sum_running+$sum_scheduled+$sum_aborted+$sum_failed+$sum_success;
+		//$sum_submitted=$sum_running+$sum_scheduled+$sum_aborted+$sum_failed+$sum_success;
 
 		$records->MoveNext();
 		if($days==1){
@@ -268,5 +288,25 @@ for($c=0;$c<count($tll);$c++){
 	echo "</td>";
 }
 echo "</tr>";	
+}
+
+function select_name_prod($xml_file,$Name_list,$Name_list2){
+	global $ce_ceck_array;
+	$site_array_tmp=array();
+	$dokument = domxml_open_file($xml_file);
+	$root = $dokument->document_element();
+	$node_array = $root->get_elements_by_tagname($Name_list);
+        $node_array2 = $root->get_elements_by_tagname($Name_list2);
+	for ($i = 0; $i<count($node_array); $i++) {
+		$node = $node_array[$i];
+                $node2 = $node_array2[$i];
+		$ce_tmp = $node2->get_content();
+		$ce_tmp_arr = explode(";",$ce_tmp);
+		for($f=0;$f<count($ce_tmp_arr);$f++)
+			if(in_array($ce_tmp_arr[$f],$ce_ceck_array))
+				array_push($site_array_tmp,$node->get_content());
+	}
+	$site_array_tmp = array_unique($site_array_tmp);
+	return $site_array_tmp;
 }
 ?>

@@ -40,7 +40,6 @@ while(!$records_gs->EOF){
 //echo "details.php<br>".$stream_merge[$processed]."<br>";
 /***  built stream array - end **/
 
-$link = mysql_connect($DB_HOST.":".$DB_PORT,$DB_USER,$DB_PASS);
 //****** query details - start *******/
 include_once("modules/details/queryProduction.php"); 
 //****** query details - end *******/

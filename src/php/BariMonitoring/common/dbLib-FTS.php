@@ -1,37 +1,46 @@
 <?php
-$ADODB_CACHE_DIR = "/tmp/adodb_cache";
-$ADODB_ACTIVE_CACHESECS = 60;
-//include_once("../Conf.php");
 include_once "local/monParams-FTS.php";
 include_once "../adodb/adodb.inc.php";
+$ADODB_CACHE_DIR = "/tmp$prodarea/adodb_cache";
+$ADODB_ACTIVE_CACHESECS = 60;
+$ADODB_CACHE_DIR = "/tmp$prodarea/adodb_cache";
 function dbLibConnect() {
         global $DB_NAME, $DB_USER, $DB_PASS, $DB_SPEC;
         $db=NewADOConnection('mysql');
-        //$db->debug = true;
+	//echo $DB_HOST.":".$DB_PORT." ".$DB_PASS." ".$DB_NAME;
+        //$db->Connect($DB_HOST.":".$DB_PORT,$DB_USER,$DB_PASS,$DB_NAME);
         $db->Connect($DB_SPEC,$DB_USER,$DB_PASS,$DB_NAME);
         return $db;
 }
 function dbLibConnect_prodAgent() {
         global $DB_PA_NAME, $DB_USER, $DB_PASS, $DB_SPEC;
+	//$DB_NAME="ProdAgentDB";
+	//echo " mysql -D ".$DB_HOST." -P ".$DB_PORT." -D ".$DB_NAME." -u ".$DB_USER." -p".$DB_PASS;
         $db=NewADOConnection('mysql');
-        //$db->debug = true;
+        //$db->Connect($DB_HOST.":".$DB_PORT,$DB_USER,$DB_PASS,$DB_NAME_prodAgent);
         $db->Connect($DB_SPEC,$DB_USER,$DB_PASS,$DB_PA_NAME);
         return $db;
 }
 
 function getAllCE($production){
-		$query="
-		select distinct destce from (
-		(
-			select distinct DEST_CE as destce 
-			from SCHED_edg,JOB 
-			where JOB.LOG_FILE like '%$production%' and JOB.TASK_ID=SCHED_edg.TASK_ID
-		)
-		) as temp_table;
-		";
-
-        $db=dbLibConnect();
-        $result=$db->CacheExecute(3600*24*30*12,$query);
+	//if(strpos($production, 'EWKSoup0')>0){
+	if($production=='ALL')
+		$production='';
+		$query="select distinct destce from 
+			((
+			select distinct SCHED_edg.dest_ce as destce from SCHED_edg,JOB where JOB.LOG_FILE like '$production%'
+			and JOB.TASK_ID=SCHED_edg.TASK_ID 
+			)
+			union	
+			(
+			select distinct ENDED_SCHED_edg.dest_ce as destce from ENDED_SCHED_edg,ENDED_JOB where ENDED_JOB.LOG_FILE like '$production%'
+			and ENDED_JOB.TASK_ID=ENDED_SCHED_edg.TASK_ID
+			))
+			as jam 
+			;";
+	//echo $query."<br>";
+	$db=dbLibConnect();
+        $result=&$db->CacheExecute(3600,$query);
         return $result;
 }
 
@@ -56,6 +65,9 @@ merge_dataset.workflow='$production' and merge_outputfile.dataset=merge_dataset.
 		return $result;
 }
 function getJobDetails_old($production,$job_type_filter,$job_status,$job_type,$lower_limit,$upper_limit,$site_query_ce,$query_id,$cnt_field,$group_par,$order_by){
+	if($production=='ALL')
+		$production='%%';
+	if($production=="ALL-%")$production='%%';
 	$debug = $GLOBALS['debug'];
 	if($job_type=='prod')
 		$job_type=" and JOB.LOG_FILE REGEXP 'mergejob'=0";
@@ -76,7 +88,7 @@ WHERE
 SCHED_edg.TASK_ID=TASK_HEAD.ID AND SCHED_edg.TASK_ID=JOB.TASK_ID AND 
 SCHED_edg.TASK_ID=cmssw.TASK_ID AND SCHED_edg.ID=JOB.ID AND 
 SCHED_edg.ID=cmssw.ID AND 
-cmssw.PRIMDATASET='$production' $site_query_ce $job_type
+cmssw.PRIMDATASET like '$production' $site_query_ce $job_type
 				)
 				union
 			(
@@ -100,7 +112,7 @@ and SCHED_edg.SCHED_STATUS='Aborted'  $job_type
 		//$merge_success_job_cond=str_replace ("ENDED_cmssw.TASK_exit","TASKEXIT", $merge_success_job_cond);
 		$query.=" where 
 			SUBT>'$lower_limit' AND SUBT<'$upper_limit' $query_id 
-			$merge_success_job_cond and TASKEXIT=0";
+			$merge_success_job_cond and TASK_name='Success'";
 		//$order_by=" order by TASKID";	
 	}	
 
@@ -157,6 +169,7 @@ if($debug!=''){
 }
 function getJobDetails($production,$job_type_filter,$job_status,$job_type,$lower_limit,$upper_limit,$site_query_ce,$query_id,$cnt_field,$group_par,$order_by){
 	//echo "<hr>: getJobDetails: $job_status";
+	if($production=="ALL")$production='';
 	$debug = $GLOBALS['debug'];
 	$merged_dataset = $GLOBALS['merged_dataset'];
 	$stream_merge	= $GLOBALS['stream_merge'];
@@ -186,11 +199,12 @@ function getJobDetails($production,$job_type_filter,$job_status,$job_type,$lower
 				)
 				union
 				(
+				 /*the ENDED_JOB.SUB_T is been replaced with ENDED_JOB.STOP_T only for success job nad failed jobs*/
 				 select
 				ENDED_cmssw.PRIMDATASET as PRIMDATASET,N_EVT as NEVT,
 				 ENDED_SCHED_edg.CHAIN_ID as CHAIN_ID,ENDED_SCHED_edg.ID as ID,
 				 ENDED_cmssw.TASK_name as TASK_name,comment, EXEC_HOST, SUB_T ,START_T,STOP_T,SE_OUT,
-				 ENDED_SCHED_edg.dest_ce as destce,ENDED_JOB.LOG_FILE as LOGFILE,ENDED_JOB.SUB_T as SUBT,
+				 ENDED_SCHED_edg.dest_ce as destce,ENDED_JOB.LOG_FILE as LOGFILE,ENDED_JOB.STOP_T as SUBT,
 				 ENDED_SCHED_edg.SCHED_STATUS as STATUS,ENDED_SCHED_edg.TASK_ID as TASKID,ENDED_cmssw.TASK_EXIT as TASKEXIT,SCHED_ID as SCHEDID
 				 from
 				 ENDED_JOB,ENDED_SCHED_edg,ENDED_cmssw
@@ -207,19 +221,19 @@ function getJobDetails($production,$job_type_filter,$job_status,$job_type,$lower
 		$merge_success_job_cond=str_replace ("ENDED_cmssw.TASK_exit","TASKEXIT", $merge_success_job_cond);
 		$query.=" where 
 			SUBT>'$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id 
-			$merge_success_job_cond and TASKEXIT=0";
+			$merge_success_job_cond and TASK_name='Success'";
 		//$order_by=" order by TASKID";	
 	}	
 
 	elseif($job_status=="failed"){		
 		$site_query_ce=str_replace ("SCHED_edg.dest_ce","destce", $site_query_ce);
-		$query.=" where SUBT>'$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id and TASK_name='$job_status'";
+		$query.=" where SUBT>='$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id and TASK_name='$job_status'";
 	}	
 
 	elseif($job_status=="submitted"){		
 		$site_query_ce=str_replace ("SCHED_edg.dest_ce","destce", $site_query_ce);
 		$query.=" where 
-			SUBT>'$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id ";
+			SUBT>='$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id ";
 		//$order_by="order by TASKID";	
 			//echo $query;
 	}		
@@ -227,20 +241,20 @@ function getJobDetails($production,$job_type_filter,$job_status,$job_type,$lower
 	elseif($job_status=="running"){		
 		$site_query_ce=str_replace ("SCHED_edg.dest_ce","destce", $site_query_ce);
 		$query.=" where 
-			SUBT>'$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id and STATUS='$job_status'";
+			SUBT>='$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id and STATUS='$job_status'";
 		//$order_by="order by TASKID";	
 	}		
 
 	elseif($job_status=="scheduled"){		
 		$site_query_ce=str_replace ("SCHED_edg.dest_ce","destce", $site_query_ce);
-		$query.=" where STATUS='$job_status' and  SUBT>'$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id ";
+		$query.=" where STATUS='$job_status' and  SUBT>='$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id ";
 		//$order_by="order by cmssw.TASK_ID,cmssw.ID";	
 	}		
 
 	elseif($job_status=="aborted") {		
 		$site_query_ce=str_replace ("SCHED_edg.dest_ce","destce", $site_query_ce);
 		$query.=" where 
-			SUBT>'$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id and STATUS='$job_status'";
+			SUBT>='$lower_limit' AND SUBT<'$upper_limit' $site_query_ce $query_id and STATUS='$job_status'";
 		//$order_by=" order by TASKID";	
 	}
 	if($merged_dataset!='' && $merged_dataset!='ALL'){
@@ -269,18 +283,21 @@ if($debug!=''){
         return $result;
 }
 function getJobDetails_allStatus($production_plus,$prod_failed_job_cond,$prod_success_job_cond,$job_type,$lower_limit,$upper_limit,$ended_site_query_ce,$query_id,$cnt_field,$group_par,$order_by){
+	if($production=='ALL' || $production=='%ALL%')
+		$production='%%';
 	$debug = $GLOBALS['debug'];
 	$merged_dataset = $GLOBALS['merged_dataset'];
 	$stream_merge	= $GLOBALS['stream_merge'];
 	//echo "common/dbLib-FTS.php getJobDetails_allStatus<br>".$merged_dataset;
 	$ended_site_query_ce=str_replace("ENDED_SCHED_edg.dest_ce"," destce ", $ended_site_query_ce);
 	$ended_site_query_ce=str_replace("SCHED_edg.dest_ce"," destce",$ended_site_query_ce);
-	$ended_site_query_ce=" where 1 ".$ended_site_query_ce;
-	if($production_plus=="ALL-%")$production_plus='%%';
+	$ended_site_query_ce=" where SUBT>0 ".$ended_site_query_ce;
+	if($production_plus=="ALL-%" || $production_plus=='%ALL%')
+		$production_plus='%%';
 $query="
 SELECT
 from ((
-\n/*job scheduled e running*/
+\n/*job scheduled e running **/
 select
 SCHED_edg.dest_ce as destce,JOB.LOG_FILE as LOGFILE,JOB.SUB_T as SUBT,SCHED_edg.SCHED_STATUS as STATUS 
 from 
@@ -301,8 +318,9 @@ ENDED_JOB.LOG_FILE like '$production_plus'
 \n)
 union(
 \n/* failed jobs*/
+/*the ENDED_JOB.SUB_T is been replaced with ENDED_JOB.STOP_T only for success job nad failed jobs*/
 select
-ENDED_SCHED_edg.dest_ce as destce,ENDED_JOB.LOG_FILE as LOGFILE,ENDED_JOB.SUB_T as SUBT,ENDED_cmssw.TASK_NAME as STATUS
+ENDED_SCHED_edg.dest_ce as destce,ENDED_JOB.LOG_FILE as LOGFILE,ENDED_JOB.STOP_T as SUBT,ENDED_cmssw.TASK_NAME as STATUS
 from ENDED_JOB,ENDED_SCHED_edg,ENDED_cmssw
 WHERE
 ENDED_JOB.TASK_ID=ENDED_cmssw.TASK_ID AND ENDED_JOB.ID=ENDED_cmssw.ID AND ENDED_SCHED_edg.TASK_ID=ENDED_cmssw.TASK_ID AND 
@@ -312,8 +330,9 @@ AND ENDED_JOB.LOG_FILE like
 \n)
 union(
 \n/*select success job*/
+/*the ENDED_JOB.SUB_T is been replaced with ENDED_JOB.STOP_T only for success job nad failed jobs*/
 select
-ENDED_SCHED_edg.dest_ce as destce,ENDED_JOB.LOG_FILE as LOGFILE,ENDED_JOB.SUB_T as SUBT,ENDED_cmssw.TASK_NAME as STATUS
+ENDED_SCHED_edg.dest_ce as destce,ENDED_JOB.LOG_FILE as LOGFILE,ENDED_JOB.STOP_T as SUBT,ENDED_cmssw.TASK_NAME as STATUS
 from ENDED_cmssw,ENDED_JOB,ENDED_SCHED_edg 
 where
 ENDED_JOB.TASK_ID=ENDED_cmssw.TASK_ID AND ENDED_JOB.ID=ENDED_cmssw.ID AND ENDED_SCHED_edg.TASK_ID=ENDED_cmssw.TASK_ID AND ENDED_SCHED_edg.ID=ENDED_cmssw.ID  
@@ -363,7 +382,7 @@ if($debug!=''){
 <?php
 }
         $db=dbLibConnect();
-	$result = 	&$db->CacheExecute(600,$query); 
+	$result = 	&$db->CacheExecute(1,$query); 
 	if (!$result) {
 		$result="false";
 	}
@@ -409,6 +428,8 @@ function selectSite_source() {
         return $result;
 }
 function getJobDetails_allStatus_old($production,$prod_failed_job_cond,$prod_success_job_cond,$job_type,$lower_limit,$upper_limit,$site_query_ce,$query_id,$cnt_field,$group_par,$order_by){
+	if($production=='ALL')
+		$production='%%';
 	$site_query_ce=str_replace("ENDED_SCHED_edg.dest_ce","SCHED_edg.dest_ce",$site_query_ce);
 	$debug = $GLOBALS['debug'];
 	$ended_site_query_ce=str_replace("AND ENDED_SCHED_edg.dest_ce"," destce ", $ended_site_query_ce);
@@ -433,7 +454,7 @@ JOB.LOG_FILE  as LOGFILE, cmssw.TASK_NAME as STATUS,JOB.SUB_TIME as SUBT
 from cmssw,JOB,SCHED_edg 
 WHERE 
 JOB.TASK_ID=cmssw.TASK_ID AND JOB.ID=cmssw.ID AND SCHED_edg.TASK_ID=cmssw.TASK_ID AND SCHED_edg.ID=cmssw.ID
-$prod_failed_job_cond AND  cmssw.PRIMDATASET='$production' $site_query_ce
+$prod_failed_job_cond AND  cmssw.PRIMDATASET like '$production' $site_query_ce
 \n)
 union(
 \n/*select success job*/
@@ -441,7 +462,7 @@ select
 SCHED_edg.DEST_CE as destce,JOB.LOG_FILE as LOGFILE ,cmssw.TASK_NAME as STATUS,JOB.SUB_TIME as SUBT from cmssw,JOB,SCHED_edg
 WHERE 
 JOB.TASK_ID=cmssw.TASK_ID AND JOB.ID=cmssw.ID AND SCHED_edg.TASK_ID=cmssw.TASK_ID AND SCHED_edg.ID=cmssw.ID  
-AND cmssw.TASK_exit=0 AND cmssw.PRIMDATASET='$production' $site_query_ce
+AND cmssw.TASK_exit=0 AND cmssw.PRIMDATASET like '$production' $site_query_ce
 )
 ) 
 as jam 

@@ -42,7 +42,7 @@ while(!$records->EOF){
 	echo "<tr><td>$curr_ce</td>";
 ?>
 <?php 
-$url_commn="job_type=$job_type&lower_limit=$lower_limit&upper_limit=$upper_limit&production=$production&site=$curr_site&merged_dataset=$merged_dataset"
+$url_commn="job_type=$job_type&lower_limit=$lower_limit&upper_limit=$upper_limit&production=$production&site=$curr_ce&merged_dataset=$merged_dataset"
 ?>
 <td align=right>
 <a href="boss_details.php?job_status=submitted&<?=$url_commn?>"><?=$sum_tot?></a></td>
@@ -50,14 +50,15 @@ $url_commn="job_type=$job_type&lower_limit=$lower_limit&upper_limit=$upper_limit
 <a href="boss_details.php?job_status=success&<?=$url_commn?>"><?=$sum_success?></a></td>
 <td align=right><a href="boss_details.php?job_status=failed&<?=$url_commn?>"><?=$sum_failed?></a></td>
 <?php
-$url_commn2="job_type=$job_type&lower_limit=$lower_limit&upper_limit=$upper_limit&production=$production&site=$curr_site&merged_dataset=$merged_dataset";
+$url_commn2="job_type=$job_type&lower_limit=$lower_limit&upper_limit=$upper_limit&production=$production&site=$curr_ce&merged_dataset=$merged_dataset";
 ?>
 	<td align=right><a href="boss_details.php?job_status=aborted&<?=$url_commn2?>"><?=$sum_aborted?></a></td>
 	<td align=right><a href="boss_details.php?job_status=running&<?=$url_commn2?>"><?=$sum_running?></a></td>
 	<td align=right><a href="boss_details.php?job_status=scheduled&<?=$url_commn2?>"><?=$sum_Scheduled?></a></td></tr>
 <?php
 	$total+=$sum_tot;
-	$DC[]=getSiteNamebyCE($curr_ce);
+	//$DC[]=getSiteNamebyCE($curr_ce);
+	$DC[]=$curr_ce;
 	$DCE[]=$curr_ce;
 	$N_sub[]=$sum_tot;
 	$N_abo[]=$sum_aborted;

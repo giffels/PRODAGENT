@@ -1,3 +1,7 @@
 php_value include_path ".:./common:./local:../adodb:./modules"
 
 
+AuthName "Restricted Area"
+AuthType Basic
+AuthUserFile /home/defilippis/Prodagent_v049/PRODAGENT/src/php/BariMonitoring/apache/htdocs/PA/restricted_folder/.htpasswd
+require valid-user
