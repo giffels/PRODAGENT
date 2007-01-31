@@ -30,8 +30,8 @@ intParamValue = int( componentSettings["SomeInteger"] )
 
 
 """
-__revision__ = "$Id: Configuration.py,v 1.7 2006/05/11 19:38:14 fvlingen Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: Configuration.py,v 1.8 2006/11/17 18:36:36 afanfani Exp $"
+__version__ = "$Revision: 1.8 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -69,6 +69,24 @@ def loadProdAgentConfiguration():
     config.loadFromFile(envVar)
     return config
 
+
+def prodAgentName():
+    """
+    _prodAgentName_
+
+    Return the Name of this PA instance
+
+    """
+    try:
+        prodAgentConfig = loadProdAgentConfiguration()
+        prodAgentName = prodAgentConfig['ProdAgent']['ProdAgentName']
+    except StandardError:
+        prodAgentName = "ProdAgent" 
+        
+    hostname = socket.gethostname()
+    if hostname not in prodAgentName:
+        prodAgentName = "%s@%s" % (prodAgentName, socket.gethostname())
+    return prodAgentName
     
 
 class ProdAgentConfiguration(dict):
