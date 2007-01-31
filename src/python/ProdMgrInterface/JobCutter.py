@@ -52,6 +52,7 @@ def cut(job_id,jobCutSize):
 
     jobSpec= JobSpec()
     jobSpec.load(jobSpecFile)
+    jobSpec.parameters['ProdMgr']='generated'
 
     eventCount=int(jobSpec.parameters['EventCount'])
     # find out how many jobs we want to cut.
