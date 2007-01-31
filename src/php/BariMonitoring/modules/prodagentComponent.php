@@ -9,6 +9,12 @@ $stato = implode("\n", $retval);
     <table class="prodAgent">
           <tr><td class="prodAgentH" colspan=2>ProdAgent current Status<br><?=$PA_NAME?></td></tr>
 
+<?php if(strpos($stato, "ProdMgrInterface Running")) {?>
+          <tr class="prodAgentRunning"><td>ProdMgrInterface</td><td> Running</td></tr>
+<?php }else {?>
+          <tr class="prodAgentNotRunning"><td>ProdMgrInterface</td><td>Not Running</td></tr>
+<?php }?>
+
 <?php if(strpos($stato, "JobTracking Running")) {?>
           <tr class="prodAgentRunning"><td>JobTracking</td><td> Running</td></tr>
 <?php }else {?>
@@ -25,6 +31,12 @@ $stato = implode("\n", $retval);
           <tr class="prodAgentRunning"><td>MergeSensor</td><td> Running</td></tr>
 <?php }else {?>
           <tr class="prodAgentNotRunning"><td>MergeSensor</td><td>Not Running</td></tr>
+<?php }?>
+
+<?php if(strpos($stato, "MergeAccountant Running")) {?>
+          <tr class="prodAgentRunning"><td>MergeAccountant</td><td> Running</td></tr>
+<?php }else {?>
+          <tr class="prodAgentNotRunning"><td>MergeAccountant</td><td>Not Running</td></tr>
 <?php }?>
 
 <?php if(strpos($stato, "ErrorHandler Running")) {?>
@@ -55,6 +67,12 @@ $stato = implode("\n", $retval);
            <tr class="prodAgentRunning"><td>StatTracker</td><td> Running</td></tr>
 <?php }else {?>
            <tr class="prodAgentNotRunning"><td>StatTracker</td><td>Not Running</td></tr>
+<?php }?>
+
+<?php if(strpos($stato, "DatasetInjector Running")) {?>
+            <tr class="prodAgentRunning"><td>DatasetInjector</td><td> Running</td></tr>
+<?php }else {?>
+            <tr class="prodAgentNotRunning"><td>DatasetInjector</td><td>Not Running</td></tr>
 <?php }?>
 
 <?php if(strpos($stato, "RequestInjector Running")) {?>
