@@ -59,7 +59,8 @@ def standardScriptHeader(jobSpecId, minDiskSize=1500000):
     script.append(makeErrorReportScript(jobSpecId))
     script.append("  exit 1\n")
     script.append("fi\n")
-    script.append("echo CHOSEN_WORKDIR: `$CHOSEN_WORKDIR`\n")
+    #script.append("echo CHOSEN_WORKDIR: `$CHOSEN_WORKDIR`\n")
+    script.append("echo CHOSEN_WORKDIR: \"$CHOSEN_WORKDIR\"\n") 
     script.append("cd $CHOSEN_WORKDIR\n")
     
     return script
