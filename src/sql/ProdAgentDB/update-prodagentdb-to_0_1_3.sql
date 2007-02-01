@@ -1,5 +1,12 @@
+
 /*
- * ======================Start PA interface tables===============
+ * ======================Start Merge tables===============
+ */
+alter table merge_inputfile add eventcount int not null default '0' after name;
+
+
+/*
+ * ======================Start PM interface tables===============
  */
 DROP TABLE IF EXISTS pm_state;
 CREATE TABLE pm_state
