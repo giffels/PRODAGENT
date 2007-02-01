@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.31 2006/10/06 14:43:18 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.32 2006/10/11 11:25:33 bacchi Exp $"
 
 import socket
 import time
@@ -28,7 +28,8 @@ from shutil import copy
 from shutil import rmtree
 import string
 import logging
-from logging.handlers import RotatingFileHandler
+import ProdAgentCore.LoggingUtils  as LoggingUtils
+#from logging.handlers import RotatingFileHandler
 from popen2 import Popen4
 # threads
 from threading import Thread, Condition
@@ -68,13 +69,15 @@ class TrackingComponent:
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
+# use the LoggingUtils
+        LoggingUtils.installLogHandler(self)
             
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
+#        logHandler = RotatingFileHandler(self.args['Logfile'],
+#                                        "a", 1000000, 3)
+#        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
+#        logHandler.setFormatter(logFormatter)
+#        logging.getLogger().addHandler(logHandler)
+#        logging.getLogger().setLevel(logging.INFO)
         logging.info("JobTracking Component Initializing...")
 
 # Determine the location of the BOSS configuration files. These is expected
