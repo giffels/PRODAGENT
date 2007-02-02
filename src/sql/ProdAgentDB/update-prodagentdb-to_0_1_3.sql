@@ -2,7 +2,7 @@
  * ======================Start JobSpec tables===============
  */
 
-ALTER TABLE js_JobSpec ADD WorkflowID VARCHAR(255) NOT NULL AFTER State;
+ALTER TABLE js_JobSpec ADD WorkflowID VARCHAR(255) default ' ' AFTER State;
 
 /*
  * ======================Start Merge tables===============
