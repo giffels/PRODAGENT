@@ -15,18 +15,13 @@ from ProdAgentDB.Connect import connect
 # register method
 ##########################################################################
 
-def register(jobSpecId, jobType, maxRetries, maxRacers = 1):   
+def register(jobSpecId, jobType, maxRetries, maxRacers = 1,workflowID=''):   
        conn=connect(False)
        dbCur=conn.cursor()
        try:
-           sqlStr="INSERT INTO js_JobSpec(JobSpecID,                   \
-                   JobType,MaxRetries, MaxRacers,\
-                   Retries,State) VALUES(\""+str(jobSpecId)+"\",             \
-                                             \""+str(jobType)+"\",           \
-                                             \""+str(maxRetries)+"\",   \
-                                             \""+str(maxRacers)+"\",    \
-                                             \"0\",                     \
-                                             \"register\");"
+           sqlStr="""INSERT INTO js_JobSpec(JobSpecID,JobType,MaxRetries, MaxRacers,
+               Retries,State,WorkflowID) VALUES("%s","%s","%s","%s","0","register","%s")
+               """ %(str(jobSpecId),str(jobType),str(maxRetries),str(maxRacers),str(workflowID)) 
            dbCur.execute("START TRANSACTION")
            try:
                dbCur.execute(sqlStr)
@@ -449,6 +444,33 @@ def startedJobs(daysBack):
        conn.close()
        return result
    except:
+       dbCur.execute("ROLLBACK")
+       dbCur.close()
+       conn.close()
+       raise
+
+def setMaxRetries(jobSpecIds=[],maxRetries=1):
+   conn=connect(False)
+   dbCur=conn.cursor()
+
+   try:
+       if type(jobSpecIds)==list:
+          if len(jobSpecIds)==1:
+              jobSpecIds=jobSpecIds[0]
+          if len(jobSpecIds)==0:
+              return 
+       dbCur.execute("START TRANSACTION")
+       if type(jobSpecIds)==list:
+          sqlStr=""" UPDATE js_JobSpec SET MaxRetries="%s" WHERE JobSpecID IN %s
+              """ %(str(maxRetries),str(tuple(jobSpecIds)))
+       else:
+          sqlStr=""" UPDATE js_JobSpec SET MaxRetries="%s" WHERE JobSpecID="%s"
+              """ %(str(maxRetries),str(jobSpecIds))
+       dbCur.execute(sqlStr)
+       dbCur.execute("COMMIT")
+       dbCur.close()
+       conn.close()
+   except Exception,ex:
        dbCur.execute("ROLLBACK")
        dbCur.close()
        conn.close()

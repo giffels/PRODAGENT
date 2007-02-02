@@ -240,3 +240,31 @@ def startedJobs(daysBack,dbCur1 = None):
            conn.close()
        raise
 
+def retrieveJobIDs(workflowIDs=[]):
+  conn=connect(False)
+  dbCur=conn.cursor()
+
+  try:
+    if type(workflowIDs)==list:
+       if len(workflowIDs)==1:
+          workflowIDs=workflowIDs[0]
+       if len(workflowIDs)==0:
+           return
+    dbCur.execute("START TRANSACTION")
+    if type(workflowIDs)==list:
+       sqlStr=""" SELECT JobSpecID FROM js_JobSpec WHERE WorkflowID IN %s
+           """ %(str(tuple(workflowIDs)))
+    else:
+       sqlStr=""" SELECT JobSpecID FROM js_JobSpec WHERE WorkflowID="%s"
+           """ %(str(workflowIDs))
+    dbCur.execute(sqlStr)
+    result=dbCur.fetchall()
+    dbCur.execute("COMMIT")
+    dbCur.close()
+    conn.close()
+    return result
+  except Exception,ex:
+    dbCur.execute("ROLLBACK")
+    dbCur.close()
+    conn.close()
+    raise

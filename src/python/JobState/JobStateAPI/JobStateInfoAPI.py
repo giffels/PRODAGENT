@@ -95,5 +95,9 @@ def startedJobs(daysBack):
       futher than the number of days specified.
 
       """
+
       return JobStateInfoAPIMySQL.startedJobs(daysBack)
 
+
+def retrieveJobIDs(workflowIDs=[]):
+      return JobStateInfoAPIMySQL.retrieveJobIDs(workflowIDs)
