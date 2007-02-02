@@ -57,6 +57,7 @@ CREATE TABLE js_JobSpec(
    Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
    State ENUM("register","create","inProgress","finished") 
        NOT NULL,
+   WorkflowID VARCHAR(255) NOT NULL,
    CacheDirLocation VARCHAR(255) NULL,
    PRIMARY KEY (JobSpecID)
    ) TYPE=InnoDB;
