@@ -1,9 +1,14 @@
+/*
+ * ======================Start JobSpec tables===============
+ */
+
+ALTER TABLE js_JobSpec ADD WorkflowID VARCHAR(255) NOT NULL AFTER State;
 
 /*
  * ======================Start Merge tables===============
  */
-alter table merge_inputfile add eventcount int not null default '0' after name;
 
+alter table merge_inputfile add eventcount int not null default '0' after name;
 
 /*
  * ======================Start PM interface tables===============
