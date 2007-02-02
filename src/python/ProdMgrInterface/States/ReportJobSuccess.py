@@ -25,38 +25,41 @@ class ReportJobSuccess(StateInterface):
    def execute(self):
        logging.debug("Executing state: ReportJobSuccess")
        stateParameters=State.get("ProdMgrInterface")['parameters']
-       jobReport=stateParameters['jobReport']
-       # retrieve relevant information:
-       report=readJobReport(jobReport)
-       logging.debug('jobreport is: '+str(jobReport))
-       logging.debug('jobspecid is: '+str(report[-1].jobSpecId))
-
-       #NOTE: here we call the trigger code.
-       try:
-          self.trigger.flagSet("cleanup",report[-1].jobSpecId,"ProdMgrInterface")
-          self.trigger.setFlag("cleanup", report[-1].jobSpecId,"ProdMgrInterface")
-       except Exception,ex:
-          logging.debug("WARNING: problem with prodmgr flag setting\n"
-              +str(ex)+"\n"
-              +" it might be that this job was generated outside the prodmgr\n"
-              +" if that is the case, do not panic")
-          logging.debug("ProdMgr does nothing with this job")
-          return
-
-       total = 0
-       for fileinfo in report[-1].files:
-           if  fileinfo['TotalEvents'] != None:
-              total+=int(fileinfo['TotalEvents'])
-       logging.debug('JobReport has been read processed: '+str(total)+' events')
        if stateParameters['jobType']=='failure':
            logging.debug("This job failed so we register 0 events")
            total=0
+           job_spec_id=stateParameters['jobReport']
+       else:
+           jobReport=stateParameters['jobReport']
+           # retrieve relevant information:
+           report=readJobReport(jobReport)
+           logging.debug('jobreport is: '+str(jobReport))
+           logging.debug('jobspecid is: '+str(report[-1].jobSpecId))
+           total = 0
+           for fileinfo in report[-1].files:
+               if  fileinfo['TotalEvents'] != None:
+                  total+=int(fileinfo['TotalEvents'])
+    
+           #NOTE: here we call the trigger code.
+           try:
+              self.trigger.flagSet("cleanup",report[-1].jobSpecId,"ProdMgrInterface")
+              self.trigger.setFlag("cleanup", report[-1].jobSpecId,"ProdMgrInterface")
+           except Exception,ex:
+              logging.debug("WARNING: problem with prodmgr flag setting\n"
+                  +str(ex)+"\n"
+                  +" it might be that this job was generated outside the prodmgr\n"
+                  +" If that is the case, do not panic")
+              logging.debug("ProdMgr does nothing with this job")
+              return
+           job_spec_id=report[-1].jobSpecId
+
+       logging.debug('JobReport has been read processed: '+str(total)+' events')
 
        # remove the job cut spec file.
        logging.debug("removing job cut spec file")
-       request_id=report[-1].jobSpecId.split('_')[1] 
+       request_id=job_spec_id.split('_')[1] 
        logging.debug("request id= "+str(request_id))
-       job_spec_location=JobCut.getLocation(report[-1].jobSpecId)
+       job_spec_location=JobCut.getLocation(job_spec_id)
        logging.debug("retrieved job spec location: "+str(job_spec_location))
        try:
           os.remove(job_spec_location)
@@ -64,10 +67,10 @@ class ReportJobSuccess(StateInterface):
           pass
        # update the events processed by this jobcut
        logging.debug("logging processed events")
-       JobCut.eventsProcessed(report[-1].jobSpecId,total)
+       JobCut.eventsProcessed(job_spec_id,total)
 
-       logging.debug("Evaluate job associated to job cut "+str(report[-1].jobSpecId))
-       jobId=Job.id(report[-1].jobSpecId)
+       logging.debug("Evaluate job associated to job cut "+str(job_spec_id))
+       jobId=Job.id(job_spec_id)
 
        logging.debug("Associated job is: "+str(jobId)) 
        if Job.jobCutsFinished(jobId):
