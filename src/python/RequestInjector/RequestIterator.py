@@ -36,11 +36,12 @@ class RequestIterator:
         self.workflow = workflowSpecFile
         self.workingDir = workingDir
         self.count = 0
+        self.runIncrement = 1
         self.currentJob = None
         self.sitePref = None
         self.pileupDatasets = {}
         self.ownedJobSpecs = {}
-
+        
         #  //
         # // Initially hard coded, should be extracted from Component Config
         #//
@@ -49,6 +50,12 @@ class RequestIterator:
         self.workflowSpec = WorkflowSpec()
         self.workflowSpec.load(workflowSpecFile)
 
+        if self.workflowSpec.parameters.get("RunIncrement", None) != None:
+            self.runIncrement = int(
+                self.workflowSpec.parameters['RunIncrement']
+                )
+        
+        
         #  //
         # // Cache Area for JobSpecs
         #//
@@ -103,7 +110,7 @@ class RequestIterator:
 
         """
         newJobSpec = self.createJobSpec()
-        self.count += 1
+        self.count += self.runIncrement
         return newJobSpec
 
 
@@ -124,8 +131,8 @@ class RequestIterator:
         jobSpec.setJobName(jobName)
         jobSpec.setJobType("Processing")
         jobSpec.parameters['RunNumber'] = self.count
-
-    
+        
+        
         jobSpec.payload.operate(self.generateJobConfig)
         
         specCacheDir =  os.path.join(
@@ -152,8 +159,7 @@ class RequestIterator:
             jobSpec.addWhitelistSite(siteWhite)
             
         
-        jobSpec.save(jobSpecFile)
-        
+        jobSpec.save(jobSpecFile)        
         return "file://%s" % jobSpecFile
         
         
@@ -171,7 +177,8 @@ class RequestIterator:
             #//
             return
         try:
-            generator = CfgGenerator(jobSpecNode.configuration, True)
+            generator = CfgGenerator(jobSpecNode.configuration, True,
+                                     jobSpecNode.applicationControls)
         except StandardError, ex:
             #  //
             # // Cant read config file => not a config file
