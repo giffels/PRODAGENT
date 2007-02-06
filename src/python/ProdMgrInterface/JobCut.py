@@ -1,6 +1,6 @@
 import logging
 
-from ProdAgentDB import Session
+from ProdCommon.Database import Session
 
 
 def rm(job_id):

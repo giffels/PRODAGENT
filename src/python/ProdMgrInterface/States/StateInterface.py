@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import logging
 
-from ProdAgentDB import Session
+from ProdCommon.Database import Session
 from ProdMgrInterface import MessageQueue
 
 class StateInterface:

@@ -1,6 +1,6 @@
 import logging
 
-from ProdAgentDB import Session
+from ProdCommon.Database import Session
 
 def hasURL(url):
     sqlStr="""SELECT COUNT(*) FROM pm_cooloff WHERE url="%s";

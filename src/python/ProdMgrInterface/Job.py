@@ -1,7 +1,7 @@
 import cPickle
 import logging
 
-from ProdAgentDB import Session
+from ProdCommon.Database import Session
 
 def size(catagory):
     sqlStr="""SELECT COUNT(*) FROM pm_job WHERE catagory="%s"

@@ -6,7 +6,7 @@ import os
 from FwkJobRep.ReportParser import readJobReport
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdAgentDB import Session
+from ProdCommon.Database import Session
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import JobCut
@@ -28,13 +28,24 @@ class ReportJobSuccess(StateInterface):
        if stateParameters['jobType']=='failure':
            logging.debug("This job failed so we register 0 events")
            total=0
+           logging.debug('Retrieving job spec')
            job_spec_id=stateParameters['jobReport']
+           logging.debug('Retrieved job spec')
        else:
            jobReport=stateParameters['jobReport']
            # retrieve relevant information:
            report=readJobReport(jobReport)
            logging.debug('jobreport is: '+str(jobReport))
-           logging.debug('jobspecid is: '+str(report[-1].jobSpecId))
+           try:
+               logging.debug('jobspecid is: '+str(report[-1].jobSpecId))
+           except Exception,ex:
+               msg="""ERROR: Something is wrong with the generated job report.
+                  check if it exists and if it is proper formatted. ProdMgr
+                  will ignore this job as it has not sufficient information
+                  to handle this. It might be that this is prodmgr job in which 
+                  case some residu information is left in the database. """
+               logging.debug(msg)
+               return
            total = 0
            for fileinfo in report[-1].files:
                if  fileinfo['TotalEvents'] != None:
@@ -58,7 +69,7 @@ class ReportJobSuccess(StateInterface):
        # remove the job cut spec file.
        logging.debug("removing job cut spec file")
        request_id=job_spec_id.split('_')[1] 
-       logging.debug("request id= "+str(request_id))
+       logging.debug("request id = "+str(request_id))
        job_spec_location=JobCut.getLocation(job_spec_id)
        logging.debug("retrieved job spec location: "+str(job_spec_location))
        try:

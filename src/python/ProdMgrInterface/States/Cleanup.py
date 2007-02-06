@@ -4,7 +4,7 @@ import logging
 
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdAgentDB import Session
+from ProdCommon.Database import Session
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface import Job
 from ProdMgrInterface import Request
@@ -27,7 +27,7 @@ class Cleanup(StateInterface):
        State.setParameters("ProdMgrInterface",componentStateParameters)
        Session.commit()
        # set session back to default
-       Session.set_current("default")
+       Session.set_session("default")
        return componentState
 
 registerHandler(Cleanup(),"Cleanup")

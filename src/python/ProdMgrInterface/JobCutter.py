@@ -1,6 +1,6 @@
 
-from ProdAgentDB import Session
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdCommon.Database import Session
 from ProdCommon.MCPayloads.WorkflowSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.FactoriseJobSpec import factoriseJobSpec

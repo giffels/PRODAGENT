@@ -7,7 +7,7 @@ import urllib
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdAgentDB.Connect import connect
+from ProdCommon.Database import Session
 import ProdMgrInterface.Clarens
 
 # one time loading of a configuration
@@ -106,23 +106,23 @@ def executeRestCall(serverUrl,rest_part,componentID="defaultComponent"):
 def logCall(serverUrl,method_name,args,componentID="defaultComponent",tag="0"):
    global lastCall
 
+   last_session=Session.current_session
    try:
-       conn=connect(False)
-       dbCur=conn.cursor()
-       dbCur.execute("START TRANSACTION")
+       Session.connect('ProdMgr')
+       Session.start_transaction('ProdMgr')
        sqlStr="""INSERT INTO ws_last_call(server_url,component_id,service_call,service_parameters,call_state,tag)
            VALUES("%s","%s","%s","%s","%s","%s") ON DUPLICATE KEY UPDATE
            service_parameters="%s", call_state="%s", tag="%s";
            """ %(serverUrl,componentID,method_name,base64.encodestring(cPickle.dumps(args)),"call_placed",str(tag),base64.encodestring(cPickle.dumps(args)),"call_placed",tag)
-       dbCur.execute(sqlStr)
-       dbCur.execute("COMMIT")
+       Session.execute(sqlStr)
+       Session.commit()
        lastCall=(serverUrl,method_name,componentID)
-       dbCur.close()
-       conn.close()
+       Session.close()
+       Session.set_session(last_session)
    except Exception,ex:
-       dbCur.execute("ROLLBACK")
-       dbCur.close()
-       conn.close()
+       Session.rollback()
+       Session.close()
+       Session.set_session(last_session)
        raise ProdAgentException("Service logging Error: "+str(ex))
 
 def commit(serverUrl=None,method_name=None,componentID=None):
@@ -132,31 +132,31 @@ def commit(serverUrl=None,method_name=None,componentID=None):
    # with their own private sessions and hence connect imediately
    # to the database. Commit is different since if it fails all
    # updates in the queues must fail (rollback).
+   last_session=Session.current_session
    try:
-       conn=connect(False)
-       dbCur=conn.cursor()
-       dbCur.execute("START TRANSACTION")
+       Session.connect('ProdMgr')
+       Session.start_transaction('ProdMgr')
        if (serverUrl==None) or (method_name==None) or (componentID==None):
            serverUrl,method_name,componentID=lastCall
        sqlStr="""UPDATE ws_last_call SET call_state="result_retrieved" WHERE
            server_url="%s" AND component_id="%s" AND service_call="%s";
            """ %(serverUrl,componentID,method_name)
-       dbCur.execute(sqlStr)
-       dbCur.execute("COMMIT")
-       dbCur.close()
-       conn.close()
+       Session.execute(sqlStr)
+       Session.commit()
+       Session.close()
+       Session.set_session(last_session)
    except Exception,ex:
-       dbCur.execute("ROLLBACK")
-       dbCur.close()
-       conn.close()
+       Session.rollback()
+       Session.close()
+       Session.set_session(last_session)
        raise ProdAgentException("Service commit Error: "+str(ex))
 
 def retrieve(serverURL=None,method_name=None,componentID=None):
 
+   last_session=Session.current_session
    try:
-       conn=connect(False)
-       dbCur=conn.cursor()
-       dbCur.execute("START TRANSACTION")
+       Session.connect('ProdMgr')
+       Session.start_transaction('ProdMgr')
        #NOTE: we do several nested queries and assume that the query engine can rewrite them
        #NOTE: we should rewrite these queries ourselves.
        if serverURL==None and method_name==None and componentID==None:
@@ -217,19 +217,20 @@ def retrieve(serverURL=None,method_name=None,componentID=None):
        service_call=rows[0][1]
        component_id=rows[0][2]
        tag=rows[0][3]
-       dbCur.execute("COMMIT")
-       dbCur.close()
-       conn.close()
+       Session.execute(sqlStr)
+       Session.commit()
+       Session.close()
+       Session.set_session(last_session)
        return [server_url,service_call,component_id,tag]
    except ProdAgentException:
-           dbCur.execute("ROLLBACK")
-           dbCur.close()
-           conn.close()
-           raise
+       Session.rollback()
+       Session.close()
+       Session.set_session(last_session)
+       raise
    except Exception,ex:
-       dbCur.execute("ROLLBACK")
-       dbCur.close()
-       conn.close()
+       Session.rollback()
+       Session.close()
+       Session.set_session(last_session)
        raise ProdAgentException("Service commit Error: "+str(ex),3001)
 
 def retrieveFile(url,local_destination,componentID="defaultComponent"):

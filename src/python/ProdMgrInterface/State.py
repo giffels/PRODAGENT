@@ -1,7 +1,7 @@
 import cPickle
 import logging
 
-from ProdAgentDB import Session
+from ProdCommon.Database import Session
 
 def get(id):
    sqlStr='SELECT id,state,parameters FROM pm_state WHERE '+\

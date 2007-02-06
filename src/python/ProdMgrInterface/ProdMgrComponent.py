@@ -17,7 +17,6 @@ from logging.handlers import RotatingFileHandler
 import time
 
 from MessageService.MessageService import MessageService
-from ProdAgentDB import Session
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentCore.Codes import errors
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
@@ -33,6 +32,8 @@ from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 import ProdMgrInterface.Interface as ProdMgrAPI
 
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.Database import Session
 
 class ProdMgrComponent:
     """
@@ -151,7 +152,7 @@ class ProdMgrComponent:
 
        try:
            Session.connect("ProdMgrInterface")
-           Session.set_current("ProdMgrInterface")
+           Session.set_session("ProdMgrInterface")
            componentStateInfo=State.get("ProdMgrInterface")      
            # if this is the first time create the start state
            if componentStateInfo=={}:
@@ -228,7 +229,7 @@ class ProdMgrComponent:
         """
         logging.debug("Reporting Job Success "+frameworkJobReport)
         Session.connect("ProdMgrInterface")
-        Session.set_current("ProdMgrInterface")
+        Session.set_session("ProdMgrInterface")
         componentStateInfo=State.get("ProdMgrInterface")      
         # if this is the first time create the start state
         if componentStateInfo=={}:
@@ -253,7 +254,7 @@ class ProdMgrComponent:
         state=retrieveHandler('ReportJobSuccess')
         state.execute()
         logging.debug("reportJobSuccess event handled")
-        Session.set_current("default")
+        Session.set_session("default")
 
     def reportJobFailure(self, frameworkJobReport):
         """
@@ -262,9 +263,9 @@ class ProdMgrComponent:
         Read the report provided and report the details back to the ProdMgr
 
         """
-        logging.debug("Reporting Job Failure"+frameworkJobReport)
+        logging.debug("Reporting Job Failure "+frameworkJobReport)
         Session.connect("ProdMgrInterface")
-        Session.set_current("ProdMgrInterface")
+        Session.set_session("ProdMgrInterface")
         componentStateInfo=State.get("ProdMgrInterface")      
         # if this is the first time create the start state
         if componentStateInfo=={}:
@@ -289,7 +290,7 @@ class ProdMgrComponent:
         state=retrieveHandler('ReportJobSuccess')
         state.execute()
         logging.debug("reportJobFailure event handled")
-        Session.set_current("default")
+        Session.set_session("default")
 
     def setLocations(self,payload):
         # check if payload contains user defined location
@@ -400,10 +401,14 @@ class ProdMgrComponent:
             self.ms.publish("ProdMgrInterface:AcquireRequests",str(self.args['RandomCheck']))
             self.ms.publish("ProdMgrInterface:SetLocations",'')
             self.ms.commit()
+            logging.debug('Setting database access parameters')
+            Session.set_database(dbConfig)
  
             # wait for messages
             while True:
                 # SESSION: the message service uses the current session
+                logging.debug('')
+                Session.set_database(dbConfig)
                 Session.connect()
                 Session.start_transaction()
 
