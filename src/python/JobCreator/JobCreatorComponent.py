@@ -259,11 +259,12 @@ class JobCreatorComponent:
             logging.debug("Checking if job "+str(jobname)+" is associated to prodmgr")
             Session.connect()
             Session.start_transaction()
-            if jobSpec.parameters['ProdMgr']:
+            if jobSpec.parameters.has_key("ProdMgr"):
                 logging.debug("Job constructed using ProdMgr, adding extra trigger")
                 self.trigger.addFlag("cleanup", jobname, "ProdMgrInterface")
             #NOTE: we need to make sure we commit and close this connection
             #NOTE: eventually this needs to be the same commit/close as the message service.
+
             Session.close()
             #END NOTE
                
