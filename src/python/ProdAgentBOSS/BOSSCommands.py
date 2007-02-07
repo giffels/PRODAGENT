@@ -6,7 +6,7 @@ import select
 import fcntl
 import string
 import os
-
+import signal
 def submit(bossJobId,scheduler,bossCfgDir):
     """
     BOSSsubmit
@@ -165,19 +165,20 @@ def executeCommand(command,timeout=600):
     Util it execute the command provided in a popen object with a timeout
 
     """
-
-    #print command
+#    f=open("/bohome/bacchi/PRODAGENT_HEAD/PRODAGENT/BOSSCommands.log",'w')
+    
+#    f.write( command)
     p=Popen4(command)
     p.tochild.close()
     outfd=p.fromchild
     outfno=outfd.fileno()
+#    f.write("\npoint 1")
     
-    fl=fcntl.fcntl(outfno,fcntl.F_GETFL)
-    try:
-        fcntl.fcntl(outfno,fcntl.F_SETFL, fl | os.O_NDELAY)
-    except AttributeError:
-        fcntl.fcntl(outfno,fcntl.F_SETFL, fl | os.FNDELAY)
-
+#     signal.signal(signal.SIGCHLD,signal.SIG_IGN)
+    fl=fcntl.fcntl(outfd,fcntl.F_GETFL,0)
+#    f.write("\npoint 2")
+    fcntl.fcntl(outfd,fcntl.F_SETFL, fl | os.O_NONBLOCK)
+#    f.write("\npoint 2")
     err = -1
     outc = []
     outfeof = 0
@@ -185,20 +186,27 @@ def executeCommand(command,timeout=600):
     #logging.debug("from time %d to time %d"%(time.time(),maxt))
     pid=p.pid
     #logging.debug("process id of %s = %d"%(command,pid))
-    while time.time() < maxt :
-        ready=select.select([outfno],[],[])
-        if outfno in ready[0]:
+    timeout=max(1,timeout/10)
+#    f.write("timeout=%s"%timeout)
+    timedOut=True
+    while 1:
+        (r,w,e)=select.select([outfno],[],[],timeout)
+        if len(r)>0:
             outch=outfd.read()
             if outch=='':
-                outfeof=1
+                timedOut=False
+                break
             outc.append(outch)
-        if outfeof:
-            err=p.wait()
+            # f.write("outch=%s"%outch)
+        if time.time()>maxt:
             break
-        time.sleep(.1)
+        
+    # time.sleep(.1)
 
-    if err == -1:
+    if timedOut:
         #logging.error("command %s timed out. timeout %d\n"%(command,timeout))
+        # f.write("timedOut")
+        os.kill(pid,signal.SIGTERM)
         return ""
 #    if err > 0:
  #       logging.error("command %s gave %d exit code"%(command,err))
@@ -206,10 +214,15 @@ def executeCommand(command,timeout=600):
         #ogging.error(p.fromchild.read())
 
         #eturn ""
-
-    output=string.join(outc,"")
+        
+    try:
+        output=string.join(outc,"")
+    except:
+        output=""
     #logging.debug("command output \n %s"%output)
     #print "command output \n %s"%output
+    # f.write("output=%s"%output)
+    # f.close()
     return output
 
 def getoutput(jobId,directory,bossCfgDir):
