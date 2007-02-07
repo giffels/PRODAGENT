@@ -28,8 +28,7 @@ from shutil import copy
 from shutil import rmtree
 import string
 import logging
-import ProdAgentCore.LoggingUtils  as LoggingUtils
-#from logging.handlers import RotatingFileHandler
+# from logging.handlers import RotatingFileHandler
 from popen2 import Popen4
 # threads
 from threading import Thread, Condition
@@ -44,6 +43,7 @@ import select
 import fcntl
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 from ProdAgentBOSS import BOSSCommands
+import  ProdAgentCore.LoggingUtils as LoggingUtils
 class TrackingComponent:
     """
     _TrackingComponent_
@@ -69,15 +69,17 @@ class TrackingComponent:
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
+            
 # use the LoggingUtils
         LoggingUtils.installLogHandler(self)
             
-#        logHandler = RotatingFileHandler(self.args['Logfile'],
-#                                        "a", 1000000, 3)
-#        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-#        logHandler.setFormatter(logFormatter)
-#        logging.getLogger().addHandler(logHandler)
-#        logging.getLogger().setLevel(logging.INFO)
+
+#         logHandler = RotatingFileHandler(self.args['Logfile'],
+#                                          "a", 1000000, 3)
+#         logFormatter = logging.Formatter("%(asctime)s:%(message)s")
+#         logHandler.setFormatter(logFormatter)
+#         logging.getLogger().addHandler(logHandler)
+#         logging.getLogger().setLevel(logging.INFO)
         logging.info("JobTracking Component Initializing...")
 
 # Determine the location of the BOSS configuration files. These is expected
@@ -161,20 +163,23 @@ class TrackingComponent:
 
         jobNumber=300
         timeout=0
+        # logging.info("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j\" -c " + self.bossCfgDir)
         outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j\" -c " + self.bossCfgDir)
+        # logging.info("\noutfile=%s\n"%outfile)
         try:
             jobNumber=len(outfile.split('\n'))-2
-            logging.debug("JobNumber = %s\n"%jobNumber)
+            # logging.debug("JobNumber = %s\n"%jobNumber)
         except:
-            logging.debug("outfile\n")
-            logging.debug(outfile)
-            logging.debug("\n")
+            pass
+            # logging.debug("outfile\n")
+            # logging.debug(outfile)
+            # logging.debug("\n")
 
         outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select max(j.TASK_ID),'-',min(j.TASK_ID) from JOB j\" -c "+ self.bossCfgDir)
-
+        
         try:
             lines=outfile.split("\n")
-            #logging.info(lines[1].split("-")[1])
+            # logging.info(lines[1].split("-")[1])
             startId=int(lines[1].split("-")[1])
             #logging.info("startId = %d\n"%startId)
             
@@ -192,17 +197,17 @@ class TrackingComponent:
             logging.debug("JobNumber = %d;timeout = %d\n"%(jobNumber,jobNumber*.5))
         if timeout==0:
             timeout=600
-        logging.debug("number of jobs %d; timeout set to %d\n"%(jobNumber,timeout))
+        # logging.debug("number of jobs %d; timeout set to %d\n"%(jobNumber,timeout))
 
         outfile=BOSSCommands.executeCommand("boss RTupdate -jobid all -c " + self.bossCfgDir)
         
         while startId <= maxId :
-            logging.debug("from taskid %d to taskid %d, maxId %d \n"%(startId,endId,maxId))
+            # logging.debug("from taskid %d to taskid %d, maxId %d \n"%(startId,endId,maxId))
 #            outfile=self.executeCommand("boss q -submitted -statusOnly -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
             outfile=BOSSCommands.executeCommand("boss q -submitted -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
             startId=endId+1
             endId=startId+float(self.args["jobsToPoll"])
-            logging.debug("dentro while startId = %d\n"%startId)
+            # logging.debug("dentro while startId = %d\n"%startId)
         
             #lines=outfile.readlines()
             lines=[]
@@ -211,7 +216,7 @@ class TrackingComponent:
             except:
                 pass
             #logging.debug("boss q -statusOnly -all -c " + self.bossCfgDir)
-            logging.debug(lines)
+            # logging.info(lines)
             # fill job lists
             newSubmittedJobs={}
             for j in lines[1:]:
@@ -220,8 +225,9 @@ class TrackingComponent:
                     int(j.split()[0])>0
                     jid=j.split()[0]+"."+j.split()[1]+"."+j.split()[2]
                     st=j.split()[5]
+                    logging.info(j)
                 except StandardError, ex:
-                    logging.debug("Incorrect JobId \n %s \n skipping line"%j)
+                    # logging.debug("Incorrect JobId \n %s \n skipping line"%j)
                     jid=''
                     st=''
                 if jid !='':
@@ -292,9 +298,9 @@ class TrackingComponent:
 
 #            outp=self.BOSS4getoutput(jobId)
             outp=BOSSCommands.getoutput(jobId,self.directory,self.bossCfgDir)
-            logging.debug("BOSS Getoutput ")
+            logging.info("BOSS Getoutput ")
             self.dashboardPublish(jobId[0],"ENDED_")
-            logging.debug(outp)
+            logging.info(outp)
             if (outp.find("-force")<0 and outp.find("error")< 0 and outp.find("already been retrieved") < 0 ):
                 #self.reportfilename=self.BOSS4reportfilename(jobId)
                 self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
@@ -334,7 +340,7 @@ class TrackingComponent:
         logging.debug("failed jobs"+str(len(badJobs)))
 
         for jobId in badJobs:
-            logging.debug(jobId)
+            # logging.debug(jobId)
             
             #if there aren't failed jobs don't print anything
 
@@ -382,41 +388,44 @@ class TrackingComponent:
             
         logging.debug("Running Jobs "+ str( len(rJobs)))
             
-        for jobId in rJobs:
-            logging.debug(jobId)
+        # for jobId in rJobs:
+            # logging.debug(jobId)
                     
             
         logging.debug("Pending Jobs "+ str( len(pJobs)))
             
-        for jobId in pJobs:
-            logging.debug(jobId)
+        # for jobId in pJobs:
+            # logging.debug(jobId)
 
             
         logging.debug("Waiting Jobs "+str( len(wJobs)))
-        for jobId in wJobs:
-            logging.debug(jobId)
+        # for jobId in wJobs:
+            # pass
+            # logging.debug(jobId)
             
         logging.debug("Scheduled Jobs "+  str(len(sJobs)))
-        for jobId in sJobs:
-            logging.debug(jobId)
+        # for jobId in sJobs:
+            # pass
+            # logging.debug(jobId)
                 
         logging.debug("Submitted Jobs "+  str(len(subJobs)))
-        for jobId in subJobs:
-            logging.debug(jobId)
+        # for jobId in subJobs:
+            # pass
+            # logging.debug(jobId)
         
 
 
-        logging.debug("Cleared Jobs "+  str(len(cJobs)))
-        for jobId in cJobs:
-            logging.debug(jobId)
+        # logging.debug("Cleared Jobs "+  str(len(cJobs)))
+        # for jobId in cJobs:
+            # logging.debug(jobId)
 
         logging.debug("Checkpointed Jobs "+ str( len(chJobs)))
-        for jobId in chJobs:
-            logging.debug(jobId)
+        # for jobId in chJobs:
+            # logging.debug(jobId)
 
         logging.debug("Other Jobs "+ str(len(uJobs)))
-        for jobId in uJobs:
-            logging.debug(jobId)
+        # for jobId in uJobs:
+            # logging.debug(jobId)
 
         self.saveDict(self.cmsErrorJobs,"cmsErrorJobs")
         time.sleep(float(self.args["PollInterval"]))
@@ -428,16 +437,16 @@ class TrackingComponent:
         
         publishes dashboard info
         """
-        logging.debug("inside dashboardPublis")
-        logging.debug("jobid=%s"%jobId)
+        # logging.debug("inside dashboardPublish")
+        # logging.debug("jobid=%s"%jobId)
 
         taskid=jobId.split('.')[0]
         chainid=jobId.split('.')[1]
         resub=jobId.split('.')[2]
         dashboardInfoFile = BOSSCommands.subdir(jobId,self.bossCfgDir)+"/DashboardInfo%s_%s_%s.xml"%(taskid,chainid,resub)
-        logging.debug("dashboardinfofile=%s"%dashboardInfoFile)
-        logging.debug("dashboardinfofile exist =%s"%os.path.exists(dashboardInfoFile))
-        logging.debug("ended  ='%s'"%ended)
+        # logging.debug("dashboardinfofile=%s"%dashboardInfoFile)
+        # logging.debug("dashboardinfofile exist =%s"%os.path.exists(dashboardInfoFile))
+        # logging.debug("ended  ='%s'"%ended)
 
         
         if os.path.exists(dashboardInfoFile):
@@ -445,9 +454,9 @@ class TrackingComponent:
             dashboardInfo.read(dashboardInfoFile)
             gridJobId=dashboardInfo['GridJobID']
             dashboardInfo.clear()
-            logging.debug("dashboardInfoJob=%s"%dashboardInfo.job)
-            logging.debug("retrieving scheduler")
-            logging.debug("jobid=%s"%jobId)
+            # logging.debug("dashboardInfoJob=%s"%dashboardInfo.job)
+            # logging.debug("retrieving scheduler")
+            # logging.debug("jobid=%s"%jobId)
             scheduler=BOSSCommands.scheduler(jobId,self.bossCfgDir,ended)
             logging.debug("scheduler=%s"%scheduler)
             schedulerI=BOSSCommands.schedulerInfo(self.bossCfgDir,jobId,scheduler,ended)
@@ -583,7 +592,7 @@ class TrackingComponent:
         except StandardError:
             self.archiveJob("Failed",jobId)
             msg=self.reportfilename
-            logging.debug("JobFailed: %s" % msg)
+            logging.info("JobFailed: %s" % msg)
             self.msThread.publish("JobFailed", msg)
             self.msThread.commit()
             logging.info("published JobFailed with payload %s"%msg)
@@ -593,7 +602,7 @@ class TrackingComponent:
     
     def archiveJob(self,success,jobId):
         """
-        _archiveJob_
+        _archiveJob_ copy(self.reportfilename,newPath)
 
         Moves output file to archdir
         """
@@ -613,7 +622,7 @@ class TrackingComponent:
         try:
             jobCacheDir=JobStateInfoAPI.general(fjr[0].jobSpecId)['CacheDirLocation']
         except:
-            jobCacheDir=self.args['ComponentDir'] 
+            jobCacheDir=self.args['ComponentDir'] + "/%s"%fjr[0].jobSpecId
         logging.debug("jobCacheDir = %s"%jobCacheDir)
 
         newPath=jobCacheDir+"/JobTracking/"+success+"/"+lastdir+"/"
@@ -634,7 +643,10 @@ class TrackingComponent:
         
         for f in files:
             (name,ext)=os.path.splitext(f)
-            ext=ext.split('.')[1]
+            try:
+                ext=ext.split('.')[1]
+            except:
+                ext=""
             try:
                 os.makedirs(newPath+ext)
             except:
@@ -695,7 +707,7 @@ class TrackingComponent:
         except StandardError:
             JobStateChangeAPI.submitFailure(msg)
             
-            logging.debug("SubmissionFailed: %s" % msg)
+            logging.info("SubmissionFailed: %s" % msg)
             self.msThread.publish("SubmissionFailed", msg)
             self.msThread.commit()
             logging.info("published SubmissionFailed with payload %s"%msg)
