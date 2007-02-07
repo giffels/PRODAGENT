@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.21 2006/12/06 14:14:52 evansde Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.22 2007/02/07 12:06:33 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -135,16 +135,19 @@ class LCGSubmitter(SubmitterInterface):
         logging.debug( "LCGSubmitter.doSubmit bossJobId = %s"%bossJobId)
         if bossJobId==0:
             raise ProdAgentException("Failed Job Declaration")
-        JobName=self.parameters['JobName']
-        swversion=self.parameters['AppVersions'][0]  # only one sw version for now
 
+        JobName=self.parameters['JobName']
+        if len(self.parameters['AppVersions'])> 0:
+          swversion=self.parameters['AppVersions'][0]  # only one sw version for now
+        else:
+          raise ProdAgentException("No CMSSW version found!")
 
         ## prepare scheduler related file 
         schedulercladfile = "%s/%s_scheduler.clad" % (os.path.dirname(self.parameters['Wrapper']),self.parameters['JobName'])
         try:
            self.createJDL(schedulercladfile,swversion)
         except InvalidFile, ex:
-           return 
+           raise ProdAgentException("Failed to create JDL: %s"%ex)
 
         try:
             output=BOSSCommands.executeCommand("voms-proxy-info")
