@@ -116,7 +116,7 @@ class DBSComponent:
         self.args.setdefault("Logfile", None)
         self.args.setdefault("BadReportfile", None)
         self.args.setdefault("DBSDataTier", 'GEN,SIM,DIGI,RECO,HLT,ALCARECO,FEVT,AOD,RAW,USER,RECOSIM,AODSIM')
-        self.args.setdefault("MaxBlockSize", None)  # No check on fileblock size
+        self.args.setdefault("CloseBlockSize", None)  # No check on fileblock size
 
         self.args.update(args)
 
@@ -431,7 +431,7 @@ class DBSComponent:
                 fileblock = self.checkFileBlockforSE(
                     firstDatasetPath,
                     SEname,
-                    self.args['MaxBlockSize'],
+                    self.args['CloseBlockSize'],
                     firstDataset,
                     jobreport.jobType
                     )
@@ -520,7 +520,7 @@ class DBSComponent:
         SEname=None
         return SEname
 
-    def checkFileBlockforSE(self,datasetPath,SEname,MaxBlockSize,fileinfo,jobType):
+    def checkFileBlockforSE(self,datasetPath,SEname,CloseBlockSize,fileinfo,jobType):
         """
          o create a file block associated to a storage element (SE) 
            and add the fileblock-SE entry in DLS if one of the following conditions holds:
@@ -553,7 +553,7 @@ class DBSComponent:
                logging.debug("Fileblock %s not closed , so files can be added to it "%fileBlock.get('blockName'))
                return fileBlock # found a not closed fileblock to add files to
             else: # for merged data: check block size and close the block if appropriate
-               if self.closeBlockAlgorithm(fileBlockSize,fileBlockFiles,MaxBlockSize):
+               if self.closeBlockAlgorithm(fileBlockSize,fileBlockFiles,CloseBlockSize):
                   self.dbsinfo.closeBlock(fileBlock.get('blockName'))
                   logging.debug("Closed Fileblock %s"%fileBlock.get('blockName'))
                else:
@@ -571,17 +571,17 @@ class DBSComponent:
 
         return fileBlock
 
-    def closeBlockAlgorithm(self,fileBlockSize,fileBlockFiles,MaxBlockSize):
+    def closeBlockAlgorithm(self,fileBlockSize,fileBlockFiles,CloseBlockSize):
         """
         Check if Close-Block condition are statisfied.
-        A FileBlock is closed if the number of its files is greater than ( MaxBlockSize / average file size) 
+        A FileBlock is closed if the number of its files is greater than ( CloseBlockSize / average file size) 
         """
-        if MaxBlockSize==None or fileBlockSize<=0 or fileBlockFiles<=0:
+        if CloseBlockSize==None or fileBlockSize<=0 or fileBlockFiles<=0:
           return False
         else:
           avgfileSize=float(fileBlockSize)/float(fileBlockFiles)
-          MaxFiles=int(float(MaxBlockSize)/avgfileSize)
-          logging.debug("Close-Block Condition: Size > %s  ==> Files > %s (since average file size=%s)"%(MaxBlockSize,MaxFiles,avgfileSize))
+          MaxFiles=int(float(CloseBlockSize)/avgfileSize)
+          logging.debug("Close-Block Condition: Size > %s  ==> Files > %s (since average file size=%s)"%(CloseBlockSize,MaxFiles,avgfileSize))
           if fileBlockFiles <= MaxFiles:
             logging.debug("FileBlock has %s Files so Close-Block Condition NOT satisfied"%(fileBlockFiles,))
             return False

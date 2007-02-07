@@ -165,7 +165,7 @@ componentFields = {
     "ComponentDir" : None,
     "DBSDataTier" : "GEN,SIM,DIGI,HLT,RECO,AOD,RAW,USER,FEVT,FEVTSIM,RECOSIM,AODSIM",
     # Local DBS settings come from LocalDBS core block 
-    "MaxBlockSize" : None,
+    "CloseBlockSize" : None,
     },
 
     "DLSInterface" : {
