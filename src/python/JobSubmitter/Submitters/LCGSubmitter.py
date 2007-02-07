@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.20 2006/10/11 11:25:33 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.21 2006/12/06 14:14:52 evansde Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -212,8 +212,12 @@ class LCGSubmitter(SubmitterInterface):
           resub=self.bossStrJobId.split(".")[2]
         except:
           return
-        jobGridId=BOSSCommands.schedulerId(self.bossStrJobId,self.bossCfgDir)
-        rbName=(jobGridId.split("/")[2]).split(":")[0]
+        try:
+          jobGridId=BOSSCommands.schedulerId(self.bossStrJobId,self.bossCfgDir)
+          rbName=(jobGridId.split("/")[2]).split(":")[0]
+        except:
+          logging.info("error splitting rbname %s for job %s"%(jobGridId,self.bossStrJobI))
+          return
         #logging.info("Scheduler id from LCGSubmitter=%s"%jobGridId)
         dashboardInfo['ApplicationVersion'] = self.listToString(self.parameters['AppVersions'])
         dashboardInfo['TargetCE'] = self.listToString(self.parameters['Whitelist'])
