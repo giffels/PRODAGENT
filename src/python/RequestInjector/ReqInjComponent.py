@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.16 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.16 2007/01/18 18:40:19 evansde Exp $"
+__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.17 2007/01/30 16:50:20 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -20,6 +20,8 @@ from MessageService.MessageService import MessageService
 from JobState.JobStateAPI import JobStateChangeAPI
 
 import ProdAgentCore.LoggingUtils as LoggingUtils
+
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 class ReqInjComponent:
     """
@@ -35,6 +37,7 @@ class ReqInjComponent:
         self.args['JobState'] = True
         self.args['WorkflowCache'] = None
         self.args['QueueJobMode'] = False
+        self.args['BulkTestMode'] = False
         self.args.update(args)
         self.job_state = self.args['JobState']
         
@@ -47,7 +50,10 @@ class ReqInjComponent:
         self.queueMode = False
         if str(self.args['QueueJobMode']).lower() == "true":
             self.queueMode = True
-
+        self.bulkTestMode = False
+        if str(self.args['BulkTestMode']).lower() == "true":
+            self.bulkTestMode = True
+            
         if self.args['WorkflowCache'] == None:
             self.args['WorkflowCache'] = os.path.join(
                 self.args['ComponentDir'], "WorkflowCache")
@@ -59,6 +65,7 @@ class ReqInjComponent:
         self.ms = None
         msg = "RequestInjector Component Started\n"
         msg += " => QueueMode: %s\n" % self.queueMode
+        msg += " => BulkTestMode: %s\n" % self.bulkTestMode
         logging.info(msg)
         
     def __call__(self, event, payload):
@@ -69,13 +76,7 @@ class ReqInjComponent:
         it is subscribed to
         """
         if event == "RequestInjector:ResourcesAvailable":
-            try:
-                nCalls = int(payload)
-            except ValueError:
-                nCalls = 1
-
-            for i in range(0, nCalls):
-                self.newJob()
+            self.makeJobs(payload)
             return
         if event == "RequestInjector:SetWorkflow":
             self.newWorkflow(payload)
@@ -227,6 +228,63 @@ class ReqInjComponent:
         self.iterator.sitePref = sitePrefName
         self.iterator.save(self.args['WorkflowCache'])
         return
+
+    def makeJobs(self, payload):
+        """
+        _makeJobs_
+
+        Make N jobs and publish CreateJob or QueueJob events
+        for the job specs.
+
+        If bulkTestMode is used, create a bulk JobSpec instead
+        of individual job specs.
+
+        """
+        try:
+            nCalls = int(payload)
+        except ValueError:
+            nCalls = 1
+
+        logging.info("Creating %s job(s)" % nCalls)
+        bulkSpecs = []
+        for i in range(0, nCalls):
+            jobSpec = self.newJob()
+            if not self.bulkTestMode:
+                if self.queueMode:
+                    self.ms.publish("QueueJob", jobSpec)
+                else:
+                    self.ms.publish("CreateJob", jobSpec)
+                self.ms.commit()
+            else:
+                if nCalls == 1:
+                    msg = "Cannot Bulk Submit a single job\n"
+                    msg += "When in BulkTestMode, you must provide an"
+                    msg += " int payload > 1\n"
+                    msg += "For the RequestInjector:ResourcesAvailable event"
+                    logging.warning(msg)
+                    return
+                bulkSpecs.append(jobSpec)
+
+        if self.bulkTestMode:
+            firstSpec = bulkSpecs[0]
+            bulkSpecName = "%s.BULK" % firstSpec
+            bulkSpecName = bulkSpecName.replace("file:///", "/")
+            logging.info("Bulk Spec: %s" % bulkSpecName)
+            bulkSpec = JobSpec()
+            bulkSpec.load(firstSpec)
+            for item in bulkSpecs:
+                specID = os.path.basename(item).replace("-JobSpec.xml", "")
+                bulkSpec.bulkSpecs.addJobSpec(specID, item)
+
+            bulkSpec.save(bulkSpecName)
+            logging.info("Publishing Bulk Spec")
+            if self.queueMode:
+                self.ms.publish("QueueJob", bulkSpecName)
+            else:
+                self.ms.publish("CreateJob", bulkSpecName)
+            self.ms.commit()
+                    
+        return
     
     def newJob(self):
         """
@@ -248,7 +306,6 @@ class ReqInjComponent:
         self.iterator.load(self.args['WorkflowCache'])
         jobSpec = self.iterator()
         self.iterator.save(self.args['WorkflowCache'])
-
         
         if self.job_state:
             try: 
@@ -257,12 +314,8 @@ class ReqInjComponent:
                 JobStateChangeAPI.cleanout(jobSpecID)
             except StandardError, ex:
                 logging.error('ERROR: '+str(ex))
-        if self.queueMode:
-            self.ms.publish("QueueJob", jobSpec)
-        else:
-            self.ms.publish("CreateJob", jobSpec)
-        self.ms.commit()
-        return
+        
+        return jobSpec
 
     def setEventsPerJob(self, numEvents):
         """
