@@ -174,10 +174,88 @@ class JobCreatorComponent:
 
         """
         logging.debug("Reading JobSpec: %s" % jobSpecFile)
-        jobSpec = self.readJobSpec(jobSpecFile)
-        if jobSpec == None:
+        primaryJobSpec = self.readJobSpec(jobSpecFile)
+        if primaryJobSpec == None:
             logging.error("Unable to Create Job for: %s" % jobSpecFile)
             return
+
+        
+        
+        if not primaryJobSpec.isBulkSpec():
+            #  //
+            # // Non bulk spec: handle as single spec
+            #//
+            jobSpecToPublish = self.handleJobSpecInstance(primaryJobSpec)
+            logging.debug("Publishing SubmitJob: %s" % jobname)
+            self.ms.publish("AcceptedJob", jobname)
+            self.ms.publish("SubmitJob", jobSpecFile)
+            self.ms.commit()
+            return
+        
+        #  //
+        # // Still here => Bulk Job spec, so process each spec,
+        #//  regenerate the bulk spec file and publish that.
+        logging.info("Bulk Spec provided containing %s jobs" % (
+            len(primaryJobSpec.bulkSpecs.keys()),
+            )
+                     )
+
+        firstSpec = None
+        newSpecs = {}
+        for specID, specFile in primaryJobSpec.bulkSpecs.items():
+            specInstance = self.readJobSpec(specFile)
+            logging.debug("Bulk Spec: %s From %s" % (specID, specFile))
+            if specInstance == None:
+                msg = "Unable to load bulk Job Spec:\n%s\n" % specFile
+                logging.warning(msg)
+                continue
+            
+            newSpecFile = self.handleJobSpecInstance(specInstance)
+            newSpecs[specID] = newSpecFile
+            if firstSpec == None:
+                firstSpec = newSpecFile
+
+
+        #  //
+        # // Now update and save the bulk spec with the new spec 
+        #//  file locations and then publish it for submission
+        logging.debug("Converting to Bulk Spec: %s" % firstSpec)
+        newBulkSpec = self.readJobSpec(firstSpec)
+        newBulkSpecFile = "%s.BULK" % firstSpec
+        workflowName = newBulkSpec.payload.workflow
+        wfCache = os.path.join(self.args['ComponentDir'],
+                               workflowName)
+        newBulkSpec.bulkSpecs.update(newSpecs)
+
+        
+        #  //
+        # // TODO:  Generate job spec tarball and add to bulk job spec
+        #//  
+        newBulkSpec.save(newBulkSpecFile)
+        
+        #  //
+        # // Publish AcceptedJob events to allow cleanup
+        #//
+        for specId in newSpecs.keys():
+            logging.debug("Publishing AcceptedJob: %s" % specId)
+            self.ms.publish("AcceptedJob", specId)
+            self.ms.commit()
+        
+        logging.debug("Publishing (BulkSpec) SubmitJob: %s" % newBulkSpecFile)
+        self.ms.publish("SubmitJob", newBulkSpecFile)
+        self.ms.commit()
+        return
+        
+
+
+
+    def handleJobSpecInstance(self, jobSpec):
+        """
+        _handleJobSpecInstance_
+
+        Operate on a JobSpec Instance to create a Job Cache
+
+        """
         jobname = jobSpec.parameters['JobName']
         jobType = jobSpec.parameters['JobType']
         jobSpec.parameters['ProdAgent'] = self.prodAgent
@@ -198,8 +276,7 @@ class JobCreatorComponent:
                                     workflowName,
                                     jobname)
 
-        
-        
+            
         
         if not os.path.exists(jobCache):
             os.makedirs(jobCache)
@@ -211,7 +288,7 @@ class JobCreatorComponent:
             gen.creator = creator
             gen.workflowCache = wfCache
             gen.jobCache = jobCache
-            gen.actOnJobSpec(jobSpec, jobCache)
+            newJobSpec = gen.actOnJobSpec(jobSpec, jobCache)
         except Exception, ex:
             logging.error("Failed to create Job: %s\n%s" % (jobname, ex))
             self.ms.publish("CreateFailed", jobname)
@@ -256,14 +333,17 @@ class JobCreatorComponent:
                 self.trigger.addFlag("cleanup", jobname, component)
 
             #NOTE: this is a check in case we use the ProdMgrInterface
-            logging.debug("Checking if job "+str(jobname)+" is associated to prodmgr")
+            logging.debug(
+                "Checking if job %s is associated to prodmgr" % jobname)
             Session.connect()
             Session.start_transaction()
             if jobSpec.parameters.has_key("ProdMgr"):
-                logging.debug("Job constructed using ProdMgr, adding extra trigger")
+                logging.debug(
+                    "Job constructed using ProdMgr, adding extra trigger")
                 self.trigger.addFlag("cleanup", jobname, "ProdMgrInterface")
             #NOTE: we need to make sure we commit and close this connection
-            #NOTE: eventually this needs to be the same commit/close as the message service.
+            #NOTE: eventually this needs to be the same commit/close
+            #NOTE: as the message service.
 
             Session.close()
             #END NOTE
@@ -279,14 +359,8 @@ class JobCreatorComponent:
             logging.error("Cleanup flag Error:%s" % str(ex))
             return
         
-      
-        #  //
-        # // Publish SubmitJob event
-        #//
-        logging.debug("Publishing SubmitJob: %s" % jobname)
-        self.ms.publish("SubmitJob", jobname)
-        self.ms.commit()
-        return
+        
+        return newJobSpec
         
 
     def readJobSpec(self, url):

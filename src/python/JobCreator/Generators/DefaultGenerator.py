@@ -108,7 +108,8 @@ class DefaultGenerator(GeneratorInterface):
         cacheDir = os.path.dirname(directory)
         
         jobSpec.parameters['ProdAgentName'] = prodAgentName()
-        jobSpec.save("%s/%s-JobSpec.xml" % (jobCache, jobname))
+        jobSpecFile = "%s/%s-JobSpec.xml" % (jobCache, jobname)
+        jobSpec.save(jobSpecFile)
 
         #  //
         # // Insert Standard Objects into TaskObject tree
@@ -156,9 +157,7 @@ class DefaultGenerator(GeneratorInterface):
         taskObject(accumRunRes)
         accumRunRes.writeMainDB(os.path.join(directory, "RunResDB.xml"))
         writeShREEKConfig(directory, taskObject)
-
-        
-        return
+        return jobSpecFile
 
     def newJobArea(self, jobname, jobCache):
         """

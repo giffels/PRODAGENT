@@ -164,13 +164,23 @@ class BulkGenerator(GeneratorInterface):
             )
         jobname = jobSpec.parameters['JobName']
         jobSpec.parameters['ProdAgentName'] = prodAgentName()
-        jobSpec.save("%s/%s-JobSpec.xml" % (jobCache, jobname))
 
+
+        jobname = jobSpec.parameters['JobName']
+        jobType = jobSpec.parameters['JobType']
+        workflowName = jobSpec.payload.workflow
+
+        commonTarball = os.path.join(self.workflowCache, jobType)
+        commonTarball += "/%s-%s.tar.gz" % (workflowName, jobType)
+        jobSpec.parameters['BulkInputSandbox'] = commonTarball
+        jobSpecFile = "%s/%s-JobSpec.xml" % (jobCache, jobname) 
+        jobSpec.save(jobSpecFile)
+        
         
         # Propagate dashboard info to job cache
         dashboardInfoMaster = os.path.join(self.workflowCache, "Processing",
                                            "DashboardInfo.xml")
-        print dashboardInfoMaster, os.path.exists(dashboardInfoMaster)
+        
         if os.path.exists(dashboardInfoMaster):
             master = DashboardInfo()
             master.read(dashboardInfoMaster)
@@ -181,8 +191,8 @@ class BulkGenerator(GeneratorInterface):
             master.write(jobCopy)
         
             
-
-        return
+            
+        return jobSpecFile
 
 
 
