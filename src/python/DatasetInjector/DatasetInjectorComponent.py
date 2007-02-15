@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.11 2007/01/09 20:50:35 evansde Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.12 2007/01/18 18:43:34 evansde Exp $"
+__version__ = "$Revision: 1.12 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -83,7 +83,7 @@ class DatasetInjectorComponent:
         if event == "DatasetInjector:SetWorkflow":
             self.setWorkflow(payload)
             return
-        if event == "SubmitJob":
+        if event == "AcceptedJob":
             self.removeJobSpec(payload)
             return
         
@@ -376,7 +376,7 @@ class DatasetInjectorComponent:
         self.ms.subscribeTo("DatasetInjector:ReleaseJobs")
         self.ms.subscribeTo("DatasetInjector:UpdateWorkflow")
         self.ms.subscribeTo("DatasetInjector:RemoveWorkflow")
-        self.ms.subscribeTo("SubmitJob")
+        self.ms.subscribeTo("AcceptedJob")
         
         # wait for messages
         while True:
