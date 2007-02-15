@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.17 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.17 2007/01/30 16:50:20 evansde Exp $"
+__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.18 2007/02/14 22:03:58 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -88,7 +88,7 @@ class ReqInjComponent:
             self.setSitePref(payload)
             return
 
-        if event == "SubmitJob":
+        if event == "AcceptedJob":
             self.removeJobSpec(payload)
             return
         if event == "RequestInjector:NewDataset":
@@ -436,7 +436,7 @@ class ReqInjComponent:
         self.ms.subscribeTo("RequestInjector:SetSitePref")
         self.ms.subscribeTo("RequestInjector:StartDebug")
         self.ms.subscribeTo("RequestInjector:EndDebug")
-        self.ms.subscribeTo("SubmitJob")
+        self.ms.subscribeTo("AcceptedJob")
         
         # wait for messages
         while True:
