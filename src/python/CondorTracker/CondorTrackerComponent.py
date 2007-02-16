@@ -24,6 +24,8 @@ from FwkJobRep.ReportParser import readJobReport
 import JobState.JobStateAPI.JobStateInfoAPI as JobStateInfoAPI
 import JobState.JobStateAPI.JobStateChangeAPI as JobStateChangeAPI
 
+from ProdCommon.MCPayloads.JobSpec import JobSpec
+
 from CondorTracker.Registry import retrieveTracker
 import  CondorTracker.CondorTrackerDB as TrackerDB
 import CondorTracker.Trackers
@@ -95,15 +97,31 @@ class CondorTrackerComponent:
             return
 
         
-    def jobSubmitted(self, jobSpecId):
+    def jobSubmitted(self, jobSpecFile):
         """
         _jobSubmitted_
 
         Start watching for submitted job
 
         """
-        logging.info("--> Start Watching: %s" % jobSpecId)
-        TrackerDB.submitJob(jobSpecId)
+        try:
+            spec = JobSpec()
+            spec.load(jobSpecFile)
+        except Exception, ex:
+            msg = "Unable to read JobSpec File: %s" % jobSpecFile
+            logging.error(msg)
+            return
+
+        specList = []
+        if spec.isBulkSpec():
+            specList.extend(spec.bulkSpecs.keys())
+        else:
+            specList.append(spec.parameters['JobName'])
+
+            
+        for item in specList:
+            logging.info("--> Start Watching: %s" % item)
+            TrackerDB.submitJob(item)
         return
     
 
