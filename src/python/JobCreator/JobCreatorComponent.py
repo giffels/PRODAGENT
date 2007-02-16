@@ -10,7 +10,8 @@ import urllib2
 import logging
 
 import os
-
+import tarfile
+import time
 
 import ProdAgentCore.LoggingUtils as LoggingUtils
 from ProdAgentCore.Configuration import prodAgentName
@@ -186,9 +187,10 @@ class JobCreatorComponent:
             # // Non bulk spec: handle as single spec
             #//
             jobSpecToPublish = self.handleJobSpecInstance(primaryJobSpec)
+            jobname = primaryJobSpec.parameters['JobName']
             logging.debug("Publishing SubmitJob: %s" % jobname)
             self.ms.publish("AcceptedJob", jobname)
-            self.ms.publish("SubmitJob", jobSpecFile)
+            self.ms.publish("SubmitJob", jobSpecToPublish)
             self.ms.commit()
             return
         
@@ -223,14 +225,17 @@ class JobCreatorComponent:
         newBulkSpec = self.readJobSpec(firstSpec)
         newBulkSpecFile = "%s.BULK" % firstSpec
         workflowName = newBulkSpec.payload.workflow
-        wfCache = os.path.join(self.args['ComponentDir'],
-                               workflowName)
+        
+        bulkTar = os.path.dirname(firstSpec)
+        bulkTar += "/%s-%s-BulkSpecs.tar.gz" % (workflowName, int(time.time()))
         newBulkSpec.bulkSpecs.update(newSpecs)
-
+        
         
         #  //
-        # // TODO:  Generate job spec tarball and add to bulk job spec
-        #//  
+        # // Generate job spec tarball and add to bulk job spec
+        #//
+        createBulkSpecTar(newBulkSpec, bulkTar)
+        newBulkSpec.parameters['BulkInputSpecSandbox'] = bulkTar
         newBulkSpec.save(newBulkSpecFile)
         
         #  //
@@ -412,4 +417,20 @@ class JobCreatorComponent:
             logging.debug("JobCreator: %s, %s" % (type, payload))
             self.__call__(type, payload)
                                                                                 
+
+def createBulkSpecTar(bulkSpec, tarfileName):
+    """
+    _createBulkSpecTar_
+
+    Given a Bulk spec that contains N specs, create a
+    tarball with the name provided in the directory provided.
+
+    """
+    tarball = tarfile.open(tarfileName, "w:gz")
+
+    for id, filename in bulkSpec.bulkSpecs.items():
+        tarball.add(filename, "BulkSpecs/%s" % os.path.basename(filename), False)
+
+    tarball.close()
+    return 
 
