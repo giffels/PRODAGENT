@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.8 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.8 2006/12/06 14:14:51 evansde Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.9 2007/02/15 20:34:01 evansde Exp $"
 
 import os
 import logging
@@ -153,7 +153,9 @@ class JobSubmitterComponent:
                 return
             jobToSubmit = os.path.join(jobCache, jobSpecId)
             result = self.invokeSubmitter(jobCache, jobToSubmit,
-                                          jobSpecId, jobSpecInstance)
+                                          jobSpecId, jobSpecInstance,
+                                          { jobSpecId : jobCache }
+                                          )
             #  //
             # // Publish Successful submission 
             #//

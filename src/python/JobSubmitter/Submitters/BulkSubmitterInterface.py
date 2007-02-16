@@ -9,6 +9,15 @@ component
 
 """
 
+import logging
+from popen2 import Popen4
+from ProdAgentCore.Configuration import ProdAgentConfiguration
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdAgentCore.PluginConfiguration import loadPluginConfig
+from ProdAgentCore.ProdAgentException import ProdAgentException
+
+
+
 class BulkSubmitterInterface:
 
     def __init__(self):
@@ -18,6 +27,26 @@ class BulkSubmitterInterface:
         self.isBulk = False
         self.primarySpecInstance = None
         self.publishToDashboard = []
+
+        #  //
+        # // Load plugin configuration
+        #//
+        self.pluginConfig = None
+        try:
+            #  //
+            # // Always searches in JobSubmitter Config Block
+            #//  for parameter called SubmitterPluginConfig
+            self.pluginConfig = loadPluginConfig("JobSubmitter",
+                                                 "Submitter")
+        except StandardError, ex:
+            msg = "Failed to load Plugin Config for Submitter Plugin:\n"
+            msg += "Plugin Name: %s\n" % self.__class__.__name__
+            msg += str(ex)
+            logging.warning(msg)
+
+        self.checkPluginConfig()
+
+        
         
     def __call__(self, workingDir = None, jobCreationArea = None, 
                  jobname = None, **args):
@@ -35,13 +64,22 @@ class BulkSubmitterInterface:
         logging.debug("BulkSubmitterInterface.__call__")
         logging.debug("Subclass:%s" % self.__class__.__name__)
         self.parameters.update(args)
+        
 
         self.primarySpecInstance = self.parameters['JobSpecInstance']
         jobSpecCaches = self.parameters.get("CacheMap", {})
+        self.parameters['Blacklist'] = \
+                   self.primarySpecInstance.siteBlacklist
+        self.parameters['Whitelist'] = \
+                   self.primarySpecInstance.siteWhitelist
+
         
-        if not jobSpecInstance.isBulkSpec():
+        if not self.primarySpecInstance.isBulkSpec():
             self.isBulk = False
-            self.toSubmit[jobname] = jobCreationArea
+            self.toSubmit[jobname] = jobSpecCaches[jobname]
+            self.specFiles[jobname] = "%s/%s-JobSpec.xml" % (
+                jobSpecCaches[jobname], jobname)
+        
         else:
             self.isBulk = True
             self.toSubmit.update(jobSpecCaches)

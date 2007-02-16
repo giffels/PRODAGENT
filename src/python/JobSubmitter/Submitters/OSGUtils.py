@@ -64,3 +64,101 @@ def standardScriptHeader(jobSpecId, minDiskSize=1500000):
     script.append("cd $CHOSEN_WORKDIR\n")
     
     return script
+
+
+bulkUnpackerScriptMain = \
+"""
+
+echo "===Available JobSpecs:==="
+/bin/ls `pwd`/BulkSpecs
+echo "========================="
+
+
+JOB_SPEC_FILE="`pwd`/BulkSpecs/$JOB_SPEC_NAME"
+
+PROCEED_WITH_SPEC=0
+
+if [ -e "$JOB_SPEC_FILE" ]; then
+   echo "Found Job Spec File: $JOB_SPEC_FILE"
+   PROCEED_WITH_SPEC=1
+else
+   echo "Job Spec File Not Found: $JOB_SPEC_NAME"
+   PROCEED_WITH_SPEC=0
+fi
+
+if [ $PROCEED_WITH_SPEC != 1 ]; then
+   echo "Unable to proceed without JobSpec File"
+   echo "<FrameworkJobReport Name=\"$JOB_SPEC_NAME\" Status=\"Failed\">" > FrameworkJobReport.xml
+   echo "<ExitCode Value=\"60998\"/>" >> FrameworkJobReport.xml
+   echo "<FrameworkError ExitStatus=\"60998\" Type=\"MissingJobSpecFile\">" >> FrameworkJobReport.xml
+   echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
+   echo "  site=$OSG_SITE_NAME " >> FrameworkJobReport.xml
+   echo "  jobspecfile=$JOB_SPEC_FILE " >> FrameworkJobReport.xml
+   echo "  available_specs=`/bin/ls ./BulkSpecs` " >> FrameworkJobReport.xml
+   echo "</FrameworkError>"  >> FrameworkJobReport.xml
+   echo "</FrameworkJobReport>" >> FrameworkJobReport.xml
+   exit 60998
+fi
+
+
+"""
+
+
+
+def bulkUnpackerScript(bulkSpecTarName):
+    """
+    _bulkUnpackerScript_
+
+    Unpacks bulk spec tarfile, searches for required spec passed to
+    script as argument $1
+
+    If file not found, it generates a failure report and exits
+    Otherwise, JOB_SPEC_FILE will be set to point to the script
+    to invoke the run.sh command
+    
+    """
+    lines = [
+        "JOB_SPEC_NAME=$1\n", 
+        "BULK_SPEC_NAME=\"%s\"\n" % bulkSpecTarName,
+        "echo \"This Job Using Spec: $JOB_SPEC_NAME\"\n",
+        "tar -zxf $BULK_SPEC_NAME\n",
+        ]
+    lines.append(bulkUnpackerScriptMain)
+    return lines
+
+
+missingRepScript = \
+"""
+if [ -e $PRODAGENT_JOB_INITIALDIR/FrameworkJobReport.xml ]; then 
+   echo "FrameworkJobReport exists for job: $PRODAGENT_JOB_INITIALDIR/FrameworkJobReport.xml"
+else 
+   echo "ERROR: No FrameworkJobReport produced by job!!!"
+   echo "Generating failure report..."
+   echo "<FrameworkJobReport Name=\"$JOB_SPEC_NAME\" Status=\"Failed\">" > FrameworkJobReport.xml
+   echo "<ExitCode Value=\"60997\"/>" >> FrameworkJobReport.xml
+   echo "<FrameworkError ExitStatus=\"60997\" Type=\"JobReportMissing\">" >> FrameworkJobReport.xml
+   echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
+   echo "  site=$OSG_SITE_NAME " >> FrameworkJobReport.xml
+   echo "</FrameworkError>"  >> FrameworkJobReport.xml
+   echo "</FrameworkJobReport>" >> FrameworkJobReport.xml
+   /bin/cp -f ./FrameworkJobReport.xml $PRODAGENT_JOB_INITIALDIR
+   exit 60997
+fi
+
+
+"""
+   
+def missingJobReportCheck(jobName):
+    """
+    _missingJobReportCheck_
+
+    If no FrameworkJobReport file exists at job completion,
+    generate one
+
+    """
+    
+    lines = [
+        "export JOB_SPEC_NAME=\"%s\"\n" % jobName,
+        ]
+    lines.append(missingRepScript)
+    return lines
