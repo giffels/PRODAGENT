@@ -717,3 +717,58 @@ CREATE TABLE ct_job_attr(
     ON DELETE CASCADE
 
 ) TYPE=InnoDB;
+
+/*  
+ * WorkflowEntities
+ */
+
+CREATE TABLE we_Job(
+   allocation_id        varchar(150),
+   cache_dir            varchar(255),
+   events_processed     int             default 0,
+   id                   varchar(150)    not null,
+   job_spec_file        varchar(150),
+   job_type             varchar(150)    not null,
+   max_retries          int             default 1,
+   max_racers           int             default 1,
+   retries              int             default 0,
+   racers               int             default 0,
+   status enum('register','create','in_progress','finished_processing','finished') default 'register',
+   Time timestamp                       default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+   workflow_id          varchar(150),
+   primary key(id),
+   index(allocation_id),
+   index(workflow_id)
+   ) TYPE=InnoDB;
+
+CREATE TABLE we_File(
+   events_processed      int             default 0,
+   id                    varchar(255),
+   job_id                varchar(255),
+   primary key(id)
+   ) TYPE=InnoDB;
+
+
+CREATE TABLE we_Allocation
+   (
+    id                    varchar(150)    not null,
+    events_processed     int             default 0,
+    details               mediumtext,
+    prod_mgr_url          varchar(255)    not null,
+    workflow_id           varchar(150)    not null,
+    primary key(id),
+    index(workflow_id)
+   ) Type=InnoDB;
+
+CREATE TABLE we_Workflow
+   (
+    events_processed     int             default 0,
+    id                    varchar(150)    not null,
+    priority              int(11)         not null,
+    prod_mgr_url          varchar(150)    not null,
+    workflow_spec_file    varchar(255)   default 'not_downloaded',
+    workflow_type          enum("event", "file") default 'event',
+    primary key(id),
+    index(priority)
+   ) Type=InnoDB;
+
