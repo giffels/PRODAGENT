@@ -1,6 +1,7 @@
 #/usr/bin/env python
 import base64
 import cPickle
+import logging
 
 from ProdAgent.WorkflowEntities import Workflow
 from ProdCommon.Core.ProdException import ProdException
@@ -10,7 +11,7 @@ def convertJobID(jobID):
    """
    __converts the jobid to the associated allocation id
    """
-   cuts=job_cut_id.split('_')
+   cuts=jobID.split('_')
    if len(cuts)<4:
        return None 
    allocationId=''
@@ -33,14 +34,14 @@ def get(allocationID=[]):
    if len(allocationID)==0:
        return
    if len(allocationID)==1:
-       sqlStr="""SELECT id,events_processed,details,prod_mgr_url,workflow_id
+       sqlStr="""SELECT id,events_processed,details,prod_mgr_url,workflow_id,allocation_spec_file
        FROM we_Allocation WHERE id="%s" """ %(str(allocationID[0]))
    else:
-       sqlStr="""SELECT id,events_processed,details,prod_mgr_url,workflow_id
+       sqlStr="""SELECT id,events_processed,details,prod_mgr_url,workflow_id,allocation_spec_file
        FROM we_Allocation WHERE id IN %s """ %(str(tuple(allocationID)))
    Session.execute(sqlStr)
-   description=['id','events_processed','details','prod_mgr_url','workflow_id']
-   result=Session.convert(description,Session.fetchall())
+   description=['id','events_processed','details','prod_mgr_url','workflow_id','allocation_spec_file']
+   result=Session.convert(description,Session.fetchall(),oneItem=False,decode=['details'])
    if len(result)==0:
       return None
    if len(result)==1:
@@ -53,7 +54,23 @@ def getEventsProcessed(allocationID=[]):
 
    returns the events processed sofar for a particular allocation
    """
-   pass
+   if(type(allocationID)!=list):
+       allocationID=[str(allocationID)]
+   if len(allocationID)==0:
+       return
+   if len(allocationID)==1:
+       sqlStr="""SELECT events_processed,id
+       FROM we_Allocation WHERE id="%s" """ %(str(allocationID[0]))
+   else:
+       sqlStr="""SELECT events_processed,id
+       FROM we_Allocation WHERE id IN %s """ %(str(tuple(allocationID)))
+   description=['id','events_processed'] 
+   result=Session.convert(description,Session.fetchall())
+   if len(result)==0:
+      return None
+   if len(result)==1:
+      return result[0]
+   return result
 
 def isJobsFinished(allocationID):
    """
@@ -61,7 +78,13 @@ def isJobsFinished(allocationID):
    
    returns true if all jobs are finished for this allocation.
    """
-   pass
+   sqlStr="""SELECT COUNT(*) FROM we_Job WHERE allocation_id="%s"
+   """ %(str(allocationID))
+   Session.execute(sqlStr)
+   rows=Session.fetchall()
+   if int(rows[0][0])==0:
+       return True
+   return False
 
 def register(workflowID,allocations=[]):
    """
@@ -72,6 +95,7 @@ def register(workflowID,allocations=[]):
    allocations is an array of dictionarys containing keys:
    allocationID,prodMgrURL,allocationDetails
    """
+
    sqlStr="""INSERT INTO we_Allocation(id,prod_mgr_url,details,workflow_id) VALUES"""
    comma=False
    for allocation in allocations:
@@ -82,14 +106,23 @@ def register(workflowID,allocations=[]):
        sqlStr+='("'+allocation['id']+'",'
        sqlStr+='"'+allocation['prod_mgr_url']+'",'
        sqlStr+='"'+base64.encodestring(cPickle.dumps(allocation['details']))+'","'+str(workflowID)+'")'
-   Session.execute(sqlStr)
+   if len(allocations)>0:
+       Session.execute(sqlStr)
 
 def remove(allocationID=[]):
    """ 
    __remove__
    removes allocations with a particular ID
    """
-   pass
+   if(type(allocationID)!=list):
+       allocationID=[str(allocationID)]
+   if len(allocationID)==0:
+       return
+   if len(allocationID)==1:
+       sqlStr="""DELETE FROM we_Allocation WHERE id="%s" """ %(str(allocationID[0]))
+   else:
+       sqlStr="""DELETE FROM we_Allocation WHERE id IN %s """ %(str(tuple(allocationID)))
+   Session.execute(sqlStr)
 
 def setEventsProcessedIncrement(allocationID,eventsProcessed=0):
    """
@@ -102,6 +135,11 @@ def setEventsProcessedIncrement(allocationID,eventsProcessed=0):
    if allocation:
       if allocation['workflow_id']:
           Workflow.setEventsProcessedIncrement(allocation['workflow_id'],eventsProcessed)
+
+def setAllocationSpecFile(allocationID,spec_file):
+   sqlStr="""UPDATE we_Allocation SET allocation_spec_file="%s"
+   """ %(str(spec_file))
+   Session.execute(sqlStr)
    
 
 

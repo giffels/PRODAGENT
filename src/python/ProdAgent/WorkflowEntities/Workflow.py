@@ -53,7 +53,10 @@ def get(workflowID=[]):
    Session.execute(sqlStr)
    description=['events_processed','id','priority','prod_mgr_url',\
    'workflow_spec_file','workflow_type']
-   return Session.convert(description,Session.fetchall())
+   result=Session.convert(description,Session.fetchall())
+   if len(result)==1:
+      return result[0]
+   return result
 
 def getHighestPriority(nth=0):
    """
@@ -103,7 +106,13 @@ def isAllocationsFinished(workflowID):
    returns true if the allocations this PA was working on for this workflow are finshed.
 
    """
-   pass
+   sqlStr="""SELECT COUNT(*) FROM we_Allocation WHERE workflow_id='%s'
+   """ %(str(workflowID))
+   Session.execute(sqlStr)
+   rows=Session.fetchall()
+   if rows[0][0]==0:
+       return True
+   return False
 
 def isFinished(workflowID):
    """
@@ -111,13 +120,25 @@ def isFinished(workflowID):
 
    returns true if this workflow id finished 
    """
-   sqlStr="""SELECT count(*) FROM we_Workflow WHERE 
-   id="%s" """ %(str(workflowID))
+   sqlStr="""SELECT count(*) FROM we_Allocation WHERE 
+   workflow_id="%s" """ %(str(workflowID))
    Session.execute(sqlStr)
    rows=Session.fetchall()
    if rows[0][0]==1:
       return False
    return True
+
+def isDone(workflowID):
+    sqlStr="""SELECT done FROM we_Workflow WHERE id='%s'
+        """ %(str(workflowID))
+    Session.execute(sqlStr)
+    rows=Session.fetchall()
+    if len(rows)==0:
+       return False
+    if rows[0][0]=='true':
+         return True
+    return False
+
 
 def register(workflowID,parameters={}):
    """
@@ -189,6 +210,19 @@ def remove(workflowID=[]):
 def setEventsProcessedIncrement(workflowID,eventsProcessed):
    sqlStr="""UPDATE we_Workflow SET events_processed=events_processed+%s WHERE 
    id="%s" """ %(str(eventsProcessed),str(workflowID))
+   Session.execute(sqlStr)
+
+def setFinished(workflowID=[]):
+   if(type(workflowID)!=list):
+       workflowID=[str(workflowID)]
+   if len(workflowID)==0:
+       return
+   if len(workflowID)==1:
+       sqlStr="""UPDATE we_Workflow SET done="true" WHERE id="%s"
+       """ %(str(workflowID[0]))
+   else:
+       sqlStr="""UPDATE we_Workflow SET done="true" WHERE id IN 
+       %s """ %(str(tuple(workflowID)))
    Session.execute(sqlStr)
 
 def setWorkflowLocation(workflowID,workflowLocation):

@@ -78,55 +78,63 @@ def register(workflowID=None,allocationID=None,job={}):
    job it will just update it.
 
    """
-   descriptionMap={'id':'id','job_spec_file':'job_spec_file',\
+   descriptionMap={'id':'id','spec':'job_spec_file',\
        'job_type':'job_type','max_retries':'max_retries',\
        'max_racers':'max_racers'}
    # check if there is any input
    if not job:
       return
+   if len(job)==0:
+      return
+   if type(job)==dict:
+      jobs=[job]
+   else:
+      jobs=job
+
    # check with attributes are provided.
-   description=job.keys()
+   for job in jobs:
+       description=job.keys()
 
-   # create values part
-   sqlStrValues='('
-   comma=False
-   for attribute in description:
-        if comma :
-            sqlStrValues+=','
-        elif not comma :
-            comma=True
-        sqlStrValues+=descriptionMap[attribute]
-
-   if workflowID: 
-        sqlStrValues+=',workflow_id'
-   if allocationID: 
-        sqlStrValues+=',allocation_id'
-   sqlStrValues+=')'
- 
-   # build sql statement
-   sqlStr="INSERT INTO we_Job"+sqlStrValues+" VALUES("
-   valueComma=False
-   for attribute in description:
-       if valueComma:
-           sqlStr+=','
-       else:
-           valueComma=True
-       sqlStr+='"'+str(job[attribute])+'"'
-   if workflowID: 
-        sqlStr+=',"'+str(workflowID)+'"'
-   if allocationID: 
-        sqlStr+=',"'+str(allocationID)+'"'
-   sqlStr+=')'
-   sqlStr+=" ON DUPLICATE KEY UPDATE "
-   comma=False
-   for attribute in description:
-       if comma and attribute!='jobID':
-           sqlStr+=','
-       elif not comma and attribute!='jobID':
-           comma=True
-       if attribute!='jobID':
-           sqlStr+=descriptionMap[attribute]+'="'+str(job[attribute])+'"'
-   Session.execute(sqlStr)
+       # create values part
+       sqlStrValues='('
+       comma=False
+       for attribute in description:
+            if comma :
+                sqlStrValues+=','
+            elif not comma :
+                comma=True
+            sqlStrValues+=descriptionMap[attribute]
+    
+       if workflowID: 
+            sqlStrValues+=',workflow_id'
+       if allocationID: 
+            sqlStrValues+=',allocation_id'
+       sqlStrValues+=')'
+     
+       # build sql statement
+       sqlStr="INSERT INTO we_Job"+sqlStrValues+" VALUES("
+       valueComma=False
+       for attribute in description:
+           if valueComma:
+               sqlStr+=','
+           else:
+               valueComma=True
+           sqlStr+='"'+str(job[attribute])+'"'
+       if workflowID: 
+            sqlStr+=',"'+str(workflowID)+'"'
+       if allocationID: 
+            sqlStr+=',"'+str(allocationID)+'"'
+       sqlStr+=')'
+       sqlStr+=" ON DUPLICATE KEY UPDATE "
+       comma=False
+       for attribute in description:
+           if comma and attribute!='jobID':
+               sqlStr+=','
+           elif not comma and attribute!='jobID':
+               comma=True
+           if attribute!='jobID':
+               sqlStr+=descriptionMap[attribute]+'="'+str(job[attribute])+'"'
+       Session.execute(sqlStr)
        
 
 def remove(jobIDs=[]):
