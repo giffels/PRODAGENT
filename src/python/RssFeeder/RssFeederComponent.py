@@ -12,6 +12,8 @@ __version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
+import inspect
+from shutil import copyfile
 
 # Message service import
 from MessageService.MessageService import MessageService
@@ -55,15 +57,20 @@ class RssFeederComponent:
           none
 
         """
-        
+       
+        # get base directory
+        thisModule = os.path.abspath(
+                          inspect.getsourcefile(RssFeederComponent))
+        baseDir = os.path.dirname(thisModule)
+ 
         # initialize the server
         self.args = {}
-        self.args.setdefault("ComponentDir", ".")
+        self.args.setdefault("ComponentDir", baseDir)
         self.args.setdefault("ItemListLength", 100)
         self.args.setdefault("ProdAgentName", None)
         self.args.setdefault("Logfile", None)
         self.args.setdefault("Port", 8100)
-        
+ 
         # update parameters
         self.args.update(args)
 
@@ -87,21 +94,66 @@ class RssFeederComponent:
         # message service instances
         self.ms = None 
         
-        # port
-        print args['Port']
+        # set port number
         self.port = int(args['Port'])
 
-        # create main channel
+        # set channel parameters
+        Channel.setProdAgentInstance(self.args['ProdAgentName'])
+        Channel.setItemListLength(self.args['ItemListLength'])
+        Channel.setPort(self.port)
+        Channel.setBaseDirectory(os.path.join(self.args['ComponentDir'], \
+                                              'files'))
+
+        # create channel structure
         self.channel = {}
-        self.channel['ProdAgent'] = Channel(self.args['ProdAgentName'], \
-                                            self.args['ItemListLength'], \
-                                            'ProdAgent', self.port)
 
         # create thread synchronization condition variable
         self.cond = Condition()
 
         # initialize feeder
         self.feeder = None
+
+        # define working directories
+        self.basePath = self.args['ComponentDir']
+        self.filesPath = os.path.join(self.basePath, 'files')
+
+        # create directories if not defined
+        if not os.path.exists(self.filesPath):
+            os.makedirs(self.filesPath)
+
+        # copy rss logo
+        rssLogo = os.path.join(baseDir, "rss.gif")
+        targetPath = os.path.join(self.filesPath, "rss.gif")
+        copyfile(rssLogo, targetPath)
+        
+        # get list of old channels
+        channels = [aFile for aFile in os.listdir(self.filesPath) \
+                      if aFile.endswith('.xml')]        
+
+        # try to recreate channels 
+        for channel in channels:
+
+            logging.info('Restoring channel from %s' % channel)
+
+            # get channel name
+            name = os.path.basename(channel).replace('.xml', '')
+
+            # create channel
+            try:
+                newChannel = Channel(name, fromFile=True)
+
+            # display warning message if cannot be done
+            except IOError, msg:
+                logging.warning("Cannot restore channel from file %s: %s" % \
+                                (str(channel), str(msg)))
+                continue
+
+            # add to channels
+            self.channel[name] = newChannel
+
+        # create main channel if not created before
+        if not 'ProdAgent' in self.channel.keys():
+            self.channel['ProdAgent'] = Channel('ProdAgent')
 
     ##########################################################################
     # handle events
@@ -131,6 +183,12 @@ class RssFeederComponent:
         if event == "RssFeeder:AddItem":
             logging.info("AddItem: %s" % payload)
             self.addItem(payload)
+            return
+
+        # add file event
+        if event == "RssFeeder:AddFile":
+            logging.info("AddFile: %s" % payload)
+            self.addFile(payload)
             return
 
         # start debug event
@@ -178,9 +236,7 @@ class RssFeederComponent:
         if not channel in self.channel.keys():
 
             # yes, then create it
-            newChannel = Channel(self.args['ProdAgentName'], \
-                                 self.args['ItemListLength'], \
-                                 channel, self.port)
+            newChannel = Channel(channel)
             self.cond.acquire()
             self.channel[channel] = newChannel
             self.cond.release()
@@ -188,6 +244,58 @@ class RssFeederComponent:
         # add item to the channel
         self.cond.acquire()
         self.channel[channel].addItem(author, title, text)
+        self.cond.release()
+
+        return
+
+    ##########################################################################
+    # handle an RssFeeder:AddFile event
+    ##########################################################################
+
+    def addFile(self, item):
+        """
+        _addFile_
+
+        Add an item with file specification to the feed.
+
+        Arguments:
+
+          item -- the new file item to add
+
+        Return:
+
+          none
+
+        """
+
+        # get the channel, author, title, description and file name
+        data = item.split("::", 4)
+        if len(data) != 5:
+            logging.error("Wrong item: " + str(data))
+            return
+
+        channel, author, title, description, path = data
+
+        # verify that the file exists
+        if not os.path.exists(path):
+            logging.error("The file %s does not exist." % path)
+            return
+
+        # verify if the channel is new
+        if not channel in self.channel.keys():
+
+            # yes, then create it
+            newChannel = Channel(channel)
+            self.cond.acquire()
+            self.channel[channel] = newChannel
+            self.cond.release()
+
+        # add item to the channel
+        self.cond.acquire()
+        try:
+            self.channel[channel].addItem(author, title, description, path)
+        except IOError, msg:
+            logging.error(msg)
         self.cond.release()
 
         return
@@ -220,11 +328,13 @@ class RssFeederComponent:
         
         # subscribe to messages
         self.ms.subscribeTo("RssFeeder:AddItem")
-      
+        self.ms.subscribeTo("RssFeeder:AddFile")
+
         # try to start the feeder
         try:
             self.feeder = Feeder(self.cond, self.channel, self.port, \
-                                 self.args['ProdAgentName'])
+                                 self.args['ProdAgentName'], \
+                                 self.args['ComponentDir'])
             self.feeder.start()
         except Exception, msg:
             logging.error("Cannot start Feeder. The component will run " + \
