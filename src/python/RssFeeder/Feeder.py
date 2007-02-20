@@ -36,7 +36,7 @@ class Feeder(Thread):
     # Feeder initialization
     ##########################################################################
 
-    def __init__(self, condition, documents, port, instance):
+    def __init__(self, condition, documents, port, instance, baseDir):
         """
         __init__
 
@@ -48,6 +48,7 @@ class Feeder(Thread):
           documents -- the xml documents
           port -- the port used to provide RSS info
           instance -- PA instance name
+          baseDir -- the base directory
 
         Return:
 
@@ -63,6 +64,7 @@ class Feeder(Thread):
         self.doc = documents
         self.port = port
         self.instance = instance
+        self.baseDirectory = baseDir
 
     ##########################################################################
     # thread main body
@@ -94,7 +96,7 @@ class Feeder(Thread):
 
         # create pages
         root = RSSFeeder(self.cond, self.doc, self.instance)
-        root.files = FileRequest()
+        root.files = FileRequest(self.baseDirectory)
 
         # start it
         cherrypy.quickstart(root, config = configuration)
