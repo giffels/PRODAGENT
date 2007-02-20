@@ -44,7 +44,7 @@ def merged(fileIDs=[],failed=False):
       sqlStr="""SELECT events_processed FROM we_File WHERE id="%s"
       """ %(str(fileIDs[0]))
    else:
-      sqlStr="""SELECT SUM(events_processed),job_id FROM we_File WHERE id IN %s
+      sqlStr="""SELECT events_processed,job_id FROM we_File WHERE id IN %s
       GROUP BY job_id
       """ %(str(tuple(fileIDs)))
    Session.execute(sqlStr)

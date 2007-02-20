@@ -138,7 +138,7 @@ def setEventsProcessedIncrement(allocationID,eventsProcessed=0):
 
 def setAllocationSpecFile(allocationID,spec_file):
    sqlStr="""UPDATE we_Allocation SET allocation_spec_file="%s"
-   """ %(str(spec_file))
+   WHERE id="%s" """ %(str(spec_file),str(allocationID))
    Session.execute(sqlStr)
    
 
