@@ -35,7 +35,7 @@ class FileRequest(Thread):
     # RSSFeeder initialization
     ##########################################################################
 
-    def __init__(self):
+    def __init__(self, baseDir):
         """
         __init__
 
@@ -52,14 +52,14 @@ class FileRequest(Thread):
 
         Thread.__init__(self)
 
-        # get current directory
-        self.currentdir = os.path.dirname(os.path.abspath(__file__))
+        # set base directory
+        self.baseDirectory = os.path.join(baseDir, 'files')
 
     ##########################################################################
     # File request
     ##########################################################################
 
-    def default(self, path):
+    def default(self, *path):
         """
         __default__
 
@@ -67,7 +67,7 @@ class FileRequest(Thread):
 
         Arguments:
 
-          path -- the file requested 
+          path -- the path of the file requested 
 
         Return:
 
@@ -75,8 +75,11 @@ class FileRequest(Thread):
 
         """
 
-        # remove it
-        path = os.path.join(self.currentdir, path)
+        # compute virtual path
+        virtualPath = '/'.join(path)
+
+        # get real path
+        path = os.path.join(self.baseDirectory, virtualPath)
 
         # verify existence of the requested file
         if not os.path.exists(path):
@@ -84,8 +87,18 @@ class FileRequest(Thread):
             # generate page not found
             raise cherrypy.NotFound
 
+        # determine type
+        if path.endswith('.html'):
+            contentType = 'text/html'
+        elif path.endswith('.gif'):
+            contentType = 'image/gif'
+        elif path.endswith('.txt'):
+            contentType = 'text/plain'
+        else:
+            contentType = 'unknown'
+
         # return it 
-        return serve_file(path, content_type='image/gif')
+        return serve_file(path, contentType)
 
     # declare default exposed
     default.exposed = True
