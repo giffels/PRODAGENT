@@ -618,39 +618,6 @@ CREATE TABLE pm_state
     primary key(id)
    ) Type=InnoDB;
 
-CREATE TABLE pm_request
-   (
-    id                    varchar(150)    not null,
-    url                   varchar(150)    not null,
-    priority              int(11)         not null,
-    request_type          enum("event", "file") default 'event',
-    retrieved_workflow    varchar(250)    default 'false',
-    done                  enum("true","false") default 'false',
-    primary key(id,url)
-   ) Type=InnoDB;
-
-CREATE TABLE pm_job
-   (
-    id                    varchar(150)    not null,
-    request_id            varchar(150)    not null,
-    job_spec_url          varchar(255)    not null,
-    job_spec_location     varchar(255)    not null default 'None',
-    server_url            varchar(255)    not null,
-    downloaded            int(11)         not null default 0,
-    job_details           mediumtext      ,
-    catagory              varchar(150)    not null,
-    primary key(id)
-   ) Type=InnoDB;
-
-CREATE TABLE pm_job_cut
-   (
-    id                    varchar(150)    not null,
-    job_id                varchar(150)    not null,
-    job_cut_spec_location varchar(255)    not null default 'None',
-    status                enum("running", "finished") default 'running',
-    events_processed      int             default 0             
-   ) Type=InnoDB;
-
 
 CREATE TABLE pm_cooloff
    (
@@ -751,6 +718,7 @@ CREATE TABLE we_File(
 
 CREATE TABLE we_Allocation
    (
+    allocation_spec_file varchar(150),
     id                    varchar(150)    not null,
     events_processed     int             default 0,
     details               mediumtext,
@@ -762,7 +730,8 @@ CREATE TABLE we_Allocation
 
 CREATE TABLE we_Workflow
    (
-    events_processed     int             default 0,
+    events_processed      int             default 0,
+    done                  enum("true","false") default 'false',
     id                    varchar(150)    not null,
     priority              int(11)         not null,
     prod_mgr_url          varchar(150)    not null,
