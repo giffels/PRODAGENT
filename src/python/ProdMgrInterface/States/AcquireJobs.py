@@ -8,8 +8,8 @@ from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdCommon.Database import Session
 from ProdMgrInterface import Cooloff
-from ProdMgrInterface import Job
-from ProdMgrInterface import Request
+from ProdAgent.WorkflowEntities import Allocation
+from ProdAgent.WorkflowEntities import Workflow
 from ProdMgrInterface import State
 from ProdMgrInterface.Registry import registerHandler
 from ProdMgrInterface.States.StateInterface import StateInterface 
@@ -38,8 +38,7 @@ class AcquireJobs(StateInterface):
            logging.debug('Request is of type file')
            parameters={'numberOfFiles':stateParameters['numberOfJobs'],\
                        'prefix':'fileJob'}
-
-       requestURL=Request.getUrl(request_id)
+       requestURL=Workflow.get(request_id)['prod_mgr_url']
        if stateParameters['stateType']=='recover':
            logging.debug("stateType is recover")
            try:
@@ -90,11 +89,11 @@ class AcquireJobs(StateInterface):
                    Session.rollback()
                    logging.debug("Request: "+str(request_id)+" does not exists or has finished")
                    logging.debug("Removing request "+str(request_id))
-                   Request.rm(request_id)
+                   Workflow.remove(request_id)
                    # emit request finished event (if that is needed)
-                   Request.setDone(request_id)
+                   Workflow.setFinished(request_id)
                    logging.debug("Checking if all jobs are finished for RequestFinished event")
-                   if Request.finishedJobs(request_id):
+                   if Workflow.isAllocationsFinished(request_id):
                        logging.debug("Emitting RequestFinished event")
                        self.ms.publish("RequestFinished",request_id)
                    State.setParameters("ProdMgrInterface",stateParameters)
@@ -105,7 +104,17 @@ class AcquireJobs(StateInterface):
                raise
        stateParameters['stateType']='normal'
        stateParameters['jobIndex']=0
-       Job.insert('requestLevel',jobs,request_id,requestURL)
+
+       # perform some format conversion
+       allocations=[]
+       for job in jobs:
+           allocation={}
+           allocation['id']=job['jobSpecId']
+           allocation['prod_mgr_url']=requestURL
+           allocation['details']=job
+           allocations.append(allocation)
+       Allocation.register(request_id,allocations)
+
        ProdMgrAPI.commit()
 
        ##### DIFFERENT HANDLERS FOR DIFFERENT REQUEST TYPES
@@ -121,9 +130,9 @@ class AcquireJobs(StateInterface):
            # we move on to the next request. 
            if len(jobs)==0 and stateParameters['numberOfJobs']>0:
                stateParameters['requestIndex']+=1
-               Request.setDone(request_id)
+               Workflow.setFinished(request_id)
                logging.debug("Checking if all jobs are finished for RequestFinished event")
-               if Request.finishedJobs(request_id):
+               if Workflow.isAllocationsFinished(request_id):
                    logging.debug("Emitting RequestFinished event")
                    self.ms.publish("RequestFinished",request_id)
        else:
@@ -135,17 +144,20 @@ class AcquireJobs(StateInterface):
            # we move on to the next request. 
            if len(jobs[0]['files'])==0 and stateParameters['numberOfJobs']>0:
                stateParameters['requestIndex']+=1
-               Request.setDone(request_id)
+               Workflow.setFinished(request_id)
                logging.debug("Checking if all jobs are finished for RequestFinished event")
-               if Request.finishedJobs(request_id):
+               if Workflow.isAllocationsFinished(request_id):
                    logging.debug("Emitting RequestFinished event")
                    self.ms.publish("RequestFinished",request_id)
        #Now did we get enough from this request? It might that we got small left overs and we can
        #acquire more.
 
-       # we have the jobs, lets download their job specs and if finished emit
+       # we have the jobs, lets download/create their job specs and if finished emit
        # a new job event.
-       componentState="EvaluateJobs"
+       if len(jobs)==0:
+           componentState="AcquireRequest"
+       else:
+           componentState="JobSubmission"
        # subtract our new found jobs from the numberOfJobs we want to acquire
        State.setParameters("ProdMgrInterface",stateParameters)
        State.setState("ProdMgrInterface",componentState)

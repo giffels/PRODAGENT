@@ -4,9 +4,9 @@ from ProdCommon.Database import Session
 from ProdCommon.MCPayloads.WorkflowSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.FactoriseJobSpec import factoriseJobSpec
-from ProdMgrInterface import JobCut
-from ProdMgrInterface import Job
-from ProdMgrInterface import Request
+from ProdAgent.WorkflowEntities import Job as Job
+from ProdAgent.WorkflowEntities import Allocation
+from ProdAgent.WorkflowEntities import Workflow
 
 
 from ProdCommon.MCPayloads import EventJobSpec
@@ -37,15 +37,15 @@ def cut(job_id,jobCutSize):
     global jobSpecDir
 
     # generate the jobspec
-    jobDetails=Job.getDetails(job_id)
-    workflowspec=Request.getWorkflowLocation(job_id.split('_')[1])
+    jobDetails=Allocation.get(job_id)['details']
+    workflowspec=Workflow.get(job_id.split('_')[1])['workflow_spec_file']
     first_event=int(jobDetails['start_event'])
     event_count=int(jobDetails['end_event'])-int(jobDetails['start_event'])+1
     run_number=int(jobDetails['start_event'])
     start_event=run_number
     job_file=job_id+'.xml'
     jobSpecFile=jobSpecDir+'/'+job_file
-    Job.registerJobSpecLocation(job_id,jobSpecFile)
+    Allocation.setAllocationSpecFile(job_id,jobSpecFile)
     logging.debug("start with local jobspec generation")
     EventJobSpec.createJobSpec(job_id,workflowspec,jobSpecFile,run_number,event_count,start_event,False,False)
     logging.debug("finished with local jobspec generation")
@@ -62,9 +62,9 @@ def cut(job_id,jobCutSize):
     listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,jobs,jobSpec.parameters['EventCount'],\
         RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
     logging.debug("Registering job cuts")
-    JobCut.insert(listOfSpecs,jobSpec.parameters['JobName'])
+    Job.register(None,job_id,listOfSpecs)
     Session.commit()
-    logging.debug("JobCuts registered")
+    logging.debug("Jobs registered")
     return listOfSpecs 
 
 def cutFile(jobSpecFile,request_id):
@@ -91,22 +91,22 @@ def cutFile(jobSpecFile,request_id):
              'spec':jobSpecDir+'/'+element['id']+'_jobCut.xml',\
              'parent_id':element['id']}
        job_cuts.append(job_cut)
-       JobCut.insert([job_cut],element['id'])
+       #JobCut.insert([job_cut],element['id'])
        line=file.readline()
     # now get the contact url from the jobspec id and register
     # the cuts as jobs (this is different than event based jobs.
-    url=Job.getUrl(jobSpecID) 
-    Job.rm(jobSpecID)
-    try:
-        os.remove(jobSpecFile)
-    except:
-        pass
-    jobs=[]
-    for job_cut in job_cuts:
-        job={}
-        job['jobSpecId']=job_cut['parent_id']
-        job['URL']='none'
-        jobs.append(job)
-    Job.insert('active',jobs,request_id,url)
+    #url=Job.getUrl(jobSpecID) 
+    #Job.rm(jobSpecID)
+    #try:
+    #    os.remove(jobSpecFile)
+    #except:
+    #    pass
+    #jobs=[]
+    #for job_cut in job_cuts:
+    #    job={}
+    #    job['jobSpecId']=job_cut['parent_id']
+    #    job['URL']='none'
+    #    jobs.append(job)
+    #Job.insert('active',jobs,request_id,url)
     Session.commit()
     return job_cuts

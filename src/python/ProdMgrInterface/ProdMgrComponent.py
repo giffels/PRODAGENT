@@ -23,8 +23,7 @@ from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdMgrInterface.Registry import retrieveHandler
 from ProdMgrInterface.Registry import Registry
 from ProdMgrInterface import MessageQueue
-from ProdMgrInterface import Job
-from ProdMgrInterface import Request
+from ProdAgent.WorkflowEntities import Workflow
 from ProdMgrInterface import State
 from ProdMgrInterface import Interface as ProdMgr
 from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
@@ -127,6 +126,9 @@ class ProdMgrComponent:
         if event == "JobSuccess":
             self.reportJobSuccess(payload)
             return
+        if event == "ProdMgrInterface:JobSuccess":
+            self.reportJobSuccessFinal(payload)
+            return
         if event == "GeneralJobFailure":
             self.reportJobFailure(payload)
             return
@@ -214,8 +216,9 @@ class ProdMgrComponent:
             priority=components[2].split("=")[1]
             request_type=components[3].split("=")[1]
             logging.debug("Add request: "+requestId+" with priority "+priority+" for prodmgr: "+prodMgr)
-            Request.insert(requestId,priority,request_type,prodMgr)
-            logging.debug("Added request. There are now "+str(Request.size())+" requests in the queue ")
+            parameters={'priority':priority,'request_type':request_type,'prod_mgr_url':prodMgr}
+            Workflow.register(requestID,parameters) 
+            logging.debug("Added request. There are now "+str(Workflow.amount())+" requests in the queue ")
         except Exception,ex:
             logging.debug("ERROR "+str(ex))
 
@@ -292,6 +295,36 @@ class ProdMgrComponent:
         logging.debug("reportJobFailure event handled")
         Session.set_session("default")
 
+    def reportJobSuccessFinal(self,jobID):
+        logging.debug("Reporting ProdMgrInterface:JobSuccess for"+str(jobID))
+        Session.connect("ProdMgrInterface")
+        Session.set_session("ProdMgrInterface")
+        componentStateInfo=State.get("ProdMgrInterface")      
+        # if this is the first time create the start state
+        if componentStateInfo=={}:
+             logging.debug("ProdMgrInterface state creation")
+             State.insert("ProdMgrInterface","start",{})
+             componentStateInfo['state']="start"
+        if componentStateInfo.has_key('state'):
+            if componentStateInfo['state']=='start':
+                componentStateInfo['parameters']={}
+                componentStateInfo['parameters']['stateType']='normal'
+                componentStateInfo['parameters']['id']=jobID
+                State.setParameters("ProdMgrInterface",componentStateInfo['parameters'])
+        logging.debug("ProdMgrInterface state is: "+str(componentStateInfo['state']))
+
+        # first check if there are any queued events as a prodmgr might have been offline
+        componentState=componentStateInfo['state']
+        if componentStateInfo['state']=='start':
+            queued_events=retrieveHandler('QueuedMessages')
+            queued_events.execute()
+        Session.commit()
+        state=retrieveHandler('ReportJobSuccessFinal')
+        state.execute()
+        logging.debug("ProdMgrInterface:JobSuccess event handled")
+        Session.set_session("default")
+        
+
     def setLocations(self,payload):
         # check if payload contains user defined location
         # if not use the ones defined in the configuration file
@@ -326,7 +359,8 @@ class ProdMgrComponent:
             try:
                 requests=ProdMgr.getRequests(prodmgr,self.args['AgentTag'])
                 for request in requests['keep']:
-                    Request.insert(request[0],request[1],request[2],prodmgr)
+                    parameters={'priority':request[1],'request_type':request[2],'prod_mgr_url':prodmgr}
+                    Workflow.register(request[0],parameters)
                 logging.debug("Retrieved: "+str(len(requests['keep']))+' requests')
                 ProdMgr.commit()
             except Exception,ex:
@@ -334,20 +368,19 @@ class ProdMgrComponent:
                    +prodmgr+"  "+str(ex))
         # once we have the requests retrieve if necessary their workflow.
         # depending on the request we might already have the workflow.
-        requestIDs=Request.withoutWorkflow()
+        requests=Workflow.getNotDownloaded()
         try:
             os.makedirs(self.args['WorkflowSpecDir'])
         except Exception,ex:
             logging.debug("WARNING: directory already exists "+str(ex))
-
-        for id,url,req_type in requestIDs:
-            logging.debug('Retrieving Workflow for '+str(id))
-            rest_result=ProdMgr.retrieveWorkflow(url,id)
+        for request in requests:
+            logging.debug('Retrieving Workflow for '+str(request['id']))
+            rest_result=ProdMgr.retrieveWorkflow(request['prod_mgr_url'],request['id'])
             workflowSpec = WorkflowSpec()
             workflowSpec.loadString(rest_result)
             workflowFileName=self.args['WorkflowSpecDir']+'/'+workflowSpec.workflowName()+'.xml'
             workflowSpec.save(workflowFileName)
-            Request.workflowSet(id,workflowFileName)
+            Workflow.setWorkflowLocation(request['id'],workflowFileName)
             #NOTE: we want to use the same session as for the workflowset call.
             self.ms.publish("NewDataset",workflowFileName) 
             self.ms.publish("NewWorkflow",workflowFileName) 
@@ -391,6 +424,7 @@ class ProdMgrComponent:
             self.ms.subscribeTo("ProdMgrInterface:JobSize")
             self.ms.subscribeTo("ProdMgrInterface:JobCutSize")
             self.ms.subscribeTo("JobSuccess")
+            self.ms.subscribeTo("ProdMgrInterface:JobSuccess")
             self.ms.subscribeTo("GeneralJobFailure")
             logging.debug("Subscription completed ")
             

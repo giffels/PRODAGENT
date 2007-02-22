@@ -7,8 +7,6 @@ import time
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdCommon.Database import Session
-from ProdMgrInterface import Job
-from ProdMgrInterface import Request
 from ProdMgrInterface import State
 from ProdMgrInterface.JobCutter import cut
 from ProdMgrInterface.JobCutter import cutFile
@@ -34,7 +32,6 @@ class JobSubmission(StateInterface):
        logging.debug("Starting job cutting")
        if stateParameters['RequestType']=='event':
            logging.debug('Start event cut for '+str(stateParameters['jobSpecId']))
-           #jobcuts=cut(stateParameters['targetFile'],int(stateParameters['jobCutSize']))
            jobcuts=cut(stateParameters['jobSpecId'],int(stateParameters['jobCutSize']))
        else:
            logging.debug('Start file cut')
@@ -46,7 +43,7 @@ class JobSubmission(StateInterface):
        # END JOBCUTTING HERE
 
        stateParameters['jobIndex']+=1
-       componentState="EvaluateJobs"
+       componentState="AcquireRequest"
        State.setState("ProdMgrInterface",componentState)
        State.setParameters("ProdMgrInterface",stateParameters)
        # NOTE this commit needs to be done under the ProdMgrInterface session

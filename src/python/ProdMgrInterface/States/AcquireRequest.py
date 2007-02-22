@@ -6,8 +6,7 @@ from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdCommon.Database import Session
 from ProdMgrInterface import Cooloff
-from ProdMgrInterface import Job
-from ProdMgrInterface import Request
+from ProdAgent.WorkflowEntities import Workflow
 from ProdMgrInterface import State
 from ProdMgrInterface.Registry import registerHandler
 from ProdMgrInterface.States.StateInterface import StateInterface 
@@ -32,22 +31,22 @@ class AcquireRequest(StateInterface):
        # get request with highest priority:
        logging.debug("Getting request with index: "+str(componentState['parameters']['requestIndex']))
        requestIndex=componentState['parameters']['requestIndex']
-       request=Request.getHighestPriority(requestIndex)
+       request=Workflow.getHighestPriority(requestIndex)
        # if this is true we have no more requests to check:
-       if request=={}:
+       if request==[]:
            State.setState("ProdMgrInterface","Cleanup")
            Session.commit()
            return "Cleanup"
        # if this url is available in the cooloff table do not
        # use it :
-       if request!={}:
-           while Cooloff.hasURL(request['url']) :
+       if request!=[]:
+           while Cooloff.hasURL(request['prod_mgr_url']) :
                requestIndex=requestIndex+1
-               request=Request.getHighestPriority(requestIndex)
-               if request=={}:
+               request=Workflow.getHighestPriority(requestIndex)
+               if request==[]:
                    break
        # check if there are requests left:
-       if (request=={}):
+       if (request==[]):
            State.setState("ProdMgrInterface","Cleanup")
            Session.commit()
            logging.debug("We have no more requests in our queue for allocations"+\
@@ -56,8 +55,8 @@ class AcquireRequest(StateInterface):
        logging.debug("Found request: "+str(request['id']))
        # set parameters and state and commit for next session
        componentState['parameters']['RequestID']=request['id']
-       componentState['parameters']['ProdMgrURL']=request['url']
-       componentState['parameters']['RequestType']=request['type']
+       componentState['parameters']['ProdMgrURL']=request['prod_mgr_url']
+       componentState['parameters']['RequestType']=request['workflow_type']
        componentState['parameters']['requestIndex']=requestIndex
        State.setParameters("ProdMgrInterface",componentState['parameters'])
        State.setState("ProdMgrInterface","AcquireJobs")
