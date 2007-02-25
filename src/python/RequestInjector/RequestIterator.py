@@ -282,8 +282,16 @@ class RequestIterator:
             directory,
             "%s-Persist.xml" % self.workflowSpec.workflowName()
             )
+
+        try:
+            node = loadIMProvFile(fname)
+        except Exception, ex:
+            msg = "ERROR: Corrupted Persistency File:\n"
+            msg += "  => %s\n" % fname
+            msg += "Cannot be read:\n  => %s\n" % str(ex)
+            logging.error(msg)
+            return
         
-        node = loadIMProvFile(fname)
 
         qbase = "/RequestIterator/%s" % self.workflowSpec.workflowName()
 
