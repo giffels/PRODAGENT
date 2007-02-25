@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.28 2007/01/11 11:54:23 ckavka Exp $"
+__revision__ = "$Id: setup.py,v 1.29 2007/02/17 16:51:55 fvlingen Exp $"
 
 from distutils.core import setup
 
@@ -51,6 +51,8 @@ packages = [
     'PileupTools',
     'ProdAgent',
     'ProdAgent.Core',
+    'ProdAgent.Trigger',
+    'ProdAgent.Trigger.Actions',
     'ProdAgent.WorkflowEntities',
     'ProdAgentBOSS',
     'ProdAgentDB',
