@@ -186,7 +186,7 @@ class Channel:
 
         # copy link if provided or create one in other case
         if link is not None:
-            linkName = self.processLink(link)
+            linkName = self.processLink(link, title, author)
         else:
             linkName = self.createLink(guid, author, description)
 
@@ -243,12 +243,14 @@ class Channel:
     # process a link
     ##########################################################################
 
-    def processLink(self, link):
+    def processLink(self, link, title, author):
         """
 
         Arguments:
 
           link -- the link name
+          title -- the title
+          author -- the author of the message
 
         Return:
 
@@ -262,10 +264,37 @@ class Channel:
             # fine, return it
             return link
 
-        # copy file into  local area (can generate exception IOError)
-        fileName = os.path.basename(link)
-        targetPath = os.path.join(self.filesDirectory, fileName)
-        copyfile(link, targetPath)
+        # process text file
+        if link.endswith('.txt'):
+        
+            # read the file
+            aFile = open(link, 'r')
+            text = aFile.read()
+            aFile.close()
+
+            # convert newlines
+            text = text.replace('\n','<br>\n')
+
+            # build html document
+            document = "<html>\n<body>\n" + \
+                   "<h2>Message from " + str(author) + "</h2>\n" + \
+                   "<h3>" + title + "</h3>\n<hr>\n" + \
+                   "<p>\n" + text + "\n<p>\n</body>\n</html>\n"
+
+            # save it
+            fileName = os.path.basename(link).replace('.txt', '.html')
+            targetPath = os.path.join(self.filesDirectory, fileName)
+            aFile = open(targetPath, 'w')
+            aFile.write(document)
+            aFile.close()
+
+        # different type of file
+        else:
+
+            # copy file into  local area (can generate exception IOError)
+            fileName = os.path.basename(link)
+            targetPath = os.path.join(self.filesDirectory, fileName)
+            copyfile(link, targetPath)
 
         # return the name of the file in channel area
         return 'http://localhost:' + str(self.port) + \
