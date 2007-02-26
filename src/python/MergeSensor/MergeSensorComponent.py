@@ -48,7 +48,7 @@ from threading import Thread, Condition
 
 # logging
 import logging
-from logging.handlers import RotatingFileHandler
+import ProdAgentCore.LoggingUtils as LoggingUtils
 
 ##############################################################################
 # MergeSensorComponent class
@@ -163,14 +163,7 @@ class MergeSensorComponent:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'], 
                                                 "ComponentLog")
         # create log handler
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-
-        # define log format
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
+        LoggingUtils.installLogHandler(self)
 
         # merge file size 
         if self.args["MaxMergeFileSize"] is None:
@@ -221,9 +214,9 @@ class MergeSensorComponent:
                 self.dbsApi = self.connectDBS()
                 
             except DbsException, ex:
-                logging.error( \
-                    "Failing to connect to DBS: (exception: %s)" % ex)
-                logging.error("  trying again in %s seconds" % self.delayDBS)
+                logging.error("""Failing to connect to DBS: (exception: %s)
+                                 trying again in %s seconds""" % \
+                                 (ex, self.delayDBS))
                 time.sleep(self.delayDBS)
 
             else:
@@ -238,9 +231,9 @@ class MergeSensorComponent:
                 self.dlsApi = self.connectDLS()
 
             except dlsApi.DlsApiError, ex:
-                logging.error( \
-                    "Failing to connect to DLS: (exception: %s)" % ex)
-                logging.error("  trying again in %s seconds" % self.delayDBS)
+                logging.error("""Failing to connect to DLS: (exception: %s)
+                                 trying again in %s seconds""" % \
+                                 (ex, self.delayDBS))
                 time.sleep(self.delayDLS)
 
             else:
