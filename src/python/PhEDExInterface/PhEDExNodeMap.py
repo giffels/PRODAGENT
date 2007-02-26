@@ -16,7 +16,11 @@ class PhEDExNodeMap:
 
     """
     _Map = {
-       
+        "ingrid-se02.cism.ucl.ac.be" : "T2_Belgium_UCL",
+        "node12.datagrid.cea.fr" : "T2_GRIF_DAPNIA",
+        "lpnse1.in2p3.fr" : "T2_GRIF_LPNHE",
+        "polgrid4.in2p3.fr" : "T2_GRIF_LLR",
+        "grid05.lal.in2p3.fr" : "T2_GRIF_LAL",       
         'cmssrm.fnal.gov' : 'T1_FNAL_MSS',
         "cmssrm.hep.wisc.edu" : "T2_Wisconsin_Buffer",
         "thpc-1.unl.edu" : "T2_Nebraska_Buffer",
