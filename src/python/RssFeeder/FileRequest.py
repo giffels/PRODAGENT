@@ -32,7 +32,7 @@ class FileRequest(Thread):
     """
 
     ##########################################################################
-    # RSSFeeder initialization
+    # File request initialization
     ##########################################################################
 
     def __init__(self, baseDir):
