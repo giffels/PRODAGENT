@@ -241,9 +241,10 @@ class RssFeederComponent:
             self.channel[channel] = newChannel
             self.cond.release()
 
-        # add item to the channel
+        # add item to the specified channel and to the default channel
         self.cond.acquire()
         self.channel[channel].addItem(author, title, text)
+        self.channel['ProdAgent'].addItem(author, title, text)
         self.cond.release()
 
         return
@@ -294,6 +295,7 @@ class RssFeederComponent:
         self.cond.acquire()
         try:
             self.channel[channel].addItem(author, title, description, path)
+            self.channel['ProdAgent'].addItem(author, title, description, path)
         except IOError, msg:
             logging.error(msg)
         self.cond.release()
