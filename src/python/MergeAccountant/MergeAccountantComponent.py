@@ -23,7 +23,7 @@ from FwkJobRep.ReportParser import readJobReport
 
 # logging
 import logging
-from logging.handlers import RotatingFileHandler
+import ProdAgentCore.LoggingUtils as LoggingUtils
 
 # trigger api
 from Trigger.TriggerAPI.TriggerAPI import TriggerAPI 
@@ -87,14 +87,7 @@ class MergeAccountantComponent:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'], 
                                                 "ComponentLog")
         # create log handler
-        logHandler = RotatingFileHandler(self.args['Logfile'],
-                                         "a", 1000000, 3)
-
-        # define log format
-        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-        logHandler.setFormatter(logFormatter)
-        logging.getLogger().addHandler(logHandler)
-        logging.getLogger().setLevel(logging.INFO)
+        LoggingUtils.installLogHandler(self)
 
         # inital log information
         logging.info("MergeAccountant starting...")
