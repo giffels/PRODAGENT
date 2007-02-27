@@ -153,12 +153,14 @@ componentFields = {
     "ComponentDir" : None,
     "CreatorName" : "testCreator",
     "CreatorPluginConfig": os.path.join(os.path.dirname(configFile), "CreatorPluginConfig.xml"),
+    "RssFeed": "no",
 
     },
     "JobSubmitter" : {
     "ComponentDir" : None,
     "SubmitterName" : "noSubmit",
     "SubmitterPluginConfig" : os.path.join(os.path.dirname(configFile),"SubmitterPluginConfig.xml"),
+    "RssFeed": "no",
     },
 
     "DBSInterface" : {
@@ -166,12 +168,14 @@ componentFields = {
     "DBSDataTier" : "GEN,SIM,DIGI,HLT,RECO,AOD,RAW,USER,FEVT,FEVTSIM,RECOSIM,AODSIM",
     # Local DBS settings come from LocalDBS core block 
     "CloseBlockSize" : None,
+    "RssFeed": "no",
     },
 
     "DLSInterface" : {
     "ComponentDir" : None,
     "DLSAddress" : None,
     "DLSType" : None,
+    "RssFeed": "no",
     },
 
     "JobTracking" : {
@@ -181,6 +185,7 @@ componentFields = {
     "BOSSVERSION" : None,
     "PollInterval" : 10,
     "jobsToPoll" : 100,
+    "RssFeed": "no",
     },
 
     'MergeSensor' : {
@@ -194,38 +199,48 @@ componentFields = {
     "FastMerge" : "no",
     "MaxInputAccessFailures" : 1,
     "QueueJobMode": "False",
+    "RssFeed": "no",
     # Local DBS settings come from LocalDBS core block 
     },
 
     'MergeAccountant' : {
     "ComponentDir" : None,
     "Enabled" : "yes",
+    "RssFeed": "no",
     },
 
     'ErrorHandler' : {
     "ComponentDir" : None,
     "MaxCacheDirSizeMB":80,
-    "DelayFactor":100
-    
+    "DelayFactor":100,
+    "RssFeed": "no",
     },
+
     'JobCleanup'   : {
     "ComponentDir" : None,
     "FailureArchive":None,
-    "SuccessArchive":None
-
+    "SuccessArchive":None,
+    "RssFeed": "no",
     },
+
     'AdminControl' : {
     "ComponentDir" : None,
     "AdminControlHost" : "127.0.0.1",
     "AdminControlPort" : 8081,
+    "RssFeed": "no",
     },
+
     "StatTracker" : {
     "ComponentDir" : None,
+    "RssFeed": "no",
     },
+
     "PhEDExInterface" : {
     "ComponentDir" : None,
     "PhEDExDropBox" : None,
+    "RssFeed": "no",
     },
+
     "ProdMgrInterface" : {
     "ComponentDir" : None,
     "JobSpecDir" : '/tmp',
@@ -236,11 +251,20 @@ componentFields = {
     "RetrievalInterval":"01:00:00",
     "AgentTag":"please insert a proper value",
     "Locations":"please insert a proper value",
+    "RssFeed": "no",
     },
+
     "DatasetInjector" : {
     "ComponentDir" : None,
     "QueueJobMode": "False",
+    "RssFeed": "no",
     },
+
+    "RssFeeder" : {
+    "ComponentDir" : None,
+    "ItemListLength" : 100,
+    "Port" : 8100,
+    }
 
     }# end componentFields
 
