@@ -124,7 +124,7 @@ def isFinished(workflowID):
    workflow_id="%s" """ %(str(workflowID))
    Session.execute(sqlStr)
    rows=Session.fetchall()
-   if rows[0][0]==1:
+   if rows[0][0]>0:
       return False
    return True
 

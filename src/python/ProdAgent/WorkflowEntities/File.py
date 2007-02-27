@@ -43,11 +43,10 @@ def merged(fileIDs=[],failed=False):
    It will give a warning if it is not part of an allocation and moves on.
    """
    global ms
-
    if type(fileIDs)!=list:
       fileIDs=[fileIDs]
    if len(fileIDs)==1:
-      sqlStr="""SELECT events_processed FROM we_File WHERE id="%s"
+      sqlStr="""SELECT events_processed,job_id FROM we_File WHERE id="%s"
       """ %(str(fileIDs[0]))
    else:
       sqlStr="""SELECT events_processed,job_id FROM we_File WHERE id IN %s
@@ -56,6 +55,9 @@ def merged(fileIDs=[],failed=False):
    Session.execute(sqlStr)
    rows=Session.fetchall()
    jobIDs=[]
+   # break if nothing is being returned
+   if len(rows)==0:
+      return
    for row in rows:
        if failed:
            Job.setEventsProcessedIncrement(row[1],0)
