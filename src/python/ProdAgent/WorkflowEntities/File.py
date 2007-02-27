@@ -4,6 +4,9 @@ from ProdAgent.WorkflowEntities import Job
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
 
+#associate a message service to the file object
+# to facilitate publishing messages.
+ms=None
 
 def register(jobID,fileIDs=[]):
    """
@@ -38,6 +41,8 @@ def merged(fileIDs=[],failed=False):
 
    It will give a warning if it is not part of an allocation and moves on.
    """
+   global ms
+
    if type(fileIDs)!=list:
       fileIDs=[fileIDs]
    if len(fileIDs)==1:
@@ -75,7 +80,8 @@ def merged(fileIDs=[],failed=False):
    for row in rows:
       if not row[1]:
            jobIDs.append(row[0]) 
-   return jobIDs
+   for jobID in jobIDs:
+      ms.publish("ProdMgrInterface:JobSuccess",str(jobIDs))    
    
 
 
