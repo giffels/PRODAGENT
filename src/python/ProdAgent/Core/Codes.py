@@ -22,4 +22,5 @@ exceptions={3000:'No result in local last service call table with a certain comp
             3018:'Illegal transistion. Transition should be inProgress ',\
             3019:'JobSpec ID does not exist ',\
             3020:'Job with this jobID has no jobs running yet ',\
+            3021:'No message service associated to File object ',\
        }

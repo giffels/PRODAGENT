@@ -1,6 +1,7 @@
 #/usr/bin/env python
 
 from ProdAgent.WorkflowEntities import Job
+from ProdAgent.Core.Codes import exceptions
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
 
@@ -80,8 +81,11 @@ def merged(fileIDs=[],failed=False):
    for row in rows:
       if not row[1]:
            jobIDs.append(row[0]) 
-   for jobID in jobIDs:
-      ms.publish("ProdMgrInterface:JobSuccess",str(jobIDs))    
+   if ms:
+      for jobID in jobIDs:
+         ms.publish("ProdMgrInterface:JobSuccess",str(jobIDs))    
+   else:
+      raise ProdException(exceptions[30212],3021)
    
 
 
