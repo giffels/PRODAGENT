@@ -35,7 +35,7 @@ class JobSubmission(StateInterface):
            jobcuts=cut(stateParameters['jobSpecId'],int(stateParameters['jobCutSize']))
        else:
            logging.debug('Start file cut')
-           jobcuts=cutFile(stateParameters['targetFile'],stateParameters['RequestID'])
+           jobcuts=cutFile(stateParameters['jobSpecId'],stateParameters['jobCutSize'])
        for jobcut in jobcuts:
            logging.debug("Emitting <CreateJob> event with payload: "+\
                str(jobcut['spec']))

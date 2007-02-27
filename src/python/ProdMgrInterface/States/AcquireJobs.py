@@ -36,7 +36,8 @@ class AcquireJobs(StateInterface):
                'prefix':'job','eventsPerJob':eventsPerJob}
        else:
            logging.debug('Request is of type file')
-           parameters={'numberOfFiles':stateParameters['numberOfJobs'],\
+           eventsPerJob=int(stateParameters['numberOfJobs'])*int(stateParameters['jobCutSize']) 
+           parameters={'numberOfFiles':eventsPerJob,\
                        'prefix':'fileJob'}
        requestURL=Workflow.get(request_id)['prod_mgr_url']
        if stateParameters['stateType']=='recover':
@@ -105,15 +106,30 @@ class AcquireJobs(StateInterface):
        stateParameters['stateType']='normal'
        stateParameters['jobIndex']=0
 
+       logging.debug("Creating allocations for request type: "+stateParameters['RequestType'])
        # perform some format conversion
        allocations=[]
-       for job in jobs:
-           allocation={}
-           allocation['id']=job['jobSpecId']
-           allocation['prod_mgr_url']=requestURL
-           allocation['details']=job
-           allocations.append(allocation)
-       Allocation.register(request_id,allocations)
+       if stateParameters['RequestType']=='event':
+           allocations=[]
+           for job in jobs:
+               allocation={}
+               allocation['id']=job['jobSpecId']
+               allocation['prod_mgr_url']=requestURL
+               allocation['details']=job
+               allocations.append(allocation)
+       if stateParameters['RequestType']=='file':
+           logging.debug("Creating file based allocations")
+           if jobs:
+               for file in jobs[0]['files']:
+                   allocation={}
+                   logging.debug("Creating allocation for: "+str(file['jobSpecID']))
+                   allocation['id']=file['jobSpecID']
+                   allocation['prod_mgr_url']=requestURL
+                   allocation['details']=file
+                   allocations.append(allocation)
+       if len(allocations)>0:
+           Allocation.register(request_id,allocations)
+                          
 
        ProdMgrAPI.commit()
 
@@ -136,13 +152,21 @@ class AcquireJobs(StateInterface):
                    logging.debug("Emitting RequestFinished event")
                    self.ms.publish("RequestFinished",request_id)
        else:
-           logging.debug("Acquired the following file based jobs: "+str(jobs[0]['files']))
-           stateParameters['numberOfJobs']=stateParameters['numberOfJobs']-len(jobs[0]['files']) 
+           if len(jobs)!=0:
+              logging.debug("Acquired the following file based jobs: "+str(jobs[0]['files']))
+              jobSpecIds=''
+              total_events=0
+              for file in jobs[0]['files']:
+                 jobSpecIds+=file['jobSpecID']+','
+                 total_events+=file['event_count']
+              potential_jobs=int(math.ceil(float(total_events)/float(stateParameters['jobCutSize'])))
+              stateParameters['numberOfJobs']=stateParameters['numberOfJobs']-potential_jobs
+              stateParameters['jobSpecId']=jobSpecIds
            if stateParameters['numberOfJobs']<0:
-               stateParameters['numberOfJobs']=0    
+              stateParameters['numberOfJobs']=0    
            # now if this request does not give us any more jobs,
            # we move on to the next request. 
-           if len(jobs[0]['files'])==0 and stateParameters['numberOfJobs']>0:
+           if len(jobs)==0 and stateParameters['numberOfJobs']>0:
                stateParameters['requestIndex']+=1
                Workflow.setFinished(request_id)
                logging.debug("Checking if all jobs are finished for RequestFinished event")
