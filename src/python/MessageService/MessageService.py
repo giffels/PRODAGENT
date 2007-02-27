@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.6 2006/08/16 20:56:02 fvlingen Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: MessageService.py,v 1.7 2006/11/30 10:24:01 ckavka Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -272,7 +272,7 @@ class MessageService:
     # publish method 
     ##########################################################################
 
-    def publish(self, name, payload,delay="00:00:00"):
+    def publish(self, name, payload, delay="00:00:00"):
         """
         _publish_
         
@@ -737,3 +737,22 @@ class MessageService:
         
         # return old one
         return self.conn
+
+
+    ##########################################################################
+    # close connection to the database
+    ##########################################################################
+
+    def close(self):
+        """
+        __close__
+
+        close the DB connection
+
+        """
+
+        try:
+            self.conn.close()
+        except:
+            pass
+ 
