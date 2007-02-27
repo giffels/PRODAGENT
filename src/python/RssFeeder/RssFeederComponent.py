@@ -7,8 +7,8 @@ important messages.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: RssFeederComponent.py,v 1.3 2007/02/26 18:03:03 ckavka Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -27,7 +27,10 @@ from logging.handlers import RotatingFileHandler
 
 # RSS channel
 from RssFeeder.Channel import Channel
-from RssFeeder.Feeder import Feeder
+try:
+    from RssFeeder.Feeder import Feeder
+except ImportError:
+    pass
 
 ##############################################################################
 # RssFeederComponent class
@@ -340,8 +343,7 @@ class RssFeederComponent:
             self.feeder.start()
         except Exception, msg:
             logging.error("Cannot start Feeder. The component will run " + \
-                          "but without feeding abilities: " + \
-                          str(msg))
+                          "but without feeding abilities: ")
  
         # wait for messages
         while True:
