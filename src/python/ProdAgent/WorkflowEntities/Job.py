@@ -78,7 +78,7 @@ def register(workflowID=None,allocationID=None,job={}):
    job it will just update it.
 
    """
-   descriptionMap={'id':'id','job_spec_file':'job_spec_file',\
+   descriptionMap={'id':'id','spec':'job_spec_file',\
        'job_type':'job_type','max_retries':'max_retries',\
        'max_racers':'max_racers'}
    # check if there is any input
