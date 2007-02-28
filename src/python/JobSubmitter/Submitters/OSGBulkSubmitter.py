@@ -6,7 +6,7 @@ Globus Universe Condor Submitter implementation.
 
 """
 
-__revision__ = "$Id: OSGBulkSubmitter.py,v 1.1 2007/02/15 20:34:00 evansde Exp $"
+__revision__ = "$Id: OSGBulkSubmitter.py,v 1.2 2007/02/16 18:47:32 evansde Exp $"
 
 import os
 import logging
@@ -360,7 +360,7 @@ class OSGBulkSubmitter(BulkSubmitterInterface):
 
         """
         logging.debug("lookupGlobusScheduler:")
-        if len(self.parameters['Whitelist']) == 0:
+        if len(self.whitelist) == 0:
             #  //
             # //  No Preference, use plain GlobusScheduler
             #//
@@ -376,7 +376,7 @@ class OSGBulkSubmitter(BulkSubmitterInterface):
         seMap = self.pluginConfig['SENameToJobmanager']
 
         matchedJobMgr = None
-        for sitePref in  self.parameters['Whitelist']:
+        for sitePref in  self.whitelist:
             if sitePref not in seMap.keys():
                 logging.debug("lookupGlobusScheduler: No match: %s" % sitePref)
                 continue
@@ -388,12 +388,12 @@ class OSGBulkSubmitter(BulkSubmitterInterface):
 
         if matchedJobMgr == None:
             msg = "Unable to match site preferences: "
-            msg += "\n%s\n" % self.parameters['Whitelist']
+            msg += "\n%s\n" % self.whitelist
             msg += "To any JobManager"
             raise JSException(msg, 
                               ClassInstance = self,
                               SENameToJobmanager = seMap,
-                              Whitelist = self.parameters['Whitelist'])
+                              Whitelist = self.whitelist)
         return matchedJobMgr
                 
             

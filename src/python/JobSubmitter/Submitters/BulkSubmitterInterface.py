@@ -26,8 +26,11 @@ class BulkSubmitterInterface:
         self.specFiles = {}
         self.isBulk = False
         self.primarySpecInstance = None
+        self.whitelist = []
+        self.blacklist = []
+        self.applicationVersions = []
         self.publishToDashboard = []
-
+        
         #  //
         # // Load plugin configuration
         #//
@@ -68,11 +71,11 @@ class BulkSubmitterInterface:
 
         self.primarySpecInstance = self.parameters['JobSpecInstance']
         jobSpecCaches = self.parameters.get("CacheMap", {})
-        self.parameters['Blacklist'] = \
-                   self.primarySpecInstance.siteBlacklist
-        self.parameters['Whitelist'] = \
-                   self.primarySpecInstance.siteWhitelist
-
+        self.blacklist = self.primarySpecInstance.siteBlacklist
+        self.whitelist = self.primarySpecInstance.siteWhitelist
+        self.applicationVersions = self.primarySpecInstance.listApplicationVersions()
+                   
+        
         
         if not self.primarySpecInstance.isBulkSpec():
             self.isBulk = False
