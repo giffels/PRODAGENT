@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.26 2006/12/01 10:41:59 ckavka Exp $"
-__version__ = "$Revision: 1.26 $"
+__revision__ = "$Id: Dataset.py,v 1.27 2007/01/26 15:17:14 ckavka Exp $"
+__version__ = "$Revision: 1.27 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -501,7 +501,12 @@ class Dataset:
         
         # get file list from database
         files = self.database.getFileList(datasetId)
-        
+
+        # build a dictionary (thanks to Dan Bradley for suggesting it)
+        fileDict = {}
+        for afile in files:
+            fileDict[afile['name']] = 1 
+
         # start transaction
         self.database.startTransaction()
         
@@ -509,17 +514,10 @@ class Dataset:
         for fileName, size, fileBlock, events in fileList:
 
             # verify membership
-            found = False
-            for aFile in files:
-                if fileName == aFile['name']:
-                    
-                    # found
-                    found = True
-                    break
-                
-            if not found:
-                self.database.addFile(datasetId, fileName, size, fileBlock, events)
-                        
+            if not fileDict.has_key(fileName):
+                self.database.addFile(datasetId, fileName, size, \
+                                      fileBlock, events)
+
         # update time
         date = time.asctime(time.localtime(time.time()))
         self.data['lastUpdated'] = date
@@ -534,7 +532,7 @@ class Dataset:
     # add a merge job
     ##########################################################################
 
-    def addMergeJob(self, fileList, jobId, oldFile):
+    def addMergeJob(self, jobId, fileList, oldJobId):
         """
         _addMergeJobs_
         
@@ -544,14 +542,15 @@ class Dataset:
             
           fileList -- the list of files that the job will start to merge
           jobId -- the job name
-          oldFile -- the name of the old file in case of resubmission
+          fileList -- the list of input files
+          oldJobId -- the name of the old job to resubmit
 
         Return:
             
           the name of the output file
           
         """
-        
+       
         # start transaction
         self.database.startTransaction()
         
@@ -559,35 +558,21 @@ class Dataset:
         datasetId = self.database.getDatasetId(self.data['name'])
         
         # verify output file name
-        if oldFile == None:
-        
+        if oldJobId is None:
+
             # new submission, create a name
             outputFile = "set" + str(self.data['outSeqNumber'])
             self.data['outSeqNumber'] = self.data['outSeqNumber'] + 1
 
+            # add the job
+            self.database.addJob(datasetId, outputFile, jobId, fileList)
+
         else:
-            
+
             # use provided name
             self.logging.info('Resubmitting job as required')
-            outputFile = oldFile
-            
-        # create outputFile
-        (instance, fileId) = self.database.addOutputFile(datasetId, \
-                                                outputFile, jobId)
-            
-        # make changes permanent
-        self.database.commit()
-            
-        # mark input files as merged for new created output file
-        if instance == 0:
-            for aFile in fileList:    
-                self.database.updateInputFile(datasetId, aFile, \
-                                              status = "undermerge", \
-                                              mergedFile = fileId)
-        else:
-            
-            # add instance number to output file in case of resubmission
-            outputFile = outputFile + "_" + str(instance)
+            outputFile = self.database.resubmitJob(datasetId, oldJobId, \
+                                                   jobId)
             
         # update time
         date = time.asctime(time.localtime(time.time()))
@@ -766,9 +751,8 @@ class Dataset:
           none
                     
         Return:
-            
-          the list of files to be merged, their fileBlockId and the
-          name of the old output file.
+          
+          the job name, the file block id and the file list
           
         """
 
@@ -780,9 +764,9 @@ class Dataset:
         
         # nothing to merge
         if newMerge == None:
-            return ([], 0, None)
+            return (None, 0, [])
         
-        # return fileList, fileBlock and old file name
+        # return job name and fileBlock
         return newMerge
 
     ##########################################################################
