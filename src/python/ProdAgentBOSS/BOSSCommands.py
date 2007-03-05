@@ -7,6 +7,77 @@ import fcntl
 import string
 import os
 import signal
+import re
+def checkSuccess(id,bossCfgDir):
+    success=False
+    try:
+        taskid=id.split('.')[0]
+        chainid=id.split('.')[1]
+        jobid=id.split('.')[2]
+        #print jobid
+    except:
+        return success
+    try:
+
+        outfile=executeCommand("bossAdmin SQL -query \"select CHAIN_PROGRAM_TYPE FROM CHAIN where TASK_ID=%s and id = %s\""%(taskid,chainid)+" -c " + bossCfgDir)
+        outp=outfile.split("CHAIN_PROGRAM_TYPE")[1].strip()
+    except:
+        return success
+    if outp.find("crabjob")>=0:
+        return checkCrabSuccess(id,bossCfgDir)
+    else:
+        
+        try:
+            outfile=executeCommand("bossAdmin SQL -query \"select TASK_EXIT FROM ENDED_cmssw where TASK_ID=%s and CHAIN_ID=%s and ID=%s\""%(taskid,chainid,jobid)+" -c " + bossCfgDir)
+            outp=outfile.split("TASK_EXIT")[1].strip()
+            # print outp
+        except:
+        
+            return success
+
+
+        
+    success=(outp=="0")
+    return success
+def checkCrabSuccess(id,bossCfgDir):
+    #print "CRAB"
+    success=False
+    
+    taskid=id.split('.')[0]
+    chainid=id.split('.')[1]
+    jobid=id.split('.')[2]
+    
+    
+    try:
+        outfile=executeCommand("bossAdmin SQL -query \"select EXE_EXIT_CODE,JOB_EXIT_STATUS FROM ENDED_crabjob where TASK_ID=%s and CHAIN_ID=%s and ID=%s\""%(taskid,chainid,jobid)+" -c " + bossCfgDir)
+        outp=outfile.split('JOB_EXIT_STATUS')[1].strip()
+    except:
+        
+        return success
+    
+    try:
+        exeCode=outp.split()[0].strip()
+        jobCode=outp.split()[1].strip()
+        
+    except:
+        return success
+    success=(exeCode=="0" and jobCode=="0")
+    return success
+
+def resubmit(bossJobId,bossCfgDir):
+    """
+    BOSSsubmit
+    
+    BOSS command to submit a task
+    """
+    tId=bossJobId.split('.')[0]
+    bId=bossJobId.split('.')[1]
+    bossSubmit = "boss submit "
+    bossSubmit += "-taskid %s " % tId
+    bossSubmit += "-jobid %s " % bId
+    bossSubmit += " -c " + bossCfgDir + " "
+    return bossSubmit
+
 def submit(bossJobId,scheduler,bossCfgDir):
     """
     BOSSsubmit
@@ -19,7 +90,18 @@ def submit(bossJobId,scheduler,bossCfgDir):
     bossSubmit += " -c " + bossCfgDir + " "
     return bossSubmit
 
+def getTaskIdFromName(taskName,bossCfgDir):
+    """
+    getTaskIdFromName
 
+    get TaskId from TaskName
+    """
+    try:
+        outfile=executeCommand("bossAdmin SQL -query \"select MAX(ID) ID from TASK where TASK_NAME='%s'\""%(taskName)+" -c " + bossCfgDir)
+        outp=outfile.split('ID')[1].strip()
+    except:
+        return 0
+    return outp
 
 
 def declare(bossCfgDir,parameters):
@@ -165,6 +247,12 @@ def executeCommand(command,timeout=600):
     Util it execute the command provided in a popen object with a timeout
 
     """
+
+    try:
+        command="export X509_USER_PROXY=\"%s\";%s"%(os.environ["X509_USER_PROXY"],command)
+    except:
+        pass
+
 #    f=open("/bohome/bacchi/PRODAGENT_HEAD/PRODAGENT/BOSSCommands.log",'w')
     
 #    f.write( command)
@@ -207,6 +295,7 @@ def executeCommand(command,timeout=600):
         #logging.error("command %s timed out. timeout %d\n"%(command,timeout))
         # f.write("timedOut")
         os.kill(pid,signal.SIGTERM)
+        stoppid(pid,signal.SIGTERM)
         return ""
 #    if err > 0:
  #       logging.error("command %s gave %d exit code"%(command,err))
@@ -224,7 +313,45 @@ def executeCommand(command,timeout=600):
     # f.write("output=%s"%output)
     # f.close()
     return output
+# Stijn suggestion for child processes. Thanks.
+def stoppid(pid,sig):
+    """
+    stoppid
 
+    Function to find and kill child processes.
+    """
+    parent_id=[]
+    done=[]
+    parent_id.append(str(pid))
+
+    ## collect possible children
+
+    regg=re.compile(r"\s*(\d+)\s+(\d+)\s*$")
+    while len(parent_id)>0:
+        pi=parent_id.pop()
+        done.append(pi)
+        ## not on 2.4 kernels
+        ## cmd= "ps -o pid --ppid "+pi
+        cmd="ps -axo pid,ppid"
+        out=Popen4(cmd)
+        for line in out.fromchild.readlines():
+            line=line.strip('\n')
+            if regg.search(line) and (regg.search(line).group(2) == pi):
+                pidfound=regg.search(line).group(1)
+                parent_id.append(pidfound)
+        out.fromchild.close()
+    ## kill the pids
+    while len(done) >0 :
+        nextpid=done.pop()
+        try:
+            os.kill(int(nextpid),sig)
+        except:
+            pass
+        ## be nice, children signal their parents mostly
+        time.sleep(float(1))
+
+        
+    
 def getoutput(jobId,directory,bossCfgDir):
     """
     BOSS4getoutput
@@ -232,14 +359,14 @@ def getoutput(jobId,directory,bossCfgDir):
     Boss 4 command to retrieve output
     """
     #logging.debug("Boss4 getoutput start %s "%jobId)
-    print "Boss4 getoutput start %s "%jobId
+    #print "Boss4 getoutput start %s "%jobId
     try:
         taskid = jobId[0].split('.')[0]
         chainid=jobId[0].split('.')[1]
         resub=jobId[0].split('.')[2]
     except:
-        #pass
-        print"Boss 4 getoutput - split error %s"%jobId 
+        pass
+        #print"Boss 4 getoutput - split error %s"%jobId 
 ##         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID  from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
 ##         outp=outfile
 
@@ -294,30 +421,14 @@ def jobSpecId(id,bossCfgDir):
         outp=outp.split("TASK_NAME")[1].strip()
     except:
         outp=""
+    subDir=subdir(id,bossCfgDir)
+    
+    if subDir.find('crab_')>=0:
+        outp=outp+"_"+id.split('.')[1]
 
     return outp
 
 
-def JobSpecId(id,bossCfgDir):
-    """
-    BOSS4JobSpecId
-
-    BOSS 4 command to retrieve JobSpecID from BOSS db
-    """
-    try:
-        taskid=id.split('.')[0]
-    except:
-        #logging.error("Boss4 JobSpecId splitting error")
-        return ""
-    outfile=executeCommand("bossAdmin SQL -query \"select TASK_NAME from TASK where id='%s'\""%taskid + " -c " + bossCfgDir)
-
-    outp=outfile
-    try:
-        outp=outp.split("TASK_NAME")[1].strip()
-    except:
-        outp=""
-
-    return outp
 
 
 def schedulerId(id,bossCfgDir):
@@ -395,3 +506,27 @@ def scheduler(id,bossCfgDir,ended=""):
     #logging.debug("BOSS4scheduler outp '%s'"%outp)    
 
     return outp
+def taskEnded(id,bossCfgDir):
+    """
+    taskEnded
+
+    This Function tests if all jobs of a Task are ended
+    """
+    try:
+        taskid=id.split('.')[0]
+        chainid=id.split('.')[1]
+        resub=id.split('.')[2]
+
+    except:
+        #logging.error("Boss4 Jobid splitting error")
+        return ""
+
+    outfile=executeCommand("bossAdmin SQL -query \"select count(*) Jobs from CHAIN where TASK_ID=%s\" -c %s"%(taskid,bossCfgDir))
+    initialJobs=0
+    try:
+        initialJobs=int(outfile.split("Jobs")[1])
+    except:
+        return False
+    if initialJobs==1:
+        return True
+    return False
