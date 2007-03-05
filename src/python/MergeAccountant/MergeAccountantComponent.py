@@ -31,6 +31,13 @@ from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 # ProdAgent exception
 from ProdAgentCore.ProdAgentException import ProdAgentException
 
+# ProdAgent database
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.Database import Session
+
+# PM interaction
+from ProdAgent.WorkflowEntities import File
+
 ##############################################################################
 # MergeAccountantComponent class
 ##############################################################################
@@ -142,12 +149,12 @@ class MergeAccountantComponent:
 
         # enable event
         if event == "MergeAccountant:Enable":
-            self.enable = True
+            self.enabled = True
             return
 
         # disable event
         if event == "MergeAccountant:Disable":
-            self.enable = False
+            self.enabled = False
             return
 
         # a job has finished
@@ -245,7 +252,7 @@ class MergeAccountantComponent:
 
         try:
             self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
-        except ProdAgentException, ex:
+        except ProdAgentException:
             logging.error("trying to continue processing success event")
 
         # verify enable condition
@@ -253,7 +260,7 @@ class MergeAccountantComponent:
             return
         
         # get skipped files
-        skippedFiles = [file['Lfn'] for file in report.skippedFiles]
+        skippedFiles = [aFile['Lfn'] for aFile in report.skippedFiles]
         
         # open a DB connection 
         database = MergeSensorDB()
@@ -289,23 +296,41 @@ class MergeAccountantComponent:
         datasetId = database.getDatasetId(jobInfo['datasetName'])
 
         # update input files status
+        finishedFiles = []
+        unFinishedFiles = []
+ 
         for fileName in jobInfo['inputFiles']:
-            
+
             if fileName not in skippedFiles:
                 
                 # set non skipped input files as 'merged'
                 database.updateInputFile(datasetId, fileName, status="merged")
+
+                # add to the list of finished files 
+                finishedFiles.append(fileName)
+
             else:
                 
                 # increment failure counter for skipped input files
-                database.updateInputFile(datasetId, fileName, status="unmerged", \
-                         maxAttempts=int(self.args['MaxInputAccessFailures']))
+                newStatus = database.updateInputFile( \
+                       datasetId, fileName, \
+                       status = "unmerged", \
+                       maxAttempts = int(self.args['MaxInputAccessFailures']))
+
+                # add invalid files to list of non finished files
+                if newStatus == 'invalid':
+                    unFinishedFiles.append(fileName)
 
         # mark output file as 'merged'
         database.updateOutputFile(datasetId, jobName=jobName, status='merged')
 
         # commit changes
         database.commit()
+
+        # notify the PM
+        File.merged(finishedFiles)
+        if len(unFinishedFiles) > 0:
+            File.merged(unFinishedFiles, True)
 
         # log messages
         logging.info("Job %s finished succesfully, file information updated." \
@@ -355,7 +380,7 @@ class MergeAccountantComponent:
 
         try:
             self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
-        except ProdAgentException, ex:
+        except ProdAgentException:
             logging.error("trying to continue processing failure event")
 
         # verify enable condition
@@ -396,16 +421,29 @@ class MergeAccountantComponent:
         # get dataset id
         datasetId = database.getDatasetId(jobInfo['datasetName'])
 
-        # mark all input files as 'unmerged'
+        # mark all input files as 'unmerged' (or 'invalid')
+        unFinishedFiles = []
         for fileName in jobInfo['inputFiles']:
-            database.updateInputFile(datasetId, fileName, status="unmerged", \
-                         maxAttempts=int(self.args['MaxInputAccessFailures']))
 
-        # mark output file as 'merged'
+            # update status
+            newStatus = database.updateInputFile(\
+                   datasetId, fileName, \
+                   status = "unmerged", \
+                   maxAttempts = int(self.args['MaxInputAccessFailures']))
+
+            # add invalid files to list of non finished files
+            if newStatus == 'invalid':
+                unFinishedFiles.append(fileName)
+
+        # mark output file as 'failed'
         database.updateOutputFile(datasetId, jobName=jobName, status='failed')
 
         # commit changes
         database.commit()
+
+        # notify the PM about the unrecoverable files
+        if len(unFinishedFiles) > 0:
+            File.merged(unFinishedFiles, True)
 
         # log message
         logging.info("Job %s failed, file information updated." % jobName)
@@ -450,12 +488,31 @@ class MergeAccountantComponent:
        
         # set trigger access for cleanup
         self.trigger = TriggerAPI(self.ms) 
+
+        # set message service instance for PM interaction
+        File.ms = self.ms
         
         # wait for messages
         while True:
+
+            # create session object
+            Session.set_database(dbConfig)
+            Session.connect()
+
+            # start transaction
+            Session.start_transaction()
+
+            # get message
             messageType, payload = self.ms.get()
             self.ms.commit()
+
+            # process it
             self.__call__(messageType, payload)
+            self.ms.commit()
+
+            # commit and close session
+            Session.commit_all()
+            Session.close_all()
         
     ##########################################################################
     # get version information
