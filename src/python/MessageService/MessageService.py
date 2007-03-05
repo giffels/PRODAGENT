@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.8 2007/02/27 08:57:49 ckavka Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -671,7 +671,6 @@ class MessageService:
                       WHERE type='""" + str(typeid) + """'
                         AND dest='""" + str(self.procid) + """'
                      """
-        print sqlCommand
         cursor.execute(sqlCommand)
 
         # drop transaction status, no recover possible
