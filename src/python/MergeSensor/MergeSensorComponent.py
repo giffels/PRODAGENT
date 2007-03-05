@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.56 2007/02/26 18:05:53 ckavka Exp $"
+__version__ = "$Revision: 1.56 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -42,9 +42,6 @@ from dbsProcessedDataset import DbsProcessedDataset
 # DLS
 from dlsDataObjects import dlsApi
 import dlsClient
-
-# threads
-from threading import Thread, Condition
 
 # logging
 import logging
@@ -87,7 +84,7 @@ class MergeSensorComponent:
         self.args.setdefault("DBSAddress", None)
         self.args.setdefault("DBSType", "CGI")
         self.args.setdefault("ComponentDir", None)
-        self.args.setdefault("PollInterval", 30 )
+        self.args.setdefault("PollInterval", 60 )
         self.args.setdefault("Logfile", None)
         self.args.setdefault("StartMode", 'warm')
         self.args.setdefault("DBSDataTier", "GEN,SIM,DIGI")
@@ -246,18 +243,27 @@ class MergeSensorComponent:
         mergeWorkflow = os.path.join(baseDir, "mergeConfig.py")
         self.mergeWorkflow = file(mergeWorkflow).read()
 
+        # compute poll delay
+        delay = int(self.args['PollInterval'])
+        if delay < 30:
+            delay = 30 # a minimum value
+
+        seconds = str(delay % 60)
+        minutes = str((delay / 60) % 60)
+        hours = str(delay / 3600)
+
+        self.pollDelay = hours.zfill(2) + ':' + \
+                         minutes.zfill(2) + ':' + \
+                         seconds.zfill(2)
+        
         # datasets still not initialized
         self.datasets = None
                 
         # database connection not initialized
         self.database = None
         
-        # create thread synchronization condition variable
-        self.cond = Condition()
- 
-        # message service instances
+        # message service instance
         self.ms = None 
-        self.msThread = None
         
         # by default merge is not forced for any dataset
         self.forceMergeList = []
@@ -395,6 +401,11 @@ class MergeSensorComponent:
             self.closeRequest(payload)
             return
 
+        # poll DBS
+        if event == "MergeSensor:pollDBS":
+            self.poll()
+            return
+
         # wrong event
         logging.debug("Unexpected event %s, ignored" % event)
 
@@ -425,20 +436,13 @@ class MergeSensorComponent:
                          % workflowFile)
             return
         
-         # critical region start
-        self.cond.acquire()
-                                                                                
         # add info
         try:
             datasetIdList = self.datasets.add(workflowFile)
         except (InvalidDataTier, MergeSensorError, InvalidDataset), ex:
-            self.cond.release()
             logging.error(ex)
             return
         
-        # critical region end
-        self.cond.release()
-                                                                                
         # ignore not accepted datasets, logging messages already displayed
         if datasetIdList == []:
             return
@@ -449,17 +453,11 @@ class MergeSensorComponent:
         # create workflow specification for new datasets
         spec = WorkflowSpec()
                                                                                 
-        # critical region start
-        self.cond.acquire()
-                                                                                
         # get parameters from source datasets
         properties = {}
         for datasetId in datasetIdList:
             properties[datasetId] = self.datasets.getProperties(datasetId)
         
-        # critical region end
-        self.cond.release()
-                                                                                
         # get common dataset info from first dataset
         firstDatasetId = datasetIdList[0]
         
@@ -560,15 +558,9 @@ class MergeSensorComponent:
 
         """
 
-        # critical region start
-        self.cond.acquire()
-
         # get list of datasets and forced merge status
         datasetList = self.datasets.list()
         forceMergeList = self.forceMergeList
-
-        # critical region end
-        self.cond.release()
 
         # verify if it is currently watched
         if not datasetPath in datasetList:
@@ -582,14 +574,8 @@ class MergeSensorComponent:
                           datasetPath)
             return
 
-        # critical region start
-        self.cond.acquire()
-
         # add to the list of datasets with force merge in next DBS poll cycle
         self.forceMergeList.append(datasetPath)
-
-        # critical region end
-        self.cond.release()
 
     ##########################################################################
     # handle a temporary stop event
@@ -938,14 +924,8 @@ class MergeSensorComponent:
 
         """
 
-        # critical region start
-        self.cond.acquire()
-
         # get list of datasets
         datasetList = self.datasets.list()
-
-        # critical region end
-        self.cond.release()
 
         # verify if it is currently watched
         if not datasetPath in datasetList:
@@ -953,15 +933,9 @@ class MergeSensorComponent:
                           datasetPath)
             return
 
-        # critical region start
-        self.cond.acquire()
-
         # add it to the list of datasets to be removed
         self.toBeRemoved.append(datasetPath)
 
-        # critical region end
-        self.cond.release()
-        
         logging.info("Dataset %s scheduled for closing operation." % \
                      datasetPath)
 
@@ -1013,9 +987,6 @@ class MergeSensorComponent:
                           % workflowFile)
             return
 
-        # critical region start
-        self.cond.acquire()
-
         # get list of currently watched datasets
         datasetList = self.datasets.list()
         
@@ -1031,10 +1002,6 @@ class MergeSensorComponent:
                 
         # add refined list
         self.toBeRemoved.extend(toBeRemovedList)
-
-        # critical region end
-        self.cond.release()
-        
 
         logging.info("Datasets %s scheduled for closing operation." % \
                      toBeRemovedList)
@@ -1062,9 +1029,6 @@ class MergeSensorComponent:
           
         """
       
-        # critical region start
-        self.cond.acquire()
-        
         # verify if the dataset has to be removed
         if (datasetPath in self.toBeRemoved):
             
@@ -1073,17 +1037,11 @@ class MergeSensorComponent:
             
             # also from the list
             self.toBeRemoved.remove(datasetPath)
-            
-            # critical region end
-            self.cond.release()
-            
+           
             logging.info("Dataset %s closed." % datasetPath)
             
             return
         
-        # critical region end
-        self.cond.release()
-              
         # check for limits
         if status["limited"] == "yes" and status["remainingjobs"] == 0:
             
@@ -1106,18 +1064,12 @@ class MergeSensorComponent:
         # log information
         logging.info("Polling DBS for %s" % datasetPath)
 
-        # critical region start
-        self.cond.acquire()
-
         # check forced merge condition
         forceMerge = datasetPath in self.forceMergeList
  
         if forceMerge: 
             logging.info("Forced merge on dataset %s" % datasetPath)
  
-        # critical region end
-        self.cond.release()
-
         # get file list in dataset
         fileList = self.getFileListFromDBS(datasetPath)
        
@@ -1131,33 +1083,21 @@ class MergeSensorComponent:
                   "Forced merge does not apply to dataset %s due to %s" \
                              % (datasetPath, "empty file condition"))
 
-                # critical region start
-                self.cond.acquire()
-
                 # remove dataset from forced merged datasets
                 self.forceMergeList.remove(datasetPath)
-
-                # critical region end
-                self.cond.release()
 
             # just return
             return
        
-        # critical region start
-        self.cond.acquire()
-
         # update file information
         self.datasets.updateFiles(datasetPath, fileList)
         
         # verify if it can be merged
         (mergeable,
-         selectedSet,
          fileBlockId,
-         oldFile) = self.datasets.mergeable(datasetPath, forceMerge)
+         selectedSet,
+         originalJob) = self.datasets.mergeable(datasetPath, forceMerge)
  
-        # critical region end
-        self.cond.release()
-
         # generate one job for every mergeable set of files in dataset
         while (mergeable):
        
@@ -1184,19 +1124,13 @@ class MergeSensorComponent:
                                             storageElement, \
                                             time.time())
 
-            # critical region start
-            self.cond.acquire()
-
             # define merge job
-            outFile = self.datasets.addMergeJob(datasetPath, selectedSet, \
-                                                jobId, oldFile)
+            outFile = self.datasets.addMergeJob(datasetPath, jobId, \
+                                                selectedSet, originalJob)
 
             # get properties
             properties = self.datasets.getProperties(datasetPath)
 
-            # critical region end
-            self.cond.release()
-        
             # build specification files
             dataTier = properties["dataTier"]
             secondaryOutputTiers = properties["secondaryOutputTiers"]
@@ -1232,15 +1166,9 @@ class MergeSensorComponent:
             if status["limited"] == "yes":
                 newStatus["remainingjobs"] = status["remainingjobs"] - 1
             
-            #critical region start
-            self.cond.acquire()
-
             # update MergeSensor status
             self.database.setStatus(newStatus)
             status = self.database.getStatus()
-            
-            # critical region end
-            self.cond.release()
             
             # check for limits
             if status["limited"] == "yes" and newStatus["remainingjobs"] == 0:
@@ -1251,29 +1179,17 @@ class MergeSensorComponent:
                              self.args['PollInterval'])
                 break
 
-            #critical region start
-            self.cond.acquire()
- 
             # verify again the same dataset for another set
             (mergeable,
-             selectedSet,
              fileBlockId,
+             selectedSet,
              oldFile) = self.datasets.mergeable(datasetPath, forceMerge)
-
-            # critical region end
-            self.cond.release()
 
         # reset forceMerge status if set
         if (forceMerge):
 
-            # critical region start
-            self.cond.acquire()
-
             # remove dataset from forced merged datasets
             self.forceMergeList.remove(datasetPath)
-
-            # critical region end
-            self.cond.release()
 
         return
 
@@ -1309,14 +1225,8 @@ class MergeSensorComponent:
           
         """
 
-        # critical region start
-        self.cond.acquire()
-
         # get Merge Sensor status
         status = self.database.getStatus()
-
-        # critical region end
-        self.cond.release()
 
         # get dataset properties
         workflowName = properties['workflowName']
@@ -1502,10 +1412,10 @@ class MergeSensorComponent:
 
         # publish event
         if self.queueMode:
-            self.msThread.publish("QueueJob", mergeSpecURL)
+            self.ms.publish("QueueJob", mergeSpecURL)
         else:
-            self.msThread.publish("CreateJob", mergeSpecURL)
-        self.msThread.commit()
+            self.ms.publish("CreateJob", mergeSpecURL)
+        self.ms.commit()
 
         return
 
@@ -1621,14 +1531,9 @@ class MergeSensorComponent:
           none
           
         """
-        # critical region start
-        self.cond.acquire()
 
         # get Merge Sensor status
         status = self.database.getStatus()
-
-        # critical region end
-        self.cond.release()
 
         # check stopped status
         if status["status"] == "stopped":
@@ -1661,14 +1566,8 @@ class MergeSensorComponent:
                 time.sleep(float(self.args['PollInterval']))
                 return
             
-        # critical region start
-        self.cond.acquire()
-
         # get list of datasets
         datasetList = self.datasets.list()
-
-        # critical region end
-        self.cond.release()
 
         logging.info("Start polling DBS")
 
@@ -1684,17 +1583,12 @@ class MergeSensorComponent:
                 logging.warning(msg)
                 continue
             
-            # critical region start
-            self.cond.acquire()
-
             # update status
             status = self.database.getStatus()
 
-            # critical region end
-            self.cond.release()
-
-        # sleep for the specified time
-        time.sleep(float(self.args['PollInterval']))
+        # generate new polling DBS cycle
+        self.ms.publish('MergeSensor:pollDBS', '', self.pollDelay)
+        self.ms.commit()
         return
    
     ##########################################################################
@@ -1966,7 +1860,7 @@ class MergeSensorComponent:
         """
         _startComponent_
 
-        Fire up the two main threads
+        Start the merge sensor component
         
         Arguments:
         
@@ -2008,13 +1902,11 @@ class MergeSensorComponent:
         # set maximum input file failures
         Dataset.setMaxInputFailures(int(self.args['MaxInputAccessFailures']))
 
-        # create message service instances
+        # create message service instance
         self.ms = MessageService()
-        self.msThread = MessageService()
         
         # register
         self.ms.registerAs("MergeSensor")
-        self.msThread.registerAs("MergeSensorThread")
         
         # subscribe to messages
         self.ms.subscribeTo("NewDataset")
@@ -2028,31 +1920,18 @@ class MergeSensorComponent:
         self.ms.subscribeTo("MergeSensor:ReSubmit")
         self.ms.subscribeTo("MergeSensor:CloseDataset")
         self.ms.subscribeTo("CloseRequest")
-       
-        # start polling thread
-        pollingThread = PollDBS(self.poll)
-        pollingThread.start()
-        
+        self.ms.subscribeTo("MergeSensor:pollDBS")
+
+        # generate first polling cycle
+        self.ms.remove("MergeSensor:pollDBS")
+        self.ms.publish("MergeSensor:pollDBS", "")
+        self.ms.commit()
+
         # wait for messages
         while True:
             
             # get a single message
             messageType, payload = self.ms.get()
-
-            # verify that the polling thread is running, if not stop the main
-            # thread also, so the whole component stops working.
-
-            # if the component is stopped, the message will be available for
-            # processing on the next restart of the component, since it is
-            # not removed from the message service
-            
-            if not pollingThread.isAlive():
-                
-                logging.error("Error: polling thread is not running, " + \
-                              "the whole component is stopped now.")
-                
-                # exit
-                sys.exit(1)
 
             # commit the reception of the message
             self.ms.commit()
@@ -2079,90 +1958,3 @@ class MergeSensorComponent:
             "\nDataset: " + Dataset.getVersionInfo() + \
             "\nMergeSensorDB: " + MergeSensorDB.getVersionInfo() + "\n"
     
-##############################################################################
-# PollDBS class
-##############################################################################
-                                                                                
-class PollDBS(Thread):
-    """
-    Thread that performs DBS polling 
-    """
-
-    ##########################################################################
-    # thread initialization
-    ##########################################################################
-
-    def __init__(self, poll):
-        """
-        __init__
-
-        Initialize thread and set polling callback
-
-        Arguments:
-        
-          poll -- the DBS polling function
-          
-        Return:
-        
-          list of files organized by fileblock
-
-        """
-        Thread.__init__(self)
-        self.poll = poll;
-
-    ##########################################################################
-    # thread main body
-    ##########################################################################
-
-    def run(self):
-        """
-        __run__
-
-        Performs polling on DBS
-        
-        Arguments:
-        
-          none
-          
-        Return:
-        
-          none
-
-        """
-
-        # at most five consecutive failed attempts to run the polling thread
-        failedAttempts = 0
-        
-        # performs DBS polling indefinitely
-        while True:
-            
-            # perform dataset polling
-            try:
-                self.poll()
-
-            # error
-            except Exception, ex:
-                
-                # log error message
-                logging.error("Error in polling thread: " + str(ex))
-                
-                # try at most 5 times
-                if failedAttempts == 5:
-                    
-                    logging.error("Cannot restart polling. Aborting")
-                    logging.error("\nWarning: Polling thread is not running!")
-                    sys.exit(1)
-                    
-                # increment failure counter
-                failedAttempts += 1
-                
-                logging.error("Trying to restart polling in 5 minutes... " + \
-                              "(attempt %s)" % failedAttempts)
-
-                # wait for five minutes
-                time.sleep(300)                
-                
-            # no errors, reset failure counter
-            else:
-                failedAttempts = 0
-                
