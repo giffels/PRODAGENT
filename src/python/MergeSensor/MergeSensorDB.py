@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.16 2007/01/26 15:16:12 ckavka Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -1311,7 +1311,7 @@ class MergeSensorDB:
           
         Return:
             
-          none
+          the new status of the file 
 
         """
     
@@ -1422,6 +1422,9 @@ class MergeSensorDB:
 
         # close cursor
         cursor.close()
+
+        # return status
+        return status
 
     ##########################################################################
     # update output file information
