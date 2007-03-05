@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.32 2006/10/11 11:25:33 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.34 2007/02/07 12:07:45 bacchi Exp $"
 
 import socket
 import time
@@ -44,6 +44,7 @@ import fcntl
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 from ProdAgentBOSS import BOSSCommands
 import  ProdAgentCore.LoggingUtils as LoggingUtils
+from ProdAgentCore.ProdAgentException import ProdAgentException
 class TrackingComponent:
     """
     _TrackingComponent_
@@ -61,6 +62,7 @@ class TrackingComponent:
         self.args.setdefault("PollInterval", 10 )
         self.args.setdefault("jobsToPoll", 100)
         self.args.setdefault("ComponentDir","/tmp")
+        self.args.setdefault("proxyCacheDir","NULL")
         self.args['Logfile'] = None
         self.args.setdefault("verbose",0)
         self.args.update(args)
@@ -282,21 +284,41 @@ class TrackingComponent:
         jobId that is returned.
 
         """
-# if BOSS db is empty there is an exception but you just don't have anything to do
-        try:
-            goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs = self.pollBOSSDB()
-        except StandardError, ex:
-            return 0
+        # if BOSS db is empty there is an exception but you just don't have anything to do
+        if self.args["proxyCacheDir"]== "NULL" :
+            
+            try:
+                goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs = self.pollBOSSDB()
+                self.check(goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs)
+
+            except StandardError, ex:
+                return 0
+        else:
+            proxyDir=self.args["proxyCacheDir"]
+            try:
+                a=os.listdir(proxyDir)
+            except:
+                return 0
+            for proxy in a:
+                os.environ["X509_USER_PROXY"]=proxyDir+proxy
+                logging.info("using %s"%os.environ["X509_USER_PROXY"])
+                try:
+                    goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs = self.pollBOSSDB()
+                    self.check(goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs)
+                except StandardError, ex:
+                    return 0
         # here we manage jobs
         
-
+    def check(self,goodJobs, badJobs, rJobs,pJobs, wJobs, sJobs, subJobs, cJobs,chJobs,uJobs):
+        
         logging.debug("Success Jobs "+  str(len(goodJobs)))
         
         for jobId in goodJobs:
         
             #if the job is ok for the scheduler retrieve output
 
-#            outp=self.BOSS4getoutput(jobId)
+            # outp=self.BOSS4getoutput(jobId)
+            jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
             outp=BOSSCommands.getoutput(jobId,self.directory,self.bossCfgDir)
             logging.info("BOSS Getoutput ")
             self.dashboardPublish(jobId[0],"ENDED_")
@@ -305,30 +327,47 @@ class TrackingComponent:
                 #self.reportfilename=self.BOSS4reportfilename(jobId)
                 self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
                 logging.debug("%s exists=%s"%(self.reportfilename,os.path.exists(self.reportfilename)))
+                success=False
                 if os.path.exists(self.reportfilename):
                     #AF: remove the notifyJobState since it's blocking the rest of the code
                     #AFlogging.debug("Notify JobState.finished: %s" % self.reportfilename)
                     #AFself.notifyJobState(self.reportfilename)
 
                     logging.debug("check Job Success %s"%checkSuccess(self.reportfilename))
-                    
-                    if checkSuccess(self.reportfilename):
-                        
-                        self.jobSuccess(jobId)
-                        
-                    else:
-                        try:
-                            self.cmsErrorJobs[jobId[0]]+=0
-                        except StandardError:
-                            self.cmsErrorJobs[jobId[0]]=0
-                            self.jobFailed(jobId)
-
-                            logging.error("%s - %d" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
-                            self.jobFailed(jobId )
-                            
-                            
+                    success=checkSuccess(self.reportfilename)
                 else:
-                    self.resubmit(jobId)
+                    logging.debug("BOSS check Job Success %s"%BOSSCommands.checkSuccess(jobId[0],self.bossCfgDir))
+                    success=BOSSCommands.checkSuccess(jobId[0],self.bossCfgDir)
+                    fwjr=FwkJobReport()
+                    fwjr.jobSpecId=jobSpecId
+                    self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
+
+                    if success:
+                        logging.info( "%s  no FrameworkReport" % (jobId.__str__() ))
+                        logging.info( "%s  Creating FrameworkReport" % (jobId.__str__() ))
+                        fwjr.status="Success"
+                        fwjr.exitCode=0
+                    else:
+                        fwjr.status="Failed"
+                        fwjr.exitCode=-1
+                    fwjr.write(self.reportfilename)
+                
+                    
+                if success:
+                        
+                    self.jobSuccess(jobId)
+                        
+                else:
+                    try:
+                        self.cmsErrorJobs[jobId[0]+"_"+jobSpecId]+=0
+                    except StandardError:
+                        self.cmsErrorJobs[jobId[0]+"_"+jobSpecId]=0
+                        self.jobFailed(jobId)
+
+                        logging.error("%s - %d" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]+"_"+jobSpecId]))
+                        self.jobFailed(jobId )
+                            
+                            
 
             else:
                 if outp.find("Unable to find output sandbox file:")>=0:
@@ -343,9 +382,9 @@ class TrackingComponent:
             # logging.debug(jobId)
             
             #if there aren't failed jobs don't print anything
-
+            jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
             try:
-                self.failedJobsPublished[jobId[0]]+=0
+                self.failedJobsPublished[jobId[0]+"_"+jobSpecId]+=0
             except StandardError,ex:
                 #self.reportfilename=self.BOSS4reportfilename(jobId)
                 self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
@@ -362,8 +401,8 @@ class TrackingComponent:
                 logging.info( "Creating FrameworkReport %s" %self.reportfilename )
                 fwjr=FwkJobReport()
                 #fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
-                logging.info("JobSpecId=%s"%BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir))
-                fwjr.jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
+                logging.info("JobSpecId=%s"%jobSpecId)
+                fwjr.jobSpecId=jobSpecId
                 fwjr.exitCode=-1
                 fwjr.status="Failed"
                 fwjr.write(self.reportfilename)
@@ -499,18 +538,18 @@ class TrackingComponent:
 
         Creates a dummy FrameworkJobReport and send a JobFailed message
         """
-
+        jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
         try:
-            self.cmsErrorJobs[jobId[0]]+=0
+            self.cmsErrorJobs[jobId[0]+"_"+jobSpecId]+=0
         except StandardError:
-            self.cmsErrorJobs[jobId[0]]=0
+            self.cmsErrorJobs[jobId[0]+"_"+jobSpecId]=0
             
-            logging.error("%s - %d" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
-            logging.info( "%s - %d no FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
-            logging.info( "%s - %d Creating FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
+            logging.error("%s - %d" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]+"_"+jobSpecId]))
+            logging.info( "%s - %d no FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]+"_"+jobSpecId]))
+            logging.info( "%s - %d Creating FrameworkReport" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]+"_"+jobSpecId]))
             fwjr=FwkJobReport()
             #fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
-            fwjr.jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
+            fwjr.jobSpecId=jobSpecId
             self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
             fwjr.exitCode=-1
             fwjr.status="Failed"
@@ -586,9 +625,10 @@ class TrackingComponent:
         """
         
         #if it's the first time we see this failed job we  publish JobFailed event and add the job in failedJobsPublished dict
-        
+
+        jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
         try:
-            self.failedJobsPublished[jobId[0]] += 0
+            self.failedJobsPublished[jobId[0]+"_"+jobSpecId] += 0
         except StandardError:
             self.archiveJob("Failed",jobId)
             msg=self.reportfilename
@@ -596,7 +636,7 @@ class TrackingComponent:
             self.msThread.publish("JobFailed", msg)
             self.msThread.commit()
             logging.info("published JobFailed with payload %s"%msg)
-            self.failedJobsPublished[jobId[0]] = 1
+            self.failedJobsPublished[jobId[0]+"_"+jobSpecId] = 1
            
         return
     
@@ -679,15 +719,16 @@ class TrackingComponent:
                 subPath=BOSSCommands.subdir(jobId[0],self.bossCfgDir)
             except:
                 subPath=""
-            logging.debug("SubmissionPath '%s'"%subPath)
-            try:
-                rmtree(subPath)
-#                os.remove("%s/BossArchive_%s_g0.tar"%(subPath,taskid))
-#                logging.debug("removed %s/BossArchive_%s_g0.tar"%(subPath,taskid))
-#                os.remove("%s/BossClassAdFile_%s"%(subPath,taskid))
-                logging.info("removed %s"%(subPath,taskid))
-            except:
-                logging.error("Failed to remove submission files")
+            logging.info("SubmissionPath '%s'"%subPath)
+            if BOSSCommands.taskEnded(jobId[0],self.bossCfgDir):
+                try:
+                    rmtree(subPath)
+                    # os.remove("%s/BossArchive_%s_g0.tar"%(subPath,taskid))
+                    # logging.debug("removed %s/BossArchive_%s_g0.tar"%(subPath,taskid))
+                    # os.remove("%s/BossClassAdFile_%s"%(subPath,taskid))
+                    logging.info("removed %s for task %s"%(subPath,taskid))
+                except:
+                    logging.error("Failed to remove submission files")
         return
 
         
@@ -700,10 +741,10 @@ class TrackingComponent:
         """
         
         #if it's the first time we see this failed job we  publish JobFailed event and add the job in failedJobsPublished dict
-       # logging.debug("SubmissionFailed: %s" % msg)
-
+        # logging.debug("SubmissionFailed: %s" % msg)
+        jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
         try:
-            self.failedJobsPublished[jobId[0]] += 0
+            self.failedJobsPublished[jobId[0]+"_"+jobSpecId] += 0
         except StandardError:
             JobStateChangeAPI.submitFailure(msg)
             
@@ -712,7 +753,7 @@ class TrackingComponent:
             self.msThread.commit()
             logging.info("published SubmissionFailed with payload %s"%msg)
                                                                                 
-            self.failedJobsPublished[jobId[0]] = 1
+            self.failedJobsPublished[jobId[0]+"_"+jobSpecId] = 1
            
         return
 
