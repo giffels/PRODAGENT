@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorDB.py,v 1.16 2007/01/26 15:16:12 ckavka Exp $"
+__version__ = "$Revision: 1.16 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -1096,9 +1096,11 @@ class MergeSensorDB:
 
         # check for file block
         rows = cursor.rowcount
-        
+ 
         # the block is new
         if rows == 0:
+
+            blockId = 'last_insert_id()'
 
             # insert it
             sqlCommand = """
@@ -1134,39 +1136,24 @@ class MergeSensorDB:
                 # generate exception
                 raise MergeSensorDBError, \
                    'Insertion of file block %s failed' % fileBlock
-            
-            # get id
-            sqlCommand = "SELECT LAST_INSERT_ID()"
-            
-            # execute command
-            try:
-                cursor.execute(sqlCommand)
-                
-            except MySQLdb.Error:
+       
+        # block is not new 
+        else:    
 
-                # if it does not work, we lost connection to database.
-                self.conn = self.connect()
-                self.redo()
-                cursor = self.conn.cursor()
+            blockId = "'" + str(cursor.fetchone()[0]) + "'"
 
-                # retry
-                cursor.execute(sqlCommand)
-
-        # get block id
-        block = cursor.fetchone()[0]
-        
         # insert input file
         sqlCommand = """
                      INSERT
                        INTO merge_inputfile
                             (name, block, dataset, filesize, eventcount)
                      VALUES ('""" + fileName + """', 
-                             '""" + str(block) +"""',
+                             """ + str(blockId) + """,
                              '""" + str(datasetId) + """',
                              '""" + str(fileSize) + """',
                              '""" + str(events) + """')
                      """
-                                                                         
+            
         # execute command
         try:
             cursor.execute(sqlCommand)
@@ -1614,52 +1601,165 @@ class MergeSensorDB:
         cursor.close()
 
     ##########################################################################
-    # add output file
+    # add job
     ##########################################################################
-            
-    def addOutputFile(self, datasetId, fileName, jobId):
+
+    def addJob(self, datasetId, fileName, jobId, fileList):
         """
-        __addOutputFile__
-        
-        Add an output file to a file block. If it exists, increment instance
-        counter.
-        
+        __addJob__
+
+        Add a new job.
+
         Arguments:
-        
+
           datasetId -- the dataset id in database
           fileName -- the output merged file name
           jobId -- the job name
-          
+          fileList -- the list of input files
+
         Return:
-            
-          instance -- instance number of the file (0 = new)
-          fileId -- id of the output file
+
+          none
 
         """
-        
+
         # get cursor
         try:
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
-            
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
             self.conn = self.connect()
             self.redo()
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
-            
+
+        # insert it
+        sqlCommand = """
+                 INSERT INTO merge_outputfile
+                        (name, dataset, mergejob)
+                 VALUES ('""" + fileName + """',
+                         '""" + str(datasetId) + """',
+                         '""" + jobId + """')
+                 """
+       
+        # execute command
+        try:
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+
+        # check result
+        rows = cursor.rowcount
+
+        # wrong insert?
+        if rows == 0:
+
+            # close cursor
+            cursor.close()
+
+            # generate exception
+            raise MergeSensorDBError, \
+               'Insertion of outputfile %s failed' % fileName
+
+        # update input file status
+        for aFile in fileList:
+
+            # update input file information
+            sqlCommand = """
+                     UPDATE merge_inputfile
+                        SET status='undermerge',
+                            mergedfile=last_insert_id()
+                      WHERE dataset='""" + str(datasetId) + """'
+                        AND name='""" + aFile + """'
+                     """
+
+            # execute command
+            try:
+                cursor.execute(sqlCommand)
+                self.transaction.append(sqlCommand)
+
+            except MySQLdb.Error:
+
+                # if it does not work, we lost connection to database.
+                self.conn = self.connect()
+                self.redo()
+                cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+                # retry
+                cursor.execute(sqlCommand)
+                self.transaction.append(sqlCommand)
+
+            # process results
+            rows = cursor.rowcount
+
+            # cannot be updated
+            if rows == 0:
+
+                # generate exception
+                cursor.close()
+                raise MergeSensorDBError, \
+                       'Update operation on file %s failed' % aFile
+    
+        # close cursor
+        cursor.close()
+
+    ##########################################################################
+    # resubmit job
+    ##########################################################################
+
+    def resubmitJob(self, datasetId, jobId, newJobId):
+        """
+        __resubmitJob__
+
+        resubmit an existing job.
+
+        Arguments:
+
+          datasetId -- the dataset id in database
+          fileName -- the output merged file name
+          jobId -- the job name
+          newJobId -- the new job id
+
+        Return:
+
+          the output file
+
+        """
+
+        # get cursor
+        try:
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
         # get output file information
         sqlCommand = """
                      SELECT *
                        FROM merge_outputfile
-                      WHERE name='""" + fileName + """'
+                      WHERE mergeJob='""" + jobId + """'
                         AND dataset='""" + str(datasetId) + """'
                      """
-                                                    
+
         # execute command
         try:
             cursor.execute(sqlCommand)
-            
+
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
@@ -1670,122 +1770,97 @@ class MergeSensorDB:
             # retry
             cursor.execute(sqlCommand)
 
-        # check for file block
+        # check for job
         rows = cursor.rowcount
-        
-        # the file is new, create it
-        if rows == 0:
 
-            # insert it
-            sqlCommand = """
-                     INSERT INTO merge_outputfile
-                            (name, dataset, mergejob)
-                     VALUES ('""" + fileName + """',
-                            '""" + str(datasetId) + """',
-                            '""" + jobId + """')
-                     """
-            # execute command
-            try:
-                cursor.execute(sqlCommand)
-                self.transaction.append(sqlCommand)
-                
-            except MySQLdb.Error:
-
-                # if it does not work, we lost connection to database.
-                self.conn = self.connect()
-                self.redo()
-                cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
-
-                # retry
-                cursor.execute(sqlCommand)
-                self.transaction.append(sqlCommand)
-                
-            # check result
-            rows = cursor.rowcount
-            
-            # wrong insert?
-            if rows == 0:
-
-                # close cursor
-                cursor.close()
-
-                # generate exception
-                raise MergeSensorDBError, \
-                   'Insertion of outputfile %s failed' % fileName
-            
-            # get id
-            sqlCommand = "SELECT LAST_INSERT_ID()"
-            
-            # execute command
-            try:
-                cursor.execute(sqlCommand)
-
-            except MySQLdb.Error:
-
-                # if it does not work, we lost connection to database.
-                self.conn = self.connect()
-                self.redo()
-                cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
-
-                # retry
-                cursor.execute(sqlCommand)
-
-            # get file id
-            fileId = (cursor.fetchone()).values()[0]
-            
-            # close cursor
-            cursor.close()
-            
-            # return file id of a newly created file, 0 = first instance
-            return (0, fileId)
-
-        # get file id
-        row = cursor.fetchone()
-        fileId = row['id']
-        instance = row['instance']
-        
-        # update output file informarion
-        sqlCommand = """
-                     UPDATE merge_outputfile
-                        SET status='undermerge',
-                            instance=instance+1,
-                            mergejob='""" + jobId + """'
-                      WHERE name='""" + fileName + """'
-                        AND dataset='""" + str(datasetId) + """'
-                     """
-                                                                         
-        # execute command
-        try:
-            cursor.execute(sqlCommand)
-            self.transaction.append(sqlCommand)
-
-        except MySQLdb.Error:
-
-            # if it does not work, we lost connection to database.
-            self.conn = self.connect()
-            self.redo()
-            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
-
-            # retry
-            cursor.execute(sqlCommand)
-            self.transaction.append(sqlCommand)
-            
-        # process results
-        rows = cursor.rowcount
-        
-        # close cursor
-        cursor.close()
-
-        # cannot be updated
+        # the job is not there!
         if rows == 0:
 
             # generate exception
             raise MergeSensorDBError, \
-                   'Update operation on file %s failed' % fileName
+               'Merge job %s is not in database, cannot resubmit' % jobId
 
-        # return file id of updated file and instance number
-        return (instance, fileId)
-    
+        # get file name information
+        row = cursor.fetchone()
+
+        mergeJobId = row['id']
+        name = row['name']
+        instance = row['instance']
+        
+        # define the new file name
+        indexHyphen = name.find('_')
+        if indexHyphen != -1:
+            name = name[:indexHyphen]
+        name = name + '_' + str(instance)
+
+        # insert it
+        sqlCommand = """
+                 UPDATE merge_outputfile
+                    SET name='""" + str(name) + """',
+                        instance=instance+1,
+                        status='undermerge',
+                        mergejob='""" + str(newJobId) + """'
+                  WHERE id='""" + str(mergeJobId) +"""'
+                 """
+
+        # execute command
+        try:
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+
+        # check result
+        rows = cursor.rowcount
+
+        # wrong update?
+        if rows == 0:
+
+            # close cursor
+            cursor.close()
+
+            # generate exception
+            raise MergeSensorDBError, \
+               'Update of resubmitted job %s failed' % jobId
+
+        # update input file information
+        sqlCommand = """
+                 UPDATE merge_inputfile
+                    SET status='undermerge'
+                  WHERE dataset='""" + str(datasetId) + """'
+                    AND mergedfile='""" + str(mergeJobId) + """'
+                     """
+
+        # execute command
+        try:
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlCommand)
+            self.transaction.append(sqlCommand)
+
+        # close cursor
+        cursor.close()
+
+        return name
+
     ##########################################################################
     # get an output file to be remerged
     ##########################################################################
@@ -1803,8 +1878,7 @@ class MergeSensorDB:
           
         Return:
             
-          the name of the output file, the lists of input files
-          and the name of the output file
+          the name of the job, the file block id and the list of files
 
         """
         
@@ -1822,7 +1896,8 @@ class MergeSensorDB:
         # get output file information
         sqlCommand = """
                      SELECT id,
-                            name
+                            name,
+                            mergejob
                        FROM merge_outputfile
                       WHERE dataset='""" + str(datasetId) + """'
                         AND status='do_it_again'
@@ -1860,6 +1935,7 @@ class MergeSensorDB:
         
         fileId = row['id']
         fileName = row['name']
+        jobName = row['mergejob']
         
         # get associated input files
         sqlCommand = """
@@ -1943,7 +2019,7 @@ class MergeSensorDB:
         cursor.close()
 
         # pack and return everything
-        return (fileList, blockName, fileName)
+        return (jobName, blockName, fileList)
     
     ##########################################################################
     # redo job
