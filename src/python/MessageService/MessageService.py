@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.7 2006/11/30 10:24:01 ckavka Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: MessageService.py,v 1.8 2007/02/27 08:57:49 ckavka Exp $"
+__version__ = "$Revision: 1.8 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -628,6 +628,61 @@ class MessageService:
         # return 
         cursor.close()
         return 
+
+    ##########################################################################
+    # remove messages of a certain time addressed to me
+    ##########################################################################
+
+    def remove(self, messageType):
+        """
+        __remove__
+
+        Remove all messages of a certain type addressed to me.
+        """
+
+        # logging
+        logging.debug("MS: remove messages of type %s." % messageType)
+
+        # get cursor
+        cursor = self.conn.cursor()
+
+        # get message type (if it is in database)
+        sqlCommand = """
+                     SELECT typeid
+                       FROM ms_type
+                       WHERE name = '""" + messageType + """'
+                     """
+        cursor.execute(sqlCommand)
+        rows = cursor.rowcount
+
+        # no rows, nothing to do
+        if rows == 0:
+
+            return
+
+        # get type
+        row = cursor.fetchone()
+        typeid = row[0]
+
+        # remove all messsages
+        sqlCommand = """
+                     DELETE
+                       FROM ms_message
+                      WHERE type='""" + str(typeid) + """'
+                        AND dest='""" + str(self.procid) + """'
+                     """
+        print sqlCommand
+        cursor.execute(sqlCommand)
+
+        # drop transaction status, no recover possible
+        self.transaction = []
+
+        # commit
+        self.conn.commit()
+
+        # return
+        cursor.close()
+        return
 
     ##########################################################################
     # remove messages in history
