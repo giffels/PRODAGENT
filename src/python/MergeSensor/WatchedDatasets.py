@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.11 2006/12/01 10:40:52 ckavka Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.12 2006/12/06 14:18:59 evansde Exp $"
+__version__ = "$Revision: 1.12 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
@@ -280,7 +280,7 @@ class WatchedDatasets:
     # add a merge job
     ##########################################################################
 
-    def addMergeJob(self, datasetId, fileList, jobId, oldFile):
+    def addMergeJob(self, datasetId, jobId, selectedSet, oldJobId):
         """
         _addMergeJobs_
         
@@ -289,16 +289,17 @@ class WatchedDatasets:
         Arguments:
             
           datasetId -- the name of the dataset
-          fileList -- the list of files that the job will start to merge
           jobId -- the job name
-          oldFile -- name of output file in case of resubmission
+          selectedSet -- this list of input files to merge
+          oldJobId -- the old job id in case of resubmission 
           
         Return:
             
           the name of the output file
           
         """
-        return self.datasets[datasetId].addMergeJob(fileList, jobId, oldFile)
+        return self.datasets[datasetId].addMergeJob(jobId, selectedSet, \
+                                                    oldJobId)
 
     ##########################################################################
     # determine mergeable status of a dataset
@@ -317,14 +318,13 @@ class WatchedDatasets:
                         independently of file sizes
         Return:
             
-          tuple (condition, listFiles, fileBlockId, oldFile)
-          
+          tuple (condition, fileBlockId, fileList, oldJobId)          
           where condition is True if there is a subset of files eligible for
-          merging and False if not. listFiles contains the selected list of
+          merging and False if not. fileList contains the selected list of
           files, which can be directly used as an argument to addMergeJob.
           If there is no enough files to be merged, check for requirements
-          of merge jobs resubmissions. oldFile is None if it is a new
-          merge, or the name of the old file in case of resubmission.
+          of merge jobs resubmissions. oldJobId is None if it is a new
+          merge, or the id of the old job in case of resubmission. 
           
         """
         
@@ -334,14 +334,13 @@ class WatchedDatasets:
                
         # return merge condition, file list and file block 
         if fileList != []:
-            return (True, fileList, fileBlockId, None)
+            return (True, fileBlockId, fileList, None)
     
         # check for merge jobs to be resubmitted (as new jobs)
-        (fileList, fileBlockId, oldFile) = \
-               self.datasets[datasetId].getNewJob()
+        (jobName, fileBlockId, fileList) = self.datasets[datasetId].getNewJob()
     
         # return merge condition, file list and file block
-        return (fileList != [], fileList, fileBlockId, oldFile)
+        return (jobName != None, fileBlockId, fileList, jobName)
     
     ##########################################################################
     ##########################################################################
