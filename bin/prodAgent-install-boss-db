@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.16 2007/03/05 16:47:11 bacchi Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.17 2007/03/06 09:20:20 bacchi Exp $"
 
 import getpass
 import os
@@ -365,8 +365,9 @@ except Exception,ex:
 # now, set up the configuration, you can register
 y=''
 try:
-   print 'bossAdmin configureRTMonDB -name mysql -c ' + bossDbConfig['configDir']
-   stdin,stdout=os.popen4('bossAdmin configureRTMonDB -name mysql -c ' + bossDbConfig['configDir'])
+   configRT=bossPath+'/BossRTMon/bin/bossrtclientMySQL configureDB -c ' + bossDbConfig['configDir'] +' -config ' + bossDbConfig['configDir'] +'/MySQLRTConfig.clad -debug 2'
+   print configRT
+   stdin,stdout=os.popen4(configRT)
    lines=stdout.readlines()
    for line in lines:
       if "mysql -u root" in line :
