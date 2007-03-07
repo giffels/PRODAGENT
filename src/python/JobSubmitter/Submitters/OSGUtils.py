@@ -8,12 +8,12 @@ Common utils for OSG jobs
 
 
 def makeErrorReportScript(jobSpecId):
-
+    
     scriptBase = \
     """
-      echo "<FrameworkJobReport Name=\"%s\" Status=\"Failed\">" > FrameworkJobReport.xml
-      echo "<ExitCode Value=\"60999\"/>" >> FrameworkJobReport.xml
-      echo "<FrameworkError ExitStatus=\"60999\" Type=\"NoSpaceOnDevice\">" >> FrameworkJobReport.xml
+      echo '<FrameworkJobReport Name=\"%s\" Status=\"Failed\">' > FrameworkJobReport.xml
+      echo '<ExitCode Value=\"60999\"/>' >> FrameworkJobReport.xml
+      echo '<FrameworkError ExitStatus=\"60999\" Type=\"NoSpaceOnDevice\">' >> FrameworkJobReport.xml
       echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
       echo "  site=$OSG_SITE_NAME " >> FrameworkJobReport.xml
       echo "</FrameworkError>"  >> FrameworkJobReport.xml
@@ -88,9 +88,9 @@ fi
 
 if [ $PROCEED_WITH_SPEC != 1 ]; then
    echo "Unable to proceed without JobSpec File"
-   echo "<FrameworkJobReport Name=\"$JOB_SPEC_NAME\" Status=\"Failed\">" > FrameworkJobReport.xml
-   echo "<ExitCode Value=\"60998\"/>" >> FrameworkJobReport.xml
-   echo "<FrameworkError ExitStatus=\"60998\" Type=\"MissingJobSpecFile\">" >> FrameworkJobReport.xml
+   echo '<FrameworkJobReport Name="$JOB_SPEC_NAME" Status="Failed">' > FrameworkJobReport.xml
+   echo '<ExitCode Value="60998"/>' >> FrameworkJobReport.xml
+   echo '<FrameworkError ExitStatus="60998" Type="MissingJobSpecFile">' >> FrameworkJobReport.xml
    echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
    echo "  site=$OSG_SITE_NAME " >> FrameworkJobReport.xml
    echo "  jobspecfile=$JOB_SPEC_FILE " >> FrameworkJobReport.xml
@@ -134,9 +134,9 @@ if [ -e $PRODAGENT_JOB_INITIALDIR/FrameworkJobReport.xml ]; then
 else 
    echo "ERROR: No FrameworkJobReport produced by job!!!"
    echo "Generating failure report..."
-   echo "<FrameworkJobReport Name=\"$JOB_SPEC_NAME\" Status=\"Failed\">" > FrameworkJobReport.xml
-   echo "<ExitCode Value=\"60997\"/>" >> FrameworkJobReport.xml
-   echo "<FrameworkError ExitStatus=\"60997\" Type=\"JobReportMissing\">" >> FrameworkJobReport.xml
+   echo '<FrameworkJobReport Name=\"$JOB_SPEC_NAME\" Status=\"Failed\">' > FrameworkJobReport.xml
+   echo '<ExitCode Value=\"60997\"/>' >> FrameworkJobReport.xml
+   echo '<FrameworkError ExitStatus=\"60997\" Type=\"JobReportMissing\">' >> FrameworkJobReport.xml
    echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
    echo "  site=$OSG_SITE_NAME " >> FrameworkJobReport.xml
    echo "</FrameworkError>"  >> FrameworkJobReport.xml
@@ -162,3 +162,5 @@ def missingJobReportCheck(jobName):
         ]
     lines.append(missingRepScript)
     return lines
+
+
