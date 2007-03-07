@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.23 2007/02/07 14:56:12 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.24 2007/03/07 14:39:21 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -172,7 +172,8 @@ class LCGSubmitter(SubmitterInterface):
             bossSubmit+=" -rtmon NONE "
             
         except:
-          pass
+          bossSubmit+=" -rtmon NONE "
+          
         bossSubmit += " -schclassad %s"%schedulercladfile     #  //
         # // Executing BOSS Submit command
         #//
