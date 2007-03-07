@@ -251,6 +251,7 @@ componentFields = {
     "RetrievalInterval":"01:00:00",
     "AgentTag":"please insert a proper value",
     "Locations":"please insert a proper value",
+    "ProdMgrFeedback":"direct",
     "RssFeed": "no",
     },
 
@@ -360,6 +361,9 @@ they will be handling the same requests)
 this prodagent has access to. The elements in this list have to correspond with the entries
 found in the DLS associated to fileblocks (otherwise this prodagent will not get work
 for file based requests).
+-ProdMgrFeedback: This parameters if set to "direct" will imediately relay information back
+to the prodmgr after a job is successfully processed and before the data is safely stored. If
+it is set to "delay" it will wait until the data is properly merged.
 """,
   "MergeAccountant"     :\
 """
