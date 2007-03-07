@@ -7,17 +7,15 @@ ShREEK monitor manager module.
 """
 
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: ShREEKMonitorMgr.py,v 1.1 2005/12/30 18:54:25 evansde Exp $"
+__revision__ = "$Id: ShREEKMonitorMgr.py,v 1.1 2006/04/10 17:38:42 evansde Exp $"
 
 from ShREEK.ShREEKException import ShREEKException
 from ShREEK.ShREEKPluginMgr import ShREEKPlugins
 from ShREEK.MonitorState import MonitorState
 
-from ShLogger.LogStates import LogStates
-from ShLogger.LogInterface import LogInterface
 
 
-class ShREEKMonitorMgr(dict, LogInterface):
+class ShREEKMonitorMgr(dict):
     """
     Monitor Manager object for distributing calls to the Monitor
     Objects and managing them in sensible way.
@@ -29,7 +27,6 @@ class ShREEKMonitorMgr(dict, LogInterface):
         instance.
         """
         dict.__init__(self)
-        LogInterface.__init__(self)
         self.executionMgr = executionMgrRef
         self.monitorConfig = None
         self.updatorConfig = None
@@ -75,7 +72,7 @@ class ShREEKMonitorMgr(dict, LogInterface):
                     msg += "Caught Instantiating Monitor:\n"
                     msg += "Name %s Type: %s\n" % (monName, item.monitorType())
                     msg += str(ex)
-                    self.log(msg, LogStates.Alert)
+                    print "WARNING:", msg
                     continue
                 else:
                     raise ex
@@ -93,7 +90,7 @@ class ShREEKMonitorMgr(dict, LogInterface):
                     msg += "Caught Initialising Monitor:\n"
                     msg += "Name %s Type: %s\n" % (monName, item.monitorType())
                     msg += str(ex)
-                    self.log(msg, LogStates.Alert)
+                    print "WARNING: ", msg
                     continue
                 else:
                     raise ex
@@ -110,16 +107,14 @@ class ShREEKMonitorMgr(dict, LogInterface):
         try:
             newMonitor = ShREEKPlugins.getMonitor(monitorType)
         except ShREEKException, ex:
-            self.log(
-                "Load Monitor Failed: %s" % monitorType, 
-                LogStates.Alert)
+            print "WARNING: Load Monitor Failed: %s" % monitorType
             raise ex
         except Exception, ex:
             msg = "Exception while instantiating Monitor of Type:\n"
             msg += monitorType
             msg += "\nException Details:\n"
             msg += str(ex)
-            self.log(msg, LogStates.Alert)
+            print "WARNIG:" , msg
             raise ShREEKException(msg, MonitorType = monitorType,
                                   ClassInstance = self)
 
@@ -127,7 +122,7 @@ class ShREEKMonitorMgr(dict, LogInterface):
             msg = "WARNING: Failed to load Monitor of Type:\n"
             msg += "%s\n" % monitorType
             msg += "Monitor Type may not be registered with the Plugin Manager"
-            self.log(msg, LogStates.Alert)
+            print "WARNING:", msg
             raise ShREEKException(msg, MonitorType = monitorType,
                                   ClassInstance = self)
         return newMonitor
@@ -159,7 +154,7 @@ class ShREEKMonitorMgr(dict, LogInterface):
                     msg += "Caught Loading Updator:\n"
                     msg += "Updator Name %s\n" % updtrName
                     msg += str(ex)
-                    self.log(msg, LogStates.Alert)
+                    print "WARNING: ", msg
                     continue
                 else:
                     raise ex
@@ -179,15 +174,13 @@ class ShREEKMonitorMgr(dict, LogInterface):
         try:
             newUpdator = ShREEKPlugins.getUpdator(updatorName)
         except ShREEKException, ex:
-            self.log(
-                "LoadUpdatorMethod: Load Failed: %s" % updatorName, 
-                LogStates.Alert)
+            print "LoadUpdatorMethod: Load Failed: %s" % updatorName
             raise ex
         if newUpdator == None:
             msg = "WARNING: Failed to load Updator:\n"
             msg += "%s\n" % updatorName
             msg += "Updator may not be registered with the Plugin Manager"
-            self.log(msg, LogStates.Alert)
+            print msg
             raise ShREEKException(msg, UpdatorName = updatorName,
                                   ClassInstance = self)
         return newUpdator
@@ -207,7 +200,7 @@ class ShREEKMonitorMgr(dict, LogInterface):
         except StandardError, ex:
             msg = "Error in Shutdown from Monitor: %s\n" % k
             msg += "Details:\n%s" % str(ex)
-            self.log(msg, LogStates.Alert)
+            print msg
         for k in self.keys():
             del self[k]
         return
@@ -230,7 +223,7 @@ class ShREEKMonitorMgr(dict, LogInterface):
                 msg = "WARNING: Error ignored in Monitoring System:\n"
                 msg += "Caught Updating MonitorState:\n"
                 msg += str(ex)
-                self.log(msg, LogStates.Alert)
+                print msg
             else:
                 raise ex
         
@@ -242,7 +235,7 @@ class ShREEKMonitorMgr(dict, LogInterface):
                     msg = "WARNING: Error ignored in Monitoring System:\n"
                     msg += "Caught on PeriodicUpdate from %s\n" % key
                     msg += str(ex)
-                    self.log(msg, LogStates.Alert)
+                    print msg
                     continue
                 else:
                     raise ex

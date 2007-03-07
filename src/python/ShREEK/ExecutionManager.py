@@ -6,19 +6,17 @@ Task execution manager for running a series of executable tasks represented
 by a tree of ShREEKTasks
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: ExecutionManager.py,v 1.2 2006/02/15 21:00:03 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: ExecutionManager.py,v 1.1 2006/04/10 17:38:42 evansde Exp $"
 __author__ = 'evansde@fnal.gov'
 
 
 
-from ShLogger.LogInterface import LogInterface
-from ShLogger.LogStates import LogStates
 
 from ShREEK.ShREEKException import ShREEKException
 from ShREEK.TaskRunner import TaskRunner
 
-class ExecutionManager(LogInterface):
+class ExecutionManager:
     """
     _ExecutionManager_
     
@@ -28,7 +26,6 @@ class ExecutionManager(LogInterface):
     
     """
     def __init__(self):
-        LogInterface.__init__(self)
         self.jobID = None
         self.taskTree = None
         self.monitorThread = None
@@ -67,7 +64,6 @@ class ExecutionManager(LogInterface):
         external wrapppers.
 
         """
-        self.log("killjob", LogStates.Dbg_lo)
         self._Finished = True
         self._ExitCode = shreekExitCode
         if self.monitorThread != None:
@@ -82,7 +78,6 @@ class ExecutionManager(LogInterface):
         kill the current task,  not the job,
         and proceed to the next task
         """
-        self.log("killtask", LogStates.Dbg_lo)
         if self.monitorThread != None:
             self.monitorThread.notifyKillTask()
         self.currentTask.killTask()
@@ -110,17 +105,14 @@ class ExecutionManager(LogInterface):
         depending on how they are configured
         
         """
-        self.log("run", LogStates.Dbg_lo)
-        self.log("Starting Job Execution", LogStates.Info)
-        self.log("JobID: %s" % self.jobID, LogStates.Info )
+        print "Starting Job Execution"
+        print "JobID: %s" % self.jobID
         if self.monitorThread != None:
             self.monitorThread.notifyJobStart()
             
         self.executeTask(self.taskTree)
         
-        
-        
-        self.log("Finished Job", LogStates.Info)
+        print "Finished Job"
         if self.monitorThread != None:
             self.monitorThread.notifyJobEnd()
             
@@ -142,12 +134,10 @@ class ExecutionManager(LogInterface):
         self._NextTask = None
         taskRunner = TaskRunner(task)
         self.currentTask = taskRunner
-        self.log("Starting Task Execution: %s" % task.taskname(),
-                 LogStates.Info)
+        print "Starting Task Execution: %s" % task.taskname()
         taskRunner.evalStartControlPoint(self)
         if self._NextTask != None:
-            self.log("Next Task Scheduled: %s" % self._NextTask,
-                 LogStates.Info)
+            print "Next Task Scheduled: %s" % self._NextTask
             nextTask = self.taskTree.findTask(self._NextTask)
             if nextTask == None:
                 msg = "Error: Task named %s not found:\n" % self._NextTask
@@ -161,16 +151,14 @@ class ExecutionManager(LogInterface):
         exitCode = taskRunner.run()
         if self.monitorThread != None:
             self.monitorThread.notifyTaskEnd(task, exitCode)
-        self.log("Task Execution Complete: %s Exit: %s" % (
+        print "Task Execution Complete: %s Exit: %s" % (
             task.taskname(), exitCode,
-            ),
-                 LogStates.Info)
-            
+            )
+        
 
         taskRunner.evalEndControlPoint(self)
         if self._NextTask != None:
-            self.log("Next Task Scheduled: %s" % self._NextTask,
-                     LogStates.Info)
+            print "Next Task Scheduled: %s" % self._NextTask,
             nextTask = self.taskTree.findTask(self._NextTask)
             if nextTask == None:
                 msg = "Error: Task named %s not found:\n" % self._NextTask

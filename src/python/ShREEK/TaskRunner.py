@@ -6,8 +6,8 @@ Execution class for running a task described by a ShREEKTask instance,
 and managing its execution.
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: TaskRunner.py,v 1.4 2006/07/20 16:06:13 evansde Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: TaskRunner.py,v 1.5 2006/09/19 13:52:16 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
@@ -16,8 +16,7 @@ import signal
 import popen2
 import fcntl, select, sys
 
-from ShLogger.LogInterface import LogInterface
-from ShLogger.LogStates import LogStates
+
 from ShREEK.ShREEKException import ShREEKException
 
 def findChildProcesses(pid):
@@ -78,13 +77,12 @@ class ChildProcs(list):
         return 
 
     
-class TaskRunner(LogInterface):
+class TaskRunner:
     """
     _TaskRunner_
 
     """
     def __init__(self, shreekTask):
-        LogInterface.__init__(self)
         self.task = shreekTask
         self.logName = "%s-stdout.log" % self.task.executable()
         self.errName = "%s-stderr.log" % self.task.executable()
@@ -110,14 +108,10 @@ class TaskRunner(LogInterface):
         Set the flag to kill the runnning task and any child processes
         that it started
         """
-        self.log("TaskRunner.killTask called", LogStates.Info)
+        print "TaskRunner.killTask called"
         if self.process > -1:
             procList = self.findProcesses()
-            self.log("TaskRunner: Child Process: %s" % self.process,
-                     LogStates.Dbg_lo)
             for process in procList:
-                self.log("Terminating Process: %s" % process,
-                         LogStates.Dbg_med)
                 try:
                     os.kill(int(process), signal.SIGTERM)
                 except OSError:
@@ -125,13 +119,10 @@ class TaskRunner(LogInterface):
             time.sleep(2)
             procList = self.findProcesses()
             for process in procList:
-                self.log("Killing Process: %s" % process, LogStates.Dbg_med)
                 try:
                     os.kill(int(process), signal.SIGKILL)
                 except OSError:
                     procList.remove(process)
-            self.log("Killing Child Process: %s" % self.process,
-                     LogStates.Dbg_lo) 
             try:
                 os.kill(self.process, signal.SIGTERM)
             except OSError:
@@ -208,10 +199,6 @@ class TaskRunner(LogInterface):
         processes spawned by it.
 
         """
-        self.log("TaskRunner.run: %s" % self.task.taskname, LogStates.Dbg_lo)
-        self.log("TaskRunner.run: Dir=%s Exe=%s" % (self.task.directory(),
-                                                    self.task.executable()),
-                 LogStates.Dbg_med)
         currentDir = os.getcwd()
         if not os.path.exists(self.task.directory()):
             msg = "Task Directory Not Found:\n"
@@ -253,10 +240,6 @@ class TaskRunner(LogInterface):
         command += "3>&1 1>&2 2>&3)"
         
         exitCode = getCommandOutput(command)
-        
-
-        self.log("TaskRunner.run: Child Exited %s" % exitCode,
-                 LogStates.Dbg_lo)
         os.chdir(currentDir)
         return exitCode
     

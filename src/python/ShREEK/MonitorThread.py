@@ -3,15 +3,13 @@ Monitor thread module.
 """
 
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: MonitorThread.py,v 1.1 2005/12/30 18:54:25 evansde Exp $"
+__revision__ = "$Id: MonitorThread.py,v 1.1 2006/04/10 17:38:42 evansde Exp $"
 
 import threading
 from ShREEK.ShREEKMonitorMgr import ShREEKMonitorMgr
 
-from ShLogger.LogInterface import LogInterface
-from ShLogger.LogStates import LogStates
 
-class MonitorThread(threading.Thread, LogInterface):
+class MonitorThread(threading.Thread):
     """
     _MonitorThread_
 
@@ -21,7 +19,6 @@ class MonitorThread(threading.Thread, LogInterface):
     """
     def __init__(self, exeMgr):
         threading.Thread.__init__(self)
-        LogInterface.__init__(self)
         self.doMonitoring = True
         self._Finished  =  threading.Event()
         self._EndOfJob  =  threading.Event()
@@ -35,7 +32,7 @@ class MonitorThread(threading.Thread, LogInterface):
         """
         Set the monitor interval
         """
-        self.log("Set Interval to %s" % interval, LogStates.Info)
+        print "Set Interval to %s" % interval
         self._Interval = interval
 
     def disableMonitoring(self):
@@ -61,7 +58,7 @@ class MonitorThread(threading.Thread, LogInterface):
         """
         Shutdown the monitor.
         """
-        self.log("MonitorState: Shutdown called", LogStates.Info)
+        print "MonitorState: Shutdown called"
         self._MonMgr.shutdown()
         self._Finished.set()
 
@@ -75,7 +72,7 @@ class MonitorThread(threading.Thread, LogInterface):
         """
         Start the job.
         """
-        self.log("MonitorThread: JobStarted", LogStates.Info)
+        print "MonitorThread: JobStarted"
         self._MonMgr.jobStart()
         if self.doMonitoring:
             self.setDaemon(1)
@@ -89,7 +86,7 @@ class MonitorThread(threading.Thread, LogInterface):
         notify Monitors of new task start up.
         """
         self._RunUpdate.set()
-        self.log("MonitorThread: Task Started: %s" % task, LogStates.Info)
+        print "MonitorThread: Task Started: %s" % task
         self._MonMgr.taskStart(task)
         return
 
@@ -101,8 +98,7 @@ class MonitorThread(threading.Thread, LogInterface):
         notify Monitors of task completion.
         """
         self._RunUpdate.clear()
-        self.log("Task Ended: %s with Exit Code:%s" % (task, exitCode)
-                 , LogStates.Info)
+        print "Task Ended: %s with Exit Code:%s" % (task, exitCode)
         self._MonMgr.taskEnd(task, exitCode)
         return
 
@@ -114,7 +110,7 @@ class MonitorThread(threading.Thread, LogInterface):
         notify monitors of Job Completion, stops the periodic
         updating.
         """
-        self.log("MonitorThread: JobEnded", LogStates.Info)
+        print "MonitorThread: JobEnded"
         self._MonMgr.jobEnd()
         self.shutdown()
         return
@@ -125,7 +121,7 @@ class MonitorThread(threading.Thread, LogInterface):
         """
         Interrupt Notifiers, Job has been killed.
         """
-        self.log("MonitorThread: JobKilled", LogStates.Info)
+        print "MonitorThread: JobKilled"
         self._MonMgr.jobKilled()
         self.shutdown()
     #  //
@@ -135,7 +131,7 @@ class MonitorThread(threading.Thread, LogInterface):
         """
         Task has been killed.
         """
-        self.log("MonitorThread: TaskKilled", LogStates.Info)
+        print "MonitorThread: TaskKilled"
         self._MonMgr.taskKilled()
         
     #  //
@@ -146,20 +142,17 @@ class MonitorThread(threading.Thread, LogInterface):
         Override Thread.run() to do the periodic update
         of the MonitorState object and dispatch it to the monitors
         """
-        self.log("run", LogStates.Dbg_lo)
         while 1:
             #  //
             # // shutdown signal
             #//
             if self._Finished.isSet():
-                self.log("run:_Finished.isSet()=1", LogStates.Dbg_hi)
                 return
 
             #  //
             # // Update State information only during a running task
             #//
             if self._RunUpdate.isSet():
-                self.log("run:_RunUpdate.isSet()=1", LogStates.Dbg_hi)
                 self._MonMgr.periodicUpdate()
 
             #time.sleep(self._Interval)

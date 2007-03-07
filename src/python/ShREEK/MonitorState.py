@@ -11,15 +11,13 @@ in the MonitorState
 """
 
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: MonitorState.py,v 1.1 2005/12/30 18:54:25 evansde Exp $"
+__revision__ = "$Id: MonitorState.py,v 1.1 2006/04/10 17:38:42 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
 import socket
 
 from ShREEK.UpdateDict import UpdateDict
-from ShLogger.LogInterface import LogInterface
-from ShLogger.LogStates import LogStates
 
 _StaticFields = {
     'JobDirectory' : os.getcwd(), 
@@ -28,7 +26,7 @@ _StaticFields = {
     }
 
 
-class MonitorState(UpdateDict, LogInterface):
+class MonitorState(UpdateDict):
     """
     _MonitorState_
     
@@ -41,7 +39,6 @@ class MonitorState(UpdateDict, LogInterface):
     """
     def __init__(self):
         UpdateDict.__init__(self)
-        LogInterface.__init__(self)
         #  //
         # // Set static value fields for job
         #//  Dynamic fields are created by the Updator plugins
@@ -79,7 +76,7 @@ class MonitorState(UpdateDict, LogInterface):
             if self.ignoreErrors:
                 msg = "WARNING: Error ignored when updating MonitorState:\n"
                 msg += str(ex)
-                self.log(msg, LogStates.Alert)
+                print "WARNING:", msg
             else:
                 raise ex
             
