@@ -131,6 +131,11 @@ coreFields = {
     "DBSType" : "CGI",
     },
 
+    'DLSInterface' :{
+    "DLSAddress": None,
+    "DLSType" : None,
+    },
+
     "GlobalDBSDLS" : {
     "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
     "DBSAddress": "MCGlobal/Writer",
