@@ -40,7 +40,6 @@ import logging
 
 import ProdCommon
 import ShREEK
-import ShLogger
 import IMProv
 import ProdCommon.CMSConfigTools 
 import ProdCommon.MCPayloads
@@ -49,7 +48,7 @@ import FwkJobRep
 import StageOut
 import SVSuite
 
-_StandardPackages = [ShREEK, ShLogger, IMProv, StageOut, ProdCommon.MCPayloads,
+_StandardPackages = [ShREEK, IMProv, StageOut, ProdCommon.MCPayloads,
                      ProdCommon.CMSConfigTools, RunRes, FwkJobRep, SVSuite]
 
 def makeTaskObject(jobSpecNode):

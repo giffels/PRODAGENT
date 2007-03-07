@@ -41,7 +41,6 @@ import logging
 
 import ProdCommon
 import ShREEK
-import ShLogger
 import IMProv
 import ProdCommon.CMSConfigTools 
 import RunRes
@@ -49,7 +48,7 @@ import FwkJobRep
 import StageOut
 import SVSuite
 
-_StandardPackages = [ShREEK, ShLogger, IMProv, StageOut,
+_StandardPackages = [ShREEK, IMProv, StageOut,
                      ProdCommon.CMSConfigTools, RunRes, FwkJobRep, SVSuite]
 
 
