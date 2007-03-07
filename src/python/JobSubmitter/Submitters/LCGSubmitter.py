@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.22 2007/02/07 12:06:33 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.23 2007/02/07 14:56:12 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -167,7 +167,10 @@ class LCGSubmitter(SubmitterInterface):
         try:
 
           if self.parameters['RTMon']!='':
-            bossSubmit+="-rtmon %s "%self.parameters['RTMon']
+            bossSubmit+=" -rtmon %s "%self.parameters['RTMon']
+          else:
+            bossSubmit+=" -rtmon NONE "
+            
         except:
           pass
         bossSubmit += " -schclassad %s"%schedulercladfile     #  //
