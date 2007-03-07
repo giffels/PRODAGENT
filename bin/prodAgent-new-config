@@ -171,12 +171,7 @@ componentFields = {
     "RssFeed": "no",
     },
 
-    "DLSInterface" : {
-    "ComponentDir" : None,
-    "DLSAddress" : None,
-    "DLSType" : None,
-    "RssFeed": "no",
-    },
+  
 
     "JobTracking" : {
     "ComponentDir" : None,
