@@ -55,7 +55,7 @@ class SubmitFailureHandler(HandlerInterface):
               logging.debug(">SubmitFailureHandler<:Cache dir. size is "+\
                             str(dirSizeMegaBytes)+" MB. Maximum allowed is "+\
                             str(self.maxCacheDirSizeMB)+" MB ")
-
+              jobspecfile="%s/%s-JobSpec.xml" % (generalInfo['CacheDirLocation'],jobId)
               # if necessary first a partial cleanup is done, which after it
               # is finished publishes the proper event.
               if(float(dirSizeMegaBytes)>float(self.maxCacheDirSizeMB)):
@@ -67,7 +67,8 @@ class SubmitFailureHandler(HandlerInterface):
                   logging.debug(">SubmitFailureHandler<:Registered "+\
                      "a job submit failure,"\
                      "publishing a submit job event")
-                  self.publishEvent("SubmitJob",(jobId),delay)
+                  self.publishEvent("SubmitJob",jobspecfile,delay)
+#                  self.publishEvent("SubmitJob",(jobId),delay)
          except RetryException:
               logging.debug(">SubmitFailureHandler<:Registered "+\
                             "a job submit failure. "+ \
