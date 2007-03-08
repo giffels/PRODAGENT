@@ -20,6 +20,7 @@ build:
 	@cd $(PYTHON_SRC) && python setup.py build --build-lib=$(LIB_DIR)
 	/bin/cp $(PYTHON_SRC)/ShREEK/shreek $(LIB_DIR)/ShREEK
 	/bin/cp $(SQL_SRC)/ProdAgentDB/*.sql  $(SHARE_DIR)
+	/bin/cp $(PYTHON_SRC)/RssFeeder/*.gif $(LIB_DIR)/RssFeeder
 	/bin/chmod +x $(LIB_DIR)/JobCreator/RuntimeTools/*.py
 ifneq ($(BIN_DIR), $(BIN_SRC))
 	/bin/cp -f $(BIN_SRC)/prodAgent* $(BIN_DIR)
