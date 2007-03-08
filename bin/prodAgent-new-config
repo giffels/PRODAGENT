@@ -261,12 +261,11 @@ componentFields = {
     "RssFeed": "no",
     },
 
-# Remove RssFeeder component in the default config
-#    "RssFeeder" : {
-#    "ComponentDir" : None,
-#    "ItemListLength" : 100,
-#    "Port" : 8100,
-#    }
+    "RssFeeder" : {
+    "ComponentDir" : None,
+    "ItemListLength" : 100,
+    "Port" : 8100,
+    }
 
     }# end componentFields
 
