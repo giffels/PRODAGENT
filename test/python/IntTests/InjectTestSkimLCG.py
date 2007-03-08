@@ -5,7 +5,7 @@ Generate jobs for the workflow provided
 """
 from MessageService.MessageService import MessageService
 from DatasetInjector.DatasetInjectorDB import ownerIndex
-from MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
 import sys,os,getopt,time
 
