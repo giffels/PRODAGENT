@@ -29,6 +29,7 @@ class PhEDExNodeMap:
         "t2data2.t2.ucsd.edu" : "T2_UCSD_Buffer",
         "se01.cmsaf.mit.edu" : "T2_MIT_Buffer",
         "ufdcache.phys.ufl.edu" : "T2_Florida_Buffer",
+        "spraid.if.usp.br" : "T2_SPRACE_Buffer",
         "castorsrm.pic.es" : "T1_PIC_MSS",
         "srm-disk.pic.es" : "T1_PIC_Disk",
         "castorsrm.ciemat.es" : "T2_Spain_CIEMAT",
