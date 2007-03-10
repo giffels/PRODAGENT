@@ -6,7 +6,6 @@ from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdCommon.Database import Session
 from ProdMgrInterface import MessageQueue
-from ProdMgrInterface import State
 from ProdMgrInterface.Registry import registerHandler
 from ProdMgrInterface.Registry import retrieveHandler
 from ProdMgrInterface.States.StateInterface import StateInterface 

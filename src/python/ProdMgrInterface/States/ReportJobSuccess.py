@@ -12,20 +12,20 @@ from ProdAgent.WorkflowEntities import Allocation
 from ProdAgent.WorkflowEntities import File
 from ProdAgent.WorkflowEntities import Job 
 from ProdAgent.WorkflowEntities import Workflow
-from ProdMgrInterface import State
 from ProdMgrInterface.Registry import registerHandler
+from ProdMgrInterface.Registry import retrieveHandler
+from ProdMgrInterface.States.Aux import HandleJobSuccess
 from ProdMgrInterface.States.StateInterface import StateInterface 
 import ProdMgrInterface.Interface as ProdMgrAPI
-
 
 class ReportJobSuccess(StateInterface):
 
    def __init__(self):
        StateInterface.__init__(self)
 
-   def execute(self):
+   def execute(self,stateParameters={}):
        logging.debug("Executing state: ReportJobSuccess")
-       stateParameters=State.get("ProdMgrInterface")['parameters']
+       # examine if the job is a failure or not and treat it appropiately
        if stateParameters['jobType']=='failure':
            logging.debug("This job failed so we register 0 events")
            total=0
@@ -66,9 +66,7 @@ class ReportJobSuccess(StateInterface):
            logging.debug("Registering associated generated files for this job")
            File.register(job_spec_id,files)
 
-       Job.setEventsProcessedIncrement(job_spec_id,total) 
-       Job.remove(job_spec_id)
-       #NOTE: here we call the trigger code.
+       #call the trigger code to commence cleanup of the job.
        try:
           self.trigger.flagSet("cleanup",job_spec_id,"ProdMgrInterface")
           self.trigger.setFlag("cleanup", job_spec_id,"ProdMgrInterface")
@@ -80,100 +78,43 @@ class ReportJobSuccess(StateInterface):
           logging.debug("ProdMgr does nothing with this job")
           return
 
-       logging.debug('JobReport has been read processed: '+str(total)+' events')
-
        # remove the job spec file.
        logging.debug("removing job spec file from job: "+str(job_spec_id))
        request_id=job_spec_id.split('_')[1] 
        logging.debug("request id : "+str(request_id))
        job_spec_location=we_job['job_spec_file']
-       logging.debug("retrieved job spec location: "+str(job_spec_location))
+       logging.debug("Retrieved (and removing) job spec file: "+str(job_spec_location))
        try:
           os.remove(job_spec_location)
        except:
           pass
-       # update the events processed by this job
-       logging.debug("Evaluate allocation associated to the job "+str(job_spec_id))
-       jobId=Allocation.convertJobID(job_spec_id)
 
-       logging.debug("Associated allocation is: "+str(jobId)) 
-       if Allocation.isJobsFinished(jobId):
-           logging.debug("Retrieve number of processed events")
-           allocation=Allocation.get(jobId)
-           logging.debug("All jobs associated to allocation"+\
-           str(jobId)+" have been finished")
-           logging.debug("Removing Allocation spec with ID : "+str(jobId))
-           Allocation.remove(jobId)
-           logging.debug("Removing allocation spec file for : "+str(allocation['id']))
-           try:
-               logging.debug("Spec file location is: "+str(allocation['allocation_spec_file']))
-               os.remove(allocation['allocation_spec_file'])
-           except Exception,ex:
-               logging.debug("WARNING: "+str(ex))
-               pass
-           logging.debug("All jobs for this allocations have finished: contacting prodmgr")
-           parameters={}
-           parameters['jobSpecId']=str(jobId)
-           parameters['events']=allocation['events_processed']
-           parameters['request_id']=request_id=jobId.split('_')[1] 
-           result=self.sendMessage(allocation['prod_mgr_url'],parameters)
-           parameters['result']=result['result']
-           newState=self.handleResult(parameters)
-           Session.commit()
-       else:
-           logging.debug("Not all jobs for this allocation have finised. Not contacting prodmgr")
-           Session.commit()
+       logging.debug('JobReport has been read processed: '+str(total)+' events')
 
-   def sendMessage(self,url,parameters):
-       try:
-           logging.debug("Attempting to connect to server : "+url)
-           finished=ProdMgrAPI.releaseJob(url,str(parameters['jobSpecId']),\
-               int(parameters['events']),"ProdMgrInterface")
-           # check if the associated allocation needs to be released.
-           request_id=parameters['jobSpecId'].split('_')[1]
-           return {'result':finished,'url':'fine'}
-       except ProdAgentException, ex:
-           logging.debug("Problem connecting to server: "+url+" "+str(ex))
-           message={}
-           message['server_url']=url
-           message['type']='ReportJobSuccess'
-           message['state']='reportJobSuccess'
-           message['parameters']=parameters 
-           self.storeMessage(message)
-           return {'result':'start','url':'failed'}
-
-   def handleResult(self,parameters):
-       if parameters['result']=='start':
+       # determine what needs to be done next
+       if( (stateParameters['prodMgrFeedback']=='direct') and (stateParameters['jobType']!='failure')):
+           logging.debug("Feedback to ProdMgr is set to direct and job is not a failure")
+           logging.debug("Commencing with procedure locally, bypassing the merge sensor")
+           if not File.ms:
+               File.ms=self.ms
+           # the next call might send messages to the prodmgr itself, similar to what the merge sensor would do.
+           fileNames=[]
+           for file in files:
+              fileNames.append(file['lfn']) 
+           File.merged(fileNames)
            return
-       logging.debug("Handling result: "+str(parameters['result']))
-       finished=int(parameters['result'])
-       if finished==1:
-           logging.debug("Request "+str(parameters['request_id'])+" is completed. Removing all allocations and request")
-           logging.debug("Checking if we can emit RequestFinished event")
-           if Workflow.isFinished(parameters['request_id']):
-               logging.debug("Emitting RequestFinished event")
-               self.ms.publish("RequestFinished",parameters['request_id'])
-           Workflow.remove(parameters['request_id'])
-       elif finished==2:
-           logging.debug("Request "+str(parameters['request_id'])+" is not completed but allocation is")
-           logging.debug("Emitting AllocationFinished event")
-           self.ms.publish("AllocationFinished",parameters['request_id'])
-           logging.debug("Checking if we need to submit a RequestFinished event for:"+str(parameters['request_id']))
-           if Workflow.isDone(parameters['request_id']):
-               if Workflow.isFinished(parameters['request_id']):
-                   self.ms.publish("RequestFinished",parameters['request_id'])
-                   logging.debug("Emitting RequestFinished event")
-                   Workflow.remove(parameters['request_id'])
-       elif finished==0:
-           logging.debug("Request "+str(parameters['request_id'])+" and allocation not completed")
-       elif finished==3:
-           logging.debug("Request "+str(parameters['request_id'])+" failed")
-           logging.debug("Checking if we can emit RequestFailed event")
-           if Workflow.isFinished(parameters['request_id']):
-               self.ms.publish("RequestFinished",parameters['request_id'])
-               logging.debug("Emitting RequestFinished event")
-           Workflow.remove(parameters['request_id'])
-       return "start"
+       elif(stateParameters['jobType']=='failure'):    
+           logging.debug("Job failed during processing no files have been generated. bypassing merge sensor")
+           Job.setEventsProcessedIncrement(job_spec_id,0)
+           logging.debug("Handling job Failure")
+           if not HandleJobSuccess.ms:
+               HandleJobSuccess.ms=self.ms
+           logging.debug("Handling job success")
+           HandleJobSuccess.handleJob(job_spec_id)
+       else:
+           logging.debug("Feedback to ProdMgr is set to delay")
+           logging.debug("Not bypassing the merge sensor")
+           return
 
 registerHandler(ReportJobSuccess(),"ReportJobSuccess")
 

@@ -48,6 +48,7 @@ class ProdMgrComponent:
             self.args['Logfile'] = None
             self.args['JobSize']=100
             self.args['Locations']='none'
+            self.args['ProdMgrFeedback']='delay'
             self.args.update(args)
             if self.args['Logfile'] == None:
                self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
@@ -231,31 +232,16 @@ class ProdMgrComponent:
         
         """
         logging.debug("Reporting Job Success "+frameworkJobReport)
-        Session.connect("ProdMgrInterface")
-        Session.set_session("ProdMgrInterface")
-        componentStateInfo=State.get("ProdMgrInterface")      
-        # if this is the first time create the start state
-        if componentStateInfo=={}:
-             logging.debug("ProdMgrInterface state creation")
-             State.insert("ProdMgrInterface","start",{})
-             componentStateInfo['state']="start"
-        if componentStateInfo.has_key('state'):
-            if componentStateInfo['state']=='start':
-                componentStateInfo['parameters']={}
-                componentStateInfo['parameters']['stateType']='normal'
-                componentStateInfo['parameters']['jobType']='success'
-                componentStateInfo['parameters']['jobReport']=frameworkJobReport
-                State.setParameters("ProdMgrInterface",componentStateInfo['parameters'])
-        logging.debug("ProdMgrInterface state is: "+str(componentStateInfo['state']))
-
-        # first check if there are any queued events as a prodmgr might have been offline
-        componentState=componentStateInfo['state']
-        if componentStateInfo['state']=='start':
-            queued_events=retrieveHandler('QueuedMessages')
-            queued_events.execute()
+        queued_events=retrieveHandler('QueuedMessages')
+        queued_events.execute()
         Session.commit()
         state=retrieveHandler('ReportJobSuccess')
-        state.execute()
+        stateParameters={}
+        stateParameters['stateType']='normal'
+        stateParameters['jobType']='success'
+        stateParameters['prodMgrFeedback']=self.args['ProdMgrFeedback']
+        stateParameters['jobReport']=frameworkJobReport
+        state.execute(stateParameters)
         logging.debug("reportJobSuccess event handled")
         Session.set_session("default")
 
@@ -267,63 +253,30 @@ class ProdMgrComponent:
 
         """
         logging.debug("Reporting Job Failure "+frameworkJobReport)
-        Session.connect("ProdMgrInterface")
-        Session.set_session("ProdMgrInterface")
-        componentStateInfo=State.get("ProdMgrInterface")      
-        # if this is the first time create the start state
-        if componentStateInfo=={}:
-             logging.debug("ProdMgrInterface state creation")
-             State.insert("ProdMgrInterface","start",{})
-             componentStateInfo['state']="start"
-        if componentStateInfo.has_key('state'):
-            if componentStateInfo['state']=='start':
-                componentStateInfo['parameters']={}
-                componentStateInfo['parameters']['stateType']='normal'
-                componentStateInfo['parameters']['jobType']='failure'
-                componentStateInfo['parameters']['jobReport']=frameworkJobReport
-                State.setParameters("ProdMgrInterface",componentStateInfo['parameters'])
-        logging.debug("ProdMgrInterface state is: "+str(componentStateInfo['state']))
 
-        # first check if there are any queued events as a prodmgr might have been offline
-        componentState=componentStateInfo['state']
-        if componentStateInfo['state']=='start':
-            queued_events=retrieveHandler('QueuedMessages')
-            queued_events.execute()
+        queued_events=retrieveHandler('QueuedMessages')
+        queued_events.execute()
         Session.commit()
         state=retrieveHandler('ReportJobSuccess')
-        state.execute()
+        stateParameters={}
+        stateParameters['stateType']='normal'
+        stateParameters['jobType']='failure'
+        stateParameters['prodMgrFeedback']=self.args['ProdMgrFeedback']
+        stateParameters['jobReport']=frameworkJobReport
+        state.execute(stateParameters)
         logging.debug("reportJobFailure event handled")
         Session.set_session("default")
 
     def reportJobSuccessFinal(self,jobID):
         logging.debug("Reporting ProdMgrInterface:JobSuccess for"+str(jobID))
-        Session.connect("ProdMgrInterface")
-        Session.set_session("ProdMgrInterface")
-        componentStateInfo=State.get("ProdMgrInterface")      
-        # if this is the first time create the start state
-        if componentStateInfo=={}:
-             logging.debug("ProdMgrInterface state creation")
-             State.insert("ProdMgrInterface","start",{})
-             componentStateInfo['state']="start"
-        if componentStateInfo.has_key('state'):
-            if componentStateInfo['state']=='start':
-                componentStateInfo['parameters']={}
-                componentStateInfo['parameters']['stateType']='normal'
-                componentStateInfo['parameters']['id']=jobID
-                State.setParameters("ProdMgrInterface",componentStateInfo['parameters'])
-        logging.debug("ProdMgrInterface state is: "+str(componentStateInfo['state']))
-
-        # first check if there are any queued events as a prodmgr might have been offline
-        componentState=componentStateInfo['state']
-        if componentStateInfo['state']=='start':
-            queued_events=retrieveHandler('QueuedMessages')
-            queued_events.execute()
+        queued_events=retrieveHandler('QueuedMessages')
+        queued_events.execute()
         Session.commit()
         state=retrieveHandler('ReportJobSuccessFinal')
-        state.execute()
+        stateParameters={}
+        stateParameters['id']=jobID
+        state.execute(stateParameters)
         logging.debug("ProdMgrInterface:JobSuccess event handled")
-        Session.set_session("default")
-        
 
     def setLocations(self,payload):
         # check if payload contains user defined location
@@ -432,6 +385,7 @@ class ProdMgrComponent:
             # add a random number to distinguish between requests injected
             # by persons and by this component.
             self.args['RandomCheck']=str(random.random()) 
+            self.ms.remove("ProdMgrInterface:AcquireRequests")
             self.ms.publish("ProdMgrInterface:AcquireRequests",str(self.args['RandomCheck']))
             self.ms.publish("ProdMgrInterface:SetLocations",'')
             self.ms.commit()

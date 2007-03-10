@@ -20,7 +20,7 @@ class StateInterface:
 
          """
 
-    def execute(self):
+    def execute(self,stateParameters={}):
          """
          _execute_
          
