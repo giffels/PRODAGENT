@@ -9,6 +9,7 @@ import logging
 import time
 import unittest
 
+from MessageService.MessageService import MessageService
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdAgent.WorkflowEntities import Allocation
 from ProdAgent.WorkflowEntities import Job
@@ -16,7 +17,6 @@ from ProdAgent.WorkflowEntities import File
 from ProdAgent.WorkflowEntities import Workflow
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
-
 
 class WorkflowEntitiesUnitTests(unittest.TestCase):
     """
@@ -39,6 +39,7 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
                 parameters['priority']=i
                 parameters['prod_mgr_url']='http://somewhere.com'
                 parameters['request_type']='event'
+                parameters['owner']='componentX'
                 workflowID='aWorkflow'+str(i)
                 Workflow.register(workflowID,parameters)
             #  register some that we are going to delete again
@@ -98,7 +99,7 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
             for workflow in workflows_check:
                 self.assertEqual(True,Workflow.exists(workflow['id']))
             for workflow in workflows_check:
-                self.assertEqual(False,Workflow.isFinished(workflow['id']))
+                self.assertEqual(False,Workflow.isDone(workflow['id']))
             Session.commit_all()
             Session.close_all()
         except StandardError, ex:
@@ -107,6 +108,14 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
             self.fail(msg)
 
     def testD(self):
+
+        # create message service instance
+        self.ms = MessageService()
+        # register
+        self.ms.registerAs("Test")
+        File.ms=self.ms
+
+
         print('Add allocations')
         try:
             Session.connect()
@@ -128,7 +137,7 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
                     allocations.append(parameters)
                 Allocation.register(workflow['id'],allocations)
             # register jobs from allocations (job cutting)
-            print('Add jobs')
+            print('add jobs')
             job_count=0
             for allocation in all_allocations:
                  for j in xrange(0,10):
@@ -136,10 +145,10 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
                      job={}
                      jobID=allocation+'_'+str(j)
                      job['id']=allocation+'_'+str(j)
-                     job['job_spec_file']='/some/where/on/the/disk'
+                     job['spec']='/some/where/on/the/disk'
                      job['job_type']='event'
                      Job.register(None,allocation,job)
-            # register again (should only update)
+            print('register again (should only update)')
             all_jobs=[]
             for allocation in all_allocations:
                  for j in xrange(0,10):
@@ -148,12 +157,12 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
                      jobID=allocation+'_'+str(j)
                      all_jobs.append(jobID)
                      job['id']=allocation+'_'+str(j)
-                     job['job_spec_file']='/some/else/where/on/the/disk'
+                     job['spec']='/some/else/where/on/the/disk'
                      job['max_retries']=10
                      job['max_racers']=1
                      Job.register(None,allocation,job)
   
-            # check if parameters got registered correctly
+            print('check if parameters got registered correctly')
             jobs=Job.get(all_jobs[:10])
             for job in jobs:
                 self.assertEqual(10,job['max_retries'])
@@ -162,7 +171,7 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
             self.assertEqual(10,job['max_retries'])
             self.assertEqual(1,job['max_racers'])
 
-            # check if parameters got registered correctly
+            print('check if parameters got registered correctly')
             jobs=Job.getRange(12,10)
             for job in jobs:
                 self.assertEqual(10,job['max_retries'])
@@ -170,7 +179,7 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
             Session.commit_all()
             Session.close_all()
 
-            # remove some jobs and see if they exists or not.
+            print('remove some jobs and see if they exists or not.')
             Session.connect()
             Session.start_transaction()
             Job.remove(all_jobs[0:10])
@@ -179,28 +188,29 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
             for job in all_jobs[10:]:
                 self.assertEqual(True,Job.exists(job))
 
-            # insert 10 new jobs to replace the deleted ones
+            print('insert 10 new jobs to replace the deleted ones')
             # these jobs depend only from a workflow (no allocations)
             workflow=Workflow.getHighestPriority(1)
             for i in xrange(0,10):
                 job={}
                 job['id']=workflow['id']+'_'+str(i)
                 all_jobs[i]=job['id']
-                job['job_spec_file']='/some/else/where/on/the/disk'
+                job['spec']='/some/else/where/on/the/disk'
                 job['max_retries']=10
                 job['max_racers']=1
                 Job.register(workflow['id'],None,job)
 
-            # set the cache dir. 
+            print('set the cache dir. ')
             for job in all_jobs[10:]:
                 Job.setCacheDir(str(job),'/this/is/a/cachedir')
             Job.setMaxRacers(all_jobs[10:],2)
-            # do some exception checking
+            print('do some exception checking')
             try:
                Job.setMaxRacers(all_jobs[10],0)
             except ProdException,ex:
                self.assertEqual(ex['ErrorNr'],3005)
 
+            print('set maxretries')
             Job.setMaxRetries(all_jobs[10:],2)
             try:
                Job.setMaxRetries(all_jobs[10],0)
@@ -211,7 +221,7 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
                 self.assertEqual(job['max_retries'],2)
                 self.assertEqual(job['max_racers'],2)
             Session.commit_all()
-            # set some parameters
+            print('set some parameters')
             Job.setMaxRetries(all_jobs[10],4)
             Job.setMaxRacers(all_jobs[10],4)
             job=Job.get(all_jobs[10])
@@ -238,7 +248,7 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
                 except ProdException,ex:
                     self.assertEqual(ex['ErrorNr'],3009)
 
-            # test some more exceptions of jobstates
+            print('test some more exceptions of jobstates')
             for job in all_jobs:
                 try:
                     Job.setState(job,'inProgress')
@@ -264,10 +274,11 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
 
                 Job.setState(job,'inProgress')
 
-            # let some jobs succeed
+            print('let some jobs succeed')
             for job in all_jobs[:100]: 
                 Job.setState(job,'submit')
                 Job.setState(job,'finish')
+                Job.setEventsProcessedIncrement(job,10)
             Session.commit_all()
             all_fileList=[]
             for job in all_jobs[10:100]: 
@@ -279,16 +290,20 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
                     fileList.append(fileInfo)
                     all_fileList.append(fileInfo['lfn'])
                 File.register(job,fileList)
-    
-            merged1=File.merged(all_fileList[0:298])
-            merged2=File.merged(all_fileList[298:],failed=True)
-            # here the merge component emits a checkJobs event with the entries merge1 and merge2 
-            # as payload
-            print('Sending JobSuccessFinalized events for: '+str(len(merged1)))
-            print('Sending JobSuccessFinalized events for: '+str(len(merged2)))
-            
-
+   
+            print('register some merge successes and failures') 
+            File.merged(all_fileList[0])
+            File.merged(all_fileList[1:298])
+            File.merged(all_fileList[298],failed=True)
+            File.merged(all_fileList[299:],failed=True)
+            print('register some files that are not there')
+            File.merged('does_not_exist_id')
+            File.merged('does_not_exist_id',failed=True)
             # now check if the jobs we submitted are really finished.
+            print('let some other jobs fail')
+            for job in all_jobs[100:]:
+                Job.setState(job,'submit')
+                Job.setState(job,'finish')
             Session.commit_all()
             Session.close_all()
             
