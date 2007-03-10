@@ -2,9 +2,18 @@
 
 from ProdAgent.Core.Codes import exceptions 
 from ProdAgent.WorkflowEntities import Allocation
+from ProdAgent.WorkflowEntities import Workflow
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
 
+def amount():
+   """
+   __amount__
+   """
+   sqlStr="""SELECT COUNT(*) FROM we_Job"""
+   Session.execute(sqlStr)
+   rows=Session.fetchall()
+   return rows[0][0]
 
 def exists(jobID):
    """
@@ -45,7 +54,7 @@ def get(jobID=[]):
       return result[0]
    return result
 
-
+#NOT TESTED
 def getRange(start=0,nr=0):
    """
    __getRange__
@@ -58,13 +67,6 @@ def getRange(start=0,nr=0):
    Session.execute(sqlStr)
    description=['allocation_id','cache_dir','events_processed','id','job_spec_file','job_type','max_retries','max_racers','retries','racers','status','time_stamp','workflow_id']
    return Session.convert(description,Session.fetchall())
-
-def isFilesFinished(jobID):
-   """
-   __isFilesFinished__
-
-   returns true if all files have been successfully finished (that is stored)
-   """
 
 def register(workflowID=None,allocationID=None,job={}):
    """
@@ -135,7 +137,6 @@ def register(workflowID=None,allocationID=None,job={}):
                sqlStr+=descriptionMap[attribute]+'="'+str(job[attribute])+'"'
        Session.execute(sqlStr)
        
-
 def remove(jobIDs=[]):
    """
    __remove__
@@ -147,38 +148,70 @@ def remove(jobIDs=[]):
    if len(jobIDs)==0:
        return
    if len(jobIDs)==1:
-       sqlStr="""DELETE FROM we_Job WHERE id="%s"
+       sqlStr1="""DELETE FROM we_Job WHERE id="%s"
        """ %(str(jobIDs[0]))
+       sqlStr2="""DELETE FROM tr_Trigger WHERE
+       JobSpecID='%s' """ %(jobIDs[0])
+       sqlStr3="""DELETE FROM tr_Action WHERE
+       JobSpecID='%s' """ %(jobIDs[0])
    else:
-       sqlStr="""DELETE FROM we_Job WHERE id IN %s
+       sqlStr1="""DELETE FROM we_Job WHERE id IN %s
        """ %(str(tuple(jobIDs)))
-   Session.execute(sqlStr)
+       sqlStr2="""DELETE FROM tr_Trigger WHERE
+       JobSpecID IN %s""" %(str(tuple(jobIDs)))
+       sqlStr3="""DELETE FROM tr_Action WHERE
+       JobSpecID IN %s""" %(str(tuple(jobIDs)))
+   Session.execute(sqlStr1)
+   Session.execute(sqlStr2)
+   Session.execute(sqlStr3)
 
+def removeAll():
+   sqlStr1="""DELETE FROM we_Job;"""
+   sqlStr2="""DELETE FROM tr_Trigger;"""
+   sqlStr3="""DELETE FROM tr_Action;"""
+   Session.execute(sqlStr1)
+   Session.execute(sqlStr2)
+   Session.execute(sqlStr3)
+
+       
 def registerFailure(jobID,failureState,parameters={}):
    """
    __registerFailure__
 
    registers a failure of a job and take appropiate actions.
    """
-# sqlStr="UPDATE js_JobSpec SET Retries=Retries+1 WHERE "+ \
-#                  " JobSpecID=\""+ jobSpecId +"\" AND "+ \
-#                  " Retries<MaxRetries AND State=\"register\";"
-#
-#   sqlStr="UPDATE js_JobSpec SET Retries=Retries+1 "+\
-#                  " WHERE JobSpecID=\""+ \
-# jobSpecId+"\" AND Retries<MaxRetries AND State=\"inProgress\";"
-#
-# sqlStr="UPDATE js_JobSpec SET Retries=Retries+1,Racers=Racers-1 "+\
-#                  "WHERE JobSpecID=\""+ jobSpecId+"\" AND "+\
-#                  "Racers>0 AND Retries<MaxRetries AND State=\"inProgress\";"
-#
+   if(failureState=='create'):
+       sqlStr="""UPDATE we_Job SET retries=retries+1 WHERE
+       id='%s' AND retries<max_retries AND status='register'
+       """ %(str(jobID))
+   elif(failureState=='submit'):
+       sqlStr="""UPDATE we_Job SET retries=retries+1 WHERE
+       id='%s' AND retries<max_retries AND status='in_progress'
+       """ %(str(jobID))
+   elif(failureState=='run'):
+       sqlStr="""UPDATE we_Job SET retries=retries+1,racers=racers-1 WHERE
+       id='%s' AND racers>0 AND retries<max_retries AND status='in_progress'
+       """ %(str(jobID))
+   rowsModified=Session.execute(sqlStr)
+   jobDetails=get(jobID)
+   if not jobDetails:
+       raise ProdException(exceptions[3012]+'undefined',3012) 
+   if(int(jobDetails['retries'])>(int(jobDetails['max_retries'])-1) ):
+       raise ProdException(exceptions[3013]+str(jobDetails['MaxRetries']),3013)
 
-   pass
+   if failureState!='run' and rowsModified!=1:
+       raise ProdException(exceptions[3014],3014)
+
+   if failureState=='run' and rowsModified!=1:
+       if jobDetails['status']!='in_progress':
+           raise ProdException(exceptions[3018]+str(jobDetails['status']),3018)
+       if int(jobDetails['racers'])==0:
+           raise ProdException(exceptions[3016]+str(jobDetails['status']),3016)
+       raise ProdException(exceptions[3017]+str(generalState['MaxRetries']),3017)
 
 def setCacheDir(jobID,cacheDir):
    """
    __setCacheDir__
-
    sets the job cache dir of a particular job.
    """
    sqlStr="""UPDATE we_Job SET cache_dir="%s" WHERE
@@ -277,10 +310,10 @@ def setState(jobID,state,parameters={}):
             if (job['racers']>(job['max_racers']-1)):
                 raise ProdException(exceptions[3011]+':'+str(jobID),3011) 
    elif state=="finished": 
-       sqlStr="""UPDATE we_Job SET state="finished" """
+       sqlStr="""UPDATE we_Job SET status='finished' """
        if sqlSetStr!='':
             sqlStr+=sqlSetStr
-       sqlStr+="""WHERE id="%s" AND status="in_progress" """ %(jobId,state)
+       sqlStr+="""WHERE id='%s' AND status='in_progress' """ %(str(jobID))
        rowsModified=Session.execute(sqlStr)
        if rowsModified!=1:
             job=get(jobID)

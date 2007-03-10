@@ -5,6 +5,8 @@ from ProdCommon.Core.GlobalRegistry import retrieveHandler
 from ProdCommon.Database import Session
 from ProdCommon.Core.ProdException import ProdException
 
+from ProdAgent.WorkflowEntities import Job
+
 def register(jobSpecId, jobType, maxRetries, maxRacers,workflowID=' '):
        """
        _register_
@@ -30,6 +32,11 @@ def register(jobSpecId, jobType, maxRetries, maxRacers,workflowID=' '):
 
        output: nothing, or an exception
        """
+       #WRAPPER
+       #jobDetails={'id':jobSpecId,'job_type':jobType,'max_retries':maxRetries,\
+       #   'max_racers':maxRacers}
+       #Job.register(workflowID,None,jobDetails)
+
        sqlStr="""INSERT INTO js_JobSpec(JobSpecID,JobType,MaxRetries, MaxRacers,
        Retries,State,WorkflowID) VALUES("%s","%s","%s","%s","0","register","%s")
        """ %(str(jobSpecId),str(jobType),str(maxRetries),str(maxRacers),str(workflowID))
@@ -57,6 +64,10 @@ def create(jobSpecId,cacheDir):
        (TransitionException).
 
        """
+       #WRAPPER
+       #Job.setState(jobSpecId,'create')
+       #Job.setCacheDir(jobSpecId,cacheDir)
+
        sqlStr="UPDATE js_JobSpec SET State=\"create\",\
        CacheDirLocation=\""+cacheDir+"\" \
        WHERE JobSpecID=\""+jobSpecId+"\" AND State=\"register\";"
@@ -81,6 +92,9 @@ def createFailure(jobSpecId):
        a submit exception if the maximum numbers of tries is reached.
 
        """
+       #WRAPPER
+       #Job.registerFailure(jobSpecId,'create')
+
        sqlStr="UPDATE js_JobSpec SET Retries=Retries+1 WHERE "+ \
               " JobSpecID=\""+ jobSpecId +"\" AND "+ \
               " Retries<MaxRetries AND State=\"register\";"
@@ -128,6 +142,9 @@ def inProgress(jobSpecId):
        (TransitionException)
 
        """
+       #WRAPPER
+       #Job.setState(jobSpecId,'inProgress')
+
        sqlStr="UPDATE js_JobSpec SET State=\"inProgress\"\
                WHERE JobSpecID=\""+jobSpecId+"\" AND State=\"create\";"
        rowsModified=Session.execute(sqlStr)
@@ -155,6 +172,9 @@ def submit(jobSpecId):
        or if we have reached the maximum number of racer (RacerException), 
        or reach the maximum number of submission (SubmitException).
        """
+       #WRAPPER
+       #Job.setState(jobSpecId,'submit')
+
        sqlStr="UPDATE js_JobSpec SET "+    \
        "Racers=Racers+1 WHERE JobSpecID=\""+str(jobSpecId)+ \
        "\" AND (Racers+Retries)<MaxRetries AND "+ \
@@ -195,6 +215,8 @@ def submitFailure(jobSpecId):
        racer (=0) (RacerException), or reach the maximum number of 
        submission (SubmitException).
        """
+       #WRAPPER
+       #Job.registerFailure(jobSpecId,'submit')
 
        sqlStr="UPDATE js_JobSpec SET Retries=Retries+1 "+\
        " WHERE JobSpecID=\""+ \
@@ -244,6 +266,9 @@ def runFailure(jobSpecId, jobInstanceId = None, \
        racer (=0) (RacerException), or reach the maximum number of 
        submission (SubmitException).
        """
+       #WRAPPER
+       #Job.registerFailure(jobSpecId,'run')
+
        sqlStr="UPDATE js_JobSpec SET Retries=Retries+1,Racers=Racers-1 "+\
               "WHERE JobSpecID=\""+ jobSpecId+"\" AND "+\
               "Racers>0 AND Retries<MaxRetries AND State=\"inProgress\";"
@@ -303,6 +328,9 @@ def finished(jobSpecId):
        returns nothing or an error if the state change is not valid 
        (TransisitionException)
        """
+       #WRAPPER
+       #Job.setState(jobSpecId,'finished')
+
        sqlStr1="""UPDATE js_JobSpec SET State="finished" WHERE 
                  JobSpecID="%s" AND State="inProgress";""" %(jobSpecId)
        rowsModified=Session.execute(sqlStr1)
@@ -328,6 +356,9 @@ def cleanout(jobSpecId):
       returns nothing or an error if the state change is not valid
       (TransitionException)
       """
+      #WRAPPER
+      #Job.remove(jobSpecId)
+
       sqlStr4="""DELETE FROM js_JobSpec WHERE 
                 JobSpecID="%s";""" %(jobSpecId)
       # not every mysql version supports cascade and foreign keys
@@ -358,6 +389,9 @@ def setRacer(jobSpecId, maxRacers):
       be aborted). Setting the maximum number of racers to 1 means 
       effictively turning this feature off.
       """
+      #WRAPPER
+      #Job.setMaxRacers(jobSpecId,maxRacers)
+
       sqlStr1="""UPDATE js_JobSpec SET MaxRacers="%s" WHERE
              JobSpecID="%s"; """ %(str(maxRacers),str(jobSpecId))
       rowsModified=Session.execute(sqlStr1)
@@ -371,6 +405,9 @@ def purgeStates():
       purges all state information (including trigger information) 
 
       """
+      #WRAPPER
+      #Job.removeAll()
+
       sqlStr1="""DELETE FROM js_JobSpec;"""
       sqlStr2="""DELETE FROM js_JobInstance;"""
       sqlStr3="""DELETE FROM tr_Trigger;"""
@@ -389,6 +426,9 @@ def setMaxRetries(jobSpecIds=[],maxRetries=1):
       Sets the number of max retries.
 
       """
+      #WRAPPER
+      #Job.setMaxRetries(jobSpecIds,maxRetries)
+
       if maxRetries<1:
          raise Exception("MaxRetries value should be larger than 0") 
       if type(jobSpecIds)==list:
@@ -431,6 +471,21 @@ def general(JobSpecId):
 
        or an error if the JobSpecId does not exists.
        """
+       #WRAPPER
+       #jobDetails=Job.get(JobSpecId)
+       #result={}
+       #result['JobType']=jobDetails['job_type']
+       #result['MaxRetries']=int(jobDetails['max_retries'])
+       #result['Retries']=int(jobDetails['retries'])
+       #if(jobDetails['status']=='in_progress'):
+       #    result['State']='inProgress'
+       #else:
+       #    result['State']=jobDetails['status']
+       #result['CacheDirLocation']=jobDetails['cache_dir']
+       #result['MaxRacers']=int(jobDetails['max_racers'])
+       #result['Racers']=int(jobDetails['racers'])
+       #return result
+       
        sqlStr='SELECT JobType,MaxRetries,Retries, '+\
               'State,CacheDirLocation, MaxRacers, Racers '+ \
               'FROM js_JobSpec WHERE '+  \
@@ -451,6 +506,9 @@ def general(JobSpecId):
               }
 
 def isRegistered(JobSpecId):
+       #WRAPPER
+       #return Job.exists(JobSpecId)   
+
        sqlStr='SELECT JobType FROM js_JobSpec WHERE '+  \
               'JobSpecID="'+JobSpecId+'";'
        Session.execute(sqlStr)
@@ -516,6 +574,9 @@ def jobReports(JobSpecId):
        return result
 
 def jobSpecTotal():
+       #WRAPPER
+       #return Job.amount()
+      
        sqlStr='SELECT COUNT(JobSpecID) FROM js_JobSpec;'
        Session.execute(sqlStr)
        #this query will not return many (= thousands) of results.
@@ -524,6 +585,9 @@ def jobSpecTotal():
        return result
 
 def rangeGeneral(start = -1, nr = -1):
+       #WRAPPER
+       #return Job.getRange(start,nr)
+       
        if ( (start == -1) and (nr == -1) ):
            start=0
            nr=jobSpecTotal()

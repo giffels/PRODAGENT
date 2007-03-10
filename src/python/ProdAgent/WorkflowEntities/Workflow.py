@@ -41,17 +41,17 @@ def get(workflowID=[]):
    if(type(workflowID)!=list):
        workflowID=[str(workflowID)]
    if len(workflowID)==0:
-       return
+       return []
    if len(workflowID)==1:
-       sqlStr="""SELECT events_processed,id,priority,prod_mgr_url,
+       sqlStr="""SELECT events_processed,id,owner,priority,prod_mgr_url,
        workflow_spec_file,workflow_type FROM we_Workflow WHERE id="%s"
        """ %(str(workflowID[0]))
    else:
-       sqlStr="""SELECT events_processed,id,priority,prod_mgr_url,
+       sqlStr="""SELECT events_processed,id,owner,priority,prod_mgr_url,
        workflow_spec_file,workflow_type FROM we_Workflow WHERE id IN 
        %s """ %(str(tuple(workflowID)))
    Session.execute(sqlStr)
-   description=['events_processed','id','priority','prod_mgr_url',\
+   description=['events_processed','id','owner','priority','prod_mgr_url',\
    'workflow_spec_file','workflow_type']
    result=Session.convert(description,Session.fetchall())
    if len(result)==1:
@@ -82,8 +82,23 @@ def getJobIDs(workflowIDs=[]):
 
    returns jobids associated to the list of workflowIDs
    """
-   pass
-
+   if(type(workflowIDs)!=list):
+       workflowIDs=[str(workflowIDs)]
+   if len(workflowIDs)==0:
+       return []
+   if len(workflowIDs)==1:
+       sqlStr="""SELECT id FROM we_Job WHERE workflow_id='%s'
+       """ %(str(workflowIDs[0]))
+   else:
+       sqlStr="""SELECT id FROM we_Job WHERE workflow_id IN %s
+       """ %(str(tuple(workflowIDs)))
+   Session.execute(sqlStr)
+   rows=Session.fetchall()
+   result=[]
+   for row in rows:
+      result.append(row[0])
+   return result 
+   
 def getNotDownloaded():
    """
    __getNotDownloaded__
@@ -150,7 +165,7 @@ def register(workflowID,parameters={}):
    if the workflow has already been registered it gives a warning and moves on.
    """
    descriptionMap={'priority':'priority','request_type':'workflow_type',\
-       'prod_mgr_url':'prod_mgr_url','workflow_spec_file':'workflow_spec_file'}
+       'prod_mgr_url':'prod_mgr_url','workflow_spec_file':'workflow_spec_file','owner':'owner'}
    # check with attributes are provided.
    description=parameters.keys()
 

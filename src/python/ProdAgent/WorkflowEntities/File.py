@@ -5,6 +5,8 @@ from ProdAgent.Core.Codes import exceptions
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
 
+import logging
+
 #associate a message service to the file object
 # to facilitate publishing messages.
 ms=None
@@ -43,27 +45,20 @@ def merged(fileIDs=[],failed=False):
    It will give a warning if it is not part of an allocation and moves on.
    """
    global ms
+   logging.debug("Finding job ids associated to files: ")
    if type(fileIDs)!=list:
       fileIDs=[fileIDs]
    if len(fileIDs)==1:
       sqlStr="""SELECT events_processed,job_id FROM we_File WHERE id="%s"
       """ %(str(fileIDs[0]))
    else:
-      sqlStr="""SELECT events_processed,job_id FROM we_File WHERE id IN %s
+      sqlStr="""SELECT sum(events_processed),job_id FROM we_File WHERE id IN %s
       GROUP BY job_id
       """ %(str(tuple(fileIDs)))
    Session.execute(sqlStr)
    rows=Session.fetchall()
    jobIDs=[]
-   # break if nothing is being returned
-   if len(rows)==0:
-      return
-   for row in rows:
-       if failed:
-           Job.setEventsProcessedIncrement(row[1],0)
-       else: 
-           Job.setEventsProcessedIncrement(row[1],row[0]) 
-       jobIDs.append(row[1])
+   logging.debug("Removing File entries if exist")
    if len(fileIDs)==1:
       sqlStr="""DELETE FROM we_File WHERE id="%s"
       """ %(str(fileIDs[0]))
@@ -71,6 +66,17 @@ def merged(fileIDs=[],failed=False):
       sqlStr="""DELETE FROM we_File WHERE id IN %s
       """ %(str(tuple(fileIDs)))
    Session.execute(sqlStr)
+   # break if nothing is being returned
+   if len(rows)==0:
+      return
+   logging.debug("Updating events processed for jobs")
+   for row in rows:
+       if failed:
+           Job.setEventsProcessedIncrement(row[1],0)
+       else: 
+           Job.setEventsProcessedIncrement(row[1],row[0]) 
+       jobIDs.append(row[1])
+   logging.debug("Find the jobs that have all their files merged")  
    if len(jobIDs)==1:
       sqlStr="""SELECT we_Job.id,we_File.id FROM we_Job LEFT JOIN (we_File) ON (we_Job.id=we_File.job_id)
       WHERE we_Job.id="%s" """ %(str(jobIDs[0]))
@@ -84,8 +90,9 @@ def merged(fileIDs=[],failed=False):
       if not row[1]:
            jobIDs.append(row[0]) 
    if ms:
+      logging.debug("Publishing job success for jobs whose files have been merged")  
       for jobID in jobIDs:
-         ms.publish("ProdMgrInterface:JobSuccess",str(jobIDs))    
+         ms.publish("ProdMgrInterface:JobSuccess",str(jobID))    
    else:
       raise ProdException(exceptions[30212],3021)
    
