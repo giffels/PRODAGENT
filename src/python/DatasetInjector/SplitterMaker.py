@@ -11,7 +11,7 @@ For a given dataset, create and return a JobSplitter instance
 import logging
 
 from PhEDExInterface.DBSDLSToolkit import DBSDLSToolkit, RemoteDBSDLSToolkit
-from DatasetInjector.JobSplitter import JobSplitter
+from ProdCommon.DataMgmt.JobSplit.JobSplitter import JobSplitter
 
 
 

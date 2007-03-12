@@ -10,7 +10,7 @@ DB API for Dataset Injector JobQueue
 import logging
 import MySQLdb
 from ProdAgentDB.Connect import connect
-from DatasetInjector.JobSplitter import JobDefinition
+from ProdCommon.DataMgmt.JobSplit.JobSplitter import JobDefinition
 
 
 
