@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: RESubmitter.py,v 1.1 2007/03/05 16:47:57 bacchi Exp $"
+__revision__ = "$Id: RESubmitter.py,v 1.2 2007/03/07 17:25:56 evansde Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -195,6 +195,7 @@ class RESubmitter(SubmitterInterface):
         output = BOSSCommands.executeCommand(bossSubmit)
         logging.debug ("RESubmitter.doSubmit: %s" % output)
         if output.find("error")>=0:
+          BOSSCommands.FailedSubmission(str(bossJobId),self.bossCfgDir)
           raise ProdAgentException("Submission Failed")
         #os.remove(cladfile)
         try:
@@ -205,6 +206,7 @@ class RESubmitter(SubmitterInterface):
         try:
          chainid=(output.split("Scheduler ID for job")[1]).split("is")[0].strip()
         except:
+          BOSSCommands.FailedSubmission(str(bossJobId),self.bossCfgDir)
           raise ProdAgentException("Submission Failed")
 
         self.bossStrJobId=str(bossJobId)+"."+chainid+"."+resub

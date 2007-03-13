@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.24 2007/03/07 14:39:21 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.23 2007/02/07 14:56:12 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -31,6 +31,7 @@ from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentBOSS import BOSSCommands
+from JobState.JobStateAPI import JobStateInfoAPI 
 
 from popen2 import Popen4
 import select
@@ -127,10 +128,10 @@ class LCGSubmitter(SubmitterInterface):
         Initial tests: No FrameworkJobReport yet, stage back stdout log
         
         """
-        bossJobId=self.isBOSSDeclared()
+        bossJobId=BOSSCommands.isBOSSDeclared(self.parameters['Wrapper'],self.parameters['JobName'])
         if bossJobId==None:
-            self.declareToBOSS()
-            bossJobId=self.isBOSSDeclared()
+            BOSSCommands.declareToBOSS(self.bossCfgDir,self.parameters)
+            bossJobId=BOSSCommands.isBOSSDeclared(self.parameters['Wrapper'],self.parameters['JobName'])
         #bossJobId=self.getIdFromFile(TarballDir, JobName)
         logging.debug( "LCGSubmitter.doSubmit bossJobId = %s"%bossJobId)
         if bossJobId==0:
@@ -161,7 +162,8 @@ class LCGSubmitter(SubmitterInterface):
             #print "You need a voms-proxy-init -voms cms"
             logging.error("voms-proxy-init does not exist")
             logging.error(output)
-            sys.exit()
+            # raise ProdAgentException("voms-proxy-init command not found")
+            # sys.exit()
             
         bossSubmit = BOSSCommands.submit(bossJobId,self.parameters['Scheduler'],self.bossCfgDir)
         try:
@@ -173,15 +175,15 @@ class LCGSubmitter(SubmitterInterface):
             
         except:
           bossSubmit+=" -rtmon NONE "
-          
         bossSubmit += " -schclassad %s"%schedulercladfile     #  //
         # // Executing BOSS Submit command
         #//
         # AF : remove the following buggy logging
-        #logging.debug( "LCGSubmitter.doSubmit:", bossSubmit)
+        # logging.info( "LCGSubmitter.SubmitCommand: %s", bossSubmit)
         output = BOSSCommands.executeCommand(bossSubmit)
         logging.debug ("LCGSubmitter.doSubmit: %s" % output)
         if output.find("error")>=0:
+          BOSSCommands.FailedSubmission(str(bossJobId),self.bossCfgDir)
           raise ProdAgentException("Submission Failed")
         #os.remove(cladfile)
         try:

@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: GLITESubmitter.py,v 1.3 2006/10/11 11:25:33 bacchi Exp $"
+__revision__ = "$Id: GLITESubmitter.py,v 1.4 2006/12/06 14:14:52 evansde Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -31,6 +31,7 @@ from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentBOSS import BOSSCommands
+from JobState.JobStateAPI import JobStateInfoAPI 
 
 
 from popen2 import Popen4
@@ -127,10 +128,10 @@ class GLITESubmitter(SubmitterInterface):
         Initial tests: No FrameworkJobReport yet, stage back stdout log
         
         """
-        self.bossJobId=self.isBOSSDeclared()
+        self.bossJobId=BOSSCommands.isBOSSDeclared(self.parameters['Wrapper'],self.parameters['JobName'])
         if self.bossJobId==None:
-            self.declareToBOSS()
-            self.bossJobId=self.isBOSSDeclared()
+            BOSSCommands.declareToBOSS(self.bossCfgDir,self.parameters)
+            self.bossJobId=BOSSCommands.isBOSSDeclared(self.parameters['Wrapper'],self.parameters['JobName'])
         #bossJobId=self.getIdFromFile(TarballDir, JobName)
         logging.debug( "GLITESubmitter.doSubmit bossJobId = %s"%self.bossJobId)
         if self.bossJobId==0:
@@ -144,8 +145,9 @@ class GLITESubmitter(SubmitterInterface):
         try:
            self.createJDL(schedulercladfile,swversion)
         except InvalidFile, ex:
-           return 
+          raise ProdAgentException("Failed to create JDL: %s"%ex)
 
+          
         try:
             output=BOSSCommands.executeCommand("voms-proxy-info")
             output=output.split("timeleft")[1].strip()
@@ -158,7 +160,8 @@ class GLITESubmitter(SubmitterInterface):
             #print "You need a voms-proxy-init -voms cms"
             logging.error("voms-proxy-init does not exist")
             logging.error(output)
-            sys.exit()
+            # raise ProdAgentException("Proxy Expired")
+          # sys.exit()
             
         bossSubmit = BOSSCommands.submit(self.bossJobId,self.parameters['Scheduler'],self.bossCfgDir)
         try:
@@ -175,6 +178,7 @@ class GLITESubmitter(SubmitterInterface):
         output = BOSSCommands.executeCommand(bossSubmit)
         logging.debug ("GLITESubmitter.doSubmit: %s" % output)
         if output.find("error")>=0:
+          BOSSCommands.FailedSubmission(str(bossJobId),self.bossCfgDir)
           raise ProdAgentException("Submission Failed")
         #os.remove(cladfile)
 
