@@ -8,6 +8,10 @@ import string
 import os
 import signal
 import re
+from JobState.JobStateAPI import JobStateInfoAPI 
+import shutil
+from ProdAgentCore.ProdAgentException import ProdAgentException
+
 def checkSuccess(id,bossCfgDir):
     success=False
     try:
@@ -530,3 +534,94 @@ def taskEnded(id,bossCfgDir):
     if initialJobs==1:
         return True
     return False
+
+
+def declareToBOSS(bossCfgDir,parameters):
+    """
+    _declareToBOSS_
+    
+    Declare this job to BOSS.
+    Parameters are extracted from this instance
+    
+    """
+
+
+    # logging.debug("SubmitterInterface:Declaring Job To BOSS")
+    bossJobId=declare(bossCfgDir,parameters)
+
+    ## move id file out from job-cache area
+    #idFile = "%s/%sid" % (
+    #    self.parameters['JobCacheArea'], self.parameters['JobName'],
+    #    )
+    idFile = "%s/%sid" % (os.path.dirname(parameters['Wrapper']),parameters['JobName'])
+
+    handle = open(idFile, 'w')
+    handle.write("JobId=%s" % bossJobId)
+    handle.close()
+    # logging.debug("SubmitterInterface:BOSS JobID File:%s" % idFile)
+    #os.remove(cladfile)
+    return
+
+
+def isBOSSDeclared(Wrapper,JobName):
+    """
+    _isBOSSDeclared_
+    
+    If this job has been declared to BOSS, return the BOSS ID
+    from the cache area. If it has not, return None
+    
+    """
+    idFile ="%s/%sid" % (os.path.dirname(Wrapper), JobName)
+
+    if not os.path.exists(idFile):
+        #  //
+        # // No BOSS Id File ==> not declared
+        #//
+        return None
+    content = file(idFile).read().strip()
+    content=content.replace("JobId=", "")
+    try:
+        jobId = int(content)
+    except ValueError:
+        jobId = None
+    return jobId
+
+def FailedSubmission(bossJobId,bossCfgDir):
+
+    
+    taskid=bossJobId.split('.')[0]
+    try:
+        jobMaxRetries=JobStateInfoAPI.general(jobSpecId(bossJobId,bossCfgDir))['MaxRetries']
+        Retries=JobStateInfoAPI.general(jobSpecId(bossJobId,bossCfgDir))['Retries']
+    except:
+        jobMaxRetries=0
+        Retries=0
+    
+#     outfile=executeCommand("bossAdmin SQL -query \"select max(ID) resub from JOB where TASK_ID=%s\" -c %s"%(taskid,bossCfgDir))
+#     resub=0
+#     try:
+#         resub=int(outfile.split("resub")[1])
+#     except:
+#         return 
+    if Retries>=(jobMaxRetries-1):
+        try:
+            submissionDir=subdir(taskid+".1.1",bossCfgDir)
+            shutil.rmtree(submissionDir)
+            Delete(bossJobId,bossCfgDir)
+            
+        except:
+            pass
+        
+def Archive(jobId,bossCfgDir):
+
+    outfile=executeCommand("boss archive -taskid %s -c %s"%(jobId.split('.')[0],bossCfgDir))
+    return
+
+
+def Delete(jobId,bossCfgDir):
+    # print "boss delete -taskid %s -noprompt -c %s"%(jobId.split('.')[0],bossCfgDir)
+    outfile=executeCommand("boss delete -taskid %s -noprompt -c %s"%(jobId.split('.')[0],bossCfgDir))
+    # print outfile
+    return
+
+
