@@ -714,7 +714,12 @@ class TrackingComponent:
             os.rmdir(chainDir)
         except:
             logging.error("error removing chainDir %s"%chainDir)
-        if success=="Success":
+        try:
+            jobMaxRetries=JobStateInfoAPI.general(fjr[0].jobSpecId)['MaxRetries']
+        except:
+            jobMaxRetries=0
+        logging.info("maxretries=%s and resub = %s\n"%(jobMaxRetries,resub))
+        if success=="Success" or int(jobMaxRetries)<=int(resub):
             try:
                 subPath=BOSSCommands.subdir(jobId[0],self.bossCfgDir)
             except:
@@ -723,6 +728,7 @@ class TrackingComponent:
             if BOSSCommands.taskEnded(jobId[0],self.bossCfgDir):
                 try:
                     rmtree(subPath)
+                    BOSSCommands.Archive(jobId[0],self.bossCfgDir)
                     # os.remove("%s/BossArchive_%s_g0.tar"%(subPath,taskid))
                     # logging.debug("removed %s/BossArchive_%s_g0.tar"%(subPath,taskid))
                     # os.remove("%s/BossClassAdFile_%s"%(subPath,taskid))
