@@ -265,7 +265,14 @@ componentFields = {
     "ComponentDir" : None,
     "ItemListLength" : 100,
     "Port" : 8100,
-    }
+    },
+
+    "Monitoring" : {
+    "ComponentDir" : None,
+    "Enabled" : "no",
+    "PollInterval" : 3600,
+    "ExportCommand" : "cp ProdAgentStatus.sql ..",
+    },
 
     }# end componentFields
 
