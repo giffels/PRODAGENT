@@ -248,9 +248,6 @@ class SubmitterInterface:
         
               
         
-        bossId = self.isBOSSDeclared()
-        if bossId != None:
-            self.parameters['BOSSID'] = bossId
             
 
         #  //
@@ -328,58 +325,7 @@ class SubmitterInterface:
         return
         
 
-    def declareToBOSS(self):
-        """
-        _declareToBOSS_
 
-        Declare this job to BOSS.
-        Parameters are extracted from this instance
-
-        """
-                                   
- 
-        logging.debug("SubmitterInterface:Declaring Job To BOSS")
-        bossJobId=BOSSCommands.declare(self.bossCfgDir,self.parameters)
-
-        ## move id file out from job-cache area
-        #idFile = "%s/%sid" % (
-        #    self.parameters['JobCacheArea'], self.parameters['JobName'],
-        #    )
-        idFile = "%s/%sid" % (os.path.dirname(self.parameters['Wrapper']), self.parameters['JobName'])
-
-        handle = open(idFile, 'w')
-        handle.write("JobId=%s" % bossJobId)
-        handle.close()
-        logging.debug("SubmitterInterface:BOSS JobID File:%s" % idFile)
-        #os.remove(cladfile)
-        return
-
-    def isBOSSDeclared(self):
-        """
-        _isBOSSDeclared_
-
-        If this job has been declared to BOSS, return the BOSS ID
-        from the cache area. If it has not, return None
-
-        """
-        ## move id file out from job-cache
-        #idFile = "%s/%sid" % (
-        #    self.parameters['JobCacheArea'], self.parameters['JobName'],
-        #    )
-        idFile ="%s/%sid" % (os.path.dirname(self.parameters['Wrapper']), self.parameters['JobName'])
-
-        if not os.path.exists(idFile):
-            #  //
-            # // No BOSS Id File ==> not declared
-            #//
-            return None
-        content = file(idFile).read().strip()
-        content=content.replace("JobId=", "")
-        try:
-            jobId = int(content)
-        except ValueError:
-            jobId = None
-        return jobId
         
     def listToString(self,listInstance):
         """
