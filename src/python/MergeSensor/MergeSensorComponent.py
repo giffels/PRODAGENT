@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.56 2007/02/26 18:05:53 ckavka Exp $"
-__version__ = "$Revision: 1.56 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1290,7 +1290,7 @@ class MergeSensorComponent:
         # define process name as MERGE+timestamp
         currentTime = str(time.time())
         currentTime = currentTime.replace('.', '')
-        processName = "MERGE-" + currentTime
+        processName = "MERGE" + currentTime
         
         try:
             workflowDict = eval(self.mergeWorkflow)
@@ -1835,7 +1835,7 @@ class MergeSensorComponent:
             logging.error("  reconnected to DBS!")
             try:
                 processed = DbsProcessedDataset(datasetPathName = path)
-                blockList = self.dbsApi.getDatasetFileBlocks(processed)
+                blockList = self.dbsApi.getDatasetContents(processed)
 
             # no, it does not work
             except Exception, ex:
