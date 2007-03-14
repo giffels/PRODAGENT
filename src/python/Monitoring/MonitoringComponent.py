@@ -6,8 +6,8 @@ Component that provides monitoring services
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MonitoringComponent.py,v 1.1 2007/03/13 12:39:39 ckavka Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -57,8 +57,7 @@ class MonitoringComponent:
         self.args.setdefault("ComponentDir", None)
         self.args.setdefault("ProdAgentName", None)
         self.args.setdefault("PollInterval", 3600)
-        self.args.setdefault("ExportMode", None)
-        self.args.setdefault("TargetDir", None)
+        self.args.setdefault("ExportCommand", None)
         self.args.setdefault("passwd", None)
         self.args.setdefault("host", None)
         self.args.setdefault("user", None)
