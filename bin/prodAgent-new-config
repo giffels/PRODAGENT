@@ -122,7 +122,8 @@ coreFields = {
     },
 
     "JobStates" : {
-    "maxRetries":10
+    "maxRetries":10,
+    "mergeMaxRetries":10
     },
 
     'LocalDBS' :{
@@ -329,7 +330,11 @@ of the job that is used to submit new submission events with a delay.
 """,
   "JobStates"      : \
 """
-MaxRetries: The maximum number of retries for a certain job(spec). If there
+maxRetries: The maximum number of retries for a certain job(spec). If there
+is a failure in creation,submission,running,etc.. a failure event will be triggered
+and the job will restart (retry). Once the maximum is reached a general job failure
+will be triggered. NOTE: this number needs to be bigger than 0 (1 and up). 
+mergeMaxRetries: The maximum number of retries for a certain merge job(spec). If there
 is a failure in creation,submission,running,etc.. a failure event will be triggered
 and the job will restart (retry). Once the maximum is reached a general job failure
 will be triggered. NOTE: this number needs to be bigger than 0 (1 and up). 
