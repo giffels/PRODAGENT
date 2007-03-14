@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.19 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.19 2007/02/15 16:31:10 evansde Exp $"
+__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.20 2007/03/13 20:18:02 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -271,9 +271,10 @@ class ReqInjComponent:
             bulkSpecName = bulkSpecName.replace("file:///", "/")
             logging.info("Bulk Spec: %s" % bulkSpecName)
             bulkSpec = JobSpec()
-            if not os.path.exists(firstSpec):
+            firstSpecName = firstSpec.replace("file:///", "/")
+            if not os.path.exists(firstSpecName):
                 msg = "Primary Spec for Bulk Spec creation not found:\n"
-                msg += "%s\n" % firstSpec
+                msg += "%s\n" % firstSpecName
                 msg += "Cannot construct Bulk Spec"
                 logging.error(msg)
                 return
