@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: RESubmitter.py,v 1.2 2007/03/07 17:25:56 evansde Exp $"
+__revision__ = "$Id: RESubmitter.py,v 1.3 2007/03/13 11:48:58 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -181,7 +181,9 @@ class RESubmitter(SubmitterInterface):
             # sys.exit()
             
         bossSubmit = BOSSCommands.resubmit(bossJobId,self.bossCfgDir)
-#            bossSubmit = BOSSCommands.submit(bossJobId,self.bossCfgDir)
+        # bossSubmit = BOSSCommands.submit(bossJobId,self.bossCfgDir)
+        bossSubmit += " -reuseclad "
+
         try:
 
           if self.parameters['RTMon']!='':
