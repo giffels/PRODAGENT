@@ -3,8 +3,8 @@
 import logging
 
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
-from ErrorHandler.Registry import registerHandler
 from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.Core.GlobalRegistry import registerHandler
 
 class ProcessingRunFailureHandler(HandlerInterface):
     """
@@ -22,7 +22,7 @@ class ProcessingRunFailureHandler(HandlerInterface):
          # do nothing for the moment.
          logging.debug(">ProcessingRunFailureHandler< do nothing 4 the moment")
 
-registerHandler(ProcessingRunFailureHandler(),"ProcessingRunFailureHandler")
+registerHandler(ProcessingRunFailureHandler(),"ProcessingRunFailureHandler","ErrorHandler")
 
 
 

@@ -6,13 +6,12 @@ import logging
 from ErrorHandler.DirSize import dirSize
 from ErrorHandler.DirSize import convertSize
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
-from ErrorHandler.Registry import registerHandler
-from ErrorHandler.Registry import retrieveHandler
 from ErrorHandler.TimeConvert import convertSeconds
 from JobState.Database.Api.RetryException import RetryException
-from JobState.JobStateAPI import JobStateChangeAPI
-from JobState.JobStateAPI import JobStateInfoAPI
-from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdAgent.WorkflowEntities import JobState
+from ProdCommon.Core.GlobalRegistry import retrieveHandler
+from ProdCommon.Core.GlobalRegistry import registerHandler
+from ProdCommon.Core.ProdException import ProdException
 
 class SubmitFailureHandler(HandlerInterface):
     """
@@ -40,14 +39,14 @@ class SubmitFailureHandler(HandlerInterface):
 
          logging.debug(">SubmitFailureHandler<:Retrieving jobId from payload: "+str(jobId))
 
-         generalInfo=JobStateInfoAPI.general(jobId)
+         generalInfo=JobState.general(jobId)
          # a submit event with delay
          delay=int(self.args['DelayFactor'])*(int(generalInfo['Retries']+1))
          delay=convertSeconds(delay)
          logging.debug(">SubmitHandler<: Submitting with delay (h:m:s) "+\
                       str(delay))
          try:
-              JobStateChangeAPI.submitFailure(jobId)
+              JobState.submitFailure(jobId)
 
               # check the cache dir size. If it is beyond the threshold, purge it.
               dirSizeBytes=dirSize(generalInfo['CacheDirLocation'],0,0,0)
@@ -69,14 +68,14 @@ class SubmitFailureHandler(HandlerInterface):
                      "publishing a submit job event")
                   self.publishEvent("SubmitJob",jobspecfile,delay)
 #                  self.publishEvent("SubmitJob",(jobId),delay)
-         except RetryException:
-              logging.debug(">SubmitFailureHandler<:Registered "+\
-                            "a job submit failure. "+ \
-                            "Maximum number of retries reached!" +\
-                            " Submitting a failure job and cleanup event ")
-              self.publishEvent("FailureCleanup",(jobId))
-              self.publishEvent("GeneralJobFailure",(jobId))
-
+         except ProdException,ex:
+              if(ex["ErrorNr"]==3013):
+                  logging.debug(">SubmitFailureHandler<:Registered "+\
+                  "a job submit failure. "+ \
+                  "Maximum number of retries reached!" +\
+                  " Submitting a failure job and cleanup event ")
+                  self.publishEvent("FailureCleanup",(jobId))
+                  self.publishEvent("GeneralJobFailure",(jobId))
 
          # we retrieve the job type, and depending on the type we
          # pick an error handler.
@@ -84,14 +83,14 @@ class SubmitFailureHandler(HandlerInterface):
          jobType=generalInfo['JobType']
          handlerType=jobType+"SubmitFailureHandler"
          try:
-              handler=retrieveHandler(handlerType)
+              handler=retrieveHandler(handlerType,"ErrorHandler")
          except:
-              raise ProdAgentException("Could not find handler "+handlerType)
+              raise ProdException("Could not find handler "+handlerType)
          logging.debug(">SubmitFailureHandler<:Propagating error to new  "+\
                        "error handler for further processing")
          handler.handleError(payload)
 
-registerHandler(SubmitFailureHandler(),"submitFailureHandler")
+registerHandler(SubmitFailureHandler(),"submitFailureHandler","ErrorHandler")
 
 
 

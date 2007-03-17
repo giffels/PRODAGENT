@@ -3,7 +3,7 @@
 import logging
 
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
-from ErrorHandler.Registry import registerHandler
+from ProdCommon.Core.GlobalRegistry import registerHandler
 
 class ProcessingSubmitFailureHandler(HandlerInterface):
     """
@@ -20,7 +20,7 @@ class ProcessingSubmitFailureHandler(HandlerInterface):
          jobId = payload
          logging.debug(">ProcessingSubmitFailureHandler<: do nothing 4 the moment") 
 
-registerHandler(ProcessingSubmitFailureHandler(),"ProcessingSubmitFailureHandler")
+registerHandler(ProcessingSubmitFailureHandler(),"ProcessingSubmitFailureHandler","ErrorHandler")
 
 
 

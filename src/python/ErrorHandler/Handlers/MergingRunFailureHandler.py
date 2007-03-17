@@ -3,8 +3,9 @@
 import logging 
 
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
-from ErrorHandler.Registry import registerHandler
 from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.Core.GlobalRegistry import registerHandler
+
 
 class MergingRunFailureHandler(HandlerInterface):
     """
@@ -21,7 +22,7 @@ class MergingRunFailureHandler(HandlerInterface):
          jobId  = jobReport[0].jobSpecId
          logging.debug(">MergeRunFailureHandler<: do nothing 4 the moment")
 
-registerHandler(MergingRunFailureHandler(),"MergeRunFailureHandler")
+registerHandler(MergingRunFailureHandler(),"MergeRunFailureHandler","ErrorHandler")
 
 
 

@@ -17,9 +17,12 @@ from logging.handlers import RotatingFileHandler
 import os
 import socket
 
-from ErrorHandler.Registry import retrieveHandler
-from ErrorHandler.Registry import Registry 
 from MessageService.MessageService import MessageService
+
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.Database import Session
+from ProdCommon.Core.GlobalRegistry import retrieveHandler
+from ProdCommon.Core.GlobalRegistry import GlobalRegistry
 
 
 
@@ -101,7 +104,7 @@ class ErrorHandlerComponent:
                    logging.info("logging level changed to INFO")
                    return
               elif event in self.args['Events'].keys():
-                  handler=retrieveHandler(self.args['Events'][event])
+                  handler=retrieveHandler(self.args['Events'][event],"ErrorHandler")
                   handler.handleError(payload)
               else:
                   logging.error("No handler available for %s event with payload: %s" \
@@ -132,8 +135,8 @@ class ErrorHandlerComponent:
  
          """
          # prepare handlers:
-         for handlerName in Registry.HandlerRegistry.keys():
-             handler=Registry.HandlerRegistry[handlerName]
+         for handlerName in GlobalRegistry.registries["ErrorHandler"].keys():
+             handler=GlobalRegistry.registries["ErrorHandler"][handlerName]
              handler.publishEvent=self.publishEvent
              handler.args=self.args
              #NOTE: remove this
@@ -157,7 +160,14 @@ class ErrorHandlerComponent:
          self.ms.commit()
          # wait for messages
          while True:
+             Session.set_database(dbConfig)
+             Session.connect()
+             Session.start_transaction()
              type, payload = self.ms.get()
-             self.ms.commit()
+
              logging.debug("ErrorHandler: %s, %s" % (type, payload))
              self.__call__(type, payload)
+
+             Session.commit_all()
+             Session.close_all()
+             self.ms.commit()

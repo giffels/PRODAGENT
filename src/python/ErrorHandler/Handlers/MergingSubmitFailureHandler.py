@@ -3,7 +3,7 @@
 import logging
 
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
-from ErrorHandler.Registry import registerHandler
+from ProdCommon.Core.GlobalRegistry import registerHandler
 
 class MergingSubmitFailureHandler(HandlerInterface):
     """
@@ -20,6 +20,6 @@ class MergingSubmitFailureHandler(HandlerInterface):
          jobId = payload
          logging.debug(">MergeSubmitFailureHandler<: do nothing 4 the moment")
 
-registerHandler(MergingSubmitFailureHandler(),"MergeSubmitFailureHandler")
+registerHandler(MergingSubmitFailureHandler(),"MergeSubmitFailureHandler","ErrorHandler")
 
 

@@ -1,7 +1,5 @@
 import math
 
-from ProdAgentCore.ProdAgentException import ProdAgentException
-
 def convertSeconds(remainingSeconds):
 
     if remainingSeconds<0:
