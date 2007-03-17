@@ -5,11 +5,8 @@ import os
 import tarfile
 
 from JobCleanup.Handlers.HandlerInterface import HandlerInterface
-from JobCleanup.Registry import registerHandler
-from JobCleanup.Registry import retrieveHandler
-
-from JobState.JobStateAPI import JobStateChangeAPI
-from JobState.JobStateAPI import JobStateInfoAPI
+from ProdAgent.WorkflowEntities import JobState
+from ProdCommon.Core.GlobalRegistry import registerHandler
 
 class CleanupHandler(HandlerInterface):
     """
@@ -42,7 +39,7 @@ class CleanupHandler(HandlerInterface):
 
              logging.debug(">CleanupHandler< removing cached files and state "+\
                             "information for jobspec: "+str(payload))
-             cacheDirLocation=JobStateInfoAPI.general(str(payload))['CacheDirLocation']
+             cacheDirLocation=JobState.general(str(payload))['CacheDirLocation']
              logging.debug(">CleanupHandler< removing directory: "+cacheDirLocation)
              tar=tarfile.open(self.successArchive+'/'+str(payload)+'.tar.gz','w:gz')
              # there might not be a job tracking dir.
@@ -71,11 +68,11 @@ class CleanupHandler(HandlerInterface):
                  tar.close()
              except Exception,ex:
                  logging.debug(">CleanupHandler< WARNING job cleanup: "+str(ex))
-             JobStateChangeAPI.cleanout(str(payload))
+             JobState.cleanout(str(payload))
          except Exception,ex:
              logging.debug(">CleanupHandler< ERROR job cleanup: "+str(ex))
 
-registerHandler(CleanupHandler(),"cleanupHandler")
+registerHandler(CleanupHandler(),"cleanupHandler","JobCleanup")
 
 
 

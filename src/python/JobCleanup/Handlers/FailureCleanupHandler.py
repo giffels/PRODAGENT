@@ -5,11 +5,8 @@ import os
 import tarfile
 
 from JobCleanup.Handlers.HandlerInterface import HandlerInterface
-from JobCleanup.Registry import registerHandler
-from JobCleanup.Registry import retrieveHandler
-
-from JobState.JobStateAPI import JobStateChangeAPI
-from JobState.JobStateAPI import JobStateInfoAPI
+from ProdAgent.WorkflowEntities import JobState
+from ProdCommon.Core.GlobalRegistry import registerHandler
 
 class FailureCleanupHandler(HandlerInterface):
     """
@@ -40,7 +37,7 @@ class FailureCleanupHandler(HandlerInterface):
                  os.makedirs(self.failureArchive)
              except:
                  pass
-             cacheDirLocation=JobStateInfoAPI.general(str(payload))['CacheDirLocation']
+             cacheDirLocation=JobState.general(str(payload))['CacheDirLocation']
              logging.debug(">FailureCleanupHandler< archiving and removing directory: "+cacheDirLocation)
              #NOTE: check what this does when it is repeated (e.g. after a crash)
              tar=tarfile.open(self.failureArchive+'/'+str(payload)+'.tar.gz','w:gz')
@@ -56,12 +53,12 @@ class FailureCleanupHandler(HandlerInterface):
                  os.rmdir(cacheDirLocation)
              except Exception,ex:
                  logging.debug(">FailureCleanupHandler< WARNING job cleanup: "+str(ex))
-             JobStateChangeAPI.cleanout(str(payload))
+             JobState.cleanout(str(payload))
              logging.debug(">FailureCleanupHandler< archived completed for jobspecID: "+str(payload))
          except Exception,ex:
              logging.debug(">FailureCleanupHandler< ERROR job cleanup: "+str(ex))
 
-registerHandler(FailureCleanupHandler(),"failureCleanupHandler")
+registerHandler(FailureCleanupHandler(),"failureCleanupHandler","JobCleanup")
 
 
 

@@ -16,9 +16,11 @@ from logging.handlers import RotatingFileHandler
 import os
 import socket
 
-from JobCleanup.Registry import retrieveHandler
-from JobCleanup.Registry import Registry 
 from MessageService.MessageService import MessageService
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.Database import Session
+from ProdCommon.Core.GlobalRegistry import retrieveHandler
+from ProdCommon.Core.GlobalRegistry import GlobalRegistry
 
 
 
@@ -86,7 +88,7 @@ class JobCleanupComponent:
                    logging.info("logging level changed to INFO")
                    return
               elif event in self.args['Events'].keys():
-                  handler=retrieveHandler(self.args['Events'][event])
+                  handler=retrieveHandler(self.args['Events'][event],"JobCleanup")
                   handler.handleEvent(payload)
          except Exception, ex:
               logging.error("Failed to handle %s event with payload: %s" \
@@ -114,8 +116,8 @@ class JobCleanupComponent:
  
          """
          # prepare handlers:
-         for handlerName in Registry.HandlerRegistry.keys():
-             handler=Registry.HandlerRegistry[handlerName]
+         for handlerName in GlobalRegistry.registries["JobCleanup"].keys():
+             handler=GlobalRegistry.registries["JobCleanup"][handlerName]
              handler.publishEvent=self.publishEvent
              handler.failureArchive=self.args['FailureArchive']
              handler.successArchive=self.args['SuccessArchive']
@@ -138,9 +140,16 @@ class JobCleanupComponent:
          self.ms.commit()
          # wait for messages
          while True:
+             Session.set_database(dbConfig)
+             Session.connect()
+             Session.start_transaction()
+
              type, payload = self.ms.get()
              logging.debug("JobCleanup: %s, %s" % (type, payload))
              self.__call__(type, payload)
              # we only want to commit if the cleanup or archiving succeeds
              # and is not interupted by a crash of the prodagent.
              self.ms.commit()
+             Session.commit_all()
+             Session.close_all()
+

@@ -4,11 +4,8 @@ import logging
 import os
 
 from JobCleanup.Handlers.HandlerInterface import HandlerInterface
-from JobCleanup.Registry import registerHandler
-from JobCleanup.Registry import retrieveHandler
-
-from JobState.JobStateAPI import JobStateInfoAPI
-from Trigger.TriggerAPI import TriggerAPI
+from ProdAgent.WorkflowEntities import JobState
+from ProdCommon.Core.GlobalRegistry import registerHandler
 
 class PartialCleanupHandler(HandlerInterface):
     """
@@ -39,7 +36,7 @@ class PartialCleanupHandler(HandlerInterface):
          try:
              logging.debug(">PartialCleanupHandler< removing cached files "+\
                             "for jobspec: "+str(jobId))
-             cacheDirLocation=JobStateInfoAPI.general(str(jobId))['CacheDirLocation']
+             cacheDirLocation=JobState.general(str(jobId))['CacheDirLocation']
              logging.debug(">PartialCleanupHandler< starting remove in: "+cacheDirLocation)
              try:
                  for root, dirs, files in os.walk(cacheDirLocation, topdown=False):
@@ -79,7 +76,7 @@ class PartialCleanupHandler(HandlerInterface):
              " with payload: "+nextPayload)
          self.publishEvent(nextEvent,nextPayload) 
 
-registerHandler(PartialCleanupHandler(),"partialCleanupHandler")
+registerHandler(PartialCleanupHandler(),"partialCleanupHandler","JobCleanup")
 
 
 
