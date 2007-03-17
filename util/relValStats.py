@@ -88,10 +88,10 @@ def summariseSuccesses(workflowSpec):
             perJobTotalTimes.append(totalTime)
             perEventTimes.append(totalTime / events)
     
-
-    result['avgTimePerJob'] = averageOverList(perJobTotalTimes)
-    result['avgTimePerEvent'] = averageOverList(perEventTimes)
-    return result
+    if ( len(perJobTotalTimes) > 0) and (len(perEventTimes) > 0): #AF fix
+     result['avgTimePerJob'] = averageOverList(perJobTotalTimes)
+     result['avgTimePerEvent'] = averageOverList(perEventTimes)
+     return result
 
 
 def summariseFailures(workflowSpec):
@@ -153,38 +153,49 @@ def printSummary(results):
     msg += " # Failures: %s\n" % results['FailedJobs']
     msg += " Details:\n\n"
     successDetails = results['SuccessDetails']
-    msg += " Total Events: %s\n" % successDetails['eventsTotal']
-    msg += " Average Time Per Job: %s secs\n" % successDetails['avgTimePerJob']
-    msg += " Average Time Per Event: %s secs\n" % successDetails['avgTimePerEvent']
-    msg += formatList(" Sites", successDetails['sites'])
-    msg += formatList(" SE Names", successDetails['seNames'])
-    msg += " LFN List:\n "
-    msg += reduce(stringOverLFNList, successDetails['lfns'])
-    if results['FailedJobs'] == 0:
+    ## AF : print success details if they can be extracted 
+    if successDetails:
+     msg += " Total Events: %s\n" % successDetails['eventsTotal']
+     msg += " Average Time Per Job: %s secs\n" % successDetails['avgTimePerJob']
+     msg += " Average Time Per Event: %s secs\n" % successDetails['avgTimePerEvent']
+     msg += formatList(" Sites", successDetails['sites'])
+     msg += formatList(" SE Names", successDetails['seNames'])
+     ## AF: skip LFN list printing, it will make the summary too long
+     #msg += " LFN List:\n "
+     #msg += reduce(stringOverLFNList, successDetails['lfns'])
+     if results['FailedJobs'] == 0:
         print msg
         return
-    
+    else:
+     print "============= %s ==============\n"% results['Workflow']
+     print " WARNING: not able to retrieve Job Successes info"
+     print "          You might try increasing the --interval=\"HH:MM:SS\" option"
     failDetails = results['FailureDetails']
-    msg += "\n Failure Details:\n"
-    msg += formatList(" Failures@Sites", failDetails['sites'])
-    msg += " Host details:\n"
-    for key, value in failDetails['hosts'].items():
+    ## AF : print failed details if they can be extracted 
+    if failDetails and len(failDetails['sites'])>0: 
+     msg += "\n Failure Details:\n"
+     msg += formatList(" Failures@Sites", failDetails['sites'])
+     msg += " Host details:\n"
+     for key, value in failDetails['hosts'].items():
         msg += formatList( " Nodes@%s" % key, value)
     
-
-    msg += " Exit Status:\n"
-    msg += " Exit Code    |   count   |   error type   \n"
-    msg += " ------------------------------------------\n"
-    for key, value in failDetails['exitCodes'].items():
+    if failDetails and len(failDetails['exitCodes'])>0:
+     msg += " Exit Status:\n"
+     msg += " Exit Code    |   count   |   error type   \n"
+     msg += " ------------------------------------------\n"
+     for key, value in failDetails['exitCodes'].items():
         msg += "   %s      |   %s       |  %s \n" % (
             key, failDetails['failureCounts'][key], value)
 
-
-    msg += " Failure Descriptions:\n\n"
-    for item in failDetails['failureDescriptions']:
+    if failDetails and len(failDetails['failureDescriptions'])>0:
+     msg += " Failure Descriptions:\n\n"
+     for item in failDetails['failureDescriptions']:
         msg += " %s\n %s\n\n" % (item[0], item[1])
         
-    print msg
+     print msg
+    else:
+       print " WARNING: not able to retrieve Job Failures info" 
+       print "          You might try increasing the --interval=\"HH:MM:SS\" option"
     return
 
     
