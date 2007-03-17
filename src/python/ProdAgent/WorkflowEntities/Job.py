@@ -6,6 +6,8 @@ from ProdAgent.WorkflowEntities import Workflow
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
 
+import logging
+
 def amount():
    """
    __amount__
