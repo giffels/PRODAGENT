@@ -733,6 +733,7 @@ CREATE TABLE we_Workflow
     events_processed      int             default 0,
     done                  enum("true","false") default 'false',
     id                    varchar(150)    not null,
+    owner                 varchar(150)    default 'no owner',
     priority              int(11)         not null,
     prod_mgr_url          varchar(150)    not null,
     workflow_spec_file    varchar(255)   default 'not_downloaded',
