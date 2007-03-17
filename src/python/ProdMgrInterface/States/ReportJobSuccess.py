@@ -30,11 +30,18 @@ class ReportJobSuccess(StateInterface):
            logging.debug("This job failed so we register 0 events")
            total=0
            logging.debug('Retrieving job spec')
-           job_spec_id=stateParameters['jobReport']
-           logging.debug('Retrieved job spec')
-           we_job=Job.get(job_spec_id)
+           try:
+               job_spec_id=stateParameters['jobReport']
+               logging.debug('Retrieving job spec for : '+str(job_spec_id))
+               we_job=Job.get(job_spec_id)
+               if not we_job:
+                  raise
+               logging.debug('Retrieved job spec for: '+str(job_spec_id))
+           except:
+              logging.debug("Job: "+str(job_spec_id)+" not initiated by prodmgr. Not doing anything (case 1)")
+              return
            if not we_job['allocation_id']:
-              logging.debug("Job: "+str(job_spec_id)+" not initiated by prodmgr. Not doing anything")
+              logging.debug("Job: "+str(job_spec_id)+" not initiated by prodmgr. Not doing anything (case 2)")
               return 
        else:
            jobReport=stateParameters['jobReport']
@@ -51,10 +58,16 @@ class ReportJobSuccess(StateInterface):
                   case some residu information is left in the database. """
                logging.debug(msg)
                return
-           job_spec_id=report[-1].jobSpecId
-           we_job=Job.get(job_spec_id)
+           try:
+               job_spec_id=report[-1].jobSpecId
+               we_job=Job.get(job_spec_id)
+               if not we_job:
+                  raise
+           except Exception,ex:
+              logging.debug("Job: "+str(job_spec_id)+" not initiated by prodmgr. Not doing anything (case 3)")
+              return
            if not we_job['allocation_id']:
-              logging.debug("Job: "+str(job_spec_id)+" not initiated by prodmgr. Not doing anything")
+              logging.debug("Job: "+str(job_spec_id)+" not initiated by prodmgr. Not doing anything (case 4)")
               return 
            total = 0
            files=[]
@@ -65,7 +78,6 @@ class ReportJobSuccess(StateInterface):
                   files.append(file)
            logging.debug("Registering associated generated files for this job")
            File.register(job_spec_id,files)
-
        #call the trigger code to commence cleanup of the job.
        try:
           self.trigger.flagSet("cleanup",job_spec_id,"ProdMgrInterface")
