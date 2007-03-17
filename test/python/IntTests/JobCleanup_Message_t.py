@@ -8,9 +8,12 @@ import os
 import unittest
 import time
 
-from JobState.JobStateAPI import JobStateChangeAPI
 from MessageService.MessageService import MessageService
-from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
+from ProdAgent.Trigger.Trigger import Trigger as TriggerAPI
+from ProdAgent.WorkflowEntities import JobState
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.Database import Session
+
 
 class ComponentServerTest(unittest.TestCase):
     """
@@ -19,6 +22,9 @@ class ComponentServerTest(unittest.TestCase):
 
     _triggerSet = False
     def setUp(self):
+        Session.set_database(dbConfig)
+        Session.connect()
+        Session.start_transaction()
 
         if not ComponentServerTest._triggerSet:
            print "\n****Start ComponentServerTest (JobCleanup)*******"
@@ -26,7 +32,7 @@ class ComponentServerTest(unittest.TestCase):
            self.ms=MessageService()
            self.ms.registerAs("JobCleanupTest")
            self.jobSpecs=1000
-           self.location='/tmp/prodAgent/cacheDirs'
+           self.location='/tmp/prodagent/components/JobCleanup/cacheDirs'
            self.failureJobSpecs=1000
            self.flags=5
            self.trigger=TriggerAPI(self.ms)
@@ -74,12 +80,20 @@ class ComponentServerTest(unittest.TestCase):
                except:
                   raise
            ComponentServerTest._triggerSet=True
+           Session.commit_all()
+           Session.close_all()
+
 
     def testA(self):
         print("""\npublish events to turn JobCleanup logging on""")
         try:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             self.ms.publish("JobCleanup:StartDebug", "none")
             self.ms.commit()
+            Session.commit_all()
+            Session.close_all()
         except StandardError, ex:
             msg = "Failed testA:\n"
             msg += str(ex)
@@ -88,9 +102,14 @@ class ComponentServerTest(unittest.TestCase):
     def testB(self):
         print("""\nSet the job cache (used for job cleanup)""")
         try:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             for i in xrange(0,self.jobSpecs):
-                JobStateChangeAPI.register("jobSpec"+str(i),"Processing",2,2)
-                JobStateChangeAPI.create("jobSpec"+str(i),self.location+"/jobSpecDir_"+str(i))
+                JobState.register("jobSpec"+str(i),"Processing",2,2)
+                JobState.create("jobSpec"+str(i),self.location+"/jobSpecDir_"+str(i))
+            Session.commit_all()
+            Session.close_all()
         except StandardError, ex:
             msg = "Failed testB:\n"
             msg += str(ex)
@@ -98,10 +117,15 @@ class ComponentServerTest(unittest.TestCase):
 
     def testC(self):
         print("""\nEmit partial cleanup events to test the partialCleanupHandler""")
+        Session.set_database(dbConfig)
+        Session.connect()
+        Session.start_transaction()
         for i in xrange(0,self.jobSpecs):
             payload="jobSpec"+str(i)+",SubmitJob,jobSpec"+str(i)
             self.ms.publish("PartialJobCleanup", payload)
             self.ms.commit()
+        Session.commit_all()
+        Session.close_all()
         print("""\nSleep for several seconds""")
         time.sleep(3)
 
@@ -109,12 +133,17 @@ class ComponentServerTest(unittest.TestCase):
     def testD(self):
         print("""\nCreate and set triggers to activate job cleanup""")
         try:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             for i in xrange(0,self.jobSpecs):
                 for k in xrange(0,self.flags):
                     self.trigger.addFlag("jobCleanupTrigger"+str(i),\
                         "jobSpec"+str(i),"flag"+str(k))
                 self.trigger.setAction("jobSpec"+str(i),\
                     "jobCleanupTrigger"+str(i),"jobCleanAction")
+            Session.commit_all()
+            Session.close_all()
         except StandardError, ex:
             msg = "Failed testC:\n"
             msg += str(ex)
@@ -122,10 +151,15 @@ class ComponentServerTest(unittest.TestCase):
 
     def testE(self):
         try:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             for i in xrange(0,self.jobSpecs):
                 for k in xrange(0,self.flags):
                     self.trigger.setFlag("jobCleanupTrigger"+str(i),\
                         "jobSpec"+str(i),"flag"+str(k))
+            Session.commit_all()
+            Session.close_all()
         except StandardError, ex:
             msg = "Failed testD:\n"
             msg += str(ex)
@@ -134,9 +168,14 @@ class ComponentServerTest(unittest.TestCase):
     def testF(self):
         print("""\nSet the job cache (used for failure job cleanup)""")
         try:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             for i in xrange(0,self.failureJobSpecs):
-                JobStateChangeAPI.register("failureJobSpec"+str(i),"Processing",2,2)
-                JobStateChangeAPI.create("failureJobSpec"+str(i),self.location+"/failureJobSpecDir_"+str(i))
+                JobState.register("failureJobSpec"+str(i),"Processing",2,2)
+                JobState.create("failureJobSpec"+str(i),self.location+"/failureJobSpecDir_"+str(i))
+            Session.commit_all()
+            Session.close_all()
         except StandardError, ex:
             msg = "Failed testB:\n"
             msg += str(ex)
@@ -144,11 +183,16 @@ class ComponentServerTest(unittest.TestCase):
 
     def testG(self):
         print("""\nEmit failure cleanup events to test the failureCleanupHandler""")
+        Session.set_database(dbConfig)
+        Session.connect()
+        Session.start_transaction()
         for i in xrange(0,self.failureJobSpecs):
             payload="failureJobSpec"+str(i)
-            print('publishing FailureCleanup for failureJobSpec'+str(i))
+            #print('publishing FailureCleanup for failureJobSpec'+str(i))
             self.ms.publish("FailureCleanup", payload)
             self.ms.commit()
+        Session.commit_all()
+        Session.close_all()
         print("""\nSleep for several seconds""")
         time.sleep(3)
 
@@ -159,8 +203,13 @@ class ComponentServerTest(unittest.TestCase):
         print("let the cleanup component receive the messages")
         time.sleep(20)
         try:
-            JobStateChangeAPI.purgeStates()
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
+            JobState.purgeStates()
             self.ms.purgeMessages()
+            Session.commit_all()
+            Session.close_all()
         except StandardError, ex:
             msg = "Failed testE:\n"
             msg += str(ex)

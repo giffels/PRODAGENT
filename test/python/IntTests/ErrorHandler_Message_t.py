@@ -62,11 +62,12 @@ class ComponentServerTest(unittest.TestCase):
             fileUrl="file://"+self.outputPath+"/jobReportTest3.xml"
             self.ms.publish("JobFailed", fileUrl)
 
-            self.ms.publish("SubmissionFailed", "jobClassID10")
-            self.ms.publish("CreateFailed", "jobClassID7")
-            self.ms.publish("CreateFailed", "jobClassID8")
-            self.ms.publish("CreateFailed", "jobClassID9")
-            self.ms.commit()
+            for i in xrange(0,9):
+               self.ms.publish("SubmissionFailed", "jobClassID10")
+               self.ms.publish("CreateFailed", "jobClassID7")
+               self.ms.publish("CreateFailed", "jobClassID8")
+               self.ms.publish("CreateFailed", "jobClassID9")
+               self.ms.commit()
 
         except StandardError, ex:
             msg = "Failed testB:\n"
