@@ -49,6 +49,8 @@ class JobCreatorComponent:
         self.args['Logfile'] = None
         self.args['JobState'] = True
         self.args['maxRetries'] = 3
+        #FRANK (one line)
+        self.args['mergeMaxRetries'] = 3
         self.args['HashDirs'] = True
         self.args.update(args)
         self.prodAgent = prodAgentName()
@@ -307,9 +309,15 @@ class JobCreatorComponent:
             #//  and set job state to InProgress
 
             if not JobStateInfoAPI.isRegistered(jobname):
-                JobStateChangeAPI.register(jobname, 'Processing',
-                                           int(self.args['maxRetries']),
-                                           1)
+                # FRANK (5 lines)
+                if jobType == "Merge":
+                    JobStateChangeAPI.register(jobname, 'Merge',\
+                                        int(self.args['mergeMaxRetries']),\
+                                        1)
+                else:
+                    JobStateChangeAPI.register(jobname, 'Processing',\
+                                        int(self.args['maxRetries']),\
+                                        1)
             JobStateChangeAPI.create(jobname, jobCache)
             JobStateChangeAPI.inProgress(jobname)
             
