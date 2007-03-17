@@ -116,7 +116,7 @@ class DBSComponent:
         self.args.setdefault("Logfile", None)
         self.args.setdefault("BadReportfile", None)
         self.args.setdefault("DBSDataTier", 'GEN,SIM,DIGI,RECO,HLT,ALCARECO,FEVT,AOD,RAW,USER,RECOSIM,AODSIM')
-        self.args.setdefault("CloseBlockSize", None)  # No check on fileblock size
+        self.args.setdefault("CloseBlockSize", "None")  # No check on fileblock size
 
         self.args.update(args)
 
@@ -533,13 +533,10 @@ class DBSComponent:
 
         if SEname=="Unknown" :  #return a None block
           return None
-
         fileBlockList = self.dbsinfo.getDatasetFileBlocks(datasetPath)
-
         ## get the type and endpoint from configuration DLS block 
         dlsinfo= DLS(self.args['DLSType'],self.args['DLSAddress'])
         #dlsinfo= DLS("DLS_TYPE_LFC","lfc-cms-test.cern.ch/grid/cms/DLS/LFC")
-
         ## look for an existing file block associated to the storage element , not closed and not yet full
         for fileBlock in fileBlockList:
           SEList=dlsinfo.getFileBlockLocation(fileBlock.get('blockName'))
@@ -549,11 +546,11 @@ class DBSComponent:
           if SEList.count(SEname)>0:
            # check if fileblock is closed:
            if fileBlock.get('blockStatus')!="closed":
-            if jobType!="Merge":
+            if jobType!="Merge" or CloseBlockSize=="None":
                logging.debug("Fileblock %s not closed , so files can be added to it "%fileBlock.get('blockName'))
                return fileBlock # found a not closed fileblock to add files to
             else: # for merged data: check block size and close the block if appropriate
-               if self.closeBlockAlgorithm(fileBlockSize,fileBlockFiles,CloseBlockSize):
+               if self.closeBlockAlgorithm(float(fileBlockSize),float(fileBlockFiles),CloseBlockSize):
                   self.dbsinfo.closeBlock(fileBlock.get('blockName'))
                   logging.debug("Closed Fileblock %s"%fileBlock.get('blockName'))
                else:
@@ -576,7 +573,7 @@ class DBSComponent:
         Check if Close-Block condition are statisfied.
         A FileBlock is closed if the number of its files is greater than ( CloseBlockSize / average file size) 
         """
-        if CloseBlockSize==None or fileBlockSize<=0 or fileBlockFiles<=0:
+        if CloseBlockSize=="None" or fileBlockSize<=0 or fileBlockFiles<=0:
           return False
         else:
           avgfileSize=float(fileBlockSize)/float(fileBlockFiles)
