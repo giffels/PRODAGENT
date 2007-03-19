@@ -10,13 +10,23 @@ component
 """
 
 import logging
-from popen2 import Popen4
+import popen2
+import fcntl, select, sys, os
+
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentCore.ProdAgentException import ProdAgentException
 
 
+
+def makeNonBlocking(fd):
+    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    try:
+        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NDELAY)
+    except AttributeError:
+	fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
+    
 
 class BulkSubmitterInterface:
 
@@ -135,20 +145,50 @@ class BulkSubmitterInterface:
 
         """
         logging.debug("SubmitterInterface.executeCommand:%s" % command)
-        pop = Popen4(command)
-        while pop.poll() == -1:
-            exitCode = pop.poll()
-        exitCode = pop.poll()
 
+        child = popen2.Popen3(command, 1) # capture stdout and stderr from command
+        child.tochild.close()             # don't need to talk to child
+        outfile = child.fromchild 
+        outfd = outfile.fileno()
+        errfile = child.childerr
+        errfd = errfile.fileno()
+        makeNonBlocking(outfd)            # don't deadlock!
+        makeNonBlocking(errfd)
+        outdata = errdata = ''
+        outeof = erreof = 0
+        stdoutBuffer = ""
+        while 1:
+            ready = select.select([outfd,errfd],[],[]) # wait for input
+            if outfd in ready[0]:
+                outchunk = outfile.read()
+                if outchunk == '': outeof = 1
+                stdoutBuffer += outchunk
+                sys.stdout.write(outchunk)
+            if errfd in ready[0]:
+                errchunk = errfile.read()
+                if errchunk == '': erreof = 1
+                sys.stderr.write(errchunk)
+            if outeof and erreof: break
+            select.select([],[],[],.1) # give a little time for buffers to fill
+
+        try:
+            exitCode = child.poll()
+        except Exception, ex:
+            msg = "Error retrieving child exit code: %s\n" % ex
+            msg = "while executing command:\n"
+            msg += command
+            logging.error("BulkSubmitterInterface:Failed to Execute Command")
+            logging.error(msg)
+            raise RuntimeError, msg
+        
         if exitCode:
             msg = "Error executing command:\n"
             msg += command
             msg += "Exited with code: %s\n" % exitCode
-            msg += pop.fromchild.read()
             logging.error("SubmitterInterface:Failed to Execute Command")
             logging.error(msg)
             raise RuntimeError, msg
-        return pop.fromchild.read()
+        return  stdoutBuffer
     
     def publishSubmitToDashboard(self, dashboardInfo):
         """
