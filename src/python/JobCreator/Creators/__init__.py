@@ -5,8 +5,8 @@ _JobCreator.Creators_
 Plugins and tools for creating Jobs and acting on TaskObjects
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: __init__.py,v 1.5 2007/01/28 17:48:45 afanfani Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: __init__.py,v 1.6 2007/01/30 15:59:45 evansde Exp $"
 __all__ = []
 
 
@@ -22,4 +22,4 @@ import LCGBulkCreator
 import ExampleCreator
 import OSGCreator
 import OSGBulkCreator
-
+import T0LSFCreator
