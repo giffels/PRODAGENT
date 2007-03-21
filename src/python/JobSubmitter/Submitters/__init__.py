@@ -6,8 +6,8 @@ Submission interfaces package
 
 """
 __all__ = []
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: __init__.py,v 1.7 2007/03/05 16:48:30 bacchi Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: __init__.py,v 1.8 2007/03/19 20:03:59 evansde Exp $"
 
 
 
@@ -26,6 +26,7 @@ import OSGBulkSubmitter
 import BOSSCondorGSubmitter
 import OSGRouter
 import GLITESubmitter
+import GLiteBulkSubmitter
 import RESubmitter
 import T0LSFSubmitter
 import OSGGlideIn
