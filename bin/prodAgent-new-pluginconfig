@@ -173,11 +173,14 @@ submitterTemplate = {
     "JDLRequirementsFile" : None,
     "RBconfigVO" : None,
     "RBconfig" : None,
+    "RTMon" : "mysql"
     },
 
     "GLITE" : {
     "JDLRequirementsFile" : None,
     "WMSconfig" : None,
+    "Scheduler" : "gliteParam",
+    "RTMon" : "mysql"
     },
 
     #  //
