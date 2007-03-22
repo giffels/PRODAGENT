@@ -36,7 +36,7 @@ from logging.handlers import RotatingFileHandler
 # execute a command
 ##########################################################################
 
-def executeCommand(command, timeOut = 60):
+def executeCommand(command, timeOut = 600):
     """
     _executeCommand_
 
@@ -55,6 +55,20 @@ def executeCommand(command, timeOut = 60):
     """
 
     startTime = time.time()
+
+    # build script file if necessary
+    if command.find('\n') != -1:
+
+        try:
+            aFile = open('script.sh', 'w')
+            aFile.write(command + '\n')
+            aFile.close()
+            os.chmod('script.sh', 0755)
+        except (IOError, OSError), msg:
+            logging.error("Cannot generate execution script: " + str(msg))
+            return
+ 
+        command = './script.sh'
 
     # run command
     job = popen2.Popen4(command)
@@ -341,6 +355,8 @@ while True:
             continue
 
     # wait for next update cycle
+    logging.info("Waiting for next update cycle in about " + \
+                 str(pollInterval) + " seconds.")
     time.sleep(pollInterval)
 
 
