@@ -8,6 +8,7 @@ Interface class for Tracker Plugins
 
 import logging
 import  CondorTracker.CondorTrackerDB as TrackerDB
+from JobState.JobStateAPI import JobStateInfoAPI
 
 class TrackerPlugin:
     """
@@ -140,3 +141,20 @@ class TrackerPlugin:
             logging.debug(" ==> %s" % deadMeat)
         return
     
+
+    def getJobCache(self, jobSpecId):
+        """
+        _getJobCache_
+
+        Lookup a job cache for the job spec Id provided
+
+        """
+        try:
+            stateInfo = JobStateInfoAPI.general(jobSpecId)
+        except Exception, ex:
+            msg = "ERROR: Cant get JobCache for %s\n" % jobSpecId
+            msg += str(ex)
+            logging.warning(msg)
+            stateInfo = {}
+        cacheDir = stateInfo.get('CacheDirLocation', None)
+        return cacheDir

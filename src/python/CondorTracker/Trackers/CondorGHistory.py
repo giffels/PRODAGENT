@@ -12,11 +12,58 @@ import popen2
 import os
 from CondorTracker.TrackerPlugin import TrackerPlugin
 from CondorTracker.Registry import registerTracker
-from CondorTracker.Trackers.CondorLog import readCondorLog
 
 from ResourceMonitor.Monitors.CondorQ import condorQ
 
 
+def bulkCondorHistoryGet():
+    """
+    _bulkCondorHistoryGet_
+    This gets a list of useful information from condor_history, parses it,
+    returning a dictionary
+
+    """
+
+#  since condor_history basically sucks up the entire file anyway we'll do
+#  that here first, then take what we need later
+
+#  so far all we're going to be needing here is the status and the CondorId
+
+    command="condor_history -constraint 'ProdAgent_JobID =!= UNDEFINED'"
+    command += " -format \"%s \" ProdAgent_JobID  -format \"%d \" ClusterId -format \"%d \\n\" JobStatus"
+
+#    command="condor_history"
+
+    logging.debug("condor_history command:  %s \n" % command)
+    pop = popen2.Popen4(command)
+#   this bit of silliness is because condor_history will only print so
+#   much before waiting for something to be read -- so if you just do
+#   a wait() you then end up in a situation where you are waiting for
+#   condor_history to finish waiting for you...  
+    output = []
+    histOutput = {}
+    while (pop.poll() == -1):
+        output += pop.fromchild.readlines()
+    pop.wait()
+
+#   OK, now we should have something...
+    
+    for line in output:
+      pieces=line.split(" ")
+#      if pieces[0] in paIds:
+#         print "%s, %s, %s" % (pieces[0],pieces[1],pieces[2])
+      try:
+           histJobID=pieces[0]
+           histOutput[histJobID]={}
+           histOutput[histJobID]['ClusterId']=int(pieces[1])
+           histOutput[histJobID]['JobStatus']=int(pieces[2])
+           
+      except ValueError, ex:
+           logging.warning("Trouble parsing condor_history output...  Offending line:")
+           logging.warning(line)
+           
+    return histOutput
+    
 
     
 
@@ -54,44 +101,46 @@ class CondorG(TrackerPlugin):
 
         """
         logging.info("CondorG: Submitted Count: %s" % len(submitted))
+        histResults={}
         for subId in submitted:
             status = None
             classad = self.findClassAd(subId)
             if classad == None:
-                msg = "No Classad for %s, checking condor log" % subId
-                logging.debug(msg)
-                cache = self.getJobCache(subId)
-                if cache == None:
-                    msg = "Unable to find cache dir for job %s\n" % subId
-                    msg += "Declaring job aborted"
-                    logging.warning(msg)
-                    self.TrackerDB.jobFailed(subId)
-                    continue
-                condorLogFile = "%s/%s-condor.log" % (cache, subId)
-                if not os.path.exists(condorLogFile):
-                    msg = "Cannot find condor log file:\n%s\n" % condorLogFile
-                    msg += "Declaring job aborted"
-                    logging.warning(msg)
-                    self.TrackerDB.jobFailed(subId)
-                    continue
-                
-                condorLog = readCondorLog(condorLogFile)
-                if condorLog == None:
-                    msg = "Cannot read condor log file:\n%s\n" % condorLogFile
-                    msg += "Not an XML log??\n"
-                    msg += "Declaring job aborted"
-                    logging.warning(msg)
-                    self.TrackerDB.jobFailed(subId)
-                    continue
-                #  //
-                # // We have got the log file and computed an exit status 
-                #//  for it.
-                status = condorLog.condorStatus()
-                
+                if len(histResults)==0:                 
+                  histResults=bulkCondorHistoryGet()
+                if histResults.has_key(subId):
+                  historyStatus=histResults[subId]['JobStatus']
+                  logging.warning("Job %s doesn't have a classad...status=%s" % (subId,historyStatus))
+                else:
+                     # if there's no classad and there's nothing in the history, it evaporated
+                     # scream and declare failure             
+                     logging.warning("Job %s also wasn't in condor_history -- declaring Failure" % (subId))
+                     self.TrackerDB.jobFailed(subId)
+                     continue
             else:
                 status = classad['JobStatus']
-                
-                
+
+            logging.debug("Pre DB stuff: status:%s, subId: %s" % (status,subId))
+            dbData = self.TrackerDB.getJob(subId, True)
+            if not dbData['job_attrs'].has_key("CondorID"):
+#              if we couldn't get a classad from condor_q status should still
+#              be "None" at this point...  Use that to tell us to get stuff from history
+                logging.debug("we should be putting something into the DB now")
+                if status==None:
+                   condorId=histResults[subId]['ClusterId']
+                   
+                else:    
+                    condorId = classad['ClusterId']
+                    
+                logging.debug("inserting stuff into database: subID: %s, CondorID: %s" % (subId,condorId))
+                self.TrackerDB.addJobAttributes(subId, CondorID = condorId)
+            else:
+                logging.debug("dbData had: %s" % dbData['job_attrs']["CondorID"][-1])
+                condorId=dbData['job_attrs']["CondorID"][-1]
+
+            if status==None:
+                status=historyStatus
+
             if not status in range(1,6):
                logging.debug("Bad condor status flag: %s" % status)
                continue
@@ -144,43 +193,26 @@ class CondorG(TrackerPlugin):
 
         """
         logging.info("CondorG: Running Count: %s" % len(running))
+        histResults={}
+        historyStatus=None
         for runId in running:
             classad = self.findClassAd(runId)
             if classad == None:
-                msg = "No Classad for %s, checking condor log" % runId
-                logging.debug(msg)
-                cache = self.getJobCache(runId)
-                if cache == None:
-                    msg = "Unable to find cache dir for job %s\n" % runId
-                    msg += "Declaring job aborted"
-                    logging.warning(msg)
-                    self.TrackerDB.jobFailed(runId)
-                    continue
-                condorLogFile = "%s/%s-condor.log" % (cache, runId)
-                if not os.path.exists(condorLogFile):
-                    msg = "Cannot find condor log file:\n%s\n" % condorLogFile
-                    msg += "Declaring job aborted"
-                    logging.warning(msg)
-                    self.TrackerDB.jobFailed(runId)
-                    continue
-                
-                condorLog = readCondorLog(condorLogFile)
-                if condorLog == None:
-                    msg = "Cannot read condor log file:\n%s\n" % condorLogFile
-                    msg += "Not an XML log??\n"
-                    msg += "Declaring job aborted"
-                    logging.warning(msg)
-                    self.TrackerDB.jobFailed(runId)
-                    continue
                 #  //
-                # // We have got the log file and computed an exit status 
-                #//  for it.
-                classad = {}
-                classad['JobStatus'] = condorLog.condorStatus()
-                classad['ClusterId'] = condorLog['Cluster']
-                
-            status = classad['JobStatus']
-            clusterId = classad['ClusterId']
+                # // No longer in queue => Finished
+                #//  Check History to see how it finished
+  
+                dbData = self.TrackerDB.getJob(runId, True)
+                clusterId = dbData['job_attrs']["CondorID"][-1]
+                logging.debug("dbData had: %s" % dbData['job_attrs']["CondorID"][-1])
+                if len(histResults)==0:                 
+                  histResults=bulkCondorHistoryGet()
+                if histResults.has_key(runId):
+                  historyStatus=histResults[runId]['JobStatus']
+                status=historyStatus
+            else:     
+                 status = classad['JobStatus']
+                 clusterId = classad['ClusterId']
 
             if status in (3, 6):
                 #  //
