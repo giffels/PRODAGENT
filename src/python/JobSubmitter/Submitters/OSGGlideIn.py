@@ -6,7 +6,7 @@ Globus Universe Condor Submitter implementation.
 
 """
 
-__revision__ = "$Id: OSGGlideIn.py,v 1.3 2007/02/28 22:09:03 evansde Exp $"
+__revision__ = "$Id: OSGGlideIn.py,v 1.1 2007/03/19 20:03:59 evansde Exp $"
 
 import os
 import logging
@@ -115,9 +115,19 @@ class OSGGlideIn(BulkSubmitterInterface):
 
         Make common JDL header
         """
-        glideInSite = self.lookupGlideInSite()
-        inpFiles = []
+        glideInSites = self.lookupGlideInSite()
+        sitesString = str(glideInSites)
+        sitesString = sitesString.replace("[", "")
+        sitesString = sitesString.replace("]", "")
+        sitesString = sitesString.replace("\'","")
+        sitesString = sitesString.replace(" ", "")
+        sitesString = sitesString.strip()
 
+        logging.debug("Site Reqs: %s" % sitesString)
+            
+
+        inpFiles = []
+        
         inpFiles.extend(self.jobInputFiles)
         inpFileJDL = ""
         for f in inpFiles:
@@ -126,7 +136,6 @@ class OSGGlideIn(BulkSubmitterInterface):
 
         jdl = []
         jdl.append("universe = vanilla\n")
-        jdl.append("GLIDEIN_Site = \"%s\"\n" % glideInSite)
         jdl.append("transfer_input_files = %s\n" % inpFileJDL)
         jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
         jdl.append("should_transfer_files = YES\n")
@@ -134,6 +143,23 @@ class OSGGlideIn(BulkSubmitterInterface):
         jdl.append("log_xml = True\n" )
         jdl.append("notification = NEVER\n")
         jdl.append("+ProdAgent_ID = \"%s\"\n" % self.primarySpecInstance.parameters['ProdAgentName'])
+        jdl.append("+DESIRED_Sites=\"%s\"\n" % sitesString)
+        jdl.append("+DESIRED_Archs=\"INTEL,X86_64\"\n")
+        jdl.append("Requirements = stringListMember(GLIDEIN_Site,DESIRED_Sites)&& stringListMember(Arch, DESIRED_Archs) \n" )
+
+        #  //
+        # // Monitoring/Tracking info
+        #// 
+        jdl.append("+JOB_Site= \"$$(GLIDEIN_Site:Unknown)\"\n") 
+        jdl.append("+JOB_VM=\"$$(Name:Unknown)\"\n") 
+        jdl.append("+JOB_Machine_KFlops=\"$$(KFlops:Unknown)\"\n") 
+        jdl.append("+JOB_Machine_Mips=\"$$(Mips:Unknown)\"\n") 
+        jdl.append("+JOB_GLIDEIN_Schedd=\"$$(GLIDEIN_Schedd:Unknown)\"\n") 
+        jdl.append("+JOB_GLIDEIN_ClusterId=\"$$(GLIDEIN_ClusterId:Unknown)\"\n") 
+        jdl.append("+JOB_GLIDEIN_ProcId=\"$$(GLIDEIN_ProcId:Unknown)\"\n") 
+        jdl.append("+JOB_GLIDEIN_Factory=\"$$(GLIDEIN_Factory:Unknown)\"\n") 
+        jdl.append("+JOB_GLIDEIN_Name=\"$$(GLIDEIN_Name:Unknown)\"\n") 
+        jdl.append("+JOB_GLIDEIN_Frontend=\"$$(GLIDEIN_Client:Unknown)\" \n") 
         return jdl
     
         
@@ -290,7 +316,7 @@ class OSGGlideIn(BulkSubmitterInterface):
             # //  No Preference, use default
             #//
             logging.debug("lookupGlideInSite:No Whitelist")
-            return self.pluginConfig['OSG']['GlideInSite']
+            return [ self.pluginConfig['OSG']['GlideInSite'] ]
       
         #  //
         # // We have a list, get the first one that matches
@@ -300,18 +326,18 @@ class OSGGlideIn(BulkSubmitterInterface):
         #//
         seMap = self.pluginConfig['SENameToSiteName']
 
-        matchedJobMgr = None
+        matchedJobMgrs = set()
         for sitePref in  self.whitelist:
             if sitePref not in seMap.keys():
                 logging.debug("lookupGlideInSite: No match: %s" % sitePref)
                 continue
-            matchedJobMgr = seMap[sitePref]
+            matchedJobMgrs.add(seMap[sitePref])
             logging.debug("lookupGlideInSite: Matched: %s => %s" % (
-                sitePref, matchedJobMgr  )
+                sitePref, seMap[sitePref]  )
                           )
-            break
-
-        if matchedJobMgr == None:
+            
+            
+        if len(matchedJobMgrs) == 0:
             msg = "Unable to match site preferences: "
             msg += "\n%s\n" % self.whitelist
             msg += "To any JobManager"
@@ -319,7 +345,7 @@ class OSGGlideIn(BulkSubmitterInterface):
                               ClassInstance = self,
                               SENameToSiteName = seMap,
                               Whitelist = self.whitelist)
-        return matchedJobMgr
+        return list(matchedJobMgrs)
                 
     
 
