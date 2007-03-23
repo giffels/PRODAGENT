@@ -1,10 +1,24 @@
 #/usr/bin/env python
 
 
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
 
 import logging
+
+# do this once during startup:
+offset=0
+increment=500
+
+try:
+    config = loadProdAgentConfiguration()
+    offset= config.getConfig("ProdMgrInterface")['ProdAgentRunOffset']
+except StandardError, ex:
+    msg = "Error reading configuration:\n"
+    msg += str(ex)
+    raise RuntimeError, msg
+
 
 
 def amount():
@@ -98,6 +112,30 @@ def getJobIDs(workflowIDs=[]):
    for row in rows:
       result.append(row[0])
    return result 
+
+def getNewRunNumber(workflowID,amount=1):
+  """
+  __getNewRunNumber__
+
+  returns a new run number. The increment is bassed on 
+  the run number offset this offset is unique to every
+  prodagent and we assume there is an upperbound 
+  of "increment" agents where the offset is smaller tan
+  "increment" but larget than 0
+  """
+  global increment
+  
+  sqlStr="""UPDATE we_Workflow SET run_number_count = LAST_INSERT_ID(run_number_count+ %s)""" %(str(amount*increment))
+  Session.execute(sqlStr)
+  sqlStr="""SELECT LAST_INSERT_ID()"""
+  Session.execute(sqlStr)
+  rows=Session.fetchall()
+  # we retrieve the highest run number now count back
+  result=[]
+  for i in xrange(0,amount):
+     result.append(rows[0][0]-i*increment)
+  result.sort()
+  return result
    
 def getNotDownloaded():
    """
@@ -164,9 +202,13 @@ def register(workflowID,parameters={}):
 
    if the workflow has already been registered it gives a warning and moves on.
    """
+   global offset
+
    descriptionMap={'priority':'priority','request_type':'workflow_type',\
-       'prod_mgr_url':'prod_mgr_url','workflow_spec_file':'workflow_spec_file','owner':'owner'}
+       'prod_mgr_url':'prod_mgr_url','workflow_spec_file':'workflow_spec_file','owner':'owner',\
+       'run_number_count':'run_number_count'}
    # check with attributes are provided.
+   parameters['run_number_count']=offset
    description=parameters.keys()
 
    # create values part
@@ -249,4 +291,5 @@ def setWorkflowLocation(workflowID,workflowLocation):
    sqlStr="""UPDATE we_Workflow SET workflow_spec_file="%s" 
    WHERE id="%s" """ %(str(workflowLocation),str(workflowID))
    Session.execute(sqlStr)
+
 

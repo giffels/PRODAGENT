@@ -6,6 +6,8 @@ from ProdCommon.Core.GlobalRegistry import retrieveHandler
 from ProdCommon.Database import Session
 from ProdCommon.Core.ProdException import ProdException
 
+import logging
+
 class Trigger:
 
    def __init__(self,messageService):

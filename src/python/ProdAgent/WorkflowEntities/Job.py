@@ -164,16 +164,16 @@ def remove(jobIDs=[]):
        sqlStr3="""DELETE FROM tr_Action WHERE
        JobSpecID IN %s""" %(str(tuple(jobIDs)))
    Session.execute(sqlStr1)
-   Session.execute(sqlStr2)
-   Session.execute(sqlStr3)
+   #Session.execute(sqlStr2)
+   #Session.execute(sqlStr3)
 
 def removeAll():
    sqlStr1="""DELETE FROM we_Job;"""
    sqlStr2="""DELETE FROM tr_Trigger;"""
    sqlStr3="""DELETE FROM tr_Action;"""
    Session.execute(sqlStr1)
-   Session.execute(sqlStr2)
-   Session.execute(sqlStr3)
+   #Session.execute(sqlStr2)
+   #Session.execute(sqlStr3)
 
        
 def registerFailure(jobID,failureState,parameters={}):
