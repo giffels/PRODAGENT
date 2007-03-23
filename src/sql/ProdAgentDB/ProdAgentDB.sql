@@ -690,11 +690,11 @@ CREATE TABLE ct_job_attr(
  */
 
 CREATE TABLE we_Job(
-   allocation_id        varchar(150),
+   allocation_id        varchar(255),
    cache_dir            varchar(255),
    events_processed     int             default 0,
-   id                   varchar(150)    not null,
-   job_spec_file        varchar(150),
+   id                   varchar(255)    not null,
+   job_spec_file        varchar(255),
    job_type             varchar(150)    not null,
    max_retries          int             default 1,
    max_racers           int             default 1,
@@ -718,12 +718,12 @@ CREATE TABLE we_File(
 
 CREATE TABLE we_Allocation
    (
-    allocation_spec_file varchar(150),
-    id                    varchar(150)    not null,
+    allocation_spec_file varchar(255),
+    id                    varchar(255)    not null,
     events_processed     int             default 0,
     details               mediumtext,
     prod_mgr_url          varchar(255)    not null,
-    workflow_id           varchar(150)    not null,
+    workflow_id           varchar(255)    not null,
     primary key(id),
     index(workflow_id)
    ) Type=InnoDB;
@@ -732,10 +732,11 @@ CREATE TABLE we_Workflow
    (
     events_processed      int             default 0,
     done                  enum("true","false") default 'false',
-    id                    varchar(150)    not null,
+    id                    varchar(255)    not null,
     owner                 varchar(150)    default 'no owner',
     priority              int(11)         not null,
-    prod_mgr_url          varchar(150)    not null,
+    prod_mgr_url          varchar(255)    not null,
+    run_number_count      int(11)         not null,
     workflow_spec_file    varchar(255)   default 'not_downloaded',
     workflow_type          enum("event", "file") default 'event',
     primary key(id),
