@@ -57,9 +57,12 @@ def cut(job_id,jobCutSize):
     eventCount=int(jobSpec.parameters['EventCount'])
     # find out how many jobs we want to cut.
     jobs=int(math.ceil(float(eventCount)/float(jobCutSize)))
+    logging.debug("Retrieve "+str(jobs)+" run numbers")
+    job_run_numbers=Workflow.getNewRunNumber(job_id.split('_')[1],jobs)
+    logging.debug("Got: "+str(job_run_numbers))
     logging.debug("Starting factorization")
     logging.debug("Writing job cut specs to: "+str(jobSpecDir))
-    listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,jobs,jobSpec.parameters['EventCount'],\
+    listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,job_run_numbers,jobSpec.parameters['EventCount'],\
         RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
     logging.debug("Registering job cuts")
     Job.register(None,job_id,listOfSpecs)

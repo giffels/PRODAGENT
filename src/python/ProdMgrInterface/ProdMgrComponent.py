@@ -217,7 +217,7 @@ class ProdMgrComponent:
             priority=components[2].split("=")[1]
             request_type=components[3].split("=")[1]
             logging.debug("Add request: "+requestId+" with priority "+priority+" for prodmgr: "+prodMgr)
-            parameters={'priority':priority,'request_type':request_type,'prod_mgr_url':prodMgr}
+            parameters={'priority':priority,'request_type':request_type,'prod_mgr_url':prodMgr,'owner':'ProdMgrInterface'}
             Workflow.register(requestID,parameters) 
             logging.debug("Added request. There are now "+str(Workflow.amount())+" requests in the queue ")
         except Exception,ex:
@@ -313,6 +313,7 @@ class ProdMgrComponent:
                 requests=ProdMgr.getRequests(prodmgr,self.args['AgentTag'])
                 for request in requests['keep']:
                     parameters={'priority':request[1],'request_type':request[2],'prod_mgr_url':prodmgr}
+                    parameters['owner']='ProdMgrInterface'
                     Workflow.register(request[0],parameters)
                 logging.debug("Retrieved: "+str(len(requests['keep']))+' requests')
                 ProdMgr.commit()
