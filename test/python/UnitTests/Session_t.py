@@ -27,11 +27,16 @@ class SessionUnitTests(unittest.TestCase):
             Session.set_database(dbConfig)
             Session.connect()
             Session.start_transaction()
+            workflows=[]
             for i in xrange(0,10):
-                sqlStr="""INSERT INTO we_Workflow(events_processed,id,owner,priority,prod_mgr_url) 
-                VALUES("1000","%s","elmo","123","http://some.where.over.the.rainbow") 
-                """ %(str("workflow_id"+str(i)))
-                Session.execute(sqlStr)
+                workflow={}
+                workflow['events_processed']=1000
+                workflow['id']='workflow_id'+str(i)
+                workflow['owner']='elmo'
+                workflow['priority']=123
+                workflow['prod_mgr_url']='http://some.where.over.the.rainbow'
+                workflows.append(workflow)
+            Session.insert("we_Workflow",workflows)
             #now we will brake the session object deliberatly
             Session.session['default']['connection']=None
             Session.session['default']['cursor']=None
@@ -66,10 +71,13 @@ class SessionUnitTests(unittest.TestCase):
                 print("Error testing successful : "+str(ex))
 
             for i in xrange(0,5):
-                sqlStr="""INSERT INTO we_Workflow(events_processed,id,owner,priority,prod_mgr_url) 
-                VALUES("1000","%s","elmo","234","http://some.where.over.the.rainbow") 
-                """ %(str("workflow_id_1_"+str(i)))
-                Session.execute(sqlStr)
+                workflow={}
+                workflow['events_processed']=1000
+                workflow['id']='workflow_id_1_'+str(i)
+                workflow['owner']='elmo'
+                workflow['priority']=234
+                workflow['prod_mgr_url']='http://some.where.over.the.rainbow'
+                Session.insert("we_Workflow",workflow)
             # close the cursor
             Session.session['default']['cursor'].close()
             print('Case 4 (closing a cursor)*********************************')
@@ -80,12 +88,16 @@ class SessionUnitTests(unittest.TestCase):
             Session.commit()
             self.assertEqual(int(rows[0][0]),15)
             
-
+            workflows=[]
             for i in xrange(0,5):
-                sqlStr="""INSERT INTO we_Workflow(events_processed,id,owner,priority,prod_mgr_url) 
-                VALUES("1000","%s","elmo","345","http://some.where.over.the.rainbow") 
-                """ %(str("workflow_id_2_"+str(i)))
-                Session.execute(sqlStr)
+                workflow={}
+                workflow['events_processed']=1000
+                workflow['id']='workflow_id_2_'+str(i)
+                workflow['owner']='elmo'
+                workflow['priority']=345
+                workflow['prod_mgr_url']='http://some.where.over.the.rainbow'
+                workflows.append(workflow)
+            Session.insert("we_Workflow",workflows)
             # close the connection
             Session.session['default']['connection'].close()
             print('Case 5 (closing a connection)******************************')
@@ -128,6 +140,16 @@ class SessionUnitTests(unittest.TestCase):
             Session.execute(sqlStr)
             rows=Session.fetchall()
             self.assertEqual(int(rows[0][0]),55)
+
+            sqlStr="""SELECT events_processed,id,owner,priority,prod_mgr_url FROM we_Workflow """
+            Session.execute(sqlStr)
+            rows=Session.fetchall()
+            description=['events_processed','id','owner','priority','prod_mgr_url']
+            result=Session.convert(description,rows)
+            print("Converted row result (with description): "+str(result[0]))
+            result=Session.convert(rows=rows)
+            print("Converted row result (without description): "+str(result[0]))
+
             
             
 
