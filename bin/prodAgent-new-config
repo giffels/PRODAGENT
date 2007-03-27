@@ -128,8 +128,6 @@ coreFields = {
 
     'LocalDBS' :{
     "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
-    "DBSAddress": None,
-    "DBSType" : "CGI",
     },
 
     'DLSInterface' :{
@@ -139,8 +137,6 @@ coreFields = {
 
     "GlobalDBSDLS" : {
     "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
-    "DBSAddress": "MCGlobal/Writer",
-    "DBSType": "CGI",
     "DLSAddress" : "prod-lfc-cms-central.cern.ch/grid/cms/DLS/LFC",
     "DLSType" : "DLS_TYPE_LFC",
     },
