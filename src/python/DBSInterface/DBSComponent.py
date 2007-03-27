@@ -2,22 +2,19 @@
 """
 _DBSComponent_
 
-Skeleton DBSComponent for ProdAgentLite
+DBSComponent for ProdAgent
 
 ProdAgent Events subscribed to by this Component
 
 NewDataset - A New Dataset has been injected into the ProdAgent system
              via a processing request.
-             Event Payload will be the dataset ID
-         AF: Event Payload should be much more that the dataset ID
+             Event Payload will be the workflow
              Create a new dataset in DBS means :
                - create a primary dataset (if not already there)
-               - create a processed dataset (this include inserting application
-                configuration and processinf path info).
+               - create a processed dataset (this include inserting algorithm info)
 
 JobSuccess - Job completed, this event will include a ref to a Framework
-            job report that needs to be handled and have the event collections
-            that it describes be added to the DBS.
+            job report that contains info about the file (LFN,cksum,size,....)
             Event Payload will be a reference to the JobReport file
 
 """
@@ -25,6 +22,10 @@ import string
 import socket
 
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
+from ProdCommon.DataMgmt.DBS.DBSErrors import DBSWriterError, formatEx
+from DBSAPI.dbsApiException import DbsException
+
 import os,base64,time,exceptions
 from FwkJobRep.ReportParser import readJobReport
 from MessageService.MessageService import MessageService
@@ -32,12 +33,13 @@ from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 import logging
 import ProdAgentCore.LoggingUtils  as LoggingUtils
-#from logginghandlers import RotatingFileHandler
 
-## temporary waiting for SEname in FWKJobReport 
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 
-                                                                               
+
+# disable DBS info      
+#logging.disable(logging.INFO)
+                                                               
 # ##############
 class InvalidWorkFlowSpec(exceptions.Exception):
   def __init__(self,workflowfile):
@@ -110,12 +112,9 @@ class DBSComponent:
     def __init__(self, **args):
         self.args = {}
 
-        self.args.setdefault("DBSURL","http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery")
-        self.args.setdefault("DBSAddress", None)
-        self.args.setdefault("DBSType", "CGI")
+        self.args.setdefault("DBSURL","http://cmssrv18.fnal.gov:8989/DBS/servlet/DBSServlet")
         self.args.setdefault("Logfile", None)
         self.args.setdefault("BadReportfile", None)
-        self.args.setdefault("DBSDataTier", 'GEN,SIM,DIGI,RECO,HLT,ALCARECO,FEVT,AOD,RAW,USER,RECOSIM,AODSIM')
         self.args.setdefault("CloseBlockSize", "None")  # No check on fileblock size
 
         self.args.update(args)
@@ -128,20 +127,6 @@ class DBSComponent:
 # use the LoggingUtils
         LoggingUtils.installLogHandler(self)
         logging.info("DBSComponent Started...")
-
-        #  //
-        # // Log Handler is a rotating file that rolls over when the
-        #//  file hits 1MB size, 3 most recent files are kept
-#        logHandler = RotatingFileHandler(self.args['Logfile'],
-#                                         "a", 1000000, 3)
-        #  //
-        # // Set up formatting for the logger and set the 
-        #//  logging level to info level
-        #logFormatter = logging.Formatter("%(asctime)s:%(message)s")
-#        logFormatter = logging.Formatter("%(asctime)s:%(module)s:%(message)s")
-#        logHandler.setFormatter(logFormatter)
-#        logging.getLogger().addHandler(logHandler)
-#        logging.getLogger().setLevel(logging.INFO)
 
         #  //
         # // Log Failed FWJobReport registration into DBS
@@ -170,12 +155,14 @@ class DBSComponent:
             except InvalidWorkFlowSpec, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
-            except InvalidDataTier, ex:
+#            except InvalidDataTier, ex:
+#                logging.error("Failed to Create New Dataset: %s" % payload)
+#                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
+            except DBSWriterError, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
-                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
             except DbsException, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
-                logging.error("Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
+                logging.error("Details: %s"% formatEx(ex))
                 return
             except StandardError, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
@@ -194,6 +181,9 @@ class DBSComponent:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("InvalidJobReport Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
                 return
+            except DBSWriterError, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                #logging.error("Details: %s"%ex)
             except InvalidDataTier, ex:
                 logging.error("InvalidDataTier")
                 logging.error("Failed to Handle Job Report: %s" % payload)
@@ -243,77 +233,16 @@ class DBSComponent:
         
         return
 
-    def newDatasetEvent(self, workflowspec):
+    def newDatasetEvent(self, workflowFile):
         """
         _newDatasetEvent_
 
         Extract relevant info from the WorkFlowSpecification and loop over Dataset
         """
 
-        #### Extract info from event payload :
-        logging.debug("DBSComponent.newDatasetEvent: %s" % workflowspec)
-        datasetinfoList=self.readNewDatasetInfo(workflowspec)
-        for datasetinfo in datasetinfoList:
-            self.newDataset(datasetinfo)
+        logging.debug("DBSComponent.newDatasetEvent: %s" % workflowFile)
 
-
-    def newDataset(self, datasetinfo):
-        """
-        _newDataset_
-        Extract relevant info:
-            - the application info (Version, etc..)
-            - primary dataset, processed dataset, etc...
-            - the encoded PSet (PSet Hash in future)
-           what is missing(empty) is:
-            - application family  \ can be guessed from the OutputModuleName
-            - in/output data tier /
-            - info to define the parent application
-        The operations to perform then are:
-         - Create a primary dataset (if not already there)
-         - Create a processed dataset: this include inserting application
-           configuration and processing path info.
-         (- Create a fileblock associated to the processed dataset)
-        """
-
-        logging.debug("Inserting a Dataset in DBS: primary %s processed %s"%(datasetinfo['PrimaryDataset'],datasetinfo['ProcessedDataset']))
-        logging.debug(" - ApplicationName %s"%datasetinfo['ApplicationName'])
-        logging.debug(" - ApplicationVersion %s"%datasetinfo['ApplicationVersion'])
-
-        ### Contact DBS using the DBS class
-        if ( self.args['DBSType'] == 'CGI'):
-          from DBS import DBS as DBSclient
-        else:
-          from DBS_Ws import DBS_Ws as DBSclient
-        dbsinfo= DBSclient(self.args['DBSURL'],self.args['DBSAddress'])
-
-        ## create primary dataset
-
-        dbsinfo.insertPrimaryDataset(datasetinfo['PrimaryDataset'])
-
-        ## define app family from OutputModuleName
-        #applicationfamily = datasetinfo['OutputModuleName']
-        applicationfamily = datasetinfo['ApplicationFamily']
-        ## check datatier
-        datatier = self.getDataTier(datasetinfo['DataTier'], self.args['DBSDataTier'])
-        logging.debug(" - ApplicationFamily %s" % applicationfamily)
-        logging.debug(" - DataTier %s" % datatier)
-        #if datatier=='Unknown' or applicationfamily=='Unknown' :
-        # logging.error("Uknown datatier/Application Family")
-        # return 
-
-        ## create processed dataset ( + empty fileblock associated to it)
-
-        dbsinfo.insertProcessedDataset(datasetinfo,datatier,applicationfamily)
-
-        return
-
-    def readNewDatasetInfo(self, workflowFile):
-        """  
-        _readNewDatasetInfo_
-
-        Read the NewDataset event payload from WorkFlowSpec file
-          
-        """
+        ### Access the WorkflowSpec file
         logging.debug("Reading the NewDataset event payload from WorkFlowSpec: ")
         workflowFile=string.replace(workflowFile,'file://','')
         if not os.path.exists(workflowFile):
@@ -322,18 +251,24 @@ class DBSComponent:
         try:
          workflowSpec = WorkflowSpec()
          workflowSpec.load(workflowFile)
-         #payload = workflowSpec.payload
         except:
           logging.error("Invalid Workflow File: %s" % workflowFile)
           raise InvalidWorkFlowSpec(workflowFile)
-        
-        ListDatasetInfo=workflowSpec.outputDatasets()
+        #  //                                                                      
+        # //  Contact DBS using the DBSWriter
+        #//
+        logging.info("DBSURL %s"%self.args['DBSURL'])
+        try:
+          dbswriter = DBSWriter(self.args['DBSURL'])
+        except DbsException, ex:
+          logging.error("%s\n" % formatEx(ex))
+          return
+        #  //
+        # //  Create Datsets based on workflow
+        #//
+        dbswriter.createDatasets(workflowSpec)
 
-        # pick up only the first dataset since I don't know how to handle multiple output datasets
-        #DatasetInfo=ListDatasetInfo[0]
-        #
-        #return DatasetInfo
-        return ListDatasetInfo
+
 
     def readJobReportInfo(self,jobReportFile):
         """  
@@ -366,139 +301,71 @@ class DBSComponent:
         """
         logging.debug("DBSComponent.handleJobReport: %s" % jobReportLocation)
 
+
         ### Extract Info from the Job Report
         jobreports=self.readJobReportInfo(jobReportLocation)
         #loop over the fwk jobreports 
         for jobreport in jobreports:
             #print jobreport.files
-  
-            ### Contact DBS using the DBS class
-            if ( self.args['DBSType'] == 'CGI'):
-                from DBS import DBS as DBSclient
-            else:
-                from DBS_Ws import DBS_Ws as DBSclient
+         #  //
+         # //  Contact DBS using the DBSWriter
+         #//
+         logging.info("DBSURL %s"%self.args['DBSURL'])
+         try:
+          dbswriter = DBSWriter(self.args['DBSURL'])
+         except DbsException, ex:
+          logging.error("%s\n" % formatEx(ex))
+          return
+         #  //
+         # // Insert Files to block and datasets 
+         #//
+         MergedBlockList=dbswriter.insertFiles(jobreport) 
 
-            self.dbsinfo= DBSclient(self.args['DBSURL'],self.args['DBSAddress'])
+         #  //
+         # //  Check on block closure conditions for merged fileblocks
+         #//
+         if (jobreport.jobType == "Merge") and (CloseBlockSize != "None"):
+            if len(MergedBlockList)>0:
+               MigrateBlockList=[]
+               for MergedBlockName in MergedBlockList:
+                   closedBlock=dbswriter.manageFileBlock(MergedBlockName ,maxSize = CloseBlockSize)
+                   if closedBlock:
+                      MigrateBlockList.append(MergedBlockName)
+               #  //
+               # //   Trigger Migration of closed Blocks to Global DBS
+               #//
+               if len(MigrateBlockList)>0:
+                  #FIXME: how do I find the datasetPath the block belong to??
+                  datasetPath=''
+                  #FIXME:
+                  self.MigrateBlock(datasetPath, MigrateBlockList )
+               # FIXME:
+               #  if migration succesfull: trigger PhEDEx injection?? (If Phedex is configured)
+               # FIXME:
+         
 
-            #  //
-            # // handle output files information from FWK report
-            #//  We first loop through files and add each file to the fileblock based
-            #  //on the SE Name where it was placed.
-            # // Then we loop through the datasets associated with that file
-            #//  and insert the event collection for that file into each of those
-            #  //datasets. 
-            # // NOTE: Here I assume that the dataset has already been split into
-            #//  basic tier datasets.
-            for fileinfo in jobreport.files:
-                #  //
-                # // Safety check: File Info must be associated to at least one
-                #//  dataset before we try any of this
-                if len(fileinfo.dataset) == 0:
-                    msg = "WARNING: File in job report is not associated to a dataset:\n"
-                    msg += "LFN: %s\n" % fileinfo['LFN']
-                    msg += "This file will not be added to a fileblock or dataset\n"
-                    logging.error(msg)
-                    continue
-                #  //
-                # // Overwite the site se-name with the SEName associated to each file (if any)
-                #//  
-                if fileinfo.has_key("SEName"):
-                  SEname=fileinfo['SEName']
-                  logging.debug("SEname associated to file is: %s"%SEname)
-                else:
-                  SEname=jobreport.siteDetails['se-name']
-                  logging.debug("site SEname: %s"%SEname)
-
-                #  //
-                # // Define the fileblock to add files to,
-                #//  look for just the first datasetPath
-                firstDataset = fileinfo.dataset[0]
-                firstDatasetPath = "/%s/%s/%s" % (
-                      firstDataset['PrimaryDataset'],
-                      firstDataset['DataTier'],
-                      firstDataset['ProcessedDataset'],
-                      )
-                #  //
-                # // check DataTier being valid 
-                # //
-                firstdatatier=self.getDataTier(firstDataset['DataTier'],self.args['DBSDataTier'])
-                #  //
-                # // Lookup the file block for this first dataset and SEName
-                #//
-                logging.debug("Searching for fileblock for SE: %s\n:  Dataset: %s\n" % (
-                      SEname, firstDatasetPath)
-                              )
-                fileblock = self.checkFileBlockforSE(
-                    firstDatasetPath,
-                    SEname,
-                    self.args['CloseBlockSize'],
-                    firstDataset,
-                    jobreport.jobType
-                    )
-                if fileblock is None:
-                    msg = "No Fileblock found to add files to for dataset: %s SEname: %s\n" %( firstDatasetPath , SEname )
-                    raise NoFileBlock(msg)
-                
-                #  //
-                # // Insert files to block
-                #//
-                logging.info("Inserting File: %s \nInto FileBlock : %s\n" %(
-                    fileinfo['LFN'], fileblock.get('blockName'))
-                             )
-
-                fList = self.dbsinfo.insertFiletoBlock(fileinfo, fileblock)
-
-                logging.debug("FileList from FileBlock:\n%s\n" % fList)
-                
-                #  //
-                # // For each dataset associated with the file,
-                #//insert the Event Collection
-                for dataset in fileinfo.dataset:
+# logging.debug("TEST: Placeholder for publishing MergeRegistered Event with payload %s"%(jobReportLocation,))
+#  set the "cleanup" trigger in PhEDEX instead??
                     
-                    datasetPath="/%s/%s/%s" % (
-                      dataset['PrimaryDataset'],
-                      dataset['DataTier'],
-                      dataset['ProcessedDataset'],
-                      )
 
-           
-                    #  //
-                    # // Insert Event Collections
-                    #//
-                    logging.debug(
-                      "Setting Event Collection For: %s\n in Dataset %s\n" % (
-                          fileinfo['LFN'], datasetPath )
-                      )
-                    evcList = self.dbsinfo.setEVCollection(
-                      fileinfo,     # File Details, LFN, PFN etc
-                      fList,        # Details from FileBlock 
-                      datasetPath)  # dataset to add to
-                    logging.debug("Set Event Collection:%s\n" % evcList)
 
-                    #  //
-                    # // Insert into Dataset
-                    #//
-                    logging.debug(
-                      "Inserting Event collections into Dataset"
-                      )
-                    self.dbsinfo.insertEVCtoDataset(datasetPath, evcList)
+##comments to check in insertFiles :
+## 1) is the safety check applied? File Info must be associated to at least one dataset before we try any of this
+#                if len(fileinfo.dataset) == 0:
+#                    msg = "WARNING: File in job report is not associated to a dataset:\n"
+#                   msg += "LFN: %s\n" % fileinfo['LFN']
+#                    msg += "This file will not be added to a fileblock or dataset\n"
+#                    logging.error(msg)
+#                    continue
+## 2) we skip the tier check or we do that before the dbswriter.insertFiles is called??/
 
-            #  //
-            # // (placeholder for ) Publish MergeRegistered Event for PheDex injection
-            #//
-            if jobreport.jobType != None :
-               logging.debug("jobType is %s"%(jobreport.jobType,))
-               if jobreport.jobType == "Merge":
-                  logging.debug("TEST: Placeholder for publishing MergeRegistered Event with payload %s"%(jobReportLocation,)) 
-
-            ### set the "cleanup" trigger in PhEDEX instead??
             #  //
             # // On successful insertion of job report, set the trigger
             #//  to say we are done with it so that cleanup can be triggered.
-            try:
+         try:
                 self.trigger.setFlag("cleanup", jobreport.jobSpecId,
                                      "DBSInterface")
-            except Exception, ex:
+         except Exception, ex:
                 msg = "Error setting cleanup flag for job: "
                 msg += "%s\n" % jobreport.jobSpecId
                 msg += str(ex)
@@ -520,79 +387,12 @@ class DBSComponent:
         SEname=None
         return SEname
 
-    def checkFileBlockforSE(self,datasetPath,SEname,CloseBlockSize,fileinfo,jobType):
-        """
-         o create a file block associated to a storage element (SE) 
-           and add the fileblock-SE entry in DLS if one of the following conditions holds:
-           1. a fileblock associated to this SE is not yet registered for the current dataset
-           2. the fileblocks associated to the SE are closed
-           3. the file block associated to the SE is full (not implemented)
-         o return the fileblock to add files to
-        """
-        from DLS import DLS 
-
-        if SEname=="Unknown" :  #return a None block
-          return None
-        fileBlockList = self.dbsinfo.getDatasetFileBlocks(datasetPath)
-        ## get the type and endpoint from configuration DLS block 
-        dlsinfo= DLS(self.args['DLSType'],self.args['DLSAddress'])
-        #dlsinfo= DLS("DLS_TYPE_LFC","lfc-cms-test.cern.ch/grid/cms/DLS/LFC")
-        ## look for an existing file block associated to the storage element , not closed and not yet full
-        for fileBlock in fileBlockList:
-          SEList=dlsinfo.getFileBlockLocation(fileBlock.get('blockName'))
-          fileBlockSize=fileBlock.get('numberOfBytes')
-          fileBlockFiles=fileBlock.get('numberOfFiles')
-          # check the fileblock at SE
-          if SEList.count(SEname)>0:
-           # check if fileblock is closed:
-           if fileBlock.get('blockStatus')!="closed":
-            if jobType!="Merge" or CloseBlockSize=="None":
-               logging.debug("Fileblock %s not closed , so files can be added to it "%fileBlock.get('blockName'))
-               return fileBlock # found a not closed fileblock to add files to
-            else: # for merged data: check block size and close the block if appropriate
-               if self.closeBlockAlgorithm(float(fileBlockSize),float(fileBlockFiles),CloseBlockSize):
-                  self.dbsinfo.closeBlock(fileBlock.get('blockName'))
-                  logging.debug("Closed Fileblock %s"%fileBlock.get('blockName'))
-               else:
-                  logging.debug("Fileblock %s not closed, so files can be added to it "%fileBlock.get('blockName'))
-                  return fileBlock # found a not closed fileblock associated to SE and not full , to add files to
-
-        ## create a new fileblock with the same processing used during NewDataset
-        fileBlock = self.dbsinfo.addFileBlock(fileinfo,datasetPath)
-        if fileBlock is not None :
-         ## add the fileblock-SE entry to DLS
-         try:
-           dlsinfo.addEntryinDLS(fileBlock.get('blockName'),SEname)        
-         except:
-           return None
-
-        return fileBlock
-
-    def closeBlockAlgorithm(self,fileBlockSize,fileBlockFiles,CloseBlockSize):
-        """
-        Check if Close-Block condition are statisfied.
-        A FileBlock is closed if the number of its files is greater than ( CloseBlockSize / average file size) 
-        """
-        if CloseBlockSize=="None" or fileBlockSize<=0 or fileBlockFiles<=0:
-          return False
-        else:
-          avgfileSize=float(fileBlockSize)/float(fileBlockFiles)
-          MaxFiles=int(float(CloseBlockSize)/avgfileSize)
-          logging.debug("Close-Block Condition: Size > %s  ==> Files > %s (since average file size=%s)"%(CloseBlockSize,MaxFiles,avgfileSize))
-          if fileBlockFiles <= MaxFiles:
-            logging.debug("FileBlock has %s Files so Close-Block Condition NOT satisfied"%(fileBlockFiles,))
-            return False
-          else:
-            logging.debug("FileBlock has %s Files so Close-Block Condition satisfied"%(fileBlockFiles,))
-            return True
-
 
     def getDataTier(self,DataTier,DBSDataTier):
         """
          guess the Application family and data tier from the POOL Output Module Name convention in .cfg 
         """
 
-        #DataTierList=DataTier.split("-")
         DBSDataTierList = DBSDataTier.split(",")
 
         if DataTier not in DBSDataTierList:
@@ -661,6 +461,66 @@ class DBSComponent:
 
         logging.info("*** End the RetryFailures procedures => Discarded: %s Failed logged in :%s "%(discarded,fileName))
 
+    def MigrateBlock(self, datasetPath, fileblockList):
+        """
+        Migrate from Local to Global                                                                         
+        """
+        #//
+        #// Global DBS and DLS API
+        #//
+        DBSConf,DLSConf= getGlobalDBSDLSConfig()
+        GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
+        #self.GlobalDLSwriter = DLSWriter(DLSConf['DLSAddress'],DLSConf['DLSType'])
+
+        logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
+        logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))       
+        #logging.info(">> From Local DBS: %s DLS: %s"%(GlobalDBSreader,GlobalDLSreader))
+        #logging.info(">> To Global DBS: %s DLS: %s"%(GlobalDBSwriter,GlobalDLSwriter))
+
+        GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,fileblockList)
+
+        #//
+        #// Upload to Global DLS
+        #//
+        #self.UploadtoDLS(fileblockList)
+
+
+    def getGlobalDBSDLSConfig(self):
+        """
+        Extract the global DBS and DLS contact information from the prod agent config
+        """                                                                                               
+                                                                                               
+        try:
+            config = loadProdAgentConfiguration()
+        except StandardError, ex:
+            msg = "Error reading configuration:\n"
+            msg += str(ex)
+            logging.error(msg)
+            raise RuntimeError, msg
+                                                                                               
+        if not config.has_key("GlobalDBSDLS"):
+            msg = "Configuration block GlobalDBSDLS is missing from $PRODAGENT_CONFIG"
+            logging.error(msg)
+                                                                                               
+        try:
+             globalConfig = config.getConfig("GlobalDBSDLS")
+        except StandardError, ex:
+            msg = "Error reading configuration for GlobalDBSDLS:\n"
+            msg += str(ex)
+            logging.error(msg)
+            raise RuntimeError, msg
+                                                                                               
+        logging.debug("GlobalDBSDLS Config: %s" % globalConfig)
+
+        dbsConfig = {
+        'DBSURL' : globalConfig['DBSURL'],
+        }
+        dlsConfig = {
+        "DLSType" : globalConfig['DLSType'],
+        "DLSAddress" : globalConfig['DLSAddress'],
+        }
+
+        return dbsConfig, dlsConfig
 
     def startComponent(self):
         """
@@ -673,7 +533,7 @@ class DBSComponent:
         self.ms = MessageService()
         self.trigger=TriggerAPI(self.ms)                                                                      
         # register
-        self.ms.registerAs("DBSComponent")
+        self.ms.registerAs("DBS2Component")
                                                                                 
         # subscribe to messages
         self.ms.subscribeTo("NewDataset")
