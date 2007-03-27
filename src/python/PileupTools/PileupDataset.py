@@ -19,8 +19,27 @@ from IMProv.IMProvDoc import IMProvDoc
 from IMProv.IMProvQuery import IMProvQuery
 from IMProv.IMProvLoader import loadIMProvFile
 
-from PhEDExInterface.DBSDLSToolkit import RemoteDBSDLSToolkit, DBSDLSToolkit
+from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
+def getLocalDBSURL():
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+    
+    try:
+        dbsConfig = config.getConfig("LocalDBS")
+    except StandardError, ex:
+        msg = "Error reading configuration for LocalDBS:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    return dbsConfig.get("DBSURL", None)
 
 
 class PileupDataset(list):
@@ -93,14 +112,10 @@ class PileupDataset(list):
         for i in self:
             self.remove(i)
     
-        if len(dbsContacts) > 0:
-            toolkit = RemoteDBSDLSToolkit(**dbsContacts)
-        else:
-            toolkit = DBSDLSToolkit()
-            
-
-            
-        self.extend(toolkit.getDatasetFiles(self.dataset))
+        reader = DBSReader(dbsContacts['DBSURL'])
+        fileList = reader.getFiles(self.dataset)
+        result = [ x['LogicalFileName'] for x in fileList]
+        self.extend(result)
         return
 
     
@@ -109,23 +124,19 @@ class PileupDataset(list):
         Get the list of sites hosting the PU from DBS/DLS
                                                                                                               
         """
-        if len(dbsContacts) > 0:
-            toolkit = RemoteDBSDLSToolkit(**dbsContacts)
-        else:
-            toolkit = DBSDLSToolkit()
+        reader = DBSReader(dbsContacts['DBSURL'])
 
         locations = []        
-        blocks =  toolkit.listFileBlocksForDataset(self.dataset)
+        blocks =  reader.listFileBlocks(self.dataset, True)
 
         for block in blocks:
-           blockName = block['blockName']
-           try:
-              locations = toolkit.getFileBlockLocation(blockName)
-           except Exception, ex:
-              msg = "Unable to find DLS Locations for Block: %s\n" %  blockName
-              msg += str(ex)
-              logging.warning(msg)
-              continue
+            try:
+                locations = reader.getFileBlockLocation(block)
+            except Exception, ex:
+                msg = "Unable to find DLS Locations for Block: %s\n" %  block
+                msg += str(ex)
+                logging.warning(msg)
+                continue
 
         return locations 
 
@@ -220,13 +231,11 @@ def createPileupDatasets(workflowSpec):
         pudInstance = PileupDataset(puDataset.name(),
                                     int(puDataset['FilesPerJob']))
 
-        if puDataset.has_key("DBSAddress"):
-            args = {"DBSAddress" : puDataset['DBSAddress'],
-                    "DBSURL" : puDataset['DBSURL'],
-                    'DLSType' : puDataset['DLSType'],
-                    'DLSAddress' : puDataset['DLSAddress']}
+        if puDataset.has_key("DBSURL"):
+            args = {"DBSURL" : puDataset['DBSURL']}
             pudInstance.loadLFNs(**args)
         else:
+            
             pudInstance.loadLFNs()
 
 
