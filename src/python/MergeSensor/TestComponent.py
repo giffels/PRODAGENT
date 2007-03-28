@@ -6,8 +6,8 @@ stdout/stderr etc
 
 """
 
-__revision__ = "$Id: TestComponent.py,v 1.5 2006/10/25 16:23:02 ckavka Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -39,7 +39,7 @@ def usage():
     print usageMsg
 
 # arguments
-argsDict = {"DBSAddress" : None,
+argsDict = {"DBSURL" : None,
             "ComponentDir" : os.getcwd(),
             "PollInterval" : 30,
             "StartMode" : 'warm',
@@ -52,7 +52,7 @@ argsDict = {"DBSAddress" : None,
             }
 
 # options
-valid = ['DBSAddress=', 'ComponentDir=', 'MaxMergeFileSize=',
+valid = ['DBSURL=', 'ComponentDir=', 'MaxMergeFileSize=',
          'MinMergeFileSize=', 'PollInterval=', 'StartMode=',
          'MergeSiteBlacklist=', 'MergeSiteWhitelist=',
          'FastMerge=', 'MaxInputAccessFailures='
