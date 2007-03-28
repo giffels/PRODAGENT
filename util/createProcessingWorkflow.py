@@ -244,8 +244,8 @@ if len(datasetSplit) != 3:
     raise RuntimeError, msg
 
 primaryDataset = datasetSplit[0]
-dataTier = datasetSplit[1]
-processedDataset = datasetSplit[2]
+dataTier = datasetSplit[2]
+processedDataset = datasetSplit[1]
 
 if not os.path.exists(cfgFile):
     msg = "Cfg File Not Found: %s" % cfgFile
@@ -376,6 +376,7 @@ for outModName, val in cfgInt.outputModules.items():
                                         outModName)
                                         
         outDS['DataTier'] = dataTier
+        outDS['ParentDataset'] = datasetOrig
         outDS["ApplicationName"] = cmsRun.application["Executable"]
         outDS["ApplicationProject"] = cmsRun.application["Project"]
         outDS["ApplicationVersion"] = cmsRun.application["Version"]
