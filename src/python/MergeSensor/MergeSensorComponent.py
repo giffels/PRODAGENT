@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.58 2007/03/14 13:26:45 ckavka Exp $"
-__version__ = "$Revision: 1.58 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.59 2007/03/28 12:37:41 ckavka Exp $"
+__version__ = "$Revision: 1.59 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -416,77 +416,6 @@ class MergeSensorComponent:
         # log information
         logging.info("New Datasets: %s" % datasetIdList)
 
-        # create workflow specification for new datasets
-        spec = WorkflowSpec()
-                                                                                
-        # get parameters from source datasets
-        properties = {}
-        for datasetId in datasetIdList:
-            properties[datasetId] = self.datasets.getProperties(datasetId)
-        
-        # get common dataset info from first dataset
-        firstDatasetId = datasetIdList[0]
-        
-        primary = properties[firstDatasetId]["primaryDataset"]
-        workflowName = properties[firstDatasetId]["workflowName"]
-        category = properties[firstDatasetId]["category"]
-        version = properties[firstDatasetId]["version"]
-        timeStamp = properties[firstDatasetId]["timeStamp"]
-                                                 
-        # set workflow values
-        spec.setWorkflowName(workflowName)
-        spec.setRequestCategory(category)
-        spec.setRequestTimestamp(timeStamp)
-        mergedLFNBase(spec)
-        unmergedLFNBase(spec)
-        
-        # create a dummy task to pass information to DBS Component
-        dummyTask = spec.payload
-        dummyTask.name = "dummyTask"
-        dummyTask.type = "CMSSW"
-        dummyTask.application["Project"] = "CMSSW"
-        dummyTask.application["Version"] = version
-        dummyTask.application["Architecture"] = "slc3_ia32_gcc323"
-        dummyTask.application["Executable"] = "cmsRun"
-                                                                                
-        # define output datasets
-        for datasetId in datasetIdList:
-        
-            # get information about dataset
-            targetDatasetPath = properties[datasetId]["targetDatasetPath"]
-            targetDataset = Dataset.getNameComponents(targetDatasetPath)
-            processed = targetDataset[1]
-            tier = properties[datasetId]["dataTier"]
-            psethash = properties[datasetId]["PSetHash"]
-
-            # create output dataset
-            #  //
-            # // If fast merge is used, output module name needs to be
-            #//  EdmFastMerge, since this is what EdmFastMerge uses
-            outputModuleName = "Merged"
-            if self.fastMerge:
-                outputModuleName = "EdmFastMerge"
-            out = dummyTask.addOutputDataset(primary, processed, \
-                                         outputModuleName)
-            # define output dataset properties
-            out["DataTier"] = tier
-            out["ApplicationName"] = dummyTask.application["Executable"]
-            out["ApplicationProject"] = dummyTask.application["Project"]
-            out["ApplicationVersion"] = dummyTask.application["Version"]
-            out["ApplicationFamily"] = "Merged"
-            out["PSetHash"] = psethash;
-
-        # set empty configuration
-        dummyTask.configuration = ""
-                                                                                
-        # save it
-        mergeNewDatasetFile = "%s/newdataset-%s-merge.xml" % (
-               self.args['MergeJobSpecs'], time.time())
-        spec.save(mergeNewDatasetFile)
-                                                                                
-        # publish new dataset event
-        self.publishNewDataset(mergeNewDatasetFile)
-        
         return
    
     ##########################################################################
@@ -1100,7 +1029,7 @@ class MergeSensorComponent:
             # build workflow and job specifications
             jobSpecFile = self.buildWorkflowSpecFile(jobId,
                                    selectedSet, dataset, targetDataset,
-                                   outFile, fileBlockId, properties, seList)
+                                   outFile, properties, seList)
 
             # publish CreateJob event
             self.publishCreateJob(jobSpecFile)
@@ -1150,7 +1079,7 @@ class MergeSensorComponent:
     ##########################################################################
 
     def buildWorkflowSpecFile(self, jobId, fileList, dataset, targetDataset,
-                              outputFile, fileBlockId, properties,
+                              outputFile, properties,
                               seList):
         """
         _buildWorkflowSpecFile_
@@ -1167,7 +1096,6 @@ class MergeSensorComponent:
           dataset -- the name of the dataset
           targetDataset -- the target dataset name
           outputFile -- the name of the merged file
-          fileBlockId -- the file block id
           properties -- dataset properties
           seList -- storage element lists associated to file block
                     
@@ -1357,28 +1285,6 @@ class MergeSensorComponent:
             self.ms.publish("QueueJob", mergeSpecURL)
         else:
             self.ms.publish("CreateJob", mergeSpecURL)
-        self.ms.commit()
-
-        return
-
-    ##########################################################################
-    # publish a NewDataset event
-    ##########################################################################
-    
-    def publishNewDataset(self, mergeNewDatasetFile):
-        """
-        Arguments:
-        
-          mergeNewDatasetFile -- dataset specification file name
-            
-        Return:
-                                                                                
-          none
-                                                                                
-        """
-
-        # publish event
-        self.ms.publish("NewDataset", mergeNewDatasetFile)
         self.ms.commit()
 
         return
