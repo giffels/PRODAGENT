@@ -7,14 +7,13 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.58 2007/03/14 13:26:45 ckavka Exp $"
+__version__ = "$Revision: 1.58 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
 import time
 import inspect
-import sys
 
 # Merge sensor import
 from MergeSensor.WatchedDatasets import WatchedDatasets
@@ -34,18 +33,13 @@ from ProdCommon.MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
 from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
 import ProdCommon.MCPayloads.WorkflowTools as MCWorkflowTools
 
-# DBS CGI API
-from dbsCgiApi import DbsCgiApi
-from dbsException import DbsException
-from dbsProcessedDataset import DbsProcessedDataset
-
-# DLS
-from dlsDataObjects import dlsApi
-import dlsClient
-
 # logging
 import logging
 import ProdAgentCore.LoggingUtils as LoggingUtils
+
+# DBS2
+from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
+from ProdCommon.DataMgmt.DBS.DBSErrors import DBSReaderError
 
 ##############################################################################
 # MergeSensorComponent class
@@ -80,20 +74,15 @@ class MergeSensorComponent:
         # initialize the server
         self.args = {}
         self.args.setdefault("DBSURL",
-          "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery")
-        self.args.setdefault("DBSAddress", None)
-        self.args.setdefault("DBSType", "CGI")
+          "http://cmssrv18.fnal.gov:8989/DBS/servlet/DBSServlet")
         self.args.setdefault("ComponentDir", None)
         self.args.setdefault("PollInterval", 60 )
         self.args.setdefault("Logfile", None)
         self.args.setdefault("StartMode", 'warm')
-        self.args.setdefault("DBSDataTier", "GEN,SIM,DIGI")
-        self.args.setdefault("DLSType", None)
-        self.args.setdefault("DLSAddress", None)
         self.args.setdefault("MaxMergeFileSize", None)
         self.args.setdefault("MinMergeFileSize", None)
         self.args.setdefault("MaxInputAccessFailures", 1)
-        
+
         # default SE white/black lists are empty
         self.args.setdefault("MergeSiteWhitelist", None)
         self.args.setdefault("MergeSiteBlacklist", None)
@@ -196,21 +185,15 @@ class MergeSensorComponent:
         else:
             logging.info("Auto CleanUp disabled.")
 
-            
-        # check DBS type
-        if self.args['DBSType'] != 'CGI':
-            logging.error("Fatal error: only CGI DBS supported")
-            sys.exit(1)
-
-        # get DBS API
+        # get DBS reader
         connected = False
         self.delayDBS = 120
         
         while not connected:
             try:
-                self.dbsApi = self.connectDBS()
+                self.dbsReader = DBSReader(self.args["DBSURL"])
                 
-            except DbsException, ex:
+            except DBSReaderError, ex:
                 logging.error("""Failing to connect to DBS: (exception: %s)
                                  trying again in %s seconds""" % \
                                  (ex, self.delayDBS))
@@ -219,23 +202,6 @@ class MergeSensorComponent:
             else:
                 connected = True
         
-        # get DLS API
-        connected = False
-        self.delayDLS = 120
-
-        while not connected:
-            try:
-                self.dlsApi = self.connectDLS()
-
-            except dlsApi.DlsApiError, ex:
-                logging.error("""Failing to connect to DLS: (exception: %s)
-                                 trying again in %s seconds""" % \
-                                 (ex, self.delayDBS))
-                time.sleep(self.delayDLS)
-
-            else:
-                connected = True
- 
         # merge workflow specification
         thisModule = os.path.abspath(
                           inspect.getsourcefile(MergeSensorComponent))
@@ -383,7 +349,7 @@ class MergeSensorComponent:
 
         # remove limits on number of jobs
         if event == "MergeSensor:NoJobLimits":
-            self.noJobLimits(payload)
+            self.noJobLimits()
             return
 
         # resubmit a Merge job
@@ -489,9 +455,8 @@ class MergeSensorComponent:
             # get information about dataset
             targetDatasetPath = properties[datasetId]["targetDatasetPath"]
             targetDataset = Dataset.getNameComponents(targetDatasetPath)
-            processed = targetDataset[2]
+            processed = targetDataset[1]
             tier = properties[datasetId]["dataTier"]
-            secondaryOutputTiers = properties[datasetId]["secondaryOutputTiers"]
             psethash = properties[datasetId]["PSetHash"]
 
             # create output dataset
@@ -511,19 +476,6 @@ class MergeSensorComponent:
             out["ApplicationFamily"] = "Merged"
             out["PSetHash"] = psethash;
 
-            # add secondary output datasets
-            for outDS in secondaryOutputTiers:
-                out = dummyTask.addOutputDataset(primary, processed, \
-                                                 outputModuleName)
-
-                # define output dataset properties
-                out["DataTier"] = outDS
-                out["ApplicationName"] = dummyTask.application["Executable"]
-                out["ApplicationProject"] = dummyTask.application["Project"]
-                out["ApplicationVersion"] = dummyTask.application["Version"]
-                out["ApplicationFamily"] = "Merged"
-                out["PSetHash"] = psethash; 
-           
         # set empty configuration
         dummyTask.configuration = ""
                                                                                 
@@ -637,7 +589,7 @@ class MergeSensorComponent:
             datasetInfo = database.getDatasetInfo(datasetName)
         
         # it does not exist
-        except DatasetNotInDatabase, msg:
+        except DatasetNotInDatabase:
             
             logging.error( \
               "Processing on dataset %s cannot be blocked, not watched." \
@@ -729,7 +681,7 @@ class MergeSensorComponent:
             datasetInfo = database.getDatasetInfo(datasetName)
         
         # it does not exist
-        except DatasetNotInDatabase, msg:
+        except DatasetNotInDatabase:
             
             logging.error( \
               "Processing on dataset %s cannot be restarted, not watched." \
@@ -785,7 +737,7 @@ class MergeSensorComponent:
         # get number of allows jobs
         try:
             remainingJobs = int(payload)
-        except ValueError, msg:
+        except ValueError:
             logging.error("Wrong limit on the number of allowed jobs: %s" \
                           % payload)
             return
@@ -817,7 +769,7 @@ class MergeSensorComponent:
     # no limits on job generations
     ##########################################################################
 
-    def noJobLimits(self, payload):
+    def noJobLimits(self):
         """
         _restart_
 
@@ -968,8 +920,9 @@ class MergeSensorComponent:
 
         # wrong dataset file
         except Exception, msg:
-            logging.error("Error loading workflow specifications from %s" \
-                          % workflowFile)
+            logging.error( \
+               "Error loading workflow specifications from %s (%s)" \
+                          % (workflowFile, msg))
             return
 
         # get output dataset names
@@ -1053,7 +1006,7 @@ class MergeSensorComponent:
             datasetStatus = self.database.getDatasetInfo(datasetPath)
         
         # removed
-        except DatasetNotInDatabase, msg:
+        except DatasetNotInDatabase:
             raise
 
         # check for blocked condition
@@ -1074,7 +1027,7 @@ class MergeSensorComponent:
         fileList = self.getFileListFromDBS(datasetPath)
        
         # ignore empty sets
-        if fileList == []:
+        if fileList == {}:
 
             # reset force merge status if set
             if (forceMerge):
@@ -1102,12 +1055,18 @@ class MergeSensorComponent:
         while (mergeable):
        
             # get SE list
-            seList = self.getSElist(fileBlockId) 
-        
+            try:
+                seList = self.dbsReader.listFileBlockLocation(fileBlockId)
+            except DBSReaderError, ex:
+                logging.error("DBS error: " +  ex + \
+                              "\nCannot get block location for file block: " \
+                              + fileBlockId)
+                break
+
             # apply restrictions
             seList = self.processSElist(seList)
       
-            # handle special case when DLS provide no information
+            # handle special case when DBS provide no information
             if seList == None:
                 seList = []
                 
@@ -1118,7 +1077,7 @@ class MergeSensorComponent:
                 storageElement = seList[0]
             else:
                 storageElement = "OneOf-" + '-'.join(seList)
-            
+
             # yes, add job info to dataset and get target name
             jobId =  "%s-%s-mergejob-%s" % (datasetStatus['workflowName'], \
                                             storageElement, \
@@ -1131,10 +1090,6 @@ class MergeSensorComponent:
             # get properties
             properties = self.datasets.getProperties(datasetPath)
 
-            # build specification files
-            dataTier = properties["dataTier"]
-            secondaryOutputTiers = properties["secondaryOutputTiers"]
-            
             # dataset name
             dataset = Dataset.getNameComponents(datasetPath)
 
@@ -1156,9 +1111,6 @@ class MergeSensorComponent:
                       (datasetPath, str(selectedSet)))
             logging.info("  output dataset: %s file: %s" % \
                       (targetDatasetPath, outFile))
-            for secondaryTier in secondaryOutputTiers:
-                logging.info("  output dataset: %s file: %s" % \
-                          (targetDatasetPath,outFile))
 
             # update dataset status
             newStatus = {}
@@ -1183,7 +1135,7 @@ class MergeSensorComponent:
             (mergeable,
              fileBlockId,
              selectedSet,
-             oldFile) = self.datasets.mergeable(datasetPath, forceMerge)
+             originalJob) = self.datasets.mergeable(datasetPath, forceMerge)
 
         # reset forceMerge status if set
         if (forceMerge):
@@ -1231,13 +1183,11 @@ class MergeSensorComponent:
         # get dataset properties
         workflowName = properties['workflowName']
         tier = properties['dataTier']
-        pollTier = properties['pollTier']
         category = properties["category"]
         version = properties["version"]
         timeStamp = properties["timeStamp"]
         lfnBase = properties["mergedLFNBase"] 
         psethash = properties["PSetHash"]
-        secondaryOutputTiers = properties["secondaryOutputTiers"]
 
         # compute LFN group based on merge jobs counter
         group = str(status['mergedjobs'] // 1000).zfill(4)
@@ -1270,23 +1220,15 @@ class MergeSensorComponent:
             
         # input dataset (primary, processed)
         inputDataset = cmsRun.addInputDataset(dataset[0], dataset[2])
-        inputDataset["DataTier"] = pollTier         
+        inputDataset["DataTier"] = tier         
         
         # output dataset (primary, processed, module name, tier)
         outputDataset = cmsRun.addOutputDataset(targetDataset[0], \
-                                                targetDataset[2], \
+                                                targetDataset[1], \
                                                 outputModuleName)
         outputDataset["DataTier"] = tier
         outputDataset["PSetHash"] = psethash
 
-        # add secondary output datasets
-        for outDS in secondaryOutputTiers:
-            outputDataset = cmsRun.addOutputDataset(targetDataset[0],
-                                                    targetDataset[2], \
-                                                   outputModuleName)
-            outputDataset["DataTier"] = outDS
-            outputDataset["PSetHash"] = psethash
-           
         # define process name as MERGE+timestamp
         currentTime = str(time.time())
         currentTime = currentTime.replace('.', '')
@@ -1592,65 +1534,9 @@ class MergeSensorComponent:
         return
    
     ##########################################################################
-    # get SE list from DLS
-    ##########################################################################
-
-    def getSElist(self, fileBlockId):
-        """
-        return SE list associated to a file block
-        """
-
-        entryList = []
-        
-        # get info from DLS
-        try:
-            entryList = self.dlsApi.getLocations(fileBlockId)
-
-        # DLS is not answering properly (or fileBlock is not defined!)
-        except Exception, ex:
- 
-            # wait for connection to DLS
-            connected = False
-            while not connected:
-                
-                # try to reconnect
-                try:
-                    self.dlsApi = self.connectDLS()
-
-                except Exception, ex:
-                    logging.error( \
-                       "  failing to reconnect to DLS (exception: %s)" % ex)
-                    logging.error( \
-                       "  trying again in %s seconds" % self.delayDLS)
-                    time.sleep(self.delayDLS)
-
-                else:
-                    connected = True
-                    
-            # reconnection OK, insist to get information
-            try:
-                entryList = self.dlsApi.getLocations(fileBlockId)
-
-            # connection is fine, but data is wrong, follow agreement
-            except Exception, ex:
-                logging.warning( \
-                   "DLS error, assuming empty SE for fileblock %s" % \
-                   fileBlockId)
-
-                # try again later
-                return []
-           
-        # build SE list
-        seList = []
-        for entry in entryList:
-            for loc in entry.locations:
-                seList.append(str(loc.host))
-
-        return seList
-
-    ##########################################################################
     # get list of unmerged files associated to a dataset from DBS
     ##########################################################################
+    
     def getFileListFromDBS(self, datasetId):
         """
         _getFileListFromDBS_
@@ -1663,195 +1549,50 @@ class MergeSensorComponent:
           
         Return:
             
-          list of tuples (name,size,fileBlockId) for all files in dataset
+          dictionary with index 'file block' and ech value defined as 
+          a dictionary with index 'file name' and each value defined
+          as a dictionary with at least 'NumberOfEvents', 'FileSize'.
           
         """
 
         # list of files
-        fileList = []
+        fileList = {}
 
         # get list of files       
-        blockList = self.getDatasetContents(datasetId)
-
-        # check for empty datasets
-        if blockList == []:
+        try:
+            blocks = self.dbsReader.getFiles(datasetId)
+        except DBSReaderError, ex:
+            logging.error("DBS error: ", ex)
             return fileList
 
-        # use CGI API
+        # check for empty datasets
+        if blocks == {}:
+            return fileList
+
+        # get all file blocks
+        blockList = blocks.keys()
+
+        # process all file blocks
         for fileBlock in blockList:
 
-            # get file block ID           
-            fileBlockId = fileBlock.get('blockName')
-
             # get fileBlockId SE information
-            seList = self.getSElist(fileBlockId)
+            seList = blocks[fileBlock]['StorageElements']
 
             # apply restrictions
             seList = self.processSElist(seList)
             
             # add files for non blocked SE
             if seList != [] or seList == None:
-            
-                # append (file name, size, fileblockId, events)
-                # to the list of files
-                for aFile in fileBlock.get('eventCollectionList'):
-
-                    # get the number of events
-                    events = aFile.get('numberOfEvents')
-                    
-                    # check for files
-                    fileInfo = aFile.get('fileList')
-                    
-                    # check for empty event collection
-                    if len(fileInfo) == 0:
-                        break
-                    
-                    # there should be only one
-                    fileInfo = fileInfo[0]
-                    
-                    # get name and size
-                    name = fileInfo.get('logicalFileName')
-                    size = fileInfo.get('fileSize')
-
-                    fileList.append((name, size, fileBlockId, events))
-                    
+           
+                # add block to result
+                fileList[fileBlock] = blocks[fileBlock]
+   
             else:
-                logging.info("fileblock %s blocked" % fileBlockId)
+                logging.info("fileblock %s blocked" % fileBlock)
 
         # return list
         return fileList
                 
-    ##########################################################################
-    # connect to DBS
-    ##########################################################################
-
-    def connectDBS(self):
-        """
-        open a connection with the DBS server
-        
-        Arguments:
-        
-          none
-          
-        Return:
-        
-          DBS connection
-          
-        """
-
-        # parameters
-        url = self.args['DBSURL']
-        args = {}
-        args['instance'] = self.args['DBSAddress']
-
-        # create API
-        try:
-            dbs = DbsCgiApi(url, args)
-        except DbsException, ex:
-            logging.error("Error: cannot contact DBS: %s" % ex)
-            raise
-
-        # return DBS API instance
-        return dbs
-
-    ##########################################################################
-    # connect to DLS
-    ##########################################################################
-
-    def connectDLS(self):
-        """
-        open a connection with the DLS server
-        
-        Arguments:
-        
-          none
-          
-        Return:
-        
-          DLS connection
-
-        """
-
-        # create API
-        try:
-            dlsapi = dlsClient.getDlsApi(dls_type = self.args["DLSType"],
-                                  dls_endpoint = self.args["DLSAddress"])
-        except dlsApi.DlsApiError, inst:
-            logging.error("Error: Cannot contact DLS: %s" % str(inst))
-            raise
-
-        # return DLS API instance
-        return dlsapi
-
-    ##########################################################################
-    # get list of files of a dataset organized by fileblock
-    ##########################################################################
-
-    def getDatasetContents(self, path):
-        """
-        get contents of a dataset
-        
-        Arguments:
-        
-          path -- dataset name
-          
-        Return:
-        
-          list of files organized by fileblock
-          
-        """
-
-        # initialize block list
-        blockList = []
-
-        # get information from DBS
-        try:
-            processed = DbsProcessedDataset(datasetPathName = path)
-            blockList = self.dbsApi.getDatasetContents(processed)
-            
-        # DBS is not answering properly
-        except Exception, ex:
-            logging.error("DBS error (exception: %s)" % ex)
-
-            # wait for connection to DBS
-            connected = False
-            while not connected:
-                
-                # try to reconnect
-                try:
-                    self.dbsApi = self.connectDBS()
-
-                except Exception, ex:
-                    logging.error( \
-                      "  failing to reconnect to DBS: (exception: %s)" % ex)
-                    logging.error( \
-                      "  trying again in %s seconds" % self.delayDBS)
-                    time.sleep(self.delayDBS)
-                    
-                else:
-                    connected = True
-            
-            # reconnection OK, insist to get information
-            logging.error("  reconnected to DBS!")
-            try:
-                processed = DbsProcessedDataset(datasetPathName = path)
-                blockList = self.dbsApi.getDatasetContents(processed)
-
-            # no, it does not work
-            except Exception, ex:
-                logging.error("DBS error (exception: %s)" % ex)
-
-                # try again later
-                return []
-            
-        # check for empty block
-        if blockList is None:
-            logging.info("Empty file block for dataset %s" % path)
-            return []
-
-        # return blockList
-        return blockList
-
     ##########################################################################
     # start component execution
     ##########################################################################
@@ -1895,9 +1636,6 @@ class MergeSensorComponent:
         # set merged file size
         Dataset.setMergeFileSize(int(self.args['MaxMergeFileSize']), \
                                  int(self.args['MinMergeFileSize']))
-
-        # set Datatier possible names
-        Dataset.setDataTierList(self.args['DBSDataTier'])
 
         # set maximum input file failures
         Dataset.setMaxInputFailures(int(self.args['MaxInputAccessFailures']))
