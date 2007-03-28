@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorDB.py,v 1.18 2007/03/05 12:12:15 ckavka Exp $"
+__version__ = "$Revision: 1.18 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -341,7 +341,7 @@ class MergeSensorDB:
             
         # select open datasets
         sqlCommand = """
-                     SELECT prim, tier, processed
+                     SELECT prim, processed, tier
                        FROM merge_dataset
                        WHERE status="open"
                      """
@@ -403,7 +403,7 @@ class MergeSensorDB:
         """
         
         # get name components
-        (prim, tier, processed) = Dataset.getNameComponents(datasetName)
+        (prim, processed, tier) = Dataset.getNameComponents(datasetName)
         
         # get dictionary based cursor
         try:
@@ -421,8 +421,6 @@ class MergeSensorDB:
                      SELECT prim as primaryDataset,
                             tier as dataTier,
                             processed as processedDataset,
-                            polltier as pollTier,
-                            secondarytiers as secondaryOutputTiers,
                             psethash as PSetHash,
                             status,
                             started,
@@ -471,12 +469,6 @@ class MergeSensorDB:
 
         # add extra fields
         datasetInfo['name'] = datasetName
-        datasetInfo['secondaryOutputTiers'] = \
-               datasetInfo['secondaryOutputTiers'].split("-")
-
-        # check for empty list
-        if datasetInfo['secondaryOutputTiers'] == [""]:
-            datasetInfo['secondaryOutputTiers'] = []
 
         # close cursor
         cursor.close()
@@ -505,7 +497,7 @@ class MergeSensorDB:
         """
 
         # get name components
-        (prim, tier, processed) = Dataset.getNameComponents(datasetName)
+        (prim, processed, tier) = Dataset.getNameComponents(datasetName)
         
         # get cursor
         try:
@@ -2178,7 +2170,7 @@ class MergeSensorDB:
         """
         
         # get name components
-        (prim, tier, processed) = Dataset.getNameComponents(datasetName)
+        (prim, processed, tier) = Dataset.getNameComponents(datasetName)
         
         # build sequence update string
         if sequenceNumber is not None:
@@ -2258,21 +2250,16 @@ class MergeSensorDB:
             self.redo()
             cursor = self.conn.cursor()
            
-        # build secondary datatiers
-        secondaryTiers = "-".join(data['secondaryOutputTiers'])
-
         # insert dataset information
         sqlCommand = """
                      INSERT
                        INTO merge_dataset
-                            (prim,tier,processed,polltier,secondarytiers,
+                            (prim,tier,processed,
                              psethash,started,updated,version,workflow,
                              mergedlfnbase,category,timestamp,sequence)
                       VALUES ('""" + data['primaryDataset'] + """',
                               '""" + data['dataTier'] + """',
                               '""" + data['processedDataset'] + """',
-                              '""" + data['pollTier'] + """',
-                              '""" + secondaryTiers + """',
                               '""" + str(data['PSetHash']) + """',
                               '""" + data['started'] + """',
                               '""" + data['lastUpdated'] + """',
@@ -2344,7 +2331,7 @@ class MergeSensorDB:
         """
         
         # get name components
-        (prim, tier, processed) = Dataset.getNameComponents(datasetName)
+        (prim, processed, tier) = Dataset.getNameComponents(datasetName)
         
         # get dictionary based cursor
         try:
@@ -2418,7 +2405,7 @@ class MergeSensorDB:
         """
         
         # get name components
-        (prim, tier, processed) = Dataset.getNameComponents(datasetName)
+        (prim, processed, tier) = Dataset.getNameComponents(datasetName)
         
         # get cursor
         try:
