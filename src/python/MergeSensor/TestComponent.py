@@ -6,8 +6,8 @@ stdout/stderr etc
 
 """
 
-__revision__ = "$Id: TestComponent.py,v 1.4 2006/10/11 17:22:45 ckavka Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: TestComponent.py,v 1.5 2006/10/25 16:23:02 ckavka Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -40,9 +40,6 @@ def usage():
 
 # arguments
 argsDict = {"DBSAddress" : None,
-            "DBSType" : "CGI",
-            "DLSAddress" : None,
-            "DLSType" : "DLS_TYPE_LFC",
             "ComponentDir" : os.getcwd(),
             "PollInterval" : 30,
             "StartMode" : 'warm',
@@ -55,9 +52,9 @@ argsDict = {"DBSAddress" : None,
             }
 
 # options
-valid = ['DBSAddress=', 'DBSType=', 'ComponentDir=', 'MaxMergeFileSize=',
-         'MinMergeFileSize=', 'PollInterval=', 'StartMode=', 'DLSType=',
-         'DLSAddress=', 'MergeSiteBlacklist=', 'MergeSiteWhitelist=',
+valid = ['DBSAddress=', 'ComponentDir=', 'MaxMergeFileSize=',
+         'MinMergeFileSize=', 'PollInterval=', 'StartMode=',
+         'MergeSiteBlacklist=', 'MergeSiteWhitelist=',
          'FastMerge=', 'MaxInputAccessFailures='
          ]
 
