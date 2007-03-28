@@ -88,7 +88,8 @@ for dataset in datasets:
 
    print "\n total events: %s in dataset: %s\n"%(nevttot,datasetpath)
 
-
+ if len(dataset.get('PathList'))==0:
+   print "===== Empty dataset yet /%s/%s with tiers %s"%(dataset.get('PrimaryDataset')['Name'],dataset.get('Name'),dataset.get('TierList'))
 
 
 
