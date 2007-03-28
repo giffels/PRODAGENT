@@ -144,7 +144,6 @@ class DBSComponent:
 
         Define response to events
         """
-        from dbsException import DbsException
         logging.debug("Recieved Event: %s" % event)
         logging.debug("Payload: %s" % payload)
         if event == "NewDataset":
@@ -258,11 +257,8 @@ class DBSComponent:
         # //  Contact DBS using the DBSWriter
         #//
         logging.info("DBSURL %s"%self.args['DBSURL'])
-        try:
-          dbswriter = DBSWriter(self.args['DBSURL'])
-        except DbsException, ex:
-          logging.error("%s\n" % formatEx(ex))
-          return
+        #dbswriter = DBSWriter('fakeurl') 
+        dbswriter = DBSWriter(self.args['DBSURL'])
         #  //
         # //  Create Datsets based on workflow
         #//
@@ -335,10 +331,10 @@ class DBSComponent:
                # //   Trigger Migration of closed Blocks to Global DBS
                #//
                if len(MigrateBlockList)>0:
-                  #FIXME: how do I find the datasetPath the block belong to??
-                  datasetPath=''
-                  #FIXME:
-                  self.MigrateBlock(datasetPath, MigrateBlockList )
+                  for BlockName in MigrateBlockList:
+                     datasetPath= dbswriter.blockToDatasetPath(BlockName)
+                     self.MigrateBlock(datasetPath, [BlockName])
+                  #self.MigrateBlock(datasetPath, MigrateBlockList )
                # FIXME:
                #  if migration succesfull: trigger PhEDEx injection?? (If Phedex is configured)
                # FIXME:
@@ -405,7 +401,6 @@ class DBSComponent:
         Read the list of FWKJobReport that failed DBS registration and re-try the registration. If the FWKJobReport registration is succesfull remove it form the list of failed ones. 
                                                                                 
         """
-        from dbsException import DbsException
         logging.info("*** Begin the RetryFailures procedure")
 
         ## Read the list of FWJobReport that failed DBS registration and re-try

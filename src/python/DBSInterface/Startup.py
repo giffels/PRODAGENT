@@ -31,7 +31,7 @@ except StandardError, ex:
 
 
 try:
-  import dbsApi
+  from DBSAPI.dbsApi import DbsApi
 except:
    msg = " No DBS API found "
    raise RuntimeError, msg
