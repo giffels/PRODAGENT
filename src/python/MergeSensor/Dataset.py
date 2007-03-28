@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.27 2007/01/26 15:17:14 ckavka Exp $"
-__version__ = "$Revision: 1.27 $"
+__revision__ = "$Id: Dataset.py,v 1.28 2007/03/05 10:42:23 ckavka Exp $"
+__version__ = "$Revision: 1.28 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -42,9 +42,6 @@ class Dataset:
     
     # default minimum size for merged files (75% of maximum size)
     minMergeFileSize = 1500000000
-
-    # list of data tiers
-    dataTierList = []
 
     # logging instance
     logging = None
@@ -102,12 +99,12 @@ class Dataset:
             
             if processedDataset.endswith('-unmerged'):
                 targetDatasetPath = "/" + primaryDataset + "/" + \
-                                    dataTier + "/" + \
-                                    str.replace(processedDataset,'-unmerged','')
+                        str.replace(processedDataset,'-unmerged','')+ "/" + \
+                        dataTier
             else:
                 targetDatasetPath = "/" + primaryDataset + "/" + \
-                                    dataTier + "/" + \
-                                    processedDataset + '-merged'
+                        processedDataset + '-merged' + "/" + \
+                        dataTier
                                     
             self.data['targetDatasetPath'] = targetDatasetPath
             
@@ -124,12 +121,17 @@ class Dataset:
                                   for outDS in outputDatasetsList \
                                   if outDS['OutputModuleName'] == outputModule]
 
-            # the first one
+            # there must be only one
+            if len(datasetsToProcess) == 0:
+                raise MergeSensorError( \
+                    "MergeSensor exception: no output datasets specified")
+
+            elif len(datasetsToProcess) > 1:
+                self.logging.warning( \
+                    "more that one dataset specified, using the first one")
+
+            # get the dataset
             outputDataset = datasetsToProcess[0]
-            
-            # the others
-            others = datasetsToProcess[1:]
-            secondaryOutputTiers = [outDS['DataTier'] for outDS in others]
             
         except (IndexError, KeyError):
             raise MergeSensorError( \
@@ -149,14 +151,6 @@ class Dataset:
             raise InvalidDataTier( \
               "MergeSensor exception: DataTier not specified")
 
-        # verify if valid
-        if not self.validDataTier(dataTier):
-            self.logging.info( \
-              "Not valid dataTier %s, continuing..." % dataTier)
-         
-        # get poll datatier
-        pollTier = dataTier.split("-")[0]
-        
         # get processed
         try:
             processedDataset = outputDataset['ProcessedDataset']
@@ -165,8 +159,7 @@ class Dataset:
               "MergeSensor exception: invalid processed dataset specification")
 
         # build dataset name
-        name = "/%s/%s/%s" % (primaryDataset, dataTier, \
-                              processedDataset)
+        name = "/%s/%s/%s" % (primaryDataset, processedDataset, dataTier)
         
         # do not merge merged datasets
         if processedDataset.endswith("-merged"):
@@ -201,17 +194,17 @@ class Dataset:
         
         # define target dataset path
         if processedDataset.endswith('-unmerged'):
-            targetDatasetPath = "/" + primaryDataset + "/" + dataTier + "/" + \
-                                str.replace(processedDataset,'-unmerged','')
+            targetDatasetPath = "/" + primaryDataset + "/" + \
+                       str.replace(processedDataset,'-unmerged','') + "/" + \
+                       dataTier
         else:
-            targetDatasetPath = "/" + primaryDataset + "/" + dataTier + "/" + \
-                                processedDataset + '-merged'
+            targetDatasetPath = "/" + primaryDataset + "/" + \
+                       processedDataset + '-merged' + "/" + \
+                       dataTier
                                 
         self.data = {'name' : name,
                      'primaryDataset' : primaryDataset,
                      'dataTier' : dataTier,
-                     'pollTier' : pollTier,
-                     'secondaryOutputTiers' : secondaryOutputTiers,
                      'processedDataset' : processedDataset,
                      'targetDatasetPath' : targetDatasetPath,
                      'PSetHash' : psethash,
@@ -286,62 +279,6 @@ class Dataset:
         
         self.__class__.basePath = basePath
         
-    ##########################################################################
-    # set list of possible datatiers
-    ##########################################################################
-
-    @classmethod
-    def setDataTierList(cls, tierList):
-        """
-        _setDataTiers_
-
-        Set the list of possible datatiers.
-
-        Arguments:
-
-          list -- list of possible datatiers
-
-        Return:
-
-          none
-
-        """
-        
-        cls.dataTierList = tierList.split(',')
-
-    ##########################################################################
-    # validates datatier
-    ##########################################################################
-
-    @classmethod
-    def validDataTier(cls, dataTierName):
-        """
-        _validDataTiers_
-
-        check dataTier validity
-
-        Arguments:
-
-          true if fine, false if wrong
-
-        Return:
-
-          none
-
-        """
-        
-        # names are separated with hyphens
-        dataTiers = dataTierName.split("-")
-
-        if dataTiers == []:
-            return False
-        
-        for elem in dataTiers:
-            if not elem in cls.dataTierList:
-                return False
-      
-        return True
-    
     ##########################################################################
     # set merge file size
     ##########################################################################
@@ -480,9 +417,9 @@ class Dataset:
         
         Arguments:
             
-          fileList -- a list of tuples (file,size,fileBlock, events) that
-          specifies the list of all files in the named dataset together
-          with their size, file block and number of events.
+          fileList -- a dictionary that specifies the list of all files
+          in the named dataset organized by file block, providing for each
+          file its size and number of events.
           
         Return:
             
@@ -511,12 +448,25 @@ class Dataset:
         self.database.startTransaction()
         
         # add files not present in original structure
-        for fileName, size, fileBlock, events in fileList:
+        for fileBlock in fileList.keys():
+        
+            # get all files
+            allFiles = fileList[fileBlock]['Files']
 
-            # verify membership
-            if not fileDict.has_key(fileName):
-                self.database.addFile(datasetId, fileName, size, \
-                                      fileBlock, events)
+            # check all of them
+            for aFile in allFiles:
+
+                # get file name
+                lfn = aFile['LogicalFileName']
+
+                # verify membership
+                if not fileDict.has_key(lfn):
+
+                    # not there, add it
+                    size = aFile['FileSize']
+                    events = aFile['NumberOfEvents']
+                    self.database.addFile(datasetId, lfn, size, \
+                                          fileBlock, events)
 
         # update time
         date = time.asctime(time.localtime(time.time()))
