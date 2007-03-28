@@ -260,10 +260,16 @@ class DBSComponent:
         #dbswriter = DBSWriter('fakeurl') 
         dbswriter = DBSWriter(self.args['DBSURL'])
         #  //
-        # //  Create Datsets based on workflow
+        # //  Create Processing Datsets based on workflow
         #//
+        logging.info(">>>>> create Processing Dataset ")
         dbswriter.createDatasets(workflowSpec)
-
+        #  //
+        # //  Create Merged Datasets for that workflow as well
+        #//
+        logging.info(">>>>> create Merged Dataset ")
+        dbswriter.createMergeDatasets(workflowSpec)
+        return
 
 
     def readJobReportInfo(self,jobReportFile):
