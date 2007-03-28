@@ -18,8 +18,10 @@ from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.LFNAlgorithm import createUnmergedLFNs
 from ProdCommon.CMSConfigTools.CfgGenerator import CfgGenerator
 from PileupTools.PileupDataset import PileupDataset, createPileupDatasets, getPileupSites
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
-from DatasetInjector.SplitterMaker import createJobSplitter
+
+from ProdCommon.DataMgmt.JobSplit.SplitterMaker import createJobSplitter
 import DatasetInjector.DatasetInjectorDB as DatabaseAPI
 
 from IMProv.IMProvDoc import IMProvDoc
@@ -35,6 +37,25 @@ class FilterSites:
         self.allowed = allowed
     def __call__(self, object):
         return object in self.allowed
+
+def getLocalDBSURL():
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    try:
+        dbsConfig = config.getConfig("LocalDBS")
+    except StandardError, ex:
+        msg = "Error reading configuration for LocalDBS:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    return dbsConfig.get("DBSURL", None)
 
 
 class DatasetIterator:
@@ -62,7 +83,7 @@ class DatasetIterator:
         self.ownedJobSpecs = {}
         self.allowedBlocks = []
         self.allowedSites = []
-        self.dbsdlsContact = {}
+        self.dbsUrl = getLocalDBSURL()
         self.splitType = \
                 self.workflowSpec.parameters.get("SplitType", "file").lower()
         self.splitSize = int(self.workflowSpec.parameters.get("SplitSize", 1))
@@ -100,14 +121,18 @@ class DatasetIterator:
                     self.allowedSites.append(site.strip())
 
         #  //
-        # // Is the DBS/DLS contact information provided??
+        # // Is the DBSURL contact information provided??
         #//
-        for item in ['DBSURL', 'DBSAddress', 'DLSType', 'DLSAddress']:
-            value = self.workflowSpec.parameters.get(item, None)
-            if value != None:
-                self.dbsdlsContact[item] = value
 
+        value = self.workflowSpec.parameters.get("DBSURL", None)
+        if value != None:
+            self.dbsUrl = value
 
+        if self.dbsUrl == None:
+            msg = "Error: No DBSURL available for dataset:\n"
+            msg += "Cant get local DBSURL and one not provided with workflow"
+            raise RuntimeError, msg
+            
         #  //
         # // Cache Area for JobSpecs
         #//
@@ -318,8 +343,9 @@ class DatasetIterator:
         """
         try:
             splitter = createJobSplitter(self.inputDataset(),
-                                         self.onlyClosedBlocks,
-                                         **self.dbsdlsContact)
+                                         self.dbsUrl,
+                                         self.onlyClosedBlocks
+                                         )
         except Exception, ex:
             msg = "Unable to extract details from DBS/DLS for dataset:\n"
             msg += "%s\n" % self.inputDataset()
@@ -500,8 +526,8 @@ class DatasetIterator:
         #//
         try:
             splitter = createJobSplitter(self.inputDataset(),
-                                         self.onlyClosedBlocks,
-                                         **self.dbsdlsContact)
+                                         self.dbsUrl,
+                                         self.onlyClosedBlocks)
         except Exception, ex:
             msg = "Unable to extract details from DBS/DLS for dataset:\n"
             msg += "%s\n" % self.inputDataset()
