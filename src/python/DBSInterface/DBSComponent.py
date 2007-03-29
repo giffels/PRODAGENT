@@ -326,11 +326,11 @@ class DBSComponent:
          #  //
          # //  Check on block closure conditions for merged fileblocks
          #//
-         if (jobreport.jobType == "Merge") and (CloseBlockSize != "None"):
+         if (jobreport.jobType == "Merge") and (self.args['CloseBlockSize'] != "None"):
             if len(MergedBlockList)>0:
                MigrateBlockList=[]
                for MergedBlockName in MergedBlockList:
-                   closedBlock=dbswriter.manageFileBlock(MergedBlockName ,maxSize = CloseBlockSize)
+                   closedBlock=dbswriter.manageFileBlock(MergedBlockName ,maxSize = self.args['CloseBlockSize'])
                    if closedBlock:
                       MigrateBlockList.append(MergedBlockName)
                #  //
