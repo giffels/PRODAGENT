@@ -24,6 +24,7 @@ import socket
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
 from ProdCommon.DataMgmt.DBS.DBSErrors import DBSWriterError, formatEx
+from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
 from DBSAPI.dbsApiException import DbsException
 
 import os,base64,time,exceptions
@@ -258,7 +259,7 @@ class DBSComponent:
         #//
         logging.info("DBSURL %s"%self.args['DBSURL'])
         #dbswriter = DBSWriter('fakeurl') 
-        dbswriter = DBSWriter(self.args['DBSURL'])
+        dbswriter = DBSWriter(self.args['DBSURL'],level='INFO')
         #  //
         # //  Create Processing Datsets based on workflow
         #//
@@ -314,7 +315,7 @@ class DBSComponent:
          #//
          logging.info("DBSURL %s"%self.args['DBSURL'])
          try:
-          dbswriter = DBSWriter(self.args['DBSURL'])
+          dbswriter = DBSWriter(self.args['DBSURL'],level='INFO')
          except DbsException, ex:
           logging.error("%s\n" % formatEx(ex))
           return
@@ -330,26 +331,26 @@ class DBSComponent:
             if len(MergedBlockList)>0:
                MigrateBlockList=[]
                for MergedBlockName in MergedBlockList:
-                   closedBlock=dbswriter.manageFileBlock(MergedBlockName ,maxSize = self.args['CloseBlockSize'])
+                   logging.info("Checking Close-Block Condition: Size > %s for FileBlock %s"%(self.args['CloseBlockSize'],MergedBlockName)) 
+                   closedBlock=dbswriter.manageFileBlock(MergedBlockName ,maxSize = float(self.args['CloseBlockSize']))
                    if closedBlock:
                       MigrateBlockList.append(MergedBlockName)
                #  //
                # //   Trigger Migration of closed Blocks to Global DBS
                #//
+               # FIXME: Need to use DBSReader since blockToDatasetPath method only available in DBSReader !
+               dbsreader = DBSReader(self.args['DBSURL'],level='INFO')
                if len(MigrateBlockList)>0:
                   for BlockName in MigrateBlockList:
-                     datasetPath= dbswriter.blockToDatasetPath(BlockName)
+                     datasetPath= dbsreader.blockToDatasetPath(BlockName)
                      self.MigrateBlock(datasetPath, [BlockName])
                   #self.MigrateBlock(datasetPath, MigrateBlockList )
+
                # FIXME:
                #  if migration succesfull: trigger PhEDEx injection?? (If Phedex is configured)
                # FIXME:
          
-
-# logging.debug("TEST: Placeholder for publishing MergeRegistered Event with payload %s"%(jobReportLocation,))
-#  set the "cleanup" trigger in PhEDEX instead??
                     
-
 
 ##comments to check in insertFiles :
 ## 1) is the safety check applied? File Info must be associated to at least one dataset before we try any of this
@@ -471,10 +472,11 @@ class DBSComponent:
         #//
         DBSConf,DLSConf= getGlobalDBSDLSConfig()
         GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
-        #self.GlobalDLSwriter = DLSWriter(DLSConf['DLSAddress'],DLSConf['DLSType'])
 
+        logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblockList,datasetPath))
         logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
         logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))       
+       
         #logging.info(">> From Local DBS: %s DLS: %s"%(GlobalDBSreader,GlobalDLSreader))
         #logging.info(">> To Global DBS: %s DLS: %s"%(GlobalDBSwriter,GlobalDLSwriter))
 
