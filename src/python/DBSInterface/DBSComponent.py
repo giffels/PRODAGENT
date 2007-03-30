@@ -25,6 +25,7 @@ from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
 from ProdCommon.DataMgmt.DBS.DBSErrors import DBSWriterError, formatEx
 from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from DBSAPI.dbsApiException import DbsException
 
 import os,base64,time,exceptions
@@ -470,7 +471,7 @@ class DBSComponent:
         #//
         #// Global DBS and DLS API
         #//
-        DBSConf,DLSConf= getGlobalDBSDLSConfig()
+        DBSConf,DLSConf= self.getGlobalDBSDLSConfig()
         GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
 
         logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblockList,datasetPath))
