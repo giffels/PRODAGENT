@@ -432,17 +432,20 @@ class DBSComponent:
 
     def MigrateDatasetToGlobal(self,datasetPath):
         """
+        Migrate all the blocks of a dataset to Global DBS.
+        Before migration the still open blocks are closed.
         """
         #  //
         # // Find all the blocks of the dataset
         #//
         LocalDBSurl=self.args['DBSURL']
         reader = DBSReader(LocalDBSurl)
-        ### FIXME: close the not empty blocks that are still open, i.e. using
         #
-        #   writer  = DBSWriter(LocalDBSurl)
-        #   for blockName in reader.listFileBlocks(datasetPath):
-        #      writer.manageBlock(blockName,maxFiles=1)
+        # Close the not empty blocks that are still open:
+        #
+        writer  = DBSWriter(LocalDBSurl)
+        for blockName in reader.listFileBlocks(datasetPath):
+             writer.manageFileBlock(blockName,maxFiles=1)
         #
         #  //
         # // Migrate to Global DBS all the Closed blocks of the dataset
