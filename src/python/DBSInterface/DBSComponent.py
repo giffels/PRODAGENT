@@ -23,7 +23,7 @@ import socket
 
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
-from ProdCommon.DataMgmt.DBS.DBSErrors import DBSWriterError, formatEx
+from ProdCommon.DataMgmt.DBS.DBSErrors import DBSWriterError, formatEx,DBSReaderError
 from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from DBSAPI.dbsApiException import DbsException
@@ -161,6 +161,8 @@ class DBSComponent:
 #                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
             except DBSWriterError, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
+            except DBSReaderError, ex: 
+                logging.error("Failed to Create New Dataset: %s" % payload)
             except DbsException, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 logging.error("Details: %s"% formatEx(ex))
@@ -182,13 +184,22 @@ class DBSComponent:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("InvalidJobReport Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
                 return
-            except DBSWriterError, ex:
-                logging.error("Failed to Handle Job Report: %s" % payload)
-                #logging.error("Details: %s"%ex)
             except InvalidDataTier, ex:
                 logging.error("InvalidDataTier")
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
+            except DBSWriterError, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                ## add the FWKJobReport to the failed list
+                self.BadReport.write("%s\n" % payload)
+                self.BadReport.flush()
+                return
+            except DBSReaderError, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                ## add the FWKJobReport to the failed list
+                self.BadReport.write("%s\n" % payload)
+                self.BadReport.flush()
+                return
             except DbsException, ex:
                 logging.error("Failed to Handle Job Report: %s" % payload)
                 logging.error("DbsException Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
@@ -224,6 +235,21 @@ class DBSComponent:
                 logging.error("Failed to RetryFailures")
                 logging.error("Details: %s" % str(ex))
                 return
+
+        if event == "DBSInterface:MigrateDatasetToGlobal":
+            logging.info("DBSInterface:MigrateDatasetToGlobal %s"% payload)
+            try:
+                self.MigrateDatasetToGlobal(payload)
+                return
+            except DBSWriterError, ex:
+                logging.error("Failed to MigrateDatasetToGlobal: %s" % payload)
+            except DBSReaderError, ex:
+                logging.error("Failed to MigrateDatasetToGlobal: %s" % payload)
+            except StandardError, ex:
+                logging.error("Failed to MigrateDatasetToGlobal")
+                logging.error("Details: %s" % str(ex))
+                return
+
 
         if event == "DBSInterface:StartDebug":
             logging.getLogger().setLevel(logging.DEBUG)
@@ -404,6 +430,26 @@ class DBSComponent:
         return DataTier              
 
 
+    def MigrateDatasetToGlobal(self,datasetPath):
+        """
+        """
+        #  //
+        # // Find all the blocks of the dataset
+        #//
+        LocalDBSurl=self.args['DBSURL']
+        reader = DBSReader(LocalDBSurl)
+        ### FIXME: close the not empty blocks that are still open, i.e. using
+        #
+        #   writer  = DBSWriter(LocalDBSurl)
+        #   for blockName in reader.listFileBlocks(datasetPath):
+        #      writer.manageBlock(blockName,maxFiles=1)
+        #
+        #  //
+        # // Migrate to Global DBS all the Closed blocks of the dataset
+        #//
+        MigrateBlockList = reader.listFileBlocks(datasetPath, onlyClosedBlocks = True)
+        self.MigrateBlock(datasetPath, MigrateBlockList)
+
     def RetryFailures(self,fileName, filehandle):
         """                                                                     
         Read the list of FWKJobReport that failed DBS registration and re-try the registration. If the FWKJobReport registration is succesfull remove it form the list of failed ones. 
@@ -478,9 +524,6 @@ class DBSComponent:
         logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
         logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))       
        
-        #logging.info(">> From Local DBS: %s DLS: %s"%(GlobalDBSreader,GlobalDLSreader))
-        #logging.info(">> To Global DBS: %s DLS: %s"%(GlobalDBSwriter,GlobalDLSwriter))
-
         GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,fileblockList)
 
         #//
@@ -543,6 +586,7 @@ class DBSComponent:
         self.ms.subscribeTo("NewDataset")
         self.ms.subscribeTo("JobSuccess")
         self.ms.subscribeTo("DBSInterface:RetryFailures")
+        self.ms.subscribeTo("DBSInterface:MigrateDatasetToGlobal")
         self.ms.subscribeTo("DBSInterface:StartDebug")
         self.ms.subscribeTo("DBSInterface:EndDebug")
                                                                                 
