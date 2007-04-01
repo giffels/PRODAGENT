@@ -79,11 +79,13 @@ for dataset in datasets:
      print "File block status: %s" %block['OpenForWriting']
      print "Number of files: %s"%block['NumberOfFiles']
      print "Number of Bytes: %s"%block['BlockSize']
+     print "Number of Events: %s"%block['NumberOfEvents']
      if full:
       print "--------- info about files --------"
+      print " Size \t Events \t LFN \t FileStatus "
       files=dbsreader.listFilesInBlock(block['Name'])
       for file in files:
-        print "%s %s"%(file['LogicalFileName'],file['NumberOfEvents'])
+        print "%s %s %s %s"%(file['FileSize'],file['NumberOfEvents'],file['LogicalFileName'],file['Status'])
      nevttot = nevttot + block['NumberOfEvents']
 
    print "\n total events: %s in dataset: %s\n"%(nevttot,datasetpath)
