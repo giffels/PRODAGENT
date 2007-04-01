@@ -1,18 +1,19 @@
 #!/usr/bin/env python
 """
-_DBSInjectReport_
+_DBSInvalidateFile_
                                                                                 
-Command line tool to inject a "JobSuccess" event into DBS reading a FrameworkJobReport file.
+Command line tool to invalidate a file.
 
 """
-import dbsCgiApi
-from dbsException import DbsException
+
+from DBSAPI.dbsApi import DbsApi
+from DBSAPI.dbsException import *
+from DBSAPI.dbsApiException import *
 
 import string,sys,os,getopt,time
 
-
-usage="\n Usage: python DBSInvalidateFile.py <options> \n Options: \n --DBSAddress=<MCLocal/Writer> \t\t DBS database instance \n --DBSURL=<URL> \t\t DBS URL \n --lfn=<LFN> \t\t LFN \n --lfnFileList=<filewithLFNlist> \t\t File with the list of LFNs \n [ valid \t\t option to set files to valid instead of invalid]"
-valid = ['DBSAddress=','DBSURL=','lfn=','lfnFileList=','valid']
+usage="\n Usage: python DBSInvalidateFile.py <options> \n Options: \n --DBSURL=<URL> \t\t DBS URL \n --lfn=<LFN> \t\t LFN \n --lfnFileList=<filewithLFNlist> \t\t File with the list of LFNs \n [ valid \t\t option to set files to valid instead of invalid]"
+valid = ['DBSURL=','lfn=','lfnFileList=','valid']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -20,8 +21,8 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-url = "http://cmsdoc.cern.ch/cms/test/aprom/DBS/CGIServer/prodquery"
-dbinstance = None
+#url= "http://cmssrv18.fnal.gov:8989/DBS/servlet/DBSServlet"
+url = None
 lfn = None
 lfnFileList = None
 valid = False
@@ -31,15 +32,13 @@ for opt, arg in opts:
         lfn = arg
     if opt == "--lfnFileList":
         lfnFileList = arg
-    if opt == "--DBSAddress":
-        dbinstance = arg
     if opt == "--DBSURL":
         url = arg
     if opt == "--valid":
         valid = True
 
-if dbinstance == None:
-    print "--DBSAddress option not provided. For example : --DBSAddress MCLocal/Writer"
+if url == None:
+    print "--DBSURL option not provided. For example :\n --DBSURL http://cmssrv18.fnal.gov:8989/DBS/servlet/DBSServlet"
     print usage
     sys.exit(1)
 
@@ -52,13 +51,16 @@ if (lfn != None) and (lfnFileList != None) :
     print usage
     sys.exit(1)
 
-print ">>>>> DBS URL : %s DBS Address : %s"%(url,dbinstance)
+print ">>>>> DBS URL : %s"%(url)
+
+import logging
+logging.disable(logging.INFO)
+
 #  //
 # // Get API to DBS
 #//
-## database instance
-args = {'instance' : dbinstance}
-dbsapi = dbsCgiApi.DbsCgiApi(url, args)
+args = {'url' : url }
+dbsapi = DbsApi(args)
 
 #  //
 # // Invalidate LFNs
@@ -67,11 +69,11 @@ def setLFNstatus(alfn, valid):
 
   if valid:
     print "Validating LFN %s"%alfn
-    dbsapi.setFileStatus (alfn,"valid")
+    dbsapi.updateFileStatus(alfn,"VALID")
+
   else:
     print "Invalidating LFN %s"%alfn
-    dbsapi.setFileStatus (alfn,"invalid") 
-
+    dbsapi.updateFileStatus(alfn,"INVALID")
 
 if (lfn != None):
   setLFNstatus(lfn,valid)
