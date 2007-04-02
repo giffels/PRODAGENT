@@ -12,39 +12,40 @@ import getopt
 import popen2
 import time
 
-
-from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-from ProdCommon.MCPayloads.LFNAlgorithm import mergedLFNBase,unmergedLFNBase
-from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
-from ProdCommon.MCPayloads.DatasetExpander import splitMultiTier
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
-import ProdCommon.MCPayloads.UUID as MCPayloadsUUID
+from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
+import ProdCommon.MCPayloads.DatasetConventions as DatasetConventions
 
-valid = ['cfg=', 'version=', 'category=', 'name=', 'dataset=',
+valid = ['cfg=', 'version=', 'category=', 'label=',
+         'channel=', 'group=', 'request-id=',
+         'dataset=',
          'split-type=', 'split-size=',
          'only-blocks=', 'only-sites=',
          'only-closed-blocks',
-         'dbs-address=', 'dbs-url=', 'dls-type=', 'dls-address=',
-         'same-primary-dataset', "fake-hash",
+         'dbs-url=', 
          'pileup-dataset=', 'pileup-files-per-job=',
+         
          ]
 
 
-usage = "Usage: createPreProdWorkflow.py --cfg=<cfgFile>\n"
-usage += "                                --version=<CMSSW version>\n"
-usage += "                                --name=<Workflow Name>\n"
-usage += "                                --category=<Processing category>\n"
+usage = "Usage: createProcessingWorkflow.py --cfg=<cfgFile>\n"
+usage += "                                  --version=<CMSSW version>\n"
+usage += "                                  --channel=<Phys Channel/Primary Dataset>\n"
+usage += "                                  --group=<Physics Group>\n"
+usage += "                                  --request-id=<Request ID>\n"
+usage += "                                  --label=<Production Label>\n"
+usage += "                                  --category=<Production category>\n"
+usage += "\n"
 usage += "                                --dataset=<Dataset to process>\n"
 usage += "                                --split-type=<event|file>\n"
 usage += "                                --split-size=<Integer split size>\n"
 usage += "   Options:\n"
 usage += "                                --only-blocks=<List of fileblocks>\n"
 usage += "                                --only-sites=<List of sites>\n"
-usage += "                                --same-primary-dataset\n"
-usage += "                                --dbs-address=<DBSAddress>\n"
 usage += "                                --dbs-url=<DBSUrl>\n"
-usage += "                                --dls-address=<DLSAddress>\n"
-usage += "                                --dls-type=<DLSType>\n"
+
+
+
 
 
 options = \
@@ -81,15 +82,7 @@ options = \
   --only-closed-blocks  Switch that will mean that open blocks are ignored
     by the dataset injector.
 
-  Specifying a DBS/DLS containing the dataset. Usually data is looked up
-  in the ProdAgents own DBS/DLS. If you want a dataset from different DBS/DLS
-  instances (Eg the Global ones) you need to supply ALL of the following four
-  arguments:
-
-   --dbs-address=DBSInstance Eg: MCLocal/Writer
-   --dbs-url=DBS Url, The URL of the DBS Service
-   --dls-address=DLSInstance, the DLS address
-   --dls-type=DLSType, the Type of DLS you are using.
+  --dbs-url=DBS Url, The URL of the DBS Service containing the input dataset
     
 """
 
@@ -105,37 +98,30 @@ except getopt.GetoptError, ex:
     sys.exit(1)
 
 cfgFile = None
-prodName = None
 version = None
+requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
+physicsGroup = "Individual"
+label = "Test"
+category = "mc"
+channel = None
+selectionEfficiency = None
+
 dataset = None
 splitType = None
 splitSize = None
-category = "PreProd"
-timestamp = int(time.time())
+
+
 onlyBlocks = None
 onlySites = None
-dbsAddress = None
 dbsUrl = None
-dlsAddress = None
-dlsType = None
-samePrimaryDataset = False
-fakeHash = False
-pileupDataset = None
-pileupFilesPerJob = 1
 onlyClosedBlocks = False
 
+pileupDataset = None
+pileupFilesPerJob = 1
 
-primaryDataset = None
-dataTier = None
-processedDataset = None
 
-globalDBS = {
-    "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
-    "DBSAddress": "MCGlobal/Writer",
-    "DBSType": "CGI",
-    "DLSAddress" : "prod-lfc-cms-central.cern.ch/grid/cms/DLS/LFC",
-    "DLSType" : "DLS_TYPE_DLI",
-    }
+
+
 
 
 for opt, arg in opts:
@@ -145,8 +131,19 @@ for opt, arg in opts:
         version = arg
     if opt == "--category":
         category = arg
-    if opt == "--name":
-        prodName = arg
+
+    if opt == "--channel":
+        channel = arg
+    if opt == "--label":
+        label = arg
+    if opt == "--group":
+        physicsGroup = arg
+    if opt == "--request-id":
+        requestId = arg
+
+    if opt == "--selection-efficiency":
+        selectionEfficiency = arg
+
     if opt == "--dataset":
         dataset = arg
     if opt == "--split-type":
@@ -159,18 +156,8 @@ for opt, arg in opts:
         onlyClosedBlocks = True
     if opt == "--only-sites":
         onlySites = arg
-    if opt == "--same-primary-dataset":
-        samePrimaryDataset = True
-    if opt == '--dbs-address':
-        dbsAddress = arg
     if opt == '--dbs-url':
         dbsUrl = arg
-    if opt == '--dls-type':
-        dlsType = arg
-    if opt == '--dls-address':
-        dlsAddress = arg
-    if opt == '--fake-hash':
-        fakeHash = True
     if opt == '--pileup-dataset':
         pileupDataset = arg
     if opt == '--pileup-files-per-job':
@@ -206,213 +193,76 @@ except ValueError, ex:
     raise RuntimeError, msg
 
 
-
-#  //
-# // Are we using a custom dbs/dls??
-#//
-dbsdlsInfo = {'--dbs-address' : dbsAddress,
-              '--dls-address' : dlsAddress,
-              '--dls-type' : dlsType,
-              '--dls-url' : dbsUrl}
-customDBSDLS = False
-if dbsdlsInfo.values() != [None, None, None, None]:
-    customDBSDLS = True
-    for key, val in dbsdlsInfo.items():
-        if val == None:
-            msg = "Missing Argument for DBS/DLS Custom setup:\n"
-            msg += "%s Is not set" % key
-            msg += "For Custom DBS/DLS you must supply all of:\n"
-            msg += "%s\n" % dbsdlsInfo.keys()
-            raise RuntimeError, msg
+if channel == None:
+    #  //
+    # // Assume same as input
+    #//
+    channel = DatasetConventions.parseDatasetPath(dataset)['Primary']
     
-
-
-if prodName == None:
-    prodName = os.path.basename(cfgFile)
-    prodName = prodName.replace(".cfg", "")
-
-pycfgFile = "%s.pycfg" % prodName
-hashFile = "%s.hash" % prodName
-
-datasetOrig = dataset
-while dataset.startswith("/"):
-    dataset = dataset[1:]
-datasetSplit = dataset.split("/")
-if len(datasetSplit) != 3:
-    msg = "Cant extract primary, processed and data tier from dataset:\n"
-    msg += datasetOrig
-    raise RuntimeError, msg
-
-primaryDataset = datasetSplit[0]
-dataTier = datasetSplit[2]
-processedDataset = datasetSplit[1]
 
 if not os.path.exists(cfgFile):
     msg = "Cfg File Not Found: %s" % cfgFile
     raise RuntimeError, msg
 
 
-#  //
-# // Cleanup existing files
-#//
-if os.path.exists(pycfgFile):
-    os.remove(pycfgFile)
-if os.path.exists(hashFile):
-    os.remove(hashFile)
 
-pycfgFile = WorkflowTools.createPythonConfig(cfgFile)
-
-#  //
-# // Generate PSet Hash
-#//
 RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
 
-#  //
-# // Existence checks for created files
-#//
-for item in (cfgFile, pycfgFile):
-    if not os.path.exists(item):
-        msg = "File Not Found: %s" % item
-        raise RuntimeError, msg
 
+maker = WorkflowMaker(requestId, physicsGroup, label )
 
+maker.setCMSSWVersion(version)
+maker.setPhysicsChannel(channel)
+maker.setConfiguration(cfgFile, Format = "cfg", Type = "file")
+maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
+maker.changeCategory(category)
 
-spec = WorkflowSpec()
-# set its properties
-spec.setWorkflowName(prodName)
-spec.setRequestCategory(category)
-spec.setRequestTimestamp(timestamp)
+if selectionEfficiency != None:
+    maker.addSelectionEfficiency(selectionEfficiency)
 
-spec.parameters['SplitType'] = splitType
-spec.parameters['SplitSize'] = splitSize
-spec.parameters['OnlyClosedBlocks'] = str(onlyClosedBlocks)
-
-
-if onlyBlocks != None:
-    spec.parameters['OnlyBlocks'] = onlyBlocks
-if onlySites != None:
-    spec.parameters['OnlySites'] = onlySites
-
-if customDBSDLS:
-    spec.parameters['DBSAddress'] = dbsAddress
-    spec.parameters['DBSURL'] = dbsUrl
-    spec.parameters['DLSType'] = dlsType
-    spec.parameters['DLSAddress'] = dlsAddress
 
 #  //
-# // This value was created by running the EdmConfigHash tool
-#//  on the original cfg file.
-
-
-cmsRun = spec.payload
-cmsRun.name = "cmsRun1"
-cmsRun.type = "CMSSW"
-cmsRun.application["Project"] = "CMSSW"
-cmsRun.application["Version"] = version
-cmsRun.application["Architecture"] = "slc3_ia32_gcc323"
-cmsRun.application["Executable"] = "cmsRun"
-cfg =  file(pycfgFile).read()
-cmsRun.configuration = str(cfg)
-
-
-# input dataset (primary, processed)
-inputDataset = cmsRun.addInputDataset(primaryDataset, processedDataset)
-inputDataset["DataTier"] = dataTier
-
-#  //
-# // Pileup??
+# // Pileup sample?
 #//
 if pileupDataset != None:
-    puPrimary = pileupDataset.split("/")[1]
-    puTier = pileupDataset.split("/")[2]
-    puProc = pileupDataset.split("/")[3]
-    puDataset = cmsRun.addPileupDataset(puPrimary, puTier, puProc)
-    puDataset['FilesPerJob'] = pileupFilesPerJob
-    puDataset['DBSAddress'] = globalDBS['DBSAddress']
-    puDataset['DBSURL'] = globalDBS['DBSURL']
-    puDataset['DLSType'] = globalDBS['DLSType']
-    puDataset['DLSAddress'] = globalDBS['DLSAddress']
+    maker.addPileupDataset(self, pileupDataset, pileupFilesPerJob)
+
+#  //
+# // Input Dataset
+#//
+maker.addInputDataset(dataset)
+
+maker.inputDataset['SplitType'] = splitType
+maker.inputDataset['SplitSize'] = splitSize
+
+if onlySites != None:
+    maker.inputDataset['OnlySites'] = onlySites
+if onlyBlocks != None:
+    maker.inputDataset['OnlyBlocks'] = onlyBlocks
+
+if onlyClosedBlocks:
+    maker.inputDataset['OnlyClosedBlocks'] = True
 
 
-cfgInt = CfgInterface(cmsRun.configuration, True)
-datasetList = []
-for outModName, val in cfgInt.outputModules.items():
-    #  //
-    # // Check for Multi Tiers.
-    #//  If Output module contains - characters, we split based on it
-    #  //And create a different tier for each basic tier
-    # //
-    #//
-    datasets = val.datasets()
-    for outDataset in datasets:
-        dataTier = outDataset['dataTier']
-
-        filterName = outDataset.get("filterName", None)
+if dbsUrl != None:
+    maker.workflow.parameters['DBSURL'] = dbsUrl
 
 
-        processedDS = "%s-%s-%s-unmerged" % (
-            cmsRun.application['Version'], outModName, timestamp)
 
-        if filterName != None:
-            processedDS = "%s-%s-%s-unmerged" % (
-                cmsRun.application['Version'],
-                filterName, timestamp)
-        
-        if outDataset.has_key("processedDataset"):
-            processedDS = outDataset['processedDataset']
+spec = maker.makeWorkflow()
+spec.save("%s-Workflow.xml" % maker.workflowName)
 
-            
-            
-        if samePrimaryDataset:
-            primaryName = primaryDataset
-        else:
-            primaryName = prodName
-        if outDataset.has_key("primaryDataset"):
-            primaryName = outDataset['primaryDataset']
-        
 
-        outDS = cmsRun.addOutputDataset(primaryName, 
-                                        processedDS,
-                                        outModName)
-                                        
-        outDS['DataTier'] = dataTier
-        outDS['ParentDataset'] = datasetOrig
-        outDS["ApplicationName"] = cmsRun.application["Executable"]
-        outDS["ApplicationProject"] = cmsRun.application["Project"]
-        outDS["ApplicationVersion"] = cmsRun.application["Version"]
-        outDS["ApplicationFamily"] = outModName
-        if fakeHash:
-            guid = MCPayloadsUUID.uuidgen()
-            if guid == None:
-                guid = MCPayloadsUUID.uuid()
-            hashValue = "hash=%s;guid=%s" % (RealPSetHash, guid)
-            outDS['PSetHash'] = hashValue
-        else:
-            outDS['PSetHash'] = RealPSetHash
-        datasetList.append(outDS.name())
-    
-
-stageOut = cmsRun.newNode("stageOut1")
-stageOut.type = "StageOut"
-stageOut.application["Project"] = ""
-stageOut.application["Version"] = ""
-stageOut.application["Architecture"] = ""
-stageOut.application["Executable"] = "RuntimeStageOut.py" # binary name
-stageOut.configuration = ""
-
-mergedLFNBase(spec)
-unmergedLFNBase(spec)
-
-spec.save("%s-Workflow.xml" % prodName)
-
-print "Created: %s-Workflow.xml" % prodName
-print "Created: %s " % pycfgFile
-print "Created: %s " % hashFile
+print "Created: %s-Workflow.xml" % maker.workflowName
 print "From: %s " % cfgFile
-print "Input Dataset: %s " % datasetOrig
+print "Input Dataset: %s " % dataset
 print "  ==> Will be split by %s in increments of %s" % (splitType, splitSize)
 print "Output Datasets:"
-for item in datasetList:
-    print " ==> %s" % item
-if pileupDataset != None:
-    print "Pileup Dataset: \n ==> %s " % pileupDataset
+
+[ sys.stdout.write(
+     "/%s/%s/%s\n" % (
+       x['PrimaryDataset'],
+       x['ProcessedDataset'],
+       x['DataTier'])) for x in spec.outputDatasets()]
+
+
