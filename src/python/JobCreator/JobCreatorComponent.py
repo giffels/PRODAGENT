@@ -348,8 +348,6 @@ class JobCreatorComponent:
             #NOTE: this is a check in case we use the ProdMgrInterface
             logging.debug(
                 "Checking if job %s is associated to prodmgr" % jobname)
-            Session.connect()
-            Session.start_transaction()
             if jobSpec.parameters.has_key("ProdMgr"):
                 logging.debug(
                     "Job constructed using ProdMgr, adding extra trigger")
@@ -357,8 +355,6 @@ class JobCreatorComponent:
             #NOTE: we need to make sure we commit and close this connection
             #NOTE: eventually this needs to be the same commit/close
             #NOTE: as the message service.
-
-            Session.close()
             #END NOTE
                
             if len(cleanFlags) > 0:
