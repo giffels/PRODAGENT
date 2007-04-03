@@ -225,7 +225,7 @@ if selectionEfficiency != None:
 # // Pileup sample?
 #//
 if pileupDataset != None:
-    maker.addPileupDataset(self, pileupDataset, pileupFilesPerJob)
+    maker.addPileupDataset(pileupDataset, pileupFilesPerJob)
 
 #  //
 # // Input Dataset

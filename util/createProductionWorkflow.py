@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.3 2006/12/06 14:48:58 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.4 2007/04/02 18:11:20 evansde Exp $"
 
 
 import os
@@ -133,7 +133,7 @@ if selectionEfficiency != None:
 # // Pileup sample?
 #//
 if pileupDS != None:
-    maker.addPileupDataset(self, pileupDS, pileupFilesPerJob)
+    maker.addPileupDataset( pileupDS, pileupFilesPerJob)
     
   
 spec = maker.makeWorkflow()
