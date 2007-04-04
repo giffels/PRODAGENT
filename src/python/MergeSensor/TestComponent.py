@@ -6,8 +6,8 @@ stdout/stderr etc
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: TestComponent.py,v 1.7 2007/03/28 16:46:13 ckavka Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -47,7 +47,7 @@ argsDict = {"DBSURL" : None,
             "MinMergeFileSize" : 1500000000,
             "MergeSiteBlacklist" : "",
             "MergeSiteWhitelist" : "",
-            "FastMerge" : "No",
+            "FastMerge" : "yes",
             "MaxInputAccessFailures" : 1
             }
 
