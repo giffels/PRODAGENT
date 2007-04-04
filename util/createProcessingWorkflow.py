@@ -209,10 +209,10 @@ if not os.path.exists(cfgFile):
 RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
 
 
-maker = WorkflowMaker(requestId, physicsGroup, label )
+maker = WorkflowMaker(requestId, channel, label )
 
 maker.setCMSSWVersion(version)
-maker.setPhysicsChannel(channel)
+maker.setPhysicsGroup(physicsGroup)
 maker.setConfiguration(cfgFile, Format = "cfg", Type = "file")
 maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
 maker.changeCategory(category)

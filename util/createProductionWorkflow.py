@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.4 2007/04/02 18:11:20 evansde Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.5 2007/04/03 13:54:20 evansde Exp $"
 
 
 import os
@@ -115,10 +115,10 @@ if not os.path.exists(cfgFile):
 #  //
 # // Instantiate a WorkflowMaker
 #//
-maker = WorkflowMaker(requestId, physicsGroup, label )
+maker = WorkflowMaker(requestId, channel, label )
 
 maker.setCMSSWVersion(version)
-maker.setPhysicsChannel(channel)
+maker.setPhysicsGroup(physicsGroup)
 maker.setConfiguration(cfgFile, Format = "cfg", Type = "file")
 maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
 maker.changeCategory(category)
