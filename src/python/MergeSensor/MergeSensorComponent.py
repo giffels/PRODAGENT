@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.59 2007/03/28 12:37:41 ckavka Exp $"
-__version__ = "$Revision: 1.59 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.60 2007/03/28 15:13:15 ckavka Exp $"
+__version__ = "$Revision: 1.60 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -32,7 +32,7 @@ from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
 from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
 import ProdCommon.MCPayloads.WorkflowTools as MCWorkflowTools
-
+from ProdCommon.MCPayloads.MergeTools import createMergeJobWorkflow
 # logging
 import logging
 import ProdAgentCore.LoggingUtils as LoggingUtils
@@ -402,13 +402,57 @@ class MergeSensorComponent:
                          % workflowFile)
             return
         
-        # add info
+        # add info in database
         try:
             datasetIdList = self.datasets.add(workflowFile)
         except (InvalidDataTier, MergeSensorError, InvalidDataset), ex:
-            logging.error(ex)
+            logging.error(str(ex))
             return
-        
+
+        # read workflow
+        procSpec = WorkflowSpec()
+        try:
+            procSpec.load(workflowFile)
+        except Exception, msg:
+            logging.error("Cannot read workflow file: " + str(msg))
+            return
+
+        # generate merge worflows for all datasets
+        mergeWFs = createMergeJobWorkflow(procSpec, self.fastMerge)
+
+        # create workflows for each dataset
+        for watchedDatasetName, mergeWF in mergeWFs.items():
+
+            # add bare cfg template to workflow
+            cmsRun = mergeWF.payload
+            cmsRun.configuration = self.mergeWorkflow
+            cfg = CfgInterface(cmsRun.configuration, True) 
+
+            # save it
+            fileName = watchedDatasetName.replace('/','#') + '-workflow.xml'
+            workflowPath = os.path.join(self.args['MergeJobSpecs'], \
+                                        fileName)
+            mergeWF.save(workflowPath) 
+
+            # If the workflow doesnt exist in the cache,
+            # we write the WorkflowSpec and publish a NewWorkflow
+            # event for it, so that the JobCreator gets a chance
+            # to create a template for it for bulk submission
+
+            # insert it into the database
+            newWorkflow = self.database.insertWorkflow(watchedDatasetName, \
+                                                       workflowPath)
+
+            # is it a new workflow?
+            if newWorkflow:
+                
+                # commit changes in database
+                self.database.commit()
+
+                # publish the message NewWorkflow
+                self.ms.publish("NewWorkflow", workflowPath)
+                self.ms.commit()
+
         # ignore not accepted datasets, logging messages already displayed
         if datasetIdList == []:
             return
@@ -1031,6 +1075,10 @@ class MergeSensorComponent:
                                    selectedSet, dataset, targetDataset,
                                    outFile, properties, seList)
 
+            # cannot create job spec, abandon cycle
+            if jobSpecFile is None:
+                break
+                
             # publish CreateJob event
             self.publishCreateJob(jobSpecFile)
 
@@ -1101,7 +1149,7 @@ class MergeSensorComponent:
                     
         Return:
             
-          none
+         merge job spec (or None if there are problems)
           
         """
 
@@ -1109,71 +1157,36 @@ class MergeSensorComponent:
         status = self.database.getStatus()
 
         # get dataset properties
-        workflowName = properties['workflowName']
         tier = properties['dataTier']
-        category = properties["category"]
-        version = properties["version"]
-        timeStamp = properties["timeStamp"]
         lfnBase = properties["mergedLFNBase"] 
-        psethash = properties["PSetHash"]
 
         # compute LFN group based on merge jobs counter
         group = str(status['mergedjobs'] // 1000).zfill(4)
         lfnBase = "%s/%s" % (lfnBase, group)
         
-        # create a new workflow
+        # create workflow
         spec = WorkflowSpec()
-        
-        # set its properties
-        spec.setWorkflowName(workflowName)
-        spec.setRequestCategory(category)
-        spec.setRequestTimestamp(timeStamp)
-        spec.parameters['WorkflowType'] = "Merge"
-        
-        # describe it as a cmsRun job
-        cmsRun = spec.payload
-        cmsRun.name = "cmsRun1"
-        cmsRun.type = "CMSSW"
-        cmsRun.application["Project"] = "CMSSW"
-        cmsRun.application["Version"] = version
-        cmsRun.application["Architecture"] = "slc3_ia32_gcc323"
-        
-        # specify merge job type
-        if self.fastMerge:
-            cmsRun.application["Executable"] = "EdmFastMerge"
-            outputModuleName = "EdmFastMerge"
-        else:
-            cmsRun.application["Executable"] = "cmsRun"
-            outputModuleName = "Merged"
-            
-        # input dataset (primary, processed)
-        inputDataset = cmsRun.addInputDataset(dataset[0], dataset[2])
-        inputDataset["DataTier"] = tier         
-        
-        # output dataset (primary, processed, module name, tier)
-        outputDataset = cmsRun.addOutputDataset(targetDataset[0], \
-                                                targetDataset[1], \
-                                                outputModuleName)
-        outputDataset["DataTier"] = tier
-        outputDataset["PSetHash"] = psethash
-
-        # define process name as MERGE+timestamp
-        currentTime = str(time.time())
-        currentTime = currentTime.replace('.', '')
-        processName = "MERGE" + currentTime
-        
+        fileName = '#' + '#'.join(dataset) + '-workflow.xml'
+        workflowPath = os.path.join(self.args['MergeJobSpecs'], \
+                                        fileName)
         try:
-            workflowDict = eval(self.mergeWorkflow)
-            workflowDict['procname'] = processName
-            workflowString = workflowDict.__str__()
-        except Exception, ex:
-            logging.error("Cannot update configuration for merge jobs: %s" \
-                          %  ex)
-            raise
-        
+            spec.load(workflowPath)
+        except Exception, msg:
+            logging.error("cannot load base workflow file: " + str(msg))
+            return None
+
+        # create job specification
+        jobSpec = spec.createJobSpec()
+        jobSpec.setJobName(jobId)
+        jobSpec.setJobType("Merge")
+
+        # add SE list
+        for storageElement in seList:
+            jobSpec.addWhitelistSite(storageElement)
+
         # get PSet
-        cfg = CfgInterface(workflowString, True)
-        
+        cfg = CfgInterface(jobSpec.payload.configuration, True)
+
         # set output module
         outModule = cfg.outputModules['Merged']
 
@@ -1192,64 +1205,10 @@ class MergeSensorComponent:
         inputFiles = ["%s" % fileName for fileName in fileList]
 
         inModule.setFileNames(*inputFiles)
-        # remove the strict check when merging : temporary fix
-        #inModule.setFileMatchMode('strict')
 
         # get configuration from template
-        cmsRun.configuration = str(cfg)
+        jobSpec.payload.configuration = str(cfg) 
 
-        # generate merge and unmerged specifications
-        mergedLFNBase(spec, group)
-        
-        unmergedLFNBase(spec)
-
-
-        # add stage out 
-        stageOut = cmsRun.newNode("stageOut1")
-        stageOut.type = "StageOut"
-        stageOut.application["Project"] = ""
-        stageOut.application["Version"] = ""
-        stageOut.application["Architecture"] = ""
-        stageOut.application["Executable"] = "RuntimeStageOut.py" 
-        stageOut.configuration = ""
-
-        # add auto cleanup if reqd.
-        if self.doCleanUp:
-            MCWorkflowTools.addCleanUpNode(cmsRun, "cleanUp1")
-
-
-        # If the workflow doesnt exist in the cache,
-        # we write the WorkflowSpec and publish a NewWorkflow
-        # event for it, so that the JobCreator gets a chance
-        # to create a template for it for bulk submission
-
-        # define file name
-        wfFile = "%s/%s-Workflow.xml" %  (self.args['MergeJobSpecs'], \
-                                               workflowName)
-        
-        # insert it into the database
-        datasetPath = '/' + dataset[0] + '/' + dataset[1] + '/' + dataset[2]
-        newWorkflow = self.database.insertWorkflow(datasetPath, wfFile)
-
-        # is it new?
-        if newWorkflow:    
-        
-            self.database.commit()
-                
-            # publish the message NewWorkflow
-            spec.save(wfFile)
-            self.ms.publish("NewWorkflow", wfFile)
-            self.ms.commit() 
-        
-        # Clone the workflow into a job spec and set the job name
-        jobSpec = spec.createJobSpec()
-        jobSpec.setJobName(jobId)
-        jobSpec.setJobType("Merge")
-
-        # add SE list
-        for storageElement in seList:
-            jobSpec.addWhitelistSite(storageElement)
- 
         # target file name        
         mergeJobSpecFile = "%s/%s-spec.xml" % (
                self.args['MergeJobSpecs'], jobId)
