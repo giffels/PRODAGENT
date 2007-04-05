@@ -24,29 +24,8 @@ def processFrameworkJobReport():
 
     """
     state = TaskState(os.getcwd())
-    state.loadRunResDB()
+    state.loadRunResDB()        
 
-    
-    
-    #  //
-    # // Workaround bad format Data nodes for GeneratorInfo in 
-    #//  121
-    
-    reportLines = []
-    handle = open(state.jobReport, 'r')
-    for line in handle.readlines():
-        if line.find("<Data ") > -1:
-            if line.find("/>") == -1:
-                line = line.replace(">", "/>")
-        reportLines.append(line)
-        
-    rewrite = open(state.jobReport, 'w')
-    rewrite.writelines(reportLines)
-    rewrite.close()
-    
-        
-
-        
     state.dumpJobReport()
     
     
