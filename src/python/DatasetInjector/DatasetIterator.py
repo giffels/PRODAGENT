@@ -22,6 +22,7 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 
 from ProdCommon.DataMgmt.JobSplit.SplitterMaker import createJobSplitter
+from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
 import DatasetInjector.DatasetInjectorDB as DatabaseAPI
 
 from IMProv.IMProvDoc import IMProvDoc
@@ -341,6 +342,28 @@ class DatasetIterator:
         Import the Dataset contents and inject it into the DB.
 
         """
+        
+        #  //
+        # // Import the dataset to be processed into the local DBS
+        #//
+        localDBS = getLocalDBSURL()
+        dbsWriter = DBSWriter(localDBS)
+
+        try:
+            dbsWriter.importDataset(
+                self.dbsUrl,
+                self.inputDataset(),
+                localDBS,
+                self.onlyClosedBlocks
+                )
+        except Exception, ex:
+            msg = "Error importing dataset to be processed into local DBS\n"
+            msg += "Source Dataset: %s\n" % self.inputDataset()
+            msg += "Source DBS: %s\n" % self.dbsUrl
+            msg += str(ex)
+            logging.error(msg)
+            return 1
+        
         try:
             splitter = createJobSplitter(self.inputDataset(),
                                          self.dbsUrl,
@@ -524,6 +547,28 @@ class DatasetIterator:
         #  //already known.
         # //
         #//
+        #  //
+        # // Re Import the dataset to be processed into the local DBS
+        #//  to get any new blocks and files
+        localDBS = getLocalDBSURL()
+        dbsWriter = DBSWriter(localDBS)
+
+        try:
+            dbsWriter.importDataset(
+                self.dbsUrl,
+                self.inputDataset(),
+                localDBS,
+                self.onlyClosedBlocks
+                )
+        except Exception, ex:
+            msg = "Error importing dataset to be processed into local DBS\n"
+            msg += "Source Dataset: %s\n" % self.inputDataset()
+            msg += "Source DBS: %s\n" % self.dbsUrl
+            msg += str(ex)
+            logging.error(msg)
+            return 1
+        
+
         try:
             splitter = createJobSplitter(self.inputDataset(),
                                          self.dbsUrl,
