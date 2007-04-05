@@ -286,7 +286,7 @@ class DBSComponent:
         #//
         logging.info("DBSURL %s"%self.args['DBSURL'])
         #dbswriter = DBSWriter('fakeurl') 
-        dbswriter = DBSWriter(self.args['DBSURL'],level='INFO')
+        dbswriter = DBSWriter(self.args['DBSURL'],level='ERROR')
         #  //
         # //  Create Processing Datsets based on workflow
         #//
@@ -342,7 +342,7 @@ class DBSComponent:
          #//
          logging.info("DBSURL %s"%self.args['DBSURL'])
          try:
-          dbswriter = DBSWriter(self.args['DBSURL'],level='INFO')
+          dbswriter = DBSWriter(self.args['DBSURL'],level='ERROR')
          except DbsException, ex:
           logging.error("%s\n" % formatEx(ex))
           return
@@ -366,7 +366,7 @@ class DBSComponent:
                # //   Trigger Migration of closed Blocks to Global DBS
                #//
                # FIXME: Need to use DBSReader since blockToDatasetPath method only available in DBSReader !
-               dbsreader = DBSReader(self.args['DBSURL'],level='INFO')
+               dbsreader = DBSReader(self.args['DBSURL'],level='ERROR')
                if len(MigrateBlockList)>0:
                   for BlockName in MigrateBlockList:
                      datasetPath= dbsreader.blockToDatasetPath(BlockName)
