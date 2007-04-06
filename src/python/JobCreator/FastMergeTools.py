@@ -79,33 +79,15 @@ class InstallBulkFastMerge:
         taskObject['CMSPythonPSet'] = None
         
         
-
-        cfgInt = CfgInterface(pythonPSet, True)
-        inputFiles = cfgInt.inputSource.fileNames()
-        
-        outMod = cfgInt.outputModules['Merged']
-        lfn = outMod.logicalFileName()
-        catalog = outMod.catalog()
-        pfn = outMod.fileName()
-        
-        pfn = pfn.replace("\'", "")
-        pfn = pfn.replace("\"", "")
-        lfn = lfn.replace("\'", "")
-        lfn = lfn.replace("\"", "")
-        catalog = catalog.replace("\'", "")
-        catalog = catalog.replace("\"", "")
-
-        setFileList = "export EDM_MERGE_INPUTFILES=`cat EdmFastMerge.input`\n"
-        
-        
-        taskObject['PreAppCommands'].append(setFileList)
+        taskObject['PreAppCommands'].append(" . ./EdmFastMerge-setup.sh")
         
     
-        commandLineArgs = " -o %s -l %s " % (pfn, lfn) 
+        commandLineArgs = " -o $EDM_MERGE_OUTPUT_PFN "
+        commandLineArgs += "-l $EDM_MERGE_OUTPUT_LFN " 
         commandLineArgs += " -j FrameworkJobReport.xml "
-        commandLineArgs += " -w %s -i $EDM_MERGE_INPUTFILES" % catalog
+        commandLineArgs += " -w $EDM_MERGE_CATALOG "
+        commandLineArgs += " -i $EDM_MERGE_INPUTFILES" 
         
-            
         taskObject['CMSCommandLineArgs'] = commandLineArgs
 
 

@@ -53,11 +53,30 @@ class FastMergeUnpacker:
             inputfile = inputfile.replace("\"", "")
             fileList += "%s " % inputfile
 
-        handle = open("EdmFastMerge.input", "w")
-        handle.write(fileList)
-        handle.close()
+
         
-            
+        outMod = cfgInt.outputModules['Merged']
+        lfn = outMod.logicalFileName()
+        catalog = outMod.catalog()
+        pfn = outMod.fileName()
+
+        pfn = pfn.replace("\'", "")
+        pfn = pfn.replace("\"", "")
+        lfn = lfn.replace("\'", "")
+        lfn = lfn.replace("\"", "")
+        catalog = catalog.replace("\'", "")
+        catalog = catalog.replace("\"", "")
+
+
+        handle = open("EdmFastMerge-setup.sh", "w")
+        handle.write("export EDM_MERGE_INPUTFILES=%s\n" % fileList)
+        handle.write("export EDM_MERGE_OUTPUT_PFN=%s\n" % pfn)
+        handle.write("export EDM_MERGE_OUTPUT_LFN=%s\n" % lfn)
+        handle.write("export EDM_MERGE_CATALOG=%s\n" % catalog)
+        handle.close()
+        os.system("chmod +x EdmFastMerge-setup.sh" )
+
+
 
 if __name__ == '__main__':
     jobSpec = os.environ.get("PRODAGENT_JOBSPEC", None)
