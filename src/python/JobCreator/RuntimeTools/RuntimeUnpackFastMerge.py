@@ -69,10 +69,10 @@ class FastMergeUnpacker:
 
 
         handle = open("EdmFastMerge-setup.sh", "w")
-        handle.write("export EDM_MERGE_INPUTFILES=%s\n" % fileList)
-        handle.write("export EDM_MERGE_OUTPUT_PFN=%s\n" % pfn)
-        handle.write("export EDM_MERGE_OUTPUT_LFN=%s\n" % lfn)
-        handle.write("export EDM_MERGE_CATALOG=%s\n" % catalog)
+        handle.write("export EDM_MERGE_INPUTFILES=\"%s\"\n" % fileList)
+        handle.write("export EDM_MERGE_OUTPUT_PFN=\"%s\"\n" % pfn)
+        handle.write("export EDM_MERGE_OUTPUT_LFN=\"%s\"\n" % lfn)
+        handle.write("export EDM_MERGE_CATALOG=\"%s\"\n" % catalog)
         handle.close()
         os.system("chmod +x EdmFastMerge-setup.sh" )
 
