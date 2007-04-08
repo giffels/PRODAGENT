@@ -130,15 +130,12 @@ coreFields = {
     "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
     },
 
-    'DLSInterface' :{
-    "DLSAddress": None,
-    "DLSType" : None,
-    },
-
     "GlobalDBSDLS" : {
     "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
-    "DLSAddress" : "prod-lfc-cms-central.cern.ch/grid/cms/DLS/LFC",
-    "DLSType" : "DLS_TYPE_LFC",
+    },
+
+    "PhEDExConfig" : {
+    "PhEDExDropBox" : None,
     },
     
     }# end core Fields
@@ -229,12 +226,6 @@ componentFields = {
 
     "StatTracker" : {
     "ComponentDir" : None,
-    "RssFeed": "no",
-    },
-
-    "PhEDExInterface" : {
-    "ComponentDir" : None,
-    "PhEDExDropBox" : None,
     "RssFeed": "no",
     },
 
