@@ -146,8 +146,8 @@ class DBSComponent:
 
         Define response to events
         """
-        logging.debug("Recieved Event: %s" % event)
-        logging.debug("Payload: %s" % payload)
+        logging.info("Recieved Event: %s" % event)
+        logging.info("Payload: %s" % payload)
         if event == "NewDataset":
             logging.info("New Dataset Event: %s" % payload)
             try:
@@ -237,7 +237,7 @@ class DBSComponent:
                 return
 
         if event == "DBSInterface:MigrateDatasetToGlobal":
-            logging.info("DBSInterface:MigrateDatasetToGlobal %s"% payload)
+            logging.info("DBSInterface:MigrateDatasetToGlobal Event %s"% payload)
             try:
                 self.MigrateDatasetToGlobal(payload)
                 return
@@ -283,7 +283,7 @@ class DBSComponent:
           raise InvalidWorkFlowSpec(workflowFile)
         #  //                                                                      
         # //  Contact DBS using the DBSWriter
-        #//
+        #//`
         logging.info("DBSURL %s"%self.args['DBSURL'])
         #dbswriter = DBSWriter('fakeurl') 
         dbswriter = DBSWriter(self.args['DBSURL'],level='ERROR')
@@ -358,7 +358,7 @@ class DBSComponent:
             if len(MergedBlockList)>0:
                MigrateBlockList=[]
                for MergedBlockName in MergedBlockList:
-                   logging.info("Checking Close-Block Condition: Size > %s for FileBlock %s"%(self.args['CloseBlockSize'],MergedBlockName)) 
+                   logging.info(">>>>> Checking Close-Block Condition: Size > %s for FileBlock %s"%(self.args['CloseBlockSize'],MergedBlockName)) 
                    closedBlock=dbswriter.manageFileBlock(MergedBlockName ,maxSize = float(self.args['CloseBlockSize']))
                    if closedBlock:
                       MigrateBlockList.append(MergedBlockName)
@@ -376,18 +376,6 @@ class DBSComponent:
                # FIXME:
                #  if migration succesfull: trigger PhEDEx injection?? (If Phedex is configured)
                # FIXME:
-         
-                    
-
-##comments to check in insertFiles :
-## 1) is the safety check applied? File Info must be associated to at least one dataset before we try any of this
-#                if len(fileinfo.dataset) == 0:
-#                    msg = "WARNING: File in job report is not associated to a dataset:\n"
-#                   msg += "LFN: %s\n" % fileinfo['LFN']
-#                    msg += "This file will not be added to a fileblock or dataset\n"
-#                    logging.error(msg)
-#                    continue
-## 2) we skip the tier check or we do that before the dbswriter.insertFiles is called??/
 
             #  //
             # // On successful insertion of job report, set the trigger
@@ -404,18 +392,6 @@ class DBSComponent:
                     
         return
 
-
-    def getSEname(self):
-        """
-         fake the SE name for the time being...until this is extracted form FWJReport
-        """
-        plugConfig = loadPluginConfig("JobCreator","Creator")
-        if plugConfig.has_key("StageOut"):
-          if plugConfig['StageOut']['TargetHostName']!='None':
-            SEname=plugConfig['StageOut']['TargetHostName']
-            return SEname
-        SEname=None
-        return SEname
 
 
     def getDataTier(self,DataTier,DBSDataTier):
@@ -518,9 +494,9 @@ class DBSComponent:
         Migrate from Local to Global                                                                         
         """
         #//
-        #// Global DBS and DLS API
+        #// Global DBS API
         #//
-        DBSConf,DLSConf= self.getGlobalDBSDLSConfig()
+        DBSConf= self.getGlobalDBSDLSConfig()
         GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
 
         logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblockList,datasetPath))
@@ -528,11 +504,6 @@ class DBSComponent:
         logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))       
        
         GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,fileblockList)
-
-        #//
-        #// Upload to Global DLS
-        #//
-        #self.UploadtoDLS(fileblockList)
 
 
     def getGlobalDBSDLSConfig(self):
@@ -565,12 +536,12 @@ class DBSComponent:
         dbsConfig = {
         'DBSURL' : globalConfig['DBSURL'],
         }
-        dlsConfig = {
-        "DLSType" : globalConfig['DLSType'],
-        "DLSAddress" : globalConfig['DLSAddress'],
-        }
-
-        return dbsConfig, dlsConfig
+#        dlsConfig = {
+#        "DLSType" : globalConfig['DLSType'],
+#        "DLSAddress" : globalConfig['DLSAddress'],
+#        }
+#        return dbsConfig, dlsConfig
+        return dbsConfig
 
     def startComponent(self):
         """

@@ -38,9 +38,6 @@ except:
 
 dbsConfig = config.get("LocalDBS")
 compCfg.update(dbsConfig)
-dlsConfigComp = config.getConfig("DLSInterface")
-dlsConfig={'DLSType':dlsConfigComp['DLSType'],'DLSAddress':dlsConfigComp['DLSAddress']}
-compCfg.update(dlsConfig)
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 #  //
 # // Initialise and start the component
