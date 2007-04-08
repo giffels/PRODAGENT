@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.26 2007/03/13 11:48:58 bacchi Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.27 2007/04/06 17:18:55 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -146,7 +146,10 @@ class LCGSubmitter(SubmitterInterface):
         ## prepare scheduler related file 
         schedulercladfile = "%s/%s_scheduler.clad" % (os.path.dirname(self.parameters['Wrapper']),self.parameters['JobName'])
         try:
-           self.createJDL(schedulercladfile,swversion)
+           jobType=self.parameters['JobSpecInstance'].parameters['JobType']
+           #jobType=JobStateInfoAPI.general(JobName)['JobType']  ## JobType is also in the JobStateInfoAPI
+           userJDL=self.getUserJDL(jobType)
+           self.createJDL(schedulercladfile,swversion,userJDL)
         except InvalidFile, ex:
            raise ProdAgentException("Failed to create JDL: %s"%ex)
 
@@ -256,8 +259,35 @@ class LCGSubmitter(SubmitterInterface):
           dashboardInfo.write(dashboardinfodir +"/DashboardInfo%s_%s_%s.xml"%(taskid,chainid,resub))
 
         return
+
+
+    def getUserJDL(self,jobType):
+        """
+        _getUserJDL_
+ 
+        get the user defined JDL in the Submitter config file according to the job type:
+          o Merge type: look for MergeJDLRequirementsFile first, then default to JDLRequirementsFile
+          o Porcessing type: look for JDLRequirementsFile 
+        """
+        UserJDLRequirementsFile="None"
+        #
+        #  For Merge jobs use Merge JDLRequirementsFile if it's configured
+        #
+        if jobType == "Merge":
+           if 'MergeJDLRequirementsFile' in self.pluginConfig['LCG'].keys():
+              UserJDLRequirementsFile=self.pluginConfig['LCG']['MergeJDLRequirementsFile']
+              return UserJDLRequirementsFile
+        #
+        #  Use JDLRequirementsFile if it's configured
+        #
+        if 'JDLRequirementsFile' in self.pluginConfig['LCG'].keys():
+           UserJDLRequirementsFile=self.pluginConfig['LCG']['JDLRequirementsFile']
+           return UserJDLRequirementsFile              
+
+        return UserJDLRequirementsFile
+
       
-    def createJDL(self, cladfilename,swversion):
+    def createJDL(self, cladfilename,swversion,UserJDLRequirementsFile):
         """
         _createJDL_
     
@@ -266,17 +296,15 @@ class LCGSubmitter(SubmitterInterface):
 
         declareClad=open(cladfilename,"w")
                                                                                             
-        if not 'JDLRequirementsFile' in self.pluginConfig['LCG'].keys():
-          self.pluginConfig['LCG']['JDLRequirementsFile']=None
-
         ## combine with the JDL provided by the user
         user_requirements=""
 
-        if self.pluginConfig['LCG']['JDLRequirementsFile']!=None and self.pluginConfig['LCG']['JDLRequirementsFile']!='None':
-          if os.path.exists(self.pluginConfig['LCG']['JDLRequirementsFile']) :
+        if UserJDLRequirementsFile!="None":
+ 
+          if os.path.exists(UserJDLRequirementsFile) :
             UserReq = None
-            logging.debug("createJDL: using JDLRequirementsFile "+self.pluginConfig['LCG']['JDLRequirementsFile'])
-            fileuserjdl=open(self.pluginConfig['LCG']['JDLRequirementsFile'],'r')
+            logging.debug("createJDL: using JDLRequirementsFile "+UserJDLRequirementsFile)
+            fileuserjdl=open(UserJDLRequirementsFile,'r')
             inlines=fileuserjdl.readlines()
             for inline in inlines :
               ## extract the Requirements specified by the user
@@ -289,7 +317,7 @@ class LCGSubmitter(SubmitterInterface):
             if UserReq != None :
               user_requirements=" %s && "%UserReq
           else:
-            msg="JDLRequirementsFile File Not Found: %s"%self.pluginConfig['LCG']['JDLRequirementsFile']
+            msg="JDLRequirementsFile File Not Found: %s"%UserJDLRequirementsFile
             logging.error(msg) 
             raise InvalidFile(msg)
         anyMatchrequirements=""
