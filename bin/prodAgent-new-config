@@ -167,6 +167,7 @@ componentFields = {
     "DBSDataTier" : "GEN,SIM,DIGI,HLT,RECO,AOD,RAW,USER,FEVT,FEVTSIM,RECOSIM,AODSIM",
     # Local DBS settings come from LocalDBS core block 
     "CloseBlockSize" : None,
+    "CloseBlockFiles": 100,
     "RssFeed": "no",
     },
 
