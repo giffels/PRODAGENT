@@ -118,6 +118,7 @@ class DBSComponent:
         self.args.setdefault("Logfile", None)
         self.args.setdefault("BadReportfile", None)
         self.args.setdefault("CloseBlockSize", "None")  # No check on fileblock size
+        self.args.setdefault("CloseBlockFiles", 100 )        
 
         self.args.update(args)
 
@@ -250,6 +251,27 @@ class DBSComponent:
                 logging.error("Details: %s" % str(ex))
                 return
 
+        if event == "DBSInterface:SetCloseBlockSize":
+            logging.info("DBSInterface:CloseBlockSize Event %s"% payload)
+            self.args['CloseBlockSize']=payload
+            return
+        if event == "DBSInterface:SetCloseBlockFiles":
+            logging.info("DBSInterface:CloseBlockFiles Event %s"% payload)
+            self.args['CloseBlockFiles']=payload
+            return
+
+        if event == "DBSInterface:CloseBlock":
+            try:
+                self.CloseBlock(payload)
+                return
+            except DBSWriterError, ex:
+                logging.error("Failed to CloseBlock: %s" % payload)
+            except DBSReaderError, ex:
+                logging.error("Failed to CloseBlock: %s" % payload)
+            except StandardError, ex:
+                logging.error("Failed to CloseBlock")
+                logging.error("Details: %s" % str(ex))
+            return
 
         if event == "DBSInterface:StartDebug":
             logging.getLogger().setLevel(logging.DEBUG)
@@ -354,22 +376,24 @@ class DBSComponent:
          #  //
          # //  Check on block closure conditions for merged fileblocks
          #//
-         if (jobreport.jobType == "Merge") and (self.args['CloseBlockSize'] != "None"):
+         if (jobreport.jobType == "Merge"):
+            maxFiles=100
+            maxSize=None
+            if ( self.args['CloseBlockSize'] != "None"):  maxSize=float(self.args['CloseBlockSize'])
+            if ( self.args['CloseBlockFiles'] != "None"): maxFiles=float(self.args['CloseBlockFiles'])
             if len(MergedBlockList)>0:
                MigrateBlockList=[]
                for MergedBlockName in MergedBlockList:
-                   logging.info(">>>>> Checking Close-Block Condition: Size > %s for FileBlock %s"%(self.args['CloseBlockSize'],MergedBlockName)) 
-                   closedBlock=dbswriter.manageFileBlock(MergedBlockName ,maxSize = float(self.args['CloseBlockSize']))
+                   logging.info(">>>>> Checking Close-Block Condition: Size > %s or Files > %s for FileBlock %s"%(maxSize,maxFiles,MergedBlockName)) 
+                   closedBlock=dbswriter.manageFileBlock(MergedBlockName , maxFiles= maxFiles, maxSize = maxSize)
                    if closedBlock:
                       MigrateBlockList.append(MergedBlockName)
                #  //
                # //   Trigger Migration of closed Blocks to Global DBS
                #//
-               # FIXME: Need to use DBSReader since blockToDatasetPath method only available in DBSReader !
-               dbsreader = DBSReader(self.args['DBSURL'],level='ERROR')
                if len(MigrateBlockList)>0:
                   for BlockName in MigrateBlockList:
-                     datasetPath= dbsreader.blockToDatasetPath(BlockName)
+                     datasetPath= dbswriter.reader.blockToDatasetPath(BlockName)
                      self.MigrateBlock(datasetPath, [BlockName])
                   #self.MigrateBlock(datasetPath, MigrateBlockList )
 
@@ -428,6 +452,21 @@ class DBSComponent:
         #//
         MigrateBlockList = reader.listFileBlocks(datasetPath, onlyClosedBlocks = True)
         self.MigrateBlock(datasetPath, MigrateBlockList)
+
+
+    def CloseBlock(self,fileBlockName):
+        """
+        Close fileblock if it satisty the block closure conditions
+        """
+        dbswriter = DBSWriter(self.args['DBSURL'],level='ERROR')
+        maxFiles=100
+        maxSize=None
+        if ( self.args['CloseBlockSize'] != "None"):  maxSize=float(self.args['CloseBlockSize'])
+        if ( self.args['CloseBlockFiles'] != "None"): maxFiles=float(self.args['CloseBlockFiles'])
+        logging.info(">>>>> Checking Close-Block Condition: Size > %s or Files > %s for FileBlock %s"%(maxSize,maxFiles,fileBlockName))
+        closedBlock=dbswriter.manageFileBlock(fileBlockName , maxFiles= maxFiles, maxSize = maxSize)
+        if closedBlock: logging.info("Closed FileBlock %s"%fileBlockName)
+        return 
 
     def RetryFailures(self,fileName, filehandle):
         """                                                                     
@@ -561,6 +600,9 @@ class DBSComponent:
         self.ms.subscribeTo("JobSuccess")
         self.ms.subscribeTo("DBSInterface:RetryFailures")
         self.ms.subscribeTo("DBSInterface:MigrateDatasetToGlobal")
+        self.ms.subscribeTo("DBSInterface:SetCloseBlockSize")
+        self.ms.subscribeTo("DBSInterface:SetCloseBlockFiles")
+        self.ms.subscribeTo("DBSInterface:CloseBlock")
         self.ms.subscribeTo("DBSInterface:StartDebug")
         self.ms.subscribeTo("DBSInterface:EndDebug")
                                                                                 
