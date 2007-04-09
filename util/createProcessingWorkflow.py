@@ -17,7 +17,7 @@ from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
 import ProdCommon.MCPayloads.DatasetConventions as DatasetConventions
 
 valid = ['cfg=', 'version=', 'category=', 'label=',
-         'channel=', 'group=', 'request-id=',
+         'override-channel=', 'group=', 'request-id=',
          'dataset=',
          'split-type=', 'split-size=',
          'only-blocks=', 'only-sites=',
@@ -30,7 +30,6 @@ valid = ['cfg=', 'version=', 'category=', 'label=',
 
 usage = "Usage: createProcessingWorkflow.py --cfg=<cfgFile>\n"
 usage += "                                  --version=<CMSSW version>\n"
-usage += "                                  --channel=<Phys Channel/Primary Dataset>\n"
 usage += "                                  --group=<Physics Group>\n"
 usage += "                                  --request-id=<Request ID>\n"
 usage += "                                  --label=<Production Label>\n"
@@ -43,6 +42,7 @@ usage += "   Options:\n"
 usage += "                                --only-blocks=<List of fileblocks>\n"
 usage += "                                --only-sites=<List of sites>\n"
 usage += "                                --dbs-url=<DBSUrl>\n"
+usage += "                                  --override-channel=<Phys Channel/Primary Dataset>\n"
 
 
 
@@ -74,10 +74,9 @@ options = \
     Eg: --only-sites=site1,site2 will process only files that are available
     at the specified list of sites.
 
-  --same-primary-dataset  Switch means that the output datasets will be
-    added to the same primary dataset as the input dataset if provided.
-    If not provided, then a completely new Primary dataset will be created
-    using the --name value.
+  --override-channel allows you to specify a different primary dataset
+    for the output. Default/Normal use is to use the same channel/primary
+    as the input dataset.
 
   --only-closed-blocks  Switch that will mean that open blocks are ignored
     by the dataset injector.
@@ -132,7 +131,7 @@ for opt, arg in opts:
     if opt == "--category":
         category = arg
 
-    if opt == "--channel":
+    if opt == "--override-channel":
         channel = arg
     if opt == "--label":
         label = arg
