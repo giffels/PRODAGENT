@@ -111,11 +111,16 @@ class PileupDataset(list):
         """
         for i in self:
             self.remove(i)
-    
-        reader = DBSReader(dbsContacts['DBSURL'])
+
+        dbsUrl = dbsContacts.get('DBSURL', None)
+        if dbsUrl == None:
+            dbsUrl = getLocalDBSURL()
+        reader = DBSReader(dbsUrl)
         fileList = reader.getFiles(self.dataset)
-        result = [ x['LogicalFileName'] for x in fileList]
-        self.extend(result)
+
+        for block in fileList.values():
+            result = [ x['LogicalFileName'] for x in block['Files']]
+            self.extend(result)
         return
 
     
@@ -124,14 +129,18 @@ class PileupDataset(list):
         Get the list of sites hosting the PU from DBS/DLS
                                                                                                               
         """
-        reader = DBSReader(dbsContacts['DBSURL'])
+        dbsUrl = dbsContacts.get('DBSURL', None)
+        if dbsUrl == None:
+            dbsUrl = getLocalDBSURL()
+        
+        reader = DBSReader(dbsUrl)
 
         locations = []        
         blocks =  reader.listFileBlocks(self.dataset, True)
 
         for block in blocks:
             try:
-                locations = reader.getFileBlockLocation(block)
+                locations = reader.listFileBlockLocation(block)
             except Exception, ex:
                 msg = "Unable to find DLS Locations for Block: %s\n" %  block
                 msg += str(ex)
@@ -234,8 +243,8 @@ def createPileupDatasets(workflowSpec):
         if puDataset.has_key("DBSURL"):
             args = {"DBSURL" : puDataset['DBSURL']}
             pudInstance.loadLFNs(**args)
-        else:
             
+        else:
             pudInstance.loadLFNs()
 
 
