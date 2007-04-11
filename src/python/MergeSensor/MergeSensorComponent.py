@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.60 2007/03/28 15:13:15 ckavka Exp $"
-__version__ = "$Revision: 1.60 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.61 2007/04/04 08:58:49 ckavka Exp $"
+__version__ = "$Revision: 1.61 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -40,6 +40,7 @@ import ProdAgentCore.LoggingUtils as LoggingUtils
 # DBS2
 from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
 from ProdCommon.DataMgmt.DBS.DBSErrors import DBSReaderError
+from DBSAPI.dbsApiException import DbsConnectionError
 
 ##############################################################################
 # MergeSensorComponent class
@@ -186,21 +187,9 @@ class MergeSensorComponent:
             logging.info("Auto CleanUp disabled.")
 
         # get DBS reader
-        connected = False
+        self.dbsReader = None
         self.delayDBS = 120
-        
-        while not connected:
-            try:
-                self.dbsReader = DBSReader(self.args["DBSURL"])
-                
-            except DBSReaderError, ex:
-                logging.error("""Failing to connect to DBS: (exception: %s)
-                                 trying again in %s seconds""" % \
-                                 (ex, self.delayDBS))
-                time.sleep(self.delayDBS)
-
-            else:
-                connected = True
+        self.connectToDBS()
         
         # merge workflow specification
         thisModule = os.path.abspath(
@@ -239,7 +228,42 @@ class MergeSensorComponent:
 
         # trigger
         self.trigger = None
-        
+       
+    ##########################################################################
+    # Connect to DBS waiting if necessary
+    ##########################################################################
+ 
+    def connectToDBS(self):
+        """
+        _connectToDBS_
+
+        connect to DBS
+
+        Arguments:
+
+          none
+
+        Return:
+
+          none
+
+        """
+
+        connected = False
+
+        while not connected:
+            try:
+                self.dbsReader = DBSReader(self.args["DBSURL"])
+
+            except (DBSReaderError, DbsConnectionError), ex:
+                logging.error("""Failing to connect to DBS: (exception: %s)
+                                 trying again in %s seconds""" % \
+                                 (str(ex), self.delayDBS))
+                time.sleep(self.delayDBS)
+
+            else:
+                connected = True
+
     ##########################################################################
     # add SE names to white list
     ##########################################################################
@@ -1028,12 +1052,27 @@ class MergeSensorComponent:
         while (mergeable):
        
             # get SE list
-            try:
-                seList = self.dbsReader.listFileBlockLocation(fileBlockId)
-            except DBSReaderError, ex:
-                logging.error("DBS error: " +  ex + \
+            seList = None
+            while True:
+                try:
+                    seList = self.dbsReader.listFileBlockLocation(fileBlockId)
+                    break
+
+                # errors with the file block (?)
+                except DBSReaderError, ex:
+                    logging.error("DBS error: " +  str(ex) + \
                               "\nCannot get block location for file block: " \
                               + fileBlockId)
+                    break
+
+                # connection error, retry
+                except DbsConnectionError, ex:
+                    logging.error("DBS connection lost, retrying: " + \
+                                  str(ex))
+                    self.connectToDBS()
+
+            # problems getting SE list, then suspend job generation
+            if seList is None:
                 break
 
             # apply restrictions
@@ -1423,12 +1462,24 @@ class MergeSensorComponent:
         # list of files
         fileList = {}
 
-        # get list of files       
-        try:
-            blocks = self.dbsReader.getFiles(datasetId)
-        except DBSReaderError, ex:
-            logging.error("DBS error: ", ex)
-            return fileList
+        # get list of files      
+        while True:
+ 
+            try:
+                blocks = self.dbsReader.getFiles(datasetId)
+                break
+
+            # cannot get information from DBS, ignore then
+            except DBSReaderError, ex:
+                logging.error("DBS error: %s, cannot get files for %s" % \
+                              (str(ex), str(datasetId)))
+                return fileList
+
+            # connection error, retry
+            except DbsConnectionError, ex:
+                logging.error("DBS connection lost, retrying: " + \
+                              str(ex))
+                self.connectToDBS()
 
         # check for empty datasets
         if blocks == {}:
