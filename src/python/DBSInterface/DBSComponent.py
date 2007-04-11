@@ -25,6 +25,7 @@ from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
 from ProdCommon.DataMgmt.DBS.DBSErrors import DBSWriterError, formatEx,DBSReaderError
 from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
+from ProdCommon.DataMgmt.PhEDEx.TMDBInject import tmdbInjectBlock
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from DBSAPI.dbsApiException import DbsException
 
@@ -42,7 +43,7 @@ from ProdAgentCore.PluginConfiguration import loadPluginConfig
 # disable DBS info      
 #logging.disable(logging.INFO)
                                                                
-# ##############
+# ############## 
 class InvalidWorkFlowSpec(exceptions.Exception):
   def __init__(self,workflowfile):
    args="Invalid WorkFlowSpec file: %s\n"%workflowfile
@@ -176,7 +177,7 @@ class DBSComponent:
 
             
         if event == "JobSuccess":
-            logging.info("Job Succeeded: %s" % payload)
+            #logging.info("Job Succeeded: %s" % payload)
             try:
                 self.handleJobReport(payload)
                 return
@@ -228,7 +229,7 @@ class DBSComponent:
                 return
 
         if event == "DBSInterface:RetryFailures":
-            logging.info("DBSInterface:RetryFailures Event")
+            #logging.info("DBSInterface:RetryFailures Event")
             try:
                 self.RetryFailures(self.args['BadReportfile'],self.BadReport)
                 return
@@ -238,7 +239,7 @@ class DBSComponent:
                 return
 
         if event == "DBSInterface:MigrateDatasetToGlobal":
-            logging.info("DBSInterface:MigrateDatasetToGlobal Event %s"% payload)
+            #logging.info("DBSInterface:MigrateDatasetToGlobal Event %s"% payload)
             try:
                 self.MigrateDatasetToGlobal(payload)
                 return
@@ -252,11 +253,11 @@ class DBSComponent:
                 return
 
         if event == "DBSInterface:SetCloseBlockSize":
-            logging.info("DBSInterface:CloseBlockSize Event %s"% payload)
+            #logging.info("DBSInterface:SetCloseBlockSize Event %s"% payload)
             self.args['CloseBlockSize']=payload
             return
         if event == "DBSInterface:SetCloseBlockFiles":
-            logging.info("DBSInterface:CloseBlockFiles Event %s"% payload)
+            #logging.info("DBSInterface:SetCloseBlockFiles Event %s"% payload)
             self.args['CloseBlockFiles']=payload
             return
 
@@ -270,6 +271,19 @@ class DBSComponent:
                 logging.error("Failed to CloseBlock: %s" % payload)
             except StandardError, ex:
                 logging.error("Failed to CloseBlock")
+                logging.error("Details: %s" % str(ex))
+            return
+
+        if event == "PhEDExInjectBlock":
+            try:
+                self.PhEDExInjectBlock(payload)
+                return
+            except DBSWriterError, ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+            except DBSReaderError, ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+            except StandardError, ex:
+                logging.error("Failed to PhEDExInjectBlock")
                 logging.error("Details: %s" % str(ex))
             return
 
@@ -371,6 +385,7 @@ class DBSComponent:
          #  //
          # // Insert Files to block and datasets 
          #//
+         logging.info(">>>>> inserting Files")
          MergedBlockList=dbswriter.insertFiles(jobreport) 
 
          #  //
@@ -467,6 +482,24 @@ class DBSComponent:
         closedBlock=dbswriter.manageFileBlock(fileBlockName , maxFiles= maxFiles, maxSize = maxSize)
         if closedBlock: logging.info("Closed FileBlock %s"%fileBlockName)
         return 
+
+    def PhEDExInjectBlock(self,fileBlockName):
+        """
+        Inject a Fileblock from Global DBS to PhEDEx
+        """
+        DBSConf= self.getGlobalDBSDLSConfig()
+        GlobalDBSURL=DBSConf['DBSURL']
+        #  //
+        # // Get the datasetPath the block belong to
+        #//
+        reader= DBSReader(GlobalDBSURL)
+        datasetPath= reader.blockToDatasetPath(fileBlockName)
+        #  //
+        # // Inject that block to PhEDEx
+        #//
+        phedexConfig="FIXME"  # add a configurable DBSParam parameter
+        tmdbInjectBlock(DBSConf['DBSURL'], datasetPath, fileBlockName, phedexConfig)
+
 
     def RetryFailures(self,fileName, filehandle):
         """                                                                     
@@ -575,11 +608,6 @@ class DBSComponent:
         dbsConfig = {
         'DBSURL' : globalConfig['DBSURL'],
         }
-#        dlsConfig = {
-#        "DLSType" : globalConfig['DLSType'],
-#        "DLSAddress" : globalConfig['DLSAddress'],
-#        }
-#        return dbsConfig, dlsConfig
         return dbsConfig
 
     def startComponent(self):
@@ -605,6 +633,7 @@ class DBSComponent:
         self.ms.subscribeTo("DBSInterface:CloseBlock")
         self.ms.subscribeTo("DBSInterface:StartDebug")
         self.ms.subscribeTo("DBSInterface:EndDebug")
+        self.ms.subscribeTo("PhEDExInjectBlock"
                                                                                 
         # wait for messages
         while True:
