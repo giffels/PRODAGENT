@@ -23,7 +23,7 @@ References:
 __author__ = "Chad J. Schroeder"
 __copyright__ = "Copyright (C) 2005 Chad J. Schroeder"
 
-__revision__ = "$Id: CreateDaemon.py,v 1.3 2006/05/08 13:46:01 evansde Exp $"
+__revision__ = "$Id: CreateDaemon.py,v 1.4 2006/08/08 16:16:13 evansde Exp $"
 __version__ = "0.2"
 
 # Standard Python modules.
@@ -41,6 +41,10 @@ UMASK = 0
 
 # Default maximum for the number of available file descriptors.
 MAXFD = 1024
+
+# Disable/enable stdout/stderr.
+# Usually silenced, this is for developers testing & debugging
+NOISY_DAEMON = False
 
 # The standard I/O file descriptors are redirected to /dev/null by default.
 if (hasattr(os, "devnull")):
@@ -178,7 +182,10 @@ def createDaemon(workdir):
       maxfd = MAXFD
   
    # Iterate through and close all file descriptors.
-   for fd in range(0, maxfd):
+   startDescriptor = 0
+   if NOISY_DAEMON:
+      startDescriptor = 3
+   for fd in range(startDescriptor, maxfd):
       try:
          os.close(fd)
       except OSError:	# ERROR, fd wasn't open to begin with (ignored)
@@ -193,10 +200,11 @@ def createDaemon(workdir):
    # which will be 0 (stdin), since it was closed above.
    os.open(REDIRECT_TO, os.O_RDWR)	# standard input (0)
 
-   # Duplicate standard input to standard output and standard error.
-   os.dup2(0, 1)			# standard output (1)
-   os.dup2(0, 2)			# standard error (2)
-
+   if not NOISY_DAEMON:
+      # Duplicate standard input to standard output and standard error.
+      os.dup2(0, 1)			# standard output (1)
+      os.dup2(0, 2)			# standard error (2)
+      
    return(0)
 
 if __name__ == "__main__":
