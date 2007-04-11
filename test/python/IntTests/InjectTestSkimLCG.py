@@ -12,7 +12,7 @@ import sys,os,getopt,time
 
 usage="\n Usage: python InjectTestSkimLCG.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow \n --njobs=<NumberofJobs> \t\t number of jobs \n"
 
-valid = ['workflow=','njobs=']
+valid = ['workflow=','njobs=','nevts=']
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -22,12 +22,15 @@ except getopt.GetoptError, ex:
 
 workflow = None
 njobs = None
+nevts = None
 
 for opt, arg in opts:
     if opt == "--workflow":
         workflow = arg
     if opt == "--njobs":
         njobs = arg
+    if opt == "--nevts":
+        nevts = arg
 
 if workflow == None:
     print "--workflow option not provided"
@@ -37,6 +40,8 @@ if njobs  == None:
     print "--njobs option not provided"
     print usage
     sys.exit(1)
+if nevts  == None:
+    print "--nevts option not provided \n The default of the workflow will be used."
 
 
 ## check workflow existing on disk 
@@ -79,6 +84,21 @@ if ownerIndex(workflowName) != None:
   ms.commit()
 else:
  ## set the workflow for the first time
+ #
+ # Modify the workflow to force using the split-type event and the split-size to nevts
+ #
+  if nevts  != None:
+    newworkflowSpec = workflowSpec
+    SplitType=workflowSpec.parameters['SplitType']
+    SplitSize=workflowSpec.parameters['SplitSize']
+    print " original      SplitType: %s SplitSize: %s"%(SplitType,SplitSize)
+    print " replaced with SplitType: %s SplitSize: %s"%('event',int(nevts))
+    newworkflowSpec.parameters['SplitType']='event'
+    newworkflowSpec.parameters['SplitSize']=int(nevts)
+    backup = "%s.BAK.%s" % (workflow,time.strftime("%d-%M-%Y"))
+    os.system("/bin/mv %s %s" % (workflow, backup))
+    newworkflowSpec.save(workflow)
+
   ms.publish("DatasetInjector:SetWorkflow", workflow)
   ms.commit()
   time.sleep(1)
