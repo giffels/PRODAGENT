@@ -136,6 +136,7 @@ coreFields = {
 
     "PhEDExConfig" : {
     "PhEDExDropBox" : None,
+    "DBPARAM" : None,
     },
     
     }# end core Fields
