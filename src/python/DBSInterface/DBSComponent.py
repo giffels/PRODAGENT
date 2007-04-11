@@ -489,6 +489,8 @@ class DBSComponent:
         """
         DBSConf= self.getGlobalDBSDLSConfig()
         GlobalDBSURL=DBSConf['DBSURL']
+
+        phedexConfig,dropdir=self.getPhEDExConfig() 
         #  //
         # // Get the datasetPath the block belong to
         #//
@@ -497,8 +499,38 @@ class DBSComponent:
         #  //
         # // Inject that block to PhEDEx
         #//
-        phedexConfig="FIXME"  # add a configurable DBSParam parameter
-        tmdbInjectBlock(DBSConf['DBSURL'], datasetPath, fileBlockName, phedexConfig)
+        workingdir="/tmp"
+        if dropdir != "None": workingdir=dropdir 
+        tmdbInjectBlock(DBSConf['DBSURL'], datasetPath, fileBlockName, phedexConfig, workingDir=workingdir)
+
+        
+    def getPhEDExConfig(self):
+        """
+        Extract the PhEDEx information from the prod agent config
+        """         
+        try:
+            config = loadProdAgentConfiguration()
+        except StandardError, ex:
+            msg = "Error reading configuration:\n"
+            msg += str(ex)
+            logging.error(msg)
+            raise RuntimeError, msg
+                                                                                                     
+        if not config.has_key("PhEDExConfig"):
+            msg = "Configuration block PhEDExConfig is missing from $PRODAGENT_CONFIG"
+            logging.error(msg)
+                                                                                                     
+        try:
+             PhEDExConfig = config.getConfig("PhEDExConfig")
+        except StandardError, ex:
+            msg = "Error reading configuration for PhEDExConfig:\n"
+            msg += str(ex)
+            logging.error(msg)
+            raise RuntimeError, msg
+                                                                                                     
+        logging.debug("PhEDEx Config: %s" % PhEDExConfig)
+                                                                                                     
+        return PhEDExConfig['DBPARAM'],PhEDExConfig['PhEDExDropBox']
 
 
     def RetryFailures(self,fileName, filehandle):
@@ -581,8 +613,7 @@ class DBSComponent:
     def getGlobalDBSDLSConfig(self):
         """
         Extract the global DBS and DLS contact information from the prod agent config
-        """                                                                                               
-                                                                                               
+        """ 
         try:
             config = loadProdAgentConfiguration()
         except StandardError, ex:
@@ -633,7 +664,7 @@ class DBSComponent:
         self.ms.subscribeTo("DBSInterface:CloseBlock")
         self.ms.subscribeTo("DBSInterface:StartDebug")
         self.ms.subscribeTo("DBSInterface:EndDebug")
-        self.ms.subscribeTo("PhEDExInjectBlock"
+        self.ms.subscribeTo("PhEDExInjectBlock")
                                                                                 
         # wait for messages
         while True:
