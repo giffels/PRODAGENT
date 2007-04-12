@@ -6,8 +6,8 @@ Execution class for running a task described by a ShREEKTask instance,
 and managing its execution.
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: TaskRunner.py,v 1.5 2006/09/19 13:52:16 evansde Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: TaskRunner.py,v 1.6 2007/03/07 22:54:19 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
@@ -19,6 +19,15 @@ import fcntl, select, sys
 
 from ShREEK.ShREEKException import ShREEKException
 
+
+def makeNonBlocking(fd):
+    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    try:
+        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NDELAY)
+    except AttributeError:
+	fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
+
+
 def findChildProcesses(pid):
     """
     _findChildProcesses_
@@ -27,22 +36,65 @@ def findChildProcesses(pid):
     command
 
     """
+    procs={}
+    procs=findChildProcessnames(pid)
+
+    result=[]
+
+    for thing in procs.keys():
+       result.append(thing)
+
+    return result   
+
+
+
+
+def findChildProcessnames(pid):
+    """
+    _findChildProcesses_
+    Given a PID, find all the direct child processes of that PID using ps
+    command, returning a dictionary of names+proc numbers
+    """
+
     pop = popen2.Popen4(
-            "/bin/ps --no-heading --ppid %s -o pid" % pid
+ #           "/bin/ps --no-headers --ppid %s -o pid" % pid
+ #          "/bin/ps --no-headers --pid %s -H -o pid"
+            "/bin/ps -e --no-headers -o pid -o ppid -o fname"
             )
     while pop.poll() == -1:
         exitCode = pop.poll()
     exitCode = pop.poll()
     output = pop.fromchild.read().strip()
-    result = []
-    for item in output.split():
+#    print "ps output: %s" % output
+#    result = []
+    pieces = []
+    procnames = {}
+    for line in output.split("\n"):
+      pieces= line.split()
+      try: 
+        value=int(pieces[1])
+      except ValueError,e:
+        print "trouble interpreting ps output %s: \n %s" % (e,pieces[1])
+        continue
+      if value==pid:
         try:
-            value = int(item)
-        except ValueError:
-            continue
-        result.append(value)
-    return result
+          job=int(pieces[0])
+        except ValueError,e:
+          print "trouble interpreting ps output %s: \n %s" % (e,pieces[0])
+          continue
+#        result.append(job)
+        procnames[job]=pieces[2]
+      
+#    for item in output.split():
+#        try:
+#            value = int(item)
+#        except ValueError,e:
+#            print "trouble interpreting ps output %s: \n %s \n" % (e,item,output)
+#            continue
+#        result.append(value)
+    return procnames
 
+    
 
 class ChildProcs(list):
     """
@@ -72,9 +124,12 @@ class ChildProcs(list):
         """
         childProcs = findChildProcesses(pid) 
         for child in childProcs:
+            print "Child Process found: %s" % child
             self.append(child)
             self.getChildren(child)
         return 
+
+
 
     
 class TaskRunner:
@@ -112,22 +167,29 @@ class TaskRunner:
         if self.process > -1:
             procList = self.findProcesses()
             for process in procList:
+                print "Sending SIGTERM to process: %s " % process
                 try:
                     os.kill(int(process), signal.SIGTERM)
+
                 except OSError:
                     pass
             time.sleep(2)
             procList = self.findProcesses()
             for process in procList:
+                print "Sending SIGKILL to process: %s " % process
                 try:
                     os.kill(int(process), signal.SIGKILL)
-                except OSError:
+                except OSError,e:
+                    print "SIGKILL error: %s, removing process from list..." % e 
                     procList.remove(process)
             try:
                 os.kill(self.process, signal.SIGTERM)
             except OSError:
                 pass
+        else:
+            print "self.process <= -1"
         return
+    
         
 
     def evalStartControlPoint(self, exeThreadRef):
@@ -239,48 +301,50 @@ class TaskRunner:
             )
         command += "3>&1 1>&2 2>&3)"
         
-        exitCode = getCommandOutput(command)
+        exitCode = self.getCommandOutput(command)
         os.chdir(currentDir)
         return exitCode
     
             
-def makeNonBlocking(fd):
-    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-    try:
-        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NDELAY)
-    except AttributeError:
-	fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
     
-
-def getCommandOutput(command):
-    child = popen2.Popen3(command, 1) # capture stdout and stderr from command
-    child.tochild.close()             # don't need to talk to child
-    outfile = child.fromchild 
-    outfd = outfile.fileno()
-    errfile = child.childerr
-    errfd = errfile.fileno()
-    makeNonBlocking(outfd)            # don't deadlock!
-    makeNonBlocking(errfd)
-    outdata = errdata = ''
-    outeof = erreof = 0
-    while 1:
-	ready = select.select([outfd,errfd],[],[]) # wait for input
-	if outfd in ready[0]:
-	    outchunk = outfile.read()
-	    if outchunk == '': outeof = 1
-	    sys.stdout.write(outchunk)
-	if errfd in ready[0]:
-	    errchunk = errfile.read()
-	    if errchunk == '': erreof = 1
-            sys.stderr.write(errchunk)
-	if outeof and erreof: break
-	select.select([],[],[],.1) # give a little time for buffers to fill
-
-    try:
-        err = child.poll()
-    except Exception, ex:
-        sys.stderr.write("Error retrieving child exit code: %s" % ex)
-        return 1
     
-    return err
+    def getCommandOutput(self, command):
+        """
+        _getCommandOutput_
+
+        Run the provided command and set the process id for this instance
+        
+        """
+        child = popen2.Popen3(command, 1) # capture stdout and stderr from command
+        child.tochild.close()             # don't need to talk to child
+        self.process = child.pid
+        print "My process number is: %s" % self.process
+        outfile = child.fromchild 
+        outfd = outfile.fileno()
+        errfile = child.childerr
+        errfd = errfile.fileno()
+        makeNonBlocking(outfd)            # don't deadlock!
+        makeNonBlocking(errfd)
+        outdata = errdata = ''
+        outeof = erreof = 0
+        while 1:
+    	    ready = select.select([outfd,errfd],[],[]) # wait for input
+    	    if outfd in ready[0]:
+    	      outchunk = outfile.read()
+    	      if outchunk == '': outeof = 1
+    	      sys.stdout.write(outchunk)
+    	    if errfd in ready[0]:
+    	      errchunk = errfile.read()
+    	      if errchunk == '': erreof = 1
+              sys.stderr.write(errchunk)
+            if outeof and erreof: break
+    	    select.select([],[],[],.1) # give a little time for buffers to fill
+    
+        try:
+            err = child.poll()
+        except Exception, ex:
+            sys.stderr.write("Error retrieving child exit code: %s" % ex)
+            return 1
+        
+        return err
 

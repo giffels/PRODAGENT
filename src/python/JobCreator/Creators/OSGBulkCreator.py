@@ -320,7 +320,23 @@ class OSGBulkCreator(CreatorInterface):
                 
                 
             shreekConfig.addMonitorCfg(dashboard)
-            
+
+
+        #  //
+        # // JobTimeout Setup
+        #//
+
+        timeoutCfg = self.pluginConfig.get('JobTimeout', {})
+        usingJobTimeout = timeoutCfg.get("UseJobTimeout", "False")
+        if usingJobTimeout.lower() == "true":
+           jobtimeout= shreekConfig.newMonitorCfg()
+           jobtimeout.setMonitorName("bulktimeout-1")
+           jobtimeout.setMonitorType("timeout")
+           jobtimeout.addKeywordArg(
+                Timeout = timeoutCfg['Timeout'],
+                HardKillDelay = timeoutCfg['HardKillDelay'])
+           shreekConfig.addMonitorCfg(jobtimeout)
+               
             
 
         #  //

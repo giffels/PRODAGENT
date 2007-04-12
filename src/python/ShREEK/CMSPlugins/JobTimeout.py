@@ -16,6 +16,7 @@ from ShREEK.CMSPlugins.ApMon.DashboardAPI import DashboardAPI
 
 import os
 import time
+import signal
 
 class JobTimeout(ShREEKMonitor):
     """
@@ -29,8 +30,10 @@ class JobTimeout(ShREEKMonitor):
     def __init__(self):
         ShREEKMonitor.__init__(self)
         self.timeoutValue = None
+        self.hardKillTimeoutDelay = None
         self.startTime = None
         self.checkTimeout = False
+        self.triedSoftKill = False
         
     def initMonitor(self, *args, **kwargs):
         """
@@ -38,9 +41,27 @@ class JobTimeout(ShREEKMonitor):
 
         """
         if kwargs.has_key("Timeout"):
-            self.timeoutValue = int(kwargs['Timeout'])
+            # users think timeout is in minutes -- multiplying by 60
+            self.timeoutValue = int(kwargs['Timeout'])*60
+            # default hard kill is 2 hours after soft kill attempt
+            self.hardKillTimeoutDelay = 7200
             self.startTime = int(time.time())
             self.checkTimeout = True
+
+        if kwargs.has_key("HardKillDelay"):
+            # users think this also is in minutes...
+            self.hardKillTimeoutDelay = int(kwargs["HardKillDelay"])*60
+            
+
+          
+        msg=""
+        msg+="Job Timeout set: \n";
+        msg += "Start Time: %s\n" % self.startTime
+        msg += "Time Now: %s\n" % time.time()
+        msg += "Timeout: %s\n" % self.timeoutValue
+        msg += "Hard kill timeout delay: %s \n" % self.hardKillTimeoutDelay
+        print msg
+
 
 
     def periodicUpdate(self, state):
@@ -52,27 +73,60 @@ class JobTimeout(ShREEKMonitor):
         """
         if self.checkTimeout:
             timeDiff = int(time.time()) - self.startTime
-            if timeDiff > self.timeoutValue:
+
+
+            cmsRunProcess=-1
+            if timeDiff > (self.timeoutValue) and  (not self.triedSoftKill):
+                msg = "" 
+                for lines in range(0,4):
+                    for columns in range(0, 51):
+                        msg += "#"
+                    msg += "\n"
+                msg += "WARNING: Soft Kill Timeout has Expired:"
+                msg += "Start Time: %s\n" % self.startTime
+                msg += "Time Now: %s\n" % time.time()
+                msg += "Timeout: %s\n" % self.timeoutValue
+                msg += "Gently Killing Job...\n"
+
+                print msg
+                self.triedSoftKill=True
+
+                whereIam=os.getcwd()
+                fullPathtopid=os.path.join(whereIam,"process_id")
+                if os.path.exists(fullPathtopid):
+                   filehandle=open(fullPathtopid,'r')
+                   output=filehandle.read()
+                  
+                   try:
+                      cmsRunProcess=int(output)
+                      os.kill(cmsRunProcess, signal.SIGUSR2)
+                   except OSError:
+                      pass
+                
+
+
+            if timeDiff > self.timeoutValue+self.hardKillTimeoutDelay:
                 msg = ""
                 for lines in range(0,4):
                     for columns in range(0, 51):
                         msg += "#"
                     msg += "\n"
-                msg += "WARNING: Job Timeout has Expired:"
+                msg += "WARNING: Hard Kill Timeout has Expired:"
                 msg += "Start Time: %s\n" % self.startTime
                 msg += "Time Now: %s\n" % time.time()
-                msg += "Timeout: %s\n" % self.timeoutValue
+                msg += "Timeout: %s\n" % self.timeoutValue+self.hardKillTimeoutDelay
                 msg += "Killing Job...\n"
                 for lines in range(0,4):
                     for columns in range(0, 51):
                         msg += "#"
                     msg += "\n"
-                    
+
+                print msg
                 
                 self.killJob()
         return
         
-        
+         
 
         
 registerShREEKMonitor(JobTimeout, 'timeout')
