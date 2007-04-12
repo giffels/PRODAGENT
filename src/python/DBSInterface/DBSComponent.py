@@ -150,6 +150,7 @@ class DBSComponent:
         self.args.setdefault("DBSURL","http://cmssrv18.fnal.gov:8989/DBS/servlet/DBSServlet")
         self.args.setdefault("Logfile", None)
         self.args.setdefault("BadReportfile", None)
+        self.args.setdefault("BadTMDBInjectfile", None)
         self.args.setdefault("CloseBlockSize", "None")  # No check on fileblock size
         self.args.setdefault("CloseBlockFiles", 100 )        
 
@@ -172,6 +173,15 @@ class DBSComponent:
                                                       "FailedJobReportList.txt")
 
         self.BadReport = open(self.args['BadReportfile'],'a')
+        #  //
+        # // Log Failed fileblock injection into PhEDEx
+        #//
+        if self.args['BadTMDBInjectfile'] == None:
+            self.args['BadTMDBInjectfile'] = os.path.join(self.args['ComponentDir'],
+                                                      "FailedTMDBInject.txt")
+                                                                                                                                          
+        #self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
+
         
         
     def __call__(self, event, payload):
@@ -182,6 +192,7 @@ class DBSComponent:
         """
         logging.info("Recieved Event: %s" % event)
         logging.info("Payload: %s" % payload)
+
         if event == "NewDataset":
             logging.info("New Dataset Event: %s" % payload)
             try:
@@ -260,6 +271,15 @@ class DBSComponent:
                 self.BadReport.flush()
                 return
 
+        if event == "PhEDExRetryFailures":
+            try:
+                self.PhEDExRetryFailures(self.args['BadTMDBInjectfile'],self.BadTMDBInject)
+                return
+            except StandardError, ex:
+                logging.error("Failed to PhEDExRetryFailures")
+                logging.error("Details: %s" % str(ex))
+                return
+
         if event == "DBSInterface:RetryFailures":
             #logging.info("DBSInterface:RetryFailures Event")
             try:
@@ -307,18 +327,31 @@ class DBSComponent:
             return
 
         if event == "PhEDExInjectBlock":
+            self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
             try:
                 self.PhEDExInjectBlock(payload)
                 return
             except DBSWriterError, ex:
                 logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
             except DBSReaderError, ex:
                 logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
             except TMDBInjectError, ex:
                 logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
             except StandardError, ex:
                 logging.error("Failed to PhEDExInjectBlock")
                 logging.error("Details: %s" % str(ex))
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
             return
 
         if event == "DBSInterface:StartDebug":
@@ -567,6 +600,46 @@ class DBSComponent:
         return PhEDExConfig['DBPARAM'],PhEDExConfig['PhEDExDropBox']
 
 
+    def PhEDExRetryFailures(self,fileName, filehandle):
+        """
+        Read the list of FWKJobReport that failed DBS registration and re-try the registration. If the FWKJobReport registration is succesfull remove it form the list of failed ones.
+                                                                                                                                          
+        """
+        logging.info("*** Begin the PhEDExRetryFailures procedure")
+                                                                                                                                          
+        ## Read the list of fileblock that failed TMDBInjection  and re-try
+        filehandle.close()
+        BadTMDBInjectfile = open(fileName, 'r')
+                                                                                                                                          
+        stillFailures = []
+        for line in BadTMDBInjectfile.readlines():
+           payload=string.strip(line)
+           try:
+             self.PhEDExInjectBlock(payload)
+           except TMDBInjectError, ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                if not stillFailures.count(payload): stillFailures.append(payload)
+           except DBSReaderError,ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                if not stillFailures.count(payload): stillFailures.append(payload)
+           except DBSWriterError,ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                if not stillFailures.count(payload): stillFailures.append(payload)
+
+        BadTMDBInjectfile.close()
+                                                                                                                                          
+        ## Write the list of those still failing
+                                                                                                                                          
+        BadTMDBInjectfile = open(fileName, 'w')
+        for item in stillFailures:
+           fileblock=item.strip()
+           BadTMDBInjectfile.write("%s\n" % fileblock )
+        BadTMDBInjectfile.close()
+                                                                                                                                          
+        logging.info("*** End the PhEDExRetryFailures procedures => Failed injection logged in :%s "%(fileName))
+
+
+
     def RetryFailures(self,fileName, filehandle):
         """                                                                     
         Read the list of FWKJobReport that failed DBS registration and re-try the registration. If the FWKJobReport registration is succesfull remove it form the list of failed ones. 
@@ -668,6 +741,7 @@ class DBSComponent:
         self.ms.subscribeTo("DBSInterface:StartDebug")
         self.ms.subscribeTo("DBSInterface:EndDebug")
         self.ms.subscribeTo("PhEDExInjectBlock")
+        self.ms.subscribeTo("PhEDExRetryFailures")
                                                                                 
         # wait for messages
         while True:
