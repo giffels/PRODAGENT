@@ -25,7 +25,7 @@ from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
 from ProdCommon.DataMgmt.DBS.DBSErrors import DBSWriterError, formatEx,DBSReaderError
 from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
-from ProdCommon.DataMgmt.PhEDEx.TMDBInject import tmdbInjectBlock
+from ProdCommon.DataMgmt.PhEDEx.TMDBInject import tmdbInjectBlock,TMDBInjectError
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from DBSAPI.dbsApiException import DbsException
 
@@ -103,6 +103,38 @@ class NoFileBlock(exceptions.Exception):
    """ Return exception error. """
    return "%s" % (self.args)
                                                                                               
+
+# ##############
+def getGlobalDBSDLSConfig():
+        """
+        Extract the global DBS and DLS contact information from the prod agent config
+        """
+        try:
+            config = loadProdAgentConfiguration()
+        except StandardError, ex:
+            msg = "Error reading configuration:\n"
+            msg += str(ex)
+            logging.error(msg)
+            raise RuntimeError, msg
+                                                                                                                                                 
+        if not config.has_key("GlobalDBSDLS"):
+            msg = "Configuration block GlobalDBSDLS is missing from $PRODAGENT_CONFIG"
+            logging.error(msg)
+                                                                                                                                                 
+        try:
+             globalConfig = config.getConfig("GlobalDBSDLS")
+        except StandardError, ex:
+            msg = "Error reading configuration for GlobalDBSDLS:\n"
+            msg += str(ex)
+            logging.error(msg)
+            raise RuntimeError, msg
+                                                                                                                                                 
+        logging.debug("GlobalDBSDLS Config: %s" % globalConfig)
+                                                                                                                                                 
+        dbsConfig = {
+        'DBSURL' : globalConfig['DBSURL'],
+        }
+        return dbsConfig
 
 # ##############
 class DBSComponent:
@@ -281,6 +313,8 @@ class DBSComponent:
             except DBSWriterError, ex:
                 logging.error("Failed to PhEDExInjectBlock: %s" % payload)
             except DBSReaderError, ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+            except TMDBInjectError, ex:
                 logging.error("Failed to PhEDExInjectBlock: %s" % payload)
             except StandardError, ex:
                 logging.error("Failed to PhEDExInjectBlock")
@@ -487,7 +521,7 @@ class DBSComponent:
         """
         Inject a Fileblock from Global DBS to PhEDEx
         """
-        DBSConf= self.getGlobalDBSDLSConfig()
+        DBSConf= getGlobalDBSDLSConfig()
         GlobalDBSURL=DBSConf['DBSURL']
 
         phedexConfig,dropdir=self.getPhEDExConfig() 
@@ -600,7 +634,7 @@ class DBSComponent:
         #//
         #// Global DBS API
         #//
-        DBSConf= self.getGlobalDBSDLSConfig()
+        DBSConf= getGlobalDBSDLSConfig()
         GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
 
         logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblockList,datasetPath))
@@ -609,37 +643,6 @@ class DBSComponent:
        
         GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,fileblockList)
 
-
-    def getGlobalDBSDLSConfig(self):
-        """
-        Extract the global DBS and DLS contact information from the prod agent config
-        """ 
-        try:
-            config = loadProdAgentConfiguration()
-        except StandardError, ex:
-            msg = "Error reading configuration:\n"
-            msg += str(ex)
-            logging.error(msg)
-            raise RuntimeError, msg
-                                                                                               
-        if not config.has_key("GlobalDBSDLS"):
-            msg = "Configuration block GlobalDBSDLS is missing from $PRODAGENT_CONFIG"
-            logging.error(msg)
-                                                                                               
-        try:
-             globalConfig = config.getConfig("GlobalDBSDLS")
-        except StandardError, ex:
-            msg = "Error reading configuration for GlobalDBSDLS:\n"
-            msg += str(ex)
-            logging.error(msg)
-            raise RuntimeError, msg
-                                                                                               
-        logging.debug("GlobalDBSDLS Config: %s" % globalConfig)
-
-        dbsConfig = {
-        'DBSURL' : globalConfig['DBSURL'],
-        }
-        return dbsConfig
 
     def startComponent(self):
         """
