@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.20 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.20 2007/03/13 20:18:02 evansde Exp $"
+__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.21 2007/03/14 17:09:14 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -249,13 +249,14 @@ class ReqInjComponent:
         bulkSpecs = []
         for i in range(0, nCalls):
             jobSpec = self.newJob()
-            if not self.bulkTestMode:
+            if jobSpec:
+             if not self.bulkTestMode:
                 if self.queueMode:
                     self.ms.publish("QueueJob", jobSpec)
                 else:
                     self.ms.publish("CreateJob", jobSpec)
                 self.ms.commit()
-            else:
+             else:
                 if nCalls == 1:
                     msg = "Cannot Bulk Submit a single job\n"
                     msg += "When in BulkTestMode, you must provide an"
@@ -308,7 +309,8 @@ class ReqInjComponent:
             msg += "You need to send a RequestInjector:SetWorkflow event"
             msg += "With the file containing the workflow as the payload"
             logging.warning(msg)
-            return
+            return None
+
 
         self.iterator.load(self.args['WorkflowCache'])
         jobSpec = self.iterator()
