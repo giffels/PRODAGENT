@@ -59,7 +59,7 @@ logging.disable(logging.INFO)
 #  //
 # // Get API to DBS
 #//
-args = {'url' : url }
+args = {'url' : url , 'level' : 'ERROR'}
 dbsapi = DbsApi(args)
 
 #  //
