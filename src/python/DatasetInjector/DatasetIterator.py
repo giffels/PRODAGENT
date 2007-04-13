@@ -58,6 +58,25 @@ def getLocalDBSURL():
 
     return dbsConfig.get("DBSURL", None)
 
+def getGlobalDBSURL():
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+                                                                                                                                 
+    try:
+        dbsConfig = config.getConfig("GlobalDBSDLS")
+    except StandardError, ex:
+        msg = "Error reading configuration for GlobalDBSDLS:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+                                                                                                                                 
+    return dbsConfig.get("DBSURL", None)
+
 
 class DatasetIterator:
     """
@@ -348,10 +367,11 @@ class DatasetIterator:
         #//
         localDBS = getLocalDBSURL()
         dbsWriter = DBSWriter(localDBS)
+        globalDBS = getGlobalDBSURL()
 
         try:
             dbsWriter.importDataset(
-                self.dbsUrl,
+                globalDBS,
                 self.inputDataset(),
                 localDBS,
                 self.onlyClosedBlocks
@@ -359,7 +379,8 @@ class DatasetIterator:
         except Exception, ex:
             msg = "Error importing dataset to be processed into local DBS\n"
             msg += "Source Dataset: %s\n" % self.inputDataset()
-            msg += "Source DBS: %s\n" % self.dbsUrl
+            msg += "Source DBS: %s\n" % globalDBS
+            msg += "Destination DBS: %s\n" % localDBS
             msg += str(ex)
             logging.error(msg)
             return 1
