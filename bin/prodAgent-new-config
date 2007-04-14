@@ -146,6 +146,7 @@ componentFields = {
 
     "RequestInjector" : {
     "ComponentDir" : None,
+    "FirstRun" : None,
     "QueueJobMode": "False",
     },
 
