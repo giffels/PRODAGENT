@@ -4,10 +4,12 @@ Generate jobs for the workflow provided
 
 """
 from MessageService.MessageService import MessageService
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+
 import sys,os,getopt,time
 
 
-usage="\n Usage: python InjectTest.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow file \n --nevts=<NumberofEvent> \t\t number of events per job \n --njobs=<NumberofEvent> \t\t number of jobs \n --site-pref=<StorageElement name>  storage element name \n --run=<firstRun> \t\t\t first run number \n\n *Note* that if no run number is provided the last run from the given workflow is taken [This assume that the given workflow already exists]."
+usage="\n Usage: python InjectTest.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow file \n --nevts=<NumberofEvent> \t\t number of events per job \n --njobs=<NumberofEvent> \t\t number of jobs \n --site-pref=<StorageElement name>  storage element name \n [ --run=<firstRun> \t\t\t first run number effective only for New Workflow]\n\n *Note* that the run number option is effective only when a New workflow is created and it overwrites the FirstRun default in $PRODAGENT_CONFIG if set"
 
 valid = ['workflow=', 'run=', 'nevts=' , 'njobs=', 'site-pref=']
 try:
@@ -18,7 +20,7 @@ except getopt.GetoptError, ex:
     sys.exit(1)
 
 workflow = None
-run = None
+run = "None"
 nevts = None
 njobs = None
 sitePref = None
@@ -40,14 +42,11 @@ if workflow == None:
     print "--workflow option not provided"
     print usage
     sys.exit(1)
+workflow=os.path.expandvars(os.path.expanduser(workflow))
 if not os.path.exists(workflow):
     print "Workflow not found: %s" % workflow
     sys.exit(1)
-## run is nolonger a compulsory option:
-#if run == None:
-#    print "--run option not provided."
-#    print usage
-#    sys.exit(1)
+
 if nevts == None:
     print "--nevts option not provided."
     print usage
@@ -57,6 +56,53 @@ if njobs == None:
     print usage
     sys.exit(1)
 
+def getRequestInjectorConfig():
+   """
+   get the RequestInjector Component dir and the optional FirstRun
+   """
+   try:
+     config = loadProdAgentConfiguration()
+   except StandardError, ex:
+     msg = "Error: error reading configuration:\n"
+     msg += str(ex)
+     print msg
+     sys.exit(1)
+
+   if not config.has_key("RequestInjector"):
+      msg = "Error: Configuration block RequestInjector is missing from $PRODAGENT_CONFIG"
+      print msg
+      sys.exit(1)
+
+   ReqInjConfig = config.getConfig("RequestInjector")
+   #if not ReqInjConfig.has_key("ComponentDir"):
+   #   msg = "Error: Configuration block RequestInjector is missing ComponentDir in $PRODAGENT_CONFIG"
+   #   print msg
+   #   sys.exit(1)
+
+   return ReqInjConfig.get("ComponentDir", None),ReqInjConfig.get("FirstRun", "None")
+ 
+def checkWorkflow(workflow):
+   """
+   Check if the provided workflow already exists in WorkflowCache area
+   """
+   WorkflowExists=False
+   
+   workflowBase = os.path.basename(workflow)
+   RequestDir,firstrun = getRequestInjectorConfig()
+   workflowCache="%s/WorkflowCache"%RequestDir
+   if not os.path.exists(workflowCache):
+      msg = "Error: there is no WorkflowCache area ==> %s"%workflowCache
+      print msg
+      sys.exit(1) 
+   workflowCacheFile = os.path.join(workflowCache, "%s"%workflowBase)
+   if os.path.exists(workflowCacheFile):
+      WorkflowExists=True
+      msg=" Workflow %s already exists"%(workflowBase,)
+      print msg
+   else:
+      msg=" Workflow %s is NEW since the %s doesn't exist"%(workflowBase,workflowCacheFile)
+      print msg
+   return WorkflowExists,firstrun
 
 ## use MessageService
 ms = MessageService()
@@ -75,21 +121,29 @@ ms.publish("JobCreator:SetCreator","LCGCreator")
 ## Set Submitter
 ms.publish("JobSubmitter:SetSubmitter","LCGSubmitter")
 
-## Set Workflow 
-if run != None: 
- ## if run number is provided set the workflow and its initial run
-  ms.publish("RequestInjector:SetWorkflow", workflow)
-  ms.commit()
-  time.sleep(0.1)
-  ms.publish("RequestInjector:SetInitialRun", str(run))
-  ms.commit()
-else:
- ## if no run number is provided, reload the Workflow and start run from there
+## Set Workflow and run 
+WorkflowExists,firstrun=checkWorkflow(workflow)
+
+if WorkflowExists:
+ ## reload the Workflow and start from last run 
+  run="None"
   ms.publish("RequestInjector:LoadWorkflows",'')
   ms.commit()
   time.sleep(0.1)
   workflowBase=os.path.basename(workflow)
   ms.publish("RequestInjector:SelectWorkflow", workflowBase)
+  ms.commit()
+else:
+ ## set the workflow for the first time and set the compulsory the initial run 
+  if run == "None":  run = firstrun
+  if run == "None":
+     msg="Error: This is a NEW Workflow so it's compulsory to provide an initial Run number! You can: \n a) use the --run option \n b) set FirstRun in the RequestInjector configuration block in $PRODAGENT_CONFIG"
+     print msg
+     sys.exit(1)
+  ms.publish("RequestInjector:SetWorkflow", workflow)
+  ms.commit()
+  time.sleep(0.1)
+  ms.publish("RequestInjector:SetInitialRun", str(run))
   ms.commit()
 
 
@@ -107,7 +161,7 @@ ms.publish("RequestInjector:NewDataset",'')
 ms.commit()
 
 ## Loop over jobs
-if run != None:
+if run != "None":
   runcomment=" run %s"%str(run)
 else:
   runcomment=" last run for %s "%workflowBase
