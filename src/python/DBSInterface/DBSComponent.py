@@ -304,6 +304,21 @@ class DBSComponent:
                 logging.error("Details: %s" % str(ex))
                 return
 
+        if event == "DBSInterface:MigrateBlockToGlobal":
+            #logging.info("DBSInterface:MigrateBlockToGlobal Event %s"% payload)
+            try:
+                self.MigrateBlockToGlobal(payload)
+                return
+            except DBSWriterError, ex:
+                logging.error("Failed to MigrateBlockToGlobal: %s" % payload)
+            except DBSReaderError, ex:
+                logging.error("Failed to MigrateBlockToGlobal: %s" % payload)
+            except StandardError, ex:
+                logging.error("Failed to MigrateBlockToGlobal")
+                logging.error("Details: %s" % str(ex))
+                return
+
+
         if event == "DBSInterface:SetCloseBlockSize":
             #logging.info("DBSInterface:SetCloseBlockSize Event %s"% payload)
             self.args['CloseBlockSize']=payload
@@ -477,6 +492,7 @@ class DBSComponent:
                   for BlockName in MigrateBlockList:
                      datasetPath= dbswriter.reader.blockToDatasetPath(BlockName)
                      self.MigrateBlock(datasetPath, [BlockName])
+                     #self.MigrateBlockToGlobal(BlockName)
                   #self.MigrateBlock(datasetPath, MigrateBlockList )
 
                # FIXME:
@@ -521,7 +537,7 @@ class DBSComponent:
         # // Find all the blocks of the dataset
         #//
         LocalDBSurl=self.args['DBSURL']
-        reader = DBSReader(LocalDBSurl)
+        reader = DBSReader(LocalDBSurl,level='ERROR')
         #
         # Close the not empty blocks that are still open:
         #
@@ -534,6 +550,22 @@ class DBSComponent:
         #//
         MigrateBlockList = reader.listFileBlocks(datasetPath, onlyClosedBlocks = True)
         self.MigrateBlock(datasetPath, MigrateBlockList)
+
+    def MigrateBlockToGlobal(self,BlockName):
+       """
+        Migrate the block to Global DBS.
+       """
+       LocalDBSurl=self.args['DBSURL']
+       writer  = DBSWriter(LocalDBSurl,level='ERROR')
+       #
+       # Get the datasetPath the block belong to
+       #
+       datasetPath= writer.reader.blockToDatasetPath(BlockName)
+       #
+       # Migrate the block, closing it 
+       #
+       writer.manageFileBlock(BlockName,maxFiles=1)
+       self.MigrateBlock(datasetPath, [BlockName])
 
 
     def CloseBlock(self,fileBlockName):
@@ -735,6 +767,7 @@ class DBSComponent:
         self.ms.subscribeTo("JobSuccess")
         self.ms.subscribeTo("DBSInterface:RetryFailures")
         self.ms.subscribeTo("DBSInterface:MigrateDatasetToGlobal")
+        self.ms.subscribeTo("DBSInterface:MigrateBlockToGlobal")
         self.ms.subscribeTo("DBSInterface:SetCloseBlockSize")
         self.ms.subscribeTo("DBSInterface:SetCloseBlockFiles")
         self.ms.subscribeTo("DBSInterface:CloseBlock")
