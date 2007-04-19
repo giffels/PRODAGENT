@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.20 $"
-__revision__ = "$Id: releaseValidation.py,v 1.20 2006/12/19 14:02:19 afanfani Exp $"
+__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: releaseValidation.py,v 1.21 2006/12/28 22:50:18 evansde Exp $"
 
 
 import os
@@ -20,14 +20,10 @@ import popen2
 import time
 import re
 
-from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-from ProdCommon.MCPayloads.LFNAlgorithm import unmergedLFNBase, mergedLFNBase
-from ProdCommon.MCPayloads.RelValSpec import getRelValSpecForVersion, listAllVersions
-from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
-from MessageService.MessageService import MessageService
-from ProdCommon.MCPayloads.DatasetExpander import splitMultiTier
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
-import ProdCommon.MCPayloads.UUID as MCPayloadsUUID
+from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
+from ProdCommon.MCPayloads.RelValSpec import getRelValSpecForVersion, listAllVersions
+from MessageService.MessageService import MessageService
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
          'subpackage=', 'alltests', "site-pref=", "sites=", "no-recreate",
@@ -35,22 +31,23 @@ valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
          'pileup-dataset=', 'pileup-files-per-job=',
          'data-dir=', 'create-workflows-only',
          'category=',
+         'local-checkout='
 
          ]
 
-usage = "Usage: releaseValdidation.py --url=<Spec XML URL>\n"
-usage += "                            --version=<CMSSW version to be used>\n"
-usage += "                            --relvalversion=<comma separated list  of versions to be used in spec file>\n"
-usage += "                            --events=<events per job>\n"
-usage += "                            --run=<first run number>\n"
-usage += "                            --cvs-tag=<CVS Tag of cfg files if not same as version>\n"
-usage += "                            --fake-hash\n"
-usage += "                            --no-recreate\n"
-usage += "                            --site-pref=<Site Name>\n"
-usage += "                            --sites=<comma seperated list of sites to run relval at>\n"
-usage += "                            --alltests\n"
-usage += "                            --cvs-tag=<CVS Tag of cfg files if not same as version>\n"
-
+usage = "Usage: releaseValidation.py --url=<Spec XML URL>\n"
+usage += "                           --version=<CMSSW version to be used>\n"
+usage += "                           --relvalversion=<comma separated list  of versions to be used in spec file>\n"
+usage += "                           --events=<events per job>\n"
+usage += "                           --run=<first run number>\n"
+usage += "                           --cvs-tag=<CVS Tag of cfg files if not same as version>\n"
+usage += "                           --fake-hash\n"
+usage += "                           --no-recreate\n"
+usage += "                           --site-pref=<Site Name>\n"
+usage += "                           --sites=<comma seperated list of sites to run relval at>\n"
+usage += "                           --alltests\n"
+usage += "                           --cvs-tag=<CVS Tag of cfg files if not same as version>\n"
+usage += "                           --local-checkout=<location of the cfg file: yourPath/CMSSW_1_X_X/src>\n"
 
 
 usage += "    Test mode Options:\n"
@@ -87,6 +84,10 @@ relvalVersions = []
 allTests = False
 category = "RelVal"
 timestamp = int(time.time())
+requestId = "%s"%timestamp
+label="RelVal"
+physicsGroup = label
+channel = None
 eventsPerJob = 100
 run = 5000
 subpackage = "ReleaseValidation"
@@ -98,18 +99,19 @@ siteList = []
 sitePref = None
 noRecreate = False
 dataDir = "data"
+localCheckout = None
 
-pileupDataset = None
+pileupDS = None
 pileupFilesPerJob = 1
 
+#
+# hardcode DBS URL
+#
 globalDBS = {
-    "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
-    "DBSAddress": "MCGlobal/Writer",
-    "DBSType": "CGI",
-    "DLSAddress" : "prod-lfc-cms-central.cern.ch/grid/cms/DLS/LFC",
-    "DLSType" : "DLS_TYPE_DLI",
-    
+    "DBSURL": "https://cmsdbsprod.cern.ch:8443/cms_dbs_int_global_writer/servlet/DBSServlet",
     }
+dbsUrl = globalDBS['DBSURL']
+
 # for RelVal assume the PU is at the sites to run on:  
 pileupSkipLocation = True 
 
@@ -159,7 +161,7 @@ for opt, arg in opts:
     if opt == "--site-pref":
         sitePref = arg
     if opt == '--pileup-dataset':
-        pileupDataset = arg
+        pileupDS = arg
     if opt == '--pileup-files-per-job':
         pileupFilesPerJob = arg
     if opt == '--data-dir':
@@ -168,6 +170,8 @@ for opt, arg in opts:
         workflowsOnly = True
     if opt == '--category':
         category = arg
+    if opt == '--local-checkout':
+        localCheckout = arg
 
 if xmlFile == None:
     msg = "--url option not provided: This is required"
@@ -176,6 +180,12 @@ if xmlFile == None:
 if version == None:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
+
+if localCheckout != None:
+    if not os.path.exists(localCheckout):
+        msg = "Local checkout directory not found:\n"
+        msg += "%s\n" % localCheckout
+        raise RuntimeError, msg
 
 if not allTests:
     if relvalVersions == []:
@@ -209,13 +219,23 @@ if relValSpec == None:
 summaryJobs = 0
 summaryEvents = 0
 
+selectionEfficiency = None
 
 for relTest in relValSpec:
     prodName = relTest['Name']
-    prodName = prodName.replace("RelVal", "RelVal%s" % reduceVersion(version) )
-    prodName = prodName.replace("PhysVal", "PhysVal%s" % reduceVersion(version) )
-    prodName = prodName.replace("HLTVal", "HLTVal%s" % reduceVersion(version) )
+    prodName = prodName.replace("RelVal", "RelVal%s" % reduceVersion(version))
+    prodName = prodName.replace("PhysVal", "PhysVal%s" % reduceVersion(version))
+    prodName = prodName.replace("HLTVal", "HLTVal%s" % reduceVersion(version))
+    prodName = prodName.replace("SVSuite", "SVSuite%s" % reduceVersion(version))
     cfgFile = os.path.join(os.getcwd(), "%s.cfg" % prodName)
+    ## set channel   
+    channel = prodName
+    ## set label
+    if prodName.count("RelVal"): label="RelVal"
+    if prodName.count("PhysVal"): label="PhysVal"
+    if prodName.count("HLTVal"): label="HLTVal"
+    if prodName.count("SVSuite"): label="SVSuite"
+    ## FIXME: set physicgroup to label as well when those group will be defined in DBS2
 
     numberOfJobs = int( int(relTest['Events']) / eventsPerJob) + 1
     eventCount = eventsPerJob
@@ -224,30 +244,37 @@ for relTest in relValSpec:
         efficiency = float(relTest['FractionSelected'])
         eventCount = int(eventCount / efficiency) + 1
         print " ==>Selection Efficiency Found: %s " % efficiency
-        print " ==>Events Per Job Adjusted To: %s" % eventCount
-    urlBase = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/*checkout*/CMSSW/Configuration/%s/%s/" % (subpackage, dataDir)
-    #urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/%s/%s/" 
-    #urlBase = "http://cmsdoc.cern.ch/swdev/viewcvs/viewcvs.cgi/*checkout*/CMSSW/Configuration/%s/%s/" % (subpackage, dataDir)
+        ## set selectionEfficiency in workflow : recomputing events done in PA interanlly
+        selectionEfficiency = efficiency        
+        #print " ==>Events Per Job Adjusted To: %s" % eventCount
 
+    if localCheckout == None:
+        urlBase = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/*checkout*/CMSSW/Configuration/%s/%s/" % (subpackage, dataDir)
+    else:
+        urlBase = "%s/Configuration/%s/%s/" % (localCheckout, subpackage, dataDir)
+  
     cfgUrl = "%s%s" % (urlBase, relTest['CfgUrl'])
+
 ## replace restriction only_with_tag with rev :
-#    cfgUrl += "?only_with_tag=%s" % cvsTag
-    cfgUrl += "?rev=%s" % cvsTag   
-    print "AFAF cfgUrl %s"%cfgUrl
+    if localCheckout == None:
+        cfgUrl += "?rev=%s" % cvsTag   
+        print " cfgUrl %s"%cfgUrl
 
     if not noRecreate:
-        wgetCommand = "wget %s -O %s" % (cfgUrl, cfgFile)
-        pop = popen2.Popen4(wgetCommand)
-        while pop.poll() == -1:
+        if localCheckout == None:
+            wgetCommand = "wget %s -O %s" % (cfgUrl, cfgFile)
+            pop = popen2.Popen4(wgetCommand)
+            while pop.poll() == -1:
+                exitStatus = pop.poll()
             exitStatus = pop.poll()
-        exitStatus = pop.poll()
-        if exitStatus:
-            msg = "Error creating retrieving cfg file: %s\n" % cfgUrl
-            msg += pop.fromchild.read()
-            raise RuntimeError, msg
-
-
-   
+            if exitStatus:
+                msg = "Error creating retrieving cfg file: %s\n" % cfgUrl
+                msg += pop.fromchild.read()
+                raise RuntimeError, msg
+        else:
+            print "Local checkout used:"
+            print " .cfg file source: %s" % cfgUrl
+            os.system("/bin/cp %s %s" % (cfgUrl, cfgFile))
     
     if testRetrievalMode:
         print "Test Retrieval Mode:"
@@ -314,143 +341,52 @@ for relTest in relValSpec:
     #  // 
     # // Create a new WorkflowSpec and set its name
     #//
-    spec = WorkflowSpec()
-    spec.setWorkflowName(prodName)
-    spec.setRequestCategory(category)
-    spec.setRequestTimestamp(timestamp)
 
+    #  //
+    # // Instantiate a WorkflowMaker
+    #//
+    maker = WorkflowMaker(requestId, channel, label )
 
-    cmsRun = spec.payload
-    cmsRun.name = "cmsRun1" # every node in the workflow needs a unique name
-    cmsRun.type = "CMSSW"   # Nodes that are CMSSW based should set the name
-    cmsRun.application["Project"] = "CMSSW" # project
-    cmsRun.application["Version"] = version # version
-    cmsRun.application["Architecture"] = "slc3_ia32_gcc323" # arch (not needed)
-    cmsRun.application["Executable"] = "cmsRun" # binary name
-    cmsRun.configuration = file(pycfgFile).read() # Python PSet file
+    maker.setCMSSWVersion(version)
+    maker.setPhysicsGroup(physicsGroup)
+    maker.setConfiguration(cfgFile, Format = "cfg", Type = "file")
+    maker.setPSetHash(RealPSetHash)
+    maker.changeCategory(category)
 
+    if selectionEfficiency != None:
+      maker.addSelectionEfficiency(selectionEfficiency)
 
     #  //
     # // Pileup??
     #//
-    if pileupDataset != None:
-        puPrimary = pileupDataset.split("/")[1]
-        puTier = pileupDataset.split("/")[2]
-        puProc = pileupDataset.split("/")[3]
-        puDataset = cmsRun.addPileupDataset(puPrimary, puTier, puProc)
-        puDataset['FilesPerJob'] = pileupFilesPerJob
-        puDataset['DBSAddress'] = globalDBS['DBSAddress']
-        puDataset['DBSURL'] = globalDBS['DBSURL']
-        puDataset['DLSType'] = globalDBS['DLSType']
-        puDataset['DLSAddress'] = globalDBS['DLSAddress']
-        if pileupSkipLocation:
-          puDataset['SkipLocation'] = pileupSkipLocation
-    #  //
-    # // Pull all the output modules from the configuration file,
-    #//  treat the output module name as DataTier and AppFamily,
-    #  //since there isnt a standard way to derive these things yet.
-    # //    
-    #//  For each module a dataset declaration is created in the spec
-    cfgInt = CfgInterface(cmsRun.configuration, True)
-    datasetList = []
-    for outModName, val in cfgInt.outputModules.items():
-        #  //
-        # // Check for Multi Tiers.
-        #//  If Output module contains - characters, we split based on it
-        #  //And create a different tier for each basic tier
-        # //
-        #//
-        datasets = val.datasets()
-        for outDataset in datasets:
-            dataTier = outDataset['dataTier']
+    if pileupDS != None:
+      maker.addPileupDataset( pileupDS, pileupFilesPerJob)
 
-            processedDS = "%s-%s-%s-unmerged" % (
-                cmsRun.application['Version'], outModName, timestamp)
+    if dbsUrl != None:
+      maker.workflow.parameters['DBSURL'] = dbsUrl
 
-            if outDataset.has_key("processedDataset"):
-                processedDS = outDataset['processedDataset']
-
-            primaryName = prodName
-            if outDataset.has_key("primaryDataset"):
-                primaryName = outDataset['primaryDataset']
-        
-
-            outDS = cmsRun.addOutputDataset(primaryName, 
-                                            processedDS,
-                                            outModName)
-                                        
-            outDS['DataTier'] = dataTier
-            outDS["ApplicationName"] = cmsRun.application["Executable"]
-            outDS["ApplicationProject"] = cmsRun.application["Project"]
-            outDS["ApplicationVersion"] = cmsRun.application["Version"]
-            outDS["ApplicationFamily"] = outModName
-            if fakeHash:
-                guid = MCPayloadsUUID.uuidgen()
-                if guid == None:
-                    guid = MCPayloadsUUID.uuid()
-                hashValue = "hash=%s;guid=%s" % (RealPSetHash, guid)
-                outDS['PSetHash'] = hashValue
-            else:
-                outDS['PSetHash'] = RealPSetHash
-            datasetList.append(outDS.name())
-        
-##        tierList = splitMultiTier(outModName)    
-##        for dataTier in tierList:
-##            processedDS = "%s-%s-%s-unmerged" % (
-##                cmsRun.application['Version'], outModName, timestamp)
-##            outDS = cmsRun.addOutputDataset(prodName, 
-##                                            processedDS,
-##                                            outModName)
-##            outDS['DataTier'] = dataTier
-##            outDS["ApplicationName"] = cmsRun.application["Executable"]
-##            outDS["ApplicationProject"] = cmsRun.application["Project"]
-##            outDS["ApplicationVersion"] = cmsRun.application["Version"]
-##            outDS["ApplicationFamily"] = outModName
-##            if fakeHash:
-##                guid = MCPayloadsUUID.uuidgen()
-##                if guid == None:
-##                    guid = MCPayloadsUUID.uuid()
-##                hashValue = "hash=%s;guid=%s" % (RealPSetHash, guid)
-##                outDS['PSetHash'] = hashValue
-##            else:
-##                outDS['PSetHash'] = RealPSetHash
-##                outDS['PSetHash'] = PSetHashValue
-##            datasetList.append(outDS.name())
-    
-    stageOut = cmsRun.newNode("stageOut1")
-    stageOut.type = "StageOut"
-    stageOut.application["Project"] = ""
-    stageOut.application["Version"] = ""
-    stageOut.application["Architecture"] = ""
-    stageOut.application["Executable"] = "RuntimeStageOut.py" # binary name
-    stageOut.configuration = ""
-    
-    mergedLFNBase(spec)
-    unmergedLFNBase(spec)
-
-
+    spec = maker.makeWorkflow()
+    workflowBase = "%s-Workflow.xml" % maker.workflowName
+    workflow = os.path.join(os.getcwd(), workflowBase)
 
     # use MessageService
     ms = MessageService()
     # register message service instance as "Test"
     ms.registerAs("Test")
     
-    workflowBase = "%s-Workflow.xml" % prodName
-    workflow = os.path.join(os.getcwd(), workflowBase)
-
-
-
 
     if not noRecreate:
-        spec.save("%s-Workflow.xml" % prodName)
+        spec.save("%s-Workflow.xml" % maker.workflowName)
 
-
-        print "Created: %s-Workflow.xml" % prodName
+        print "Created: %s-Workflow.xml" % maker.workflowName
         print "Created: %s " % pycfgFile
         print "From Tag: %s Of %s " % (cvsTag, cfgFile )
         print "Output Datasets:"
-        for item in datasetList:
-            print " ==> %s" % item
+        [ sys.stdout.write(
+          "/%s/%s/%s\n" % (
+          x['PrimaryDataset'],
+          x['ProcessedDataset'],
+          x['DataTier'])) for x in spec.outputDatasets()]
 
         if not workflowsOnly:
             # Set Workflow and NewDataset
@@ -464,7 +400,7 @@ for relTest in relValSpec:
     
 
     else:
-        print "Using: %s-Workflow.xml" % prodName
+        print "Using: %s-Workflow.xml" % maker.workflowName
 
         
     if workflowsOnly:
