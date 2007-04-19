@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.21 $"
-__revision__ = "$Id: releaseValidation.py,v 1.21 2006/12/28 22:50:18 evansde Exp $"
+__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: releaseValidation.py,v 1.22 2007/04/19 13:53:29 afanfani Exp $"
 
 
 import os
@@ -24,6 +24,8 @@ import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
 from ProdCommon.MCPayloads.RelValSpec import getRelValSpecForVersion, listAllVersions
 from MessageService.MessageService import MessageService
+import ProdCommon.MCPayloads.DatasetConventions as DatasetConventions
+
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
          'subpackage=', 'alltests', "site-pref=", "sites=", "no-recreate",
@@ -31,7 +33,8 @@ valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
          'pileup-dataset=', 'pileup-files-per-job=',
          'data-dir=', 'create-workflows-only',
          'category=',
-         'local-checkout='
+         'local-checkout=',
+         'use-input-dataset'
 
          ]
 
@@ -48,6 +51,7 @@ usage += "                           --sites=<comma seperated list of sites to r
 usage += "                           --alltests\n"
 usage += "                           --cvs-tag=<CVS Tag of cfg files if not same as version>\n"
 usage += "                           --local-checkout=<location of the cfg file: yourPath/CMSSW_1_X_X/src>\n"
+usage += "                           --use-input-dataset= <datasetPath of the input dataset>\n"
 
 
 usage += "    Test mode Options:\n"
@@ -100,6 +104,11 @@ sitePref = None
 noRecreate = False
 dataDir = "data"
 localCheckout = None
+useInputDataset = False
+
+inputDataset = None
+splitType = None
+splitSize = None
 
 pileupDS = None
 pileupFilesPerJob = 1
@@ -107,10 +116,10 @@ pileupFilesPerJob = 1
 #
 # hardcode DBS URL
 #
-globalDBS = {
+inputDBSDLS = {
     "DBSURL": "https://cmsdbsprod.cern.ch:8443/cms_dbs_int_global_writer/servlet/DBSServlet",
     }
-dbsUrl = globalDBS['DBSURL']
+dbsUrl = inputDBSDLS['DBSURL']
 
 # for RelVal assume the PU is at the sites to run on:  
 pileupSkipLocation = True 
@@ -172,6 +181,8 @@ for opt, arg in opts:
         category = arg
     if opt == '--local-checkout':
         localCheckout = arg
+    if opt == '--use-input-dataset':
+        useInputDataset = True
 
 if xmlFile == None:
     msg = "--url option not provided: This is required"
@@ -247,6 +258,20 @@ for relTest in relValSpec:
         ## set selectionEfficiency in workflow : recomputing events done in PA interanlly
         selectionEfficiency = efficiency        
         #print " ==>Events Per Job Adjusted To: %s" % eventCount
+
+    # Input dataset related variables taken from XML
+    if useInputDataset:
+        if relTest.get("InputDataset", None) == None:
+            msg = "You must have InputDataset"
+            print msg
+            sys.exit(1)
+        else:                                                                                    
+            inputDataset = relTest['InputDataset']
+            ## set the channel to the primary dataset of inputDataset
+            channel = DatasetConventions.parseDatasetPath(inputDataset)['Primary']
+            splitType="event"
+            splitSize=eventCount
+
 
     if localCheckout == None:
         urlBase = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/*checkout*/CMSSW/Configuration/%s/%s/" % (subpackage, dataDir)
@@ -365,6 +390,14 @@ for relTest in relValSpec:
     if dbsUrl != None:
       maker.workflow.parameters['DBSURL'] = dbsUrl
 
+    #  //
+    # // Input Dataset
+    #//
+    if useInputDataset:
+       maker.addInputDataset(inputDataset)
+       maker.inputDataset['SplitType'] = splitType
+       maker.inputDataset['SplitSize'] = splitSize
+
     spec = maker.makeWorkflow()
     workflowBase = "%s-Workflow.xml" % maker.workflowName
     workflow = os.path.join(os.getcwd(), workflowBase)
@@ -381,6 +414,9 @@ for relTest in relValSpec:
         print "Created: %s-Workflow.xml" % maker.workflowName
         print "Created: %s " % pycfgFile
         print "From Tag: %s Of %s " % (cvsTag, cfgFile )
+        if useInputDataset:
+          print "Input Dataset: %s " % inputDataset
+          print "  ==> Will be split by %s in increments of %s" % (splitType, splitSize)
         print "Output Datasets:"
         [ sys.stdout.write(
           "/%s/%s/%s\n" % (
@@ -390,13 +426,21 @@ for relTest in relValSpec:
 
         if not workflowsOnly:
             # Set Workflow and NewDataset
-            ms.publish("RequestInjector:SetWorkflow", workflow)
-            ms.publish("RequestInjector:SelectWorkflow", workflowBase)
-            ms.publish("RequestInjector:SetInitialRun", str(run))
-            ms.commit()
-            time.sleep(1)
-            ms.publish("RequestInjector:NewDataset",'')
-            ms.commit()
+            if useInputDataset:
+                ms.publish("DatasetInjector:SetWorkflow", workflow)
+                ms.publish("DatasetInjector:SelectWorkflow", workflowBase)
+                ms.commit()
+                time.sleep(1)
+                ms.publish("NewDataset", workflow)
+                ms.commit()
+            else:
+                ms.publish("RequestInjector:SetWorkflow", workflow)
+                ms.publish("RequestInjector:SelectWorkflow", workflowBase)
+                ms.publish("RequestInjector:SetInitialRun", str(run))
+                ms.commit()
+                time.sleep(1)
+                ms.publish("RequestInjector:NewDataset",'')
+                ms.commit()
     
 
     else:
@@ -405,14 +449,15 @@ for relTest in relValSpec:
         
     if workflowsOnly:
         continue 
-    if sitePref != None:
+    if not useInputDataset:
+     if sitePref != None:
         ms.publish("RequestInjector:SetSitePref", sitePref)
         ms.commit()
-    # Set first run and number of events per job
-    ms.publish("RequestInjector:SelectWorkflow", workflowBase)
-    ms.publish("RequestInjector:SetEventsPerJob", str(eventCount))
-    ms.commit()
-    time.sleep(1)
+     # Set first run and number of events per job
+     ms.publish("RequestInjector:SelectWorkflow", workflowBase)
+     ms.publish("RequestInjector:SetEventsPerJob", str(eventCount))
+     ms.commit()
+     time.sleep(1)
 
 
     # Loop over sites
@@ -421,23 +466,26 @@ for relTest in relValSpec:
         sitesToLoop = siteList
     for siteName in sitesToLoop:
         # Loop over jobs
-        if siteName != None:
+        if not useInputDataset:
+         if siteName != None:
             ms.publish("RequestInjector:SetSitePref", siteName)
             ms.commit()
-
-
-        for i in range(0, numberOfJobs):
+         for i in range(0, numberOfJobs):
             summaryJobs += 1
             summaryEvents += eventsPerJob
             
             time.sleep(1)
             ms.publish("RequestInjector:ResourcesAvailable","none")
             ms.commit()
-
+        else:
+            #AF: ms.publish("DatasetInjector:ReleaseJobs","1000")
+            ms.publish("DatasetInjector:ReleaseJobs","%s"%numberOfJobs)
+            ms.commit()
 
         print "Created Jobs..."
         print "%s jobs being created for workflow: %s" % (numberOfJobs, workflowBase)
         print "Target Site: %s" % siteName
 
-print "Total Jobs Created: %s" % summaryJobs
-print "Total Events for all jobs: %s" % summaryEvents
+if not useInputDataset:
+ print "Total Jobs Created: %s" % summaryJobs
+ print "Total Events for all jobs: %s" % summaryEvents
