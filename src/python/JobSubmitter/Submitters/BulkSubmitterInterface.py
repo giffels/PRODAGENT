@@ -86,17 +86,22 @@ class BulkSubmitterInterface:
         self.applicationVersions = self.primarySpecInstance.listApplicationVersions()
                    
         
-        
         if not self.primarySpecInstance.isBulkSpec():
+            logging.debug("Non Bulk Submission...")
             self.isBulk = False
-            self.toSubmit[jobname] = jobSpecCaches[jobname]
-            self.specFiles[jobname] = "%s/%s-JobSpec.xml" % (
-                jobSpecCaches[jobname], jobname)
-        
+            self.toSubmit.update(jobSpecCaches)
+            nameOfJob = self.primarySpecInstance.parameters['JobName']
+            self.specFiles[nameOfJob] = "%s/%s-JobSpec.xml" % (
+                jobSpecCaches[nameOfJob], nameOfJob)
+            logging.debug("self.toSubmit = %s" % self.toSubmit)
+            logging.debug("self.specFiles = %s" % self.specFiles) 
         else:
+            logging.debug("Non Bulk Submission...")
             self.isBulk = True
             self.toSubmit.update(jobSpecCaches)
             self.specFiles.update(self.primarySpecInstance.bulkSpecs)
+            logging.debug("self.toSubmit = %s" % self.toSubmit)
+            logging.debug("self.specFiles = %s" % self.specFiles)
             
         #  //
         # // Invoke whatever is needed to do the submission

@@ -6,7 +6,7 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.2 2007/02/16 18:47:32 evansde Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.1 2007/03/21 14:34:12 gcodispo Exp $"
 
 import os
 import logging
@@ -37,10 +37,9 @@ class GLiteBulkSubmitter(BulkSubmitterInterface):
     """
     _GLiteBulkSubmitter_
 
-    Globus Universe condor submitter. Generates a simple JDL file
-    and condor_submits it using a dag wrapper and post script to generate
-    a callback to the ProdAgent when the job completes.
-    
+    GLite Bulk Submitter. May use collection or parametric jobs,
+    as selected in the SubmitterPluginConfig.
+    Actual submission is made through BOSS.
 
     """
     def doSubmit(self):
@@ -98,16 +97,22 @@ class GLiteBulkSubmitter(BulkSubmitterInterface):
             self.singleSpecName = \
                  self.singleSpecName[:self.singleSpecName.find('-JobSpec.xml')]
             logging.debug("singleSpecName \"%s\"" % self.singleSpecName)
-            self.bossJobId = BOSSCommands.getIdFromJobName(
-                self.bossCfgDir,self.singleSpecName
-                )
+            try :
+                self.bossJobId = BOSSCommands.getIdFromJobName(
+                    self.bossCfgDir,self.singleSpecName
+                    )
+            except ProdAgentException, ex:
+                raise JSException(str(ex), FailureList = self.toSubmit.keys()) 
             logging.debug("resubmitting \"%s\"" % self.bossJobId)
         else :
-#            logging.debug("mainJobSpecName = %s" % self.mainJobSpecName)
-            self.bossJobId = BOSSCommands.getIdFromJobName(
-                self.bossCfgDir, self.mainJobSpecName
-                )
-            self.bossJobId = self.bossJobId.split('.')[0]
+            try :
+                self.bossJobId = BOSSCommands.getIdFromJobName(
+                    self.bossCfgDir, self.mainJobSpecName
+                    )
+                self.bossJobId = self.bossJobId.split('.')[0]
+            except ProdAgentException, ex:
+                raise JSException(str(ex), FailureList = self.toSubmit.keys())
+#                raise JSException(str(ex), mainJobSpecName = self.mainJobSpecName)
         
         #  //
         # // If already declared (i.e. resubmission), just submit 
@@ -130,18 +135,26 @@ class GLiteBulkSubmitter(BulkSubmitterInterface):
         inpFileJDL = inpFileJDL[:-1]
 
         logging.debug("Declaring to BOSS")
-        self.bossJobId=BOSSCommands.declareBulk(
-            self.bossCfgDir, self.toSubmit, inpFileJDL, self.workingDir , self.workflowName
-          )
+
+        
+        try :
+            self.bossJobId = \
+                           BOSSCommands.declareBulk(
+                self.bossCfgDir, self.toSubmit, inpFileJDL,
+                self.workingDir , self.workflowName
+                )
+        except ProdAgentException, ex:
+            raise JSException(str(ex), FailureList = self.toSubmit.keys())
+#            raise JSException(str(ex), mainJobSpecName = self.mainJobSpecName)
 
         if self.bossJobId != None and self.bossJobId != "":
             logging.debug( "GLITEBulkSubmitter.doSubmit bossJobId = %s" \
                            %self.bossJobId)
         else:
-            raise ProdAgentException("Failed Job Declaration")
+#            raise JSException("Failed Job Declaration", mainJobSpecName = self.mainJobSpecName)
+            raise JSException("Failed Job Declaration", FailureList = self.toSubmit.keys()) 
 
         self.doBOSSSubmit()
-        
         return
     
 
@@ -313,7 +326,8 @@ fi
             logging.debug( "GLITEBulkSubmitter.doSubmit bossJobId = %s" \
                            %self.bossJobId)
         else:
-            raise ProdAgentException("Failed to find Job")
+#            raise JSException("Failed to find Job", mainJobSpecName = self.mainJobSpecName)
+            raise JSException("Failed to find Job", FailureList = self.toSubmit.keys()) 
 
         # proxy check
         logging.info("doBOSSSubmit : proxy check")
@@ -324,7 +338,6 @@ fi
             if output=="0:00:00":
                 #logging.info( "You need a voms-proxy-init -voms cms")
                 logging.error("voms-proxy-init expired")
-                #sys.exit()
         except StandardError,ex:
             #print "You need a voms-proxy-init -voms cms"
             logging.error("voms-proxy-init does not exist")
@@ -332,18 +345,21 @@ fi
             sys.exit()
             
         logging.info("doBOSSSubmit : preparing jdl")
+        
         ## prepare scheduler related file 
         schedulercladfile = "%s/%s_scheduler.clad" % (self.workingDir ,self.workflowName)
         try:
            self.createJDL(schedulercladfile)
         except InvalidFile, ex:
-#           raise ProdAgentException("Failed to createJDL")
+#           raise JSException("Failed to createJDL", mainJobSpecName = self.mainJobSpecName))
            pass
 
 
-
-        logging.info("doBOSSSubmit : submit")
-
+        #  //
+        # // Executing BOSS Submit command
+        #//
+        bossSubmit = ""
+        # // scheduler
         scheduler  = "gliteCollection"
         try:
             scheduler = self.pluginConfig['GLITE']['Scheduler']
@@ -351,11 +367,7 @@ fi
         except:
             logging.info("Missing Scheduler, using gliteCollection")
             pass
-        
-        bossSubmit = BOSSCommands.submit(
-            self.bossJobId, scheduler,self.bossCfgDir
-            )
-
+        # // RTMon
         try:
             if self.pluginConfig['GLITE']['RTMon']!='':
                 bossSubmit+=" -rtmon %s "%self.pluginConfig['GLITE']['RTMon']
@@ -366,11 +378,16 @@ fi
         except:
             bossSubmit+=" -rtmon NONE "
             logging.info("BOSS RTMon not set xx")
-
+        # // submission command
+        bossSubmit = BOSSCommands.submit(
+            self.bossJobId, scheduler,self.bossCfgDir
+            )
         bossSubmit += " -schclassad %s"%schedulercladfile
+
         #  //
         # // Executing BOSS Submit command
         #//
+        logging.debug ("GLITEBulkSubmitter.doSubmit: %s" % bossSubmit)
         output = BOSSCommands.executeCommand(bossSubmit)
         logging.debug ("GLITEBulkSubmitter.doSubmit: %s" % output)
         if output.find("error")>=0:
@@ -379,8 +396,11 @@ fi
                 BOSSCommands.FailedSubmission (
                     self.bossJobId + '.1',self.bossCfgDir
                     )
-            raise ProdAgentException("Submission Failed")
-
+#                raise JSException("Submission Failed", mainJobSpecName = self.mainJobSpecName)
+                raise JSException("Submission Failed", FailureList = self.toSubmit.keys()) 
+            else :
+                raise JSException("Submission Failed", FailureList = self.toSubmit.keys())             
+            # // retrieving submission number
         try:
             resub=output.split("Resubmission number")[1].split("\n")[0].strip()
             logging.debug("resub =%s"%resub)
@@ -389,8 +409,10 @@ fi
         try:
             chainid=(output.split("Scheduler ID for job")[1]).split("is")[0].strip()
         except:
-            raise ProdAgentException("Submission Failed")
+#            raise JSException("Submission Failed", mainJobSpecName = self.mainJobSpecName)
+            raise JSException("Submission Failed", FailureList = self.toSubmit.keys()) 
 
+        # // composing boss jobid
         self.bossJobId=str(self.bossJobId)+"."+chainid+"."+resub
         return 
 
@@ -424,15 +446,16 @@ fi
                 fileuserjdl = open(
                     self.pluginConfig['GLITE']['JDLRequirementsFile'], 'r'
                     )
-                inlines=fileuserjdl.readlines()
-                for inline in inlines :
-                  ## extract the Requirements specified by the user
-                    if inline.find('Requirements') > -1 and inline.find('#') == -1 :
-                        UserReq = inline[ inline.find('=')+2 : inline.find(';') ]  
-                  ## write the other user defined JDL lines as they are
+                cladMap = fileuserjdl.read().strip().split(';')
+                for p in cladMap:
+                    p = p.strip()
+                    if len(p) == 0 or p[0]=='#' :
+                        continue
+                    # extract the Requirements specified by the user
+                    if p.find("Requirements") > 0 :
+                        UserReq = p.split('=')
                     else :
-                        if inline.find('#') != 0 and len(inline) > 1 :
-                            declareClad.write(inline)
+                        declareClad.write(p + ';\n')
                 if UserReq != None :
                     user_requirements=" %s && "%UserReq
             else:

@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.9 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.9 2007/02/15 20:34:01 evansde Exp $"
+__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.10 2007/02/16 18:47:31 evansde Exp $"
 
 import os
 import logging
@@ -222,12 +222,29 @@ class JobSubmitterComponent:
                 CacheMap = specToCacheMap
                 )
         except JSException, ex:
-            msg = "Submission Failed for job %s\n" % jobSpecId
-            msg += str(ex)
-            logging.error(msg)
-            self.ms.publish("SubmissionFailed", jobSpecId)
-            self.ms.commit()
-            return False
+            if ex.data.has_key("FailureList"):
+                for failedId in ex.data['FailureList']:
+                    msg = "Submission Failed for job %s\n" % failedId
+                    msg += str(ex)
+                    logging.error(msg)
+                    self.ms.publish("SubmissionFailed", failedId)
+                    self.ms.commit()
+                return False
+            elif ex.data.has_key("mainJobSpecName"):
+                failedId = ex.data['mainJobSpecName']
+                msg = "Bulk Submission Failed for job %s\n" % failedId
+                msg += str(ex)
+                logging.error(msg)
+                self.ms.publish("SubmissionFailed", failedId)
+                self.ms.commit()
+                return False
+            else:
+                msg = "Submission Failed for job %s\n" % jobSpecId
+                msg += str(ex)
+                logging.error(msg)
+                self.ms.publish("SubmissionFailed", jobSpecId)
+                self.ms.commit()
+                return False
         except ProdAgentException, ex:
             msg = "Submission Failed for job %s\n" % jobSpecId
             msg += str(ex)
