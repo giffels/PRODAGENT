@@ -8,11 +8,8 @@ Tracker for Tier-0 LSF  submissions
 """
 
 import logging
-import subprocess
-import os
-#import datetime
-#import time
-#import signal
+import popen2
+import fcntl, select, sys, os
 
 from CondorTracker.TrackerPlugin import TrackerPlugin
 from CondorTracker.Registry import registerTracker
@@ -25,12 +22,71 @@ import FwkJobRep.ReportState as ReportState
 #//
 LSFGroupName = "/groups/tier0/reconstruction"
 
+def makeNonBlocking(fd):
+    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    try:
+        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NDELAY)
+    except AttributeError:
+	fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
 
 class LSFInterface:
     """
-    Dummy class that acts as a module placeholder for the actual bjobs API
-
+    Bjobs API
     """
+
+    def executeCommand(command):
+        """
+        _executeCommand_
+
+        Util it execute the command provided in a popen object
+
+        """
+        logging.debug("SubmitterInterface.executeCommand:%s" % command)
+
+        child = popen2.Popen3(command, 1) # capture stdout and stderr from command
+        child.tochild.close()             # don't need to talk to child
+        outfile = child.fromchild 
+        outfd = outfile.fileno()
+        errfile = child.childerr
+        errfd = errfile.fileno()
+        makeNonBlocking(outfd)            # don't deadlock!
+        makeNonBlocking(errfd)
+        outdata = errdata = ''
+        outeof = erreof = 0
+        stdoutBuffer = ""
+        while 1:
+            ready = select.select([outfd,errfd],[],[]) # wait for input
+            if outfd in ready[0]:
+                outchunk = outfile.read()
+                if outchunk == '': outeof = 1
+                stdoutBuffer += outchunk
+                sys.stdout.write(outchunk)
+            if errfd in ready[0]:
+                errchunk = errfile.read()
+                if errchunk == '': erreof = 1
+                sys.stderr.write(errchunk)
+            if outeof and erreof: break
+            select.select([],[],[],.1) # give a little time for buffers to fill
+
+        try:
+            exitCode = child.poll()
+        except Exception, ex:
+            msg = "Error retrieving child exit code: %s\n" % ex
+            msg = "while executing command:\n"
+            msg += command
+            logging.error("BulkSubmitterInterface:Failed to Execute Command")
+            logging.error(msg)
+            raise RuntimeError, msg
+        
+        if exitCode:
+            msg = "Error executing command:\n"
+            msg += command
+            msg += "Exited with code: %s\n" % exitCode
+            logging.error("SubmitterInterface:Failed to Execute Command")
+            logging.error(msg)
+            raise RuntimeError, msg
+        return  stdoutBuffer
+
     def bjobs(groupName, specificJobId = None):
         """
         _bjobs_
@@ -45,27 +101,11 @@ class LSFInterface:
 
         """
 
-        checkLSFJobs = "/usr/bin/bjobs -a -w -g /groups/tier0/reconstruction"
+        logging.debug("T0LSFTracker.bjobs: Checking jobs in LSF")
 
-        logging.debug("T0LSFTracker.bjobs: %s" % checkLSFJobs)
+        output = LSFInterface.executeCommand("/usr/bin/bjobs -a -w -g " + LSFGroupName)
 
-        #process = subprocess.Popen([checkLSFJobs], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        output = subprocess.Popen([checkLSFJobs], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()[0]
-
-        #
-        # kill bjobs if not returning after 2 seconds
-        #
-        #start = datetime.datetime.now()
-        #while process.poll() is None:
-        #    time.sleep(0.1)
-        #    now = datetime.datetime.now()
-        #    if (now - start).seconds> 2:
-        #        os.kill(process.pid, signal.SIGKILL)
-        #        os.waitpid(-1, os.WNOHANG)
-        #        return {}
-
-        #logging.debug("T0LSFTracker.bjobs: %s " % process.stdout.read())
-        logging.debug("T0LSFTracker.bjobs: %s " % output)
+        #logging.debug("T0LSFTracker.bjobs: %s " % output)
 
         statusDict = {}
         for line in output.splitlines(False)[1:]:
@@ -83,6 +123,7 @@ class LSFInterface:
         return statusDict
 
     bjobs = staticmethod(bjobs);
+    executeCommand = staticmethod(executeCommand)
 
 
 class LSFStatus:
@@ -109,8 +150,7 @@ class T0LSFTracker(TrackerPlugin):
     def __init__(self):
         TrackerPlugin.__init__(self)
         self.bjobs = {}
-
-    
+        self.cooloff = "00:2:00"
 
 
     def initialise(self):
@@ -302,7 +342,7 @@ class T0LSFTracker(TrackerPlugin):
         if cache == None:
             logging.debug("No JobCache found for Job Spec ID: %s" % jobSpecId)
             return None
-        reportFile = "%s/FrameworkJobReport.xml" % (cache, jobSpecId)
+        reportFile = "%s/FrameworkJobReport.xml" % cache
         if not os.path.exists(reportFile):
             logging.debug("Report File Not Found: %s" % reportFile)
             return None
