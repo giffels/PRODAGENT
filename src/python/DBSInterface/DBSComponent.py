@@ -153,6 +153,7 @@ class DBSComponent:
         self.args.setdefault("BadTMDBInjectfile", None)
         self.args.setdefault("CloseBlockSize", "None")  # No check on fileblock size
         self.args.setdefault("CloseBlockFiles", 100 )        
+        self.args.setdefault("skipGlobalMigration", False )
 
         self.args.update(args)
 
@@ -160,10 +161,14 @@ class DBSComponent:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
 
+        self.skipGlobalMigration = False
+        if str(self.args['skipGlobalMigration']).lower() == "true":
+            self.skipGlobalMigration = True
 
 # use the LoggingUtils
         LoggingUtils.installLogHandler(self)
         logging.info("DBSComponent Started...")
+
 
         #  //
         # // Log Failed FWJobReport registration into DBS
@@ -488,7 +493,7 @@ class DBSComponent:
                #  //
                # //   Trigger Migration of closed Blocks to Global DBS
                #//
-               if len(MigrateBlockList)>0:
+               if len(MigrateBlockList)>0 and not self.skipGlobalMigration:
                   for BlockName in MigrateBlockList:
                      datasetPath= dbswriter.reader.blockToDatasetPath(BlockName)
                      self.MigrateBlock(datasetPath, [BlockName])
