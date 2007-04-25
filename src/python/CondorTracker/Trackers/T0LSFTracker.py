@@ -8,8 +8,12 @@ Tracker for Tier-0 LSF  submissions
 """
 
 import logging
-import popen2
+import subprocess
 import os
+#import datetime
+#import time
+#import signal
+
 from CondorTracker.TrackerPlugin import TrackerPlugin
 from CondorTracker.Registry import registerTracker
 
@@ -19,10 +23,10 @@ import FwkJobRep.ReportState as ReportState
 #  //
 # // LSF Group name for Tier 0 jobs
 #//
-LSFGroupName = "/tier0/reconstruction"
+LSFGroupName = "/groups/tier0/reconstruction"
 
 
-class Placeholder:
+class LSFInterface:
     """
     Dummy class that acts as a module placeholder for the actual bjobs API
 
@@ -33,14 +37,52 @@ class Placeholder:
 
         Query:
           bjobs -g groupName -j + some formatting
-        If a job id is used, then the query is used to get the history for that id
+          If a job id is used, then the query is used to get the history for that id
 
         Returns:
 
         Dictionary of job spec id (from job name attribute) to status
 
         """
-        return {}
+
+        checkLSFJobs = "/usr/bin/bjobs -a -w -g /groups/tier0/reconstruction"
+
+        logging.debug("T0LSFTracker.bjobs: %s" % checkLSFJobs)
+
+        #process = subprocess.Popen([checkLSFJobs], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        output = subprocess.Popen([checkLSFJobs], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()[0]
+
+        #
+        # kill bjobs if not returning after 2 seconds
+        #
+        #start = datetime.datetime.now()
+        #while process.poll() is None:
+        #    time.sleep(0.1)
+        #    now = datetime.datetime.now()
+        #    if (now - start).seconds> 2:
+        #        os.kill(process.pid, signal.SIGKILL)
+        #        os.waitpid(-1, os.WNOHANG)
+        #        return {}
+
+        #logging.debug("T0LSFTracker.bjobs: %s " % process.stdout.read())
+        logging.debug("T0LSFTracker.bjobs: %s " % output)
+
+        statusDict = {}
+        for line in output.splitlines(False)[1:]:
+            linelist = line.rstrip().split()
+            # might have previous version of the same job
+            if ( linelist[6] in statusDict ):
+                # override status if previous version failed
+                if ( statusDict[linelist[6]] == 'EXIT' ):
+                    statusDict[linelist[6]] = linelist[2]
+            else:
+                statusDict[linelist[6]] = linelist[2]
+
+        #logging.info("T0LSFTracker.bjobs: %s" % statusDict)
+
+        return statusDict
+
+    bjobs = staticmethod(bjobs);
 
 
 class LSFStatus:
@@ -50,11 +92,11 @@ class LSFStatus:
     Definition of LSFStatus (Not sure what these actually should be)
 
     """
-    submitted = 1
-    running = 2
-    aborted = 3
-    finished = 4
-    failed = 5
+    submitted = 'PEND'
+    running = 'RUN'
+    aborted = 'EXIT'
+    finished = 'DONE'
+    failed = 'EXIT'
     
 
 class T0LSFTracker(TrackerPlugin):
@@ -78,7 +120,7 @@ class T0LSFTracker(TrackerPlugin):
         Retrieve data from bjobs command
 
         """
-        self.bjobs = Placeholder.bjobs(LSFGroupName)
+        self.bjobs = LSFInterface.bjobs(LSFGroupName)
         logging.debug("Retrieved %s Jobs" % len(self.bjobs))
 
     def updateSubmitted(self, *submitted):
@@ -104,8 +146,8 @@ class T0LSFTracker(TrackerPlugin):
             #  //
             # // if status is still None => check lsf history
             #//
-            if status == None:    
-                status = Placeholder.bjobs(LSFGroupName, subId).get(subId, None)
+            #if status == None:    
+                #status = LSFInterface.bjobs(LSFGroupName, subId).get(subId, None)
 
             #  //
             # // If status still None, declare job lost/failed
@@ -166,8 +208,8 @@ class T0LSFTracker(TrackerPlugin):
             #  //
             # // if status is still None => check lsf history
             #//
-            if status == None:    
-                status = Placeholder.bjobs(LSFGroupName, runId).get(runId, None)
+            #if status == None:    
+                #status = LSFInterface.bjobs(LSFGroupName, runId).get(runId, None)
 
             #  //
             # // If status still None, declare job lost/failed
