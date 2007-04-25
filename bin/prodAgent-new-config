@@ -170,6 +170,7 @@ componentFields = {
     # Local DBS settings come from LocalDBS core block 
     "CloseBlockSize" : None,
     "CloseBlockFiles": 100,
+    "skipGlobalMigration" : "False",
     "RssFeed": "no",
     },
 
