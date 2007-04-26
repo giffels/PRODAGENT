@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.12 2007/01/18 18:43:34 evansde Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.13 2007/02/15 16:31:50 evansde Exp $"
+__version__ = "$Revision: 1.13 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -180,6 +180,9 @@ class DatasetInjectorComponent:
 
         self.ms.publish("NewWorkflow", workflowPath)
         self.ms.commit()
+        self.ms.publish("NewDataset", workflowPath)
+        self.ms.commit()
+
         
         return
 
