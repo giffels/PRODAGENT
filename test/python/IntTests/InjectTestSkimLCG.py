@@ -107,9 +107,9 @@ else:
 
 time.sleep(2)
 
-## Set New Dataset
-ms.publish("NewDataset",workflow)
-ms.commit()
+## Set New Dataset: that's triggered by the DatasetInjector
+#ms.publish("NewDataset",workflow)
+#ms.commit()
 
 print " Trying to submit %s jobs for workflow %s"%(njobs,workflowName)
 
