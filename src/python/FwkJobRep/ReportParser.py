@@ -13,7 +13,8 @@ from xml.sax import make_parser
 from xml.sax import SAXParseException
 
 from FwkJobRep.FwkJobReport import FwkJobReport
-
+from IMProv.IMProvLoader import loadIMProvFile
+from IMProv.IMProvQuery import IMProvQuery
 
 
 class FwkJobRepHandler(ContentHandler):
@@ -502,16 +503,31 @@ def readJobReport(filename):
     a list of FwkJobReport instances
     
     """
-    handler = FwkJobRepHandler()
-    parser = make_parser()
-    parser.setContentHandler(handler)
+    #handler = FwkJobRepHandler()
+    #parser = make_parser()
+    #parser.setContentHandler(handler)
+    #try:
+    #    parser.parse(filename)
+    #except SAXParseException, ex:
+    #    msg = "Error parsing JobReport File: %s\n" % filename
+    #    msg += str(ex)
+    #    print msg
+    #    return []
+    #print handler.results[0]
+    #return handler.results
+
     try:
-        parser.parse(filename)
-    except SAXParseException, ex:
+        improvDoc = loadIMProvFile(filename)
+    except Exception, ex:
         msg = "Error parsing JobReport File: %s\n" % filename
         msg += str(ex)
         print msg
         return []
-    #print handler.results[0]
-    return handler.results
-
+    result = []
+    reportQ = IMProvQuery("FrameworkJobReport")
+    reportInstances = reportQ(improvDoc)
+    for reportInstance in reportInstances:
+        newReport = FwkJobReport()
+        newReport.load(reportInstance)
+        result.append(newReport)
+    return result

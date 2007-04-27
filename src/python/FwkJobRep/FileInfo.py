@@ -8,6 +8,9 @@ Contains information about a single file as a dictionary
 """
 
 from IMProv.IMProvNode import IMProvNode
+from IMProv.IMProvQuery import IMProvQuery
+
+from ProdCommon.MCPayloads.DatasetInfo import DatasetInfo
 
 class FileInfo(dict):
     """
@@ -63,6 +66,12 @@ class FileInfo(dict):
         # // Checksums include a flag indicating which kind of 
         #//  checksum alg was used.
         self.checksums = {}
+
+        #  //
+        # // Lumi section information
+        #//
+        self.lumisections = []
+        
         
     def addInputFile(self, pfn, lfn):
         """
@@ -88,7 +97,7 @@ class FileInfo(dict):
         the dictionary to be populated
 
         """
-        newDS = {}
+        newDS = DatasetInfo()
         self.dataset.append(newDS)
         return newDS
         
@@ -102,6 +111,32 @@ class FileInfo(dict):
         """
         self.checksums[algorithm] = value
         return
+
+    def addLumiSection(self, lumiSectionNumber,
+                       runNumber):
+        """
+        _addLumiSection_
+
+        Associate this file with a Lumi section.
+
+        If the run number is not in the list of runs, then add it
+
+        """
+        lumiSect = {
+            "LumiSectionNumber" : lumiSectionNumber,
+            "StartEventNumber" : None,
+            "EndEventNumber" : None,
+            "LumiStartTime" : None,
+            "LumiEndTime" : None,
+            "RunNumber" : runNumber,
+            }
+        
+        if (runNumber != None) and (runNumber not in self.runs):
+            self.runs.append(runNumber)
+        self.lumisections.append(lumiSect)
+        return lumiSect
+
+    
     
     def save(self):
         """
@@ -160,11 +195,11 @@ class FileInfo(dict):
         # // Dataset info
         #//
         if not self.isInput:
+            datasets = IMProvNode("Datasets")
+            improvNode.addNode(datasets)
             for datasetEntry in self.dataset:
-                dataset = IMProvNode("Dataset")
-                improvNode.addNode(dataset)
-                for key, val in datasetEntry.items():
-                    dataset.addNode(IMProvNode(key, str(val)))
+                datasets.addNode(datasetEntry.save())
+                
         #  //
         # // Branches
         #//
@@ -173,7 +208,104 @@ class FileInfo(dict):
         for branch in self.branches:
             branches.addNode(IMProvNode("Branch", branch))
 
+
+        #  //
+        # // Lumi Sections
+        #//
+        lumi = IMProvNode("LumiSections")
+        improvNode.addNode(lumi)
+        for lumiSect in self.lumisections:
+            node = IMProvNode("LumiSection")
+            [ node.addNode(
+                IMProvNode(str(x[0]), None, Value = str(x[1]) ))
+              for x in lumiSect.items() if x[1] != None ]
+            lumi.addNode(node)
             
         return improvNode
 
     
+    def load(self, improvNode):
+        """
+        _load_
+
+        Populate this object from the improvNode provided
+
+        """
+        #  //
+        # // Input or Output?
+        #//
+        queryBase = improvNode.name
+        if queryBase == "InputFile":
+            self.isInput = True
+        else:
+            self.isInput = False
+        #  //
+        # // Parameters
+        #//
+        paramQ = IMProvQuery("/%s/*" % queryBase)
+        for paramNode in paramQ(improvNode):
+            if paramNode.name not in self.keys():
+                continue
+            self[paramNode.name] = paramNode.chardata
+
+        
+        #  //
+        # // State
+        #//
+        stateQ = IMProvQuery("/%s/State[attribute(\"Value\")]" % queryBase)
+        self.state = stateQ(improvNode)[-1]
+
+        
+        
+        #  //
+        # // Checksums
+        #//
+        cksumQ = IMProvQuery("/%s/Checksum" % queryBase)
+        for cksum in cksumQ(improvNode):
+            algo = cksum.attrs.get('Algorithm', None)
+            if algo == None: continue
+            self.addChecksum(algo, str(cksum.chardata))
+        
+
+        #  //
+        # // Inputs
+        #//
+        inputFileQ = IMProvQuery("/%s/Inputs/Input" % queryBase)
+        for inputFile in inputFileQ(improvNode):
+            lfn = IMProvQuery("/Input/LFN[text()]")(inputFile)[-1]
+            pfn = IMProvQuery("/Input/PFN[text()]")(inputFile)[-1]
+            self.addInputFile(pfn, lfn)
+
+        #  //
+        # // Datasets
+        #//
+        datasetQ = IMProvQuery("/%s/Datasets/DatasetInfo" % queryBase)
+        for dataset in datasetQ(improvNode):
+            newDataset = self.newDataset()
+            newDataset.load(dataset)
+
+        #  //
+        # // Branches
+        #//
+        branchQ = IMProvQuery("/%s/Branches/Branch[text()]" % queryBase)
+        for branch in branchQ(improvNode):
+            self.branches.append(str(branch))
+
+        #  //
+        # // Runs
+        #//
+        runQ = IMProvQuery("/%s/Runs/Run[text()]" % queryBase)
+        for run in runQ(improvNode):
+            self.runs.append(int(run))
+            
+        #  //
+        # // Lumi Sections
+        #//
+        lumiQ = IMProvQuery("/%s/LumiSections/LumiSection" % queryBase)
+        for lumiSect in lumiQ(improvNode):
+            newLumi = self.addLumiSection(None, None)
+            
+            [ newLumi.__setitem__(x.name, x.attrs['Value'])
+              for x in  lumiSect.children ]
+
+        return

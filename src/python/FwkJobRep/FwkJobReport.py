@@ -11,6 +11,7 @@ manipulating the bits and pieces of it.
 from FwkJobRep.FileInfo import FileInfo
 
 from IMProv.IMProvNode import IMProvNode
+from IMProv.IMProvQuery import IMProvQuery
 
 
 class FwkJobReport:
@@ -36,6 +37,7 @@ class FwkJobReport:
         self.timing = {}
         self.storageStatistics = None
         self.generatorInfo = {}
+
 
     def wasSuccess(self):
         """
@@ -238,4 +240,89 @@ class FwkJobReport:
         """strin representation of instance"""
         return str(self.save())
         
+        
+    def load(self, improvNode):
+        """
+        _load_
+
+        Unpack improvNode into this instance
+
+        """
+        self.name = improvNode.attrs.get("Name", None)
+        self.status = improvNode.attrs.get("Status", None)
+        self.jobSpecId = improvNode.attrs.get("JobSpecID", None)
+        self.jobType = improvNode.attrs.get("JobType", None)
+        self.workflowSpecId =improvNode.attrs.get("WorkflowSpecID", None)
+
+        
+        exitQ = IMProvQuery(
+            "/FrameworkJobReport/ExitCode[attribute(\"Value\")]")
+        exitVals = exitQ(improvNode)
+        if len(exitVals) > 0:
+            self.exitCode = int(exitVals[-1])
+
+        #  //
+        # // Site details
+        #//
+        siteQ = IMProvQuery("/FrameworkJobReport/SiteDetail")
+        [ self.siteDetails.__setitem__(x.name, x.attrs['Value']) 
+          for x in siteQ(improvNode) ]
+        
+        #  //
+        # // output files
+        #//
+        fileQ = IMProvQuery("/FrameworkJobReport/File")
+        for fileEntry in fileQ(improvNode):
+            newFile = self.newFile()
+            newFile.load(fileEntry)
+            
+
+        #  //
+        # // input files
+        #//
+        infileQ = IMProvQuery("/FrameworkJobReport/InputFile")
+        for fileEntry in fileQ(improvNode):
+            newFile = self.newInputFile()
+            newFile.load(fileEntry)
+            
+
+        #  //
+        # // Skipped Events & Files
+        #//
+        skipFileQ = IMProvQuery("/FrameworkJobReport/SkippedFile")
+        skipEventQ = IMProvQuery("/FrameworkJobReport/SkippedEvent")
+
+
+        [ self.addSkippedEvent(int(skipEv.attrs['Run']),
+                               int(skipEv.attrs['Event']))
+          for skipEv in skipEventQ(improvNode)]
+        
+        [ self.addSkippedFile(skipF.attrs['Pfn'], skipF.attrs['Lfn']) 
+          for skipF in skipFileQ(improvNode) ]
+        
+        #  //
+        # // Timing, Storage and generator info
+        #//
+        timingQ = IMProvQuery("/FrameworkJobReport/TimingService/*")
+
+        [ self.timing.__setitem__(x.name, x.attrs['Value'])
+          for x in timingQ(improvNode) ]
+
+        storageQ = IMProvQuery("/FrameworkJobReport/StorageStatistics[text()]")
+        storageInfo = storageQ(improvNode)
+        if len(storageInfo) > 0:
+            self.storageStatistics = storageInfo[-1]
+
+        genQ = IMProvQuery("/FrameworkJobReport/GeneratorInfo/Data")
+        [ self.generatorInfo.__setitem__(x.attrs['Name'], x.attrs['Value'])
+          for x in genQ(improvNode)]
+        
+        errQ = IMProvQuery("/FrameworkJobReport/FrameworkError")
+        errors  = errQ(improvNode)
+        for err in errors:
+            newErr = self.addError(err.attrs['Type'],
+                                   int(err.attrs['ExitStatus']))
+            newErr['Description'] = err.chardata
+        return
+
         
