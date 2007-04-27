@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.23 $"
-__revision__ = "$Id: releaseValidation.py,v 1.23 2007/04/19 18:54:55 afanfani Exp $"
+__version__ = "$Revision: 1.24 $"
+__revision__ = "$Id: releaseValidation.py,v 1.24 2007/04/25 08:20:41 afanfani Exp $"
 
 
 import os
@@ -121,6 +121,7 @@ pileupFilesPerJob = 1
 #    }
 #dbsUrl = inputDBSDLS['DBSURL']
 #
+dbsUrl = None
 
 # for RelVal assume the PU is at the sites to run on:  
 pileupSkipLocation = True 
