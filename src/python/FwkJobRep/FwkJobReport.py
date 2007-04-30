@@ -320,8 +320,9 @@ class FwkJobReport:
         errQ = IMProvQuery("/FrameworkJobReport/FrameworkError")
         errors  = errQ(improvNode)
         for err in errors:
-            newErr = self.addError(err.attrs['Type'],
-                                   int(err.attrs['ExitStatus']))
+            newErr = self.addError(
+                int(err.attrs['ExitStatus']),
+                err.attrs['Type'])
             newErr['Description'] = err.chardata
         return
 
