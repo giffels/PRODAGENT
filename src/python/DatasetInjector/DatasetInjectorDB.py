@@ -181,7 +181,7 @@ def countJobs(ownerId):
     if ownerId == None:
         return 0
     sqlStr = """select COUNT(*) from di_job_queue
-                  where owner_index=%s;""" % ownerId
+                  where owner_index=%s and status=\"new\";""" % ownerId
     
               
     connection = connect()
