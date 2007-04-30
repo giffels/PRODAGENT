@@ -96,7 +96,7 @@ class BulkSubmitterInterface:
             logging.debug("self.toSubmit = %s" % self.toSubmit)
             logging.debug("self.specFiles = %s" % self.specFiles) 
         else:
-            logging.debug("Non Bulk Submission...")
+            logging.debug("Bulk Submission...")
             self.isBulk = True
             self.toSubmit.update(jobSpecCaches)
             self.specFiles.update(self.primarySpecInstance.bulkSpecs)
