@@ -6,7 +6,7 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.1 2007/03/21 14:34:12 gcodispo Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.2 2007/04/24 15:23:48 evansde Exp $"
 
 import os
 import logging
@@ -54,6 +54,10 @@ class GLiteBulkSubmitter(BulkSubmitterInterface):
 
         self.workflowName = self.primarySpecInstance.payload.workflow
         self.mainJobSpecName = self.primarySpecInstance.parameters['JobName']
+        if not self.primarySpecInstance.parameters.has_key('BulkInputSandbox'):
+           msg="There is no BulkInputSandbox defined in the JobSpec. Submission cant go on..."
+           logging.error(msg)
+           return
         self.mainSandbox = \
                    self.primarySpecInstance.parameters['BulkInputSandbox']
         self.mainSandboxName = os.path.basename(self.mainSandbox)
