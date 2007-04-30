@@ -87,6 +87,7 @@ _StandardExitCodeCheck = \
 # Standard CMS Exit Code Remapping 
 if [ "$EXIT_STATUS" -eq "127" ]; then prodAgentFailure 50110; fi
 if [ "$EXIT_STATUS" -eq "126" ]; then prodAgentFailure 50111; fi
+if [ "$EXIT_STATUS" -eq "1" ]; then prodAgentFailure 8004; fi
 
 """
 
