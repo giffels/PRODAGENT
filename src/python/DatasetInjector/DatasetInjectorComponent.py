@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.13 2007/02/15 16:31:50 evansde Exp $"
-__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.14 2007/04/26 13:58:26 afanfani Exp $"
+__version__ = "$Revision: 1.14 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -24,6 +24,8 @@ from MessageService.MessageService import MessageService
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
 from DatasetInjector.DatasetIterator import DatasetIterator
+
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 
 class DatasetInjectorComponent:
@@ -40,6 +42,7 @@ class DatasetInjectorComponent:
         self.args['Logfile'] = None
         self.args['WorkflowCache'] = None
         self.args['QueueJobMode'] = False
+        self.args['BulkTestMode'] = False        
         self.args.update(args)
 
         if self.args['Logfile'] == None:
@@ -49,7 +52,9 @@ class DatasetInjectorComponent:
         self.queueMode = False
         if str(self.args['QueueJobMode']).lower() == "true":
             self.queueMode = True
-            
+        self.bulkTestMode = False
+        if str(self.args['BulkTestMode']).lower() == "true":
+            self.bulkTestMode = True
         self.ms = None
         
         if self.args['WorkflowCache'] == None:
@@ -63,6 +68,7 @@ class DatasetInjectorComponent:
         
         msg = "DatasetInjector Component Started\n"
         msg += " => QueueMode: %s\n" % self.queueMode
+        msg += " => BulkTestMode: %s\n" % self.bulkTestMode
         logging.info(msg)
 
     def __call__(self, event, payload):
@@ -336,22 +342,65 @@ class DatasetInjectorComponent:
         jobDefs = self.iterator.releaseJobs(numJobs)
         logging.debug("Released %s jobs" % len(jobDefs))
         
-        
+
+        bulkSpecs = []
         for jdef in jobDefs:
-            jobSpec = self.iterator(jdef)
-
-            if self.queueMode:
-                logging.debug("Publishing QueueJob: %s" % jobSpec)
-                self.ms.publish("QueueJob", jobSpec)
+          jobSpec = self.iterator(jdef)
+          if jobSpec:
+            if not self.bulkTestMode:
+               if self.queueMode:
+                 logging.debug("Publishing QueueJob: %s" % jobSpec)
+                 self.ms.publish("QueueJob", jobSpec)
+               else:
+                 logging.debug("Publishing CreateJob: %s" % jobSpec)
+                 self.ms.publish("CreateJob", jobSpec)
+                 
+               self.ms.commit()
             else:
-                logging.debug("Publishing CreateJob: %s" % jobSpec)
-                self.ms.publish("CreateJob", jobSpec)
+               if numJobs == 1:
+                    msg = "Cannot Bulk Submit a single job\n"
+                    msg += "When in BulkTestMode, you must provide an"
+                    msg += " int payload > 1\n"
+                    msg += "For the RequestInjector:ResourcesAvailable event"
+                    logging.warning(msg)
+                    return
+               bulkSpecs.append(jobSpec)
 
+        if self.bulkTestMode:
+            firstSpec = bulkSpecs[0]
+            bulkSpecName = "%s.BULK" % firstSpec
+            bulkSpecName = bulkSpecName.replace("file:///", "/")
+            logging.info("Bulk Spec: %s" % bulkSpecName)
+            logging.info("JobSpec()")
+            bulkSpec = JobSpec()
+            logging.debug("bulkSpec.load...")
+            firstSpecName = firstSpec.replace("file:///", "/")
+            if not os.path.exists(firstSpecName):
+                msg = "Primary Spec for Bulk Spec creation not found:\n"
+                msg += "%s\n" % firstSpecName
+                msg += "Cannot construct Bulk Spec"
+                logging.error(msg)
+                return
+            bulkSpec.load(firstSpec)
+            logging.debug("for item...")
+            for item in bulkSpecs:
+                logging.debug ("item %s " % item)
+                specID = os.path.basename(item).replace("-JobSpec.xml", "")
+                bulkSpec.bulkSpecs.addJobSpec(specID, item)
+
+            bulkSpec.save(bulkSpecName)
+            logging.info("Publishing Bulk Spec")
+            if self.queueMode:
+                self.ms.publish("QueueJob", bulkSpecName)
+            else:
+                self.ms.publish("CreateJob", bulkSpecName)
             self.ms.commit()
+            
         self.iterator.save(self.args['WorkflowCache'])
      
         return
-        
+
+
         
 
 
