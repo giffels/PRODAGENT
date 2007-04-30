@@ -6,8 +6,8 @@ General Exception class for JC modules
 
 """
 
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: StageOutError.py,v 1.2 2006/08/01 19:24:56 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: StageOutError.py,v 1.3 2006/08/01 20:03:52 evansde Exp $"
 
 import exceptions
 import inspect
@@ -20,8 +20,7 @@ import sys
 
 ErrorDefinitions = {
     60311 : "GeneralStageOutFailure",
-    60312 : "FileStageOutFailure",
-    60313 : "StageOutInitError",
+    60315 : "StageOutInitError",
     }
 
 
@@ -132,8 +131,8 @@ class StageOutFailure(StageOutError):
     """
     def __init__(self, message, **data):
         StageOutError.__init__(self, message, **data)
-        self.data.setdefault("ErrorCode", 60312)
-        self.data.setdefault("ErrorType", ErrorDefinitions[60312])
+        self.data.setdefault("ErrorCode", 60311)
+        self.data.setdefault("ErrorType", ErrorDefinitions[60311])
         
         sys.stdout.write(str(self))
         sys.stdout.write("\n")
@@ -149,8 +148,8 @@ class StageOutInitError(StageOutError):
     """
     def __init__(self, message, **data):
         StageOutError.__init__(self, message, **data)
-        self.data["ErrorCode"] =  60313
-        self.data["ErrorType"] = ErrorDefinitions[60313]
+        self.data["ErrorCode"] =  60315
+        self.data["ErrorType"] = ErrorDefinitions[60315]
 
         sys.stdout.write(str(self))
         sys.stdout.write("\n")
