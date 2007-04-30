@@ -108,6 +108,7 @@ class PopulateStageOut:
 
         for precomm in precomms:
             exeScript.append(str(precomm))
+        exeScript.append("chmod +x ./RuntimeStageOut.py")
         exeScript.append("./RuntimeStageOut.py")
         for postcomm in postcomms:
             exeScript.append(str(postcomm))
@@ -246,6 +247,7 @@ class NewPopulateStageOut:
 
         for precomm in precomms:
             exeScript.append(str(precomm))
+        exeScript.append("chmod +x ./RuntimeStageOut.py")   
         exeScript.append("./RuntimeStageOut.py")
         for postcomm in postcomms:
             exeScript.append(str(postcomm))
