@@ -12,6 +12,7 @@ import inspect
 import os
 import JobCreator.RuntimeTools.RuntimeStageOut as OldRuntimeStageOut
 import StageOut.RuntimeStageOut as NewRuntimeStageOut
+import StageOut.RuntimeStageOutFailure as RuntimeStageOutFailure
 from MB.FileMetaBroker import FileMetaBroker
 from MB.Persistency import save as saveMetabroker
 from IMProv.IMProvDoc import IMProvDoc
@@ -202,6 +203,17 @@ class NewInsertStageOut:
         taskObject['StageOutFor'] = stageOutFor
         return
 
+_StageOutFailureScript = \
+"""
+EXIT_STATUS=$?
+if [ $EXIT_STATUS -ne 0 ];then
+   echo "Failure to invoke RuntimeStageOut.py: Exit $EXIT_STATUS"
+   echo "Invoking Failure handler"
+   chmod +x ./RuntimeStageOutFailed.py
+   ./RuntimeStageOutFailure.py
+fi
+
+"""
 
 
 class NewPopulateStageOut:
@@ -243,12 +255,22 @@ class NewPopulateStageOut:
         if not os.access(srcfile, os.X_OK):
             os.system("chmod +x %s" % srcfile)
         taskObject.attachFile(srcfile)
-        exeScript = taskObject[taskObject['Executable']]
 
+        #  //
+        # // Failure script
+        #//
+        fsrcfile = inspect.getsourcefile(RuntimeStageOutFailure)
+        if not os.access(fsrcfile, os.X_OK):
+            os.system("chmod +x %s" % fsrcfile)
+        taskObject.attachFile(fsrcfile)
+        
+        exeScript = taskObject[taskObject['Executable']]
+        
         for precomm in precomms:
             exeScript.append(str(precomm))
         exeScript.append("chmod +x ./RuntimeStageOut.py")   
         exeScript.append("./RuntimeStageOut.py")
+        exeScript.append(_StageOutFailureScript )
         for postcomm in postcomms:
             exeScript.append(str(postcomm))
 
