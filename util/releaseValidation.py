@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.25 $"
-__revision__ = "$Id: releaseValidation.py,v 1.25 2007/04/27 11:26:51 afanfani Exp $"
+__version__ = "$Revision: 1.26 $"
+__revision__ = "$Id: releaseValidation.py,v 1.26 2007/04/30 08:37:43 afanfani Exp $"
 
 
 import os
@@ -430,6 +430,7 @@ for relTest in relValSpec:
             # Set Workflow and NewDataset
             if useInputDataset:
                 ms.publish("DatasetInjector:SetWorkflow", workflow)
+                ms.commit()
                 ms.publish("DatasetInjector:SelectWorkflow", workflowBase)
                 ms.commit()
                 #time.sleep(1)
