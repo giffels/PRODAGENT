@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.21 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.21 2007/03/14 17:09:14 evansde Exp $"
+__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.22 2007/04/13 11:53:36 afanfani Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -102,6 +102,10 @@ class ReqInjComponent:
             return
         if event == "RequestInjector:SetInitialRun":
             self.setInitialRun(payload)
+            return
+        if event == "RequestInjector:SetBulkMode":
+            self.setBulkMode()
+            logging.info(" => BulkTestMode: %s\n"% self.bulkTestMode)
             return
         if event == "RequestInjector:StartDebug":
             logging.getLogger().setLevel(logging.DEBUG)
@@ -372,6 +376,17 @@ class ReqInjComponent:
         self.iterator.save(self.args['WorkflowCache'])
         return
 
+    def setBulkMode(self):
+        """
+        _setBulkMode_
+
+        """
+        self.args['BulkTestMode'] = True 
+        self.bulkTestMode = True
+        return
+
+
+
     def loadWorkflows(self):
         """
         _loadWorkflows_
@@ -443,6 +458,7 @@ class ReqInjComponent:
         self.ms.subscribeTo("RequestInjector:SetEventsPerJob")
         self.ms.subscribeTo("RequestInjector:SetInitialRun")
         self.ms.subscribeTo("RequestInjector:SetSitePref")
+        self.ms.subscribeTo("RequestInjector:SetBulkMode")
         self.ms.subscribeTo("RequestInjector:StartDebug")
         self.ms.subscribeTo("RequestInjector:EndDebug")
         self.ms.subscribeTo("AcceptedJob")
