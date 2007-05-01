@@ -25,7 +25,7 @@ def processFrameworkJobReport():
     """
     state = TaskState(os.getcwd())
     state.loadRunResDB()        
-
+    
     state.dumpJobReport()
     
     
@@ -50,19 +50,8 @@ def processFrameworkJobReport():
         print "Generating Job Report by hand..."
         state._JobReport = FwkJobReport()
         
-        
-    
-    
-    
-    #  //
-    # // match files to datasets.
-    #//
-    state.assignFilesToDatasets()
-    state.generateFileStats()
 
-    #  //
-    # // Check Exit Status file, set exit code in job report
-    #//  and set the status of the report accordingly
+    report = state.getJobReport()
     exitCode = state.getExitStatus()
     reportStatus = "Success"
     if exitCode == None:
@@ -72,10 +61,28 @@ def processFrameworkJobReport():
         if exitCode != 0:
             reportStatus = "Failed"
 
+    report.status = reportStatus
+    report.workflowSpecId = state.taskAttrs['WorkflowSpecID']
+    report.jobSpecId = state.taskAttrs['JobSpecID']
+    report.jobType = state.taskAttrs['JobType']
+    if exitCode != None:
+        report.exitCode = exitCode
+    if report.name == None:
+        taskName = state.taskAttrs['Name']
+        report.name = taskName
+        
+    
+    
+    #  //
+    # // match files to datasets.
+    #//
+    state.assignFilesToDatasets()
+    state.generateFileStats()
+
+    
     #  //
     # // Include site details in job report
     #//
-    report = state.getJobReport()
     siteName = "Unknown"
     hostName = socket.gethostname()
     seName = "Unknown"
@@ -105,15 +112,6 @@ def processFrameworkJobReport():
     # // write out updated report
     #//
     
-    report.status = reportStatus
-    report.workflowSpecId = state.taskAttrs['WorkflowSpecID']
-    report.jobSpecId = state.taskAttrs['JobSpecID']
-    report.jobType = state.taskAttrs['JobType']
-    if exitCode != None:
-        report.exitCode = exitCode
-    if report.name == None:
-        taskName = state.taskAttrs['Name']
-        report.name = taskName
     report.write("./FrameworkJobReport.xml")
 
 
