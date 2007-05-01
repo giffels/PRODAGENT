@@ -31,6 +31,7 @@ class FileInfo(dict):
         self.setdefault("Size", None)
         self.setdefault("TotalEvents", None)
         self.setdefault("EventsRead", None)
+        self.setdefault("SEName", None)
 
         #  //
         # // Is this an input or output file?
