@@ -114,6 +114,15 @@ class JobCreatorComponent:
             logging.debug("Set Creator: %s" % payload)
             return
 
+        elif event == "JobCreator:SetGenerator":
+            #  //
+            # // Payload should be name of generator
+            #//
+            self.setGenerator(payload)
+            logging.debug("Set Generator: %s" % payload)
+            return
+
+
         elif event == "JobCreator:StartDebug":
             logging.getLogger().setLevel(logging.DEBUG)
             return
@@ -167,6 +176,18 @@ class JobCreatorComponent:
         """
         self.args['CreatorName'] = creatorName
         return
+
+    def setGenerator(self, generatorName):
+        """
+        _setCreator_
+
+        Allow dynamic changing of Generator plugin. Sets the GeneratorName
+        to the value provided.
+
+        """
+        self.args['GeneratorName'] = generatorName
+        return
+
 
 
     def createJob(self, jobSpecFile):
@@ -411,6 +432,7 @@ class JobCreatorComponent:
         self.ms.subscribeTo("CreateJob")
         self.ms.subscribeTo("NewWorkflow")
         self.ms.subscribeTo("JobCreator:SetCreator")
+        self.ms.subscribeTo("JobCreator:SetGenerator")
         self.ms.subscribeTo("JobCreator:StartDebug")
         self.ms.subscribeTo("JobCreator:EndDebug")
  
