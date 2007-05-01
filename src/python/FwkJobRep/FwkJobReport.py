@@ -265,7 +265,7 @@ class FwkJobReport:
         # // Site details
         #//
         siteQ = IMProvQuery("/FrameworkJobReport/SiteDetail")
-        [ self.siteDetails.__setitem__(x.name, x.attrs['Value']) 
+        [ self.siteDetails.__setitem__(x.attrs['Parameter'], x.attrs['Value']) 
           for x in siteQ(improvNode) ]
         
         #  //
