@@ -265,8 +265,8 @@ class FileInfo(dict):
         for cksum in cksumQ(improvNode):
             algo = cksum.attrs.get('Algorithm', None)
             if algo == None: continue
-            self.addChecksum(algo, str(cksum.chardata))
-        
+            self.addChecksum(str(algo), str(cksum.chardata))
+            
 
         #  //
         # // Inputs
