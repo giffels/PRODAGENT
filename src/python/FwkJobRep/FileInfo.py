@@ -147,9 +147,9 @@ class FileInfo(dict):
         of this object so it can be saved to a file
 
         """
-        if self.isInput:
+        if self.isInput == True:
             improvNode = IMProvNode("InputFile")
-        else:
+        if self.isInput == False:
             improvNode = IMProvNode("File")
         #  //
         # // General keys
@@ -165,7 +165,7 @@ class FileInfo(dict):
         #//
         for key, val in self.checksums.items():
             improvNode.addNode(IMProvNode("Checksum", val, Algorithm = key) )
-
+            
         #  //
         # // State
         #//

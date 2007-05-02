@@ -68,6 +68,7 @@ class FwkJobReport:
         
         """
         fileInfo = FileInfo()
+        self.isInput = False
         self.files.append(fileInfo)
         return fileInfo
 
@@ -80,7 +81,7 @@ class FwkJobReport:
 
         """
         fileInfo = FileInfo()
-        fileInfo.isInput = True
+        fileInfo.isInput = True 
         self.inputFiles.append(fileInfo)
         return fileInfo
 
@@ -171,8 +172,8 @@ class FwkJobReport:
         #  //
         # // Save Input Files
         #//
-        for fileInfo in self.inputFiles:
-            result.addNode(fileInfo.save())
+        for infileInfo in self.inputFiles:
+            result.addNode(infileInfo.save())
 
         #  //
         # // Save Skipped Events
@@ -272,20 +273,19 @@ class FwkJobReport:
         # // output files
         #//
         fileQ = IMProvQuery("/FrameworkJobReport/File")
-        for fileEntry in fileQ(improvNode):
+        fileList = fileQ(improvNode)
+        for fileEntry in fileList:
             newFile = self.newFile()
             newFile.load(fileEntry)
-            
 
         #  //
         # // input files
         #//
         infileQ = IMProvQuery("/FrameworkJobReport/InputFile")
-        for fileEntry in fileQ(improvNode):
-            newFile = self.newInputFile()
-            newFile.load(fileEntry)
-            
-
+        for infileEntry in infileQ(improvNode):
+            newInFile = self.newInputFile()
+            newInFile.load(infileEntry)
+        
         #  //
         # // Skipped Events & Files
         #//

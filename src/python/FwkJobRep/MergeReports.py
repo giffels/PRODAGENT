@@ -40,13 +40,12 @@ def mergeReports(reportFile1, reportFile2):
         raise RuntimeError, msg
 
     reports2 = readJobReport(reportFile2)
-    
     reports1.extend(reports2)
 
+    
     output = IMProvDoc("JobReports")
     for item in reports1:
         output.addNode(item.save())
-
     handle = open(reportFile1, 'w')
     handle.write(output.makeDOMDocument().toprettyxml())
     handle.close()
