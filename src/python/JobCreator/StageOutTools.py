@@ -209,7 +209,7 @@ EXIT_STATUS=$?
 if [ $EXIT_STATUS -ne 0 ];then
    echo "Failure to invoke RuntimeStageOut.py: Exit $EXIT_STATUS"
    echo "Invoking Failure handler"
-   chmod +x ./RuntimeStageOutFailed.py
+   chmod +x ./RuntimeStageOutFailure.py
    ./RuntimeStageOutFailure.py
 fi
 
