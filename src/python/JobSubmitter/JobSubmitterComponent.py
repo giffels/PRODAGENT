@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.10 2007/02/16 18:47:31 evansde Exp $"
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.11 2007/04/24 15:23:48 evansde Exp $"
 
 import os
 import logging
@@ -280,6 +280,17 @@ class JobSubmitterComponent:
         try:
             stateInfo = JobStateInfoAPI.general(jobSpecId)
         except StandardError, ex:
+            #  //
+            # // Error here means JobSpecID is unknown to 
+            #//  JobStates DB.
+            msg = "Error retrieving JobState Information for %s\n" % jobSpecId
+            msg += "Aborting submitting job...\n"
+            msg += str(ex)
+            logging.error(msg)
+            self.ms.publish("SubmissionFailed", jobSpecId)
+            self.ms.commit()
+            return
+        except ProdAgentException, ex:
             #  //
             # // Error here means JobSpecID is unknown to 
             #//  JobStates DB.
