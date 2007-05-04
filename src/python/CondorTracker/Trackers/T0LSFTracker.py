@@ -103,7 +103,10 @@ class LSFInterface:
 
         logging.debug("T0LSFTracker.bjobs: Checking jobs in LSF")
 
-        output = LSFInterface.executeCommand("/usr/bin/bjobs -a -w -g " + LSFGroupName)
+        if ( specificJobId != None ) :
+            output = LSFInterface.executeCommand("/usr/bin/bjobs -a -w -g " + LSFGroupName + " -J " + specificJobId)
+        else :
+            output = LSFInterface.executeCommand("/usr/bin/bjobs -a -w -g " + LSFGroupName)
 
         #logging.debug("T0LSFTracker.bjobs: %s " % output)
 
@@ -183,11 +186,12 @@ class T0LSFTracker(TrackerPlugin):
                 logging.debug(msg)
                 status = self.jobReportStatus(subId)
                 
-            #  //
-            # // if status is still None => check lsf history
             #//
-            #if status == None:    
-                #status = LSFInterface.bjobs(LSFGroupName, subId).get(subId, None)
+            #// if status is still None => check lsf history
+            #//  for right now just check again the single job
+            #//
+            if status == None:
+                status = LSFInterface.bjobs(LSFGroupName, subId).get(subId, None)
 
             #  //
             # // If status still None, declare job lost/failed
