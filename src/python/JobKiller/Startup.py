@@ -25,12 +25,26 @@ except StandardError, ex:
     msg += str(ex)
     raise RuntimeError, msg
 
+#  //
+# // Get BOSS configuration
+#//
+
+try:
+    bossCfg = config.getConfig("BOSS")
+    compCfg['bossConfigDir'] = bossCfg['configDir']
+except StandardError, ex:
+    compCfg['bossConfigDir'] = None
+
+#  //
+# // Set component directory
+#//
 
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 
 #  //
 # // Initialise and start the component
 #//
+
 print "Starting JobKiller Component..."
 createDaemon(compCfg['ComponentDir'])
 component = JobKillerComponent(**dict(compCfg))
