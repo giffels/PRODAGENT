@@ -99,7 +99,7 @@ class T0LSFCreator(CreatorInterface):
         #  //
         # // Command to define CMS_PATH, make scram available etc
         #//
-        swSetupCommand = " export SCRAM_ARCH=slc3_ia32_gcc323 ; source $VO_CMS_SW_DIR/cmsset_default.sh "
+        swSetupCommand = "source $VO_CMS_SW_DIR/cmsset_default.sh "
 
         #  //
         # // If you want to set SCRAM_ARCH, or any other env var,
