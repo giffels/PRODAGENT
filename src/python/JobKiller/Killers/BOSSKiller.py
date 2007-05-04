@@ -110,7 +110,7 @@ class BOSSKiller:
 
         # kill command through BOSS
         try:
-            job.kill("1")
+            job.kill("1", 180)
 
             # archive if requested
             if erase:
@@ -286,6 +286,40 @@ class BOSSKiller:
         """
 
         logging.info("BOSSKiller.killTask(%s)" % taskSpecId)
+
+        # verify that the task exists and it is in killable state
+        # TO BE ADDED
+
+        # update task database if necessary, may be not since the 
+        # TaskTracking component will take care of it
+        # TO BE ADDED
+
+        # get task information from BOSS
+        try:
+            bossSession = BossSession(self.bossConfigDir)
+            task = bossSession.loadByName(taskSpecId)
+            
+            # should be single task
+            if not len(task) == 1:
+                msg = "Cannot get BOSS task information for %s\n" % taskSpecId
+                logging.error(msg)
+                raise JobNotSubmittedException, msg
+
+        # deal with BOSS specific error
+        except (SchedulerError, BossError), err:
+            msg = "Cannot get information for task %s, BOSS error: %s" % \
+                  (taskSpecId, str(err))
+            logging.error(msg)
+            raise Exception, msg
+
+        # get task
+        taskId = task.keys()[0]
+
+        # kill all jobs in task
+        task[taskId].kill("all")
+
+        # remove information from BOSS database
+        task[taskId].archive("all")
 
         return
 
