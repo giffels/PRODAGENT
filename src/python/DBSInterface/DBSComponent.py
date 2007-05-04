@@ -277,6 +277,7 @@ class DBSComponent:
                 return
 
         if event == "PhEDExRetryFailures":
+            self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
             try:
                 self.PhEDExRetryFailures(self.args['BadTMDBInjectfile'],self.BadTMDBInject)
                 return
