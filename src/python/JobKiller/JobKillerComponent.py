@@ -239,6 +239,11 @@ class JobKillerComponent:
                 taskSpecId,
                 )
             logging.error(msg)
+
+            # publish a task killed failed message
+            self.ms.publish("TaskKilledFailed", taskSpecId)
+            self.ms.commit()
+ 
             return
         try:
             killer.killTask(taskSpecId)
@@ -248,6 +253,14 @@ class JobKillerComponent:
             msg += "%s\n" % str(ex)
             logging.error(msg)
 
+            # publish a task killed failed message
+            self.ms.publish("TaskKilledFailed", taskSpecId)
+            self.ms.commit()
+
+            return
+
+        self.ms.publish("TaskKilled", taskSpecId)
+        self.ms.commit()
 
         return
         
