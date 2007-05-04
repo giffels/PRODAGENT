@@ -150,9 +150,18 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         #  //
         # // Submit LSF job
         #//
-        lsfSubmit = "bsub -q 8nm -g /groups/tier0/reconstruction -J %s < %s" % (jobSpec, os.path.join(cacheDir,"lsfsubmit.sh"))
-        logging.debug("T0LSFSubmitter.doSubmit: %s" % lsfSubmit)
-        output = self.executeCommand(lsfSubmit)
+        lsfSubmitCommand = 'bsub -R "type=SLC4_64"'
+        lsfSubmitCommand += ' -q 8nh'
+        lsfSubmitCommand += ' -g /groups/tier0/reconstruction'
+        lsfSubmitCommand += ' -J %s' % jobSpec
+        #lsfSubmitCommand += ' -oo /dev/null'
+        lsfSubmitCommand += ' -oo /afs/cern.ch/user/h/hufnagel/scratch0/logs/%s.lsf.log' % jobSpec
+        #lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
+        #lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
+        lsfSubmitCommand += ' < %s' % os.path.join(cacheDir,"lsfsubmit.sh")
+
+        logging.debug("T0LSFSubmitter.doSubmit: %s" % lsfSubmitCommand)
+        output = self.executeCommand(lsfSubmitCommand)
         logging.info("T0LSFSubmitter.doSubmit: %s " % output)
         
 
@@ -170,31 +179,26 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         #//
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
-                      
+
+        script.append("export SCRAM_ARCH=slc4_ia32_gcc345\n")
+        script.append("export STAGE_SVCCLASS=t0input\n")
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
         for fname  in self.jobInputFiles:
             script.append("rfcp lxgate39.cern.ch:%s . \n" % fname)
-            
+
         if self.isBulk:
             script.extend(bulkUnpackerScript(self.specSandboxName))
         else:
             script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
                           self.singleSpecName)   
             
-        script.append(
-            "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName 
-            )
+        script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
-
-        script.append("echo START ENVIRONMENT\n")
-        script.append("printenv\n")
-        script.append("echo STOP ENVIRONMENT\n")
-        script.append("./run.sh $JOB_SPEC_FILE\n")
-        script.append(
-            "rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s \n" % cacheDir)
+        script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1 \n")
+        script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s \n" % cacheDir)
+        script.append("rfcp ./run.log cmslcgse01:/data1/hufnagel/logs/%s.log\n" % jobName)
         #script.extend(missingJobReportCheck(jobName))
-
 
         handle = open(filename, 'w')
         handle.writelines(script)
