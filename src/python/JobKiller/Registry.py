@@ -42,7 +42,7 @@ def registerKiller(objectRef, name):
 
     return
 
-def retrieveKiller(name):
+def retrieveKiller(name, args):
     """
     _retrieveKiller_
 
@@ -54,8 +54,8 @@ def retrieveKiller(name):
         msg += "No object registered with that name in JobKiller Registry"
         raise RuntimeError, msg
     registeredObject = Registry.KillerRegistry[name]
-   
-    return registeredObject()
+
+    return registeredObject(args)
     
 
 
