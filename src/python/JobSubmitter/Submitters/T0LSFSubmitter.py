@@ -197,7 +197,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         script.append("cd %s\n" % self.workflowName)
         script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1 \n")
         script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s \n" % cacheDir)
-        script.append("rfcp ./run.log cmslcgse01:/data1/hufnagel/logs/%s.log\n" % jobName)
+        script.append("rfcp ./run.log cmslcgse02:/data1/hufnagel/T0/logs/%s.log\n" % jobName)
         #script.extend(missingJobReportCheck(jobName))
 
         handle = open(filename, 'w')
