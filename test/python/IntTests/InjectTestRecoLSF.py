@@ -66,6 +66,7 @@ ms.publish("DatasetInjector:StartDebug","none")
 ms.publish("JobCreator:StartDebug","none")
 ms.publish("JobSubmitter:StartDebug","none")
 ms.publish("DBSInterface:StartDebug","none")
+ms.publish("ErrorHandler:StartDebug","none")
 ms.publish("TrackingComponent:StartDebug","none")
 ms.commit()
 ## Set Creator
