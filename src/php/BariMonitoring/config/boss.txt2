@@ -1,3 +1,0 @@
-> $PRODAGENT_WORKDIR/generic.jdl
-python $PRODAGENT_ROOT/test/python/IntTests/InjectTestLCG.py --workflow=$PRODAGENT_WORKDIR/
-sleep 30; bossAdmin SQL -query "select JOB.ID,TASK_ID,SCHED_ID from JOB ORDER BY TASK_ID DESC,ID DESC LIMIT 1"  -c $PRODAGENT_WORKDIR/BOSS/config | tail -1 | sed "s/.*(https.*)/\1/g"'
