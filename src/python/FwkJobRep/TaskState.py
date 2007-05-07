@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.12 $"
-__revision__ = "$Id: TaskState.py,v 1.12 2006/09/07 21:35:24 evansde Exp $"
+__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: TaskState.py,v 1.13 2007/05/07 06:51:24 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -406,14 +406,14 @@ class TaskState:
                     datasetMap[outModName] = []
                 datasetMap[outModName].append(dataset)
             
-            
         for fileInfo in self._JobReport.files:
             outModLabel = fileInfo.get("ModuleLabel", None)
             if outModLabel == None:
                 continue
             if datasetMap.has_key(outModLabel):
-                datasetForFile = fileInfo.newDataset()
-                datasetForFile.update(datasetMap[outModLabel])
+                for datasetEntry in datasetMap[outModLabel]:
+                    datasetForFile = fileInfo.newDataset()
+                    datasetForFile.update(datasetEntry)
                 msg = "File: %s\n" % fileInfo['LFN']
                 msg += "Produced By Output Module: %s\n" % outModLabel
                 msg += "Associated To Datasets:\n"

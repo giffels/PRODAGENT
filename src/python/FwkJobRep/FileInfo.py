@@ -33,6 +33,8 @@ class FileInfo(dict):
         self.setdefault("EventsRead", None)
         self.setdefault("SEName", None)
         self.setdefault("ModuleLabel", None)
+        self.setdefault("Catalog", None)
+        self.setdefault("OutputModuleClass", None)
         
 
         #  //
