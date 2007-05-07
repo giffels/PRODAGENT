@@ -32,6 +32,8 @@ class FileInfo(dict):
         self.setdefault("TotalEvents", None)
         self.setdefault("EventsRead", None)
         self.setdefault("SEName", None)
+        self.setdefault("ModuleLabel", None)
+        
 
         #  //
         # // Is this an input or output file?
@@ -54,7 +56,7 @@ class FileInfo(dict):
         self.branches = []
 
         #  //
-        # // List of Runs
+]        # // List of Runs
         #//
         self.runs = []
 

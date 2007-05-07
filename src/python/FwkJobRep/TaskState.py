@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: TaskState.py,v 1.11 2006/09/07 21:31:25 evansde Exp $"
+__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: TaskState.py,v 1.12 2006/09/07 21:35:24 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -212,7 +212,15 @@ class TaskState:
         print "======================Dump Job Report======================"
         if os.path.exists(self.jobReport):
             handle = open(self.jobReport, 'r')
-            print handle.read()
+            content = handle.read()
+            handle.close()
+            print content
+            backupCopy = os.path.join(self.dir,
+                                      "FrameworkJobReport-Backup.xml")
+            handle2 = open(backupCopy, 'w')
+            handle2.write(content)
+            handle2.close()
+            
         else:
             print "NOT FOUND: %s" % self.jobReport
         print "======================End Dump Job Report======================"
@@ -404,7 +412,8 @@ class TaskState:
             if outModLabel == None:
                 continue
             if datasetMap.has_key(outModLabel):
-                fileInfo.dataset = datasetMap[outModLabel]
+                datasetForFile = fileInfo.newDataset()
+                datasetForFile.update(datasetMap[outModLabel])
                 msg = "File: %s\n" % fileInfo['LFN']
                 msg += "Produced By Output Module: %s\n" % outModLabel
                 msg += "Associated To Datasets:\n"
