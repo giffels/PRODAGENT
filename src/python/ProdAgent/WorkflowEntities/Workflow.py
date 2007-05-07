@@ -9,7 +9,7 @@ import logging
 
 # do this once during startup:
 offset=0
-increment=500
+increment=50
 
 try:
     config = loadProdAgentConfiguration()

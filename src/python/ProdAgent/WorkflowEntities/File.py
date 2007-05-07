@@ -25,6 +25,7 @@ def register(jobID,fileIDs=[]):
    It will give a warning if it is not part of an allocation and moves on.
 
    """
+   logging.debug("Registering files for job: "+str(jobID))
    sqlStr="""INSERT INTO we_File(id,events_processed,job_id) VALUES"""
    comma=False
    for fileID in fileIDs:
