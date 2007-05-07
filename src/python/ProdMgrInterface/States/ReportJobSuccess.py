@@ -85,10 +85,10 @@ class ReportJobSuccess(StateInterface):
        except Exception,ex:
           logging.debug("WARNING: problem with prodmgr flag setting\n"
               +str(ex)+"\n"
-              +" it might be that this job was generated outside the prodmgr\n"
-              +" If that is the case, do not panic")
-          logging.debug("ProdMgr does nothing with this job")
-          return
+              +" It might be that this job was generated outside the prodmgr.\n"
+              +" If that is the case, do not panic.\n"
+              +" It might be that the cleanup handler removed this job.\n"
+              +" If that is the case, do not panic either we can handle this.")
 
        # remove the job spec file.
        logging.debug("removing job spec file from job: "+str(job_spec_id))

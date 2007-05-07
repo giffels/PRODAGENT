@@ -70,46 +70,42 @@ def cut(job_id,jobCutSize):
     logging.debug("Jobs registered")
     return listOfSpecs 
 
-def cutFile(jobSpecFile,request_id):
+def cutFile(job_ids,jobCutSize,maxJobs):
     global jobSpecDir
-    #NOTE: this needs to be replaced by the official payload package when
-    #NOTE: available.
-    file=open(jobSpecFile,'r')
-    line=file.readline()
-    job_cuts=[]
-    jobSpecID=''
-    while line:
-       if line.find('ENDFILES')>-1:
-          logging.debug('found ENDFILES')
-          jobSpecID=file.readline().split(':')[0]
-          logging.debug('JobSpecID '+str(jobSpecID))
-          break
-       segments=line.split(',')
-       element={}
-       element['id']=segments[0].split(':')[1]
-       filefile=open(jobSpecDir+'/'+element['id']+'_jobCut.xml','w')
-       filefile.write(str(element['id']+'_jobCut'))
-       filefile.close()
-       job_cut={'id':element['id']+'_jobCut',\
-             'spec':jobSpecDir+'/'+element['id']+'_jobCut.xml',\
-             'parent_id':element['id']}
-       job_cuts.append(job_cut)
-       #JobCut.insert([job_cut],element['id'])
-       line=file.readline()
-    # now get the contact url from the jobspec id and register
-    # the cuts as jobs (this is different than event based jobs.
-    #url=Job.getUrl(jobSpecID) 
-    #Job.rm(jobSpecID)
-    #try:
-    #    os.remove(jobSpecFile)
-    #except:
-    #    pass
-    #jobs=[]
-    #for job_cut in job_cuts:
-    #    job={}
-    #    job['jobSpecId']=job_cut['parent_id']
-    #    job['URL']='none'
-    #    jobs.append(job)
-    #Job.insert('active',jobs,request_id,url)
+
+    logging.debug("Job_ids: "+str(job_ids))
+    jobIDs=job_ids.split(',')
+    listOfSpecs=[]
+    for job_id in jobIDs[:-1]:
+        jobDetails=Allocation.get(job_id)['details']
+        logging.debug("Job details: "+str(jobDetails))
+        workflowspec=Workflow.get(job_id.split('_')[1])['workflow_spec_file']
+        job_file=job_id+'.xml'
+        jobSpecFile=jobSpecDir+'/'+job_file
+        Allocation.setAllocationSpecFile(job_id,jobSpecFile)
+        logging.debug("start with local jobspec generation")
+        run_number=int(jobDetails['start_event'])
+        event_count=int(jobDetails['event_count'])
+        # find out how many jobs we want to cut.
+        jobs=int(math.ceil(float(event_count)/float(jobCutSize)))
+        if jobs>maxJobs and maxJobs>0:
+            jobs=maxJobs
+            maxJobs=maxJobs-jobs
+        start_event=run_number
+        EventJobSpec.createJobSpec(job_id,workflowspec,jobSpecFile,run_number,event_count,start_event,False,False)
+        jobSpec= JobSpec()
+        jobSpec.load(jobSpecFile)
+        jobSpec.parameters['ProdMgr']='generated'
+        fileData={}
+        fileData['LFN']=jobDetails['lfn']
+        jobSpec.addAssociatedFiles('fileList', fileData)
+        jobSpec.save(jobSpecFile)
+        job_run_numbers=Workflow.getNewRunNumber(job_id.split('_')[1],jobs)
+        logging.debug("Starting factorization")
+        logging.debug("Writing job cut specs to: "+str(jobSpecDir))
+        listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,job_run_numbers,jobSpec.parameters['EventCount'],\
+            RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
+        logging.debug("Registering job cuts")
+        Job.register(None,job_id,listOfSpecs)
     Session.commit()
-    return job_cuts
+    return listOfSpecs

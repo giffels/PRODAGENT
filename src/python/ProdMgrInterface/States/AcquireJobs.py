@@ -160,6 +160,7 @@ class AcquireJobs(StateInterface):
                  jobSpecIds+=file['jobSpecID']+','
                  total_events+=file['event_count']
               potential_jobs=int(math.ceil(float(total_events)/float(stateParameters['jobCutSize'])))
+              stateParameters['maxJobs']=stateParameters['numberOfJobs']
               stateParameters['numberOfJobs']=stateParameters['numberOfJobs']-potential_jobs
               stateParameters['jobSpecId']=jobSpecIds
            if stateParameters['numberOfJobs']<0:
