@@ -80,8 +80,48 @@ class T0LSFCreator(CreatorInterface):
         Skip this for now.
 
         """
-        
+        self.installMonitor(taskObjectTree)
         return
+
+
+    def installMonitor(self, taskObject):
+        """
+        _installMonitor_
+        
+        Installs shreek monitoring plugins
+        
+        """
+        shreekConfig = taskObject['ShREEKConfig']
+        
+        #  //
+        # // Insert list of plugin modules to be used
+        #//
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
+
+        #  //
+        # // JobTimeout Setup
+        #//  Looks in CreatorPluginConfig.xml
+        #  //
+        # // 	<ConfigBlock Name="JobTimeout">
+ 	#  //		<Parameter Name="UseJobMon" Value="False"/>
+	# //		<Parameter Name="Timeout" Value="360"/>   <<<<< Soft time out (SIGUSR2) in minutes
+        #//             <Parameter Name="HardKillDelay" Value="60"/>    <<<<< Hard time out (SIGKILL) in minutes
+	#  //	</ConfigBlock>
+        # //  After Timeout minutes, the process is sent a SIGUSR2 to try a gentle exit
+        #//   After Timeout + HardKillDelay minute, the process is terminated & the job fails with traceback info generated
+
+        timeoutCfg = self.pluginConfig.get('JobTimeout', {})
+        usingJobTimeout = timeoutCfg.get("UseJobTimeout", "False")
+        if usingJobTimeout.lower() == "true":
+            jobtimeout= shreekConfig.newMonitorCfg()
+            jobtimeout.setMonitorName("bulktimeout-1")
+            jobtimeout.setMonitorType("timeout")
+            jobtimeout.addKeywordArg(
+                 Timeout = timeoutCfg['Timeout'],
+                 HardKillDelay = timeoutCfg['HardKillDelay'])
+            shreekConfig.addMonitorCfg(jobtimeout)
+
+
 
 
     def handleCMSSWTaskObject(self, taskObject):
