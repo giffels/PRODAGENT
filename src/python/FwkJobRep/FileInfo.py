@@ -56,7 +56,7 @@ class FileInfo(dict):
         self.branches = []
 
         #  //
-]        # // List of Runs
+        # // List of Runs
         #//
         self.runs = []
 
