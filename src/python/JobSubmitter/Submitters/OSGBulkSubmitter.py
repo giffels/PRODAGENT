@@ -6,7 +6,7 @@ Globus Universe Condor Submitter implementation.
 
 """
 
-__revision__ = "$Id: OSGBulkSubmitter.py,v 1.2 2007/02/16 18:47:32 evansde Exp $"
+__revision__ = "$Id: OSGBulkSubmitter.py,v 1.3 2007/02/28 22:09:03 evansde Exp $"
 
 import os
 import logging
@@ -181,8 +181,8 @@ class OSGBulkSubmitter(BulkSubmitterInterface):
         # // Generate main executable script for job
         #//
         script = ["#!/bin/sh\n"]
-        script.extend(standardScriptHeader(jobName))
-                      
+        script.extend(standardScriptHeader(jobName, self.workflowName))
+        
 
         if self.isBulk:
             script.extend(bulkUnpackerScript(self.specSandboxName))

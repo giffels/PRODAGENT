@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id:$"
+__revision__ = "$Id: CondorGSubmitter.py,v 1.2 2006/05/02 12:31:14 elmer Exp $"
 
 import os
 
@@ -91,6 +91,9 @@ class CondorGSubmitter(SubmitterInterface):
         jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
         jdl.append("should_transfer_files = YES\n")
         jdl.append("when_to_transfer_output = ON_EXIT\n")
+        jdl.append("log_xml = True\n")
+        jdl.append("+ProdAgent_JobID = \"%s\"\n" % self.parameters['JobName'])
+        jdl.append("+ProdAgent_JobType = \"%s\"\n" % self.parameters['JobSpecInstance'].parameters['JobType'])
         jdl.append("Output = %s-condor.out\n" % jobname)
         jdl.append("Error = %s-condor.err\n" %  jobname)
         jdl.append("Log = %s-condor.log\n" % jobname)

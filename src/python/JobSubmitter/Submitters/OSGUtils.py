@@ -7,21 +7,21 @@ Common utils for OSG jobs
 """
 
 
-def makeErrorReportScript(jobSpecId):
+def makeErrorReportScript(jobSpecId, wfspecid = None):
     
     scriptBase = \
     """
-      echo '<FrameworkJobReport Name=\"%s\" Status=\"Failed\">' > FrameworkJobReport.xml
+      echo '<FrameworkJobReport JobSpecID=\"%s\" Name=\"cmsRun1\" WorkflowSpedID=\"%s\"Status=\"Failed\">' > FrameworkJobReport.xml
       echo '<ExitCode Value=\"60999\"/>' >> FrameworkJobReport.xml
       echo '<FrameworkError ExitStatus=\"60999\" Type=\"NoSpaceOnDevice\">' >> FrameworkJobReport.xml
       echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
       echo "  site=$OSG_SITE_NAME " >> FrameworkJobReport.xml
       echo "</FrameworkError>"  >> FrameworkJobReport.xml
       echo "</FrameworkJobReport>" >> FrameworkJobReport.xml
-    """ % jobSpecId
+    """ % (jobSpecId,  wfspecid)
     return scriptBase
 
-def standardScriptHeader(jobSpecId, minDiskSize=1500000):
+def standardScriptHeader(jobSpecId, wfSpecId, minDiskSize=1500000):
     """
     _standardScriptHeader_
 
@@ -56,7 +56,7 @@ def standardScriptHeader(jobSpecId, minDiskSize=1500000):
     script.append("if [ \"$CHOSEN_WORKDIR\" = \"\" ]; then\n")
     script.append("  echo Insufficient disk space: Found no directory with $MIN_DISK kB in the following list: $DIRS\n")
     script.append("  touch FrameworkJobReport.xml\n")
-    script.append(makeErrorReportScript(jobSpecId))
+    script.append(makeErrorReportScript(jobSpecId, wfSpecId))
     script.append("  exit 1\n")
     script.append("fi\n")
     #script.append("echo CHOSEN_WORKDIR: `$CHOSEN_WORKDIR`\n")

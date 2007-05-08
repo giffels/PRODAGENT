@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGSubmitter.py,v 1.11 2006/11/16 16:46:19 evansde Exp $"
+__revision__ = "$Id: OSGSubmitter.py,v 1.12 2006/11/28 21:58:23 evansde Exp $"
 
 import os
 import logging
@@ -105,6 +105,7 @@ class OSGSubmitter(SubmitterInterface):
         jdl.append("Output = %s-condor.out\n" % jobname)
         jdl.append("Error = %s-condor.err\n" %  jobname)
         jdl.append("Log = %s-condor.log\n" % jobname)
+        jdl.append("log_xml = True\n" )
         jdl.append("notification = NEVER\n")
         if self.parameters['DashboardID'] != None:
             jdl.append("environment = \" PRODAGENT_DASHBOARD_ID=%s \"\n" % (
@@ -133,10 +134,11 @@ class OSGSubmitter(SubmitterInterface):
         handle.close()
 
         
-  
+                       
         tarballBaseName = os.path.basename(tarballName)
+        workflowName = self.parameters['JobSpecInstance'].payload.workflow               
         script = ["#!/bin/sh\n"]
-        script.extend(standardScriptHeader(self.parameters['JobName']))
+        script.extend(standardScriptHeader(self.parameters['JobName'], workflowName))
         script.append(
             "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % tarballBaseName 
             )

@@ -9,7 +9,7 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id: OSGRouter.py,v 1.5 2006/11/16 16:46:19 evansde Exp $"
+__revision__ = "$Id: OSGRouter.py,v 1.6 2006/11/28 21:58:23 evansde Exp $"
 
 import os
 import logging
@@ -100,6 +100,7 @@ class OSGRouter(SubmitterInterface):
             jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
             jdl.append("should_transfer_files = YES\n")
             jdl.append("when_to_transfer_output = ON_EXIT\n")
+            jdl.append("log_xml = True\n" )
             jdl.append("prod_agent_job_spec_id = %s\n" % jobname)
             jdl.append("prod_agent_workflow_spec_id = %s\n" % (
                 self.parameters['JobSpecInstance'].payload.workflow)
@@ -135,6 +136,7 @@ class OSGRouter(SubmitterInterface):
             jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
             jdl.append("should_transfer_files = YES\n")
             jdl.append("notification = NEVER\n")
+            jdl.append("log_xml = True\n" )
             jdl.append("prod_agent_job_spec_id = %s\n" % jobname)
             jdl.append("prod_agent_workflow_spec_id = %s\n" % (
                 self.parameters['JobSpecInstance'].payload.workflow)
@@ -173,10 +175,10 @@ class OSGRouter(SubmitterInterface):
                 os.system("/bin/cp %s %s" % (logfilePath, newPath))
                 
         
-  
+        workflowName = self.parameters['JobSpecInstance'].payload.workflow               
         tarballBaseName = os.path.basename(tarballName)
         script = ["#!/bin/sh\n"]
-        script.extend(standardScriptHeader(self.parameters['JobName']))
+        script.extend(standardScriptHeader(self.parameters['JobName'], workflowName))
         script.append(
             "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % tarballBaseName 
             )
