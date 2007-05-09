@@ -198,7 +198,7 @@ class FailedJob(JobStatistics):
         """
         if jobRepInst.jobType != "Merge":
             return
-        self['input_files'] = getMergeInputFiles(jobRepInst.jobName)
+        self['input_files'] = getMergeInputFiles(jobRepInst.jobSpecId)
         return
     
 
