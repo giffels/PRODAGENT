@@ -175,6 +175,21 @@ def startup():
         compCfg = cfgObject.getConfig(component)
         compDir = compCfg['ComponentDir']
         compDir = os.path.expandvars(compDir)
+        if component=="ProdMgrInterface":
+            offset=compCfg['ProdAgentRunOffset']
+            msg=""" IF YOUR NOT USING THE PRODMGRINTERFACE
+IGNORE THIS MESSAGE AND WAIT 15 seconds. 
+
+You are activating the ProdMgrInterface. This means you can 
+work simulataneously on one request with multiple ProdAgents. 
+If that is the case it is imperative that you have a global unique 
+offset number.  Currently your offset is %s. If that is ok do 
+not do anything.  If it is not what you intended shut down the 
+ProdMgrInterface and configure the offset properly. 
+
+This message dissappears in 15 seconds. """ %(offset)
+            print(msg)
+            time.sleep(15) 
         if not os.path.exists(compDir):
             print "Creating Component Dir:", compDir
             os.makedirs(compDir)
