@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.18 2007/03/05 12:12:15 ckavka Exp $"
-__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.19 2007/03/28 12:38:09 ckavka Exp $"
+__version__ = "$Revision: 1.19 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -517,7 +517,7 @@ class MergeSensorDB:
                        WHERE prim='""" + prim + """'
                          AND tier='""" + tier + """'
                          AND processed='""" + processed + "'"
-                       
+
         # execute command
         try:
             cursor.execute(sqlCommand)
@@ -971,8 +971,8 @@ class MergeSensorDB:
         # add information to result
         result['outputFile'] = rows['outputfile']
         result['datasetName'] = "/" + rows['prim'] + \
-                                "/" + rows['tier'] + \
-                                "/" + rows['processed']
+                                "/" + rows['processed'] + \
+                                "/" + rows['tier']
         result['status'] = rows['status']
         
         # get output file id
