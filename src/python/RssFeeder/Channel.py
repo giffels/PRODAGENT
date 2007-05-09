@@ -6,11 +6,12 @@ Implements an RSS channel
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: Channel.py,v 1.3 2007/02/26 18:02:01 ckavka Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
+import socket
 from time import localtime, strftime, time
 from xml.dom.minidom import Document
 from xml.dom import minidom
@@ -57,6 +58,9 @@ class Channel:
         self.filesDirectory = os.path.join(self.channelDirectory, 'files')
         self.webFilesDirectory = os.path.join('/files', name, 'files')
 
+        # get host ip
+        self.ipAddress = str(socket.gethostbyname(socket.gethostname()))
+
         # create directores if necessary
         if not os.path.exists(self.filesDirectory):
             os.makedirs(self.filesDirectory)
@@ -88,14 +92,15 @@ class Channel:
             # Create the <title>
             title = doc.createElement("title")
             channel.appendChild(title)
-            text = doc.createTextNode("Production Agent RSS Channel: " + \
+            text = doc.createTextNode("RSS Channel: " + \
                                   name)
             title.appendChild(text)
        
             # Create the <link>
             link = doc.createElement("link")
             channel.appendChild(link)
-            text = doc.createTextNode("http://localhost:" + str(self.port) + \
+            text = doc.createTextNode("http://" + self.ipAddress + ":" + \
+                                      str(self.port) + \
                                       "/" + str(name) + ".xml")
             link.appendChild(text)
 
@@ -297,7 +302,7 @@ class Channel:
             copyfile(link, targetPath)
 
         # return the name of the file in channel area
-        return 'http://localhost:' + str(self.port) + \
+        return 'http://' + self.ipAddress + ':' + str(self.port) + \
                os.path.join(self.webFilesDirectory, fileName)
 
     ##########################################################################
@@ -329,7 +334,7 @@ class Channel:
         aFile.close()
 
         # return the name of the file in channel area
-        return 'http://localhost:' + str(self.port) + \
+        return 'http://' + self.ipAddress + ':' + str(self.port) + \
                os.path.join(self.webFilesDirectory, name + '.html')
 
     ##########################################################################
