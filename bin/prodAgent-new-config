@@ -343,7 +343,7 @@ are tarred and moved to an archive for possible post mortem analysis.
 """
 -JobSpecDir: The location to which the job specs will be downloaded created
 at the prodmgr.
--JobSize: size (in events). ProdAgent retrieves jobspecs from the prodmgr 
+-(deprecated!) JobSize: size (in events). ProdAgent retrieves jobspecs from the prodmgr 
 associated to an allocation. If the JobSize is set the jobspecs associated
 to an allocation will have this number of events (or less if there are not
 enough events in the allocation. If the parameter is set to -1 it will use the 
