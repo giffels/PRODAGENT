@@ -595,7 +595,7 @@ class DBSComponent:
         DBSConf= getGlobalDBSDLSConfig()
         GlobalDBSURL=DBSConf['DBSURL']
 
-        phedexConfig,dropdir=self.getPhEDExConfig() 
+        phedexConfig,dropdir,Nodes=self.getPhEDExConfig() 
         #  //
         # // Get the datasetPath the block belong to
         #//
@@ -606,7 +606,7 @@ class DBSComponent:
         #//
         workingdir="/tmp"
         if dropdir != "None": workingdir=dropdir 
-        tmdbInjectBlock(DBSConf['DBSURL'], datasetPath, fileBlockName, phedexConfig, workingDir=workingdir)
+        tmdbInjectBlock(DBSConf['DBSURL'], datasetPath, fileBlockName, phedexConfig, workingDir=workingdir,nodes=Nodes)
 
         
     def getPhEDExConfig(self):
@@ -634,8 +634,13 @@ class DBSComponent:
             raise RuntimeError, msg
                                                                                                      
         logging.debug("PhEDEx Config: %s" % PhEDExConfig)
-                                                                                                     
-        return PhEDExConfig['DBPARAM'],PhEDExConfig['PhEDExDropBox']
+                                                                       
+        nodes = None
+        if PhEDExConfig.has_key("Nodes"): 
+           if PhEDExConfig['Nodes'] != "None":
+             nodes = PhEDExConfig['Nodes']      
+                     
+        return PhEDExConfig['DBPARAM'],PhEDExConfig['PhEDExDropBox'],nodes
 
 
     def PhEDExRetryFailures(self,fileName, filehandle):
