@@ -16,7 +16,7 @@ import logging
 
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.LFNAlgorithm import createUnmergedLFNs
-from ProdCommon.CMSConfigTools.CfgGenerator import CfgGenerator
+from ProdCommon.CMSConfigTools.ConfigAPI.CfgGenerator import CfgGenerator
 from PileupTools.PileupDataset import PileupDataset, createPileupDatasets, getPileupSites
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
@@ -78,6 +78,44 @@ def getGlobalDBSURL():
     return dbsConfig.get("DBSURL", None)
 
 
+class GeneratorMaker(dict):
+    """
+    _GeneratorMaker_
+
+    Operate on a workflow spec and create a map of node name
+    to CfgGenerator instance
+
+    """
+    def __init__(self):
+        dict.__init__(self)
+
+
+    def __call__(self, payloadNode):
+        if payloadNode.cfgInterface != None:
+            generator = CfgGenerator(payloadNode.cfgInterface, False,
+                                     payloadNode.applicationControls)
+            self[payloadNode.name] = generator
+            return
+            
+        if payloadNode.configuration in ("", None):
+            #  //
+            # // Isnt a config file
+            #//
+            return
+        try:
+            generator = CfgGenerator(payloadNode.configuration, True,
+                                         payloadNode.applicationControls)
+            self[payloadNode.name] = generator
+        except StandardError, ex:
+            #  //
+            # // Cant read config file => not a config file
+            #//
+            return
+    
+        
+
+
+
 class DatasetIterator:
     """
     _DatasetIterator_
@@ -107,6 +145,10 @@ class DatasetIterator:
         self.splitType = \
                 self.workflowSpec.parameters.get("SplitType", "file").lower()
         self.splitSize = int(self.workflowSpec.parameters.get("SplitSize", 1))
+
+        self.generators = GeneratorMaker()
+        self.generators(self.workflowSpec.payload)
+
         self.pileupDatasets = {}
         #  //
         # // Does the workflow contain a block restriction??
@@ -285,19 +327,12 @@ class DatasetIterator:
         config file into a JobSpecific Config File
                 
         """
-        if jobSpecNode.configuration in ("", None):
-            #  //
-            # // Isnt a config file
-            #//
-            return
-        try:
-            generator = CfgGenerator(jobSpecNode.configuration, True)
-        except StandardError, ex:
-            #  //
-            # // Cant read config file => not a config file
-            #//
+        if jobSpecNode.name not in self.generators.keys():
             return
 
+        generator = self.generators[jobSpecNode.name]
+        
+        
         maxEvents = self.currentJobDef.get("MaxEvents", None)
         skipEvents = self.currentJobDef.get("SkipEvents", None)
 
@@ -321,19 +356,13 @@ class DatasetIterator:
             logging.debug("Node: %s has a pileup dataset: %s" % (
                 jobSpecNode.name,  puDataset.dataset,
                 ))
-            mixingModules = jobCfg.mixingModules()
-            fileList = puDataset.getPileupFiles()
-            quotedFiles = [ "\"%s\"" % i for i in fileList ]
-            for mixMod in mixingModules:
-                inpPSet = mixMod['input'][2]
-                inpPSet['fileNames'] = ('vstring', 'untracked', quotedFiles)
             
+            fileList = puDataset.getPileupFiles()
+            jobCfg.pileupFiles = fileList
             
 
         
-        jobSpecNode.configuration = jobCfg.cmsConfig.asPythonString()
-        jobSpecNode.loadConfiguration()
-        
+        jobSpecNode.cfgInterface = jobCfg
         return
     
     def removeSpec(self, jobSpecId):

@@ -15,13 +15,50 @@ import logging
 
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.LFNAlgorithm import createUnmergedLFNs
-from ProdCommon.CMSConfigTools.CfgGenerator import CfgGenerator
+from ProdCommon.CMSConfigTools.ConfigAPI.CfgGenerator import CfgGenerator
 from PileupTools.PileupDataset import PileupDataset, createPileupDatasets, getPileupSites
 
 from IMProv.IMProvDoc import IMProvDoc
 from IMProv.IMProvNode import IMProvNode
 from IMProv.IMProvQuery import IMProvQuery
 from IMProv.IMProvLoader import loadIMProvFile
+
+
+class GeneratorMaker(dict):
+    """
+    _GeneratorMaker_
+
+    Operate on a workflow spec and create a map of node name
+    to CfgGenerator instance
+
+    """
+    def __init__(self):
+        dict.__init__(self)
+
+
+    def __call__(self, payloadNode):
+        if payloadNode.cfgInterface != None:
+            generator = CfgGenerator(payloadNode.cfgInterface, False,
+                                     payloadNode.applicationControls)
+            self[payloadNode.name] = generator
+            return
+            
+        if payloadNode.configuration in ("", None):
+            #  //
+            # // Isnt a config file
+            #//
+            return
+        try:
+            generator = CfgGenerator(payloadNode.configuration, True,
+                                         payloadNode.applicationControls)
+            self[payloadNode.name] = generator
+        except StandardError, ex:
+            #  //
+            # // Cant read config file => not a config file
+            #//
+            return
+    
+        
 
 
 class RequestIterator:
@@ -54,6 +91,11 @@ class RequestIterator:
             self.runIncrement = int(
                 self.workflowSpec.parameters['RunIncrement']
                 )
+
+    
+        self.generators = GeneratorMaker()
+        self.generators(self.workflowSpec.payload)
+        
         
         
         #  //
@@ -146,7 +188,7 @@ class RequestIterator:
         # // generate LFNs for output modules
         #//
         createUnmergedLFNs(jobSpec)
-
+        
         #  //
         # // Add site pref if set
         #//
@@ -158,7 +200,6 @@ class RequestIterator:
           for siteWhite in self.sitePref.split(","): 
             jobSpec.addWhitelistSite(siteWhite)
             
-        
         jobSpec.save(jobSpecFile)        
         return "file://%s" % jobSpecFile
         
@@ -171,23 +212,13 @@ class RequestIterator:
         config file into a JobSpecific Config File
                 
         """
-        if jobSpecNode.configuration in ("", None):
-            #  //
-            # // Isnt a config file
-            #//
+        if jobSpecNode.name not in self.generators.keys():
             return
-        try:
-            generator = CfgGenerator(jobSpecNode.configuration, True,
-                                     jobSpecNode.applicationControls)
-        except StandardError, ex:
-            #  //
-            # // Cant read config file => not a config file
-            #//
-            return
+        generator = self.generators[jobSpecNode.name]
         jobCfg = generator(self.currentJob,
                            maxEvents = self.eventsPerJob,
                            firstRun = self.count)
-
+        
         #  //
         # // Is there pileup for this node?
         #//
@@ -196,18 +227,13 @@ class RequestIterator:
             logging.debug("Node: %s has a pileup dataset: %s" % (
                 jobSpecNode.name,  puDataset.dataset,
                 ))
-            mixingModules = jobCfg.mixingModules()
             fileList = puDataset.getPileupFiles()
-            quotedFiles = [ "\"%s\"" % i for i in fileList ]
-            for mixMod in mixingModules:
-                inpPSet = mixMod['input'][2]
-                inpPSet['fileNames'] = ('vstring', 'untracked', quotedFiles)
+            jobCfg.pileupFiles = fileList
+
             
             
         
-        jobSpecNode.configuration = jobCfg.cmsConfig.asPythonString()
-        jobSpecNode.loadConfiguration()
-        
+        jobSpecNode.cfgInterface = jobCfg
         return
 
     def removeSpec(self, jobSpecId):
