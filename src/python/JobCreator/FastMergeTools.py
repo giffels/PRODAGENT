@@ -9,7 +9,7 @@ import os
 import inspect
 import logging
 
-from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
+
 import JobCreator.RuntimeTools.RuntimeUnpackFastMerge as Unpacker
 
 def installFastMerge(taskObject):
@@ -24,15 +24,19 @@ def installFastMerge(taskObject):
     pythonPSet = taskObject['CMSPythonPSet']
     taskObject['CMSPythonPSet'] = None
     
-    
+    if taskObject.has_key("JobSpecNode"):
+        cfgInt = taskObject['JobSpecNode'].cfgInterface
+    if taskObject.has_key("PayloadNode"):
+        cfgInt = taskObject['PayloadNode'].cfgInterface
 
-    cfgInt = CfgInterface(pythonPSet, True)
-    inputFiles = cfgInt.inputSource.fileNames()
+        
+
+    inputFiles = cfgInt.inputFiles
 
     outMod = cfgInt.outputModules['Merged']
-    lfn = outMod.logicalFileName()
-    catalog = outMod.catalog()
-    pfn = outMod.fileName()
+    lfn = outMod['ogicalFileName']
+    catalog = outMod['catalog']
+    pfn = outMod['fileName']
 
     pfn = pfn.replace("\'", "")
     pfn = pfn.replace("\"", "")
@@ -101,5 +105,5 @@ class InstallBulkFastMerge:
             )
         
         return
-    
+        
     

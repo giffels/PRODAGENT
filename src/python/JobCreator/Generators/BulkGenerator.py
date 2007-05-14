@@ -36,6 +36,7 @@ from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
 from JobCreator.BulkTools import InstallUnpacker, InstallUserSandbox
 from JobCreator.FastMergeTools import InstallBulkFastMerge
 from JobCreator.DashboardTools import installBulkDashboardInfo, writeDashboardInfo
+from JobCreator.CmsGenTools import InsertCmsGenStructure, PopulateCmsGenScript
 
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, generateDashboardID
 
@@ -46,6 +47,7 @@ import ProdCommon
 import ShREEK
 import IMProv
 import ProdCommon.CMSConfigTools
+import ProdCommon.Core
 import ProdCommon.MCPayloads
 import RunRes
 import FwkJobRep
@@ -53,7 +55,9 @@ import StageOut
 import SVSuite
 
 _StandardPackages = [ShREEK, IMProv, StageOut, ProdCommon.MCPayloads,
-                     ProdCommon.CMSConfigTools, RunRes, FwkJobRep, SVSuite]
+                     ProdCommon.CMSConfigTools,
+                     ProdCommon.Core,
+                     RunRes, FwkJobRep, SVSuite]
 
 
 class TaskObjectMaker:
@@ -112,12 +116,12 @@ class BulkGenerator(GeneratorInterface):
         installBulkDashboardInfo(taskObject)
         taskObject(GenerateMainScript())
         taskObject(InsertBulkAppDetails("PayloadNode"))
+        taskObject(InsertCmsGenStructure("PayloadNode"))
         taskObject(InstallRunResComponent())
         taskObject(InsertJobReportTools())
         taskObject(InsertCleanUp())
         taskObject(InstallBulkFastMerge())
         taskObject(NewInsertStageOut())
-        taskObject(InstallUnpacker())
         taskObject(InstallUserSandbox())
         
         logging.debug(
@@ -125,9 +129,11 @@ class BulkGenerator(GeneratorInterface):
         
         self.creator(taskObject)
         logging.debug("JobGenerator: Creator finished")
- 
+
+        taskObject(InstallUnpacker())
         taskObject(BashEnvironmentMaker())
         taskObject(PopulateMainScript())
+        taskObject(PopulateCmsGenScript("PayloadNode"))
         taskObject(PopulateCleanUp())
         taskObject(NewPopulateStageOut())
         

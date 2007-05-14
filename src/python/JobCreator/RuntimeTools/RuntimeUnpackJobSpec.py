@@ -49,7 +49,15 @@ class JobSpecExpander:
         self.setJobDetails()
             
         if self.config.has_key('Configuration'):
-            self.createPSet()
+            try:
+                self.createPSet()
+            except Exception, ex:
+                msg = "Unable to generate cmsRun Config from JobSpec:\n"
+                msg += str(ex)
+                print msg
+                badfile = open("exit.status", 'w')
+                badfile.write("10040")
+                badfile.close()
 
         if self.config.has_key('UserSandbox'):
             self.userSandbox()
@@ -67,11 +75,12 @@ class JobSpecExpander:
         cfgFile = self.config['Configuration'].get("CfgFile", "PSet.cfg")[0]
         cfgFile = str(cfgFile)
         self.jobSpecNode.loadConfiguration()
+        cmsProcess = self.jobSpecNode.cfgInterface.makeConfiguration()
+
         handle = open(cfgFile, 'w')
-        handle.write(
-            self.jobSpecNode.cfgInterface.cmsConfig.asConfigurationString()
-            )
+        handle.write(cmsProcess.dumpConfig())
         handle.close()
+        
         return
         
 
@@ -104,31 +113,31 @@ class JobSpecExpander:
         self.config['JobSpecID'][0] = self.jobSpecNode.jobName
         self.jobSpecNode.loadConfiguration()
         cfgInt = self.jobSpecNode.cfgInterface
-        inpSrc = cfgInt.inputSource 
+        inpSrc = cfgInt.sourceParams 
         if  self.config['Input'].has_key("MaxEvents"):
             del self.config['Input']['MaxEvents']
-        self.config['Input']['MaxEvents'] = [inpSrc.maxevents()]
+        self.config['Input']['MaxEvents'] = [cfgInt.maxEvents['input']]
         if self.config['Input'].has_key("FirstRun"):
             del self.config['Input']['FirstRun']
-        self.config['Input']['FirstRun'] = [inpSrc.firstRun()]
+        self.config['Input']['FirstRun'] = [inpSrc['firstRun']]
         if self.config['Input'].has_key("SourceType"):
             del self.config['Input']['SourceType']
-        self.config['Input']['SourceType'] = [inpSrc.sourceType]
+        self.config['Input']['SourceType'] = [cfgInt.sourceType]
 
         self.config['Input']['InputFiles'] = []
         
-        inpFileList = inpSrc.fileNames()
-        if inpFileList != None:
-            for inpFile in inpSrc.fileNames():
-                self.config['Input']['InputFiles'].append(
-                    inpFile.replace("\'", "")
-                    )
+        inpFileList = cfgInt.inputFiles
+
+        for inpFile in inpFileList:
+            self.config['Input']['InputFiles'].append(
+                inpFile.replace("\'", "")
+                )
                 
-        
+            
         for modName, item in cfgInt.outputModules.items():
-            if item.catalog() == None:
+            if item.get('catalog', None) == None:
                 continue
-            catalog = unquote(item.catalog())
+            catalog = unquote(item['catalog'])
             catalog = os.path.join(self.taskState.dir, catalog)
             if not self.config['Output']['Catalogs'].has_key(modName):
                 self.config['Output']['Catalogs'][modName] = []

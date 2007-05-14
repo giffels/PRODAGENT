@@ -32,7 +32,7 @@ class InstallUnpacker:
             os.system("chmod +x %s" % srcfile)
         taskObject.attachFile(srcfile)
         
-        taskObject['PreTaskCommands'].append(
+        taskObject['PreAppCommands'].append(
             "./RuntimeUnpackJobSpec.py"
             )
         

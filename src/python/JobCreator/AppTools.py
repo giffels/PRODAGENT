@@ -189,7 +189,7 @@ class InsertBulkAppDetails:
         taskObject['CMSProjectName'] = jobSpec.application['Project']
         taskObject['CMSProjectVersion'] = jobSpec.application['Version']
         taskObject['CMSExecutable'] = jobSpec.application['Executable']
-        taskObject['CMSPythonPSet'] = jobSpec.configuration
+
         
         #  //
         # // Add an empty structured file to contain the PSet after
@@ -321,18 +321,15 @@ class InsertPythonPSet:
         a StructuredFile to be written into the JobArea
 
         """
-        psetConfig = taskObject.get('CMSPythonPSet', None)
-        if psetConfig == None:
+        if taskObject['Type'] not in ("CMSSW",):
             return
-        psetFile = taskObject.addStructuredFile("PSet.py")
-        psetFile.append(str(psetConfig))
-
+        
         #  //
         # // Install runtime script and add command to invoke it
         #//
         srcfile = inspect.getsourcefile(RuntimePSetModule)
         taskObject.attachFile(srcfile)
-        taskObject['PreTaskCommands'].append(
+        taskObject['PreAppCommands'].append(
             "./RuntimePSetPrep.py PSet.py PSet.cfg"
             )
         

@@ -43,12 +43,14 @@ import ShREEK
 import IMProv
 import ProdCommon.CMSConfigTools 
 import ProdCommon.MCPayloads
+import ProdCommon.Core
 import RunRes
 import FwkJobRep
 import StageOut
 import SVSuite
 
 _StandardPackages = [ShREEK, IMProv, StageOut, ProdCommon.MCPayloads,
+                     ProdCommon.Core,
                      ProdCommon.CMSConfigTools, RunRes, FwkJobRep, SVSuite]
 
 def makeTaskObject(jobSpecNode):
@@ -101,14 +103,18 @@ class DefaultGenerator(GeneratorInterface):
         self._JobSpec.payload.operate(makeTaskObject)
         self._TaskObject = self._JobSpec.payload.taskObject
         self._WorkingDir = jobCache
-
+        jobSpecFile = "%s/%s-JobSpec.xml" % (jobCache, jobname)
+        runtimeJobSpecFile = "%s/%s/%s-JobSpec.xml" % (
+            jobCache, jobname, jobname)
+        
         directory = self.newJobArea(jobname, jobCache)
+
         logging.debug("JobGenerator: Job Directory: %s" % directory)
         cacheDir = os.path.dirname(directory)
         
-        jobSpec.parameters['ProdAgentName'] = prodAgentName()
-        jobSpecFile = "%s/%s-JobSpec.xml" % (jobCache, jobname)
         jobSpec.save(jobSpecFile)
+        jobSpec.save(runtimeJobSpecFile)
+        jobSpec.parameters['ProdAgentName'] = prodAgentName()
 
         #  //
         # // Insert Standard Objects into TaskObject tree
@@ -196,9 +202,10 @@ class DefaultGenerator(GeneratorInterface):
         taskObj.addChild(pythonObj)
         taskObj.addChild(binObj)
         pythonObj.addChild(prodCommonObj)
-
+        
         prodCommonInit = inspect.getsourcefile(ProdCommon)
         prodCommonObj.attachFile(prodCommonInit)
+        
         
         #  //
         # // Attach standard python packages and shreek binary
@@ -222,6 +229,7 @@ class DefaultGenerator(GeneratorInterface):
                                        "$PYTHONPATH", "`pwd`/localPython")
         taskObj.addEnvironmentVariable("PATH", "$PATH", "`pwd`/localBin")
         taskObj.addEnvironmentVariable("PRODAGENT_JOB_DIR", "`pwd`")
+        taskObj.addEnvironmentVariable("PRODAGENT_JOBSPEC", "`pwd`/%s-JobSpec.xml" % jobname)
         taskObj.addEnvironmentVariable("RUNRESDB_URL", "file://`pwd`/RunResDB.xml")
         
         envMaker = BashEnvironmentMaker("jobEnvironment.sh")
@@ -239,6 +247,8 @@ class DefaultGenerator(GeneratorInterface):
         #  //
         # // Now build the directory and file structure in the working dir
         #//  Make sure the dir doesnt exist.
+        
+
         if os.path.exists(jobCache):
             os.system("/bin/rm -rf %s " % jobCache )
         dirMaker = TreeTaskDirBuilder(jobCache)

@@ -130,9 +130,9 @@ class CMSSWRunResDB:
         runresComp.addPath("/%s/Output/Catalogs" % objName)
         cfgInt = payloadNode.cfgInterface
         for modName, item in cfgInt.outputModules.items():
-            if item.catalog() == None:
+            if item.get('catalog', None) == None:
                 continue
-            catalog = unquote(item.catalog())
+            catalog = unquote(item['catalog'])
             catPath = "/%s/Output/Catalogs/%s" % (objName, modName)
             runresComp.addData(
                 catPath,
@@ -145,19 +145,20 @@ class CMSSWRunResDB:
         # // Number of Events from Source
         #//
         cfgInt = payloadNode.cfgInterface
-        inpSrc = cfgInt.inputSource 
-        runresComp.addData("/%s/Input/MaxEvents" % objName, inpSrc.maxevents())
-        runresComp.addData("/%s/Input/FirstRun" % objName, inpSrc.firstRun())
-        runresComp.addData("/%s/Input/SourceType" % objName, inpSrc.sourceType)
+        inpSrc = cfgInt.sourceParams
+        runresComp.addData("/%s/Input/SourceType" % objName, cfgInt.sourceType)
+        
+        runresComp.addData("/%s/Input/MaxEvents" % objName, cfgInt.maxEvents['input'])
+        runresComp.addData("/%s/Input/FirstRun" % objName, inpSrc['firstRun'])
         runresComp.addPath("/%s/Input/InputFiles" % objName)
         #  //
         # // List of input files
         #//
-        inpFileList = inpSrc.fileNames()
-        if inpFileList != None:
-            for inpFile in inpSrc.fileNames():
-                runresComp.addData("/%s/Input/InputFiles/InputFile" % objName,
-                                   inpFile.replace("\'", ""))
+        inpFileList = cfgInt.inputFiles
+
+        for inpFile in inpFileList:
+            runresComp.addData("/%s/Input/InputFiles/InputFile" % objName,
+                               inpFile.replace("\'", ""))
         return
 
 class InsertDirInRunRes:
