@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.5 2007/04/03 13:54:20 evansde Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.6 2007/04/04 16:02:43 evansde Exp $"
 
 
 import os
@@ -20,8 +20,10 @@ import time
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
+from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 
-valid = ['cfg=', 'version=', 'category=', "label=",
+
+valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=',
          'pileup-dataset=', 'pileup-files-per-job=',
          'selection-efficiency=',
@@ -57,6 +59,7 @@ label = "Test"
 version = None
 category = "mc"
 channel = None
+cfgType = "cfg"
 
 pileupDS = None
 pileupFilesPerJob = 1
@@ -66,6 +69,10 @@ selectionEfficiency = None
 for opt, arg in opts:
     if opt == "--cfg":
         cfgFile = arg
+        cfgType = "cfg"
+    if opt == "--py-cfg":
+        cfgFile = arg
+        cfgType = "python"
     if opt == "--version":
         version = arg
     if opt == "--category":
@@ -108,8 +115,16 @@ if not os.path.exists(cfgFile):
 
 
 
-
-
+if cfgType == "cfg":
+    from FWCore.ParameterSet.Config import include
+    cmsCfg = include(cfgFile) 
+else:
+    modRef = imp.find_module( os.path.basename(cfgFile).replace(".py", ""),  os.path.dirname(cfgFile))
+    cmsCfg = modRef.process
+    
+cfgWrapper = CMSSWConfig()
+cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
+cfgInt.validateForProduction()
 
 
 #  //
@@ -119,7 +134,7 @@ maker = WorkflowMaker(requestId, channel, label )
 
 maker.setCMSSWVersion(version)
 maker.setPhysicsGroup(physicsGroup)
-maker.setConfiguration(cfgFile, Format = "cfg", Type = "file")
+maker.setConfiguration(cfgWrapper, Type = "instance")
 maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
 maker.changeCategory(category)
 
