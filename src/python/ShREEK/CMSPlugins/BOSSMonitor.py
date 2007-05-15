@@ -53,8 +53,9 @@ class BOSSMonitor(ShREEKMonitor):
         """
         Periodic update.
         """
-        for key, value in monitorState.items():
-            print self._Prefix, "%s=%s" % (key, value)
+        # do nothing:
+        #for key, value in monitorState.items():
+        #    print self._Prefix, "%s=%s" % (key, value)
 
 
     #  //
