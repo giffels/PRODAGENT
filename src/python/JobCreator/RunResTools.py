@@ -98,7 +98,7 @@ class CMSSWRunResDB:
         runresComp.addData("/%s/Application/Executable" % objName, 
                            taskObject['CMSExecutable'])
         runresComp.addData("/%s/Configuration/CfgFile" % objName,
-                           "PSet.cfg")
+                           "PSet.py")
         runresComp.addData("/%s/Configuration/PyCfgFile" % objName,
                            "PSet.py")
 
@@ -215,7 +215,7 @@ class BulkCMSSWRunResDB:
         runresComp.addData("/%s/Application/Executable" % objName, 
                            taskObject['CMSExecutable'])
         runresComp.addData("/%s/Configuration/CfgFile" % objName,
-                           "PSet.cfg")
+                           "PSet.py")
         runresComp.addData("/%s/Configuration/PyCfgFile" % objName,
                            "PSet.py")
 

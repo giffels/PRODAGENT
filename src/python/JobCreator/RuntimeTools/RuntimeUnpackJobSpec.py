@@ -8,6 +8,7 @@ into this job
 """
 import sys
 import os
+import pickle
 from FwkJobRep.TaskState import TaskState
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from RunRes.RunResComponent import RunResComponent
@@ -72,13 +73,20 @@ class JobSpecExpander:
         Create the PSet cfg File
 
         """
-        cfgFile = self.config['Configuration'].get("CfgFile", "PSet.cfg")[0]
+        cfgFile = self.config['Configuration'].get("CfgFile", "PSet.py")[0]
         cfgFile = str(cfgFile)
         self.jobSpecNode.loadConfiguration()
         cmsProcess = self.jobSpecNode.cfgInterface.makeConfiguration()
 
+        cfgDump = open("CfgFileDump.log", 'w')
+        cfgDump.write(cmsProcess.dumpConfig())
+        cfgDump.close()
+        
+        
         handle = open(cfgFile, 'w')
-        handle.write(cmsProcess.dumpConfig())
+        handle.write("import pickle\n")
+        handle.write("pickledCfg=\"\"\"%s\"\"\"\n" % pickle.dumps(cmsProcess))
+        handle.write("process = pickle.loads(pickledCfg)\n")
         handle.close()
         
         return
