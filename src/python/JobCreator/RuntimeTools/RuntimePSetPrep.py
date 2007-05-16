@@ -12,6 +12,7 @@ of env vars to be done here in support of chained jobs.
 
 import sys
 import os
+import pickle
 
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from FwkJobRep.TaskState import TaskState
