@@ -2,18 +2,21 @@
 
 import logging 
 import os
+import os.path
+import shutil
 import urllib
 
-from ErrorHandler.DirSize import dirSize
-from ErrorHandler.DirSize import convertSize
-
-from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
-from ErrorHandler.TimeConvert import convertSeconds
-from FwkJobRep.ReportParser import readJobReport
-from ProdAgent.WorkflowEntities import JobState
 from ProdCommon.Core.GlobalRegistry import retrieveHandler
 from ProdCommon.Core.GlobalRegistry import registerHandler
 from ProdCommon.Core.ProdException import ProdException
+
+from ProdAgent.WorkflowEntities import JobState
+from FwkJobRep.ReportParser import readJobReport
+
+from ErrorHandler.DirSize import dirSize
+from ErrorHandler.DirSize import convertSize
+from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
+from ErrorHandler.TimeConvert import convertSeconds
 
 class RunFailureHandler(HandlerInterface):
     """
@@ -46,7 +49,6 @@ class RunFailureHandler(HandlerInterface):
          The payload of a job failure is a url to the job report
          """
          jobReportUrl= payload
-
          # prepare to retrieve the job report file.
          # NOTE: we assume that the report file has a relative unique name
          # NOTE: if that is not the case we need to add a unique identifier to it.
@@ -83,6 +85,19 @@ class RunFailureHandler(HandlerInterface):
          logging.debug(">RunFailureHandler<: re-submitting with delay (h:m:s) "+\
                       str(delay))
 
+         if self.args['ReportAction'] == 'move' :
+            # count how many files are in the dir (to generate unique ids
+            # when moving files
+            try:
+               lastID = len(os.listdir(os.path.dirname(payload)))
+               target = os.path.join(os.path.dirname(payload),\
+               os.path.basename(payload).split('.')[0] +\
+               str(lastID) +\
+               '.xml')
+               logging.debug('Moving file: '+ payload + ' to: ' + target)
+               shutil.move(payload,target)
+            except:
+               pass
          try:
               JobState.runFailure(jobId,jobReportLocation= reportLocation)
 

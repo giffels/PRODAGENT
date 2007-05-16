@@ -55,10 +55,11 @@ class ErrorHandlerComponent:
          self.args = {}
          # if nothing is set, the location for storing the job
          # reports when there is a failure will be in the tmp dir.
-         self.args['jobReportLocation']='/tmp/prodAgentJobReports'
+         self.args['jobReportLocation'] = '/tmp/prodAgentJobReports'
+         self.args['ReportAction'] = 'noMove'
          self.args['Logfile'] = None
          self.args['MaxCacheDirSizeMB'] = 100
-         self.args['DelayFactor']=60
+         self.args['DelayFactor'] = 60
          self.args.update(args)
  
 
