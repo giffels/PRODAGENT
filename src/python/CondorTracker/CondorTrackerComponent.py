@@ -42,11 +42,11 @@ class CondorTrackerComponent:
         self.args['Logfile'] = None
         self.args['TrackerPlugin'] = None
         self.args['PollInterval'] = "00:01:00"
+        self.args['TrackOnEvent'] = "SubmitJob"
         self.args.update(args)
         
 
-
-        
+     
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
@@ -55,7 +55,17 @@ class CondorTrackerComponent:
         msg = "CondorTracker Started\n"
         msg += " ==> Tracker Plugin: %s\n" % self.args['TrackerPlugin']
         msg += " ==> Poll Interval: %s\n" % self.args['PollInterval']
+        msg += " ==> Tracking starts on %s Event\n" % self.args['TrackOnEvent']
         logging.info(msg)
+
+        if self.args['TrackOnEvent'] not in ("SubmitJob", "TrackJob"):
+            msg = "Error: TrackOnEvent argument must be one of:\n"
+            msg += "\'SubmitJob\' to track jobs when a SubmitJob "
+            msg += "event is published\n"
+            msg += "\'TrackJob\' to track jobs when a TrackJob "
+            msg += "event is published\n"
+            logging.error(msg)
+            raise RuntimeError(msg)
         
         
     def __call__(self, event, payload):
@@ -68,7 +78,7 @@ class CondorTrackerComponent:
         logging.debug("Recieved Event: %s" % event)
         logging.debug("Payload: %s" % payload)
         
-        if event == "SubmitJob":
+        if event == self.args['TrackOnEvent']:
             self.jobSubmitted(payload)
             return
 
@@ -283,7 +293,7 @@ class CondorTrackerComponent:
         self.ms.subscribeTo("CondorTracker:EndDebug")
         self.ms.subscribeTo("CondorTracker:Update")
         self.ms.subscribeTo("CondorTracker:SetTracker")
-        self.ms.subscribeTo("SubmitJob")
+        self.ms.subscribeTo(self.args['TrackOnEvent'])
         self.ms.subscribeTo("SubmissionFailed")
         
         self.ms.publish("CondorTracker:Update", "", self.args['PollInterval'])
