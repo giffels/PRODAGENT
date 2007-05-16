@@ -209,8 +209,9 @@ componentFields = {
 
     'ErrorHandler' : {
     "ComponentDir" : None,
-    "MaxCacheDirSizeMB":80,
-    "DelayFactor":100,
+    "MaxCacheDirSizeMB" : 80,
+    "DelayFactor" : 100,
+    "ReportAction" : "noMove",
     "RssFeed": "no",
     },
 
@@ -313,12 +314,17 @@ SubmitterName values you can use: condorg, condor, lcg, lsf, lxb1125, and noSubm
 """,
    "ErrorHandler" : \
 """
-MaxCacheDirSizeMB : The maximum size a cache dir can have 
+-MaxCacheDirSizeMB : The maximum size a cache dir can have 
 before it is pruned, to prevent taking up to much space.
 If it reaches this size the next submision/run failure will
-trigger an intermediate cleanup event.
-DelayFactor: A factor (in seconds) multiplied with the number of failure
+-trigger an intermediate cleanup event.
+-DelayFactor: A factor (in seconds) multiplied with the number of failure
 of the job that is used to submit new submission events with a delay.
+-ReportAction: When a framework report comes in the error handler can decide
+to ignore it (noMove), or to move it (move). Default is set to "noMove".
+Caution! when setting it to: "move". Multiple components might read the 
+FrameworkJobReport.xml. This action is not yet secured using the trigger
+synchronization.
 """,
   "JobStates"      : \
 """
