@@ -334,11 +334,11 @@ class JobCreatorComponent:
                 if jobType == "Merge":
                     JobStateChangeAPI.register(jobname, 'Merge',\
                                         int(self.args['mergeMaxRetries']),\
-                                        1)
+                                        1, workflowName)
                 else:
                     JobStateChangeAPI.register(jobname, 'Processing',\
                                         int(self.args['maxRetries']),\
-                                        1)
+                                        1, workflowName)
             JobStateChangeAPI.create(jobname, jobCache)
             JobStateChangeAPI.inProgress(jobname)
             
