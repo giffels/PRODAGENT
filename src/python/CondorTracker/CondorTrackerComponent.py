@@ -107,26 +107,30 @@ class CondorTrackerComponent:
             return
 
         
-    def jobSubmitted(self, jobSpecFile):
+    def jobSubmitted(self, payload):
         """
         _jobSubmitted_
 
         Start watching for submitted job
 
         """
-        try:
-            spec = JobSpec()
-            spec.load(jobSpecFile)
-        except Exception, ex:
-            msg = "Unable to read JobSpec File: %s" % jobSpecFile
-            logging.error(msg)
-            return
+        if self.args['TrackOnEvent'] == "SubmitJob":
+            try:
+                spec = JobSpec()
+                spec.load(payload)
+            except Exception, ex:
+                msg = "Unable to read JobSpec File: %s" % payload
+                logging.error(msg)
+                return
+            
+            specList = []
+            if spec.isBulkSpec():
+                specList.extend(spec.bulkSpecs.keys())
+            else:
+                specList.append(spec.parameters['JobName'])
 
-        specList = []
-        if spec.isBulkSpec():
-            specList.extend(spec.bulkSpecs.keys())
         else:
-            specList.append(spec.parameters['JobName'])
+            specList = [payload]
 
             
         for item in specList:
