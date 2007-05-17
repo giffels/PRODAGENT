@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.61 2007/04/04 08:58:49 ckavka Exp $"
-__version__ = "$Revision: 1.61 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.62 2007/04/11 18:24:35 ckavka Exp $"
+__version__ = "$Revision: 1.62 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -30,7 +30,7 @@ from MessageService.MessageService import MessageService
 # Workflow and Job specification
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
-from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
+from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 import ProdCommon.MCPayloads.WorkflowTools as MCWorkflowTools
 from ProdCommon.MCPayloads.MergeTools import createMergeJobWorkflow
 # logging
@@ -449,9 +449,13 @@ class MergeSensorComponent:
 
             # add bare cfg template to workflow
             cmsRun = mergeWF.payload
-            cmsRun.configuration = self.mergeWorkflow
-            cfg = CfgInterface(cmsRun.configuration, True) 
-
+            cfg = CMSSWConfig()
+            cmsRun.cfgInterface = cfg
+            cfg.sourceType = "PoolSource"
+            cfg.setInputMaxEvents(-1)
+            outMod = cfg.getOutputModule("Merged")
+            
+            
             # save it
             fileName = watchedDatasetName.replace('/','#') + '-workflow.xml'
             workflowPath = os.path.join(self.args['MergeJobSpecs'], \
@@ -1224,30 +1228,26 @@ class MergeSensorComponent:
             jobSpec.addWhitelistSite(storageElement)
 
         # get PSet
-        cfg = CfgInterface(jobSpec.payload.configuration, True)
+        cfg = jobSpec.payload.cfgInterface
 
         # set output module
-        outModule = cfg.outputModules['Merged']
+        outModule = cfg.getOutputModule('Merged')
 
         # set output file name
         baseFileName = "%s-%s-%s.root" % (dataset[0], outputFile, tier)
-        outModule.setFileName(baseFileName)
-        outModule.setLogicalFileName(os.path.join(lfnBase, baseFileName))
-
+        outModule['fileName'] = baseFileName
+        outModule['logicalFileName'] = os.path.join(lfnBase, baseFileName)
+        
         # set output catalog
-        outModule.setCatalog("%s-merge.xml" % jobId)
-
+        outModule['catalog'] = "%s-merge.xml" % jobId
+        
         # set input module
-        inModule = cfg.inputSource
+        
 
         # get input file names (expects a trivial catalog on site)
-        inputFiles = ["%s" % fileName for fileName in fileList]
-
-        inModule.setFileNames(*inputFiles)
-
-        # get configuration from template
-        jobSpec.payload.configuration = str(cfg) 
-
+        cfg.inputFiles = ["%s" % fileName for fileName in fileList]
+        
+        
         # target file name        
         mergeJobSpecFile = "%s/%s-spec.xml" % (
                self.args['MergeJobSpecs'], jobId)
