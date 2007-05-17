@@ -180,7 +180,6 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        script.append("export SCRAM_ARCH=slc4_ia32_gcc345\n")
         script.append("export STAGE_SVCCLASS=t0input\n")
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
@@ -196,8 +195,13 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
         script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1 \n")
-        script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s \n" % cacheDir)
-        script.append("rfcp ./run.log cmslcgse02:/data1/hufnagel/T0/logs/%s.log\n" % jobName)
+        script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s/FrameworkJobReport.xml \n" % cacheDir)
+
+        outputlogfile = jobName
+        outputlogfile += '.`date +%Y%m%d.%k:%M:%S`.log'
+
+        script.append("rfcp ./run.log cmslcgse02:/data1/hufnagel/T0/logs/%s\n" % outputlogfile)
+
         #script.extend(missingJobReportCheck(jobName))
 
         handle = open(filename, 'w')
