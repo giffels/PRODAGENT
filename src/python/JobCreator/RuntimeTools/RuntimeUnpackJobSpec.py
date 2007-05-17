@@ -127,7 +127,8 @@ class JobSpecExpander:
         self.config['Input']['MaxEvents'] = [cfgInt.maxEvents['input']]
         if self.config['Input'].has_key("FirstRun"):
             del self.config['Input']['FirstRun']
-        self.config['Input']['FirstRun'] = [inpSrc['firstRun']]
+        if inpSrc.has_key('firstRun'):
+            self.config['Input']['FirstRun'] = [inpSrc['firstRun']]
         if self.config['Input'].has_key("SourceType"):
             del self.config['Input']['SourceType']
         self.config['Input']['SourceType'] = [cfgInt.sourceType]

@@ -148,8 +148,11 @@ class CMSSWRunResDB:
         inpSrc = cfgInt.sourceParams
         runresComp.addData("/%s/Input/SourceType" % objName, cfgInt.sourceType)
         
-        runresComp.addData("/%s/Input/MaxEvents" % objName, cfgInt.maxEvents['input'])
-        runresComp.addData("/%s/Input/FirstRun" % objName, inpSrc['firstRun'])
+        runresComp.addData("/%s/Input/MaxEvents" % objName,
+                           cfgInt.maxEvents['input'])
+        if inpSrc.has_key('firstRun'):
+            runresComp.addData("/%s/Input/FirstRun" % objName,
+                               inpSrc['firstRun'])
         runresComp.addPath("/%s/Input/InputFiles" % objName)
         #  //
         # // List of input files

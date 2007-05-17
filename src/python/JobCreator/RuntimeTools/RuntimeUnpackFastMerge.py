@@ -46,7 +46,7 @@ class FastMergeUnpacker:
         self.jobSpecNode.loadConfiguration()
         
         cfgInt = self.jobSpecNode.cfgInterface
-        inputFiles = cfgInt.inputSource.fileNames()
+        inputFiles = cfgInt.inputFiles
         fileList = ""
         for inputfile in inputFiles:
             inputfile = inputfile.replace("\'", "")
@@ -56,9 +56,9 @@ class FastMergeUnpacker:
 
         
         outMod = cfgInt.outputModules['Merged']
-        lfn = outMod.logicalFileName()
-        catalog = outMod.catalog()
-        pfn = outMod.fileName()
+        lfn = outMod['logicalFileName']
+        catalog = outMod['catalog']
+        pfn = outMod['fileName']
 
         pfn = pfn.replace("\'", "")
         pfn = pfn.replace("\"", "")
@@ -67,7 +67,7 @@ class FastMergeUnpacker:
         catalog = catalog.replace("\'", "")
         catalog = catalog.replace("\"", "")
 
-
+        
         handle = open("EdmFastMerge-setup.sh", "w")
         handle.write("export EDM_MERGE_INPUTFILES=\"%s\"\n" % fileList)
         handle.write("export EDM_MERGE_OUTPUT_PFN=\"%s\"\n" % pfn)

@@ -21,7 +21,6 @@ def installFastMerge(taskObject):
     """
     logging.debug("Installing fast merge for task: %s" % taskObject['Name'])
     
-    pythonPSet = taskObject['CMSPythonPSet']
     taskObject['CMSPythonPSet'] = None
     
     if taskObject.has_key("JobSpecNode"):
@@ -34,7 +33,7 @@ def installFastMerge(taskObject):
     inputFiles = cfgInt.inputFiles
 
     outMod = cfgInt.outputModules['Merged']
-    lfn = outMod['ogicalFileName']
+    lfn = outMod['logicalFileName']
     catalog = outMod['catalog']
     pfn = outMod['fileName']
 
@@ -79,7 +78,7 @@ class InstallBulkFastMerge:
             taskObject['Name'],)
                       )
         
-        pythonPSet = taskObject['CMSPythonPSet']
+        
         taskObject['CMSPythonPSet'] = None
         
         
@@ -94,7 +93,7 @@ class InstallBulkFastMerge:
         
         taskObject['CMSCommandLineArgs'] = commandLineArgs
 
-
+        
         srcfile = inspect.getsourcefile(Unpacker)
         if not os.access(srcfile, os.X_OK):
             os.system("chmod +x %s" % srcfile)

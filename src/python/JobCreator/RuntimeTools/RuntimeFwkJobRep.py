@@ -10,10 +10,52 @@ by CMSSW executables.
 
 import os
 import socket
+import time
+import popen2
 
 from FwkJobRep.TaskState import TaskState
 from FwkJobRep.MergeReports import mergeReports
 from FwkJobRep.FwkJobReport import FwkJobReport
+
+
+def getSyncCE():
+    """
+    _getSyncCE_
+
+    Extract the SyncCE from GLOBUS_GRAM_JOB_CONTACT if available for OSG,
+    otherwise broker info for LCG
+
+    """
+    result = socket.gethostname()
+
+    if os.environ.has_key('GLOBUS_GRAM_JOB_CONTACT'):
+        #  //
+        # // OSG, Sync CE from Globus ID
+        #//
+        val = os.environ['GLOBUS_GRAM_JOB_CONTACT']
+        try:
+            host = val.split("https://", 1)[1]
+            host = host.split(":")[0]
+            result = host
+        except:
+            pass
+        return result
+    if os.environ.has_key('EDG_WL_JOBID'):
+        #  //
+        # // LCG, Sync CE from edg command
+        #//
+        command = "edg-brokerinfo getCE"
+        pop = popen2.Popen3(command)
+        pop.wait()
+        exitCode = pop.poll()
+        if exitCode:
+            return result 
+        
+        content = pop.fromchild.read()
+        result = content.strip()
+        return result
+    return result
+
 
 def processFrameworkJobReport():
     """
@@ -86,6 +128,7 @@ def processFrameworkJobReport():
     siteName = "Unknown"
     hostName = socket.gethostname()
     seName = "Unknown"
+    ceName = getSyncCE()
     state.loadSiteConfig()
     siteCfg = state.getSiteConfig()
     if siteCfg != None:
@@ -96,7 +139,8 @@ def processFrameworkJobReport():
             
     report.siteDetails['SiteName'] = siteName
     report.siteDetails['HostName'] = hostName
-    report.siteDetails['se-name'] = seName    
+    report.siteDetails['se-name'] = seName
+    report.siteDetails['ce-name'] = ceName    
     
     #  //
     # // If available, include basic start/stop times in job report
