@@ -139,7 +139,7 @@ class T0LSFCreator(CreatorInterface):
         #  //
         # // Command to define CMS_PATH, make scram available etc
         #//
-        swSetupCommand = "source $VO_CMS_SW_DIR/cmsset_default.sh "
+        swSetupCommand = "source $VO_CMS_SW_DIR/cmsset_default.sh"
 
         #  //
         # // If you want to set SCRAM_ARCH, or any other env var,
@@ -204,7 +204,7 @@ class T0LSFCreator(CreatorInterface):
         
         """
         # command that makes CMS_PATH, SITECONF, TFC available
-        stageOutSetup = " export SCRAM_ARCH=slc3_ia32_gcc323 ; source $VO_CMS_SW_DIR/cmsset_default.sh "
+        stageOutSetup = "source $VO_CMS_SW_DIR/cmsset_default.sh"
 
         # use that command before stage out
         taskObject['PreStageOutCommands'].append(
@@ -223,7 +223,7 @@ class T0LSFCreator(CreatorInterface):
 
         """
         # same setup as stage out for cleanup I think
-        stageOutSetup = " export SCRAM_ARCH=slc3_ia32_gcc323 ; source $VO_CMS_SW_DIR/cmsset_default.sh "
+        stageOutSetup = "source $VO_CMS_SW_DIR/cmsset_default.sh"
 
         # call it before cleanup is invoked
         taskObject['PreCleanUpCommands'].append(
