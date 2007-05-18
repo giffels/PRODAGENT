@@ -51,18 +51,22 @@ class JobSpecExpander:
         self.jobSpec.payload.operate(finder)
         self.jobSpecNode = finder.result
 
-        
-        if self.config.has_key('Configuration'):
-            try:
-                self.createPSet()
-            except Exception, ex:
-                msg = "Unable to generate cmsRun Config from JobSpec:\n"
-                msg += str(ex)
-                print msg
-                badfile = open("exit.status", 'w')
-                badfile.write("10040")
-                badfile.close()
-
+        if self.jobSpecNode.jobType != "Merge":
+            if self.config.has_key('Configuration'):
+                try:
+                    self.createPSet()
+                except Exception, ex:
+                    msg = "Unable to generate cmsRun Config from JobSpec:\n"
+                    msg += str(ex)
+                    print msg
+                    badfile = open("exit.status", 'w')
+                    badfile.write("10040")
+                    badfile.close()
+        else:
+            #  //
+            # // Merge job
+            #//
+            self.createMergePSet()
         
             
 
@@ -92,6 +96,54 @@ class JobSpecExpander:
         
         return
         
+
+    def createMergePSet(self):
+        """
+        _createMergePSet_
+
+        Merges are a little different since we have to build the entire
+        process object from scratch.
+
+        """
+        print "<<<<<<<<<<<<<<<<<<<<Merge>>>>>>>>>>>>>>>>>>>>>."
+        cfgFile = self.config['Configuration'].get("CfgFile", "PSet.py")[0]
+        cfgFile = str(cfgFile)
+        self.jobSpecNode.loadConfiguration()
+        cfgInt = self.jobSpecNode.cfgInterface
+
+        from FWCore.ParameterSet.Config import Process
+        from FWCore.ParameterSet.Modules import OutputModule, Source
+        import FWCore.ParameterSet.Types as CfgTypes
+
+        process = Process("Merge")
+        process.source = Source("PoolSource")
+        process.source.fileNames = CfgTypes.untracked(CfgTypes.vstring())
+        for entry in cfgInt.inputFiles:
+            process.source.fileNames.append(str(entry))
+                
+
+        outMod = cfgInt.outputModules['Merged']
+        process.Merged = OutputModule("PoolOutputModule")
+        process.Merged.fileName = CfgTypes.untracked(CfgTypes.string(
+            outMod['fileName']))
+
+        process.Merged.logicalFileName = CfgTypes.untracked(CfgTypes.string(
+            outMod['logicalFileName']))
+
+        process.Merged.catalog = CfgTypes.untracked(CfgTypes.string(
+            outMod['catalog']))
+
+        cfgDump = open("CfgFileDump.log", 'w')
+        cfgDump.write(process.dumpConfig())
+        cfgDump.close()
+        
+        
+        handle = open(cfgFile, 'w')
+        handle.write("import pickle\n")
+        handle.write("pickledCfg=\"\"\"%s\"\"\"\n" % pickle.dumps(process))
+        handle.write("process = pickle.loads(pickledCfg)\n")
+        handle.close()
+        return
 
 
 if __name__ == '__main__':
