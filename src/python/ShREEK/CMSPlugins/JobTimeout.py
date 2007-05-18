@@ -123,7 +123,7 @@ class JobTimeout(ShREEKMonitor):
                 msg += "WARNING: Hard Kill Timeout has Expired:"
                 msg += "Start Time: %s\n" % self.startTime
                 msg += "Time Now: %s\n" % time.time()
-                msg += "Timeout: %s\n" % self.timeoutValue + self.hardKillTimeoutDelay
+                msg += "Timeout: %s\n" % str(self.timeoutValue + self.hardKillTimeoutDelay)
                 msg += "Killing Job...\n"
                 for lines in range(0,4):
                     for columns in range(0, 51):
