@@ -196,9 +196,25 @@ class LCGCreator(CreatorInterface):
         #//
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.DashboardMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.BOSSMonitor")
-        
 
-        
+        #  //
+        # // (Optional) JobTimeout
+        #//
+        timeoutCfg = self.pluginConfig.get('JobTimeout', {})
+  	usingJobTimeout = timeoutCfg.get("UseJobTimeout", "False")
+  	if usingJobTimeout.lower() == "true":
+           shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
+  	   jobtimeout= shreekConfig.newMonitorCfg()
+  	   jobtimeout.setMonitorName("bulktimeout-1")
+  	   jobtimeout.setMonitorType("timeout")
+  	   jobtimeout.addKeywordArg(
+  	      Timeout = timeoutCfg['Timeout'],
+  	      HardKillDelay = timeoutCfg['HardKillDelay'])
+  	   shreekConfig.addMonitorCfg(jobtimeout)
+
+        #  //
+        # // BOSS monitoring
+        #//
         boss = shreekConfig.newMonitorCfg()
         boss.setMonitorName("boss-1") # name of this instance (make it up)
         boss.setMonitorType("boss")   # type of this instance (as registered)
