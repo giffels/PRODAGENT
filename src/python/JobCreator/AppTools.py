@@ -127,7 +127,7 @@ class InsertAppDetails:
         # // Add an empty structured file to contain the PSet after
         #//  it is converted from the Python format. 
         taskObject.addStructuredFile("PSet.py")
-        taskObject['CMSCommandLineArgs'] = " PSet.py "
+        taskObject['CMSCommandLineArgs'] = " PSet.py -e "
         
 
      
@@ -195,7 +195,7 @@ class InsertBulkAppDetails:
         # // Add an empty structured file to contain the PSet after
         #//  it is converted from the Python format. 
         taskObject.addStructuredFile("PSet.py")
-        taskObject['CMSCommandLineArgs'] = " PSet.py "
+        taskObject['CMSCommandLineArgs'] = " PSet.py -e "
         
 
      
