@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.6 2007/04/04 16:02:43 evansde Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.7 2007/05/14 19:02:15 evansde Exp $"
 
 
 import os
@@ -125,6 +125,7 @@ else:
 cfgWrapper = CMSSWConfig()
 cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
 cfgInt.validateForProduction()
+cfgInt.originalCfg = file(cfgFile).read()
 
 
 #  //
