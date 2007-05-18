@@ -30,13 +30,31 @@ class T0LSFCreator(CreatorInterface):
         """
         _checkPluginConfig_
 
+        Validate/default config for this plugin
+
         Probably dont need to read details from the
         cfg file since this is a single system, probably
         just easier to code them in this module
 
         """
-        pass
 
+        if self.pluginConfig == None:
+            #  //
+            # // No config 
+            #//
+            msg = "Creator Plugin Config could not be loaded for:\n"
+            msg += self.__class__.__name__
+            logging.error(msg)
+            raise JCException(msg, ClassInstance = self)
+            #self.pluginConfig = PluginConfiguration()
+            
+	if not self.pluginConfig.has_key("SoftwareSetup"):
+            swsetup = self.pluginConfig.newBlock("SoftwareSetup")
+            swsetup['ScramCommand'] = "scramv1"
+            swsetup['ScramArch'] = "slc3_ia32_gcc323"
+            #swsetup['SetupCommand'] = ". /uscms/prod/sw/cms/setup/bashrc"
+
+        return
 
     
     def processTaskObject(self, taskObject):
@@ -136,81 +154,41 @@ class T0LSFCreator(CreatorInterface):
         if not test:
             return
 
-        #  //
-        # // Command to define CMS_PATH, make scram available etc
-        #//
-        swSetupCommand = "source $VO_CMS_SW_DIR/cmsset_default.sh"
+        taskObject['Environment'].addVariable(
+            "SCRAM_ARCH",
+            self.pluginConfig['SoftwareSetup']['ScramArch'])
 
-        #  //
-        # // If you want to set SCRAM_ARCH, or any other env var,
-        #//  you can do it like this:
-        #taskObject['Environment'].addVariable(
-        #    "SCRAM_ARCH",          # variable name
-        #    "slc3_ia32_gcc323")    # value
-
-        #  //
-        # // We add the setup command to the list of commands to run
-        #//  inside the task
         taskObject['PreTaskCommands'].append(
-            swSetupCommand
-            )
-        
-        #  //
-        # // We build a script to setup scram and abort if it fails
-        #//  Adding it to the list of commands called just prior to the
-        #  //executable
-        # //
-        #//
+           setupScramEnvironment(". $VO_CMS_SW_DIR/cmsset_default.sh ; "))
+
         scramSetup = taskObject.addStructuredFile("scramSetup.sh")
         scramSetup.interpreter = "."
         taskObject['PreAppCommands'].append(
-            setupScramEnvironment(
-            swSetupCommand
-            )
-            )
+          setupScramEnvironment(". $VO_CMS_SW_DIR/cmsset_default.sh"))
         taskObject['PreAppCommands'].append(". scramSetup.sh")
 
-        #  //
-        # // We build the scram setup script itself, which is basically 
-        #//  adding shell lines to a list.
-        #  //
-        # // Since everyone has to do this, we have some standard tools
-        #//  to build the various bits.
         scramSetup.append("#!/bin/bash")
-
-        # scram project command and check
         scramSetup.append(
-            scramProjectCommand(
-            taskObject['CMSProjectName'],
-            taskObject['CMSProjectVersion'],
-            )
-            )
-        # scram runtime command and check
+          scramProjectCommand(taskObject['CMSProjectName'],
+                            taskObject['CMSProjectVersion'])
+        )
         scramSetup.append(
-        scramRuntimeCommand(
-            taskObject['CMSProjectVersion']
-            )
+          scramRuntimeCommand(taskObject['CMSProjectVersion'],self.pluginConfig['SoftwareSetup']['ScramCommand'],True)
         )
 
-        # all done!
         return
 
-    
+
     def handleStageOut(self, taskObject):
         """
         _handleStageOut_
         
-        Handle a StageOut type task object.
+        Handle a StageOut task object.
         
         """
-        # command that makes CMS_PATH, SITECONF, TFC available
-        stageOutSetup = "source $VO_CMS_SW_DIR/cmsset_default.sh"
-
-        # use that command before stage out
         taskObject['PreStageOutCommands'].append(
-            stageOutSetup
+            ". $VO_CMS_SW_DIR/cmsset_default.sh"
             )
-        
         
         return
     
@@ -222,15 +200,13 @@ class T0LSFCreator(CreatorInterface):
         Handle a CleanUp task object
 
         """
-        # same setup as stage out for cleanup I think
-        stageOutSetup = "source $VO_CMS_SW_DIR/cmsset_default.sh"
-
-        # call it before cleanup is invoked
         taskObject['PreCleanUpCommands'].append(
-            stageOutSetup
+            ". $VO_CMS_SW_DIR/cmsset_default.sh"
             )
+        
         return
-    
+
+
 #  //
 # // Register an instance of OSGCreator with the Creator Registry
 #//  (Add import in Creators/__init__.py of this module to enable auto
