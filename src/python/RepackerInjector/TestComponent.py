@@ -29,17 +29,22 @@ def usage():
 #           "DbsDbType"    : "mysql",
 #           "DbsDbUser"    : "anzar",
 #           "DbsDbPasswd"  : "prodagentpass",
+#           "Logfile"      : "RepackerInjector.log",
 #https://cmsdbsprod.cern.ch:8443/cms_dbs_prod_tier0_writer/servlet/DBSServlet
+#https://cmsdbsprod.cern.ch:8443/cms_dbs_int_tier0_writer/servlet/DBSServlet
 #https://cmssrv17.fnal.gov:8443/DBS/servlet/DBSServlet
 #http://cmssrv17.fnal.gov:8989/DBSMySQL/servlet/DBSServlet
 
 argsDict = {
             "ComponentDir" : os.getcwd(),
             "Logfile"      : "RepackerInjector.log",
+            "CMSSW_Arch" : "slc3_ia32_gcc323",
+            "CMSSW_Ver"  : "CMSSW_1_3_1",
+            "CMSSW_Dir"  : "/uscmst1/prod/sw/cms/",
             "RepackerCfgTmpl" : "/home/kss/cmswork/projects/PA/RepakerInjector_2/EventFilter/StorageManager/test/testRepackerTmpl.cfg",
             "JobGroup" : "ankylosis",
             "JobLabel" : "RepackerInjectorTest",
-            "DbsUrl" : "http://cmssrv17.fnal.gov:8989/DBSMySQL/servlet/DBSServlet",
+            "DbsUrl" : "https://cmsdbsprod.cern.ch:8443/cms_dbs_int_tier0_writer/servlet/DBSServlet",
             "DbsLevel" : "ERROR"
             }
 

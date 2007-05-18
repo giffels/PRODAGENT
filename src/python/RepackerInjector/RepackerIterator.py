@@ -200,6 +200,11 @@ class RepackerIterator:
 		args = {'fileNames' : self.inputLFNs,'maxEvents' : -1,}
 		
 		jobCfg = generator(self.currentJob, **args)
+
+		for outModName, outModData in jobCfg.outputModules.items():
+			print outModName, outModData
+			
+		
 		jobSpecNode.cfgInterface = jobCfg
 		return
 

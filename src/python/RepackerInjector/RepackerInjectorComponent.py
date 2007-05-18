@@ -156,7 +156,7 @@ class RepackerInjectorComponent:
 		group=self.args['JobGroup']
 		label=self.args['JobLabel']
 		cfg=self.args['RepackerCfgTmpl']
-		loader = CMSSWAPILoader("slc3_ia32_gcc323", "CMSSW_1_3_1","/uscmst1/prod/sw/cms/") # XXX
+		loader = CMSSWAPILoader(self.args['CMSSW_Arch'],self.args['CMSSW_Ver'],self.args['CMSSW_Dir']) # XXX
 		loader.load()
 		import FWCore.ParameterSet.parseConfig as ConfigParser
 		cmsCfg = ConfigParser.parseCfgFile(cfg)
@@ -166,10 +166,10 @@ class RepackerInjectorComponent:
 		loader.unload()
 		
 		wfmaker=WorkflowMaker(requestId, channel, label)
-		wfmaker.setCMSSWVersion("CMSSW_1_3_1")
+		wfmaker.setCMSSWVersion(self.args['CMSSW_Ver'])
 		wfmaker.setPhysicsGroup(group)
-		wfmaker.setConfiguration(cfgWrapper.pack(), Format = "CMSSWConfig", Type = "string")
-#		wfmaker.setConfiguration(cfgWrapper, Type = "instance")
+#		wfmaker.setConfiguration(cfgWrapper.pack(), Format = "CMSSWConfig", Type = "string")
+		wfmaker.setConfiguration(cfgWrapper, Type = "instance")
 		wfmaker.setPSetHash("MadeUpHashForTesting")
 		
 		spec=wfmaker.makeWorkflow()
@@ -184,6 +184,9 @@ class RepackerInjectorComponent:
 #		print spec.outputDatasetsWithPSet()
 		wfspecfile=workdir+"/workflow.spec"
 		spec.save(wfspecfile)
+		self.ms.publish("NewWorkflow",wfspecfile)
+		self.ms.publish("NewDataset",wfspecfile)
+		self.ms.commit()
 		repacker_iter=RepackerIterator.RepackerIterator(wfspecfile,workdir)
 		self.workflow_by_ds[ds_key]=repacker_iter
 		
@@ -224,6 +227,7 @@ class RepackerInjectorComponent:
 		rep_iter=self.workflow_by_ds[ds_key]
 #		job_spec=spec.createJobSpec()
 		job_spec=rep_iter(lfn)
+		
 		self.ms.publish("CreateJob",job_spec)
 		self.ms.commit()
 		logging.info("CreateJob signal sent, js [%s]"%(job_spec,))
