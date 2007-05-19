@@ -14,9 +14,10 @@ import time
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
+from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 import ProdCommon.MCPayloads.DatasetConventions as DatasetConventions
 
-valid = ['cfg=', 'version=', 'category=', 'label=',
+valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'override-channel=', 'group=', 'request-id=',
          'dataset=',
          'split-type=', 'split-size=',
@@ -103,6 +104,7 @@ physicsGroup = "Individual"
 label = "Test"
 category = "mc"
 channel = None
+cfgType = "cfg"
 selectionEfficiency = None
 
 dataset = None
@@ -126,6 +128,10 @@ pileupFilesPerJob = 1
 for opt, arg in opts:
     if opt == "--cfg":
         cfgFile = arg
+        cfgType = "cfg"
+    if opt == "--py-cfg":
+  	cfgFile = arg
+  	cfgType = "python"
     if opt == "--version":
         version = arg
     if opt == "--category":
@@ -163,7 +169,7 @@ for opt, arg in opts:
         pileupFilesPerJob = arg
         
 if cfgFile == None:
-    msg = "--cfg option not provided: This is required"
+    msg = "--cfg or --py-cfg option not provided: This is required"
     raise RuntimeError, msg
 
 if version == None:
@@ -203,16 +209,27 @@ if not os.path.exists(cfgFile):
     msg = "Cfg File Not Found: %s" % cfgFile
     raise RuntimeError, msg
 
+if cfgType == "cfg":
+    from FWCore.ParameterSet.Config import include
+    cmsCfg = include(cfgFile)
+else:
+    modRef = imp.find_module( os.path.basename(cfgFile).replace(".py", ""),  os.path.dirname(cfgFile))
+    cmsCfg = modRef.process
+                                                                                                      
+cfgWrapper = CMSSWConfig()
+cfgWrapper.originalCfg = file(cfgFile).read()
+cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
+cfgInt.validateForProduction()
 
-
-RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
-
+#  //
+# // Instantiate a WorkflowMaker
+#//
 
 maker = WorkflowMaker(requestId, channel, label )
 
 maker.setCMSSWVersion(version)
 maker.setPhysicsGroup(physicsGroup)
-maker.setConfiguration(cfgFile, Format = "cfg", Type = "file")
+maker.setConfiguration(cfgWrapper, Type = "instance")
 maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
 maker.changeCategory(category)
 
