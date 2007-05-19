@@ -150,7 +150,8 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         #  //
         # // Submit LSF job
         #//
-        lsfSubmitCommand = 'bsub -R "type=SLC4_64"'
+        #lsfSubmitCommand = 'bsub -R "type=SLC4_64"'
+        lsfSubmitCommand = 'bsub -R "type=SLC3"'
         lsfSubmitCommand += ' -q 8nh'
         lsfSubmitCommand += ' -g /groups/tier0/reconstruction'
         lsfSubmitCommand += ' -J %s' % jobSpec
@@ -198,9 +199,9 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s/FrameworkJobReport.xml \n" % cacheDir)
 
         outputlogfile = jobName
-        outputlogfile += '.`date +%Y%m%d.%k:%M:%S`.log'
+        outputlogfile += '.`date +%Y%m%d.%k.%M.%S`.log'
 
-        script.append("rfcp ./run.log cmslcgse02:/data1/hufnagel/T0/logs/%s\n" % outputlogfile)
+        script.append("rfcp ./run.log cmslcgse02.cern.ch:/data1/hufnagel/T0/logs/%s\n" % outputlogfile)
 
         #script.extend(missingJobReportCheck(jobName))
 
