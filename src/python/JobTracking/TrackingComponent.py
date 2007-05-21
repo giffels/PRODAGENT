@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.34 2007/02/07 12:07:45 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.36 2007/03/13 11:50:46 bacchi Exp $"
 
 import socket
 import time
@@ -166,7 +166,10 @@ class TrackingComponent:
         jobNumber=300
         timeout=0
         # logging.info("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j\" -c " + self.bossCfgDir)
-        outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j\" -c " + self.bossCfgDir)
+        # outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j\" -c " + self.bossCfgDir)
+        
+        # More general query. This should work even with bulk submission
+        outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select j.TASK_ID from JOB j\" -c " + self.bossCfgDir)        
         # logging.info("\noutfile=%s\n"%outfile)
         try:
             jobNumber=len(outfile.split('\n'))-2
