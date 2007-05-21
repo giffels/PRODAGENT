@@ -291,10 +291,30 @@ class DBSComponent:
             try:
                 self.RetryFailures(self.args['BadReportfile'],self.BadReport)
                 return
+            except DBSWriterError, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                ## add the FWKJobReport to the failed list
+                self.BadReport.write("%s\n" % payload)
+                self.BadReport.flush()
+                return
+            except DBSReaderError, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                ## add the FWKJobReport to the failed list
+                self.BadReport.write("%s\n" % payload)
+                self.BadReport.flush()
+                return
+            except DbsException, ex:
+                logging.error("Failed to Handle Job Report: %s" % payload)
+                logging.error("DbsException Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
+                ## add the FWKJobReport to the failed list
+                self.BadReport.write("%s\n" % payload)
+                self.BadReport.flush()
+                return
             except StandardError, ex:
                 logging.error("Failed to RetryFailures")
                 logging.error("Details: %s" % str(ex))
                 return
+
 
         if event == "DBSInterface:MigrateDatasetToGlobal":
             #logging.info("DBSInterface:MigrateDatasetToGlobal Event %s"% payload)
