@@ -153,8 +153,10 @@ def declare(bossCfgDir,parameters):
         bossJobId = bossJobId.split(":")[1].split("\n")[0].strip()
     except StandardError, ex:
         #logging.debug("SubmitterInterface:BOSS Job ID: %s. BossJobId set to 0\n" % bossJobId)
-        raise ProdAgentException("Job Declaration Failed")
+        raise ProdAgentException("Job Declaration Failed : issuing %s"%bossDeclare)
     #os.remove(xmlfile)
+    if (bossJobId == "") or ( bossJobId == "None" ) :
+        raise ProdAgentException("Job Declaration Failed : issuing %s"%bossDeclare) 
     return bossJobId
 
 
