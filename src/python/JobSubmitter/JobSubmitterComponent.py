@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.11 2007/04/24 15:23:48 evansde Exp $"
+__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.14 2007/05/16 14:42:48 evansde Exp $"
 
 import os
 import logging
@@ -160,6 +160,8 @@ class JobSubmitterComponent:
             # // Publish Successful submission 
             #//
             if result:
+                self.ms.publish("TrackJob", jobSpecId)
+                self.ms.commit()
                 try:
                     JobStateChangeAPI.submit(jobSpecId)
                 except ProdAgentException, ex:
@@ -190,6 +192,8 @@ class JobSubmitterComponent:
         
         if result:
             for specId in usedSpecs.keys():
+                self.ms.publish("TrackJob", specId)
+                self.ms.commit()
                 try:
                     JobStateChangeAPI.submit(specId)
                 except ProdAgentException, ex:
