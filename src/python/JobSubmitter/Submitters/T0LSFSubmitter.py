@@ -105,6 +105,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             lsfsetup['Queue'] = "8nh"
             lsfsetup['LsfLogDir'] = "None"
             lsfsetup['CmsRunLogDir'] = "None"
+            lsfsetup['NodeType'] = "None"
 
         return
 
@@ -175,8 +176,9 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         #  //
         # // Submit LSF job
         #//
-        #lsfSubmitCommand = 'bsub -R "type=SLC4_64"'
-        lsfSubmitCommand = 'bsub -R "type=SLC3"'
+        if ( self.pluginConfig['LSF']['NodeType'] != "None" ):
+            lsfSubmitCommand = 'bsub -R "type=%s"' % self.pluginConfig['LSF']['NodeType']
+
         lsfSubmitCommand += ' -q %s' % self.pluginConfig['LSF']['Queue']
         lsfSubmitCommand += ' -g /groups/tier0/reconstruction'
         lsfSubmitCommand += ' -J %s' % jobSpec
