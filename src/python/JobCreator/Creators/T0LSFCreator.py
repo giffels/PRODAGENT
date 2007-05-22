@@ -39,20 +39,14 @@ class T0LSFCreator(CreatorInterface):
         """
 
         if self.pluginConfig == None:
-            #  //
-            # // No config 
-            #//
             msg = "Creator Plugin Config could not be loaded for:\n"
             msg += self.__class__.__name__
-            logging.error(msg)
             raise JCException(msg, ClassInstance = self)
-            #self.pluginConfig = PluginConfiguration()
             
 	if not self.pluginConfig.has_key("SoftwareSetup"):
             swsetup = self.pluginConfig.newBlock("SoftwareSetup")
             swsetup['ScramCommand'] = "scramv1"
             swsetup['ScramArch'] = "slc3_ia32_gcc323"
-            #swsetup['SetupCommand'] = ". /uscms/prod/sw/cms/setup/bashrc"
 
         return
 
