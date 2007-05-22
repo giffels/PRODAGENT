@@ -12,7 +12,7 @@ import logging
 class KillerInterface:
 
 
-    def __init__(self):
+    def __init__(self, args):
         pass
 
 
@@ -73,5 +73,17 @@ class KillerInterface:
         logging.warning(msg)
         raise NotImplementedError, msg
 
+    def killTask(self, taskSpecId):
+        """
+        _killTask_
+
+        Kill all jobs with the taskspec ID provided
+
+        """
+        msg = "Not Implemented: %s.killTask %s" % (
+             self.__class__.__name__ ,
+             taskSpecId)
+        logging.warning(msg)
+        raise NotImplementedError, msg
 
         

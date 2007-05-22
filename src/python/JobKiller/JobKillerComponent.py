@@ -5,8 +5,8 @@ _JobKillerComponent_
 ProdAgent Component that kills jobs by job spec or workflow Id
 
 """
-__version__ = "$Revision$"
-__revision__ = "$Id$"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: JobKillerComponent.py,v 1.3 2007/05/04 14:16:40 ckavka Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -34,13 +34,15 @@ class JobKillerComponent:
         self.args['Logfile'] = None
         self.args['KillerName'] = None
         self.args.update(args)
-        
+
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
 
         LoggingUtils.installLogHandler(self)
         self.ms = None
+
+        logging.getLogger().setLevel(logging.DEBUG)
 
         msg = "JobKiller Component Started...\n"
         msg += " => Killer Plugin: %s\n" % self.args['KillerName']
@@ -83,6 +85,9 @@ class JobKillerComponent:
             self.eraseWorkflow(payload)
             return
             
+        if event == "KillTask":
+            self.killTask(payload)
+            return
         
         return
 
@@ -211,7 +216,7 @@ class JobKillerComponent:
             logging.error(msg)
             return None
         try:
-            killer = retrieveKiller(self.args['KillerName'])
+            killer = retrieveKiller(self.args['KillerName'], self.args)
         except Exception, ex:
             msg = "Exception when loading Killer Plugin: %s\n" % (
                 self.args['KillerName'],)
@@ -220,6 +225,44 @@ class JobKillerComponent:
             killer = None
         return killer
     
+    def killTask(self, taskSpecId):
+        """
+        _killTask_
+
+        Kill all running jobs from a task
+
+        """
+        logging.info("Killing Task: %s" % taskSpecId)
+        killer = self.loadKiller()
+        if killer == None:
+            msg = "Problem Loading Killer Plugin, unable to kill task: %s" % (
+                taskSpecId,
+                )
+            logging.error(msg)
+
+            # publish a task killed failed message
+            self.ms.publish("TaskKilledFailed", taskSpecId)
+            self.ms.commit()
+ 
+            return
+        try:
+            killer.killTask(taskSpecId)
+        except Exception, ex:
+            msg = "Error invoking kill Task on %s\n" % taskSpecId
+            msg += "With plugin: %s\n" % self.args['KillerName']
+            msg += "%s\n" % str(ex)
+            logging.error(msg)
+
+            # publish a task killed failed message
+            self.ms.publish("TaskKilledFailed", taskSpecId)
+            self.ms.commit()
+
+            return
+
+        self.ms.publish("TaskKilled", taskSpecId)
+        self.ms.commit()
+
+        return
         
         
             
@@ -246,9 +289,11 @@ class JobKillerComponent:
         self.ms.subscribeTo("EraseJob")
         self.ms.subscribeTo("KillWorkflow")
         self.ms.subscribeTo("EraseWorkflow")
+        self.ms.subscribeTo("KillTask")
         
         # wait for messages
         while True:
+            logging.info("JobKiller ready")
             msgtype, payload = self.ms.get()
             self.ms.commit()
             self.__call__(msgtype, payload)

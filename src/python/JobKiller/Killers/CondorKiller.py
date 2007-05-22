@@ -31,5 +31,7 @@ class CondorKiller:
     def eraseWorkflow(self, workflowSpecId):
         logging.info("CondorKiller.eraseWorkflow(%s)" % workflowSpecId)
 
+    def killTask(self, taskSpecId):
+        logging.info("CondorKiller.killTask(%s)" % taskSpecId)
 
 registerKiller(CondorKiller, CondorKiller.__name__)
