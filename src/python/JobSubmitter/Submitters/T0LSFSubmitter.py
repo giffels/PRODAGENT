@@ -84,6 +84,32 @@ class T0LSFSubmitter(BulkSubmitterInterface):
     Can generate bulk or single type submissions.
 
     """
+
+    def __init__(self):
+        BulkSubmitterInterface.__init__(self)
+
+    def checkPluginConfig(self):
+        """
+        _checkPluginConfig_
+
+        Make sure config has what is required for this submitter
+
+        """
+        if self.pluginConfig == None:
+            msg = "Creator Plugin Config could not be loaded for:\n"
+            msg += self.__class__.__name__
+            raise JSException(msg, ClassInstance = self)
+
+        if not self.pluginConfig.has_key("LSF"):
+            lsfsetup = self.pluginConfig.newBlock("LSF")
+            lsfsetup['Queue'] = "8nh"
+            lsfsetup['LsfLogDir'] = "None"
+            lsfsetup['CmsRunLogDir'] = "None"
+            lsfsetup['NodeType'] = "None"
+
+        return
+
+    
     def doSubmit(self):
         """
         _doSubmit_
@@ -150,14 +176,21 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         #  //
         # // Submit LSF job
         #//
-        lsfSubmitCommand = 'bsub -R "type=SLC4_64"'
-        lsfSubmitCommand += ' -q 8nh'
+        if ( self.pluginConfig['LSF']['NodeType'] != "None" ):
+            lsfSubmitCommand = 'bsub -R "type=%s"' % self.pluginConfig['LSF']['NodeType']
+
+        lsfSubmitCommand += ' -q %s' % self.pluginConfig['LSF']['Queue']
         lsfSubmitCommand += ' -g /groups/tier0/reconstruction'
         lsfSubmitCommand += ' -J %s' % jobSpec
-        #lsfSubmitCommand += ' -oo /dev/null'
-        lsfSubmitCommand += ' -oo /afs/cern.ch/user/h/hufnagel/scratch0/logs/%s.lsf.log' % jobSpec
+
+        if ( self.pluginConfig['LSF']['LsfLogDir'] == "None" ):
+            lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
+        else:
+            lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (self.pluginConfig['LSF']['LsfLogDir'],jobSpec)
+
         #lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
         #lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
+
         lsfSubmitCommand += ' < %s' % os.path.join(cacheDir,"lsfsubmit.sh")
 
         logging.debug("T0LSFSubmitter.doSubmit: %s" % lsfSubmitCommand)
@@ -180,7 +213,6 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        script.append("export SCRAM_ARCH=slc4_ia32_gcc345\n")
         script.append("export STAGE_SVCCLASS=t0input\n")
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
@@ -196,8 +228,14 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
         script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1 \n")
-        script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s \n" % cacheDir)
-        script.append("rfcp ./run.log cmslcgse02:/data1/hufnagel/T0/logs/%s.log\n" % jobName)
+        script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s/FrameworkJobReport.xml \n" % cacheDir)
+
+        outputlogfile = jobName
+        outputlogfile += '.`date +%Y%m%d.%k.%M.%S`.log'
+
+        if ( self.pluginConfig['LSF']['CmsRunLogDir'] != "None" ):
+            script.append("rfcp ./run.log %s/%s\n" % (self.pluginConfig['LSF']['CmsRunLogDir'],outputlogfile))
+
         #script.extend(missingJobReportCheck(jobName))
 
         handle = open(filename, 'w')
