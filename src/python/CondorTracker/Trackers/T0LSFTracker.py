@@ -11,6 +11,7 @@ import logging
 import popen2
 import fcntl, select, sys, os
 
+
 from CondorTracker.TrackerPlugin import TrackerPlugin
 from CondorTracker.Registry import registerTracker
 
@@ -21,6 +22,7 @@ import FwkJobRep.ReportState as ReportState
 # // LSF Group name for Tier 0 jobs
 #//
 LSFGroupName = "/groups/tier0/reconstruction"
+
 
 def makeNonBlocking(fd):
     fl = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -153,7 +155,7 @@ class T0LSFTracker(TrackerPlugin):
     def __init__(self):
         TrackerPlugin.__init__(self)
         self.bjobs = {}
-        self.cooloff = "00:2:00"
+        self.cooloff = "00:05:00"
 
 
     def initialise(self):
@@ -190,8 +192,8 @@ class T0LSFTracker(TrackerPlugin):
             #// if status is still None => check lsf history
             #//  for right now just check again the single job
             #//
-            if status == None:
-                status = LSFInterface.bjobs(LSFGroupName, subId).get(subId, None)
+            #if status == None:
+                #status = LSFInterface.bjobs(LSFGroupName, subId).get(subId, None)
 
             #  //
             # // If status still None, declare job lost/failed
@@ -200,7 +202,6 @@ class T0LSFTracker(TrackerPlugin):
                 self.TrackerDB.jobFailed(subId)
                 logging.debug("Job %s has been lost" % (subId))
                 continue
-            
 
             #  //
             # // Now examine the status value, not sure what these are, but act accordingly
