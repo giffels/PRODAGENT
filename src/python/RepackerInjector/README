@@ -1,0 +1,12 @@
+
+Config block for the RepackerInjector:
+
+<ConfigBlock Name="RepackerInjector">
+	<Parameter Name="ComponentDir" Value="/your_project_dir/PRODAGENT/work/RepackerInjector"/>
+	<Parameter Name="Logfile" Value="RepackerInjector.log"/>
+	<Parameter Name="DbsUrl" Value="https://cmsdbsprod.cern.ch:8443/cms_dbs_int_tier0_writer/servlet/DBSServlet"/>
+	<Parameter Name="DbsLevel" Value="ERROR"/>
+	<Parameter Name="RepackerCfgTmpl" Value="/your_project_dir/EventFilter/StorageManager/test/testRepackerTmpl.cfg"/>
+	<Parameter Name="JobGroup" Value="ankylosis"/>
+	<Parameter Name="JobLabel" Value="RepackerInjectorTest"/>
+</ConfigBlock>
