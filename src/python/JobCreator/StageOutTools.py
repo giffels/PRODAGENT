@@ -21,6 +21,9 @@ from IMProv.IMProvLoader import IMProvHandler
 from IMProv.IMProvQuery import IMProvQuery
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 
+from ShREEK.ControlPoints.CondImpl.CheckExitCode import CheckExitCode
+from ShREEK.ControlPoints.ActionImpl.BasicActions import KillJob
+
 class InsertStageOut:
     """
     _InsertStageOutAttrs_
@@ -206,6 +209,7 @@ class NewInsertStageOut:
 _StageOutFailureScript = \
 """
 EXIT_STATUS=$?
+echo $EXIT_STATUS > exit.status
 if [ $EXIT_STATUS -ne 0 ];then
    echo "Failure to invoke RuntimeStageOut.py: Exit $EXIT_STATUS"
    echo "Invoking Failure handler"
@@ -274,6 +278,17 @@ class NewPopulateStageOut:
         for postcomm in postcomms:
             exeScript.append(str(postcomm))
 
+
+            
+        #  //
+        # // Insert End Control Point check on exit status
+        #//
+        controlP = taskObject['ShREEKTask'].endControlPoint
+        exitCheck = CheckExitCode()
+        exitCheck.attrs['OnFail'] = "killJob"
+        exitAction = KillJob("killJob")
+        controlP.addConditional(exitCheck)
+        controlP.addAction(exitAction)
       
         #  //
         # // Populate the RunResDB
