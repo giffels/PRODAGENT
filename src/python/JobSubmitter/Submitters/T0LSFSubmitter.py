@@ -84,6 +84,31 @@ class T0LSFSubmitter(BulkSubmitterInterface):
     Can generate bulk or single type submissions.
 
     """
+
+    def __init__(self):
+        BulkSubmitterInterface.__init__(self)
+
+    def checkPluginConfig(self):
+        """
+        _checkPluginConfig_
+
+        Make sure config has what is required for this submitter
+
+        """
+        if self.pluginConfig == None:
+            msg = "Creator Plugin Config could not be loaded for:\n"
+            msg += self.__class__.__name__
+            raise JSException(msg, ClassInstance = self)
+
+        if not self.pluginConfig.has_key("LSF"):
+            lsfsetup = self.pluginConfig.newBlock("LSF")
+            lsfsetup['Queue'] = "8nh"
+            lsfsetup['LsfLogDir'] = "None"
+            lsfsetup['CmsRunLogDir'] = "None"
+
+        return
+
+    
     def doSubmit(self):
         """
         _doSubmit_
@@ -152,13 +177,18 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         #//
         #lsfSubmitCommand = 'bsub -R "type=SLC4_64"'
         lsfSubmitCommand = 'bsub -R "type=SLC3"'
-        lsfSubmitCommand += ' -q 8nh'
+        lsfSubmitCommand += ' -q %s' % self.pluginConfig['LSF']['Queue']
         lsfSubmitCommand += ' -g /groups/tier0/reconstruction'
         lsfSubmitCommand += ' -J %s' % jobSpec
-        #lsfSubmitCommand += ' -oo /dev/null'
-        lsfSubmitCommand += ' -oo /afs/cern.ch/user/h/hufnagel/scratch0/logs/%s.lsf.log' % jobSpec
+
+        if ( self.pluginConfig['LSF']['LsfLogDir'] == "None" ):
+            lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
+        else:
+            lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (self.pluginConfig['LSF']['LsfLogDir'],jobSpec)
+
         #lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
         #lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
+
         lsfSubmitCommand += ' < %s' % os.path.join(cacheDir,"lsfsubmit.sh")
 
         logging.debug("T0LSFSubmitter.doSubmit: %s" % lsfSubmitCommand)
@@ -201,7 +231,8 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         outputlogfile = jobName
         outputlogfile += '.`date +%Y%m%d.%k.%M.%S`.log'
 
-        script.append("rfcp ./run.log cmslcgse02.cern.ch:/data1/hufnagel/T0/logs/%s\n" % outputlogfile)
+        if ( self.pluginConfig['LSF']['CmsRunLogDir'] != "None" ):
+            script.append("rfcp ./run.log %s/%s\n" % (self.pluginConfig['LSF']['CmsRunLogDir'],outputlogfile))
 
         #script.extend(missingJobReportCheck(jobName))
 
