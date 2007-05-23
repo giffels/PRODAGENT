@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.26 $"
-__revision__ = "$Id: releaseValidation.py,v 1.26 2007/04/30 08:37:43 afanfani Exp $"
+__version__ = "$Revision: 1.27 $"
+__revision__ = "$Id: releaseValidation.py,v 1.27 2007/04/30 09:30:39 afanfani Exp $"
 
 
 import os
@@ -25,7 +25,7 @@ from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
 from ProdCommon.MCPayloads.RelValSpec import getRelValSpecForVersion, listAllVersions
 from MessageService.MessageService import MessageService
 import ProdCommon.MCPayloads.DatasetConventions as DatasetConventions
-
+from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 
 valid = ['url=', 'version=', 'relvalversion=', 'events=', 'run=',
          'subpackage=', 'alltests', "site-pref=", "sites=", "no-recreate",
@@ -113,14 +113,6 @@ splitSize = None
 pileupDS = None
 pileupFilesPerJob = 1
 
-#
-# hardcode DBS URL
-#
-#inputDBSDLS = {
-#    "DBSURL": "https://cmsdbsprod.cern.ch:8443/cms_dbs_int_global_writer/servlet/DBSServlet",
-#    }
-#dbsUrl = inputDBSDLS['DBSURL']
-#
 dbsUrl = None
 
 # for RelVal assume the PU is at the sites to run on:  
@@ -308,13 +300,19 @@ for relTest in relValSpec:
         print "Retrieval Completed for %s" % prodName
         print "Cfg File is %s " % cfgFile
         continue
-    pycfgFile = "%s.pycfg" % prodName
-    
+
 
     if not os.path.exists(cfgFile):
         msg = "Cfg File Not Found: %s" % cfgFile
         raise RuntimeError, msg
 
+    origcmsswsearch=os.environ.get("CMSSW_SEARCH_PATH", None)
+    if not origcmsswsearch:
+      print "CMSSW_SEARCH_PATH not set....you need CMSSW environment "
+    #cmsswsearch="%s:%s"%(os.path.dirname(cfgFile),origcmsswsearch)
+    cmsswsearch="/.:%s"%origcmsswsearch
+    os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
+ 
     #  //
     # // Make sure PSet ends up with unique hash
     #//
@@ -329,39 +327,47 @@ for relTest in relValSpec:
         handle = open(cfgFile, 'w')
         handle.write(cfgFileContent)
         handle.close()    
-
-
-        #  //
-        # // Cleanup existing files
-        #//
-    
-        if os.path.exists(pycfgFile):
-            os.remove(pycfgFile)
-    
-        #  //
-        # // Generate python cfg file
-        #//
-        WorkflowTools.createPythonConfig(cfgFile)
-    
         #  //
         # // Generate PSet Hash
         #//
+        print "generate PSet Hash for %s"%cfgFile
         RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
+
+    
+    ## AF: need to recreate cfg parser since it's not stored in pycfg
+    #  //
+    # // cfg python parser from CMSSW
+    #//
+    print "CMSSW python parser on %s \n ....it can take a while..."%cfgFile
+    from FWCore.ParameterSet.Config import include
+    from FWCore.ParameterSet.parsecf.pyparsing import *
+    try:
+     cmsCfg = include(cfgFile)
+    except ParseException, ex:
+     print "Error in CMSSW python parser: ParseException \n %s \n"%ex
+     continue
+    except ParseFatalException, ex:
+     print "Error in CMSSW python parser: ParseFatalException \n %s \n"%ex
+     continue
+                                                                         
+    cfgWrapper = CMSSWConfig()
+    cfgWrapper.originalCfg = file(cfgFile).read()
+    cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
+    cfgInt.validateForProduction()
 
     #  //
     # // Existence checks for created files
     #//
-    for item in (cfgFile, pycfgFile):
-        if not os.path.exists(item):
-            msg = "File Not Found: %s" % item
-            raise RuntimeError, msg
-
-        
+    #for item in (cfgFile, pycfgFile):
+    #    if not os.path.exists(item):
+    #        msg = "File Not Found: %s" % item
+    #        raise RuntimeError, msg
 
     if testPythonMode:
         print "Test Python Mode:"
-        print "EdmConfigToPython and EdmConfigHash successful for %s" % prodName
-        print "Python Config File: %s" % pycfgFile
+        print "python cfg parser successful for %s"% prodName
+        print "EdmConfigHash successful for %s" % prodName
+    #    print "Python Config File: %s" % pycfgFile
         print "Hash: %s" % RealPSetHash
         continue
     
@@ -376,7 +382,7 @@ for relTest in relValSpec:
 
     maker.setCMSSWVersion(version)
     maker.setPhysicsGroup(physicsGroup)
-    maker.setConfiguration(cfgFile, Format = "cfg", Type = "file")
+    maker.setConfiguration(cfgWrapper, Type = "instance")
     maker.setPSetHash(RealPSetHash)
     maker.changeCategory(category)
 
@@ -404,17 +410,20 @@ for relTest in relValSpec:
     workflowBase = "%s-Workflow.xml" % maker.workflowName
     workflow = os.path.join(os.getcwd(), workflowBase)
 
-    # use MessageService
-    ms = MessageService()
-    # register message service instance as "Test"
-    ms.registerAs("Test")
-    
+    if not workflowsOnly:
+
+      # use MessageService
+      ms = MessageService()
+      # register message service instance as "Test"
+      ms.registerAs("Test")
+
 
     if not noRecreate:
+
         spec.save("%s-Workflow.xml" % maker.workflowName)
 
         print "Created: %s-Workflow.xml" % maker.workflowName
-        print "Created: %s " % pycfgFile
+        #print "Created: %s " % pycfgFile
         print "From Tag: %s Of %s " % (cvsTag, cfgFile )
         if useInputDataset:
           print "Input Dataset: %s " % inputDataset
@@ -447,6 +456,7 @@ for relTest in relValSpec:
     
 
     else:
+
         print "Using: %s-Workflow.xml" % maker.workflowName
 
         
