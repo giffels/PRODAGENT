@@ -9,8 +9,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.27 $"
-__revision__ = "$Id: releaseValidation.py,v 1.27 2007/04/30 09:30:39 afanfani Exp $"
+__version__ = "$Revision: 1.28 $"
+__revision__ = "$Id: releaseValidation.py,v 1.28 2007/05/23 13:47:33 afanfani Exp $"
 
 
 import os
@@ -333,97 +333,88 @@ for relTest in relValSpec:
         print "generate PSet Hash for %s"%cfgFile
         RealPSetHash = WorkflowTools.createPSetHash(cfgFile)
 
-    
-    ## AF: need to recreate cfg parser since it's not stored in pycfg
-    #  //
-    # // cfg python parser from CMSSW
-    #//
-    print "CMSSW python parser on %s \n ....it can take a while..."%cfgFile
-    from FWCore.ParameterSet.Config import include
-    from FWCore.ParameterSet.parsecf.pyparsing import *
-    try:
-     cmsCfg = include(cfgFile)
-    except ParseException, ex:
-     print "Error in CMSSW python parser: ParseException \n %s \n"%ex
-     continue
-    except ParseFatalException, ex:
-     print "Error in CMSSW python parser: ParseFatalException \n %s \n"%ex
-     continue
+        ## AF: need to recreate cfg parser since it's not stored in pycfg
+        #  //
+        # // cfg python parser from CMSSW
+        #//
+        print "CMSSW python parser on %s \n ....it can take a while..."%cfgFile
+        from FWCore.ParameterSet.Config import include
+        from FWCore.ParameterSet.parsecf.pyparsing import *
+        try:
+          cmsCfg = include(cfgFile)
+        except ParseException, ex:
+          print "Error in CMSSW python parser: ParseException \n %s \n"%ex
+          continue
+        except ParseFatalException, ex:
+          print "Error in CMSSW python parser: ParseFatalException \n %s \n"%ex
+          continue
                                                                          
-    cfgWrapper = CMSSWConfig()
-    cfgWrapper.originalCfg = file(cfgFile).read()
-    cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
-    cfgInt.validateForProduction()
+        cfgWrapper = CMSSWConfig()
+        cfgWrapper.originalCfg = file(cfgFile).read()
+        cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
+        cfgInt.validateForProduction()
 
-    #  //
-    # // Existence checks for created files
-    #//
-    #for item in (cfgFile, pycfgFile):
-    #    if not os.path.exists(item):
-    #        msg = "File Not Found: %s" % item
-    #        raise RuntimeError, msg
-
-    if testPythonMode:
-        print "Test Python Mode:"
-        print "python cfg parser successful for %s"% prodName
-        print "EdmConfigHash successful for %s" % prodName
-    #    print "Python Config File: %s" % pycfgFile
-        print "Hash: %s" % RealPSetHash
-        continue
+        if testPythonMode:
+          print "Test Python Mode:"
+          print "python cfg parser successful for %s"% prodName
+          print "EdmConfigHash successful for %s" % prodName
+      #    print "Python Config File: %s" % pycfgFile
+          print "Hash: %s" % RealPSetHash
+          continue
     
-    #  // 
-    # // Create a new WorkflowSpec and set its name
-    #//
+    if not workflowsOnly:
+                                                                                                          
+        # use MessageService
+        ms = MessageService()
+        # register message service instance as "Test"
+        ms.registerAs("Test")
 
     #  //
-    # // Instantiate a WorkflowMaker
+    # // Instantiate a WorkflowMaker and set its name
     #//
     maker = WorkflowMaker(requestId, channel, label )
-
-    maker.setCMSSWVersion(version)
-    maker.setPhysicsGroup(physicsGroup)
-    maker.setConfiguration(cfgWrapper, Type = "instance")
-    maker.setPSetHash(RealPSetHash)
-    maker.changeCategory(category)
-
-    if selectionEfficiency != None:
-      maker.addSelectionEfficiency(selectionEfficiency)
-
-    #  //
-    # // Pileup??
-    #//
-    if pileupDS != None:
-      maker.addPileupDataset( pileupDS, pileupFilesPerJob)
-
-    if dbsUrl != None:
-      maker.workflow.parameters['DBSURL'] = dbsUrl
-
-    #  //
-    # // Input Dataset
-    #//
-    if useInputDataset:
-       maker.addInputDataset(inputDataset)
-       maker.inputDataset['SplitType'] = splitType
-       maker.inputDataset['SplitSize'] = splitSize
-
-    spec = maker.makeWorkflow()
-    workflowBase = "%s-Workflow.xml" % maker.workflowName
+    wfname= maker.workflowName
+    workflowBase = "%s-Workflow.xml" % wfname
     workflow = os.path.join(os.getcwd(), workflowBase)
 
-    if not workflowsOnly:
-
-      # use MessageService
-      ms = MessageService()
-      # register message service instance as "Test"
-      ms.registerAs("Test")
-
-
     if not noRecreate:
+
+        #
+        # fill the Workflow
+        #
+        maker.setCMSSWVersion(version)
+        maker.setPhysicsGroup(physicsGroup)
+        maker.setConfiguration(cfgWrapper, Type = "instance")
+        maker.setPSetHash(RealPSetHash)
+        maker.changeCategory(category)
+
+        if selectionEfficiency != None:
+          maker.addSelectionEfficiency(selectionEfficiency)
+
+        #  //
+        # // Pileup??
+        #//
+        if pileupDS != None:
+          maker.addPileupDataset( pileupDS, pileupFilesPerJob)
+
+        if dbsUrl != None:
+          maker.workflow.parameters['DBSURL'] = dbsUrl
+
+        #  //
+        # // Input Dataset
+        #//
+        if useInputDataset:
+           maker.addInputDataset(inputDataset)
+           maker.inputDataset['SplitType'] = splitType
+           maker.inputDataset['SplitSize'] = splitSize
+
+        spec = maker.makeWorkflow()
+        workflowBase = "%s-Workflow.xml" % maker.workflowName
+        workflow = os.path.join(os.getcwd(), workflowBase)
 
         spec.save("%s-Workflow.xml" % maker.workflowName)
 
         print "Created: %s-Workflow.xml" % maker.workflowName
-        #print "Created: %s " % pycfgFile
         print "From Tag: %s Of %s " % (cvsTag, cfgFile )
         if useInputDataset:
           print "Input Dataset: %s " % inputDataset
@@ -457,9 +448,12 @@ for relTest in relValSpec:
 
     else:
 
-        print "Using: %s-Workflow.xml" % maker.workflowName
+        #print "Using: %s-Workflow.xml" % maker.workflowName
+        print "Using: %s-Workflow.xml" %wfname
+        if not os.path.exists(workflow):
+           print "ERROR: Workflow %s do not exist. Need to recreate it"%workflow	 
+           continue
 
-        
     if workflowsOnly:
         continue 
     if not useInputDataset:
