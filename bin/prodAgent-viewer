@@ -20,31 +20,33 @@ except StandardError, ex:
 # generic usage message
 def usage():
     """print usage info"""
-    strg = "Usage: ProdAgentViewer <command> <options>\n\n"
-    strg += "--listRequests --start=0 --max=0\n"
-    strg += "Lists the number of requests acquired from the prodmgrs. If\n"
-    strg += "'start' and 'max' are omitted the first 10 requests are listed,\n"
-    strg += "otherwise it returns 'max' requests that start at 'start'\n\n"
-    strg += "--listAllocatedJobs --start=0 --max=0 --short\n"
-    strg += "Lists the number of allocated jobs (aka allocations) retrieved\n"
-    strg += "from the various ProdMgrs. If 'start' and 'max' are omitted \n"
-    strg += "the first 10 requests are listed, otherwise it returns 'max' jobs \n"
-    strg += " that start at 'start'. The 'short' option displays a smaller table\n\n"
-    strg += "--listMessages --start=0 --max=0 --short\n"
+    strg = "Usage: prodAgent-viewer <command> <options>\n\n"
+    strg += "--lsMsg --start=0 --max=0 --short\n"
     strg += "Lists messages in the message queue in a readable format. If\n"
     strg += "'start' and 'max' are the first 10 messages are listed\n"
     strg += "otherwise it returns 'max' messages that start at 'start'\n"
     strg += "The 'short' option displays a smaller table\n\n"
-    strg += "--listMessageHistory --start=0 --max=0 --short\n"
+    strg += "--lsMsgh --start=0 --max=0 --short\n"
     strg += "Lists messages in the message history queue in a readable format. If\n"
     strg += "'start' and 'max' are omitted the first 10 messages are listed\n"
     strg += "otherwise it returns 'max' messages that start at 'start'\n"
-    strg += "The 'short' option displays a smaller table\n\n\n"
+    strg += "The 'short' option displays a smaller table\n\n"
+    strg += "--lsReq --start=0 --max=0 \n"
+    strg += "Lists the request acquired by the ProdmgrInterface\n\n"
+    strg += "--lsJob --start=0 --max=0\n"
+    strg += "Lists the jobs managed by the prodagent from  workflows from \n"
+    strg += "a prodmgr and the jobs as registered in the prodmgr\n\n"
+    strg += "--lsAlloc --start=0 --max=0\n"
+    strg += "Lists the allocations retrieved from the prodmgr. An allocations\n"
+    strg += "is a large chunk (event-range) of work that is cut into smaller\n"
+    strg += "pieces, depdending on your job cut size\n\n"
+    strg += "--lsAll --start=0 --max=0\n"
+    strg += "Lists all the results from the options above.\n\n"
     strg += "Examples:\n\n"
-    strg += "prodAgent-viewer --listMessages \n\n"
-    strg += "prodAgent-viewer --listMessages --short\n\n"
-    strg += "prodAgent-viewer --listMessageHistory --start=10 --max=100\n\n"
-    strg += "prodAgent-viewer --listMessageHistory --max=100\n\n"
+    strg += "prodAgent-viewer --lsMsg\n\n"
+    strg += "prodAgent-viewer --lsMsg --short\n\n"
+    strg += "prodAgent-viewer --lsMsgh --start=10 --max=100\n\n"
+    strg += "prodAgent-viewer --lsMsgh --max=100\n\n"
 
     print strg
 
@@ -62,29 +64,52 @@ class DBWrapper:
 
     def listAcquiredRequests(self,start=0,max=0,short=False):
        # count the entries
-       sqlStr="""SELECT count(*) FROM pm_request"""
+       sqlStr="""SELECT count(*) FROM we_Workflow"""
        Session.execute(sqlStr)
        rows=Session.fetchall()
        self.count=rows[0][0]
        # list the entries 
-       sqlStr="""SELECT id,url,priority,request_type FROM
-           pm_request LIMIT %s,%s""" %(start,max)
+       sqlStr="""SELECT id,prod_mgr_url,priority,workflow_type FROM
+           we_Workflow LIMIT %s,%s""" %(start,max)
        Session.execute(sqlStr)
        rows=Session.fetchall()
        return rows
 
-    def listAcquiredJobs(self,start=0,max=10,short=False):
+    def listProdMgrJobs(self,start=0,max=10,short=False):
        # count the entries
-       sqlStr="""SELECT count(*) FROM pm_job """
+       sqlStr="""SELECT count(*) FROM we_Job """
        Session.execute(sqlStr)
        rows=Session.fetchall()
        self.count=rows[0][0]
        # list the entries 
-       sqlStr="""SELECT id,request_id,job_spec_location FROM
-           pm_job LIMIT %s,%s""" %(start,max)
-       if short:
-           sqlStr="""SELECT id,request_id FROM
-               pm_job LIMIT %s,%s""" %(start,max)
+       sqlStr="""SELECT id,workflow_id,allocation_id FROM
+           we_Job LIMIT %s,%s""" %(start,max)
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       return rows
+
+    def listJobs(self,start=0,max=10,short=False):
+       # count the entries
+       sqlStr="""SELECT count(*) FROM js_JobSpec"""
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       self.count=rows[0][0]
+       # list the entries 
+       sqlStr="""SELECT JobSpecID,JobType,Retries,State FROM
+           js_JobSpec LIMIT %s,%s""" %(start,max)
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       return rows
+
+    def listProdMgrAllocations(self,start=0,max=10,short=False):
+       # count the entries
+       sqlStr="""SELECT count(*) FROM we_Allocation"""
+       Session.execute(sqlStr)
+       rows=Session.fetchall()
+       self.count=rows[0][0]
+       # list the entries 
+       sqlStr="""SELECT id,workflow_id,events_processed FROM
+           we_Allocation LIMIT %s,%s""" %(start,max)
        Session.execute(sqlStr)
        rows=Session.fetchall()
        return rows
@@ -198,17 +223,31 @@ class CLWrapper:
 
     def listAcquiredRequests(self,start=0,max=0,short=False):
        rows=self.dbWrapper.listAcquiredRequests(start,max,short)
-       self.heading=['id','url','priority','request type'] 
+       self.heading=['id','prod_mgr_url','priority','workflow_type'] 
        self.__columnSpacing(rows)
+       sys.stdout.write('\nRequest acquired by the ProdAgent:\n\n')
        self.__display(rows)
        
 
-    def listAcquiredJobs(self,start=0,max=10,short=False):
-       rows=self.dbWrapper.listAcquiredJobs(start,max,short)
-       self.heading=['id','request ID','jobSpec location']
-       if short:
-           self.heading=['id','request ID']
+    def listProdMgrJobs(self,start=0,max=10,short=False):
+       rows=self.dbWrapper.listProdMgrJobs(start,max,short)
+       self.heading=['id','workflow_id','allocation_id']
        self.__columnSpacing(rows)
+       sys.stdout.write('\nJobs acquired by the ProdMgrInterface:\n\n')
+       self.__display(rows)
+
+    def listJobs(self,start=0,max=10,short=False):
+       rows=self.dbWrapper.listJobs(start,max,short)
+       self.heading=['id','type','retries','state']
+       self.__columnSpacing(rows)
+       sys.stdout.write('\nJobs as registered in ProdAgent:\n\n')
+       self.__display(rows)
+
+    def listProdMgrAllocations(self,start=0,max=10,short=False):
+       rows=self.dbWrapper.listProdMgrAllocations(start,max,short)
+       self.heading=['id','workflow_id','events_processed']
+       self.__columnSpacing(rows)
+       sys.stdout.write('\nAllocations acquired by the ProdAgent:\n\n')
        self.__display(rows)
     
     def listMessages(self,start=0,max=10,short=False):
@@ -217,6 +256,7 @@ class CLWrapper:
        if short:
            self.heading=['event','source','dest','time','delay']
        self.__columnSpacing(rows)
+       sys.stdout.write('\nMessages currently in the queue:\n\n')
        self.__display(rows)
 
     def listMessageHistory(self,start=0,max=10,short=False):
@@ -225,10 +265,11 @@ class CLWrapper:
        if short:
             self.heading=['event','source','dest','time']
        self.__columnSpacing(rows)
+       sys.stdout.write('\nMessages history:\n\n')
        self.__display(rows)
 
 # parse input
-valid = ["listRequests", "listAllocatedJobs","listMessages","listMessageHistory","short","start=","max="]
+valid = ["lsReq", "lsJob","lsAlloc","lsMsg","lsMsgh","short","start=","max=","lsAll"]
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
 except getopt.GetoptError, ex:
@@ -254,32 +295,39 @@ for opt in opts:
        max=int(opt[1])
    elif opt[0]=='--short':
        short=True 
-   elif opt[0] in ['--listRequests','--listAllocatedJobs','--listMessages','--listMessageHistory']:
+   elif opt[0] in ['--lsReq','--lsJob','--lsAlloc','--lsMsg','--lsMsgh',"--lsAll"]:
        pass
    else:
        usage()
+       print("Supplied the wrong settings")
        sys.exit(1)
- 
+
 # call requested method
-if opts[0][0]=='--listRequests':
+if opts[0][0]=='--lsReq':
   clWrapper.listAcquiredRequests(start,max,short)
 
-elif opts[0][0]=='--listAllocatedJobs':
-  clWrapper.listAcquiredJobs(start,max,short)
-  
+elif opts[0][0]=='--lsJob':
+  clWrapper.listProdMgrJobs(start,max,short)
+  clWrapper.listJobs(start,max,short)
+ 
+elif opts[0][0]=='--lsAlloc':
+  clWrapper.listProdMgrAllocations(start,max,short)
 
-elif opts[0][0]=='--listMessages':
+elif opts[0][0]=='--lsMsg':
   clWrapper.listMessages(start,max,short)
 
-elif opts[0][0]=='--listMessageHistory':
+elif opts[0][0]=='--lsMsgh':
+  clWrapper.listMessageHistory(start,max,short)
+
+elif opts[0][0]=='--lsAll':
+  clWrapper.listAcquiredRequests(start,max,short)
+  clWrapper.listProdMgrAllocations(start,max,short)
+  clWrapper.listProdMgrJobs(start,max,short)
+  clWrapper.listMessages(start,max,short)
   clWrapper.listMessageHistory(start,max,short)
 
 else:
   usage()
+  print('Could not find your option')
   sys.exit(1)
-
-
-    
-
-
 
