@@ -8,8 +8,8 @@ Component for generating Repacker JobSpecs
 
 
 
-__version__ = "$Revision$"
-__revision__ = "$Id$"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.2 2007/05/18 13:20:55 kosyakov Exp $"
 __author__ = "kss"
 
 
@@ -226,7 +226,7 @@ class RepackerInjectorComponent:
 		ds_key=pri_ds+':'+pro_ds
 		rep_iter=self.workflow_by_ds[ds_key]
 #		job_spec=spec.createJobSpec()
-		job_spec=rep_iter(lfn)
+		job_spec=rep_iter([lfn])
 		
 		self.ms.publish("CreateJob",job_spec)
 		self.ms.commit()
