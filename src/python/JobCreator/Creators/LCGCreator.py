@@ -91,6 +91,8 @@ class LCGCreator(CreatorInterface):
             return
         elif typeVal == "StageOut":
             self.handleStageOut(taskObject)
+        elif typeVal == "CleanUp":
+            self.handleCleanUp(taskObject)
         else:
             return
 
@@ -177,7 +179,20 @@ class LCGCreator(CreatorInterface):
     
         return
     
-    
+    def handleCleanUp(self, taskObject):
+        """
+        _handleCleanup_
+
+        Handle a Cleanup type task object. For FNAL, manipulate the stage out
+        settings to do a dCache dccp stage out
+
+        """
+        taskObject['PreCleanUpCommands'].append(
+            ". $VO_CMS_SW_DIR/cmsset_default.sh"
+            )
+
+        return
+
     
 
     
