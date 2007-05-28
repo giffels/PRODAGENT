@@ -195,6 +195,7 @@ componentFields = {
     "MergeSiteWhitelist" : None,
     "MergeSiteBlacklist" : None,
     "FastMerge" : "yes",
+    "CleanUp" : "no",
     "MaxInputAccessFailures" : 1,
     "QueueJobMode": "False",
     "RssFeed": "no",
