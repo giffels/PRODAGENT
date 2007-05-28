@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.62 2007/04/11 18:24:35 ckavka Exp $"
-__version__ = "$Revision: 1.62 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.63 2007/05/17 19:49:57 evansde Exp $"
+__version__ = "$Revision: 1.63 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -442,7 +442,7 @@ class MergeSensorComponent:
             return
 
         # generate merge worflows for all datasets
-        mergeWFs = createMergeJobWorkflow(procSpec, self.fastMerge)
+        mergeWFs = createMergeJobWorkflow(procSpec, self.fastMerge, self.doCleanUp)
 
         # create workflows for each dataset
         for watchedDatasetName, mergeWF in mergeWFs.items():
