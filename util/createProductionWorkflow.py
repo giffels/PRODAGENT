@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.8 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.8 2007/05/18 21:09:25 evansde Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.9 2007/05/19 10:47:04 afanfani Exp $"
 
 
 import os
@@ -113,7 +113,15 @@ if not os.path.exists(cfgFile):
     msg = "Cfg File Not Found: %s" % cfgFile
     raise RuntimeError, msg
 
-
+#  //
+# // Set CMSSW_SEARCH_PATH 
+#//
+origcmsswsearch=os.environ.get("CMSSW_SEARCH_PATH", None)
+if not origcmsswsearch:
+   msg = "CMSSW_SEARCH_PATH not set....you need CMSSW environment "
+   raise RuntimeError, msg
+cmsswsearch="/:%s"%origcmsswsearch
+os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
 
 if cfgType == "cfg":
     from FWCore.ParameterSet.Config import include

@@ -209,6 +209,16 @@ if not os.path.exists(cfgFile):
     msg = "Cfg File Not Found: %s" % cfgFile
     raise RuntimeError, msg
 
+#  //
+# // Set CMSSW_SEARCH_PATH
+#//
+origcmsswsearch=os.environ.get("CMSSW_SEARCH_PATH", None)
+if not origcmsswsearch:
+   msg = "CMSSW_SEARCH_PATH not set....you need CMSSW environment "
+   raise RuntimeError, msg
+cmsswsearch="/:%s"%origcmsswsearch
+os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
+
 if cfgType == "cfg":
     from FWCore.ParameterSet.Config import include
     cmsCfg = include(cfgFile)
