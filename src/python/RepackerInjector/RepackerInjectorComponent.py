@@ -8,8 +8,8 @@ Component for generating Repacker JobSpecs
 
 
 
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.2 2007/05/18 13:20:55 kosyakov Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.3 2007/05/24 19:46:56 kosyakov Exp $"
 __author__ = "kss"
 
 
@@ -151,8 +151,8 @@ class RepackerInjectorComponent:
 			logging.info("Already watching run %d, ignoring request"%(run_number,))
 			return
 		""" Create new workflow spec """
-		requestId="repacker_run_"+`run_number`
-		channel="Channel1" # XXX
+		requestId="0"
+		channel=primary_ds_name
 		group=self.args['JobGroup']
 		label=self.args['JobLabel']
 		cfg=self.args['RepackerCfgTmpl']
@@ -161,11 +161,13 @@ class RepackerInjectorComponent:
 		import FWCore.ParameterSet.parseConfig as ConfigParser
 		cmsCfg = ConfigParser.parseCfgFile(cfg)
 		cfgWrapper = CMSSWConfig()
-		cfgWrapper.loadConfiguration(cmsCfg)
-		cfgWrapper.originalCfg = file(cfg).read()
-		loader.unload()
-		
+                cfgWrapper.originalCfg = file(cfg).read()
+                cfgWrapper.loadConfiguration(cmsCfg)
+                cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
+                cfgInt.validateForProduction()
+
 		wfmaker=WorkflowMaker(requestId, channel, label)
+                wfmaker.changeCategory("data");
 		wfmaker.setCMSSWVersion(self.args['CMSSW_Ver'])
 		wfmaker.setPhysicsGroup(group)
 #		wfmaker.setConfiguration(cfgWrapper.pack(), Format = "CMSSWConfig", Type = "string")
@@ -223,10 +225,16 @@ class RepackerInjectorComponent:
 
 	def submit_job(self,lfn,tags,pri_ds,pro_ds):
 		logging.info("Creating job for file [%s] tags %s"%(lfn,str(tags)))
+                #
+                # FIXME: NewStreamerEventStreamFileReader cannot use LFN
+                #        either fix that or resolve PFN here via TFC
+                #
+                pfn = 'rfio:/?path=/castor/cern.ch/cms' + lfn
+                logging.info("Creating job for file [%s] tags %s"%(pfn,str(tags)))
 		ds_key=pri_ds+':'+pro_ds
 		rep_iter=self.workflow_by_ds[ds_key]
 #		job_spec=spec.createJobSpec()
-		job_spec=rep_iter([lfn])
+		job_spec=rep_iter([pfn])
 		
 		self.ms.publish("CreateJob",job_spec)
 		self.ms.commit()
