@@ -16,12 +16,15 @@ import logging
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.LFNAlgorithm import createUnmergedLFNs
 from ProdCommon.CMSConfigTools.ConfigAPI.CfgGenerator import CfgGenerator
+from ProdCommon.CMSConfigTools.SeedService import randomSeed
+
 from PileupTools.PileupDataset import PileupDataset, createPileupDatasets, getPileupSites
 
 from IMProv.IMProvDoc import IMProvDoc
 from IMProv.IMProvNode import IMProvNode
 from IMProv.IMProvQuery import IMProvQuery
 from IMProv.IMProvLoader import loadIMProvFile
+
 
 
 class GeneratorMaker(dict):
@@ -37,6 +40,9 @@ class GeneratorMaker(dict):
 
 
     def __call__(self, payloadNode):
+        if payloadNode.type != "CMSSW":
+            return
+        
         if payloadNode.cfgInterface != None:
             generator = CfgGenerator(payloadNode.cfgInterface, False,
                                      payloadNode.applicationControls)
@@ -176,7 +182,7 @@ class RequestIterator:
         
         
         jobSpec.payload.operate(self.generateJobConfig)
-        
+        jobSpec.payload.operate(self.generateCmsGenConfig)
         specCacheDir =  os.path.join(
             self.specCache, str(self.count // 1000).zfill(4))
         if not os.path.exists(specCacheDir):
@@ -235,6 +241,28 @@ class RequestIterator:
         
         jobSpecNode.cfgInterface = jobCfg
         return
+
+
+    def generateCmsGenConfig(self, jobSpecNode):
+        """
+        _generateCmsGenConfig_
+
+        Process CmsGen type nodes to insert maxEvents and run numbers
+        for cmsGen jobs
+
+        """
+        if jobSpecNode.type != "CmsGen":
+            return
+
+        jobSpecNode.applicationControls['firstRun'] = self.count
+        jobSpecNode.applicationControls['maxEvents'] = self.eventsPerJob
+        jobSpecNode.applicationControls['randomSeed'] = randomSeed()
+        jobSpecNode.applicationControls['fileName'] = "%s-%s.root" % (
+            self.currentJob, jobSpecNode.name)
+        jobSpecNode.applicationControls['logicalFileName'] = "%s-%s.root" % (
+            self.currentJob, jobSpecNode.name)
+        return
+        
 
     def removeSpec(self, jobSpecId):
         """
