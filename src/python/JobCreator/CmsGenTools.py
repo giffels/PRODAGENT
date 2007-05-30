@@ -149,7 +149,7 @@ class PopulateCmsGenScript:
         #//
         checkArgs =  "if [ -e %s ];then\n" % "cmsGen.args"
         checkArgs += "    echo \"cmsGen.args is present\"\n"
-        checkArgs += "else:\n"
+        checkArgs += "else\n"
         checkArgs += "    echo \"ERROR: cmsGen.args not present\"\n"
         checkArgs += "    prodAgentFailure 50113\n"
         checkArgs += "fi\n"
