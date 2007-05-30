@@ -25,30 +25,97 @@ class NodeFinder:
             self.result = nodeInstance
 
 
-def cmsGenSetup(jobSpecFile):
-    jobSpec = JobSpec()
-    jobSpec.load(jobSpecFile)
-    
-    taskState = TaskState(os.getcwd())
-    taskState.loadRunResDB()
-    config = taskState.configurationDict()
-    finder = NodeFinder(taskState.taskName())
-    jobSpec.payload.operate(finder)
-    jobSpecNode = finder.result
-    
-    args = ""
-    args += " --executable=%s " % jobSpecNode.applicationControls['executable']
-    args += " --generator=%s " % jobSpecNode.applicationControls['generator']
-    
-    
-    
-    
-    handle = open("cmsGen.args", "w")
-    handle.write(args)
-    handle.close()
+class CmsGenSetup:
+
+    def __init__(self, jobSpecFile):
+        jobSpec = JobSpec()
+        jobSpec.load(jobSpecFile)
+        
+        taskState = TaskState(os.getcwd())
+        taskState.loadRunResDB()
+        config = taskState.configurationDict()
+        finder = NodeFinder(taskState.taskName())
+        jobSpec.payload.operate(finder)
+        self.jobSpecNode = finder.result
+
+        self.checkArgs()
+        self.writeCfg()
+
+        self.createArgs()
+
+    def checkArgs(self):
+        """
+        _checkArgs_
+
+        Check required Args are present
+
+        """
+        keysList = [
+            'executable', 'generator', 'firstRun', 'maxEvents',
+            'randomSeed', 'fileName',
+
+            ]
+
+        for key in keysList:
+            if self.jobSpecNode.applicationControls.get(key, None) == None:
+                msg = "CmsGen Argument %s not provided" % key
+                msg += "Cannot generate cmsGen configuration"
+                handle = open("exit.status", "w")
+                handle.write("10040")
+                handle.close()
+                print msg
+                raise RuntimeError, msg
+                
+
+    def writeCfg(self):
+        """
+        _writeCfg_
+
+        Write the generator cfg file out
+
+        """
+        handle = open("CmsGen.cfg", "w")
+        handle.write(self.jobSpecNode.configuration)
+        handle.close()
+        return
+
+    def createArgs(self):
+        """
+        _createArgs_
+
+        Create the command line args file
+
+        """
+        args = ""
+        args += " --executable=%s " % (
+            self.jobSpecNode.applicationControls['executable'],)
+        args += " --generator=%s " % (
+            self.jobSpecNode.applicationControls['generator'],)
+        args += " --run=%s "  % (
+            self.jobSpecNode.applicationControls['firstRun'],)
+
+        args += " --seed=%s " % (
+            self.jobSpecNode.applicationControls['randomSeed'],)
+        
+        args += " --number-of-events=%s " % (
+            self.jobSpecNode.applicationControls['maxEvents'],)
+
+        args += " --job-report=FrameworkJobReport.xml "
+        args += " --cfg=CmsGen.cfg "
+        args += " --output-file=%s " % (
+            self.jobSpecNode.applicationControls['fileName'],)
     
 
+        print "Generated CmsGen Args:"
+        print args
+        print "Written to file: cmsGen.args"
+    
+        handle = open("cmsGen.args", "w")
+        handle.write(args)
+        handle.close()
+    
 
+        
 if __name__ == '__main__':
     msg = "*****Invoking RuntimeCmsGen Prep script*****"
     print msg
