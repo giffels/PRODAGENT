@@ -64,7 +64,7 @@ class ResourceControlDB:
         result = [ x[0] for x in results]
         return result
                    
-
+    
     def getSiteData(self, siteName):
         """
         _getSiteData_
@@ -95,9 +95,31 @@ class ResourceControlDB:
         return siteData
     
         
+    def siteMatchData(self):
+        """
+        _siteMatchData_
+
+        Get a list of all sites. Each list entry is a dictionary
+        of SiteIndex, SiteName, SEName
+
+        """
+        sqlStr = """ 
+        SELECT site_index AS SiteIndex,
+               site_name AS SiteName,
+               se_name AS SEName
+             FROM rc_site;
+        """
         
-
-
+        Session.execute(sqlStr)
+        results = Session.fetchall()
+        siteMatch = []
+        [ siteMatch.append({
+            "SiteIndex" : x[0],
+            "SiteName"  : x[1],
+            "SEName"    : x[2],
+            }) for x in results ]
+        
+        return siteMatch
     
     
 
