@@ -19,29 +19,25 @@ import logging
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentCore.ResourceConstraint import ResourceConstraint
 
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.Database import Session
+from ProdAgent.ResourceControl.ResourceControlDB import ResourceControlDB
+
+
 class MonitorInterface:
     """
     _MonitorInterface_
     
-
+    
     Abstract Interface Class for Resource Monitor Plugins
 
     """
     def __init__(self):
-        self.pluginConfig = None
-        try:
-            #  //
-            # // Always searches in ResourceMonitor Config Block
-            #//  for parameter called MonitorPluginConfig
-            self.pluginConfig = loadPluginConfig("ResourceMonitor",
-                                                 "Monitor")
-        except StandardError, ex:
-            msg = "Failed to load Plugin Config for Monitor Plugin:\n"
-            msg += "Plugin Name: %s\n" % self.__class__.__name__
-            msg += str(ex)
-            logging.warning(msg)
-            
-        self.checkPluginConfig()
+        self.activeSites = []
+        self.allSites = {}
+        self.siteThresholds = {}
+        self.siteAttributes = {}
+        self.retrieveSites()
 
     def newConstraint(self):
         """
@@ -52,20 +48,40 @@ class MonitorInterface:
         """
         return ResourceConstraint()
 
-    
-    def checkPluginConfig(self):
+
+    def retrieveSites(self):
         """
-        _checkPluginConfig_
+        _retrieveSites_
 
-        Override this method to validate/add defaults/manipulate the
-        plugin config after it has been loaded.
-
-        If the pluginConfig is None it either doesnt exist, or there was
-        an error.
+        Return a list of all  sites from the ResourceControl DB
+        and stores them in this object for access by the plugins
         
         """
-        pass
+        Session.set_database(dbConfig)
+        Session.connect()
+        Session.start_transaction()
+        
+        resCon = ResourceControlDB()
+        siteNames = resCon.siteNames()
+        
+        for site in siteNames:
+            siteData = resCon.getSiteData(site)
+            self.allSites[site] = siteData
+            if siteData['Active'] == True:
+                self.activeSites.append(site)
+            siteIndex = siteData['SiteIndex']
+            self.siteThresholds[site] = resCon.siteThresholds(siteIndex)
+            self.siteAttributes[site] = resCon.siteAttributes(siteIndex)
+            
 
+        del resCon
+        
+        Session.commit_all()
+        Session.close_all()        
+        return 
+    
+
+    
 
     def __call__(self):
         """
