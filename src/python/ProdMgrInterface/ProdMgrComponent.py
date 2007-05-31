@@ -380,6 +380,7 @@ class ProdMgrComponent:
             self.ms.subscribeTo("JobSuccess")
             self.ms.subscribeTo("ProdMgrInterface:JobSuccess")
             self.ms.subscribeTo("GeneralJobFailure")
+            self.ms.subscribeTo("ProdMgrInterface:SetJobCleanupFlag")
             logging.debug("Subscription completed ")
             
             # emit a acquire requests message.

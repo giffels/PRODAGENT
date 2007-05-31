@@ -55,7 +55,7 @@ class ReportJobSuccess(StateInterface):
                   check if it exists and if it is proper formatted. ProdMgr
                   will ignore this job as it has not sufficient information
                   to handle this. It might be that this is prodmgr job in which 
-                  case some residu information is left in the database. """
+                  case some residu information is left in the database. %s""" %(str(ex))
                logging.debug(msg)
                return
            try:
