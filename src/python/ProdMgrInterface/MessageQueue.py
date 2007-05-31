@@ -1,3 +1,17 @@
+#!/usr/bin/env python
+
+"""
+_Coolof_
+
+Methods that expose a message queue. The mesage queue is used for
+failed communications with the prodmgr (e.g. when it is offline), and
+when messages are more complex than a string where we do not want to retry them 
+periodically but only when the service is online again.
+"""
+
+__revision__ = "$Id: MessageQueue.py,v 0.01 2007/05/31 fvlingen Exp $"
+__version__ = "$Revision: 0.00 $"
+__author__ = "fvlingen@caltech.edu"
 
 import cPickle
 import logging

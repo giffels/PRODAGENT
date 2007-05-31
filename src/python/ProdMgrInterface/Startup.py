@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-_StartComponent_
+_Startup_
 
 Start the component, reading its configuration from
 the common configuration file, which is accessed by environment variable

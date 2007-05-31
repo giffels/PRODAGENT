@@ -1,3 +1,18 @@
+#!/usr/bin/env python
+
+"""
+_State_
+
+Methods that retrieve state information from the database.
+If the ProdMgrInterface fails and their has been a commit 
+while handling an event the state has been stored and needs to be retrieved.
+"""
+
+__revision__ = "$Id: State.py,v 0.01 2007/05/31 fvlingen Exp $"
+__version__ = "$Revision: 0.00 $"
+__author__ = "fvlingen@caltech.edu"
+
+
 import cPickle
 import logging
 

@@ -1,59 +1,134 @@
+#!/usr/bin/env python
+
+"""
+_Interface_
+
+Methods that describe the interface used for interacting
+with the ProdMgr. Current Clarens is used as facilitator
+but other facilitator can be used. The Interface methods
+insulate the ProdAgent code from this facilitator.
+"""
+
+__revision__  =  "$Id: Interface.py, v 0.01 2007/05/31 fvlingen Exp $"
+__version__  =  "$Revision: 0.00 $"
+__author__  =  "fvlingen@caltech.edu"
+
+
 import logging
 
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdMgrInterface import Management
 
-service_map={'userID':'prodMgrRequest.userID',\
-             'acquireAllocation':'prodMgrProdAgent.acquireAllocation',\
-             'acquireEventJob':'prodMgrProdAgent.acquireEventJob',\
-             'releaseJob':'prodMgrProdAgent.releaseJob',\
-             'releaseAllocation':'prodMgrProdAgent.releaseAllocation',\
-             'getRequests':'prodMgrProdAgent.getRequests',\
-             'setLocations':'prodMgrProdAgent.setLocations',}
+service_map = {'userID':'prodMgrRequest.userID', \
+             'acquireAllocation':'prodMgrProdAgent.acquireAllocation', \
+             'acquireEventJob':'prodMgrProdAgent.acquireEventJob', \
+             'releaseJob':'prodMgrProdAgent.releaseJob', \
+             'releaseAllocation':'prodMgrProdAgent.releaseAllocation', \
+             'getRequests':'prodMgrProdAgent.getRequests', \
+             'setLocations':'prodMgrProdAgent.setLocations', }
 
-def userID(serverUrl,componentID="defaultComponent"):
-   return Management.executeCall(serverUrl,"prodMgrRequest.userID",[],componentID)
+def userID(serverUrl, componentID = "defaultComponent"):
+    """
+    _userID_
 
-def acquireAllocation(serverUrl,request_id,amount,componentID="defaultComponent"):
-   return Management.executeCall(serverUrl,"prodMgrProdAgent.acquireAllocation",[request_id,amount],componentID)
+    returns the certifcate DN used by the prodagent
+    to interact with this particular prodmgr
+    """
+
+    return Management.executeCall(serverUrl,  \
+        "prodMgrRequest.userID", [], componentID)
+
+def acquireAllocation(serverUrl, request_id, amount, \
+    componentID = "defaultComponent"):
+    """
+    deprecated
+    """
+    return Management.executeCall(serverUrl, \
+        "prodMgrProdAgent.acquireAllocation", \
+        [request_id, amount], \
+        componentID)
    
-def acquireEventJob(serverUrl,request_id,parameters,componentID="defaultComponent"):
-   return Management.executeCall(serverUrl,"prodMgrProdAgent.acquireEventJob",[request_id,parameters],componentID)
+def acquireEventJob(serverUrl, request_id, parameters, \
+    componentID = "defaultComponent"):
+    """
+    _acquireEventJob_
 
-def releaseJob(serverUrl,jobspec,events_completed,componentID="defaultComponent"):
-   return Management.executeCall(serverUrl,"prodMgrProdAgent.releaseJob",[str(jobspec),events_completed],componentID)
+    Returns either an event range or a list of logical
+    files (if it is a file based request) for the prodagent
+    to work on. This method is invoked when the prodagent
+    has resources available. The amount of work returned
+    is usually cut on the prodagent side into smaller jobs. 
+    """
 
-def releaseAllocation(serverUrl,allocation_id,componentID="defaultComponent"):
-   return Management.executeCall(serverUrl,"prodMgrProdAgent.releaseAllocation",[allocation_id],componentID)
+    return Management.executeCall(serverUrl, \
+        "prodMgrProdAgent.acquireEventJob", \
+        [request_id, parameters], componentID)
 
-def getRequests(serverUrl,agent_tag,componentID="defaultComponent"):
-   return Management.executeCall(serverUrl,"prodMgrProdAgent.getRequests",[agent_tag],componentID)
+def releaseJob(serverUrl, jobspec, events_completed, \
+    componentID = "defaultComponent"):
 
-def setLocations(serverUrl,locations=[],componentID="defaultComponent"):
-   return Management.executeCall(serverUrl,"prodMgrProdAgent.setLocations",[locations],componentID)
+    """
+    _releaseJob_
 
-def retrieveWorkflow(serverUrl,requestID,componentID="defaultComponent"):
-   return Management.executeRestCall(serverUrl,'psp/prodMgrRequest/retrieveWorkflow.psp?RequestID='+str(requestID),componentID)
+    Releases work performed by this prodagent (it was
+    acquired first). If the work was cut into smaller 
+    jobs on the prodagent side these chunks are first 
+    aggregated.
+    """
 
+    return Management.executeCall(serverUrl, \
+        "prodMgrProdAgent.releaseJob", \
+        [str(jobspec), events_completed], componentID)
 
+def releaseAllocation(serverUrl, allocation_id, \
+    componentID = "defaultComponent"):
+    """
+    deprecated
+    """
 
+    return Management.executeCall(serverUrl, \
+        "prodMgrProdAgent.releaseAllocation", \
+        [allocation_id], componentID)
 
-def commit(serverUrl=None,method_name=None,componentID=None):
-   Management.commit(serverUrl,method_name,componentID)
+def getRequests(serverUrl, agent_tag, componentID = "defaultComponent"):
+    return Management.executeCall(serverUrl, \
+        "prodMgrProdAgent.getRequests", \
+        [agent_tag], componentID)
 
-def retrieve(serverUrl=None,method_name=None,componentID="defaultComponent",tag="0"):
-   if method_name!=None:
-       quad=Management.retrieve(serverUrl,service_map[method_name],componentID)
-   else:
-       quad=Management.retrieve(serverUrl,method_name,componentID)
-   return Management.executeCall(quad[0],"prodCommonRecover.lastServiceCall",[quad[1],quad[2],quad[3]],componentID)
+def setLocations(serverUrl, locations = [], componentID = "defaultComponent"):
+    return Management.executeCall(serverUrl, \
+        "prodMgrProdAgent.setLocations", \
+        [locations], componentID)
 
-def lastCall(serverUrl=None,method_name=None,componentID="defaultComponent",tag="0"):
-   if method_name!=None:
-       quad=Management.retrieve(serverUrl,service_map[method_name],componentID)
-   else:
-       quad=Management.retrieve(serverUrl,method_name,componentID)
-   return quad
+def retrieveWorkflow(serverUrl, requestID, componentID = "defaultComponent"):
+    return Management.executeRestCall(serverUrl, \
+        'psp/prodMgrRequest/retrieveWorkflow.psp?RequestID = ' + \
+        str(requestID), componentID)
 
-def retrieveFile(url,local_destination):
-   Management.retrieveFile(url,local_destination)
+def commit(serverUrl = None, method_name = None, componentID = None):
+    Management.commit(serverUrl, method_name, componentID)
+
+def retrieve(serverUrl = None, method_name = None, \
+    componentID = "defaultComponent", tag = "0"):
+
+    if method_name != None:
+        quad = Management.retrieve(serverUrl, \
+            service_map[method_name], componentID)
+    else:
+       quad = Management.retrieve(serverUrl, method_name, componentID)
+    return Management.executeCall(quad[0], \
+        "prodCommonRecover.lastServiceCall", [quad[1], \
+        quad[2], quad[3]], componentID)
+
+def lastCall(serverUrl = None, method_name = None, \
+    componentID = "defaultComponent", tag = "0"):
+
+    if method_name != None:
+        quad = Management.retrieve(serverUrl, \
+            service_map[method_name], componentID)
+    else:
+        quad = Management.retrieve(serverUrl, method_name, componentID)
+    return quad
+
+def retrieveFile(url, local_destination):
+    Management.retrieveFile(url, local_destination)

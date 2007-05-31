@@ -1,3 +1,17 @@
+#!/usr/bin/env python
+
+"""
+_JobCutter
+
+Methods that cut jobs based on an event range (or set of files)
+returned from the ProdMgr.
+
+"""
+
+__revision__ = "$Id: JobCutter.py,v 0.01 2007/05/31 fvlingen Exp $"
+__version__ = "$Revision: 0.00 $"
+__author__ = "fvlingen@caltech.edu"
+
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdCommon.Database import Session
