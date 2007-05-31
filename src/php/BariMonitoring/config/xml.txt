@@ -1,6 +1,0 @@
-CSA06-081-os-minbias-TEST-Workflow.xml
-VO-cms-CMSSW_0_8_1
-CSA06Wenu_GEN_SIM_DIGI-TEST-Workflow.xml
-VO-cms-CMSSW_0_8_3
-CSA06Zmumu_GEN_SIM_DIGI-TEST-Workflow.xml
-VO-cms-CMSSW_0_8_2
