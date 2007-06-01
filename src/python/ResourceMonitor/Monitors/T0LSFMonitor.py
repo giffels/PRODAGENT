@@ -72,7 +72,7 @@ class T0LSFMonitor(MonitorInterface):
                 constraint = self.newConstraint()
                 constraint['count'] = abs(test)
                 #constraint['type'] = "Processing"
-                constraint['site'] = self.allSites[site]['SiteIndex']
+                constraint['site'] = self.allSites[siteName]['SiteIndex']
                 print str(constraint)
                 result.append(constraint)
         return result
@@ -103,3 +103,4 @@ class T0LSFMonitor(MonitorInterface):
         
 
         
+registerMonitor(T0LSFMonitor, T0LSFMonitor.__name__)
