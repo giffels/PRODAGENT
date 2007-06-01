@@ -8,7 +8,10 @@ Define interface for Prioroty algorithm plugins
 
 """
 import logging
-from JobQueue.JobQueueDB import retrieveJobs, eraseJobs
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.Database import Session
+from JobQueue.JobQueueDB import JobQueueDB
+
 
 class PrioritiserInterface:
     """
@@ -20,11 +23,54 @@ class PrioritiserInterface:
 
     """
     def __init__(self):
-        pass
-
-
-    retrieveJobsFromDB = staticmethod(retrieveJobs)
+        self.matchedJobs = []
+        
     
+    def findMatchedJobs(self, constraint):
+        """
+        _findMatchedJobs_
+
+        Method that finds jobs matching the constraint provided
+        and stores the list in self.matchedJobs
+        
+        """
+        Session.set_database(dbConfig)
+        Session.connect()
+        Session.start_transaction()
+        jobQ = JobQueueDB()
+
+        
+        if constraint['site'] != None:
+            #  //
+            # // site based job match
+            #//
+            site = int(constraint['site']) 
+            jobQ.loadSiteMatchData()
+            jobIndices = jobQ.retrieveJobsAtSites(constraint['count'],
+                                                  constraint["type"],
+                                                  constraint['workflow'],
+                                                  * [site])
+            jobs = jobQ.retrieveJobDetails(*jobIndices)
+            
+            [ x.__setitem__("Site", site) for x in jobs ]
+            
+        else:
+            #  //
+            # // non-site based job match
+            #//
+            jobIndices = jobQ.retrieveJobs(constraint['count'],
+                                           constraint["type"],
+                                           constraint['workflow'])
+            jobs = jobQ.retrieveJobDetails(*jobIndices)
+            
+            [ x.__setitem__("Site", None) for x in jobs ]
+
+        Session.commit_all()
+        Session.close_all()
+        logging.info("Matched %s jobs for constraint %s" % (
+            len(jobs), constraint))
+        self.matchedJobs = jobs
+        return
 
 
     def __call__(self, constraint):
@@ -36,6 +82,7 @@ class PrioritiserInterface:
 
 
         """
+        self.findMatchedJobs(constraint)
         try:
             jobs = self.prioritise(constraint)
         except Exception, ex:
@@ -46,15 +93,8 @@ class PrioritiserInterface:
             logging.error(msg)
             return
 
-        toErase = []
-        result = []
-        for job in jobs:
-            toErase.append(job['job_index'])
-            result.append(job['job_spec_file'])
-
-        eraseJobs(*toErase)
         
-        return result
+        return jobs
         
     
     def prioritise(self, constraint):
@@ -63,12 +103,13 @@ class PrioritiserInterface:
 
         Given the constraint, generate a list of jobs that can be released.
 
-
         Override this method to implement whatever algorithm for utilising
-        resources you want
+        resources you want.
 
-        Should return a list of job information dictionaries as returned
-        by the JobQueueDB.retrieveJobs method.
+        This list of potential matched jobs is stored as self.matchedJobs
+
+        Should return a (subset) list of job information dictionaries from
+        self.matchedJobs that were selected for submission
         
         """
         raise NotImplementedError, "%s.prioritise" % self.__class__.__name__

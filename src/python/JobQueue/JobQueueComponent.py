@@ -10,6 +10,7 @@ import os
 import time
 import popen2
 from MessageService.MessageService import MessageService
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -17,6 +18,7 @@ from logging.handlers import RotatingFileHandler
 import JobQueue.JobQueueAPI  as JobQueueAPI
 import JobQueue.Prioritisers
 from JobQueue.Registry import retrievePrioritiser
+from JobQueue.BulkSorter import BulkSorter
 
 from ProdAgentCore.ResourceConstraint import ResourceConstraint
 import ProdAgentCore.LoggingUtils as LoggingUtils
@@ -33,12 +35,17 @@ class JobQueueComponent:
         self.args.setdefault("ProcessingPriority", 10)
         self.args.setdefault("MergePriority", 15)
         self.args.setdefault('Prioritiser', "Default")
+        self.args.setdefault('BulkMode', True)
         self.args.update(args)
 
         if self.args['Logfile'] == None:
            self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
-
+        if str(self.args['BulkMode']).lower() == "false":
+            self.args['BulkMode'] = False 
+        else:
+            self.args['BulkMode'] = True
+            
         LoggingUtils.installLogHandler(self)
 
         msg = "JobQueueComponent Started:\n"
@@ -159,11 +166,64 @@ class JobQueueComponent:
             logging.error(msg)
             return
 
-        for job in jobspecs:
-            logging.info("publishing CreateJob %s" % job)
-            self.ms.publish("CreateJob", job)
+        
+        self.sortAndPublish(*jobspecs)
+        
+        return
+
+    def sortAndPublish(self, * jobspecs):
+        """
+        _sortAndPublish_
+
+        Sort and publish CreateJob events, making bulk specs if required
+        
+        """
+        if self.args['BulkMode'] == False:
+            #  //
+            # // publish specs individually
+            #//
+            for job in jobspecs:
+                logging.info("publishing CreateJob %s" % job['JobSpecFile'])
+                self.ms.publish("CreateJob", job['JobSpecFile'])
+                self.ms.commit()
+            JobQueueAPI.releaseJobs(*jobspecs)
+            return
+        #  //
+        # // sort into bulk specs based on same workflow, site and job type
+        #//  values
+        sorter = BulkSorter()
+        sorter(*jobspecs)
+
+        for indSpec in sorter.individualSpecs:
+            logging.info("publishing CreateJob %s" % job['JobSpecFile'])
+            self.ms.publish("CreateJob", job['JobSpecFile'])
             self.ms.commit()
-            
+            JobQueueAPI.releaseJobs(*jobspecs)
+        for bulkSpecs in sorter.bulkSpecs.items(): 
+            firstSpec = bulkSpecs[0]
+            logging.debug("firstSpec=%s" % firstSpec)
+            bulkSpecName = "%s.BULK" % firstSpec
+            bulkSpecName = bulkSpecName.replace("file:///", "/")
+            logging.info("Bulk Spec: %s" % bulkSpecName)
+            bulkSpec = JobSpec()
+            firstSpecName = firstSpec.replace("file:///", "/")
+            if not os.path.exists(firstSpecName):
+                msg = "Primary Spec for Bulk Spec creation not found:\n"
+                msg += "%s\n" % firstSpecName
+                msg += "Cannot construct Bulk Spec"
+                logging.error(msg)
+                continue
+            bulkSpec.load(firstSpec)
+            for item in bulkSpecs:
+                specID = os.path.basename(item).replace("-JobSpec.xml", "")
+                bulkSpec.bulkSpecs.addJobSpec(specID, item)
+
+            bulkSpec.save(bulkSpecName)
+            logging.info("Publishing Bulk Spec")
+            self.ms.publish("CreateJob", job['JobSpecFile'])
+            self.ms.commit()
+            JobQueueAPI.releaseJobs(*jobspecs)
+
         return
             
     def startComponent(self):
