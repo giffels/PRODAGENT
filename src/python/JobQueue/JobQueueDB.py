@@ -407,6 +407,8 @@ class JobQueueDB:
         SELECT job_index, job_spec_id, job_spec_file,
                job_type, workflow_id FROM jq_queue WHERE job_index IN 
         """
+        if len(indices) == 0:
+            return {}
         sqlStr += " ( "
         sqlStr += str(reduce(reduceList, indices))
         sqlStr += " );"
@@ -440,7 +442,8 @@ class JobQueueDB:
         UPDATE  jq_queue SET status = 'released', time = NOW() WHERE job_index
           IN 
         """
-
+        if len(indices) == 0:
+            return
         sqlStr += " ( "
         sqlStr += str(reduce(reduceList, indices))
         sqlStr += " );"
