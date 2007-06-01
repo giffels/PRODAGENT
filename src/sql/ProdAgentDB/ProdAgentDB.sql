@@ -631,6 +631,40 @@ CREATE TABLE pm_cooloff
  * ======================End PA interface tables===============
  */
 
+/*
+ * Resource Control tables backend for ResourcMonitor and JobQueue components
+ */	
+CREATE TABLE rc_site(
+
+ site_index INT(11) NOT NULL AUTO_INCREMENT,
+ site_name VARCHAR(255) NOT NULL,
+ se_name VARCHAR(255) NOT NULL,
+ ce_name VARCHAR(255) NOT NULL,
+ is_active ENUM("true", "false") DEFAULT "true",
+ PRIMARY KEY(site_index),
+ UNIQUE(site_name)
+) TYPE = InnoDB;
+
+
+
+CREATE TABLE rc_site_threshold(
+  site_index INT(11) NOT NULL,
+  threshold_name VARCHAR(255) NOT NULL,
+  threshold_value INT(11) DEFAULT 0,
+  UNIQUE (threshold_name, site_index),
+  FOREIGN KEY (site_index) REFERENCES rc_site(site_index)
+     ON DELETE CASCADE
+) TYPE = InnoDB;
+
+
+CREATE TABLE rc_site_attr(
+ site_index INT(11) NOT NULL,
+  attr_name VARCHAR(255) NOT NULL,
+  attr_value VARCHAR(255) DEFAULT "",
+  UNIQUE (attr_name, site_index),
+  FOREIGN KEY (site_index) REFERENCES rc_site(site_index)
+    ON DELETE CASCADE
+) TYPE = InnoDB;
 
 /*
  * ======================Start JobQueue tables===============
@@ -642,14 +676,28 @@ CREATE TABLE jq_queue(
    job_spec_file VARCHAR(255) NOT NULL,
    job_type VARCHAR(255) NOT NULL,
    workflow_id VARCHAR(255) NOT NULL, 
-   sites BLOB,
    priority INT DEFAULT 0,
+   workflow_priority INT DEFAULT 0,
+   status ENUM ("new", "released") DEFAULT "new",
    time TIMESTAMP NOT NULL default NOW(),
    
    UNIQUE(job_spec_id),
    PRIMARY KEY(job_index)
 
 ) TYPE=InnoDB;
+
+
+CREATE TABLE jq_site(
+   job_index INT NOT NULL,
+   site_index INT NOT NULL,
+   FOREIGN KEY (job_index) REFERENCES jq_queue(job_index)
+     ON DELETE CASCADE,
+   FOREIGN KEY (site_index) REFERENCES rc_site(site_index)
+) TYPE=InnoDB;
+
+
+CREATE INDEX jq_job_index USING BTREE ON jq_queue (job_index);
+CREATE INDEX jq_workflow_index USING BTREE ON jq_queue (workflow_id);
 
 
 /*
@@ -744,36 +792,3 @@ CREATE TABLE we_Workflow
    ) Type=InnoDB;
 
 
-/*
- * Resource Control tables backend for ResourcMonitor and JobQueue components
- */	CREATE TABLE rc_site(
-
- site_index INT(11) NOT NULL AUTO_INCREMENT,
- site_name VARCHAR(255) NOT NULL,
- se_name VARCHAR(255) NOT NULL,
- ce_name VARCHAR(255) NOT NULL,
- is_active ENUM("true", "false") DEFAULT "true",
- PRIMARY KEY(site_index),
- UNIQUE(site_name)
-) TYPE = InnoDB;
-
-
-
-CREATE TABLE rc_site_threshold(
-  site_index INT(11) NOT NULL,
-  threshold_name VARCHAR(255) NOT NULL,
-  threshold_value INT(11) DEFAULT 0,
-  UNIQUE (threshold_name, site_index),
-  FOREIGN KEY (site_index) REFERENCES rc_site(site_index)
-     ON DELETE CASCADE
-) TYPE = InnoDB;
-
-
-CREATE TABLE rc_site_attr(
- site_index INT(11) NOT NULL,
-  attr_name VARCHAR(255) NOT NULL,
-  attr_value VARCHAR(255) DEFAULT "",
-  UNIQUE (attr_name, site_index),
-  FOREIGN KEY (site_index) REFERENCES rc_site(site_index)
-    ON DELETE CASCADE
-) TYPE = InnoDB;
