@@ -9,8 +9,8 @@ but other facilitator can be used. The Interface methods
 insulate the ProdAgent code from this facilitator.
 """
 
-__revision__  =  "$Id: Interface.py, v 0.01 2007/05/31 fvlingen Exp $"
-__version__  =  "$Revision: 0.00 $"
+__revision__  =  "$Id: Interface.py,v 1.14 2007/05/31 23:13:57 fvlingen Exp $"
+__version__  =  "$Revision: 1.14 $"
 __author__  =  "fvlingen@caltech.edu"
 
 
@@ -102,7 +102,7 @@ def setLocations(serverUrl, locations = [], componentID = "defaultComponent"):
 
 def retrieveWorkflow(serverUrl, requestID, componentID = "defaultComponent"):
     return Management.executeRestCall(serverUrl, \
-        'psp/prodMgrRequest/retrieveWorkflow.psp?RequestID = ' + \
+        'psp/prodMgrRequest/retrieveWorkflow.psp?RequestID=' + \
         str(requestID), componentID)
 
 def commit(serverUrl = None, method_name = None, componentID = None):

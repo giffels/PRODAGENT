@@ -72,6 +72,7 @@ def executeRestCall(serverUrl,rest_part,componentID="defaultComponent"):
    global retries
    global timeout
 
+   
    attempt=0
    while attempt<retries: 
        try:

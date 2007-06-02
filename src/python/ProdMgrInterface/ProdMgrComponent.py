@@ -110,29 +110,32 @@ class ProdMgrComponent:
                 payloadVal = 1
             self.retrieveWork(payloadVal)
             return
-        if event =="ProdMgrInterface:SetLocations":
+        elif event =="ProdMgrInterface:SetLocations":
             logging.debug("Contacting prodmgrs to set locations")
             self.setLocations(payload)
-        if event =="ProdMgrInterface:AcquireRequests":
+        elif event =="ProdMgrInterface:AcquireRequests":
             logging.debug("Contacting prodmgrs to acquire new requests")
             self.acquireRequests(payload)
-        if event =="ProdMgrInterface:JobSize":
+        elif event =="ProdMgrInterface:JobSize":
             logging.debug("Setting job size to: "+str(payload))
             self.args['JobSize']=int(payload)
             return
-        if event =="ProdMgrInterface:JobCutSize":
+        elif event =="ProdMgrInterface:JobCutSize":
             logging.debug("Setting job cut size to: "+str(payload))
             self.args['JobCutSize']=int(payload)
             return
-        if event == "JobSuccess":
+        elif event == "JobSuccess":
             self.reportJobSuccess(payload)
             return
-        if event == "ProdMgrInterface:JobSuccess":
+        elif event == "ProdMgrInterface:JobSuccess":
             self.reportJobSuccessFinal(payload)
             return
-        if event == "GeneralJobFailure":
+        elif event == "GeneralJobFailure":
             self.reportJobFailure(payload)
             return
+        elif event == "ProdMgrInterface:CleanWorkflow":
+            Worklfow.remove(payload) 
+
 
     def retrieveWork(self, numberOfJobs):
        """
@@ -381,6 +384,7 @@ class ProdMgrComponent:
             self.ms.subscribeTo("ProdMgrInterface:JobSuccess")
             self.ms.subscribeTo("GeneralJobFailure")
             self.ms.subscribeTo("ProdMgrInterface:SetJobCleanupFlag")
+            self.ms.subscribeTo("ProdMgrInterface:CleanWorkflow")
             logging.debug("Subscription completed ")
             
             # emit a acquire requests message.
