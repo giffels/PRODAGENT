@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.63 2007/05/17 19:49:57 evansde Exp $"
-__version__ = "$Revision: 1.63 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.64 2007/05/28 12:52:18 afanfani Exp $"
+__version__ = "$Revision: 1.64 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -23,6 +23,8 @@ from MergeSensor.MergeSensorError import MergeSensorError, \
                                          DatasetNotInDatabase
 from MergeSensor.Dataset import Dataset
 from MergeSensor.MergeSensorDB import MergeSensorDB
+from MergeSensor.Registry import retrieveMergePolicy
+import MergeSensor.MergePolicies
 
 # Message service import
 from MessageService.MessageService import MessageService
@@ -33,6 +35,7 @@ from ProdCommon.MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 import ProdCommon.MCPayloads.WorkflowTools as MCWorkflowTools
 from ProdCommon.MCPayloads.MergeTools import createMergeJobWorkflow
+
 # logging
 import logging
 import ProdAgentCore.LoggingUtils as LoggingUtils
@@ -97,6 +100,9 @@ class MergeSensorComponent:
         # QueueJobMode
         self.args.setdefault('QueueJobMode', False)
         
+        # merge policy plugin
+        self.args.setdefault('MergePolicy', 'SizePolicy')
+
         # update parameters
         self.args.update(args)
 
@@ -197,6 +203,11 @@ class MergeSensorComponent:
         baseDir = os.path.dirname(thisModule)        
         mergeWorkflow = os.path.join(baseDir, "mergeConfig.py")
         self.mergeWorkflow = file(mergeWorkflow).read()
+
+        # load merge policy plugin
+        self.policy = self.loadMergePolicy("SizePolicy")
+        if self.policy == None:
+            logging.error("Problems loading merge policy plugin")
 
         # compute poll delay
         delay = int(self.args['PollInterval'])
@@ -394,6 +405,16 @@ class MergeSensorComponent:
         # poll DBS
         if event == "MergeSensor:pollDBS":
             self.poll()
+            return
+
+        # set policy plugin
+        if event == "MergeSensor:SetPolicy":
+            self.args['MergePolicy'] = payload
+            logging.info("Merge policy set to: %s" % payload)
+            policy = self.loadMergePolicy()
+            if policy == None:
+                msg = "Problems loading merge policy plugin %s" % str(payload)
+                logging.error(msg)
             return
 
         # wrong event
@@ -1508,7 +1529,55 @@ class MergeSensorComponent:
 
         # return list
         return fileList
-                
+       
+    ##########################################################################
+    # load policy plugin
+    ##########################################################################
+
+    def loadMergePolicy(self, default = None):
+        """
+        _loadMergePolicy_
+
+        Load the merge policy plugin
+
+        """
+
+        # get policy name
+        policyName = self.args['MergePolicy']
+
+        # check name
+        if policyName == None:
+
+            # not defined, verify default name
+            if default == None:
+                msg = "No merge policy selected"
+                logging.error(msg)
+                return None
+
+            # use default
+            else:
+                policyName = default
+
+        # load plugin
+        try:
+            policy = retrieveMergePolicy(policyName)
+
+        # oops, error
+        except Exception, ex:
+            msg = "Exception when loading merge policy plugin: %s\n" % (
+                self.args['MergePolicy'],)
+            msg += str(ex)
+            logging.error(msg)
+            policy = None
+
+        # set policy for datasets
+        Dataset.setMergePolicy(policy)
+
+        logging.info("Policy plugin %s loaded." % policyName)
+
+        # return it
+        return policy
+         
     ##########################################################################
     # start component execution
     ##########################################################################
@@ -1575,6 +1644,7 @@ class MergeSensorComponent:
         self.ms.subscribeTo("MergeSensor:CloseDataset")
         self.ms.subscribeTo("CloseRequest")
         self.ms.subscribeTo("MergeSensor:pollDBS")
+        self.ms.subscribeTo("MergeSensor:SetPolicy")
 
         # generate first polling cycle
         self.ms.remove("MergeSensor:pollDBS")
