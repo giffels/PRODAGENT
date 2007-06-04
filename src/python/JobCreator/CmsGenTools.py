@@ -18,6 +18,11 @@ import JobCreator.RuntimeTools.RuntimeCmsGen as RuntimeCmsGen
 from ShREEK.ControlPoints.CondImpl.CheckExitCode import CheckExitCode
 from ShREEK.ControlPoints.ActionImpl.BasicActions import KillJob
 
+#  //
+# // Hardcoded at present, until we distribute the tool properly...
+#//
+CmsGenScriptUrl = ""
+
 
 class InsertCmsGenStructure:
     """
@@ -133,13 +138,16 @@ class PopulateCmsGenScript:
         
         for item in taskObject['PreTaskCommands']:
             exeScript.append(item)
-            
-        
+
+        #  //
+        # // Pull in the cmsGen tool from the web and
+        #// make sure it is executable
+        exeScript.append("wget %s -O cmsGen" % CmsGenScriptUrl)
+        exeScript.append("chmod +x cmsGen") 
         
         exeScript.append("( # Start App Subshell")
         for item in taskObject['PreAppCommands']:
             exeScript.append(item)
-            
 
         #  //
         # // Need to set command line args at runtime
