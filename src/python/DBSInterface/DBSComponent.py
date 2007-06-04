@@ -155,6 +155,8 @@ class DBSComponent:
         self.args.setdefault("CloseBlockFiles", 100 )        
         self.args.setdefault("skipGlobalMigration", False )
 
+        self.args.setdefault("DataMode", "mc" )
+
         self.args.update(args)
 
         if self.args['Logfile'] == None:
@@ -481,6 +483,15 @@ class DBSComponent:
          except DbsException, ex:
           logging.error("%s\n" % formatEx(ex))
           return
+
+         #
+         #  remove lumi sections fro mc data
+         # 
+         if ( self.args['DataMode'] == "mc" ):
+            if len(jobreport.files)>0:
+               for outFile in jobreport.files:
+                   outFile.lumisections = {}
+
          #  //
          # // Insert Files to block and datasets 
          #//
