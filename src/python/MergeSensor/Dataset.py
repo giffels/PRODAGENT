@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.29 2007/03/28 12:38:29 ckavka Exp $"
-__version__ = "$Revision: 1.29 $"
+__revision__ = "$Id: Dataset.py,v 1.28 2007/03/05 10:42:23 ckavka Exp $"
+__version__ = "$Revision: 1.28 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -51,9 +51,6 @@ class Dataset:
     
     # maximum allowed input file failures
     maxInputAccessFailures = None
-
-    # merge policy
-    policy = None
 
     ##########################################################################
     # Dataset initialization
@@ -406,29 +403,6 @@ class Dataset:
         cls.maxInputAccessFailures = value
 
     ##########################################################################
-    # set merge policy
-    ##########################################################################
-
-    @classmethod
-    def setMergePolicy(cls, policy):
-        """
-        _setMergePolicy_
-
-        Set the merge policy
-
-        Arguments:
-
-           policy -- the policy object
-
-        Return:
-
-          none
-
-        """
-
-        cls.policy = policy
-
-    ##########################################################################
     # set the list of files in a dataset
     ##########################################################################
 
@@ -584,15 +558,14 @@ class Dataset:
             
           the list of files to be merged and their fileBlockId
 
+          Algorithm is now reduced, not trying to do best fit,
+          due to some changes in requirements. See CVS history
+          for best fit bin allocation.          
         """
 
-        # default selected set
-        selectedSet = ([], 0)
-
-        # set parameters
-        parameters = {}
-        parameters['maxMergeFileSize'] = self.__class__.maxMergeFileSize
-        parameters['minMergeFileSize'] = self.__class__.minMergeFileSize
+        # get file size
+        maxMergeFileSize = self.__class__.maxMergeFileSize
+        minMergeFileSize = self.__class__.minMergeFileSize
 
         # get dataset id
         datasetId = self.database.getDatasetId(self.data['name'])
@@ -600,24 +573,115 @@ class Dataset:
         # get unmerged file lists organized by fileblocks
         fileList = self.database.getUnmergedFileList(datasetId)
         
-        # check plugin
-        policy = self.__class__.policy
-        if policy == None:
-            self.logging.error("Merge policy not set")
-            return selectedSet
+        # check all file blocks in dataset
+        for fileBlock in fileList:
+       
+            # get data
+            fileBlockId, files = fileBlock
 
-        # apply merge policy
-        try:
-            selectedSet = policy.applySelectionPolicy(fileList, parameters, \
-                                                      forceMerge)
+            # select set of files with at least mergeFileSize size
+            totalSize = 0
+            selectedSet = []
+            numFiles = len(files)
 
-        # problems
-        except Exception, msg:
-            self.logging.error("Cannot apply merge policy: %s" % str(msg))
-            return selectedSet
+            # start with the longest file
+            startingFile = 0
 
-        # done, return it
-        return selectedSet
+            # ignore too large files in force merge
+            tooLargeFiles = 0
+
+            # try to start filling a bin
+            while startingFile < numFiles:
+
+                selectedSet = [files[startingFile][0]]
+                totalSize = files[startingFile][1]
+                leftIndex = startingFile + 1
+
+                # verify that the file is not larger that maximum
+                if totalSize > maxMergeFileSize:
+                    self.logging.warning( \
+                                    "File %s is too big, will not be merged" \
+                                    % files[startingFile][0])
+                    startingFile = startingFile + 1
+                    tooLargeFiles = tooLargeFiles + 1
+                    continue
+
+                # continue filling it
+                while totalSize < minMergeFileSize and \
+                      totalSize < maxMergeFileSize and \
+                      leftIndex < numFiles: 
+            
+                    # attempt to add other file
+                    newSize = totalSize + files[leftIndex][1]
+
+                    # check if we have not gone over maximum
+                    if newSize < maxMergeFileSize:
+
+                        # great, add it
+                        selectedSet.append(files[leftIndex][0])
+                        totalSize = newSize
+                   
+                    # still space, try to add the next one
+                    leftIndex = leftIndex + 1
+
+                # verify results
+                if totalSize >= minMergeFileSize and \
+                  totalSize < maxMergeFileSize:
+
+                    # done
+                    return (selectedSet, fileBlockId)
+
+                # try starting bin from second file
+                startingFile = startingFile + 1
+
+            # not enough files, continue to next fileBlock
+            # if forceMerge and list non-empty, return what we have
+            # if forceMerge and list empty, make log entry and continue
+            # with next fileBlock
+            
+            if forceMerge:
+
+                # get a set of files which will not go over the maximum
+                # even if the size can be smaller that minimum
+                totalSize = 0
+                selectedSet = []
+                for fileName, size in files:
+
+                    # ignore too large files
+                    if tooLargeFiles > 0:
+                        tooLargeFiles = tooLargeFiles - 1
+                        continue
+
+                    # try adding a new file
+                    newSize = totalSize + size
+
+                    # verify size
+                    if newSize > maxMergeFileSize:
+
+                        # too large
+                        break
+
+                    # add it
+                    selectedSet.append(fileName)
+                    totalSize = totalSize + size
+
+                # verify if some files were selected or not
+                if selectedSet == []:
+                    self.logging.info( \
+                       "Forced merge does not apply to fileblock %s " + \
+                       "due to non mergeable condition" % fileBlockId)
+                    continue
+                else:
+
+                    # ok, return them
+                    return(selectedSet, fileBlockId)
+            else:
+
+                # no, try next file block
+                continue
+
+        # nothing to merge
+        return ([], 0)
 
     ##########################################################################
     # check for job resubmissions
