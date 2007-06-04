@@ -262,7 +262,7 @@ def editMode():
         msg += "Setting To Value: %s " %  setThisValue
         
         try:
-            args = {setThreshold : setThisValue}
+            args = {setAttribute : setThisValue}
             resCon.updateAttributes(siteData['SiteIndex'], **args)
             Session.commit_all()
             Session.close_all()
@@ -297,7 +297,7 @@ def editMode():
                 Session.close_all()
                 print msg
                 sys.exit(0)
-            except Exception:
+            except Exception, ex:
                 msg += "Error activating site:\n"
                 msg += str(ex)
                 Session.rollback()
