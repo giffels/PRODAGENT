@@ -107,24 +107,18 @@ def checkWorkflow(workflow):
    return WorkflowExists,firstrun
 
 
-def checkPersistWorkflow(workflow):
+def GoodWorkflow(workflow):
    """
-   Check if the Persist workflow already exists in WorkflowCache area
+   Check if workflow can be loaded
    """
-   WorkflowExists=False
    RequestDir,firstrun = getRequestInjectorConfig()
    workflowCache="%s/WorkflowCache"%RequestDir
    workflowSpec = WorkflowSpec()
    try:
       workflowSpec.load(workflow)
    except:
-      return WorkflowExists
-   PersistFile="%s/%s-Persist.xml"%(workflowCache,workflowSpec.workflowName())
-   if os.path.exists(PersistFile):
-      WorkflowExists=True
-   else:
-      print "File %s does not exist"%PersistExists
-   return WorkflowExists
+      return False
+   return True
 
 ## use MessageService
 ms = MessageService()
@@ -165,9 +159,9 @@ else:
   ms.publish("RequestInjector:SetWorkflow", workflow)
   ms.commit()
   time.sleep(1)
-  PersistExists = checkPersistWorkflow(workflow)
-  if not PersistExists:
-     print "Error: failed to set the Workflow %s. \n Check the $PRODAGENT_WORKDIR/RequestInjector/ComponentLog"
+  GoodWf=GoodWorkflow(workflow)
+  if not GoodWf:
+     print "Error: failed to set the Workflow %s. \nCheck the $PRODAGENT_WORKDIR/RequestInjector/ComponentLog"%workflow
      sys.exit()
   ms.publish("RequestInjector:SetInitialRun", str(run))
   ms.commit()
