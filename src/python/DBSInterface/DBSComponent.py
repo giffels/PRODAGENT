@@ -179,14 +179,13 @@ class DBSComponent:
             self.args['BadReportfile'] = os.path.join(self.args['ComponentDir'],
                                                       "FailedJobReportList.txt")
 
-        self.BadReport = open(self.args['BadReportfile'],'a')
+        #self.BadReport = open(self.args['BadReportfile'],'a')
         #  //
         # // Log Failed fileblock injection into PhEDEx
         #//
         if self.args['BadTMDBInjectfile'] == None:
             self.args['BadTMDBInjectfile'] = os.path.join(self.args['ComponentDir'],
                                                       "FailedTMDBInject.txt")
-                                                                                                                                          
         #self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
 
         
@@ -227,6 +226,7 @@ class DBSComponent:
 
             
         if event == "JobSuccess":
+            self.BadReport = open(self.args['BadReportfile'],'a')
             #logging.info("Job Succeeded: %s" % payload)
             try:
                 self.handleJobReport(payload)
@@ -289,6 +289,7 @@ class DBSComponent:
                 return
 
         if event == "DBSInterface:RetryFailures":
+            self.BadReport = open(self.args['BadReportfile'],'a')
             #logging.info("DBSInterface:RetryFailures Event")
             try:
                 self.RetryFailures(self.args['BadReportfile'],self.BadReport)
