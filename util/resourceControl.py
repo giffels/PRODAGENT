@@ -238,18 +238,11 @@ def editMode():
         
         try:
             args = {setThreshold : setThisValue}
-            resCon.updateThresholds(siteData['SiteIndex'], **args)
-            Session.commit_all()
-            Session.close_all()
-            print msg
-            sys.exit(0)
-            
+            resCon.updateThresholds(siteData['SiteIndex'], **args)            
         except Exception, ex:
             msg += "Error updating threshold:\n"
             msg += str(ex)
             
-            Session.rollback()
-            Session.close_all()
             print msg
             sys.exit(1)
             
@@ -264,16 +257,10 @@ def editMode():
         try:
             args = {setAttribute : setThisValue}
             resCon.updateAttributes(siteData['SiteIndex'], **args)
-            Session.commit_all()
-            Session.close_all()
-            print msg
-            sys.exit(0)
         except Exception, ex:
             msg += "Error updating threshold:\n"
             msg += str(ex)
-            
-            Session.rollback()
-            Session.close_all()
+        
             print msg
             sys.exit(1)
 
@@ -293,15 +280,10 @@ def editMode():
             msg += "Activating site..."
             try:
                 resCon.activate(site)
-                Session.commit_all()
-                Session.close_all()
-                print msg
-                sys.exit(0)
             except Exception, ex:
                 msg += "Error activating site:\n"
                 msg += str(ex)
-                Session.rollback()
-                Session.close_all()
+        
                 print msg
                 sys.exit(1)
                 
@@ -309,19 +291,18 @@ def editMode():
             msg += "Deactivating site..."
             
             try:
-                resCon.deactivate(site)
-                Session.commit_all()
-                Session.close_all()
-                print msg
-                sys.exit(0)
-            except Exception:
+                resCon.deactivate(site)          
+            except Exception, ex:
                 msg += "Error deactivating site:\n"
                 msg += str(ex)
-                Session.rollback()
-                Session.close_all()
+          
                 print msg
                 sys.exit(1)
 
+    Session.commit_all()
+    Session.close_all()
+    print msg
+    sys.exit(0)
 
 def listMode():
     """
