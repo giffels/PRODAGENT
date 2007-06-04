@@ -20,6 +20,23 @@ class BotInterface:
         self.cycleCount = 0
         self.skipCycles = 1
         self.active = True
+
+
+    def handleForwardedMessage(self, payload):
+        """
+        _handleForwardedMessage_
+
+        Bots get subscribed to an event called
+        AdminControl:ForwardTo:<BotName>
+        allowing them to recieve async message payloads via the
+        message service.
+
+        The Payloads get forwarded to this method, which you can
+        override to define how the Bot handles this call.
+
+        """
+        logging.debug("BotInterface.handleForwardedMessage(%s)" % payload)
+        return
         
 
     def run(self):

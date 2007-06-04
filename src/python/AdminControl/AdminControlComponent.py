@@ -84,7 +84,52 @@ class AdminControlComponent:
             self.botCycle()
             return
 
+        if event.startswith("AdminControl:ForwardTo:"):
+            #  //
+            # // Message recieved to be forwarded to the Bot
+            #//  named in the payload
+            self.forwardToBot(event, payload)
+            return
+            
+
         return
+
+
+    def forwardToBot(self, message, payload):
+        """
+        _forwardToBot_
+
+        A message has been recieved to be forwarded to a Bot.
+
+        Determine which Bot it should go to, then pass it on
+
+        """
+        parseMsg = message.split("AdminControl:ForwardTo:")
+        if len(parseMsg) < 2:
+            msg = "Unable to parse message and forward to Bot:\n"
+            msg += message
+            logging.error(msg)
+            return
+        botName = parseMsg[1]
+        if not self.bots.has_key(botName):
+            msg = "Recieved Message for Bot: %s\n" % botName
+            msg += "But there are no Bots with that name:\n"
+            msg += str(self.bots.keys())
+            logging.error(msg)
+            return
+        try:
+            self.bots[botName].handleForwardedMessage(payload)
+        except Exception, ex:
+            msg = "Error forwarding message:\n"
+            msg += " %s\n " % message
+            msg += " With Payload:\n %s\n" % payload
+            msg += " To Bot: %s\n" % botName
+            msg += str(ex)
+            logging.error(msg)
+            
+            
+        return
+        
         
     def startBots(self):
         """
@@ -194,6 +239,11 @@ class AdminControlComponent:
         self.ms.subscribeTo("AdminControl:ActivateBot")
         self.ms.subscribeTo("AdminControl:DeactivateBot")
         self.ms.subscribeTo("AdminControl:BotCycle")
+
+        # forward messages to Bots
+        for botName in self.botList:
+            messageName = "AdminControl:ForwardTo:%s" % botName
+            self.ms.subscribeTo(messageName)
 
         self.startBots()
         
