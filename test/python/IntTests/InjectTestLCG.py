@@ -3,6 +3,8 @@
 Generate jobs for the workflow provided
 
 """
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+
 from MessageService.MessageService import MessageService
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
@@ -80,7 +82,7 @@ def getRequestInjectorConfig():
    #   sys.exit(1)
 
    return ReqInjConfig.get("ComponentDir", None),ReqInjConfig.get("FirstRun", "None")
- 
+
 def checkWorkflow(workflow):
    """
    Check if the provided workflow already exists in WorkflowCache area
@@ -103,6 +105,26 @@ def checkWorkflow(workflow):
       msg=" Workflow %s is NEW since the %s doesn't exist"%(workflowBase,workflowCacheFile)
       print msg
    return WorkflowExists,firstrun
+
+
+def checkPersistWorkflow(workflow):
+   """
+   Check if the Persist workflow already exists in WorkflowCache area
+   """
+   WorkflowExists=False
+   RequestDir,firstrun = getRequestInjectorConfig()
+   workflowCache="%s/WorkflowCache"%RequestDir
+   workflowSpec = WorkflowSpec()
+   try:
+      workflowSpec.load(workflow)
+   except:
+      return WorkflowExists
+   PersistFile="%s/%s-Persist.xml"%(workflowCache,workflowSpec.workflowName())
+   if os.path.exists(PersistFile):
+      WorkflowExists=True
+   else:
+      print "File %s does not exist"%PersistExists
+   return WorkflowExists
 
 ## use MessageService
 ms = MessageService()
@@ -142,10 +164,13 @@ else:
      sys.exit(1)
   ms.publish("RequestInjector:SetWorkflow", workflow)
   ms.commit()
-  time.sleep(0.1)
+  time.sleep(1)
+  PersistExists = checkPersistWorkflow(workflow)
+  if not PersistExists:
+     print "Error: failed to set the Workflow %s. \n Check the $PRODAGENT_WORKDIR/RequestInjector/ComponentLog"
+     sys.exit()
   ms.publish("RequestInjector:SetInitialRun", str(run))
   ms.commit()
-
 
 if sitePref != None:
    ms.publish("RequestInjector:SetSitePref", sitePref)
