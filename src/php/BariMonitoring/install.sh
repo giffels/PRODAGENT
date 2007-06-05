@@ -18,6 +18,7 @@
 
 # files required
 
+INSTALL_ROOT=
 APACHE_FILE=apache_1.3.37.tar.gz
 PHP_FILE=php-4.4.4.tar.gz
 ADODB_FILE=adodb493a.tgz
