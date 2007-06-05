@@ -38,6 +38,8 @@ class MonitorInterface:
         self.siteThresholds = {}
         self.siteAttributes = {}
         self.retrieveSites()
+        self.pluginConfiguration = None
+        
 
     def newConstraint(self):
         """

@@ -20,6 +20,7 @@ from ResourceMonitor.Registry import retrieveMonitor
 
 
 from ProdAgentCore.ResourceConstraint import ResourceConstraint
+from ProdAgentCore.PluginConfiguration import PluginConfiguration
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
 class ResourceMonitorComponent:
@@ -34,6 +35,7 @@ class ResourceMonitorComponent:
         self.args = {}
         self.args['MonitorName'] = None
         self.args['Logfile'] = None
+        self.args['MonitorPluginConfig'] = None
         self.args.setdefault("PollInterval", 600 )
         self.args.update(args)
         self.args['PollInterval'] = float(self.args['PollInterval'])
@@ -121,6 +123,19 @@ class ResourceMonitorComponent:
             msg += "\nUnable to poll for resources..."
             logging.error(msg)
             return None
+
+        if self.args['MonitorPluginConfig'] != None:
+            monitor.pluginConfiguration = PluginConfiguration()
+            try:
+                monitor.pluginConfiguration.loadFromFile(
+                    self.args['MonitorPluginConfig']
+                    )
+            except Exception, ex:
+                msg = "Unable to load configuration file for plugin:\n"
+                msg += "%s\n" % self.args['MonitorPluginConfig']
+                msg += str(ex)
+                logging.error(msg)
+            
         return monitor
 
     def publishResources(self, constraints):
