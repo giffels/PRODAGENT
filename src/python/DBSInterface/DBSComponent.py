@@ -154,7 +154,7 @@ class DBSComponent:
         self.args.setdefault("CloseBlockSize", "None")  # No check on fileblock size
         self.args.setdefault("CloseBlockFiles", 100 )        
         self.args.setdefault("skipGlobalMigration", False )
-
+        self.args.setdefault("skipPhEDExInjection", True )
         self.args.setdefault("DataMode", "mc" )
 
         self.args.update(args)
@@ -166,6 +166,12 @@ class DBSComponent:
         self.skipGlobalMigration = False
         if str(self.args['skipGlobalMigration']).lower() == "true":
             self.skipGlobalMigration = True
+
+        if str(self.args['skipPhEDExInjection']).lower() == "true":
+            self.skipPhEDExInjection = True
+        else:
+            self.skipPhEDExInjection = False
+
 
 # use the LoggingUtils
         LoggingUtils.installLogHandler(self)
@@ -362,31 +368,7 @@ class DBSComponent:
             return
 
         if event == "PhEDExInjectBlock":
-            self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
-            try:
-                self.PhEDExInjectBlock(payload)
-                return
-            except DBSWriterError, ex:
-                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
-                self.BadTMDBInject.write("%s\n" % payload)
-                self.BadTMDBInject.flush()
-                return
-            except DBSReaderError, ex:
-                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
-                self.BadTMDBInject.write("%s\n" % payload)
-                self.BadTMDBInject.flush()
-                return
-            except TMDBInjectError, ex:
-                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
-                self.BadTMDBInject.write("%s\n" % payload)
-                self.BadTMDBInject.flush()
-                return
-            except StandardError, ex:
-                logging.error("Failed to PhEDExInjectBlock")
-                logging.error("Details: %s" % str(ex))
-                self.BadTMDBInject.write("%s\n" % payload)
-                self.BadTMDBInject.flush()
-                return
+            self.handlePhEDExInjectBlock(payload)
             return
 
         if event == "DBSInterface:StartDebug":
@@ -523,14 +505,15 @@ class DBSComponent:
                      self.MigrateBlock(datasetPath, [BlockName])
                      #self.MigrateBlockToGlobal(BlockName)
                   #self.MigrateBlock(datasetPath, MigrateBlockList )
+                     #  //
+                     # // Trigger PhEDEx injection of migrated blocks
+                     #//  (if the migration is not successfull this point is not reached)
+                     if not self.skipPhEDExInjection:
+                       self.handlePhEDExInjectBlock(BlockName)  
 
-               # FIXME:
-               #  if migration succesfull: trigger PhEDEx injection?? (If Phedex is configured)
-               # FIXME:
-
-            #  //
-            # // On successful insertion of job report, set the trigger
-            #//  to say we are done with it so that cleanup can be triggered.
+         #  //
+         # // On successful insertion of job report, set the trigger
+         #//  to say we are done with it so that cleanup can be triggered.
          try:
                 self.trigger.setFlag("cleanup", jobreport.jobSpecId,
                                      "DBSInterface")
@@ -627,11 +610,14 @@ class DBSComponent:
         #  //
         # // Inject that block to PhEDEx
         #//
+        if phedexConfig == "None":
+            msg="DBPARAM not configured in PhEDExConfig block in $PRODAGENT_CONFIG"
+            raise RuntimeError, msg
         workingdir="/tmp"
         if dropdir != "None": workingdir=dropdir 
         tmdbInjectBlock(DBSConf['DBSURL'], datasetPath, fileBlockName, phedexConfig, workingDir=workingdir,nodes=Nodes)
+        return
 
-        
     def getPhEDExConfig(self):
         """
         Extract the PhEDEx information from the prod agent config
@@ -664,6 +650,44 @@ class DBSComponent:
              nodes = PhEDExConfig['Nodes']      
                      
         return PhEDExConfig['DBPARAM'],PhEDExConfig['PhEDExDropBox'],nodes
+
+
+    def handlePhEDExInjectBlock(self,payload):
+        """
+        inject a fileblock to PhEDEx and log the failures
+        """
+        self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
+        try:
+                self.PhEDExInjectBlock(payload)
+                return
+        except DBSWriterError, ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
+        except DBSReaderError, ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
+        except TMDBInjectError, ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
+        except StandardError, ex:
+                logging.error("Failed to PhEDExInjectBlock")
+                logging.error("Details: %s" % str(ex))
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
+        except RuntimeError, ex:
+                logging.error("Failed to PhEDExInjectBlock")
+                logging.error("Details: %s" % str(ex))
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
+        return
 
 
     def PhEDExRetryFailures(self,fileName, filehandle):
