@@ -1,11 +1,11 @@
 #/usr/bin/env python
 
 
-from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
 
-import logging
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdAgent.WorkflowEntities import Aux
 
 # do this once during startup:
 offset=0
@@ -90,28 +90,21 @@ def getHighestPriority(nth=0):
    'workflow_spec_file','workflow_type']
    return Session.convert(description,[row],True)
 
-def getJobIDs(workflowIDs=[]):
-   """
-   __getJobsIDs__
+def getJobIDs(workflowIDs = []):
+    """
+    __getJobsIDs__
+ 
+    returns jobids associated to the list of workflowIDs
+    """
+    return Aux.getJobIDs(workflowIDs)
 
-   returns jobids associated to the list of workflowIDs
-   """
-   if(type(workflowIDs)!=list):
-       workflowIDs=[str(workflowIDs)]
-   if len(workflowIDs)==0:
-       return []
-   if len(workflowIDs)==1:
-       sqlStr="""SELECT id FROM we_Job WHERE workflow_id='%s'
-       """ %(str(workflowIDs[0]))
-   else:
-       sqlStr="""SELECT id FROM we_Job WHERE workflow_id IN %s
-       """ %(str(tuple(workflowIDs)))
-   Session.execute(sqlStr)
-   rows=Session.fetchall()
-   result=[]
-   for row in rows:
-      result.append(row[0])
-   return result 
+def getAllocationIDs(workflowIDs =[]):
+    """
+    __getAllocationIDs
+ 
+    returns allocationIDs associated to the list of workflowIDs
+    """
+    return Aux.getAllocationIDs(workflowIDs)
 
 def getNewRunNumber(workflowID,amount=1):
   """
@@ -247,22 +240,12 @@ def register(workflowID,parameters={}):
 
 
 def remove(workflowID=[]):
-   """
-   __remove__
-
-   removes a (or multiple)  workflow entry (entries)
-   """
-   if(type(workflowID)!=list):
-       workflowID=[str(workflowID)]
-   if len(workflowID)==0:
-       return
-   if len(workflowID)==1:
-       sqlStr="""DELETE FROM we_Workflow WHERE id="%s"
-       """ %(str(workflowID[0]))
-   else:
-       sqlStr="""DELETE FROM we_Workflow WHERE id IN 
-       %s """ %(str(tuple(workflowID)))
-   Session.execute(sqlStr)
+    """
+    __remove__
+ 
+    removes a (or multiple)  workflow entry (entries)
+    """
+    Aux.removeWorkflow(workflowID)
 
 def setEventsProcessedIncrement(workflowID,eventsProcessed):
    sqlStr="""UPDATE we_Workflow SET events_processed=events_processed+%s WHERE 

@@ -3,9 +3,11 @@ import base64
 import cPickle
 import logging
 
-from ProdAgent.WorkflowEntities import Workflow
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
+
+from ProdAgent.WorkflowEntities import Aux
+from ProdAgent.WorkflowEntities import Workflow
 
 def convertJobID(jobID):
    """
@@ -114,15 +116,7 @@ def remove(allocationID=[]):
    __remove__
    removes allocations with a particular ID
    """
-   if(type(allocationID)!=list):
-       allocationID=[str(allocationID)]
-   if len(allocationID)==0:
-       return
-   if len(allocationID)==1:
-       sqlStr="""DELETE FROM we_Allocation WHERE id="%s" """ %(str(allocationID[0]))
-   else:
-       sqlStr="""DELETE FROM we_Allocation WHERE id IN %s """ %(str(tuple(allocationID)))
-   Session.execute(sqlStr)
+   Aux.removeAllocation(allocationID)
 
 def setEventsProcessedIncrement(allocationID,eventsProcessed=0):
    """

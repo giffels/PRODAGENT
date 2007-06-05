@@ -1,12 +1,15 @@
 #/usr/bin/env python
 
-from ProdAgent.Core.Codes import exceptions 
-from ProdAgent.WorkflowEntities import Allocation
-from ProdAgent.WorkflowEntities import Workflow
+import logging
+
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
 
-import logging
+from ProdAgent.Core.Codes import exceptions 
+from ProdAgent.WorkflowEntities import Aux
+
+import ProdAgent.WorkflowEntities.Allocation as Allocation
+import ProdAgent.WorkflowEntities.Workflow as Workflow
 
 def amount():
    """
@@ -145,27 +148,7 @@ def remove(jobIDs=[]):
 
    removes the jobs with the specified ids.
    """
-   if(type(jobIDs)!=list):
-       jobIDs=[str(jobIDs)]
-   if len(jobIDs)==0:
-       return
-   if len(jobIDs)==1:
-       sqlStr1="""DELETE FROM we_Job WHERE id="%s"
-       """ %(str(jobIDs[0]))
-       sqlStr2="""DELETE FROM tr_Trigger WHERE
-       JobSpecID='%s' """ %(jobIDs[0])
-       sqlStr3="""DELETE FROM tr_Action WHERE
-       JobSpecID='%s' """ %(jobIDs[0])
-   else:
-       sqlStr1="""DELETE FROM we_Job WHERE id IN %s
-       """ %(str(tuple(jobIDs)))
-       sqlStr2="""DELETE FROM tr_Trigger WHERE
-       JobSpecID IN %s""" %(str(tuple(jobIDs)))
-       sqlStr3="""DELETE FROM tr_Action WHERE
-       JobSpecID IN %s""" %(str(tuple(jobIDs)))
-   Session.execute(sqlStr1)
-   #Session.execute(sqlStr2)
-   #Session.execute(sqlStr3)
+   Aux.removeJob(jobIDs)
 
 def removeAll():
    sqlStr1="""DELETE FROM we_Job;"""
