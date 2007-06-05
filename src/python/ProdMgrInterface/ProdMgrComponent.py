@@ -16,23 +16,21 @@ import logging
 from logging.handlers import RotatingFileHandler
 import time
 
+from ProdCommon.Database import Session
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+
 from MessageService.MessageService import MessageService
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentCore.Codes import errors
-from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
+
 from ProdMgrInterface.Registry import retrieveHandler
 from ProdMgrInterface.Registry import Registry
 from ProdMgrInterface import MessageQueue
 from ProdAgent.WorkflowEntities import Workflow
 from ProdMgrInterface import State
 from ProdMgrInterface import Interface as ProdMgr
-from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
-
-
-import ProdMgrInterface.Interface as ProdMgrAPI
-
-from ProdAgentDB.Config import defaultConfig as dbConfig
-from ProdCommon.Database import Session
 
 class ProdMgrComponent:
     """
@@ -134,7 +132,8 @@ class ProdMgrComponent:
             self.reportJobFailure(payload)
             return
         elif event == "ProdMgrInterface:CleanWorkflow":
-            Worklfow.remove(payload) 
+            self.cleanWorkflow(payload)
+            return
 
 
     def retrieveWork(self, numberOfJobs):
@@ -305,6 +304,29 @@ class ProdMgrComponent:
             logging.debug("Setting locations was not successful. I will try "+\
                 "again later (HH:MM:SS) 00:10:00 ")
             self.ms.publish("ProdMgrInterface:SetLocations",payload,"00:05:00")
+
+    def cleanWorkflow(self,payload):
+        """
+        _cleanWorkflow_
+
+        Removes the workflow and notifies the prodmgrs that you do not want
+        to be subscribe to this workflow.
+        """
+        workflow = Workflow.get(payload)
+        if not workflow:
+            logging.debug("Workflow already removed")
+            return        
+        try:
+            ProdMgr.unsubscribeWorkflow(workflow['prod_mgr_url'], \
+                self.args['AgentTag'], payload)
+        except Exception,ex:
+            msg = """
+Unsubscribe for workflow: %s at prodmgr: %s unsuccessful: %s.
+Retrying later.
+            """ % (payload, workflow['prod_mgr_url'], str(ex))
+            logging.debug(msg)
+            self.ms.publish("ProdMgrInterface:CleanWorkflow",payload,"00:10:00")
+        Workflow.remove(payload) 
 
     def acquireRequests(self,payload):
         

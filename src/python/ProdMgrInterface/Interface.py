@@ -9,8 +9,8 @@ but other facilitator can be used. The Interface methods
 insulate the ProdAgent code from this facilitator.
 """
 
-__revision__  =  "$Id: Interface.py,v 1.14 2007/05/31 23:13:57 fvlingen Exp $"
-__version__  =  "$Revision: 1.14 $"
+__revision__  =  "$Id: Interface.py,v 1.15 2007/06/02 05:23:05 fvlingen Exp $"
+__version__  =  "$Revision: 1.15 $"
 __author__  =  "fvlingen@caltech.edu"
 
 
@@ -99,6 +99,17 @@ def setLocations(serverUrl, locations = [], componentID = "defaultComponent"):
     return Management.executeCall(serverUrl, \
         "prodMgrProdAgent.setLocations", \
         [locations], componentID)
+
+def unsubscribeWorkflow(serverUrl, agent_id, workflow_id, componentID = "defaultComponent"):
+    """
+    _unsubscribeWorkflow_
+ 
+    Unsubscribes from a collection of workflows.
+    """
+    return Management.executeCall(serverUrl, \
+        "prodMgrProdAgent.unsubscribeWorkflow", \
+        [agent_id, workflow_id], componentID)
+    
 
 def retrieveWorkflow(serverUrl, requestID, componentID = "defaultComponent"):
     return Management.executeRestCall(serverUrl, \

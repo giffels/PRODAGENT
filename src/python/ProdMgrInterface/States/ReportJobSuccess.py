@@ -70,11 +70,13 @@ class ReportJobSuccess(StateInterface):
                 logging.debug('Retrieved job spec for: '+str(job_spec_id))
             except:
                 logging.debug("Job: "+str(job_spec_id)+ \
-                    " not initiated by prodmgr. Not doing anything (case 1)")
+                    " not initiated by prodmgr or job has been removed when "+\
+                    " workflow was removed. Not doing anything (case 1)")
                 return
             if not we_job['allocation_id']:
                 logging.debug("Job: "+str(job_spec_id)+ \
-                    " not initiated by prodmgr. Not doing anything (case 2)")
+                    " not initiated by prodmgr or job has been removed when "+\
+                    " workflow was removed. Not doing anything (case 2)")
                 return 
 
         else:
@@ -84,11 +86,13 @@ class ReportJobSuccess(StateInterface):
                     raise
             except Exception,ex:
                 logging.debug("Job: "+str(job_spec_id)+ \
-                    " not initiated by prodmgr. Not doing anything (case 3)")
+                    " not initiated by prodmgr or job has been removed when "+\
+                    " workflow was removed. Not doing anything (case 3)")
                 return
             if not we_job['allocation_id']:
                 logging.debug("Job: "+str(job_spec_id)+ \
-                    " not initiated by prodmgr. Not doing anything (case 4)")
+                    " not initiated by prodmgr or job has been removed when "+\
+                    " workflow was removed. Not doing anything (case 4)")
                 return 
             total = 0
             files=[]

@@ -20,6 +20,12 @@ def handleJob(job_spec_id):
    logging.debug("Evaluate allocation associated to the job "+str(job_spec_id))
    jobId=Allocation.convertJobID(job_spec_id)
    logging.debug("Associated allocation is: "+str(jobId)) 
+   # check if allocation exists:
+   allocation = Allocation.get(jobId)
+   if not allocation:
+       logging.debug("Allocation is not available. It might have been removed " +\
+       " when the associated workflow was cleaned. Cancelling account update ")
+       return
    if Allocation.isJobsFinished(jobId):
        logging.debug("Retrieve number of processed events")
        allocation=Allocation.get(jobId)
