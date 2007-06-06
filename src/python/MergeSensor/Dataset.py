@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.29 2007/03/28 12:38:29 ckavka Exp $"
-__version__ = "$Revision: 1.29 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -489,10 +489,7 @@ class Dataset:
                 if not fileDict.has_key(lfn):
 
                     # not there, add it
-                    size = aFile['FileSize']
-                    events = aFile['NumberOfEvents']
-                    self.database.addFile(datasetId, lfn, size, \
-                                          fileBlock, events)
+                    self.database.addFile(datasetId, lfn, fileBlock, aFile)
 
         # update time
         date = time.asctime(time.localtime(time.time()))
