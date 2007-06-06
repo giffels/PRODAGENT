@@ -6,8 +6,8 @@ Policy for merge based on file size
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: SizePolicy.py,v 1.1 2007/06/04 12:46:00 ckavka Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -84,15 +84,15 @@ class SizePolicy:
             # try to start filling a bin
             while startingFile < numFiles:
 
-                selectedSet = [files[startingFile][0]]
-                totalSize = files[startingFile][1]
+                selectedSet = [files[startingFile]['name']]
+                totalSize = files[startingFile]['filesize']
                 leftIndex = startingFile + 1
 
                 # verify that the file is not larger that maximum
                 if totalSize > maxMergeFileSize:
                     self.logging.warning( \
                                     "File %s is too big, will not be merged" \
-                                    % files[startingFile][0])
+                                    % files[startingFile]['name'])
                     startingFile = startingFile + 1
                     tooLargeFiles = tooLargeFiles + 1
                     continue
@@ -103,13 +103,13 @@ class SizePolicy:
                       leftIndex < numFiles:
 
                     # attempt to add other file
-                    newSize = totalSize + files[leftIndex][1]
+                    newSize = totalSize + files[leftIndex]['filesize']
 
                     # check if we have not gone over maximum
                     if newSize < maxMergeFileSize:
 
                         # great, add it
-                        selectedSet.append(files[leftIndex][0])
+                        selectedSet.append(files[leftIndex]['name'])
                         totalSize = newSize
 
                     # still space, try to add the next one
@@ -136,7 +136,9 @@ class SizePolicy:
                 # even if the size can be smaller that minimum
                 totalSize = 0
                 selectedSet = []
-                for fileName, size in files:
+                for file in files:
+                    fileName = file['name']
+                    size = file['filesize']
 
                     # ignore too large files
                     if tooLargeFiles > 0:
