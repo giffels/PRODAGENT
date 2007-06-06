@@ -92,7 +92,7 @@ class RFCP2Impl(StageOutImpl):
         CleanUp pfn provided: specific for Castor-1
 
         """
-        command = "stager_rm -M %s ; nsrm %s" % pfnToRemove
+        command = "stager_rm -M %s ; nsrm %s" %(pfnToRemove,pfnToRemove)
         self.executeCommand(command)
 
 
