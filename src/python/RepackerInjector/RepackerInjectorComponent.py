@@ -8,8 +8,8 @@ Component for generating Repacker JobSpecs
 
 
 
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.3 2007/05/24 19:46:56 kosyakov Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.4 2007/05/29 14:10:00 hufnagel Exp $"
 __author__ = "kss"
 
 
@@ -21,7 +21,9 @@ import ConfigDB
 import DbsLink
 import RepackerIterator
 import os
-from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
+import sys
+import traceback
+from ProdCommon.MCPayloads.Tier0WorkflowMaker import Tier0WorkflowMaker
 
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWAPILoader import CMSSWAPILoader
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
@@ -166,15 +168,19 @@ class RepackerInjectorComponent:
                 cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
                 cfgInt.validateForProduction()
 
-		wfmaker=WorkflowMaker(requestId, channel, label)
+		wfmaker=Tier0WorkflowMaker(requestId, channel, label)
+                wfmaker.setRunNumber(run_number)
                 wfmaker.changeCategory("data");
 		wfmaker.setCMSSWVersion(self.args['CMSSW_Ver'])
 		wfmaker.setPhysicsGroup(group)
 #		wfmaker.setConfiguration(cfgWrapper.pack(), Format = "CMSSWConfig", Type = "string")
 		wfmaker.setConfiguration(cfgWrapper, Type = "instance")
-		wfmaker.setPSetHash("MadeUpHashForTesting")
-		
-		spec=wfmaker.makeWorkflow()
+		wfmaker.setPSetHash("NA")
+                wfmaker.addInputDataset("/%s/%s/RAW" % (primary_ds_name ,
+                                                        source_ds_name)
+                                        )
+
+                spec=wfmaker.makeWorkflow()
 		ds_key=primary_ds_name+':'+source_ds_name
 		compdir=self.args['ComponentDir']
 		workdir=compdir+'/'+ds_key
@@ -186,6 +192,7 @@ class RepackerInjectorComponent:
 #		print spec.outputDatasetsWithPSet()
 		wfspecfile=workdir+"/workflow.spec"
 		spec.save(wfspecfile)
+
 		self.ms.publish("NewWorkflow",wfspecfile)
 		self.ms.publish("NewDataset",wfspecfile)
 		self.ms.commit()
