@@ -180,10 +180,10 @@ class JobQueueDB:
 
         lastJobIndex = firstJobIndex + numberOfJobs
         for jobIndex in range(firstJobIndex, lastJobIndex):
-            for siteIndex in job['SiteList']:
+            for siteIndex in sitesList:
                 sqlStr2 += " (%s, %s)" % (jobIndex, siteIndex)
                 if jobIndex == lastJobIndex -1:
-                    if siteIndex == job['SiteList'][-1]:
+                    if siteIndex == sitesList[-1]:
                         sqlStr2 += ";"
                     else:
                         sqlStr2 += ",\n"
@@ -212,15 +212,15 @@ class JobQueueDB:
 
         """
         jobSpecDicts = list(jobSpecDicts)
-    
-        
+
+        sitesList = [ self.getSiteIndex(x) for x in listOfSites]
         _INSERTLIMIT = 2000
         
         while len(jobSpecDicts) > 0:
             segment = jobSpecDicts[0:_INSERTLIMIT]
             jobSpecDicts = jobSpecDicts[_INSERTLIMIT:]
             map(self.validateJobSpecDict, segment)
-            self.__directInsertJobSpecsWithSites(*segment)
+            self.__directInsertJobSpecsWithSites(sitesList, *segment)
             
         return
 
