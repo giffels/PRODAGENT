@@ -55,10 +55,12 @@ class RelValTest(dict):
         """
         self['Name'] = improvNode.attrs.get("Name", None)
         for child in improvNode.children:
-            if self.has_key(child.name):                
-                self[str(child.name)] = child.attrs.get("Value", None)
-        
-        
+            if self.has_key(child.name):
+                value = child.attrs.get("Value", None)
+                if value != None:
+                    self[str(child.name)] = str(value)
+                
+                
 
 class RelValSpecMgr:
     """
@@ -79,8 +81,11 @@ class RelValSpecMgr:
         self.datestamp = self.datestamp.replace(":", "-")
         self.tests = []
         self.iterators = {}
+        self.workflows = {}
+        self.workflowFiles = {}
+        self.workingDirs = {}
         
-
+        
     def __call__(self):
         """
         _operator()_
@@ -100,7 +105,6 @@ x
             logging.error(msg)
             return result 
 
-
         
         
         for test in self.tests:
@@ -113,29 +117,18 @@ x
                 logging.error(msg)
                 continue
             
-
-        #  //
-        # // Duplicate each test for every site
-        #//
-        newTests = []
-        for test in self.tests:
-            for site in self.sites:
-                newTest = RelValTest()
-                newTest.update(test)
-                newTest['Site'] = site
-                newTests.append(newTest)
-        self.tests = newTests
-        
+            
+      
 
         for test in self.tests:
-            try:
-                self.makeJobs(test)
-            except Exception, ex:
-                msg = "Error Creating jobs for test: %s\n" % test['Name']
-                msg += "Skipping Test..."
-                test['BadTest'] = True
-                logging.error(msg)
-                continue
+            #try:
+            self.makeJobs(test)
+            #except Exception, ex:
+            #    msg = "Error Creating jobs for test: %s\n" % test['Name']
+            #    msg += "Skipping Test..."
+            #    test['BadTest'] = True
+            #    logging.error(msg)
+            #    continue
             
         self.tests = [ x for x in self.tests if x['BadTest'] == False ]
         return self.tests
@@ -150,21 +143,26 @@ x
         """
         improv = loadIMProvFile(self.relvalSpecFile)
         testQ = IMProvQuery("/RelValSpec/RelValTest")
-        tests = testQ(improv)
+        testNodes = testQ(improv)
+        
+        for test in testNodes:
+             for site in self.sites:
+                 newTest = RelValTest()
+                 newTest.load(test)
+                 newTest['Site'] = site
+                 speed = newTest.get('SpeedCategory', "Slow")
+                 eventsPerJob = self.args[speed]
+                 newTest['EventsPerJob'] = eventsPerJob
+                 self.tests.append(newTest)
+                 
 
-        for test in tests:
-            newTest = RelValTest()
-            newTest.load(test)
-            self.tests.append(newTest)
-
-        for test in self.tests:
-            speed = test.get("SpeedCategory", "Slow")
-            test['EventsPerJob'] = self.args[speed]
-            
+                 
             
         logging.info("Loaded %s tests from file:\n %s\n" % (
             len(self.tests),
             self.relvalSpecFile))
+
+        
         
         return
     
@@ -178,7 +176,13 @@ x
         and add the, to the test instance
         
         """
-        print "Processing : %s" % testInstance['Name']
+        logging.info("Processing : %s" % testInstance['Name'])
+        testName = testInstance['Name']
+        if self.workflows.has_key(testName):
+            testInstance['WorkflowSpecId'] = self.workflows[testName]
+            testInstance['WorkflowSpecFile'] = self.workflowFiles[testName]
+            testInstance['WorkingDir'] = self.workingDirs[testName]
+            return
         
         workingDir = os.path.join(self.args['ComponentDir'],
                                   self.args['CurrentVersion'],
@@ -186,29 +190,16 @@ x
         if not os.path.exists(workingDir):
             os.makedirs(workingDir)
 
+            
         loader = CMSSWAPILoader(self.args['CurrentArch'],
                                 self.args['CurrentVersion'],
                                 self.args['CurrentCMSPath'])
-
-        cfgWrapper = CMSSWConfig()
         loader.load()
+        cfgWrapper = CMSSWConfig()
         process = pickle.load(file(testInstance['PickleFile']))
-        cfgWrapper.loadConfiguration(process)            
+        cfgInt = cfgWrapper.loadConfiguration(process)
+        cfgInt.validateForProduction()
         loader.unload()
-        
-        for outMod in cfgWrapper.outputModules.values():
-            if outMod.get('dataTier', None) == None:
-                outMod['dataTier'] = "GEN-SIM-DIGI-RECO"
-
-        cfgWrapper.configMetadata['name'] = testInstance['PickleFile']
-        cfgWrapper.configMetadata['version'] = "%s-%s" % (
-            self.args['CurrentVersion'],
-            self.datestamp)
-        annotation = "RelVal test %s. " % testInstance['Name']
-        annotation += "Using Version %s. " % self.args['CurrentVersion']
-        annotation += "On date %s. " % self.datestamp
-        cfgWrapper.configMetadata['annotation'] = annotation
-        
         
         maker = WorkflowMaker(
             "%s-%s" % ( self.args['CurrentVersion'], 
@@ -232,9 +223,17 @@ x
         specFile = "/%s/%s-Workflow.xml" % (workingDir, maker.workflowName) 
         spec.save(specFile)
 
-        testInstance['WorkflowSpecId'] = maker.workflowName
+        self.workflows[testName] = str(maker.workflowName)
+        self.workflowFiles[testName] = specFile
+        self.workingDirs[testName] = workingDir
+        
+        testInstance['WorkflowSpecId'] = str(maker.workflowName)
         testInstance['WorkflowSpecFile'] = specFile
         testInstance['WorkingDir'] = workingDir
+
+        msg = "Workflow created for test: %s" % testName
+        logging.info(msg)
+
         
         return
 
@@ -247,17 +246,23 @@ x
         Create Job Specs for the test instance provided
 
         """
-        print "Creating Jobs for test %s at site %s" % (testInstance['Name'],
-                                                        testInstance['Site'])
-        
-        if not self.iterators.has_key(testInstance['WorkflowSpecId']):
+        logging.info("Creating Jobs for test %s at site %s" % (
+            testInstance['Name'],
+            testInstance['Site'])
+                     )
+        testName = testInstance['WorkflowSpecId']
+        if not self.iterators.has_key(testName):
             iterator = RequestIterator(testInstance['WorkflowSpecFile'],
                                        testInstance['WorkingDir'])
-            self.iterators[testInstance['WorkflowSpecId']] = iterator
+            self.iterators[testName] = iterator
+            logging.info("Created RequestIterator for %s" % (
+                testInstance['WorkflowSpecId'],))
             iterator.save(testInstance['WorkingDir'])
         else:
-            iterator = self.iterators[testInstance['WorkflowSpecId']]
+            iterator = self.iterators[testName]
             iterator.load(testInstance['WorkingDir'])
+            logging.info("Retrieved RequestIterator for %s" % (
+                testInstance['WorkflowSpecId'],))
             
         iterator.sitePref = testInstance['Site']
         iterator.eventsPerJob = testInstance['EventsPerJob']
@@ -265,36 +270,44 @@ x
         totalEvents = float(testInstance['TotalEvents'])
         eventsPerJob = float(testInstance['EventsPerJob'])
         numJobs = int(totalEvents/eventsPerJob) +1
-
-        print "Creating total of %s jobs" % numJobs
+        
+        msg = "Created %s jobs:\n" % numJobs
         
         for i in range(0, numJobs):
             jobSpecFile = str(iterator())
             jobSpecId = iterator.currentJob
+            msg += "  %s\n" % jobSpecId
             testInstance['JobSpecs'][jobSpecId] = jobSpecFile
+
+        
+        
+        logging.info(msg)
             
         iterator.save(testInstance['WorkingDir'])
         
         return
 
     
-        
-        
-        
-
 if __name__ == '__main__':
-    args = {
-        'ComponentDir' : '/home/evansde/work/PRODAGENT/src/python/RelValInjector/detritus/',  
-        'CurrentArch' : "slc4_ia32_gcc345",
-        'CurrentCMSPath' : "/uscms/home/cms_admin/SL4",
-        'CurrentVersion' : "CMSSW_1_5_0_pre4",
-        'Fast' : 250,
-        'Medium' : 100,
-        'Slow' : 50  ,
-        }
-    specFile = "/home/evansde/work/PRODAGENT/cmssw/CMSSW_1_5_0_pre4/PyRelValSpec.xml"
-    specMgr = RelValSpecMgr(specFile, ['CERN', 'FNAL'], **args)
-    tests = specMgr()
 
-    
-    
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    args = {
+        'ComponentDir' : '/home/evansde/work/PRODAGENT/src/python/RelValInjector/detritus',
+
+        "Fast" : 100,
+        "Slow" : 50,
+        "Medium" : 75,
+        
+        'CurrentArch' : "slc4_ia32_gcc345",
+        "CurrentCMSPath" :"/uscms/home/cms_admin/SL4",
+        "CurrentVersion" : "CMSSW_1_5_0_pre4",
+        
+        
+        }
+    sites = ['CERN', 'FNAL']
+    specFile = "/home/evansde/work/PRODAGENT/cmssw/CMSSW_1_5_0_pre4/PyRelValSpec.xml"
+
+    mgr = RelValSpecMgr(specFile, sites, **args)
+    mgr()
+

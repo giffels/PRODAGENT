@@ -17,9 +17,12 @@ import ProdAgentCore.LoggingUtils as LoggingUtils
 from RelValInjector.RelValSpecMgr import RelValSpecMgr
 
 
-class RelValInjector:
+from JobQueue.JobQueueAPI import bulkQueueJobs
+
+
+class RelValInjectorComponent:
     """
-    _RelValInjector_
+    _RelValInjectorComponent_
 
     Component to inject, trace and manage RelVal jobs
 
@@ -120,10 +123,10 @@ class RelValInjector:
         #  //
         # // TODO: Poll DB tables for complete workflows  
         #//
-        self.ms.publish("RelValInjector:Poll", "",
-                        self.args['PollInterval'])
-        self.ms.commit()        
-
+        #self.ms.publish("RelValInjector:Poll", "",
+        #                self.args['PollInterval'])
+        #self.ms.commit()        
+        
 
     def inject(self, relValSpecFile):
         """
@@ -162,12 +165,17 @@ class RelValInjector:
             msg += str(ex)
             logging.error(msg)
 
-        
+        self.allJobs = []
         for test in tests:
-            self.submitTest(self, test)
+            self.submitTest(test)
 
+            
+        msg = "Jobs Submitted:\n===============================\n"
+        for j in self.allJobs:
+            msg += "==> %s\n" % j
+        logging.debug(msg)
         return
-        
+    
 
     
     def submitTest(self, test):
@@ -186,6 +194,23 @@ class RelValInjector:
         #//
         logging.info("RelValInjector.submitTest(%s, %s)" % (test['Name'],
                                                             test['Site']))
+        
+        sites = [ test['Site'] ]
+        jobs = []
+        for jobSpec, jobSpecFile in test['JobSpecs'].items():
+            jobs.append(  {
+                "JobSpecId" : jobSpec,
+                "JobSpecFile" : jobSpecFile,
+                "JobType" : "Processing",
+                "WorkflowSpecId" : test['WorkflowSpecId'],
+                "WorkflowPriority" : 100,
+                
+                })
+            self.allJobs.append(jobSpec)
+            
+        bulkQueueJobs(sites, *jobs)
+        
+        
         return
 
 
@@ -215,9 +240,9 @@ class RelValInjector:
 
         self.ms.subscribeTo("RelValInjector:Poll")
 
-        self.ms.publish("RelValInjector:Poll", "",
-                        self.args['PollInterval'])
-        self.ms.commit()
+        #self.ms.publish("RelValInjector:Poll", "",
+        #                self.args['PollInterval'])
+        #self.ms.commit()
         
         while True:
             messageType, payload = self.ms.get()
