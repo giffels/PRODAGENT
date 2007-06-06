@@ -21,7 +21,7 @@ from ShREEK.ControlPoints.ActionImpl.BasicActions import KillJob
 #  //
 # // Hardcoded at present, until we distribute the tool properly...
 #//
-CmsGenScriptUrl = ""
+CmsGenScriptUrl = "http://cern.ch/ceballos/alpgen/bin/cmsGen.py"
 
 
 class InsertCmsGenStructure:
