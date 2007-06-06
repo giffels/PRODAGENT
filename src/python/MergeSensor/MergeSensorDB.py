@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.19 2007/03/28 12:38:09 ckavka Exp $"
-__version__ = "$Revision: 1.19 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.20 2007/05/09 14:28:47 ckavka Exp $"
+__version__ = "$Revision: 1.20 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -841,14 +841,14 @@ class MergeSensorDB:
 
        # get cursor
         try:
-            cursor = self.conn.cursor()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.
             self.conn = self.connect()
             self.redo()
-            cursor = self.conn.cursor()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
         # start building resulting list
         fileList = []
@@ -857,15 +857,14 @@ class MergeSensorDB:
             
             # get all unmerged files in a particular fileblock
             sqlCommand = """
-                     SELECT name,
-                            filesize
+                     SELECT *
                        FROM merge_inputfile
                       WHERE dataset='""" + str(datasetId) + """'
                         AND block='""" + str(block['block'])  + """'
                         AND status='unmerged'
                    ORDER BY filesize
                      """
-                       
+          
             # execute command
             try:
 
@@ -1033,7 +1032,7 @@ class MergeSensorDB:
     # add a file to a dataset
     ##########################################################################
             
-    def addFile(self, datasetId, fileName, fileSize, fileBlock, events):
+    def addFile(self, datasetId, fileName, fileBlock, data):
         """
         __addFile__
         
@@ -1044,15 +1043,23 @@ class MergeSensorDB:
         
           datasetId -- the dataset id in database
           fileName -- the file to add
-          fileSize -- its file size
           fileBlock -- the file block name
-          evetns -- the number of events
+          data -- the parameters of the file
           
         Return:
             
           none
 
         """
+        
+        # get parameters
+        fileSize = data['FileSize']
+        events = data['NumberOfEvents']
+
+        # get and process run number 
+        run = data['RunsList']
+        if run == []:
+            run = 0
         
         # get cursor
         try:
@@ -1138,12 +1145,13 @@ class MergeSensorDB:
         sqlCommand = """
                      INSERT
                        INTO merge_inputfile
-                            (name, block, dataset, filesize, eventcount)
+                            (name, block, dataset, filesize, eventcount, run)
                      VALUES ('""" + fileName + """', 
                              """ + str(blockId) + """,
                              '""" + str(datasetId) + """',
                              '""" + str(fileSize) + """',
-                             '""" + str(events) + """')
+                             '""" + str(events) + """',
+                             '""" + str(run) + """')
                      """
             
         # execute command
