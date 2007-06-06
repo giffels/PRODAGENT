@@ -1632,9 +1632,9 @@ def Usage():
     manfile.write("=head1 USAGE                                                                                                                  \n")
     manfile.write("                                                                                                                              \n")
     manfile.write("B<PAmonBOSSDB.py>                                                                                                             \n")
-    manfile.write("B<--user>=I<DB_user_ID_1> B<--password>=I<ID_passwd_1> B<--socket>=I<socket_1>|B<--host>=I<DB_host_1> B<--dababase>=I<DB_1>   \n")
-    manfile.write("[B<--user>=I<DB_user_ID_2> B<--password>=I<ID_passwd_2> B<--socket>=I<socket_2>|B<--host>=I<DB_host_2> B<--dababase>=I<DB_2> ... \n")
-    manfile.write("B<--user>=I<DB_user_ID_N> B<--password>=I<ID_passwd_N> B<--socket>=I<socket_N>|B<--host>=I<DB_host_N> B<--dababase>=I<DB_N>]  \n")
+    manfile.write("B<--user>=I<DB_user_ID_1> B<--password>=I<ID_passwd_1> B<--socket>=I<socket_1>|B<--host>=I<DB_host_1> B<--database>=I<DB_1>   \n")
+    manfile.write("[B<--user>=I<DB_user_ID_2> B<--password>=I<ID_passwd_2> B<--socket>=I<socket_2>|B<--host>=I<DB_host_2> B<--database>=I<DB_2> ... \n")
+    manfile.write("B<--user>=I<DB_user_ID_N> B<--password>=I<ID_passwd_N> B<--socket>=I<socket_N>|B<--host>=I<DB_host_N> B<--database>=I<DB_N>]  \n")
     manfile.write("[B<--classify>=sites|workflows] [B<--type>=status|codes] [B<--merge>=yes|no|both]                                             \n")
     manfile.write("[B<--workflow>=I<workflow1> ...  B<--workflow>=I<workflowN>]                                                                  \n")
     manfile.write("[B<--site>=I<site1> ...  B<--site>=I<siteN>]                                                                                  \n") 
@@ -1749,9 +1749,9 @@ def WarningMessage():
         print " USAGE:"
         print 
         print " PAmonBOSSDB.py",
-        print " --user=DB_user_D_1 --password=D_passwd_1 --host=DB_host_1 --dababase=DB_1",
-        print "[--user=DB_user_D_2 --password=D_passwd_2 --host=DB_host_2 --dababase=DB_2 ... ",
-        print "--user=DB_user_D_N --password=D_passwd_N --host=DB_host_N --dababase=DB_N]",
+        print " --user=DB_user_D_1 --password=D_passwd_1 --host=DB_host_1 --database=DB_1",
+        print "[--user=DB_user_D_2 --password=D_passwd_2 --host=DB_host_2 --database=DB_2 ... ",
+        print "--user=DB_user_D_N --password=D_passwd_N --host=DB_host_N --database=DB_N]",
         print "[--type=status|codes] [--merge=yes|no] [--workflow=workflow1 ...  --workflow=workflowN]",
         print "[--site=site1 ...  --site=siteN]", 
         print "[--from=initial_time [--until=final_time]] [--last=period]",
