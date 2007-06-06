@@ -10,3 +10,4 @@ __all__ = []
 import TestMonitors
 import CondorMonitor
 import T0LSFMonitor
+import SimpleMonitors
