@@ -455,6 +455,7 @@ Fields:
  dataset    dataset id
  mergedfile associated output merged file id
  filesize   input file size
+ run        run number
  failures   access failures counter
  instance   number of merge jobs created for it
 
@@ -471,6 +472,7 @@ CREATE TABLE merge_inputfile
     dataset int NOT NULL default '0',
     mergedfile int default NULL,
     filesize int NOT NULL default '0',
+    run int NOT NULL default '0',
     failures int NOT NULL default '0',
     instance int NOT NULL default '0',
 
