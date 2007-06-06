@@ -2026,7 +2026,7 @@ def SingleQuery( params, i):
    t_ended_sched_edg = MySQL_Table( 'ENDED_SCHED_edg' )
    t_ended_job       = MySQL_Table( 'ENDED_JOB'       )
  
-   t_task            = MySQL_Table( 'TASK'            )
+   t_chain           = MySQL_Table( 'CHAIN'            )
  
    # ------------------------------
    #  usual id's columns
@@ -2047,8 +2047,8 @@ def SingleQuery( params, i):
    c_ended_job_id            = MySQL_Column( t_ended_job,       'ID'      )
    c_ended_job_task_id       = MySQL_Column( t_ended_job,       'TASK_ID' )
  
-   c_task_id                 = MySQL_Column( t_task,            'ID'      )
- 
+   c_chain_id                = MySQL_Column( t_chain,           'TASK_ID' )  
+
    # ------------------------------
    #  other usual columns
    # ------------------------------
@@ -2058,14 +2058,14 @@ def SingleQuery( params, i):
    c_ended_job_stop_t        = MySQL_Column( t_ended_job, 'STOP_T'    )
    c_ended_job_sub_t         = MySQL_Column( t_ended_job, 'SUB_T'     )
  
-   c_task_name               = MySQL_Column( t_task,      'TASK_NAME' )
- 
+   c_chain_name              = MySQL_Column( t_chain,     'NAME' ) 
+
    # ------------------------------
    #  usual required columns
    # ------------------------------
 
-   c__task_name              = t_task.AddColumn( 'TASK_NAME' )
- 
+   c__chain_name             = t_chain.AddColumn( 'NAME' ) 
+
    c_task_exit               = t_cmssw.AddColumn(           'TASK_EXIT' )
    c_ended_task_exit         = t_ended_cmssw.AddColumn(     'TASK_EXIT' )
  
@@ -2076,24 +2076,24 @@ def SingleQuery( params, i):
    #  complete query creation: TYPE
    # ------------------------------
  
-   q.AddTable( t_task      )
+   q.AddTable( t_chain      )
    q.AddTable( t_cmssw     )
    q.AddTable( t_sched_edg )
 
  
    q.AddJoin( MySQL_Join( c_cmssw_id,      c_sched_edg_id      ) )
    q.AddJoin( MySQL_Join( c_cmssw_task_id, c_sched_edg_task_id ) )
-   q.AddJoin( MySQL_Join( c_task_id,       c_sched_edg_task_id ) )
- 
-   q_ended.AddTable( t_task            )
+   q.AddJoin( MySQL_Join( c_chain_id,       c_sched_edg_task_id ) ) 
+
+   q_ended.AddTable( t_chain            )
    q_ended.AddTable( t_ended_cmssw     )
    q_ended.AddTable( t_ended_sched_edg )
 
  
    q_ended.AddJoin( MySQL_Join( c_ended_cmssw_id,      c_ended_sched_edg_id      ) )
    q_ended.AddJoin( MySQL_Join( c_ended_cmssw_task_id, c_ended_sched_edg_task_id ) )
-   q_ended.AddJoin( MySQL_Join( c_task_id,             c_ended_sched_edg_task_id ) )
-       
+   q_ended.AddJoin( MySQL_Join( c_chain_id,             c_ended_sched_edg_task_id ) )       
+
    if type == 'codes':
       
       q.AddTable(       t_job       )
@@ -2143,9 +2143,11 @@ def SingleQuery( params, i):
       q.AddRequirement(       Req_OR( *reqs ) )
       q_ended.AddRequirement( Req_OR( *reqs ) )
  
-      q.AddJoin(       MySQL_Join( c_task_id, c_cmssw_task_id       ) )
-      q_ended.AddJoin( MySQL_Join( c_task_id, c_ended_cmssw_task_id ) )
+      q.AddJoin(       MySQL_Join( c_chain_id, c_cmssw_task_id       ) )
+      q_ended.AddJoin( MySQL_Join( c_chain_id, c_ended_cmssw_task_id ) )
  
+
+
  
    if len( sites ) > 0 :
      
@@ -2200,14 +2202,17 @@ def SingleQuery( params, i):
  
    if merge == 'yes' :
       
-       q.AddRequirement(       c_task_name.LIKE('%mergejob%') )
-       q_ended.AddRequirement( c_task_name.LIKE('%mergejob%') )
+       q.AddRequirement(       c_chain_name.LIKE('%mergejob%') )
+       q_ended.AddRequirement( c_chain_name.LIKE('%mergejob%') )
+
+
        
    elif merge == 'no' :
       
-       q.AddRequirement(       c_task_name.NOTLIKE('%mergejob%') )
-       q_ended.AddRequirement( c_task_name.NOTLIKE('%mergejob%') )
+       q.AddRequirement(       c_chain_name.NOTLIKE('%mergejob%') )
+       q_ended.AddRequirement( c_chain_name.NOTLIKE('%mergejob%') )
  
+
    # ------------------------------
    #      QUERY                    
    # ------------------------------
