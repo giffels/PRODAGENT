@@ -691,7 +691,7 @@ CREATE TABLE jq_queue(
 
 CREATE TABLE jq_site(
    job_index INT NOT NULL,
-   site_index INT NOT NULL,
+   site_index INT,
    FOREIGN KEY (job_index) REFERENCES jq_queue(job_index)
      ON DELETE CASCADE,
    FOREIGN KEY (site_index) REFERENCES rc_site(site_index)
