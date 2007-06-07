@@ -6,8 +6,8 @@
 ShREEK monitor manager module.
 """
 
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: ShREEKMonitorMgr.py,v 1.1 2006/04/10 17:38:42 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: ShREEKMonitorMgr.py,v 1.2 2007/03/07 22:54:19 evansde Exp $"
 
 from ShREEK.ShREEKException import ShREEKException
 from ShREEK.ShREEKPluginMgr import ShREEKPlugins
@@ -66,7 +66,7 @@ class ShREEKMonitorMgr(dict):
                 monitor.executionMgr = self.executionMgr
                 monitor.jobId = self.executionMgr.jobID
                 self[monName] = monitor
-            except StandardError, ex:
+            except Exception, ex:
                 if self.ignoreErrors:
                     msg = "WARNING: Error ignored in Monitoring System:\n"
                     msg += "Caught Instantiating Monitor:\n"
@@ -84,7 +84,7 @@ class ShREEKMonitorMgr(dict):
                 self[monName].initMonitor(*item.positionalArgs(),
                                           **item.keywordArgs())
                 
-            except StandardError, ex:
+            except Exception, ex:
                 if self.ignoreErrors:
                     msg = "WARNING: Error ignored in Monitoring System:\n"
                     msg += "Caught Initialising Monitor:\n"
@@ -197,7 +197,7 @@ class ShREEKMonitorMgr(dict):
         try:
             for k in self.keys():
                 self[k].shutdown()
-        except StandardError, ex:
+        except Exception, ex:
             msg = "Error in Shutdown from Monitor: %s\n" % k
             msg += "Details:\n%s" % str(ex)
             print msg
@@ -218,7 +218,7 @@ class ShREEKMonitorMgr(dict):
         self.state['CurrentProcess'] = self.executionMgr.currentTask.process
         try:
             self.state.updateState()
-        except StandardError, ex:
+        except Exception, ex:
             if self.ignoreErrors:
                 msg = "WARNING: Error ignored in Monitoring System:\n"
                 msg += "Caught Updating MonitorState:\n"
@@ -230,7 +230,7 @@ class ShREEKMonitorMgr(dict):
         for key in self.keys():
             try:
                 self[key].periodicUpdate(self.state)
-            except StandardError, ex:
+            except Exception, ex:
                 if self.ignoreErrors:
                     msg = "WARNING: Error ignored in Monitoring System:\n"
                     msg += "Caught on PeriodicUpdate from %s\n" % key
@@ -246,7 +246,15 @@ class ShREEKMonitorMgr(dict):
         Call job start for each monitor.
         """
         for key in self.keys():
-            self[key].jobStart()
+            try:
+                self[key].jobStart()
+            except Exception, ex:
+                msg = "Error calling jobStart for Monitor: %s" % key
+                msg += str(ex)
+                msg += "Shutting Down monitor..."
+                del self[key]
+                print msg
+                continue
         return
         
     def taskStart(self, task):
@@ -254,7 +262,16 @@ class ShREEKMonitorMgr(dict):
         Call task start for each monitor.
         """
         for key in self.keys():
-            self[key].taskStart(task)
+            try:
+                self[key].taskStart(task)
+            except Exception, ex:
+                msg = "Error calling taskStart for Monitor: %s" % key
+                msg += str(ex)
+                msg += "Shutting Down monitor..."
+                del self[key]
+                print msg
+                continue
+
         return
 
     def taskEnd(self, task, exitCode):
@@ -262,7 +279,16 @@ class ShREEKMonitorMgr(dict):
         Call task end for each monitor.
         """
         for key in self.keys():
-            self[key].taskEnd(task, exitCode)
+            try:
+                self[key].taskEnd(task, exitCode)
+            except Exception, ex:
+                msg = "Error calling taskEnd for Monitor: %s" % key
+                msg += str(ex)
+                msg += "Shutting Down monitor..."
+                del self[key]
+                print msg
+                continue
+
         return
 
     def jobEnd(self):
@@ -270,7 +296,16 @@ class ShREEKMonitorMgr(dict):
         Call job end for each monitor.
         """
         for key in self.keys():
-            self[key].jobEnd()
+            try:
+                self[key].jobEnd()
+            except Exception, ex:
+                msg = "Error calling jobEnd for Monitor: %s" % key
+                msg += str(ex)
+                msg += "Shutting Down monitor..."
+                del self[key]
+                print msg
+                continue
+
         return
 
     def jobKilled(self):
@@ -278,7 +313,14 @@ class ShREEKMonitorMgr(dict):
         Call job killed for each monitor.
         """
         for key in self.keys():
-            self[key].jobKilled()
+            try:
+                self[key].jobKilled()
+            except Exception, ex:
+                msg = "Error calling jobKilled for Monitor: %s" % key
+                msg += str(ex)
+                print msg
+                continue
+
         return
 
     def taskKilled(self):
@@ -286,6 +328,15 @@ class ShREEKMonitorMgr(dict):
         Call task killed for each monitor.
         """
         for key in self.keys():
-            self[key].taskKilled()
+            try:
+                self[key].taskKilled()
+            except Exception, ex:
+                msg = "Error calling taskKilled for Monitor: %s" % key
+                msg += str(ex)
+                msg += "Shutting Down monitor..."
+                del self[key]
+                print msg
+                continue
+
         return
 

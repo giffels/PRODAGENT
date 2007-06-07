@@ -152,8 +152,10 @@ class BOSSMonitor(ShREEKMonitor):
         cpunumber=len(cpuList)
         cpu='unknown'
         if output.count(':') >0:
-          cpu=cpuList[0].split(':')[1].strip()
-                                                                                                                 
+            try:
+                cpu=cpuList[0].split(':')[1].strip()
+            except:
+                cpu='unknown'
         return cpu,cpunumber
 
 
