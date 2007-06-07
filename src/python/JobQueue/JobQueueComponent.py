@@ -36,6 +36,7 @@ class JobQueueComponent:
         self.args.setdefault("MergePriority", 15)
         self.args.setdefault('Prioritiser', "Default")
         self.args.setdefault('BulkMode', True)
+        self.args.setdefault('ExpireConstraints', 7200)
         self.args.update(args)
 
         if self.args['Logfile'] == None:
@@ -45,7 +46,8 @@ class JobQueueComponent:
             self.args['BulkMode'] = False 
         else:
             self.args['BulkMode'] = True
-            
+
+        self.args['ExpireConstraints'] = int(self.args['ExpireConstraints'])
         LoggingUtils.installLogHandler(self)
 
         msg = "JobQueueComponent Started:\n"
@@ -55,6 +57,8 @@ class JobQueueComponent:
         msg += "%s\n" % self.args['MergePriority']
         msg += " ==> Prioritiser = "
         msg += "%s\n" % self.args['Prioritiser']
+        msg += "Constraints will be considered expired after:\n"
+        msg += " ==>%s\n" % self.args['ExpireConstraints'] 
         logging.info(msg)
 
         
@@ -138,9 +142,22 @@ class JobQueueComponent:
         """
         constraint = ResourceConstraint()
         constraint.parse(resourceDescription)
-
+        
         logging.debug(
             "Constraint Created for ResourcesAvailable: %s" % constraint)
+
+        timestamp = constraint.get('ts', None)
+        if timestamp != None:
+            timenow = int(time.time())
+            timediff = timenow - timestamp
+            if timediff > self.args['ExpireConstraints']:
+                msg = "ResourcesAvailable Constraint is Expired:\n"
+                msg += "Constraint Timestamp = %s\n" % timestamp
+                msg += "Is older than %s seconds\n" % (
+                    self.args['ExpireConstraints'],)
+                msg += "Event will be ignored..."
+                logging.warning(msg)
+                return
 
         logging.debug(
             "Loading Prioritiser Plugin: %s" % self.args['Prioritiser'])
