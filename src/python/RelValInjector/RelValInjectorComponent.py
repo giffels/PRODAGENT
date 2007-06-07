@@ -165,10 +165,20 @@ class RelValInjectorComponent:
             msg += str(ex)
             logging.error(msg)
 
+        workflows = set()
+        [ workflows.add(x['WorkflowSpecFile']) for x in tests ]
+
+        for workflow in workflows:
+            msg = "Publishing NewWorkflow/NewDataset for \n %s\n "% workflow
+            logging.debug(msg)
+            self.ms.publish("NewWorkflow", workflow)
+            self.ms.publish("NewDataset", workflow)
+            self.ms.commit()
+            
         self.allJobs = []
         for test in tests:
             self.submitTest(test)
-
+            
             
         msg = "Jobs Submitted:\n===============================\n"
         for j in self.allJobs:
@@ -209,6 +219,7 @@ class RelValInjectorComponent:
             self.allJobs.append(jobSpec)
             
         bulkQueueJobs(sites, *jobs)
+        
         
         
         return
