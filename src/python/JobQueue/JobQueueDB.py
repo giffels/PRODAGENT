@@ -215,7 +215,9 @@ class JobQueueDB:
 
         sitesList = [ self.getSiteIndex(x) for x in listOfSites]
         _INSERTLIMIT = 2000
-        
+
+        if sitesList == []:
+            sitesList.append("NULL")
         while len(jobSpecDicts) > 0:
             segment = jobSpecDicts[0:_INSERTLIMIT]
             jobSpecDicts = jobSpecDicts[_INSERTLIMIT:]
@@ -265,7 +267,7 @@ class JobQueueDB:
         jobIndex = dbCur.fetchone()[0]
         
         if len(jobSpecDict['SiteList']) == 0:
-            return
+            jobSpecDict['SiteList'].append("NULL")
         sqlStr2 = "INSERT INTO jq_site (job_index, site_index) VALUES "
         for siteIndex in jobSpecDict['SiteList']:
             sqlStr2 += " (%s, %s)," % (jobIndex, siteIndex)
@@ -299,7 +301,7 @@ class JobQueueDB:
         jq_site siteQ ON jobQ.job_index = siteQ.job_index WHERE status = 'new'
 
         """
-
+        
         if workflow != None:
             sqlStr +=" AND workflow_id=\"%s\" " % workflow
 
@@ -307,19 +309,18 @@ class JobQueueDB:
             sqlStr +=  " AND job_type=\"%s\" " % jobType
                 
         sqlStr += " AND "
-            
-        if len(sites) == 1:
-            sqlStr += " siteQ.site_index = %s " % sites[0]
+
+
+        if len(sites) > 0:
+            sitesList = " %s " % str(sites)
+            sqlStr += " ( siteQ.site_index IN %s " % sitesList
+            sqlStr += " OR siteQ.site_index IS NULL ) "
         else:
-            sqlStr += " ( "
+            sqlStr += " siteQ.site_index IS NULL "
         
-            for site in sites:
-                sqlStr += " siteQ.site_index = %s " % site 
-                if site != sites[-1]:
-                    sqlStr += " OR "
-            sqlStr += " ) "
-            
         sqlStr += " ORDER BY priority DESC, time DESC LIMIT %s;" % count
+
+        print sqlStr
         Session.execute(sqlStr)
         result = Session.fetchall()
         result = [ x[0] for x in result ]
