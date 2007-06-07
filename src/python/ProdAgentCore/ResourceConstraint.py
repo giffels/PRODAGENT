@@ -12,6 +12,7 @@ constraints on
 
 """
 
+import time
 
 class ResourceConstraint(dict):
     """
@@ -25,8 +26,8 @@ class ResourceConstraint(dict):
         self.setdefault("type", None)
         self.setdefault("workflow", None)
         self.setdefault("site", None)
-
-
+        self.setdefault("ts", int(time.time()))
+        
 
     def __str__(self):
         """
@@ -41,6 +42,7 @@ class ResourceConstraint(dict):
             result += "workflow=%s;" % self['workflow']
         if self['site'] != None:
             result += "site=%s;" % self['site']
+        result += "ts=%s;" % self['ts']
         
         return result
 
@@ -54,7 +56,7 @@ class ResourceConstraint(dict):
         if strForm == "":
             # default case: treat as single unconstrained resources
             return
-
+        
         if strForm.strip().isdigit():
             # is a plain integer, treat as multiple unconstrained resource
             count = int(strForm)
@@ -70,6 +72,13 @@ class ResourceConstraint(dict):
                     self['count'] = value
                 except Exception:
                     continue
+            if constraint.startswith("ts="):
+                try:
+                    value = int(constraint.split("ts=")[1])
+                    self['ts'] = value
+                except Exception:
+                    continue
+
             elif constraint.startswith("type="):
                 self['type'] = constraint.split("type=")[1]
 
