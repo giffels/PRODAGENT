@@ -183,12 +183,12 @@ class JobQueueComponent:
             logging.error(msg)
             return
 
-        
-        self.sortAndPublish(*jobspecs)
+        if len(jobspecs) > 0:
+            self.sortAndPublish(*jobspecs)
         
         return
 
-    def sortAndPublish(self, * jobspecs):
+    def sortAndPublish(self, *jobspecs):
         """
         _sortAndPublish_
 
@@ -210,13 +210,16 @@ class JobQueueComponent:
         #//  values
         sorter = BulkSorter()
         sorter(*jobspecs)
-
+        
         for indSpec in sorter.individualSpecs:
-            logging.info("publishing CreateJob %s" % job['JobSpecFile'])
-            self.ms.publish("CreateJob", job['JobSpecFile'])
+            logging.info("publishing  CreateJob %s" % indSpec['JobSpecFile'])
+            self.ms.publish("CreateJob", indSpec['JobSpecFile'])
             self.ms.commit()
-            JobQueueAPI.releaseJobs(*jobspecs)
-        for bulkSpecs in sorter.bulkSpecs.items(): 
+            JobQueueAPI.releaseJobs(indSpec)
+            
+
+        for bulkSpecList in sorter.bulkSpecs.values(): 
+            bulkSpecs = [ x['JobSpecFile'] for x in bulkSpecList ]
             firstSpec = bulkSpecs[0]
             logging.debug("firstSpec=%s" % firstSpec)
             bulkSpecName = "%s.BULK" % firstSpec
@@ -234,13 +237,14 @@ class JobQueueComponent:
             for item in bulkSpecs:
                 specID = os.path.basename(item).replace("-JobSpec.xml", "")
                 bulkSpec.bulkSpecs.addJobSpec(specID, item)
-
             bulkSpec.save(bulkSpecName)
             logging.info("Publishing Bulk Spec")
-            self.ms.publish("CreateJob", job['JobSpecFile'])
+            self.ms.publish("CreateJob", bulkSpecName)
             self.ms.commit()
-            JobQueueAPI.releaseJobs(*jobspecs)
-
+            
+            JobQueueAPI.releaseJobs(*bulkSpecList)
+            
+        
         return
             
     def startComponent(self):

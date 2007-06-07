@@ -99,15 +99,16 @@ def bulkQueueJobs(listOfSites, *jobSpecDicts):
     return
 
 
-def releaseJobs(self, *jobDefs):
+def releaseJobs( *jobDefs):
     """
     _releaseJobs_
 
     Flag jobs as released so that they can be removed from the queue
 
     """
+    logging.debug("releasing jobDefs: %s" % str(jobDefs))
     indices = [ x['JobIndex'] for x in jobDefs ]
-    
+    logging.debug("releasing indices: %s" % indices)
     Session.set_database(dbConfig)
     Session.connect()
     Session.start_transaction()

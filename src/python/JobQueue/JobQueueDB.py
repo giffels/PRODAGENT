@@ -312,15 +312,18 @@ class JobQueueDB:
 
 
         if len(sites) > 0:
-            sitesList = " %s " % str(sites)
-            sqlStr += " ( siteQ.site_index IN %s " % sitesList
+            siteStr = ""
+            for s in sites:
+                siteStr += "%s," % s
+            siteStr = siteStr[:-1]
+            
+            sqlStr += " ( siteQ.site_index IN (%s) " % siteStr
             sqlStr += " OR siteQ.site_index IS NULL ) "
         else:
             sqlStr += " siteQ.site_index IS NULL "
         
         sqlStr += " ORDER BY priority DESC, time DESC LIMIT %s;" % count
-
-        print sqlStr
+        
         Session.execute(sqlStr)
         result = Session.fetchall()
         result = [ x[0] for x in result ]
