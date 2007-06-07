@@ -15,6 +15,8 @@ from ShREEK.ShREEKPluginMgr import registerShREEKMonitor
 from ShREEK.CMSPlugins.ApMon.DashboardAPI import DashboardAPI
 import ShREEK.CMSPlugins.TraceUtils as TraceUtils
 
+
+
 import os
 import time
 import signal
@@ -129,6 +131,36 @@ class JobTimeout(ShREEKMonitor):
                     for columns in range(0, 51):
                         msg += "#"
                     msg += "\n"
+
+                #  //
+                # // Add error report to FwkJobReport for this dir.
+                #//
+                handle = open("exit.status", "w")
+                handle.write("50114")
+                handle.close()
+                if os.path.exists("FrameworkJobReport.xml"):
+                    msg += "Editing Job Report..."
+                    print msg
+                    self.timeoutValue+self.hardKillTimeoutDelay
+                    try:
+                        jobRep = readJobReport("FrameworkJobReport.xml")[0]
+                    except Exception, ex:
+                        msg = "Unable to load FrameworkJobReport.xml:\n"
+                        msg += str(ex)
+                        msg += "Cannot update framework report..."
+                        print msg
+                        jobRep == None
+                    if jobRep != None:
+                        jobRep.exitCode = 50114
+                        jobRep.status = "Failed"
+                        hardTimeOutTotal = self.timeoutValue + \
+                                           self.hardKillTimeoutDelay
+                        errDesc = jobRep.addError(50114, "KilledByJobTimeout")
+                        errDesc['Description'] = \
+                        """
+                        Job Exceeded hard timeout of %s and was killed
+                        """ % hardTimeOutTotal
+                        jobRep.write("FrameworkJobReport.xml")
 
                 if cmsRunProcess != -1:
                     self.tracebackProcess(cmsRunProcess)
