@@ -583,10 +583,6 @@ def jobSpecId(id,bossCfgDir):
         outp=outp.split("NAME")[1].strip()
     except:
         outp=""
-    subDir=subdir(id,bossCfgDir)
-    
-    if subDir.find('crab_')>=0:
-        outp=outp+"_"+id.split('.')[1]
 
     return outp
 
