@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.64 2007/05/28 12:52:18 afanfani Exp $"
-__version__ = "$Revision: 1.64 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -35,7 +35,6 @@ from ProdCommon.MCPayloads.LFNAlgorithm import mergedLFNBase, unmergedLFNBase
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 import ProdCommon.MCPayloads.WorkflowTools as MCWorkflowTools
 from ProdCommon.MCPayloads.MergeTools import createMergeJobWorkflow
-
 # logging
 import logging
 import ProdAgentCore.LoggingUtils as LoggingUtils
@@ -102,6 +101,7 @@ class MergeSensorComponent:
         
         # merge policy plugin
         self.args.setdefault('MergePolicy', 'SizePolicy')
+        #self.args.setdefault('MergePolicy', 'RunNumberPolicy')
 
         # update parameters
         self.args.update(args)
@@ -1047,7 +1047,7 @@ class MergeSensorComponent:
  
         # get file list in dataset
         fileList = self.getFileListFromDBS(datasetPath)
-       
+
         # ignore empty sets
         if fileList == {}:
 
