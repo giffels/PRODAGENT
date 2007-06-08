@@ -71,14 +71,20 @@ class RunNumberPolicy:
             fileBlockId, files = fileBlock
 
             # get run numbers
-            runs = set([f['run']  for f in files])
-            run = {}
-            for r in runs:
-                run[r] = [f for f in files if f['run'] == r]
+            try:
+                runs = set([eval(f['run'])[0]  for f in files])
+
+                # organize files by runs
+                run = {}
+                for r in runs:
+                    run[r] = [f for f in files if eval(f['run'])[0] == r]
+            except Exception, msg:
+                logging.error("Problems getting run numbers: %s" % str(msg))
+                return ([], 0)
 
             # check for all run numbers
             for files in run.values():
-
+ 
                 # select set of files with at least mergeFileSize size
                 totalSize = 0
                 selectedSet = []
@@ -99,9 +105,9 @@ class RunNumberPolicy:
 
                     # verify that the file is not larger that maximum
                     if totalSize > maxMergeFileSize:
-                        self.logging.warning( \
+                        logging.warning( \
                                     "File %s is too big, will not be merged" \
-                                    % files[startingFile][0])
+                                    % files[startingFile]['name'])
                         startingFile = startingFile + 1
                         tooLargeFiles = tooLargeFiles + 1
                         continue
@@ -170,7 +176,7 @@ class RunNumberPolicy:
 
                     # verify if some files were selected or not
                     if selectedSet == []:
-                        self.logging.info( \
+                        logging.info( \
                            "Forced merge does not apply to fileblock %s " + \
                            "due to non mergeable condition" % fileBlockId)
                         continue
