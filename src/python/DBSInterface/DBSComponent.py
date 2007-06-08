@@ -151,6 +151,7 @@ class DBSComponent:
         self.args.setdefault("Logfile", None)
         self.args.setdefault("BadReportfile", None)
         self.args.setdefault("BadTMDBInjectfile", None)
+        self.args.setdefault("BadMigrationfile", None)
         self.args.setdefault("CloseBlockSize", "None")  # No check on fileblock size
         self.args.setdefault("CloseBlockFiles", 100 )        
         self.args.setdefault("skipGlobalMigration", False )
@@ -186,6 +187,13 @@ class DBSComponent:
                                                       "FailedJobReportList.txt")
 
         #self.BadReport = open(self.args['BadReportfile'],'a')
+        #  //
+        # // Log Failed fileblock migration to Global
+        #//
+        if self.args['BadMigrationfile'] == None:
+            self.args['BadMigrationfile'] = os.path.join(self.args['ComponentDir'],
+                                                      "FailedMigration.txt")
+
         #  //
         # // Log Failed fileblock injection into PhEDEx
         #//
@@ -284,6 +292,16 @@ class DBSComponent:
                 self.BadReport.flush()
                 return
 
+        if event == "MigrationRetryFailures":
+            self.BadMigration = open(self.args['BadMigrationfile'],'a')
+            try:
+                self.MigrationRetryFailures(self.args['BadMigrationfile'],self.BadMigration)
+                return
+            except StandardError, ex:
+                logging.error("Failed to MigrationRetryFailures")
+                logging.error("Details: %s" % str(ex))
+                return
+
         if event == "PhEDExRetryFailures":
             self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
             try:
@@ -333,17 +351,11 @@ class DBSComponent:
         if event == "DBSInterface:MigrateBlockToGlobal":
             #logging.info("DBSInterface:MigrateBlockToGlobal Event %s"% payload)
             try:
-                self.MigrateBlockToGlobal(payload)
-                return
-            except DBSWriterError, ex:
-                logging.error("Failed to MigrateBlockToGlobal: %s" % payload)
-            except DBSReaderError, ex:
-                logging.error("Failed to MigrateBlockToGlobal: %s" % payload)
-            except StandardError, ex:
-                logging.error("Failed to MigrateBlockToGlobal")
-                logging.error("Details: %s" % str(ex))
-                return
-
+               self.MigrateBlockToGlobal(payload)
+               return
+            except: 
+               logging.error("Failed to MigrateBlocktToGlobal %s"%payload)
+            return 
 
         if event == "DBSInterface:SetCloseBlockSize":
             #logging.info("DBSInterface:SetCloseBlockSize Event %s"% payload)
@@ -501,10 +513,9 @@ class DBSComponent:
                #//
                if len(MigrateBlockList)>0 and not self.skipGlobalMigration:
                   for BlockName in MigrateBlockList:
-                     datasetPath= dbswriter.reader.blockToDatasetPath(BlockName)
-                     self.MigrateBlock(datasetPath, [BlockName])
-                     #self.MigrateBlockToGlobal(BlockName)
-                  #self.MigrateBlock(datasetPath, MigrateBlockList )
+                     #datasetPath= dbswriter.reader.blockToDatasetPath(BlockName)
+                     self.handleMigrateBlock(BlockName)
+
                      #  //
                      # // Trigger PhEDEx injection of migrated blocks
                      #//  (if the migration is not successfull this point is not reached)
@@ -561,7 +572,10 @@ class DBSComponent:
         # // Migrate to Global DBS all the Closed blocks of the dataset
         #//
         MigrateBlockList = reader.listFileBlocks(datasetPath, onlyClosedBlocks = True)
-        self.MigrateBlock(datasetPath, MigrateBlockList)
+        for MigrateBlock in MigrateBlockList:
+            self.handleMigrateBlock(MigrateBlock)
+        #self.MigrateDatasetBlocks(datasetPath, MigrateBlockList)
+ 
 
     def MigrateBlockToGlobal(self,BlockName):
        """
@@ -570,15 +584,108 @@ class DBSComponent:
        LocalDBSurl=self.args['DBSURL']
        writer  = DBSWriter(LocalDBSurl,level='ERROR')
        #
-       # Get the datasetPath the block belong to
-       #
-       datasetPath= writer.reader.blockToDatasetPath(BlockName)
-       #
        # Migrate the block, closing it 
        #
        writer.manageFileBlock(BlockName,maxFiles=1)
-       self.MigrateBlock(datasetPath, [BlockName])
+       self.handleMigrateBlock(BlockName)
 
+
+    def handleMigrateBlock(self, fileblock):
+        """
+        """
+        self.BadMigration = open(self.args['BadMigrationfile'],'a')
+        try:
+                self.MigrateBlock(fileblock)
+                return
+        except DBSWriterError, ex:
+                logging.error("Failed to MigrateBlock: %s "%fileblock)
+                self.BadMigration.write("%s\n"%fileblock)
+                self.BadMigration.flush()
+                return
+        except DBSReaderError, ex:
+                logging.error("Failed to MigrateBlock: %s"%fileblock)
+                self.BadMigration.write("%s\n"%fileblock)
+                self.BadMigration.flush()
+                return
+        except StandardError, ex:
+                logging.error("Failed to MigrateBlock: %s"%fileblock)
+                logging.error("Details: %s" % str(ex))
+                self.BadMigration.write("%s\n"%fileblock)
+                self.BadMigration.flush()
+                return
+        return
+
+
+    def MigrateBlock(self, fileblock):
+        """
+        Migrate from Local to Global                                                                                                 
+        """
+        writer  = DBSWriter(self.args['DBSURL'],level='ERROR')
+        #
+        # Get the datasetPath the block belong to
+        #
+        datasetPath= writer.reader.blockToDatasetPath(fileblock)
+        #//
+        #// Global DBS API
+        #//
+        DBSConf= getGlobalDBSDLSConfig()
+        GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
+
+        logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblock,datasetPath))
+        logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
+        logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))
+                                                                                                
+        GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,[fileblock])
+
+    def MigrateDatasetBlocks(self,datasetPath,fileblockList):
+        """
+        Migrate from Local to Global
+        """
+        #//
+        #// Global DBS API
+        #//
+        DBSConf= getGlobalDBSDLSConfig()
+        GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
+                                                                                                
+        logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblock,datasetPath))
+        logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
+        logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))
+                                                                                                
+        GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,fileblockList)
+         
+    def MigrationRetryFailures(self,fileName, filehandle):
+        """
+        Read the list of fileblock whose migration failed
+        """
+        logging.info("*** Begin the MigrationRetryFailures procedure")
+        ## Read the list of fileblock that failed Migration  and re-try
+        filehandle.close()
+        BadMigrationfile = open(fileName, 'r')
+        stillFailures = []
+        for line in BadMigrationfile.readlines():
+           payload=string.strip(line)
+           try:
+             self.MigrateBlock(payload)
+           except DBSReaderError,ex:
+                logging.error("Failed to MigrateBlock: %s" % payload)
+                if not stillFailures.count(payload): stillFailures.append(payload)
+           except DBSWriterError,ex:
+                logging.error("Failed to MigrateBlock: %s" % payload)
+                if not stillFailures.count(payload): stillFailures.append(payload)
+           except StandardError, ex:
+                logging.error("Failed to MigrateBlock: %s" % payload)
+                logging.error("StandardError Details:%s" % str(ex))
+                if not stillFailures.count(payload): stillFailures.append(payload) 
+        BadMigrationfile.close()
+
+        ## Write the list of those still failing
+        BadMigrationfile = open(fileName, 'w')
+        for item in stillFailures:
+           fileblock=item.strip()
+           BadMigrationfile.write("%s\n" % fileblock )
+        BadMigrationfile.close()
+
+	logging.info("*** End the MigrationRetryFailures procedures => Failed migration logged in :%s "%(fileName))
 
     def CloseBlock(self,fileBlockName):
         """
@@ -693,14 +800,13 @@ class DBSComponent:
     def PhEDExRetryFailures(self,fileName, filehandle):
         """
         Read the list of FWKJobReport that failed DBS registration and re-try the registration. If the FWKJobReport registration is succesfull remove it form the list of failed ones.
-                                                                                                                                          
         """
         logging.info("*** Begin the PhEDExRetryFailures procedure")
                                                                                                                                           
         ## Read the list of fileblock that failed TMDBInjection  and re-try
         filehandle.close()
         BadTMDBInjectfile = open(fileName, 'r')
-                                                                                                                                          
+
         stillFailures = []
         for line in BadTMDBInjectfile.readlines():
            payload=string.strip(line)
@@ -717,15 +823,15 @@ class DBSComponent:
                 if not stillFailures.count(payload): stillFailures.append(payload)
 
         BadTMDBInjectfile.close()
-                                                                                                                                          
+
         ## Write the list of those still failing
-                                                                                                                                          
+
         BadTMDBInjectfile = open(fileName, 'w')
         for item in stillFailures:
            fileblock=item.strip()
            BadTMDBInjectfile.write("%s\n" % fileblock )
         BadTMDBInjectfile.close()
-                                                                                                                                          
+
         logging.info("*** End the PhEDExRetryFailures procedures => Failed injection logged in :%s "%(fileName))
 
 
@@ -790,22 +896,6 @@ class DBSComponent:
 
         logging.info("*** End the RetryFailures procedures => Discarded: %s Failed logged in :%s "%(discarded,fileName))
 
-    def MigrateBlock(self, datasetPath, fileblockList):
-        """
-        Migrate from Local to Global                                                                         
-        """
-        #//
-        #// Global DBS API
-        #//
-        DBSConf= getGlobalDBSDLSConfig()
-        GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
-
-        logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblockList,datasetPath))
-        logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
-        logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))       
-       
-        GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,fileblockList)
-
 
     def startComponent(self):
         """
@@ -833,6 +923,7 @@ class DBSComponent:
         self.ms.subscribeTo("DBSInterface:EndDebug")
         self.ms.subscribeTo("PhEDExInjectBlock")
         self.ms.subscribeTo("PhEDExRetryFailures")
+        self.ms.subscribeTo("MigrationRetryFailures")
                                                                                 
         # wait for messages
         while True:
