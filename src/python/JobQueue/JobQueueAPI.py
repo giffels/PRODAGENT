@@ -33,6 +33,7 @@ def queueJob(jobSpecFile, priorityMap):
         logging.error(msg)
         return
     
+    
     workflow = spec.payload.workflow
     jobSpecId = spec.parameters['JobName']
     jobType = spec.parameters['JobType']

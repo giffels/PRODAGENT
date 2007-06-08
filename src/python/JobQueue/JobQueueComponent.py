@@ -184,11 +184,12 @@ class JobQueueComponent:
             return
 
         if len(jobspecs) > 0:
-            self.sortAndPublish(*jobspecs)
+            siteOverride = constraint.get("site", None)
+            self.sortAndPublish(siteOverride, *jobspecs)
         
         return
 
-    def sortAndPublish(self, *jobspecs):
+    def sortAndPublish(self, siteOverride = None, *jobspecs):
         """
         _sortAndPublish_
 
@@ -200,6 +201,8 @@ class JobQueueComponent:
             # // publish specs individually
             #//
             for job in jobspecs:
+                if siteOverride != None:
+                    self.overrideSite(job['JobSpecFile'], siteOverride)
                 logging.info("publishing CreateJob %s" % job['JobSpecFile'])
                 self.ms.publish("CreateJob", job['JobSpecFile'])
                 self.ms.commit()
@@ -212,6 +215,8 @@ class JobQueueComponent:
         sorter(*jobspecs)
         
         for indSpec in sorter.individualSpecs:
+            if siteOverride != None:
+                self.overrideSite(indSpec['JobSpecFile'], siteOverride)
             logging.info("publishing  CreateJob %s" % indSpec['JobSpecFile'])
             self.ms.publish("CreateJob", indSpec['JobSpecFile'])
             self.ms.commit()
@@ -237,6 +242,10 @@ class JobQueueComponent:
             for item in bulkSpecs:
                 specID = os.path.basename(item).replace("-JobSpec.xml", "")
                 bulkSpec.bulkSpecs.addJobSpec(specID, item)
+            if siteOverride != None:
+                bulkSpec.siteWhitelist = []
+                bulkSpec.siteWhitelist.append(siteOverride)
+                
             bulkSpec.save(bulkSpecName)
             logging.info("Publishing Bulk Spec")
             self.ms.publish("CreateJob", bulkSpecName)
@@ -245,6 +254,32 @@ class JobQueueComponent:
             JobQueueAPI.releaseJobs(*bulkSpecList)
             
         
+        return
+
+    def overrideSite(self, jobSpecFile, site):
+        """
+        _overrideSite_
+
+        Override the site in a jobspec file
+
+        """
+        jobSpec = JobSpec()
+        try:
+            jobSpec.load(jobSpecFile)
+            jobSpec.siteWhitelist = []
+            jobSpec.siteWhitelist.append(site)
+            jobSpec.save(jobSpecFile)
+            logging.info(
+                "Site Overridden to %s by JobQueue for spec:\n %s" % (
+                site, jobSpecFile)
+                )
+        except Exception, ex:
+            msg = "Error: Unable to load JobSpec file:\n"
+            msg += "%s\n" % jobSpecFile
+            msg += "%s\n" % str(ex)
+            msg += "Cannot override site..."
+            logging.error(msg)
+
         return
             
     def startComponent(self):
