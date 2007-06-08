@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.36 2007/03/13 11:50:46 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.37 2007/05/21 07:47:39 bacchi Exp $"
 
 import socket
 import time
@@ -493,7 +493,11 @@ class TrackingComponent:
         
         if os.path.exists(dashboardInfoFile):
             dashboardInfo = DashboardInfo()
-            dashboardInfo.read(dashboardInfoFile)
+            try:
+                dashboardInfo.read(dashboardInfoFile)
+            except:
+                logging.error("Reading dashboardInfoFile "+dashboardInfoFile+" failed (jobId="+str(jobId)+")")
+                return
             gridJobId=dashboardInfo['GridJobID']
             dashboardInfo.clear()
             # logging.debug("dashboardInfoJob=%s"%dashboardInfo.job)
