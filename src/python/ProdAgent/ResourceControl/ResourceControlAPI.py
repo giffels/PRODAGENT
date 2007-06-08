@@ -14,6 +14,7 @@ from ProdCommon.MCPayloads.JobSpec import JobSpec
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.Database import Session
 
+Session.set_database(dbConfig)
 
 def activeSiteData():
     """
@@ -23,15 +24,13 @@ def activeSiteData():
     SE, CE, Site Name, Site Index
 
     """
-    
+
     Session.connect()
     Session.start_transaction()
     resourceControlDB = ResourceControlDB()
     _SiteList = resourceControlDB.siteNames()
     siteData = [ resourceControlDB.getSiteData(x) for x in _SiteList ]
     siteData = [ x for x in siteData if x['Active'] == True ]
-    Session.commit_all()
-    Session.close_all()
     return siteData
 
 
