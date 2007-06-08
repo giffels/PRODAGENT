@@ -6,8 +6,8 @@ Policy for merge based on file size
 
 """
 
-__revision__ = "$Id: SizePolicy.py,v 1.1 2007/06/04 12:46:00 ckavka Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -90,7 +90,7 @@ class SizePolicy:
 
                 # verify that the file is not larger that maximum
                 if totalSize > maxMergeFileSize:
-                    self.logging.warning( \
+                    logging.warning( \
                                     "File %s is too big, will not be merged" \
                                     % files[startingFile]['name'])
                     startingFile = startingFile + 1
@@ -161,7 +161,7 @@ class SizePolicy:
 
                 # verify if some files were selected or not
                 if selectedSet == []:
-                    self.logging.info( \
+                    logging.info( \
                        "Forced merge does not apply to fileblock %s " + \
                        "due to non mergeable condition" % fileBlockId)
                     continue
