@@ -13,6 +13,8 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.Database import Session
 
 
+Session.set_database(dbConfig)
+
 def queueJob(jobSpecFile, priorityMap):
     """
     _queueJob_
@@ -42,7 +44,6 @@ def queueJob(jobSpecFile, priorityMap):
     priority = priorityMap.get(jobType, 1)
     
     try:
-        Session.set_database(dbConfig)
         Session.connect()
         Session.start_transaction()
         jobQ = JobQueueDB()
@@ -82,7 +83,6 @@ def bulkQueueJobs(listOfSites, *jobSpecDicts):
     """
     
     try:
-        Session.set_database(dbConfig)
         Session.connect()
         Session.start_transaction()
         jobQ = JobQueueDB()
@@ -110,7 +110,6 @@ def releaseJobs( *jobDefs):
     logging.debug("releasing jobDefs: %s" % str(jobDefs))
     indices = [ x['JobIndex'] for x in jobDefs ]
     logging.debug("releasing indices: %s" % indices)
-    Session.set_database(dbConfig)
     Session.connect()
     Session.start_transaction()
     
