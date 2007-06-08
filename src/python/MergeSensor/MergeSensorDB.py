@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.20 2007/05/09 14:28:47 ckavka Exp $"
-__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -1051,16 +1051,15 @@ class MergeSensorDB:
           none
 
         """
-        
+       
         # get parameters
         fileSize = data['FileSize']
         events = data['NumberOfEvents']
 
-        # get and process run number 
-        run = data['RunsList']
-        if run == []:
-            run = 0
-        
+        # get run numbers
+        listOfRuns = data['RunsList']
+        run = str([x['RunNumber'] for x in listOfRuns])
+ 
         # get cursor
         try:
             cursor = self.conn.cursor()
@@ -1141,19 +1140,29 @@ class MergeSensorDB:
 
             blockId = "'" + str(cursor.fetchone()[0]) + "'"
 
-        # insert input file
+        # hack to support databases with no run field
+        # TO BE REMOVED WHEN PRODUCTION TEAMS WILL UPDATE DB SCHEMA
+        if run != '[]':
+            runField = ", run"
+            runValue = ", '" + str(run) + "'"
+        else:
+            runField = ""
+            runValue = ""
+
+       # insert input file
         sqlCommand = """
                      INSERT
                        INTO merge_inputfile
-                            (name, block, dataset, filesize, eventcount, run)
+                            (name, block, dataset, filesize, eventcount""" + \
+                             runField + """)
                      VALUES ('""" + fileName + """', 
                              """ + str(blockId) + """,
                              '""" + str(datasetId) + """',
                              '""" + str(fileSize) + """',
-                             '""" + str(events) + """',
-                             '""" + str(run) + """')
+                             '""" + str(events) + """'
+                             """ + str(runValue) + """)
                      """
-            
+        
         # execute command
         try:
             cursor.execute(sqlCommand)
