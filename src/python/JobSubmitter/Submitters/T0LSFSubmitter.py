@@ -200,7 +200,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         lsfSubmitCommand += ' -J %s' % jobSpec
 
         if ( self.pluginConfig['LSF']['LsfLogDir'] == "None" ):
-            lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
+            lsfSubmitCommand += ' -oo /dev/null'
         else:
             lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (self.pluginConfig['LSF']['LsfLogDir'],jobSpec)
 
@@ -240,11 +240,11 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         else:
             script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
                           self.singleSpecName)   
-            
-        script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName)
+
+        script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s > /dev/null 2>&1\n" % self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
-        script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1 \n")
-        script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s/FrameworkJobReport.xml \n" % cacheDir)
+        script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1\n")
+        script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s/FrameworkJobReport.xml\n" % cacheDir)
 
         outputlogfile = jobName
         outputlogfile += '.`date +%Y%m%d.%k.%M.%S`.log'
