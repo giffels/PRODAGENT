@@ -101,11 +101,22 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             raise JSException(msg, ClassInstance = self)
 
         if not self.pluginConfig.has_key("LSF"):
-            lsfsetup = self.pluginConfig.newBlock("LSF")
-            lsfsetup['Queue'] = "8nh"
-            lsfsetup['LsfLogDir'] = "None"
-            lsfsetup['CmsRunLogDir'] = "None"
-            lsfsetup['NodeType'] = "None"
+            self.pluginConfig.newBlock("LSF")
+
+        if not self.pluginConfig['LSF'].has_key('Queue'):
+            self.pluginConfig['LSF']['Queue'] = "8nh"
+
+        if not self.pluginConfig['LSF'].has_key('LsfLogDir'):
+            self.pluginConfig['LSF']['LsfLogDir'] = "None"
+
+        if not self.pluginConfig['LSF'].has_key('CmsRunLogDir'):
+            self.pluginConfig['LSF']['CmsRunLogDir'] = "None"
+
+        if not self.pluginConfig['LSF'].has_key('NodeType'):
+            self.pluginConfig['LSF']['NodeType'] = "None"
+
+        if not self.pluginConfig['LSF'].has_key('Resource'):
+            self.pluginConfig['LSF']['Resource'] = "None"
 
         return
 
@@ -176,10 +187,15 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         #  //
         # // Submit LSF job
         #//
-        if ( self.pluginConfig['LSF']['NodeType'] != "None" ):
-            lsfSubmitCommand = 'bsub -R "type=%s"' % self.pluginConfig['LSF']['NodeType']
+        lsfSubmitCommand = 'bsub'
 
         lsfSubmitCommand += ' -q %s' % self.pluginConfig['LSF']['Queue']
+        
+        if ( self.pluginConfig['LSF']['Resource'] != "None" ):
+            lsfSubmitCommand += ' -R "%s"' % self.pluginConfig['LSF']['Resource']
+        elif ( self.pluginConfig['LSF']['NodeType'] != "None" ):
+            lsfSubmitCommand += ' -R "type==%s"' % self.pluginConfig['LSF']['NodeType']
+
         lsfSubmitCommand += ' -g /groups/tier0/reconstruction'
         lsfSubmitCommand += ' -J %s' % jobSpec
 
@@ -206,7 +222,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         job
         
         """
-        
+
         #  //
         # // Generate main executable script for job
         #//
