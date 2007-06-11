@@ -88,19 +88,15 @@ class T0LSFMonitor(MonitorInterface):
 
         """
         #  //
-        # // Call out to bjobs and count entries in group
+        # // Count number of jobs in PEND and RUN states
         #//
-        #jobInfo = LSFInterface.bjobs(groupName)
-        #numJobs = len(jobInfo.keys())
-        #return numJobs
-        
-        #  //
-        # // quick test
-        #//
-        import random
-        return random.randint(0, 100)
-        
-        
+        count = 0
+        jobList = LSFInterface.bjobs(groupName)
+        for jobID in jobList.keys():
+            if ( jobList[jobID] == 'PEND' or jobList[jobID] == 'RUN' ):
+                count += 1
 
+        return count
+        
         
 registerMonitor(T0LSFMonitor, T0LSFMonitor.__name__)
