@@ -79,6 +79,9 @@ class ResourceControlDB:
 
         Session.execute(sqlStr)
         results = Session.fetchone()
+        if results == None:
+            return None
+        
         siteData = {
             "SiteName" : siteName,
             "SiteIndex" : results[0],

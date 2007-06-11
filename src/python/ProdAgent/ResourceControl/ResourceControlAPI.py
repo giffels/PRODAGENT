@@ -34,6 +34,65 @@ def activeSiteData():
     return siteData
 
 
+def thresholds(site = None):
+    """
+    _thresholds_
+
+    Retrieve the thresholds for a specified site or
+    all active sites if the site arg isnt provided
+
+    """
+    Session.connect()
+    Session.start_transaction()
+    resourceControlDB = ResourceControlDB()
+    sites = []
+    if site != None:
+        siteData = resourceControlDB.getSiteData(site)
+        if siteData == None:
+            return {}
+        sites.append(siteData)
+    else:
+        sites = activeSiteData()
+        
+
+    result = {}
+
+    [ result.__setitem__(
+        x['SiteName'], resourceControlDB.siteThresholds(x['SiteIndex']))
+      for x in sites ]
+
+    return result
+    
+def attributes(site = None):
+    """
+    _attributes_
+
+    Retrieve the attributes for a specified site or all active sites
+    if the site arg isnt provided
+
+    """
+    Session.connect()
+    Session.start_transaction()
+    resourceControlDB = ResourceControlDB()
+    sites = []
+    if site != None:
+        siteData = resourceControlDB.getSiteData(site)
+        if siteData == None:resourceControlDB = ResourceControlDB()
+            return {}
+        sites.append(siteData)
+    else:
+        sites = activeSiteData()
+        
+        
+    result = {}
+
+    [ result.__setitem__(
+        x['SiteName'], resourceControlDB.siteAttributes(x['SiteIndex']))
+      for x in sites ]
+    
+    return result
+    
+        
 def createSiteNameMap():
     """
     _createSiteNameMap_
