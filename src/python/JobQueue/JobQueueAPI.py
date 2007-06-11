@@ -39,8 +39,8 @@ def queueJob(jobSpecFile, priorityMap):
     workflow = spec.payload.workflow
     jobSpecId = spec.parameters['JobName']
     jobType = spec.parameters['JobType']
-    sites =  spec.siteWhitelist
-
+    sitesList =  spec.siteWhitelist
+    
     priority = priorityMap.get(jobType, 1)
     
     try:
