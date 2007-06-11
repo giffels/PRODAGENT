@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.24 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.24 2007/05/14 18:35:18 evansde Exp $"
+__version__ = "$Revision: 1.25 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.25 2007/06/04 11:39:44 afanfani Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -261,10 +261,11 @@ class ReqInjComponent:
             jobSpec = self.newJob()
             if jobSpec:
              if not self.bulkTestMode:
+                jobSpecName = jobSpec.replace("file:///", "/")
                 if self.queueMode:
-                    self.ms.publish("QueueJob", jobSpec)
+                    self.ms.publish("QueueJob", jobSpecName)
                 else:
-                    self.ms.publish("CreateJob", jobSpec)
+                    self.ms.publish("CreateJob", jobSpecName)
                 self.ms.commit()
              else:
                 if nCalls == 1:
