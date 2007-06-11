@@ -38,28 +38,37 @@ class DbsLink:
 
 
 
-	def poll_for_files(self,pri_ds,pro_ds):
+	def poll_for_files(self,pri_ds,pro_ds,run):
 		dbspath="/"+pri_ds+"/"+pro_ds+"/RAW"
 		res=[]
 		try:
 			file_list=self.con.listLFNs(path=dbspath, queryableMetaData="NOTSET")
+			#file_list=self.con.listLFNs(path=dbspath)
 			for i in file_list:
 				lfn=i['LogicalFileName']
-				tags_list=i['FileTriggerMap']
-				tags={}
-				for t in tags_list:
-					n=t['TriggerTag']
-					v=t['NumberOfEvents']
-					if(v>0 or len(n)>0):
-						tags[n]=v
-					else:
-						print "Ignoring empty tag [%s:%s]"%(n,v)
-				print lfn,tags
-				res.append((lfn,tags))
+
+				#check if LFN belongs to correct run
+				lumiList = self.con.listFileLumis(lfn)
+				runInLFN = False
+				for lumi in lumiList:
+					if lumi['RunNumber'] == run:
+						runInLFN = True
+						break
+
+				if runInLFN:
+					tags_list=i['FileTriggerMap']
+					tags={}
+					for t in tags_list:
+						n=t['TriggerTag']
+						v=t['NumberOfEvents']
+						if(v>0 or len(n)>0):
+							tags[n]=v
+						else:
+							print "Ignoring empty tag [%s:%s]"%(n,v)
+							print lfn,tags
+							res.append((lfn,tags))
 		except Exception,ex:
 			print "ERROR:",ex
 			return []
 		print res
 		return res
-		
-		
