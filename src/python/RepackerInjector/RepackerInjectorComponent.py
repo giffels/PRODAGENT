@@ -8,8 +8,8 @@ Component for generating Repacker JobSpecs
 
 
 
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.4 2007/05/29 14:10:00 hufnagel Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.5 2007/06/06 14:18:54 hufnagel Exp $"
 __author__ = "kss"
 
 
@@ -43,18 +43,16 @@ class RepackerInjectorComponent:
 	"""
 	_RepackerInjectorComponent_
 
-	Poll DBS and generate repacker job specs
+	Query DBS and generate repacker job specs
 
 	"""
 	def __init__(self, **args):
-		self.watching_runs=[]
-		self.watching_ds={}
 		self.workflow_by_ds={}
 		self.args = {}
 		#  //
 		# // Set default args
 		#//
-		self.args['PollInterval'] = "00:00:15"
+
 		#  //
 		# // Override defaults with those from ProdAgentConfig
 		#//
@@ -62,7 +60,6 @@ class RepackerInjectorComponent:
 		#print "DB=[%s] h=[%s] p=[%s] u=[%s]" % (self.args["DbsDbName"],self.args["DbsDbHost"],self.args["DbsDbPort"],self.args["DbsDbUser"])
 		LoggingUtils.installLogHandler(self)
 		msg = "RepackerInjector Started:\n"
-		msg += " PollInterval: %s\n" % self.args['PollInterval']
 		logging.info(msg)
 		logging.info("args %s"%str(args))
 		logging.info("URL=[%s] level=[%s]" % (self.args["DbsUrl"],self.args["DbsLevel"]))
@@ -93,13 +90,6 @@ class RepackerInjectorComponent:
 		# // Component Specific actions.
 		#//
 		
-		if message == "RepackerInjector:PollLoop":
-			#  //
-			# // this triggers a poll
-			#//
-			self.pollLoop()
-			return
-			
 		if message == "RepackerInjector:StartNewRun":
 			#  //
 			# // On demand action
@@ -108,31 +98,9 @@ class RepackerInjectorComponent:
 			return
 
 
-	def pollLoop(self):
-		"""
-		_pollLoop_
-
-		Example of how to make the component loop periodically
-
-		"""
-		#print "pollLoop"
-		logging.info("Poll Loop invoked...")
-	
-		self.do_dbsPoll()
-
-		#  //
-		# //  When you have done the periodic task, publish poll trigger
-		#//   to self, with a delay set by the PollInterval arg.
-		self.ms.publish("RepackerInjector:PollLoop", "",
-		self.args['PollInterval'])
-		self.ms.commit()
-		return
-
-
-
 	def doStartNewRun(self, payload):
 		"""
-		Expects run number and source dataset name in the payload in the form "run_number primary_ds_name source_ds_name"
+		Expects run number and source dataset name in the payload in the form "run_number primary_ds_name processed_ds_name"
 		"""
 		logging.info("StartNewRun(%s)" % payload)
 		items=payload.split(" ")
@@ -146,17 +114,15 @@ class RepackerInjectorComponent:
 			logging.error("StartNewRun - bad runnumber [%s]" % items[0])
 			return
 		primary_ds_name=items[1]
-		source_ds_name=items[2]
-		logging.info("RunNumber %d PDS [%s] SDS [%s]"%(run_number,primary_ds_name,source_ds_name))
-		if(run_number in self.watching_runs):
-			""" Already watching """
-			logging.info("Already watching run %d, ignoring request"%(run_number,))
-			return
+		processed_ds_name=items[2]
+		logging.info("RunNumber %d PDS [%s] SDS [%s]"%(run_number,primary_ds_name,processed_ds_name))
+
 		""" Create new workflow spec """
-		requestId="0"
+		requestId=str(run_number)
 		channel=primary_ds_name
 		group=self.args['JobGroup']
-		label=self.args['JobLabel']
+		#label=self.args['JobLabel']
+                label=processed_ds_name
 		cfg=self.args['RepackerCfgTmpl']
 		loader = CMSSWAPILoader(self.args['CMSSW_Arch'],self.args['CMSSW_Ver'],self.args['CMSSW_Dir']) # XXX
 		loader.load()
@@ -177,11 +143,11 @@ class RepackerInjectorComponent:
 		wfmaker.setConfiguration(cfgWrapper, Type = "instance")
 		wfmaker.setPSetHash("NA")
                 wfmaker.addInputDataset("/%s/%s/RAW" % (primary_ds_name ,
-                                                        source_ds_name)
+                                                        processed_ds_name)
                                         )
 
                 spec=wfmaker.makeWorkflow()
-		ds_key=primary_ds_name+':'+source_ds_name
+		ds_key=processed_ds_name + '-' + primary_ds_name + '-' + str(run_number)
 		compdir=self.args['ComponentDir']
 		workdir=compdir+'/'+ds_key
 		if(ds_key in os.listdir(compdir)):
@@ -199,38 +165,34 @@ class RepackerInjectorComponent:
 		repacker_iter=RepackerIterator.RepackerIterator(wfspecfile,workdir)
 		self.workflow_by_ds[ds_key]=repacker_iter
 		
-		self.watching_ds[run_number]=(primary_ds_name,source_ds_name)
-		self.watching_runs.append(run_number)
-		logging.info("Added to watching list: RunNumber %d PDS [%s] SDS [%s]"%(run_number,primary_ds_name,source_ds_name))
+                # HACK, process all files in the datasets specified for the run specified
+                # good enough for glbal running May data, not sufficient for live system
+
+                #
+                # Final solution is not supposed to need run number.
+                # The run number is discovered in the DBS query and
+                # overridden in the workflow before the job is submitted.
+                #
+                
+                dbslink=DbsLink.DbsLink(url=self.args["DbsUrl"],level=self.args["DbsLevel"])
+
+                file_res=dbslink.poll_for_files(primary_ds_name,processed_ds_name,run_number)
+
+                for i in file_res:
+                    lfn,tags=i
+                    logging.info("Found file %s" % lfn)
+                    res_job_error=self.submit_job(lfn,tags,primary_ds_name,processed_ds_name,ds_key)
+                    if(not res_job_error):
+                        dbslink.setFileStatus(lfn,"submitted")
+                        dbslink.commit()
+                        logging.info("Submitted job for %s" % lfn)
+				
+		dbslink.close()
+                
 		return
 
 
-
-
-	def do_dbsPoll(self):
-		if(not self.watching_runs):
-			logging.debug("No runnum to watch")
-			return
-
-#		dbslink=DbsLink.DbsLink(db=self.args["DbsDbName"],host=self.args["DbsDbHost"],user=self.args["DbsDbUser"],passwd=self.args["DbsDbPasswd"])
-		dbslink=DbsLink.DbsLink(url=self.args["DbsUrl"],level=self.args["DbsLevel"])
-
-		for i in self.watching_runs:
-			#print "Polling run",i
-			pri_ds,pro_ds=self.watching_ds[i]
-			#print pri_ds,pro_ds
-			file_res=dbslink.poll_for_files(pri_ds,pro_ds)
-			for i in file_res:
-				lfn,tags=i
-				res_job_error=self.submit_job(lfn,tags,pri_ds,pro_ds)
-				if(not res_job_error):
-					dbslink.setFileStatus(lfn,"submitted")
-					dbslink.commit()
-				
-		dbslink.close()
-
-
-	def submit_job(self,lfn,tags,pri_ds,pro_ds):
+	def submit_job(self,lfn,tags,pri_ds,pro_ds,ds_key):
 		logging.info("Creating job for file [%s] tags %s"%(lfn,str(tags)))
                 #
                 # FIXME: NewStreamerEventStreamFileReader cannot use LFN
@@ -238,7 +200,6 @@ class RepackerInjectorComponent:
                 #
                 pfn = 'rfio:/?path=/castor/cern.ch/cms' + lfn
                 logging.info("Creating job for file [%s] tags %s"%(pfn,str(tags)))
-		ds_key=pri_ds+':'+pro_ds
 		rep_iter=self.workflow_by_ds[ds_key]
 #		job_spec=spec.createJobSpec()
 		job_spec=rep_iter([pfn])
@@ -269,12 +230,8 @@ class RepackerInjectorComponent:
 		self.ms.subscribeTo("RepackerInjector:StartDebug")
 		self.ms.subscribeTo("RepackerInjector:EndDebug")
 
-		self.ms.subscribeTo("RepackerInjector:PollLoop")
 		self.ms.subscribeTo("RepackerInjector:StartNewRun")
 
-		# generate first polling cycle
-		self.ms.remove("RepackerInjector:PollLoop")
-		self.ms.publish("RepackerInjector:PollLoop", "")
 		self.ms.commit()
 
 		# wait for messages
