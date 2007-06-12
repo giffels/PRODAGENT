@@ -33,6 +33,7 @@ from JobCreator.StageOutTools import StoreStageOutTemplates
 from JobCreator.DashboardTools import installDashboardInfo, writeDashboardInfo
 from JobCreator.SVSuiteTools import InsertSVSuiteDetails, PopulateSVSuite
 from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
+from JobCreator.CmsGenTools import InsertCmsGenStructure, PopulateCmsGenScript
 
 import inspect
 import os
@@ -124,6 +125,7 @@ class DefaultGenerator(GeneratorInterface):
         installDashboardInfo(taskObject)
         taskObject(GenerateMainScript())
         taskObject(InsertAppDetails())
+        taskObject(InsertCmsGenStructure("JobSpecNode"))
         taskObject(InstallRunResComponent())
         taskObject(InsertSVSuiteDetails())
         taskObject(InsertJobReportTools())
@@ -145,6 +147,7 @@ class DefaultGenerator(GeneratorInterface):
         taskObject(BashEnvironmentMaker())
         taskObject(InsertPythonPSet())
         taskObject(PopulateMainScript())
+        taskObject(PopulateCmsGenScript("JobSpecNode"))
         taskObject(PopulateSVSuite())
         taskObject(PopulateCleanUp())
         taskObject(NewPopulateStageOut())
