@@ -167,7 +167,7 @@ class PopulateCmsGenScript:
         #  //
         # // Build Executable command
         #//
-        exeComm = "%s `cat cmsGen.args` &" % taskObject['CMSExecutable']
+        exeComm = "./%s `cat cmsGen.args` &" % taskObject['CMSExecutable']
         exeScript.append(exeComm)
         exeScript.append("PROCID=$!")
         exeScript.append("echo $PROCID > process_id")
