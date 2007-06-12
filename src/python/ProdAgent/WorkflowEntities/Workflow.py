@@ -118,7 +118,8 @@ def getNewRunNumber(workflowID,amount=1):
   """
   global increment
   
-  sqlStr="""UPDATE we_Workflow SET run_number_count = LAST_INSERT_ID(run_number_count+ %s)""" %(str(amount*increment))
+  sqlStr="""UPDATE we_Workflow SET run_number_count = LAST_INSERT_ID(run_number_count+ %s) 
+      WHERE id='%s' """ %(str(amount*increment), workflowID)
   Session.execute(sqlStr)
   sqlStr="""SELECT LAST_INSERT_ID()"""
   Session.execute(sqlStr)
