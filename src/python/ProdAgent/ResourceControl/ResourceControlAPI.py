@@ -16,6 +16,22 @@ from ProdCommon.Database import Session
 
 Session.set_database(dbConfig)
 
+
+
+def allSiteData():
+    """
+    _allSiteData_
+
+    Method to get all known site data
+
+    """
+    Session.connect()
+    Session.start_transaction()
+    resourceControlDB = ResourceControlDB()
+    _SiteList = resourceControlDB.siteNames()
+    siteData = [ resourceControlDB.getSiteData(x) for x in _SiteList ]
+    return siteData
+
 def activeSiteData():
     """
     _activeSiteData_
@@ -24,12 +40,7 @@ def activeSiteData():
     SE, CE, Site Name, Site Index
 
     """
-
-    Session.connect()
-    Session.start_transaction()
-    resourceControlDB = ResourceControlDB()
-    _SiteList = resourceControlDB.siteNames()
-    siteData = [ resourceControlDB.getSiteData(x) for x in _SiteList ]
+    siteData = allSiteData()
     siteData = [ x for x in siteData if x['Active'] == True ]
     return siteData
 
@@ -77,7 +88,7 @@ def attributes(site = None):
     sites = []
     if site != None:
         siteData = resourceControlDB.getSiteData(site)
-        if siteData == None:resourceControlDB = ResourceControlDB()
+        if siteData == None:
             return {}
         sites.append(siteData)
     else:
@@ -93,7 +104,7 @@ def attributes(site = None):
     return result
     
         
-def createSiteNameMap():
+def createSiteNameMap(activeOnly = True):
     """
     _createSiteNameMap_
 
@@ -103,7 +114,11 @@ def createSiteNameMap():
     CEName: SiteName
 
     """
-    siteData = activeSiteData()
+    if activeOnly:
+        siteData = activeSiteData()
+    else:
+        siteData = allSiteData()
+
     siteMap = {}
     for site in siteData:
         siteMap[site['SiteIndex']] = site['SiteName']
@@ -111,7 +126,7 @@ def createSiteNameMap():
         siteMap[site['SEName']] = site['SiteName']
     return siteMap
 
-def createSiteIndexMap():
+def createSiteIndexMap(activeOnly = True):
     """
     _createSiteIndexMap_
 
@@ -121,7 +136,11 @@ def createSiteIndexMap():
     CEName: SiteIndex
 
     """
-    siteData = activeSiteData()
+    if activeOnly:
+        siteData = activeSiteData()
+    else:
+        siteData = allSiteData()
+
     siteMap = {}
     for site in siteData:
         siteMap[site['SiteName']] = site['SiteIndex']
@@ -131,7 +150,7 @@ def createSiteIndexMap():
 
 
 
-def createCEMap():
+def createCEMap(activeOnly = True):
     """
     _createCEMap_
 
@@ -143,7 +162,10 @@ def createCEMap():
     Useful for submitter plugings to translate sites to CEs
     
     """
-    siteData = activeSiteData()
+    if activeOnly:
+        siteData = activeSiteData()
+    else:
+        siteData = allSiteData()
 
     ceMap = {}
     for site in siteData:
@@ -154,7 +176,7 @@ def createCEMap():
     return ceMap
 
 
-def createSEMap():
+def createSEMap(activeOnly = True):
     """
     _createSEMap_
 
@@ -164,7 +186,10 @@ def createSEMap():
     SiteIndex : SEName
 
     """
-    siteData = activeSiteData()
+    if activeOnly:
+        siteData = activeSiteData()
+    else:
+        siteData = allSiteData()
     seMap = {}
     for site in siteData:
         seMap[site['SiteIndex']] = site['SEName']
@@ -174,4 +199,29 @@ def createSEMap():
     return seMap
 
 
+
+def knownSite(siteId):
+    """
+    _knownSite_
+
+    Return the site index if the site Id is known, None if
+    not.
+
+    This method searches for site Id as:
+    1. An Index
+    2. A site name
+    3. An SE name
+    4. A CE name
+
+    """
     
+    
+    siteIndices = createSiteIndexMap(True)
+    if siteId in siteIndices.values():
+        # Is a site index
+        return siteId
+    if siteId in siteIndices.keys():
+        return siteIndices[siteId]
+    return None
+
+
