@@ -25,10 +25,10 @@
             <merge_job_special_cond/>
         </Production>
         <Production>
-            <Name>TEST-SingleMuon_pt1_neg_NoPU</Name>
+            <Name>CSA07-test_CSA07_lcg3-1817</Name>
 	    <DB_type>2</DB_type>
             <Status>completed</Status>
-            <SWtag>VO-cms-CMSSW_1_0_5</SWtag>
+            <SWtag>VO-cms-CMSSW_1_4_2</SWtag>
             <prod_success_job_cond>AND (ENDED_cmssw.TASK_NAME='success' OR (ENDED_cmssw.TASK_EXIT=0 and ENDED_cmssw.TASK_NAME='stageOut1'))</prod_success_job_cond>
             <prod_failed_job_cond>AND NOT (ENDED_cmssw.TASK_NAME='success' OR (ENDED_cmssw.TASK_EXIT=0 and ENDED_cmssw.TASK_NAME='stageOut1'))</prod_failed_job_cond>
             <prod_job_special_cond/>
