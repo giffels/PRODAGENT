@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.25 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.25 2007/06/04 11:39:44 afanfani Exp $"
+__version__ = "$Revision: 1.26 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.26 2007/06/11 20:27:27 hufnagel Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -18,6 +18,9 @@ from logging.handlers import RotatingFileHandler
 from RequestInjector.RequestIterator import RequestIterator
 from MessageService.MessageService import MessageService
 from JobState.JobStateAPI import JobStateChangeAPI
+
+from JobQueue.JobQueueAPI import bulkQueueJobs
+import ProdAgent.ResourceControl.ResourceControlAPI as ResourceControlAPI
 
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
@@ -36,8 +39,7 @@ class ReqInjComponent:
         self.args['Logfile'] = None
         self.args['JobState'] = True
         self.args['WorkflowCache'] = None
-        self.args['QueueJobMode'] = False
-        self.args['BulkTestMode'] = False
+        self.args['QueueJobMode'] = True
         self.args.update(args)
         self.job_state = self.args['JobState']
         
@@ -51,8 +53,6 @@ class ReqInjComponent:
         if str(self.args['QueueJobMode']).lower() == "true":
             self.queueMode = True
         self.bulkTestMode = False
-        if str(self.args['BulkTestMode']).lower() == "true":
-            self.bulkTestMode = True
             
         if self.args['WorkflowCache'] == None:
             self.args['WorkflowCache'] = os.path.join(
@@ -65,7 +65,6 @@ class ReqInjComponent:
         self.ms = None
         msg = "RequestInjector Component Started\n"
         msg += " => QueueMode: %s\n" % self.queueMode
-        msg += " => BulkTestMode: %s\n" % self.bulkTestMode
         logging.info(msg)
         
     def __call__(self, event, payload):
@@ -178,6 +177,7 @@ class ReqInjComponent:
 
         
         self.ms.publish("NewWorkflow", workflowPath)
+        self.ms.publish("NewDataset", workflowPath)
         self.ms.commit()     
         return
 
@@ -256,53 +256,51 @@ class ReqInjComponent:
             nCalls = 1
 
         logging.info("Creating %s job(s)" % nCalls)
-        bulkSpecs = []
+        jobSpecs = []
         for i in range(0, nCalls):
-            jobSpec = self.newJob()
-            if jobSpec:
-             if not self.bulkTestMode:
-                jobSpecName = jobSpec.replace("file:///", "/")
-                if self.queueMode:
-                    self.ms.publish("QueueJob", jobSpecName)
+            jobSpecs.append(self.newJob())
+            
+            
+        if self.queueMode:
+            #  //
+            # // first check site prefs are known (if any)
+            #//
+            sites = []
+            sitePref = self.iterator.sitePref
+            if sitePref != None:
+                #  //
+                # // List Of sites?
+                #//
+                if sitePref.find(",") > -1:
+                    sitePrefs = sitePref.split(',')
                 else:
-                    self.ms.publish("CreateJob", jobSpecName)
+                    sitePrefs = [sitePref]
+
+                    
+                for s in sitePrefs:
+                    #  //
+                    # // Do we know about this site?
+                    #//
+                    siteIndex = ResourceControlAPI.knownSite(s)
+                    if siteIndex == None:
+                        msg = "Error: Site %s not known\n" % s
+                        msg += "Cannot queue jobs for unknown site!!!"
+                        logging.error(msg)
+                        return
+                    sites.append(s)
+
+            logging.info("Sites List: %s" % sites)
+            bulkQueueJobs(sites, *jobSpecs)
+            return
+                
+        else:
+            for jobSpec in jobSpecs:
+                self.ms.publish("CreateJob", jobSpec['JobSpecFile'])
                 self.ms.commit()
-             else:
-                if nCalls == 1:
-                    msg = "Cannot Bulk Submit a single job\n"
-                    msg += "When in BulkTestMode, you must provide an"
-                    msg += " int payload > 1\n"
-                    msg += "For the RequestInjector:ResourcesAvailable event"
-                    logging.warning(msg)
-                    return
-                bulkSpecs.append(jobSpec)
+                
+                    
 
-        if self.bulkTestMode:
-            firstSpec = bulkSpecs[0]
-            logging.debug("firstSpec=%s" % firstSpec)
-            bulkSpecName = "%s.BULK" % firstSpec
-            bulkSpecName = bulkSpecName.replace("file:///", "/")
-            logging.info("Bulk Spec: %s" % bulkSpecName)
-            bulkSpec = JobSpec()
-            firstSpecName = firstSpec.replace("file:///", "/")
-            if not os.path.exists(firstSpecName):
-                msg = "Primary Spec for Bulk Spec creation not found:\n"
-                msg += "%s\n" % firstSpecName
-                msg += "Cannot construct Bulk Spec"
-                logging.error(msg)
-                return
-            bulkSpec.load(firstSpec)
-            for item in bulkSpecs:
-                specID = os.path.basename(item).replace("-JobSpec.xml", "")
-                bulkSpec.bulkSpecs.addJobSpec(specID, item)
 
-            bulkSpec.save(bulkSpecName)
-            logging.info("Publishing Bulk Spec")
-            if self.queueMode:
-                self.ms.publish("QueueJob", bulkSpecName)
-            else:
-                self.ms.publish("CreateJob", bulkSpecName)
-            self.ms.commit()
                     
         return
     
@@ -327,6 +325,18 @@ class ReqInjComponent:
         self.iterator.load(self.args['WorkflowCache'])
         jobSpec = self.iterator()
         self.iterator.save(self.args['WorkflowCache'])
+
+        jobSpec = self.iterator()
+        self.iterator.save(self.args['WorkflowCache'])
+        jobData = {
+            "JobSpecId" : self.iterator.currentJob,
+            "JobSpecFile" : jobSpec,
+            "JobType" : "Processing",
+            "WorkflowSpecId" : self.iterator.workflowSpec.workflowName(),
+            "WorkflowPriority": self.iterator.workflowSpec.parameters.get(
+            "WorkflowPriority", 1),
+            }
+
         
         if self.job_state:
             try: 
@@ -336,7 +346,7 @@ class ReqInjComponent:
             except StandardError, ex:
                 logging.error('ERROR: '+str(ex))
         
-        return jobSpec
+        return jobData
 
     def setEventsPerJob(self, numEvents):
         """
