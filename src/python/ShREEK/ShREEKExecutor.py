@@ -10,8 +10,8 @@ directly, ShREEKConfigExecutor wraps this so that a ShREEKConfig object
 can be used to configure the ShREEK system.
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: ShREEKExecutor.py,v 1.1 2006/04/10 17:38:42 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: ShREEKExecutor.py,v 1.2 2007/03/07 22:54:19 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import signal
@@ -29,7 +29,7 @@ class ShREEKExecutor:
 
     """
     def __init__(self):
-        for signum in (1, 3, 6, 15):
+        for signum in (1, 2, 3, 6, 15):
             signal.signal(signum, self.safeShutdown)
         self.executionMgr = ExecutionManager()
         self.monitorThread = MonitorThread(self.executionMgr)
@@ -56,7 +56,9 @@ class ShREEKExecutor:
         reliably propagates signals to child processes
 
         """
-        
+        msg = "Shutdown Signal recieved: %s\n" % signalNumber
+        msg += "Sending killjob..."
+        print msg
         self.executionMgr.killjob()
         return
     

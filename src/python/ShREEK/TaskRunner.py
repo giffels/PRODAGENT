@@ -6,8 +6,8 @@ Execution class for running a task described by a ShREEKTask instance,
 and managing its execution.
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: TaskRunner.py,v 1.6 2007/03/07 22:54:19 evansde Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: TaskRunner.py,v 1.7 2007/04/12 19:43:48 dmason Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
@@ -27,6 +27,58 @@ def makeNonBlocking(fd):
     except AttributeError:
 	fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
 
+def executeCommand(command):
+    """
+    _executeCommand_
+
+    Util it execute the command provided in a popen object
+
+    """
+
+    child = popen2.Popen3(command, 1) # capture stdout and stderr from command
+    child.tochild.close()             # don't need to talk to child
+    outfile = child.fromchild 
+    outfd = outfile.fileno()
+    errfile = child.childerr
+    errfd = errfile.fileno()
+    makeNonBlocking(outfd)            # don't deadlock!
+    makeNonBlocking(errfd)
+    outdata = errdata = ''
+    outeof = erreof = 0
+    stdoutBuffer = ""
+    while 1:
+        ready = select.select([outfd,errfd],[],[]) # wait for input
+        if outfd in ready[0]:
+            outchunk = outfile.read()
+            if outchunk == '': outeof = 1
+            stdoutBuffer += outchunk
+            sys.stdout.write(outchunk)
+        if errfd in ready[0]:
+            errchunk = errfile.read()
+            if errchunk == '': erreof = 1
+            sys.stderr.write(errchunk)
+        if outeof and erreof: break
+        select.select([],[],[],.1) # give a little time for buffers to fill
+
+    try:
+        exitCode = child.poll()
+    except Exception, ex:
+        msg = "Error retrieving child exit code: %s\n" % ex
+        msg = "while executing command:\n"
+        msg += command
+        logging.error("BulkSubmitterInterface:Failed to Execute Command")
+        logging.error(msg)
+        raise RuntimeError, msg
+    
+    if exitCode:
+        msg = "Error executing command:\n"
+        msg += command
+        msg += "Exited with code: %s\n" % exitCode
+        logging.error("SubmitterInterface:Failed to Execute Command")
+        logging.error(msg)
+        raise RuntimeError, msg
+    return  stdoutBuffer
+    
 
 def findChildProcesses(pid):
     """
@@ -56,25 +108,20 @@ def findChildProcessnames(pid):
     command, returning a dictionary of names+proc numbers
     """
 
-    pop = popen2.Popen4(
- #           "/bin/ps --no-headers --ppid %s -o pid" % pid
- #          "/bin/ps --no-headers --pid %s -H -o pid"
-            "/bin/ps -e --no-headers -o pid -o ppid -o fname"
-            )
-    while pop.poll() == -1:
-        exitCode = pop.poll()
-    exitCode = pop.poll()
-    output = pop.fromchild.read().strip()
-#    print "ps output: %s" % output
+    command = "/bin/ps -e --no-headers -o pid -o ppid -o fname"
+
+    output = executeCommand(command)
+    print "ps output: %s" % output
 #    result = []
+  
     pieces = []
     procnames = {}
     for line in output.split("\n"):
       pieces= line.split()
       try: 
         value=int(pieces[1])
-      except ValueError,e:
-        print "trouble interpreting ps output %s: \n %s" % (e,pieces[1])
+      except Exception,e:
+        print "trouble interpreting ps output %s: \n %s" % (e,pieces)
         continue
       if value==pid:
         try:
