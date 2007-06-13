@@ -124,17 +124,22 @@ class JobQueueDB:
             return
         newSites = set()
         for siteId in dictInstance['SiteList']:
-            newSites.add(self.getSiteIndex(siteId))
+            if siteId == "NULL":
+                newSites.add("NULL")
+            else:
+                siteMatch = self.getSiteIndex(siteId)
+                if siteMatch == None:
+                    msg = "Unable to match site name for job spec with sites:\n"
+                    msg += "%s\n" % siteId
+                    raise JobQueueDBError(
+                        msg,
+                        UnknownSites = siteId,
+                        KnownSites = self.siteIndexByName.keys() + \
+                        self.siteIndexBySE.keys()
+                        )
+                else:
+                    newSites.append(siteMatch)
         newSiteList = list(newSites)
-        if newSiteList == [None]:
-            msg = "Unable to match site name for job spec with sites:\n"
-            msg += "%s\n" % dictInstance['SiteList']
-            raise JobQueueDBError(
-                msg,
-                UnknownSites = dictInstance['SiteList'],
-                KnownSites = self.siteIndexByName.keys() + \
-                             self.siteIndexBySE.keys()
-                )
         dictInstance['SiteList'] = newSiteList
         
         return
@@ -159,7 +164,7 @@ class JobQueueDB:
                                    workflow_id,
                                    priority) VALUES
           """
-
+        
         numberOfJobs = len(jobSpecDicts)
         for job in jobSpecDicts:
             sqlStr += """( "%s", "%s", "%s", "%s", %s ) """ % (
@@ -177,7 +182,6 @@ class JobQueueDB:
         Session.execute("SELECT LAST_INSERT_ID()")
         firstJobIndex = Session.fetchone()[0]
         sqlStr2 = "INSERT INTO jq_site (job_index, site_index) VALUES\n"
-
         lastJobIndex = firstJobIndex + numberOfJobs
         for jobIndex in range(firstJobIndex, lastJobIndex):
             for siteIndex in sitesList:
@@ -190,6 +194,7 @@ class JobQueueDB:
                 else:
                     sqlStr2 += ",\n"
                     
+        logging.debug(sqlStr2)
         Session.execute(sqlStr2)
         
         return
