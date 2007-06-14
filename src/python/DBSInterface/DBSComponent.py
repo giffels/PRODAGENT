@@ -150,6 +150,7 @@ class DBSComponent:
         self.args.setdefault("DBSURL","http://cmssrv18.fnal.gov:8989/DBS/servlet/DBSServlet")
         self.args.setdefault("Logfile", None)
         self.args.setdefault("BadReportfile", None)
+        self.args.setdefault("BadDatasetfile", None)
         self.args.setdefault("BadTMDBInjectfile", None)
         self.args.setdefault("BadMigrationfile", None)
         self.args.setdefault("CloseBlockSize", "None")  # No check on fileblock size
@@ -186,7 +187,11 @@ class DBSComponent:
             self.args['BadReportfile'] = os.path.join(self.args['ComponentDir'],
                                                       "FailedJobReportList.txt")
 
-        #self.BadReport = open(self.args['BadReportfile'],'a')
+        #  //
+        # // Log Failed NewDataset registration into DBS
+        #//
+        if self.args['BadDatasetfile'] == None:
+            self.args['BadDatasetfile'] = os.path.join(self.args['ComponentDir'],                                                      "FailedDatasetList.txt")                                                                                
         #  //
         # // Log Failed fileblock migration to Global
         #//
@@ -200,13 +205,11 @@ class DBSComponent:
         if self.args['BadTMDBInjectfile'] == None:
             self.args['BadTMDBInjectfile'] = os.path.join(self.args['ComponentDir'],
                                                       "FailedTMDBInject.txt")
-        #self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
 
         
         
     def __call__(self, event, payload):
         """
-        _operator()_
 
         Define response to events
         """
@@ -214,6 +217,7 @@ class DBSComponent:
         logging.info("Payload: %s" % payload)
 
         if event == "NewDataset":
+            self.BadDataset = open(self.args['BadDatasetfile'],'a')
             logging.info("New Dataset Event: %s" % payload)
             try:
                 self.newDatasetEvent(payload)
@@ -221,22 +225,28 @@ class DBSComponent:
             except InvalidWorkFlowSpec, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
-#            except InvalidDataTier, ex:
-#                logging.error("Failed to Create New Dataset: %s" % payload)
-#                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
             except DBSWriterError, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
+                self.BadDataset.write("%s\n" % payload)
+                self.BadDataset.flush()
+                return
             except DBSReaderError, ex: 
                 logging.error("Failed to Create New Dataset: %s" % payload)
+                self.BadDataset.write("%s\n" % payload)
+                self.BadDataset.flush()
+                return
             except DbsException, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 logging.error("Details: %s"% formatEx(ex))
+                self.BadDataset.write("%s\n" % payload)
+                self.BadDataset.flush()
                 return
             except StandardError, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 logging.error("Details: %s" % str(ex))
+                self.BadDataset.write("%s\n" % payload)
+                self.BadDataset.flush()
                 return
-
 
             
         if event == "JobSuccess":
@@ -313,8 +323,25 @@ class DBSComponent:
                 return
 
         if event == "DBSInterface:RetryFailures":
+            #  //
+            # // Retry dataset insertion failure first
+            #//
+            self.BadDataset = open(self.args['BadDatasetfile'],'a')
+            try:
+                self.DatasetRetryFailures(self.args['BadDatasetfile'],self.BadDataset)
+            except DBSWriterError, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+            except DBSReaderError, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+            except DbsException, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+            except StandardError, ex:
+                logging.error("Failed to RetryFailures")
+                logging.error("Details: %s" % str(ex))
+            #  //
+            # // Retry files insertion failures
+            #//
             self.BadReport = open(self.args['BadReportfile'],'a')
-            #logging.info("DBSInterface:RetryFailures Event")
             try:
                 self.RetryFailures(self.args['BadReportfile'],self.BadReport)
                 return
@@ -851,6 +878,7 @@ class DBSComponent:
         discarded = []
         for line in BadReportfile.readlines():
            payload = os.path.expandvars(os.path.expanduser(string.strip(line)))
+           logging.info("--> %s"%payload)
            if not os.path.exists(payload):
              logging.error("File Not Found : %s"%payload)
              discarded.append(payload)
@@ -895,6 +923,54 @@ class DBSComponent:
         BadReportfile.close()
 
         logging.info("*** End the RetryFailures procedures => Discarded: %s Failed logged in :%s "%(discarded,fileName))
+
+    def DatasetRetryFailures(self,fileName, filehandle):
+        """
+        Read the list of dataset that failed DBS registration and re-try the registration. If the dataset registration is succesfull remove it form the list of failed ones.
+                                                                                                          
+        """
+        logging.info("*** Begin the DatasetRetryFailures procedure")
+                                                                                                          
+        ## Read the list of dataset that failed DBS registration and re-try
+        filehandle.close()
+        Badfile = open(fileName, 'r')
+                                                                                                          
+        stillFailures = []
+        discarded = []
+        for line in Badfile.readlines():
+           payload = os.path.expandvars(os.path.expanduser(string.strip(line)))
+           logging.info("--> %s"%payload)
+           if not os.path.exists(payload):
+             logging.error("File Not Found : %s"%payload)
+             discarded.append(payload)
+             continue
+           try:
+             self.newDatasetEvent(payload)
+           except DbsException, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+                logging.error("DbsException Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
+                stillFailures.append(payload)
+           except AssertionError, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+                stillFailures.append(payload)
+           except StandardError, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+                logging.error("StandardError Details:%s" % str(ex))
+                stillFailures.append(payload)
+                                                                                                          
+        Badfile.close()
+                                                                                                          
+        ## Write the list of those still failing
+                                                                                                          
+        Badfile = open(fileName, 'w')
+        for item in stillFailures:
+           dataset=item.strip()
+           Badfile.write("%s\n" % dataset )
+        Badfile.close()
+                                                                                                          
+        logging.info("*** End the DatasetRetryFailures procedures => Discarded: %s Failed logged in :%s "%(discarded,fileName))
+
+
 
 
     def startComponent(self):
