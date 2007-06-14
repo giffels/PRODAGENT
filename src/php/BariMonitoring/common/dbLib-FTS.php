@@ -299,44 +299,44 @@ SELECT
 from ((
 \n/*job scheduled e running **/
 select
-SCHED_edg.dest_ce as destce,JOB.LOG_FILE as LOGFILE,JOB.SUB_T as SUBT,SCHED_edg.SCHED_STATUS as STATUS 
+SCHED_edg.dest_ce as destce,CHAIN.NAME as LOGFILE,JOB.SUB_T as SUBT,SCHED_edg.SCHED_STATUS as STATUS 
 from 
-JOB ,SCHED_edg
+JOB ,SCHED_edg,CHAIN
 WHERE
-JOB.TASK_ID=SCHED_edg.TASK_ID AND JOB.ID=SCHED_edg.ID AND
-JOB.LOG_FILE like '$production_plus' 
+JOB.TASK_ID=SCHED_edg.TASK_ID AND JOB.ID=SCHED_edg.ID AND CHAIN.TASK_ID=JOB.TASK_ID AND
+CHAIN.NAME like '$production_plus' 
 \n)
 union
 (
 \n/* cancelled and aborted*/
 select
-ENDED_SCHED_edg.dest_ce as destce,ENDED_JOB.LOG_FILE as LOGFILE,ENDED_JOB.SUB_T as SUBT,ENDED_SCHED_edg.SCHED_STATUS as STATUS
-from ENDED_JOB,ENDED_SCHED_edg
+ENDED_SCHED_edg.dest_ce as destce,CHAIN.NAME as LOGFILE,ENDED_JOB.SUB_T as SUBT,ENDED_SCHED_edg.SCHED_STATUS as STATUS
+from ENDED_JOB,ENDED_SCHED_edg,CHAIN
 WHERE
-ENDED_JOB.TASK_ID=ENDED_SCHED_edg.TASK_ID AND ENDED_JOB.ID=ENDED_SCHED_edg.ID AND
-ENDED_JOB.LOG_FILE like '$production_plus' 
+ENDED_JOB.TASK_ID=ENDED_SCHED_edg.TASK_ID AND ENDED_JOB.ID=ENDED_SCHED_edg.ID AND CHAIN.TASK_ID = ENDED_JOB.TASK_ID AND
+CHAIN.NAME like '$production_plus' 
 \n)
 union(
 \n/* failed jobs*/
 /*the ENDED_JOB.SUB_T is been replaced with ENDED_JOB.STOP_T only for success job nad failed jobs*/
 select
-ENDED_SCHED_edg.dest_ce as destce,ENDED_JOB.LOG_FILE as LOGFILE,ENDED_JOB.STOP_T as SUBT,ENDED_cmssw.TASK_NAME as STATUS
-from ENDED_JOB,ENDED_SCHED_edg,ENDED_cmssw
+ENDED_SCHED_edg.dest_ce as destce,CHAIN.NAME as LOGFILE,ENDED_JOB.STOP_T as SUBT,ENDED_cmssw.TASK_NAME as STATUS
+from ENDED_JOB,ENDED_SCHED_edg,ENDED_cmssw,CHAIN
 WHERE
 ENDED_JOB.TASK_ID=ENDED_cmssw.TASK_ID AND ENDED_JOB.ID=ENDED_cmssw.ID AND ENDED_SCHED_edg.TASK_ID=ENDED_cmssw.TASK_ID AND 
-ENDED_SCHED_edg.ID=ENDED_cmssw.ID $prod_failed_job_cond 
-AND ENDED_JOB.LOG_FILE like 
+CHAIN.TASK_ID = ENDED_JOB.TASK_ID AND ENDED_SCHED_edg.ID=ENDED_cmssw.ID $prod_failed_job_cond 
+AND CHAIN.NAME like 
 '$production_plus' 
 \n)
 union(
 \n/*select success job*/
 /*the ENDED_JOB.SUB_T is been replaced with ENDED_JOB.STOP_T only for success job nad failed jobs*/
 select
-ENDED_SCHED_edg.dest_ce as destce,ENDED_JOB.LOG_FILE as LOGFILE,ENDED_JOB.STOP_T as SUBT,ENDED_cmssw.TASK_NAME as STATUS
-from ENDED_cmssw,ENDED_JOB,ENDED_SCHED_edg 
+ENDED_SCHED_edg.dest_ce as destce,CHAIN.NAME as LOGFILE,ENDED_JOB.STOP_T as SUBT,ENDED_cmssw.TASK_NAME as STATUS
+from ENDED_cmssw,ENDED_JOB,ENDED_SCHED_edg,CHAIN
 where
-ENDED_JOB.TASK_ID=ENDED_cmssw.TASK_ID AND ENDED_JOB.ID=ENDED_cmssw.ID AND ENDED_SCHED_edg.TASK_ID=ENDED_cmssw.TASK_ID AND ENDED_SCHED_edg.ID=ENDED_cmssw.ID  
-$prod_success_job_cond AND ENDED_JOB.LOG_FILE like '$production_plus' 
+ENDED_JOB.TASK_ID=ENDED_cmssw.TASK_ID AND ENDED_JOB.ID=ENDED_cmssw.ID AND ENDED_SCHED_edg.TASK_ID=ENDED_cmssw.TASK_ID AND CHAIN.TASK_ID = ENDED_JOB.TASK_ID AND ENDED_SCHED_edg.ID=ENDED_cmssw.ID  
+$prod_success_job_cond AND CHAIN.NAME like '$production_plus' 
 )
 ) 
 as jam 
