@@ -2544,11 +2544,11 @@ def Workflows( params ) :
        query = MySQL_Query()
        query.Connect( connection )
 
-       task_table = MySQL_Table( "TASK" )
-       chain_name = task_table.AddColumn( "TASK_NAME" )
+       chain_table = MySQL_Table( "CHAIN" )
+       chain_name = chain_table.AddColumn( "NAME" )
        query.AddRequirement( chain_name.NOTLIKE( "%mergejob%" ) )
        
-       query.AddTable( task_table )
+       query.AddTable( chain_table )
        query.Query()
        
        ntuple = query.Execute()
