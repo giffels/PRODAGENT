@@ -2138,7 +2138,7 @@ def SingleQuery( params, i):
  
       reqs = []
       for workflow in workflows :
-         reqs.append( c_task_name.LIKE( '%'+workflow+'%' ) )
+         reqs.append( c_chain_name.LIKE( '%'+workflow+'%' ) )
  
       q.AddRequirement(       Req_OR( *reqs ) )
       q_ended.AddRequirement( Req_OR( *reqs ) )
@@ -2545,8 +2545,8 @@ def Workflows( params ) :
        query.Connect( connection )
 
        task_table = MySQL_Table( "TASK" )
-       task_name = task_table.AddColumn( "TASK_NAME" )
-       query.AddRequirement( task_name.NOTLIKE( "%mergejob%" ) )
+       chain_name = task_table.AddColumn( "TASK_NAME" )
+       query.AddRequirement( chain_name.NOTLIKE( "%mergejob%" ) )
        
        query.AddTable( task_table )
        query.Query()
