@@ -8,6 +8,7 @@ Bulk and single LSF submissions
 
 """
 import os
+import socket
 import logging
 
 from JobSubmitter.Registry import registerSubmitter
@@ -223,17 +224,19 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         
         """
 
+        # need to know this host name
+        hostname = socket.getfqdn()
+
         #  //
         # // Generate main executable script for job
         #//
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        script.append("export STAGE_SVCCLASS=t0input\n")
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
-        for fname  in self.jobInputFiles:
-            script.append("rfcp lxgate39.cern.ch:%s . \n" % fname)
+        for fname in self.jobInputFiles:
+            script.append("rfcp %s:%s . \n" % (hostname,fname))
 
         if self.isBulk:
             script.extend(bulkUnpackerScript(self.specSandboxName))
@@ -244,7 +247,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s > /dev/null 2>&1\n" % self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
         script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1\n")
-        script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s/FrameworkJobReport.xml\n" % cacheDir)
+        script.append("rfcp ./FrameworkJobReport.xml %s:%s/FrameworkJobReport.xml\n" % (hostname,cacheDir))
 
         outputlogfile = jobName
         outputlogfile += '.`date +%Y%m%d.%k.%M.%S`.log'
