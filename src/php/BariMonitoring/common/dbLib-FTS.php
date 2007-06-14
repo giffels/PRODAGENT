@@ -1,9 +1,9 @@
 <?php
 include_once "local/monParams-FTS.php";
 include_once "../adodb/adodb.inc.php";
-$ADODB_CACHE_DIR = "/tmp$prodarea/adodb_cache";
+//exit(0);
 $ADODB_ACTIVE_CACHESECS = 60;
-$ADODB_CACHE_DIR = "/tmp$prodarea/adodb_cache";
+//$ADODB_CACHE_DIR = "/tmp$prodarea/adodb_cache";
 function dbLibConnect() {
         global $DB_NAME, $DB_USER, $DB_PASS, $DB_SPEC;
         $db=NewADOConnection('mysql');

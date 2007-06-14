@@ -56,8 +56,8 @@ $site=$_GET["site"];
 if (isset($_GET["id"])) {$query_id="AND TASKID=".$_GET["id"];}else {$query_id="";}
 
 include_once "local/monParams-FTS.php";		
-
-/*** built stream array - start ***/
+/*** built stream array - start ****/
+include_once("common/dbLib-FTS.php");
 $records_gs=get_stream($production);
 $stream_merge=array();
 if($records_gs)
@@ -151,10 +151,10 @@ if($job_type=="merge"&&($job_status=="submitted"||$job_status=="running"||$job_s
 $cnt_field="destce,TASKEXIT,NEVT,LOGFILE, CHAIN_ID,ID,TASK_name,STATUS,comment, EXEC_HOST, START_T,STOP_T,SE_OUT,TASKID,TASKEXIT,SUBT,SCHEDID";
 $group_par="";
 $order_by=" order by TASKID";
-if($DB_type==2)
+//if($DB_type==2)
 $records=getJobDetails($production,$job_type_filter,$job_status,$job_type,$lower_limit,$upper_limit,$site_query_ce,$query_id,$cnt_field,$group_par,$order_by);
-else
-$records=getJobDetails_old($production,$job_type_filter,$job_status,$job_type,$lower_limit,$upper_limit,$site_query_ce,$query_id,$cnt_field,$group_par,$order_by);
+//else
+//$records=getJobDetails_old($production,$job_type_filter,$job_status,$job_type,$lower_limit,$upper_limit,$site_query_ce,$query_id,$cnt_field,$group_par,$order_by);
 //*** qeury al db per latabella dettaglio job ****/
 
 $delta_t_start= array();	
