@@ -189,29 +189,31 @@ function getJobDetails($production,$job_type_filter,$job_status,$job_type,$lower
 				cmssw.PRIMDATASET as PRIMDATASET,N_EVT as NEVT,
 				SCHED_edg.CHAIN_ID as CHAIN_ID,cmssw.ID as ID,
 				cmssw.TASK_name as TASK_name,comment, EXEC_HOST, SUB_T ,START_T,STOP_T,SE_OUT,SCHED_edg.dest_ce as destce,
-				JOB.LOG_FILE as LOGFILE,JOB.SUB_T as SUBT,SCHED_edg.SCHED_STATUS as STATUS,SCHED_edg.TASK_ID as TASKID,cmssw.TASK_EXIT as TASKEXIT,SCHED_ID as SCHEDID
+				CHAIN.NAME as LOGFILE,JOB.SUB_T as SUBT,SCHED_edg.SCHED_STATUS as STATUS,SCHED_edg.TASK_ID as TASKID,cmssw.TASK_EXIT as TASKEXIT,SCHED_ID as SCHEDID
 				 from
-				 JOB ,SCHED_edg,cmssw
+				 JOB ,SCHED_edg,cmssw,CHAIN
 				 WHERE
+				 CHAIN.TASK_ID=JOB.TASK_ID and
 				 SCHED_edg.ID=cmssw.ID and SCHED_edg.TASK_ID=cmssw.TASK_ID and
-				 JOB.TASK_ID=SCHED_edg.TASK_ID AND JOB.ID=SCHED_edg.ID and JOB.LOG_FILE $job_type_filter and
-				 JOB.LOG_FILE like  '%$production%'
+				 JOB.TASK_ID=SCHED_edg.TASK_ID AND JOB.ID=SCHED_edg.ID and CHAIN.NAME $job_type_filter and
+				 CHAIN.NAME like  '%$production%'
 				)
 				union
 				(
-				 /*the ENDED_JOB.SUB_T is been replaced with ENDED_JOB.STOP_T only for success job nad failed jobs*/
+				 /*the  asd  ENDED_JOB.SUB_T is been replaced with ENDED_JOB.STOP_T only for success job nad failed jobs*/
 				 select
 				ENDED_cmssw.PRIMDATASET as PRIMDATASET,N_EVT as NEVT,
 				 ENDED_SCHED_edg.CHAIN_ID as CHAIN_ID,ENDED_SCHED_edg.ID as ID,
 				 ENDED_cmssw.TASK_name as TASK_name,comment, EXEC_HOST, SUB_T ,START_T,STOP_T,SE_OUT,
-				 ENDED_SCHED_edg.dest_ce as destce,ENDED_JOB.LOG_FILE as LOGFILE,ENDED_JOB.STOP_T as SUBT,
+				 ENDED_SCHED_edg.dest_ce as destce,CHAIN.NAME as LOGFILE,ENDED_JOB.STOP_T as SUBT,
 				 ENDED_SCHED_edg.SCHED_STATUS as STATUS,ENDED_SCHED_edg.TASK_ID as TASKID,ENDED_cmssw.TASK_EXIT as TASKEXIT,SCHED_ID as SCHEDID
 				 from
-				 ENDED_JOB,ENDED_SCHED_edg,ENDED_cmssw
+				 ENDED_JOB,ENDED_SCHED_edg,ENDED_cmssw,CHAIN
 				 WHERE
+				CHAIN.TASK_ID=ENDED_JOB.TASK_ID and
 				 ENDED_SCHED_edg.ID=ENDED_cmssw.ID and ENDED_SCHED_edg.TASK_ID=ENDED_cmssw.TASK_ID and
-				 ENDED_JOB.TASK_ID=ENDED_SCHED_edg.TASK_ID AND ENDED_JOB.ID=ENDED_SCHED_edg.ID and ENDED_JOB.LOG_FILE $job_type_filter and
-				 ENDED_JOB.LOG_FILE like  '%$production%'
+				 ENDED_JOB.TASK_ID=ENDED_SCHED_edg.TASK_ID AND ENDED_JOB.ID=ENDED_SCHED_edg.ID and CHAIN.NAME $job_type_filter and
+				 CHAIN.NAME like  '%$production%'
 				))
 				as jam
 				";
