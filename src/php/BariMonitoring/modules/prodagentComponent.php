@@ -51,12 +51,6 @@ $stato = implode("\n", $retval);
           <tr class="prodAgentNotRunning"><td>JobCleanup</td><td>Not Running</td></tr>
 <?php }?>
 
-<?php if(strpos($stato, "DLSInterface Running")) {?>
-           <tr class="prodAgentRunning"><td>DLSInterface</td><td> Running</td></tr>
-<?php }else {?>
-           <tr class="prodAgentNotRunning"><td>DLSInterface</td><td>Not Running</td></tr>
-<?php }?>
-
 <?php if(strpos($stato, "AdminControl Running")) {?>
            <tr class="prodAgentRunning"><td>AdminControl</td><td> Running</td></tr>
 <?php }else {?>
