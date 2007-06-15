@@ -22,9 +22,8 @@ $curr_server=getenv("SERVER_NAME");
 <title><?=$production?></title>
 </head>
 <body>
-<form name=myform action="<?=$_SERVER['PHP_SELF']?>" method=GET>
+<form name=myform id='frm1' action="<?=$_SERVER['PHP_SELF']?>" method=GET>
 <table border=2 width=100%>
-
 <tr><td colspan=3 align=center class=externaLink>
 <!-- ************ Header pages - start *************** -->
 <?php include_once('modules/headerPages.php');?>
@@ -67,4 +66,9 @@ $curr_server=getenv("SERVER_NAME");
 </td></tr>
 </form>
 </table>
+<script>
+//alert(history.length+"\n"+document.getElementById('frm1'));
+//if(history.length==2)
+//	document.getElementById('frm1').submit();
+</script>
 </html>
