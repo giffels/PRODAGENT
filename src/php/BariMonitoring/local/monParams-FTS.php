@@ -1,8 +1,8 @@
 <?php
+include_once("Configuration.php");
 include_once("getProd.php");
 
 # get PA configuration
-include_once("Configuration.php");
 
 $site=$_GET["site"];
 $production=$_GET["production"];
@@ -185,4 +185,5 @@ function getAllSites_xml(){
 	}
 	return $site_arr;
 }
+$ADODB_CACHE_DIR = "/tmp$prodarea/adodb_cache";
 ?>

@@ -1,5 +1,6 @@
 <?
-include_once("common/dbLib-FTS.php");
+//include_once("common/dbLib-FTS.php");
+
 class getProdParams {
 	var $val;
 	var $allprod;
