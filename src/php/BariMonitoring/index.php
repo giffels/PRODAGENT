@@ -3,6 +3,7 @@
 <link rel="stylesheet" type="text/css" media="all" href="modules/style.css" />
 <?
 $debug=$_GET["debug"];
+$checkHisto=$_GET["checkHisto"];
 $action=$_GET["action"];
 $production=$_GET["production"];
 $site=$_GET["site"];
@@ -22,9 +23,9 @@ $curr_server=getenv("SERVER_NAME");
 <title><?=$production?></title>
 </head>
 <body>
-<form name=myform action="<?=$_SERVER['PHP_SELF']?>" method=GET>
+<form name=myform id='frm1' action="<?=$_SERVER['PHP_SELF']?>" method=GET>
+<input id='checkHisto' name='checkHisto' type='hidden' value='<?=$checkHisto?>'>
 <table border=2 width=100%>
-
 <tr><td colspan=3 align=center class=externaLink>
 <!-- ************ Header pages - start *************** -->
 <?php include_once('modules/headerPages.php');?>
@@ -67,4 +68,10 @@ $curr_server=getenv("SERVER_NAME");
 </td></tr>
 </form>
 </table>
+<script>
+if(document.getElementById('checkHisto').value==''){
+	document.getElementById('checkHisto').value='on';
+	document.getElementById('frm1').submit();
+}
+</script>
 </html>

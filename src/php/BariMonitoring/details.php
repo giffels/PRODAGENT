@@ -8,9 +8,9 @@ include ("$src/jpgraph_line.php");
 include ("$src/jpgraph_bar.php");
 include ("$src/jpgraph_pie.php");
 include ("$src/jpgraph_pie3d.php");
-include_once ("../adodb/adodb.inc.php");
 include_once("modules/details/function.php");
 include_once ("common/dbLib-FTS.php");			
+include_once ("../adodb/adodb.inc.php");
 ?>
 <title>Details Page </title>
 <?php
@@ -27,7 +27,7 @@ $tail= `rm plots/dest_ce_bar.png`;
 $tail= `rm plots/dest_ce.png`;
 $tail= `rm plots/code.png`;
 
-/*** built stream array - start ***/
+/**** built stream array - start ***/
 $records_gs=get_stream($production);
 $stream_merge=array();
 if($records_gs)

@@ -18,6 +18,7 @@
 
 # files required
 
+INSTALL_ROOT=
 APACHE_FILE=apache_1.3.37.tar.gz
 PHP_FILE=php-4.4.4.tar.gz
 ADODB_FILE=adodb493a.tgz
@@ -279,7 +280,7 @@ echo "your Production Agent configuration file."
 echo     
 echo "mysql> UPDATE mysql.user"
 echo "         SET Password = OLD_PASSWORD('ProdAgentPassword')"
-echo "         WHERE Host = 'localhost' AND User = 'ProdAgentUser'; "
+echo "         WHERE User = 'ProdAgentUser'; "
 echo "mysql> FLUSH PRIVILEGES; "
 echo
 echo "Start the deamon to get component log messages updated regularly :"
