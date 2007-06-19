@@ -15,6 +15,10 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
 from JobSubmitter.JSException import JSException
 
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+
+from ProdAgent.Resources.LSF import LSFConfiguration
+
 
 bulkUnpackerScriptMain = \
 """
@@ -197,7 +201,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         elif ( self.pluginConfig['LSF']['NodeType'] != "None" ):
             lsfSubmitCommand += ' -R "type==%s"' % self.pluginConfig['LSF']['NodeType']
 
-        lsfSubmitCommand += ' -g /groups/tier0/reconstruction'
+        lsfSubmitCommand += ' -g %s' % LSFConfiguration.getGroup()
         lsfSubmitCommand += ' -J %s' % jobSpec
 
         if ( self.pluginConfig['LSF']['LsfLogDir'] == "None" ):
