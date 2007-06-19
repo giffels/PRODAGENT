@@ -246,3 +246,13 @@ def setMaxRetries(jobSpecIds=[],maxRetries=1):
       if maxRetries<1:
          raise Exception("MaxRetries value should be larger than 0") 
       JobStateChangeAPIMySQL.setMaxRetries(jobSpecIds,maxRetries)
+
+def doNotAllowMoreSubmissions(jobSpecIds=[]):
+      """
+      _doNotAllowRetries_
+
+      Sets racers to maxRacers + 1 and retries to maxRetries+1
+
+      """
+      JobStateChangeAPIMySQL.doNotAllowMoreSubmissions(jobSpecIds)
+

@@ -475,3 +475,32 @@ def setMaxRetries(jobSpecIds=[],maxRetries=1):
        dbCur.close()
        conn.close()
        raise
+
+def doNotAllowMoreSubmissions(jobSpecIds=[]):
+      """
+      _doNotAllowSubmission_
+
+      Set racers to maxRacers + 1 and retries to maxRetries + 1
+
+      """
+      conn=connect(False)
+      dbCur=conn.cursor()
+
+      try:
+          dbCur.execute("START TRANSACTION")
+          for jobSpecId in jobSpecIds:
+
+              sqlStr="UPDATE js_JobSpec SET "+    \
+                     "Racers=MaxRacers+1, Retries=MaxRetries+1 "+ \
+                     "WHERE JobSpecID=\""+ str(jobSpecId)+ "\";"
+              rowsModified=dbCur.execute(sqlStr)
+      except:
+          dbCur.execute("ROLLBACK")
+          dbCur.close()
+          conn.close()
+          raise
+
+      dbCur.execute("COMMIT")
+      dbCur.close()
+      conn.close()
+
