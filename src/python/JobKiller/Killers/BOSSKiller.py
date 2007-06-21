@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BOSSKiller.py,v 1.3 2007/05/04 14:17:22 ckavka Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -316,7 +316,7 @@ class BOSSKiller:
                                       self.componentDir + '/bossLog.log')
 
             # get task specification
-            task = bossSession.loadByJobName(taskSpecId)
+            task = bossSession.loadByName(taskSpecId)
 
             # it should be single task
             if not len(task) == 1:
