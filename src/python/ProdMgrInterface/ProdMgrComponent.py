@@ -339,7 +339,13 @@ Retrying later.
                 for request in requests['keep']:
                     parameters={'priority':request[1],'request_type':request[2],'prod_mgr_url':prodmgr}
                     parameters['owner']='ProdMgrInterface'
-                    Workflow.register(request[0],parameters)
+                    registered = Workflow.get(request[0])
+                    if not registered:
+                        logging.debug("Registering "+request[0])
+                        Workflow.register(request[0],parameters)
+                    else:
+                        logging.debug("Renewing registration of "+request[0])
+                        Workflow.register(request[0],parameters, renew = True)
                 logging.debug("Retrieved: "+str(len(requests['keep']))+' requests')
                 ProdMgr.commit()
             except Exception,ex:
@@ -347,12 +353,12 @@ Retrying later.
                    +prodmgr+"  "+str(ex))
         # once we have the requests retrieve if necessary their workflow.
         # depending on the request we might already have the workflow.
-        requests=Workflow.getNotDownloaded()
+        notDownloadedRequests=Workflow.getNotDownloaded()
         try:
             os.makedirs(self.args['WorkflowSpecDir'])
         except Exception,ex:
             logging.debug("WARNING: directory already exists "+str(ex))
-        for request in requests:
+        for request in notDownloadedRequests:
             logging.debug('Retrieving Workflow for '+str(request['id']))
             rest_result=ProdMgr.retrieveWorkflow(request['prod_mgr_url'],request['id'])
             workflowSpec = WorkflowSpec()
