@@ -270,6 +270,14 @@ componentFields = {
     "ExportCommand" : "cp ProdAgentStatus.sql ..",
     },
 
+    "JobKiller" : {
+    "ComponentDir" : None,
+    "KillerName" : None,
+    "RssFeed" : "no",
+    },
+
+
+
     }# end componentFields
 
 #  //
