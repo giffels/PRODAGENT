@@ -189,35 +189,35 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
             self.makeWrapperScript(os.path.join(cacheDir,"lsfsubmit.sh"),jobSpec,cacheDir)
 
-        #  //
-        # // Submit LSF job
-        #//
-        lsfSubmitCommand = 'bsub'
+            # //
+            # // Submit LSF job
+            # //
+            lsfSubmitCommand = 'bsub'
 
-        lsfSubmitCommand += ' -q %s' % self.pluginConfig['LSF']['Queue']
+            lsfSubmitCommand += ' -q %s' % self.pluginConfig['LSF']['Queue']
         
-        if ( self.pluginConfig['LSF']['Resource'] != "None" ):
-            lsfSubmitCommand += ' -R "%s"' % self.pluginConfig['LSF']['Resource']
-        elif ( self.pluginConfig['LSF']['NodeType'] != "None" ):
-            lsfSubmitCommand += ' -R "type==%s"' % self.pluginConfig['LSF']['NodeType']
+            if ( self.pluginConfig['LSF']['Resource'] != "None" ):
+                lsfSubmitCommand += ' -R "%s"' % self.pluginConfig['LSF']['Resource']
+            elif ( self.pluginConfig['LSF']['NodeType'] != "None" ):
+                lsfSubmitCommand += ' -R "type==%s"' % self.pluginConfig['LSF']['NodeType']
 
-        lsfSubmitCommand += ' -g %s' % LSFConfiguration.getGroup()
-        lsfSubmitCommand += ' -J %s' % jobSpec
+            lsfSubmitCommand += ' -g %s' % LSFConfiguration.getGroup()
+            lsfSubmitCommand += ' -J %s' % jobSpec
 
-        if ( self.pluginConfig['LSF']['LsfLogDir'] == "None" ):
-            lsfSubmitCommand += ' -oo /dev/null'
-        else:
-            lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (self.pluginConfig['LSF']['LsfLogDir'],jobSpec)
+            if ( self.pluginConfig['LSF']['LsfLogDir'] == "None" ):
+                lsfSubmitCommand += ' -oo /dev/null'
+            else:
+                lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (self.pluginConfig['LSF']['LsfLogDir'],jobSpec)
 
-        #lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
-        #lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
+            # lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
+            # lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
 
-        lsfSubmitCommand += ' < %s' % os.path.join(cacheDir,"lsfsubmit.sh")
+            lsfSubmitCommand += ' < %s' % os.path.join(cacheDir,"lsfsubmit.sh")
 
-        logging.debug("T0LSFSubmitter.doSubmit: %s" % lsfSubmitCommand)
-        output = self.executeCommand(lsfSubmitCommand)
-        logging.info("T0LSFSubmitter.doSubmit: %s " % output)
-        
+            logging.debug("T0LSFSubmitter.doSubmit: %s" % lsfSubmitCommand)
+            output = self.executeCommand(lsfSubmitCommand)
+            logging.info("T0LSFSubmitter.doSubmit: %s " % output)
+
 
     def makeWrapperScript(self, filename, jobName, cacheDir):
         """
