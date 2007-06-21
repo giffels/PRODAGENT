@@ -188,7 +188,7 @@ def isDone(workflowID):
     return False
 
 
-def register(workflowID,parameters={}):
+def register(workflowID, parameters={}, renew = False):
    """
    __register__
     
@@ -199,13 +199,17 @@ def register(workflowID,parameters={}):
    """
    global offset
 
-   descriptionMap={'priority':'priority','request_type':'workflow_type',\
+   if not renew:
+       descriptionMap={'priority':'priority','request_type':'workflow_type',\
        'prod_mgr_url':'prod_mgr_url','workflow_spec_file':'workflow_spec_file','owner':'owner',\
        'run_number_count':'run_number_count'}
-   # check with attributes are provided.
-   parameters['run_number_count']=offset
-   description=parameters.keys()
+       # check with attributes are provided.
+       parameters['run_number_count']=offset
+   else:
+       descriptionMap={'priority':'priority','request_type':'workflow_type',\
+       'prod_mgr_url':'prod_mgr_url','workflow_spec_file':'workflow_spec_file','owner':'owner' }
 
+   description=parameters.keys()
    # create values part
    sqlStrValues='('
    comma=False
