@@ -1,6 +1,5 @@
 #/usr/bin/env python
 
-
 from ProdCommon.Core.ProdException import ProdException
 from ProdCommon.Database import Session
 
