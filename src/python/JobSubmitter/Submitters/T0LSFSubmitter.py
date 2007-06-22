@@ -58,12 +58,14 @@ fi
 
 
 
-def bulkUnpackerScript(bulkSpecTarName):
+def bulkUnpackerScript(bulkSpecTarName,jobSpecName):
     """
     _bulkUnpackerScript_
 
-    Unpacks bulk spec tarfile, searches for required spec passed to
-    script as argument $1
+    Unpacks bulk spec tarfile,
+
+    for real bulk submission we have to use job arrays and
+    construct the jobSpecName from the job index
 
     If file not found, it generates a failure report and exits
     Otherwise, JOB_SPEC_FILE will be set to point to the script
@@ -71,7 +73,7 @@ def bulkUnpackerScript(bulkSpecTarName):
     
     """
     lines = [
-        "JOB_SPEC_NAME=$1\n", 
+        "JOB_SPEC_NAME=%s-JobSpec.xml\n" % jobSpecName, 
         "BULK_SPEC_NAME=\"%s\"\n" % bulkSpecTarName,
         "echo \"This Job Using Spec: $JOB_SPEC_NAME\"\n",
         "tar -zxf $BULK_SPEC_NAME\n",
@@ -243,7 +245,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             script.append("rfcp %s:%s . \n" % (hostname,fname))
 
         if self.isBulk:
-            script.extend(bulkUnpackerScript(self.specSandboxName))
+            script.extend(bulkUnpackerScript(self.specSandboxName, jobName))
         else:
             script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
                           self.singleSpecName)   
