@@ -9,8 +9,8 @@ Subscribes to JobSuccess/JobFailure messages and parses the job report,
 and inserts the data into tables in the ProdAgentDB.
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: StatTrackerComponent.py,v 1.2 2006/08/04 15:52:04 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: StatTrackerComponent.py,v 1.3 2006/08/08 16:17:10 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -140,6 +140,7 @@ class StatTrackerComponent:
         self.ms.subscribeTo("StatTracker:EndDebug")
         self.ms.subscribeTo("JobSuccess")
         self.ms.subscribeTo("JobFailed")
+        self.ms.subscribeTo("SetJobCleanupFlag")
         
         # wait for messages
         while True:

@@ -24,6 +24,7 @@ from JobCreator.Registry import retrieveCreator
 
 from JobCreator.JCException import JCException
 from MessageService.MessageService import MessageService
+from MessageService.MessageServiceStatus import MessageServiceStatus
 from JobState.JobStateAPI import JobStateChangeAPI
 from JobState.JobStateAPI import JobStateInfoAPI
 from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
@@ -49,7 +50,6 @@ class JobCreatorComponent:
         self.args['Logfile'] = None
         self.args['JobState'] = True
         self.args['maxRetries'] = 3
-        #FRANK (one line)
         self.args['mergeMaxRetries'] = 3
         self.args['HashDirs'] = True
         self.args.update(args)
@@ -65,11 +65,6 @@ class JobCreatorComponent:
         msg += " Creator: %s \n" % self.args['CreatorName']
 
         logging.info(msg)
-        
-        #  //
-        # // Components needing cleanup flags set for each job
-        #//  TODO: get this from configuration somehow...
-        self.cleanupFlags = ['StatTracker', 'DBSInterface']
         
     def __call__(self, event, payload):
         """
@@ -341,11 +336,6 @@ class JobCreatorComponent:
                                         1, workflowName)
             JobStateChangeAPI.create(jobname, jobCache)
             JobStateChangeAPI.inProgress(jobname)
-            
-            logging.debug(
-                " Adding cleanup triggers for %s" % self.cleanupFlags
-                )
-          
         except Exception, ex:
             # NOTE: we can have different errors here 
             # NOTE: transition, submission, other...
@@ -353,30 +343,24 @@ class JobCreatorComponent:
             return
 
         try:
-            cleanFlags = []
-            cleanFlags.extend(self.cleanupFlags)
+            cleanFlags = self.mss.isSubscribedTo("SetJobCleanupFlag") 
+            logging.debug("Found following components for cleanup flags " + \
+                str(cleanFlags))
             if jobType == "Merge":
+                cleanFlags += \
+                self.mss.isSubscribedTo("MergeAccountant:SetJobCleanupFlag")
+                logging.debug("Merge job: Adding MergeAccountant " +\
+                    "Cleanup flag to Merge type job")
+            if jobSpec.parameters.has_key("ProdMgr"):
                 logging.debug(
-                    "Adding MergeAccountant Cleanup Flag to Merge type job")
-                cleanFlags.append("MergeAccountant")
-
+                    "ProdMgr based job: Adding ProdMgr cleanup Flag to job")
+                cleanFlags += \
+                self.mss.isSubscribedTo("ProdMgrInterface:SetJobCleanupFlag") 
             for component in cleanFlags:
                 logging.debug("trigger.addFlag(cleanup, %s, %s" % (
                     jobname, component)
                               )
                 self.trigger.addFlag("cleanup", jobname, component)
-
-            #NOTE: this is a check in case we use the ProdMgrInterface
-            logging.debug(
-                "Checking if job %s is associated to prodmgr" % jobname)
-            if jobSpec.parameters.has_key("ProdMgr"):
-                logging.debug(
-                    "Job constructed using ProdMgr, adding extra trigger")
-                self.trigger.addFlag("cleanup", jobname, "ProdMgrInterface")
-            #NOTE: we need to make sure we commit and close this connection
-            #NOTE: eventually this needs to be the same commit/close
-            #NOTE: as the message service.
-            #END NOTE
                
             if len(cleanFlags) > 0:
                 #  //
@@ -388,7 +372,6 @@ class JobCreatorComponent:
             # NOTE: transition, submission, other...
             logging.error("Cleanup flag Error:%s" % str(ex))
             return
-        
         
         return newJobSpec
         
@@ -424,6 +407,8 @@ class JobCreatorComponent:
  
         # create message service
         self.ms = MessageService()
+        # create message service status object
+        self.mss = MessageServiceStatus()
         self.trigger=TriggerAPI(self.ms)                                                                                
         # register
         self.ms.registerAs("JobCreator")

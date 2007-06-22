@@ -554,7 +554,7 @@ class DBSComponent:
          #//  to say we are done with it so that cleanup can be triggered.
          try:
                 self.trigger.setFlag("cleanup", jobreport.jobSpecId,
-                                     "DBSInterface")
+                                     "DBS2Interface")
          except Exception, ex:
                 msg = "Error setting cleanup flag for job: "
                 msg += "%s\n" % jobreport.jobSpecId
@@ -984,7 +984,7 @@ class DBSComponent:
         self.ms = MessageService()
         self.trigger=TriggerAPI(self.ms)                                                                      
         # register
-        self.ms.registerAs("DBS2Component")
+        self.ms.registerAs("DBS2Interface")
                                                                                 
         # subscribe to messages
         self.ms.subscribeTo("NewDataset")
@@ -999,6 +999,7 @@ class DBSComponent:
         self.ms.subscribeTo("DBSInterface:EndDebug")
         self.ms.subscribeTo("PhEDExInjectBlock")
         self.ms.subscribeTo("PhEDExRetryFailures")
+        self.ms.subscribeTo("SetJobCleanupFlag")
         self.ms.subscribeTo("MigrationRetryFailures")
                                                                                 
         # wait for messages

@@ -7,8 +7,8 @@ input and output file accounting.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeAccountantComponent.py,v 1.5 2007/03/05 12:19:41 ckavka Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -485,6 +485,7 @@ class MergeAccountantComponent:
         self.ms.subscribeTo("MergeAccountant:Disable")
         self.ms.subscribeTo("JobSuccess")
         self.ms.subscribeTo("GeneralJobFailure")
+        self.ms.subscribeTo("MergeAccountant:SetJobCleanupFlag")
        
         # set trigger access for cleanup
         self.trigger = TriggerAPI(self.ms) 
