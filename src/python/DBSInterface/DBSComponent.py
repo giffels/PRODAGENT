@@ -150,11 +150,13 @@ class DBSComponent:
         self.args.setdefault("DBSURL","http://cmssrv18.fnal.gov:8989/DBS/servlet/DBSServlet")
         self.args.setdefault("Logfile", None)
         self.args.setdefault("BadReportfile", None)
+        self.args.setdefault("BadDatasetfile", None)
         self.args.setdefault("BadTMDBInjectfile", None)
+        self.args.setdefault("BadMigrationfile", None)
         self.args.setdefault("CloseBlockSize", "None")  # No check on fileblock size
         self.args.setdefault("CloseBlockFiles", 100 )        
         self.args.setdefault("skipGlobalMigration", False )
-
+        self.args.setdefault("skipPhEDExInjection", True )
         self.args.setdefault("DataMode", "mc" )
 
         self.args.update(args)
@@ -166,6 +168,12 @@ class DBSComponent:
         self.skipGlobalMigration = False
         if str(self.args['skipGlobalMigration']).lower() == "true":
             self.skipGlobalMigration = True
+
+        if str(self.args['skipPhEDExInjection']).lower() == "true":
+            self.skipPhEDExInjection = True
+        else:
+            self.skipPhEDExInjection = False
+
 
 # use the LoggingUtils
         LoggingUtils.installLogHandler(self)
@@ -179,20 +187,29 @@ class DBSComponent:
             self.args['BadReportfile'] = os.path.join(self.args['ComponentDir'],
                                                       "FailedJobReportList.txt")
 
-        #self.BadReport = open(self.args['BadReportfile'],'a')
+        #  //
+        # // Log Failed NewDataset registration into DBS
+        #//
+        if self.args['BadDatasetfile'] == None:
+            self.args['BadDatasetfile'] = os.path.join(self.args['ComponentDir'],                                                      "FailedDatasetList.txt")                                                                                
+        #  //
+        # // Log Failed fileblock migration to Global
+        #//
+        if self.args['BadMigrationfile'] == None:
+            self.args['BadMigrationfile'] = os.path.join(self.args['ComponentDir'],
+                                                      "FailedMigration.txt")
+
         #  //
         # // Log Failed fileblock injection into PhEDEx
         #//
         if self.args['BadTMDBInjectfile'] == None:
             self.args['BadTMDBInjectfile'] = os.path.join(self.args['ComponentDir'],
                                                       "FailedTMDBInject.txt")
-        #self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
 
         
         
     def __call__(self, event, payload):
         """
-        _operator()_
 
         Define response to events
         """
@@ -200,6 +217,7 @@ class DBSComponent:
         logging.info("Payload: %s" % payload)
 
         if event == "NewDataset":
+            self.BadDataset = open(self.args['BadDatasetfile'],'a')
             logging.info("New Dataset Event: %s" % payload)
             try:
                 self.newDatasetEvent(payload)
@@ -207,22 +225,28 @@ class DBSComponent:
             except InvalidWorkFlowSpec, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
-#            except InvalidDataTier, ex:
-#                logging.error("Failed to Create New Dataset: %s" % payload)
-#                logging.error("Details: %s Exception %s" %(ex.getClassName(), ex.getErrorMessage()))
             except DBSWriterError, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
+                self.BadDataset.write("%s\n" % payload)
+                self.BadDataset.flush()
+                return
             except DBSReaderError, ex: 
                 logging.error("Failed to Create New Dataset: %s" % payload)
+                self.BadDataset.write("%s\n" % payload)
+                self.BadDataset.flush()
+                return
             except DbsException, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 logging.error("Details: %s"% formatEx(ex))
+                self.BadDataset.write("%s\n" % payload)
+                self.BadDataset.flush()
                 return
             except StandardError, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 logging.error("Details: %s" % str(ex))
+                self.BadDataset.write("%s\n" % payload)
+                self.BadDataset.flush()
                 return
-
 
             
         if event == "JobSuccess":
@@ -278,6 +302,16 @@ class DBSComponent:
                 self.BadReport.flush()
                 return
 
+        if event == "MigrationRetryFailures":
+            self.BadMigration = open(self.args['BadMigrationfile'],'a')
+            try:
+                self.MigrationRetryFailures(self.args['BadMigrationfile'],self.BadMigration)
+                return
+            except StandardError, ex:
+                logging.error("Failed to MigrationRetryFailures")
+                logging.error("Details: %s" % str(ex))
+                return
+
         if event == "PhEDExRetryFailures":
             self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
             try:
@@ -289,8 +323,25 @@ class DBSComponent:
                 return
 
         if event == "DBSInterface:RetryFailures":
+            #  //
+            # // Retry dataset insertion failure first
+            #//
+            self.BadDataset = open(self.args['BadDatasetfile'],'a')
+            try:
+                self.DatasetRetryFailures(self.args['BadDatasetfile'],self.BadDataset)
+            except DBSWriterError, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+            except DBSReaderError, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+            except DbsException, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+            except StandardError, ex:
+                logging.error("Failed to RetryFailures")
+                logging.error("Details: %s" % str(ex))
+            #  //
+            # // Retry files insertion failures
+            #//
             self.BadReport = open(self.args['BadReportfile'],'a')
-            #logging.info("DBSInterface:RetryFailures Event")
             try:
                 self.RetryFailures(self.args['BadReportfile'],self.BadReport)
                 return
@@ -327,17 +378,11 @@ class DBSComponent:
         if event == "DBSInterface:MigrateBlockToGlobal":
             #logging.info("DBSInterface:MigrateBlockToGlobal Event %s"% payload)
             try:
-                self.MigrateBlockToGlobal(payload)
-                return
-            except DBSWriterError, ex:
-                logging.error("Failed to MigrateBlockToGlobal: %s" % payload)
-            except DBSReaderError, ex:
-                logging.error("Failed to MigrateBlockToGlobal: %s" % payload)
-            except StandardError, ex:
-                logging.error("Failed to MigrateBlockToGlobal")
-                logging.error("Details: %s" % str(ex))
-                return
-
+               self.MigrateBlockToGlobal(payload)
+               return
+            except: 
+               logging.error("Failed to MigrateBlocktToGlobal %s"%payload)
+            return 
 
         if event == "DBSInterface:SetCloseBlockSize":
             #logging.info("DBSInterface:SetCloseBlockSize Event %s"% payload)
@@ -362,31 +407,7 @@ class DBSComponent:
             return
 
         if event == "PhEDExInjectBlock":
-            self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
-            try:
-                self.PhEDExInjectBlock(payload)
-                return
-            except DBSWriterError, ex:
-                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
-                self.BadTMDBInject.write("%s\n" % payload)
-                self.BadTMDBInject.flush()
-                return
-            except DBSReaderError, ex:
-                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
-                self.BadTMDBInject.write("%s\n" % payload)
-                self.BadTMDBInject.flush()
-                return
-            except TMDBInjectError, ex:
-                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
-                self.BadTMDBInject.write("%s\n" % payload)
-                self.BadTMDBInject.flush()
-                return
-            except StandardError, ex:
-                logging.error("Failed to PhEDExInjectBlock")
-                logging.error("Details: %s" % str(ex))
-                self.BadTMDBInject.write("%s\n" % payload)
-                self.BadTMDBInject.flush()
-                return
+            self.handlePhEDExInjectBlock(payload)
             return
 
         if event == "DBSInterface:StartDebug":
@@ -519,18 +540,18 @@ class DBSComponent:
                #//
                if len(MigrateBlockList)>0 and not self.skipGlobalMigration:
                   for BlockName in MigrateBlockList:
-                     datasetPath= dbswriter.reader.blockToDatasetPath(BlockName)
-                     self.MigrateBlock(datasetPath, [BlockName])
-                     #self.MigrateBlockToGlobal(BlockName)
-                  #self.MigrateBlock(datasetPath, MigrateBlockList )
+                     #datasetPath= dbswriter.reader.blockToDatasetPath(BlockName)
+                     self.handleMigrateBlock(BlockName)
 
-               # FIXME:
-               #  if migration succesfull: trigger PhEDEx injection?? (If Phedex is configured)
-               # FIXME:
+                     #  //
+                     # // Trigger PhEDEx injection of migrated blocks
+                     #//  (if the migration is not successfull this point is not reached)
+                     if not self.skipPhEDExInjection:
+                       self.handlePhEDExInjectBlock(BlockName)  
 
-            #  //
-            # // On successful insertion of job report, set the trigger
-            #//  to say we are done with it so that cleanup can be triggered.
+         #  //
+         # // On successful insertion of job report, set the trigger
+         #//  to say we are done with it so that cleanup can be triggered.
          try:
                 self.trigger.setFlag("cleanup", jobreport.jobSpecId,
                                      "DBSInterface")
@@ -578,7 +599,10 @@ class DBSComponent:
         # // Migrate to Global DBS all the Closed blocks of the dataset
         #//
         MigrateBlockList = reader.listFileBlocks(datasetPath, onlyClosedBlocks = True)
-        self.MigrateBlock(datasetPath, MigrateBlockList)
+        for MigrateBlock in MigrateBlockList:
+            self.handleMigrateBlock(MigrateBlock)
+        #self.MigrateDatasetBlocks(datasetPath, MigrateBlockList)
+ 
 
     def MigrateBlockToGlobal(self,BlockName):
        """
@@ -587,15 +611,108 @@ class DBSComponent:
        LocalDBSurl=self.args['DBSURL']
        writer  = DBSWriter(LocalDBSurl,level='ERROR')
        #
-       # Get the datasetPath the block belong to
-       #
-       datasetPath= writer.reader.blockToDatasetPath(BlockName)
-       #
        # Migrate the block, closing it 
        #
        writer.manageFileBlock(BlockName,maxFiles=1)
-       self.MigrateBlock(datasetPath, [BlockName])
+       self.handleMigrateBlock(BlockName)
 
+
+    def handleMigrateBlock(self, fileblock):
+        """
+        """
+        self.BadMigration = open(self.args['BadMigrationfile'],'a')
+        try:
+                self.MigrateBlock(fileblock)
+                return
+        except DBSWriterError, ex:
+                logging.error("Failed to MigrateBlock: %s "%fileblock)
+                self.BadMigration.write("%s\n"%fileblock)
+                self.BadMigration.flush()
+                return
+        except DBSReaderError, ex:
+                logging.error("Failed to MigrateBlock: %s"%fileblock)
+                self.BadMigration.write("%s\n"%fileblock)
+                self.BadMigration.flush()
+                return
+        except StandardError, ex:
+                logging.error("Failed to MigrateBlock: %s"%fileblock)
+                logging.error("Details: %s" % str(ex))
+                self.BadMigration.write("%s\n"%fileblock)
+                self.BadMigration.flush()
+                return
+        return
+
+
+    def MigrateBlock(self, fileblock):
+        """
+        Migrate from Local to Global                                                                                                 
+        """
+        writer  = DBSWriter(self.args['DBSURL'],level='ERROR')
+        #
+        # Get the datasetPath the block belong to
+        #
+        datasetPath= writer.reader.blockToDatasetPath(fileblock)
+        #//
+        #// Global DBS API
+        #//
+        DBSConf= getGlobalDBSDLSConfig()
+        GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
+
+        logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblock,datasetPath))
+        logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
+        logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))
+                                                                                                
+        GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,[fileblock])
+
+    def MigrateDatasetBlocks(self,datasetPath,fileblockList):
+        """
+        Migrate from Local to Global
+        """
+        #//
+        #// Global DBS API
+        #//
+        DBSConf= getGlobalDBSDLSConfig()
+        GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
+                                                                                                
+        logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblock,datasetPath))
+        logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
+        logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))
+                                                                                                
+        GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,fileblockList)
+         
+    def MigrationRetryFailures(self,fileName, filehandle):
+        """
+        Read the list of fileblock whose migration failed
+        """
+        logging.info("*** Begin the MigrationRetryFailures procedure")
+        ## Read the list of fileblock that failed Migration  and re-try
+        filehandle.close()
+        BadMigrationfile = open(fileName, 'r')
+        stillFailures = []
+        for line in BadMigrationfile.readlines():
+           payload=string.strip(line)
+           try:
+             self.MigrateBlock(payload)
+           except DBSReaderError,ex:
+                logging.error("Failed to MigrateBlock: %s" % payload)
+                if not stillFailures.count(payload): stillFailures.append(payload)
+           except DBSWriterError,ex:
+                logging.error("Failed to MigrateBlock: %s" % payload)
+                if not stillFailures.count(payload): stillFailures.append(payload)
+           except StandardError, ex:
+                logging.error("Failed to MigrateBlock: %s" % payload)
+                logging.error("StandardError Details:%s" % str(ex))
+                if not stillFailures.count(payload): stillFailures.append(payload) 
+        BadMigrationfile.close()
+
+        ## Write the list of those still failing
+        BadMigrationfile = open(fileName, 'w')
+        for item in stillFailures:
+           fileblock=item.strip()
+           BadMigrationfile.write("%s\n" % fileblock )
+        BadMigrationfile.close()
+
+	logging.info("*** End the MigrationRetryFailures procedures => Failed migration logged in :%s "%(fileName))
 
     def CloseBlock(self,fileBlockName):
         """
@@ -627,11 +744,14 @@ class DBSComponent:
         #  //
         # // Inject that block to PhEDEx
         #//
+        if phedexConfig == "None":
+            msg="DBPARAM not configured in PhEDExConfig block in $PRODAGENT_CONFIG"
+            raise RuntimeError, msg
         workingdir="/tmp"
         if dropdir != "None": workingdir=dropdir 
         tmdbInjectBlock(DBSConf['DBSURL'], datasetPath, fileBlockName, phedexConfig, workingDir=workingdir,nodes=Nodes)
+        return
 
-        
     def getPhEDExConfig(self):
         """
         Extract the PhEDEx information from the prod agent config
@@ -666,17 +786,54 @@ class DBSComponent:
         return PhEDExConfig['DBPARAM'],PhEDExConfig['PhEDExDropBox'],nodes
 
 
+    def handlePhEDExInjectBlock(self,payload):
+        """
+        inject a fileblock to PhEDEx and log the failures
+        """
+        self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
+        try:
+                self.PhEDExInjectBlock(payload)
+                return
+        except DBSWriterError, ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
+        except DBSReaderError, ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
+        except TMDBInjectError, ex:
+                logging.error("Failed to PhEDExInjectBlock: %s" % payload)
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
+        except StandardError, ex:
+                logging.error("Failed to PhEDExInjectBlock")
+                logging.error("Details: %s" % str(ex))
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
+        except RuntimeError, ex:
+                logging.error("Failed to PhEDExInjectBlock")
+                logging.error("Details: %s" % str(ex))
+                self.BadTMDBInject.write("%s\n" % payload)
+                self.BadTMDBInject.flush()
+                return
+        return
+
+
     def PhEDExRetryFailures(self,fileName, filehandle):
         """
         Read the list of FWKJobReport that failed DBS registration and re-try the registration. If the FWKJobReport registration is succesfull remove it form the list of failed ones.
-                                                                                                                                          
         """
         logging.info("*** Begin the PhEDExRetryFailures procedure")
                                                                                                                                           
         ## Read the list of fileblock that failed TMDBInjection  and re-try
         filehandle.close()
         BadTMDBInjectfile = open(fileName, 'r')
-                                                                                                                                          
+
         stillFailures = []
         for line in BadTMDBInjectfile.readlines():
            payload=string.strip(line)
@@ -693,15 +850,15 @@ class DBSComponent:
                 if not stillFailures.count(payload): stillFailures.append(payload)
 
         BadTMDBInjectfile.close()
-                                                                                                                                          
+
         ## Write the list of those still failing
-                                                                                                                                          
+
         BadTMDBInjectfile = open(fileName, 'w')
         for item in stillFailures:
            fileblock=item.strip()
            BadTMDBInjectfile.write("%s\n" % fileblock )
         BadTMDBInjectfile.close()
-                                                                                                                                          
+
         logging.info("*** End the PhEDExRetryFailures procedures => Failed injection logged in :%s "%(fileName))
 
 
@@ -720,7 +877,10 @@ class DBSComponent:
         stillFailures = []
         discarded = []
         for line in BadReportfile.readlines():
-           payload = os.path.expandvars(os.path.expanduser(string.strip(line)))
+           payload = string.replace(string.strip(line),'file://','')
+           payload = os.path.expandvars(os.path.expanduser(payload))
+           #payload = os.path.expandvars(os.path.expanduser(string.strip(line)))
+           logging.info("--> %s"%payload)
            if not os.path.exists(payload):
              logging.error("File Not Found : %s"%payload)
              discarded.append(payload)
@@ -766,21 +926,54 @@ class DBSComponent:
 
         logging.info("*** End the RetryFailures procedures => Discarded: %s Failed logged in :%s "%(discarded,fileName))
 
-    def MigrateBlock(self, datasetPath, fileblockList):
+    def DatasetRetryFailures(self,fileName, filehandle):
         """
-        Migrate from Local to Global                                                                         
+        Read the list of dataset that failed DBS registration and re-try the registration. If the dataset registration is succesfull remove it form the list of failed ones.
+                                                                                                          
         """
-        #//
-        #// Global DBS API
-        #//
-        DBSConf= getGlobalDBSDLSConfig()
-        GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
+        logging.info("*** Begin the DatasetRetryFailures procedure")
+                                                                                                          
+        ## Read the list of dataset that failed DBS registration and re-try
+        filehandle.close()
+        Badfile = open(fileName, 'r')
+                                                                                                          
+        stillFailures = []
+        discarded = []
+        for line in Badfile.readlines():
+           payload = string.replace(string.strip(line),'file://','')
+           payload = os.path.expandvars(os.path.expanduser(payload))
+           logging.info("--> %s"%payload)
+           if not os.path.exists(payload):
+             logging.error("File Not Found : %s"%payload)
+             discarded.append(payload)
+             continue
+           try:
+             self.newDatasetEvent(payload)
+           except DbsException, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+                logging.error("DbsException Details: %s %s" %(ex.getClassName(), ex.getErrorMessage()))
+                stillFailures.append(payload)
+           except AssertionError, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+                stillFailures.append(payload)
+           except StandardError, ex:
+                logging.error("Failed to Create New Dataset: %s" % payload)
+                logging.error("StandardError Details:%s" % str(ex))
+                stillFailures.append(payload)
+                                                                                                          
+        Badfile.close()
+                                                                                                          
+        ## Write the list of those still failing
+                                                                                                          
+        Badfile = open(fileName, 'w')
+        for item in stillFailures:
+           dataset=item.strip()
+           Badfile.write("%s\n" % dataset )
+        Badfile.close()
+                                                                                                          
+        logging.info("*** End the DatasetRetryFailures procedures => Discarded: %s Failed logged in :%s "%(discarded,fileName))
 
-        logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblockList,datasetPath))
-        logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
-        logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))       
-       
-        GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,fileblockList)
+
 
 
     def startComponent(self):
@@ -809,6 +1002,7 @@ class DBSComponent:
         self.ms.subscribeTo("DBSInterface:EndDebug")
         self.ms.subscribeTo("PhEDExInjectBlock")
         self.ms.subscribeTo("PhEDExRetryFailures")
+        self.ms.subscribeTo("MigrationRetryFailures")
                                                                                 
         # wait for messages
         while True:
