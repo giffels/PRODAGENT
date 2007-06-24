@@ -877,7 +877,8 @@ class DBSComponent:
         stillFailures = []
         discarded = []
         for line in BadReportfile.readlines():
-           payload = os.path.expandvars(os.path.expanduser(string.strip(line)))
+           payload = string.replace(string.strip(line),'file://','')
+           payload = os.path.expandvars(os.path.expanduser(payload))
            logging.info("--> %s"%payload)
            if not os.path.exists(payload):
              logging.error("File Not Found : %s"%payload)
@@ -938,7 +939,8 @@ class DBSComponent:
         stillFailures = []
         discarded = []
         for line in Badfile.readlines():
-           payload = os.path.expandvars(os.path.expanduser(string.strip(line)))
+           payload = string.replace(string.strip(line),'file://','')
+           payload = os.path.expandvars(os.path.expanduser(payload))
            logging.info("--> %s"%payload)
            if not os.path.exists(payload):
              logging.error("File Not Found : %s"%payload)
