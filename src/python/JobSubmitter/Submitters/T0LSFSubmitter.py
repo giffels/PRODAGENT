@@ -186,6 +186,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         #  //If it is a bulk submit, there will be multiple entries,
         # // plus self.isBulk will be True
         #//
+        failureList = []
         for jobSpec, cacheDir in self.toSubmit.items():
             logging.debug("Submit: %s from %s" % (jobSpec, cacheDir) )
             logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
@@ -216,9 +217,14 @@ class T0LSFSubmitter(BulkSubmitterInterface):
 
             lsfSubmitCommand += ' < %s' % os.path.join(cacheDir,"lsfsubmit.sh")
 
-            logging.debug("T0LSFSubmitter.doSubmit: %s" % lsfSubmitCommand)
-            output = self.executeCommand(lsfSubmitCommand)
-            logging.info("T0LSFSubmitter.doSubmit: %s " % output)
+            try:
+                output = self.executeCommand(lsfSubmitCommand)
+                logging.info("T0LSFSubmitter.doSubmit: %s " % output)
+            except RuntimeError, err:
+                failureList.append(jobSpec)
+
+            if len(failureList) > 0:
+                raise JSException("Submission Failed", FailureList = failureList)
 
 
     def makeWrapperScript(self, filename, jobName, cacheDir):
