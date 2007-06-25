@@ -8,8 +8,8 @@ Component for generating Repacker JobSpecs
 
 
 
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.6 2007/06/11 08:43:48 hufnagel Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.7 2007/06/25 14:06:27 evansde Exp $"
 __author__ = "kss"
 
 
@@ -191,7 +191,8 @@ class RepackerInjectorComponent:
                 os.makedirs(workflowDir)
             spec = self.createNewWorkflow(workflowFile,
                                           primary_ds_name,
-                                          processed_ds_name)
+                                          processed_ds_name,
+                                          run_number)
             
             self.ms.publish("NewWorkflow", workflowFile)
             self.ms.publish("NewDataset",workflowFile)
