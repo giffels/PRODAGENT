@@ -147,6 +147,7 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
                      job['id']=allocation+'_'+str(j)
                      job['spec']='/some/where/on/the/disk'
                      job['job_type']='event'
+                     job['owner']='a owner'
                      Job.register(None,allocation,job)
             print('register again (should only update)')
             all_jobs=[]
