@@ -748,20 +748,25 @@ CREATE TABLE we_Job(
    job_type             varchar(150)    not null,
    max_retries          int             default 1,
    max_racers           int             default 1,
+   owner                varchar(150)    default 'no owner',
    retries              int             default 0,
    racers               int             default 0,
    status enum('register','create','in_progress','finished_processing','finished') default 'register',
    Time timestamp                       default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
    workflow_id          varchar(150),
+   index(workflow_id),
    primary key(id),
-   index(allocation_id),
-   index(workflow_id)
+   index(allocation_id)
    ) TYPE=InnoDB;
 
 CREATE TABLE we_File(
    events_processed      int             default 0,
    id                    varchar(255),
    job_id                varchar(255),
+   index(job_id),
+   CONSTRAINT `we_file1` FOREIGN KEY(job_id) 
+       REFERENCES we_Job(id) 
+       ON DELETE CASCADE,
    primary key(id)
    ) TYPE=InnoDB;
 
@@ -769,11 +774,11 @@ CREATE TABLE we_File(
 CREATE TABLE we_Allocation
    (
     allocation_spec_file varchar(255),
-    id                    varchar(255)    not null,
+    id                   varchar(255)    not null,
     events_processed     int             default 0,
-    details               mediumtext,
-    prod_mgr_url          varchar(255)    not null,
-    workflow_id           varchar(255)    not null,
+    details              mediumtext,
+    prod_mgr_url         varchar(255)    not null,
+    workflow_id          varchar(255)    not null,
     primary key(id),
     index(workflow_id)
    ) Type=InnoDB;
