@@ -15,7 +15,7 @@ import os
 import pickle
 
 from ProdCommon.MCPayloads.JobSpec import JobSpec
-from FwkJobRep.TaskState import TaskState
+from FwkJobRep.TaskState import TaskState, getTaskState
 
 class NodeFinder:
 
@@ -69,6 +69,56 @@ class JobSpecExpander:
             self.createMergePSet()
         
             
+    def handleInputLink(self, config, inpLink):
+        """
+        _handleInputLink_
+                                                                                                                         
+        Generate the information for the input link between this
+        task and the task specified
+                                                                                                                         
+        """
+        msg = "Input Link Detected:\n"
+        for k, v in inpLink.items():
+            msg += " %s = %s\n" % (k,v)
+        print msg
+                                                                                                                         
+        inputTask = getTaskState(inpLink['InputNode'])
+                                                                                                                         
+        if inputTask == None:
+            msg = "Unable to create InputLink for task: %s\n" % (
+                inpLink['InputNode'],)
+            msg += "Input TaskState could not be retrieved..."
+            raise RuntimeError, msg
+                                                                                                                         
+        inputTask.loadJobReport()
+        inputReport = inputTask.getJobReport()
+        if inputReport == None:
+            msg = "Unable to create InputLink for task: %s\n" % (
+                inpLink['InputNode'],)
+            msg += "Unable to load input job report file"
+            raise RuntimeError, msg
+                                                                                                                         
+                                                                                                                         
+        inputFileList = [
+            x['PFN'] for x in inputReport.files if x['ModuleLabel'] == inpLink['OutputModule']
+            ]
+        inputFileList = [ "file:%s" % x for x in inputFileList ]
+                                                                                                                         
+        if inpLink['InputSource'] == "source":
+            #  //
+            # // feed into main source
+            #//
+            config.inputFiles = inputFileList
+            msg = "Input Link created to input source for files:\n"
+            for f in inputFileList:
+                msg += " %s\n" % f
+                                                                                                                         
+            print msg
+            return
+        #  //
+        # // Need to add to secondary source with name provided
+        #//
+        raise NotImplementedError, "Havent implemented secondary source input links at present..."
 
 
     def createPSet(self):
@@ -81,6 +131,13 @@ class JobSpecExpander:
         cfgFile = self.config['Configuration'].get("CfgFile", "PSet.py")[0]
         cfgFile = str(cfgFile)
         self.jobSpecNode.loadConfiguration()
+
+        for inpLink in self.jobSpecNode._InputLinks:
+            #  //
+            # // We have in-job input links to be resolved
+            #//
+            self.handleInputLink(self.jobSpecNode.cfgInterface, inpLink)
+
         cmsProcess = self.jobSpecNode.cfgInterface.makeConfiguration()
 
         cfgDump = open("CfgFileDump.log", 'w')
