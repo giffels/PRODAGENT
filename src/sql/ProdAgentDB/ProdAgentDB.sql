@@ -751,7 +751,7 @@ CREATE TABLE we_Job(
    owner                varchar(150)    default 'no owner',
    retries              int             default 0,
    racers               int             default 0,
-   status enum('register','create','in_progress','finished_processing','finished') default 'register',
+   status enum('register','create','submit','inProgress','finished','reallyFinished') default 'register',
    Time timestamp                       default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
    workflow_id          varchar(150),
    index(workflow_id),
