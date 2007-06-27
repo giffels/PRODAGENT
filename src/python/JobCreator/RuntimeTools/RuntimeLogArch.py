@@ -53,13 +53,14 @@ class LogArchMgr:
                 }
 
             try:
-                self.overrideParams['command'] = overrideConf['command'][-1]
-                self.overrideParams['se-name'] = overrideConf['se-name'][-1]
-                self.overrideParams['lfn-prefix'] = overrideConf['lfn-prefix'][-1]
+                self.overrideParams['command'] = overrideConf['command'][0]
+                self.overrideParams['se-name'] = overrideConf['se-name'][0]
+                self.overrideParams['lfn-prefix'] = overrideConf['lfn-prefix'][0]
             except StandardError, ex:
                 msg = "Unable to extract Override parameters from config:\n"
                 msg += str(self.config['StageOutParameters'])
                 raise StageOutInitError(msg)
+            
             if overrideConf.has_key('option'):
                 if len(overrideConf['option']) > 0:
                     self.overrideParams['option'] = overrideConf['option'][-1]
