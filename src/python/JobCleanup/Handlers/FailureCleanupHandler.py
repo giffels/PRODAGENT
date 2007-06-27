@@ -6,6 +6,7 @@ import tarfile
 
 from JobCleanup.Handlers.HandlerInterface import HandlerInterface
 from ProdAgent.WorkflowEntities import JobState
+from ProdAgent.WorkflowEntities import Job
 from ProdCommon.Core.GlobalRegistry import registerHandler
 
 class FailureCleanupHandler(HandlerInterface):
@@ -54,6 +55,7 @@ class FailureCleanupHandler(HandlerInterface):
              except Exception,ex:
                  logging.debug(">FailureCleanupHandler< WARNING job cleanup: "+str(ex))
              JobState.cleanout(str(payload))
+             Job.remove(str(payload))
              logging.debug(">FailureCleanupHandler< archived completed for jobspecID: "+str(payload))
          except Exception,ex:
              logging.debug(">FailureCleanupHandler< ERROR job cleanup: "+str(ex))
