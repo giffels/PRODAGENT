@@ -6,8 +6,8 @@ Execution class for running a task described by a ShREEKTask instance,
 and managing its execution.
 
 """
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: TaskRunner.py,v 1.7 2007/04/12 19:43:48 dmason Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: TaskRunner.py,v 1.8 2007/06/13 14:01:35 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
@@ -111,8 +111,8 @@ def findChildProcessnames(pid):
     command = "/bin/ps -e --no-headers -o pid -o ppid -o fname"
 
     output = executeCommand(command)
-    print "ps output: %s" % output
-#    result = []
+    #print "ps output: %s" % output
+
   
     pieces = []
     procnames = {}
@@ -121,13 +121,13 @@ def findChildProcessnames(pid):
       try: 
         value=int(pieces[1])
       except Exception,e:
-        print "trouble interpreting ps output %s: \n %s" % (e,pieces)
+        #print "trouble interpreting ps output %s: \n %s" % (e,pieces)
         continue
       if value==pid:
         try:
           job=int(pieces[0])
         except ValueError,e:
-          print "trouble interpreting ps output %s: \n %s" % (e,pieces[0])
+          #print "trouble interpreting ps output %s: \n %s" % (e,pieces[0])
           continue
 #        result.append(job)
         procnames[job]=pieces[2]
