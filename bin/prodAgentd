@@ -176,7 +176,7 @@ def startup():
         compDir = compCfg['ComponentDir']
         compDir = os.path.expandvars(compDir)
         if component=="ProdMgrInterface":
-            offset=compCfg['ProdAgentRunOffset']
+            offset=cfgObject.getConfig('ProdAgent')['ProdAgentRunOffset']
             msg=""" IF YOUR NOT USING THE PRODMGRINTERFACE
 IGNORE THIS MESSAGE AND WAIT 15 seconds. 
 

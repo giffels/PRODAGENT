@@ -81,6 +81,7 @@ coreFields = {
     "ProdAgentName" : "ProdAgent@%s" % socket.gethostname(),
     "ProdAgentCert" : "/home/fvlingen/.globus/client.pem",
     "ProdAgentKey"  : "/home/fvlingen/.globus/clientkey.pem",
+    "ProdAgentRunOffset": '10',
     },
     
     "ProdAgentDB": {
@@ -248,7 +249,6 @@ componentFields = {
     "Locations":"please insert a proper value",
     "ProdMgrFeedback":"direct",
     "RssFeed": "no",
-    "ProdAgentRunOffset": '10',
     },
 
     "DatasetInjector" : {
@@ -384,10 +384,6 @@ for file based requests).
 -ProdMgrFeedback: This parameters if set to "direct" will imediately relay information back
 to the prodmgr after a job is successfully processed and before the data is safely stored. If
 it is set to "delay" it will wait until the data is properly merged.
--ProdAgentRunOffset: When ProdAgents work on the same request their run number
-needs to be unique. This is done with a n offset between 1 and 499. For
-each request run numbers in a prodagent are incremented with 500 and the 
-assumption is that the run number is unique.
 """,
   "MergeAccountant"     :\
 """
