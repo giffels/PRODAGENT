@@ -305,6 +305,17 @@ def setState(jobID,state,parameters={}):
             if not job:
                 raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
             raise ProdException(exceptions[3010]+':'+str(jobID),3010)
+   elif state=="reallyFinished": 
+       sqlStr="""UPDATE we_Job SET status='reallyFinished' """
+       if sqlSetStr!='':
+            sqlStr+=sqlSetStr
+       sqlStr+="""WHERE id='%s' """ %(str(jobID))
+       rowsModified=Session.execute(sqlStr)
+       if rowsModified!=1:
+            job=get(jobID)
+            if not job:
+                raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
+            raise ProdException(exceptions[3010]+':'+str(jobID),3010)
 
 def setEventsProcessedIncrement(jobID,eventsProcessed=0):
    """

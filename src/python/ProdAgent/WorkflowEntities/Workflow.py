@@ -12,7 +12,7 @@ increment=50
 
 try:
     config = loadProdAgentConfiguration()
-    offset= config.getConfig("ProdMgrInterface")['ProdAgentRunOffset']
+    offset= config.getConfig("ProdAgent")['ProdAgentRunOffset']
 except StandardError, ex:
     msg = "Error reading configuration:\n"
     msg += str(ex)
