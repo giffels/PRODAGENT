@@ -80,7 +80,9 @@ def isJobsFinished(allocationID):
    
    returns true if all jobs are finished for this allocation.
    """
-   sqlStr="""SELECT COUNT(*) FROM we_Job WHERE allocation_id="%s"
+   sqlStr="""
+SELECT COUNT(*) FROM we_Job WHERE allocation_id="%s"
+AND status<>'reallyFinished'
    """ %(str(allocationID))
    Session.execute(sqlStr)
    rows=Session.fetchall()
