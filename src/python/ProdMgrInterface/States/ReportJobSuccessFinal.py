@@ -20,6 +20,7 @@ class ReportJobSuccessFinal(StateInterface):
        # we break here until we have the merge sensor part sorted out.
        if not HandleJobSuccess.ms:
            HandleJobSuccess.ms=self.ms
+           HandleJobSuccess.trigger = self.trigger
        logging.debug("Handling job success")
        HandleJobSuccess.handleJob(stateParameters['id'])
 

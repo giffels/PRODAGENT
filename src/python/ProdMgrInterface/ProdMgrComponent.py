@@ -24,7 +24,7 @@ from MessageService.MessageService import MessageService
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentCore.Codes import errors
 from ProdAgentDB.Config import defaultConfig as dbConfig
-from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
+from ProdAgent.Trigger.Trigger import Trigger
 
 from ProdMgrInterface.Registry import retrieveHandler
 from ProdMgrInterface.Registry import Registry
@@ -386,7 +386,7 @@ Retrying later.
         try:
             # create message service
             self.ms = MessageService()
-            self.trigger=TriggerAPI(self.ms)
+            self.trigger=Trigger(self.ms)
 
 
             for handlerName in Registry.HandlerRegistry.keys():

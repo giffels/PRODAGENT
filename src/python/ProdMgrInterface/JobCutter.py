@@ -8,8 +8,8 @@ returned from the ProdMgr.
 
 """
 
-__revision__ = "$Id: JobCutter.py,v 0.01 2007/05/31 fvlingen Exp $"
-__version__ = "$Revision: 0.00 $"
+__revision__ = "$Id: JobCutter.py,v 1.10 2007/05/31 23:13:57 fvlingen Exp $"
+__version__ = "$Revision: 1.10 $"
 __author__ = "fvlingen@caltech.edu"
 
 
@@ -78,6 +78,8 @@ def cut(job_id,jobCutSize):
     logging.debug("Writing job cut specs to: "+str(jobSpecDir))
     listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,job_run_numbers,jobSpec.parameters['EventCount'],\
         RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
+    for i in xrange(0,len(listOfSpecs)):
+        listOfSpecs[i]['owner'] = 'prodmgr'
     logging.debug("Registering job cuts")
     Job.register(None,job_id,listOfSpecs)
     Session.commit()
@@ -120,6 +122,8 @@ def cutFile(job_ids,jobCutSize,maxJobs):
         listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,job_run_numbers,jobSpec.parameters['EventCount'],\
             RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
         logging.debug("Registering job cuts")
+        for i in xrange(0,len(listOfSpecs)):
+            listOfSpecs[i]['owner'] = 'prodmgr'
         Job.register(None,job_id,listOfSpecs)
     Session.commit()
     return listOfSpecs
