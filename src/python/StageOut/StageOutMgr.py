@@ -131,16 +131,16 @@ class StageOutMgr:
             }
 
         try:
-            overrideParams['command'] = overrideConf['command'][-1]
-            overrideParams['se-name'] = overrideConf['se-name'][-1]
-            overrideParams['lfn-prefix'] = overrideConf['lfn-prefix'][-1]
+            overrideParams['command'] = overrideConf['command']
+            overrideParams['se-name'] = overrideConf['se-name']
+            overrideParams['lfn-prefix'] = overrideConf['lfn-prefix']
         except StandardError, ex:
             msg = "Unable to extract Override parameters from config:\n"
             msg += str(self.config['StageOutParameters'])
             raise StageOutInitError(msg)
         if overrideConf.has_key('option'):
             if len(overrideConf['option']) > 0:
-                overrideParams['option'] = overrideConf['option'][-1]
+                overrideParams['option'] = overrideConf['option']
             else:
                 overrideParams['option'] = ""
         
