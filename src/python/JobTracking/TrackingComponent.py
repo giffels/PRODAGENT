@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.36 2007/03/13 11:50:46 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.37 2007/05/21 07:47:39 bacchi Exp $"
 
 import socket
 import time
@@ -62,7 +62,7 @@ class TrackingComponent:
         self.args.setdefault("PollInterval", 10 )
         self.args.setdefault("jobsToPoll", 100)
         self.args.setdefault("ComponentDir","/tmp")
-        self.args.setdefault("proxyCacheDir","NULL")
+#        self.args.setdefault("proxyCacheDir","NULL")
         self.args['Logfile'] = None
         self.args.setdefault("verbose",0)
         self.args.update(args)
@@ -165,117 +165,149 @@ class TrackingComponent:
 
         jobNumber=300
         timeout=0
+        outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select DISTINCT TASK_INFO from TASK \" -c " + self.bossCfgDir)
+        if  outfile.find("Unknown column") != -1 or  outfile.find("No results") != -1:
+            certs = ['']
+        else :
+            certs=outfile.split()[1:]
+            logging.info("certs=%s"%certs)
         # logging.info("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j\" -c " + self.bossCfgDir)
         # outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select DISTINCT j.TASK_ID from JOB j\" -c " + self.bossCfgDir)
         
         # More general query. This should work even with bulk submission
-        outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select j.TASK_ID from JOB j\" -c " + self.bossCfgDir)        
-        # logging.info("\noutfile=%s\n"%outfile)
-        try:
-            jobNumber=len(outfile.split('\n'))-2
-            # logging.debug("JobNumber = %s\n"%jobNumber)
-        except:
-            pass
+        for cert in certs:
+            if cert=='NULL':
+                cert='';
+
+
+            outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select j.TASK_ID from JOB j,TASK t where TASK_INFO='%s' and t.ID=j.TASK_ID order by TASK_ID\" -c "%cert + self.bossCfgDir)        
+            #logging.info("\noutfile=%s\n"%outfile)
+            try:
+                jobIds=outfile.split()[1:]
+                jobNumber=len(jobIds)
+                taskIds=list(set(jobIds))
+                # logging.info("TaskIds = %s\n"%taskIds)
+            except:
+                pass
             # logging.debug("outfile\n")
             # logging.debug(outfile)
             # logging.debug("\n")
 
-        outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select max(j.TASK_ID),'-',min(j.TASK_ID) from JOB j\" -c "+ self.bossCfgDir)
+            # outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select max(j.TASK_ID),'-',min(j.TASK_ID) from JOB j\" -c "+ self.bossCfgDir)
         
-        try:
-            lines=outfile.split("\n")
-            # logging.info(lines[1].split("-")[1])
-            startId=int(lines[1].split("-")[1])
-            #logging.info("startId = %d\n"%startId)
+            # try:
+             #    lines=outfile.split("\n")
+                # logging.info(lines[1].split("-")[1])
+            #     startId=int(lines[1].split("-")[1])
+                # logging.info("startId = %d\n"%startId)
             
-            maxId=int(lines[1].split("-")[0])
-            endId=startId+float(self.args["jobsToPoll"])
-        except:
-            maxId=0
-            startId=1
-        #logging.info("%d %d %d \n"%(startId,maxId,endId))
+             #    maxId=int(lines[1].split("-")[0])
+              #   endId=startId+float(self.args["jobsToPoll"])
+            # except:
+            #     maxId=0
+            #    startId=1
+            # logging.info("%d %d %d \n"%(startId,maxId,endId))
 
 
-        try:
-            timeout=jobNumber*5
-        except:
-            logging.debug("JobNumber = %d;timeout = %d\n"%(jobNumber,jobNumber*.5))
-        if timeout==0:
-            timeout=600
-        # logging.debug("number of jobs %d; timeout set to %d\n"%(jobNumber,timeout))
-
-        outfile=BOSSCommands.executeCommand("boss RTupdate -jobid all -c " + self.bossCfgDir)
-        
-        while startId <= maxId :
-            # logging.debug("from taskid %d to taskid %d, maxId %d \n"%(startId,endId,maxId))
-#            outfile=self.executeCommand("boss q -submitted -statusOnly -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
-            outfile=BOSSCommands.executeCommand("boss q -submitted -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
-            startId=endId+1
-            endId=startId+float(self.args["jobsToPoll"])
-            # logging.debug("dentro while startId = %d\n"%startId)
-        
-            #lines=outfile.readlines()
-            lines=[]
             try:
-                lines=outfile.split('\n')
+                timeout=jobNumber*5
             except:
-                pass
-            #logging.debug("boss q -statusOnly -all -c " + self.bossCfgDir)
-            # logging.info(lines)
-            # fill job lists
-            newSubmittedJobs={}
-            for j in lines[1:]:
-                j=j.strip()
-                try:
-                    int(j.split()[0])>0
-                    jid=j.split()[0]+"."+j.split()[1]+"."+j.split()[2]
-                    st=j.split()[5]
-                    logging.info(j)
-                except StandardError, ex:
-                    # logging.debug("Incorrect JobId \n %s \n skipping line"%j)
-                    jid=''
-                    st=''
-                if jid !='':
-                    try:
-                        newSubmittedJobs[jid]=self.submittedJobs[jid]
-                    except StandardError,ex:
-                        newSubmittedJobs[jid]=0
-                        self.dashboardPublish(jid)
+                timeout=0
+                # logging.info("JobNumber = %d;timeout = %d\n"%(jobNumber,jobNumber*.5))
+            if timeout==0:
+                timeout=600
+            logging.info("number of jobs %d; timeout set to %d\n"%(jobNumber,timeout))
 
-                if st == 'E':
+            if cert == '' :
+                logging.debug("using environment X509_USER_PROXY")
+            elif os.path.exists(cert):
+                os.environ["X509_USER_PROXY"]=cert
+                logging.info("using %s"%os.environ["X509_USER_PROXY"])
+            else:
+                logging.info("cert path %s does not exist"%cert)
+
+            # os.environ["X509_USER_PROXY"]=cert
+            # logging.info("using %s"%os.environ["X509_USER_PROXY"])
+
+            outfile=BOSSCommands.executeCommand("boss RTupdate -jobid all -c " + self.bossCfgDir)
+            # logging.info("len taskids %s >0 = %s"%(len(taskIds),len(taskIds)>0))
+            while len(taskIds)>0 :
+                
+                # logging.debug("from taskid %d to taskid %d, maxId %d \n"%(startId,endId,maxId))
+                #            outfile=self.executeCommand("boss q -submitted -statusOnly -taskid %d:%d"%(startId,endId)+"  -c " + self.bossCfgDir,timeout)
+                ids="%s"%taskIds.pop()
+                c=1
+                while c<=int(self.args["jobsToPoll"]) and len(taskIds)>0:
+                    ids+=",%s"%taskIds.pop()
+                    c+=1
+                logging.debug("ids = %s"%ids)
+                outfile=BOSSCommands.executeCommand("boss q -submitted -taskid %s"%ids+"  -c " + self.bossCfgDir,timeout)
+#                startId=endId+1
+#                endId=startId+float(self.args["jobsToPoll"])
+                # logging.info("boss q output = %s\n"%outfile)
+        
+                # lines=outfile.readlines()
+                lines=[]
+                try:
+                    lines=outfile.split('\n')
+                except:
                     pass
-                elif st=='' and jid=='':
-                    pass
-                elif st == 'OR' or st == 'SD' or st == 'O?':
-                    success.append([jid,st])
-                elif st == 'R' :
-                    running.append([jid,st])
-                elif st == 'I':
-                    pending.append([jid,st])
-                elif st == 'SW' or st == 'W':
-                    waiting.append([jid,st])
-                elif st == 'SS':
-                    scheduled.append([jid,st])
-                elif st == 'SA' :
-                    failure.append([jid,st])
-                elif st == 'SK' or st=='K':
-                    failure.append([jid,st])
-                elif st == 'SU':
-                    submitted.append([jid,st])
-                elif st == 'SE':
-                    cleared.append([jid,st])
-                elif st == 'SC':
-                    checkpointed.append([jid,st])
-                else:
-                    unknown.append([jid,st])
+                # logging.debug("boss q -statusOnly -all -c " + self.bossCfgDir)
+                # logging.info(lines)
+                # fill job lists
+                newSubmittedJobs={}
+                for j in lines[1:]:
+                    j=j.strip()
+                    try:
+                        int(j.split()[0])>0
+                        jid=j.split()[0]+"."+j.split()[1]+"."+j.split()[2]
+                        st=j.split()[5]
+                        logging.info(j)
+                    except StandardError, ex:
+                        # logging.debug("Incorrect JobId \n %s \n skipping line"%j)
+                        jid=''
+                        st=''
+                    if jid !='':
+                        try:
+                            newSubmittedJobs[jid]=self.submittedJobs[jid]
+                        except StandardError,ex:
+                            newSubmittedJobs[jid]=0
+                            self.dashboardPublish(jid)
+
+                    if st == 'E':
+                        pass
+                    elif st=='' and jid=='':
+                        pass
+                    elif st == 'OR' or st == 'SD' or st == 'O?':
+                        success.append([jid,st])
+                    elif st == 'R' :
+                        running.append([jid,st])
+                    elif st == 'I':
+                        pending.append([jid,st])
+                    elif st == 'SW' or st == 'W':
+                        waiting.append([jid,st])
+                    elif st == 'SS':
+                        scheduled.append([jid,st])
+                    elif st == 'SA' :
+                        failure.append([jid,st])
+                    elif st == 'SK' or st=='K':
+                        failure.append([jid,st])
+                    elif st == 'SU':
+                        submitted.append([jid,st])
+                    elif st == 'SE':
+                        cleared.append([jid,st])
+                    elif st == 'SC':
+                        checkpointed.append([jid,st])
+                    else:
+                        unknown.append([jid,st])
 
                     
 
-        self.submittedJobs=   newSubmittedJobs
+            self.submittedJobs=   newSubmittedJobs
 
-        self.saveDict(self.submittedJobs,"submittedJobs")
+            self.saveDict(self.submittedJobs,"submittedJobs")
        
-
+        logging.info("success %s"%success)
         return success, failure, running, pending, waiting, scheduled, submitted, cleared, checkpointed, unknown 
 
 
@@ -288,28 +320,28 @@ class TrackingComponent:
 
         """
         # if BOSS db is empty there is an exception but you just don't have anything to do
-        if self.args["proxyCacheDir"]== "NULL" :
+        #        if self.args["proxyCacheDir"]== "NULL" :
             
-            try:
-                goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs = self.pollBOSSDB()
-                self.check(goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs)
+        try:
+            goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs = self.pollBOSSDB()
+            self.check(goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs)
 
-            except StandardError, ex:
-                return 0
-        else:
-            proxyDir=self.args["proxyCacheDir"]
-            try:
-                a=os.listdir(proxyDir)
-            except:
-                return 0
-            for proxy in a:
-                os.environ["X509_USER_PROXY"]=proxyDir+proxy
-                logging.info("using %s"%os.environ["X509_USER_PROXY"])
-                try:
-                    goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs = self.pollBOSSDB()
-                    self.check(goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs)
-                except StandardError, ex:
-                    return 0
+        except StandardError, ex:
+            return 0
+            #       else:
+            #            proxyDir=self.args["proxyCacheDir"]
+            #            try:
+            #                a=os.listdir(proxyDir)
+            #            except:
+            #                return 0
+            #            for proxy in a:
+            #                os.environ["X509_USER_PROXY"]=proxyDir+proxy
+            #                logging.info("using %s"%os.environ["X509_USER_PROXY"])
+           # try:
+            #    goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs = self.pollBOSSDB()
+             #   self.check(goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs)
+           # except StandardError, ex:
+           #     return 0
         # here we manage jobs
         
     def check(self,goodJobs, badJobs, rJobs,pJobs, wJobs, sJobs, subJobs, cJobs,chJobs,uJobs):
@@ -321,6 +353,16 @@ class TrackingComponent:
             #if the job is ok for the scheduler retrieve output
 
             # outp=self.BOSS4getoutput(jobId)
+            outfile=BOSSCommands.executeCommand("bossAdmin SQL -query \"select TASK_INFO from TASK t where ID=%s \" -c "%jobId[0].split('.')[0] + self.bossCfgDir)
+            if  outfile.find("Unknown column") == -1 and outfile.find("No results") == -1:
+            
+                cert=outfile.split()[1]
+                if os.path.exists(cert):
+                    os.environ["X509_USER_PROXY"]=cert
+                    logging.info("using %s"%os.environ["X509_USER_PROXY"])
+                else:
+                    logging.info("cert path %s does not exist"%cert)
+                
             jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
             outp=BOSSCommands.getoutput(jobId,self.directory,self.bossCfgDir)
             logging.info("BOSS Getoutput ")
