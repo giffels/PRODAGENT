@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: BOSSKiller.py,v 1.5 2007/06/21 07:52:50 ckavka Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -20,6 +20,7 @@ from JobKiller.KillerExceptions import InvalidJobException, \
 from BossSession import BossSession, SchedulerError, BossError
 
 from BossSession import SUBMITTED
+
 
 from JobState.JobStateAPI import  JobStateChangeAPI, \
                                   JobStateInfoAPI
