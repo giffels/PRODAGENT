@@ -6,8 +6,8 @@ Execution class for running a task described by a ShREEKTask instance,
 and managing its execution.
 
 """
-__version__ = "$Revision: 1.8 $"
-__revision__ = "$Id: TaskRunner.py,v 1.8 2007/06/13 14:01:35 evansde Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: TaskRunner.py,v 1.9 2007/06/27 17:38:11 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
@@ -308,6 +308,14 @@ class TaskRunner:
         processes spawned by it.
 
         """
+        if not self.task.active():
+            msg = "Task %s/%s is inactive and will not be executed" % (
+                self.task.directory(),
+                self.task.taskname()
+                )
+            print msg
+            return 0
+        
         currentDir = os.getcwd()
         if not os.path.exists(self.task.directory()):
             msg = "Task Directory Not Found:\n"
