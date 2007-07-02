@@ -164,6 +164,7 @@ class RelValInjectorComponent:
             msg += "%s\n" % relValSpecFile
             msg += str(ex)
             logging.error(msg)
+            return
 
         workflows = set()
         [ workflows.add(x['WorkflowSpecFile']) for x in tests ]
