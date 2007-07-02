@@ -262,7 +262,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         script.append("rfcp ./FrameworkJobReport.xml %s:%s/FrameworkJobReport.xml\n" % (hostname,cacheDir))
 
         outputlogfile = jobName
-        outputlogfile += '.`date +%Y%m%d.%k.%M.%S`.log'
+        outputlogfile += '.`date +%s`.log'
 
         if ( self.pluginConfig['LSF']['CmsRunLogDir'] != "None" ):
             script.append("rfcp ./run.log %s/%s\n" % (self.pluginConfig['LSF']['CmsRunLogDir'],outputlogfile))
