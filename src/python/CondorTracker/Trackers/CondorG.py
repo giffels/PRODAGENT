@@ -120,7 +120,7 @@ class CondorG(TrackerPlugin):
                 logging.debug("Job %s is held..." % (subId))
                 self.TrackerDB.jobFailed(subId)
 #                self.TrackerDB.killJob(subId)
-                command="condor_rm %s " % condorId
+                command="condor_rm %s " % subId
                 logging.debug("Removing job from queue...")
                 logging.debug("Executing %s " % command)
                 os.system(command)
