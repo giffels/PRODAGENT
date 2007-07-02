@@ -6,25 +6,27 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.27 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.27 2007/06/13 16:52:41 evansde Exp $"
+__version__ = "$Revision: 1.28 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.28 2007/06/22 14:04:10 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
+from logging.handlers import RotatingFileHandler
 import os
 import logging
-from logging.handlers import RotatingFileHandler
 
-from RequestInjector.RequestIterator import RequestIterator
-from MessageService.MessageService import MessageService
-from JobState.JobStateAPI import JobStateChangeAPI
+from ProdCommon.Database import Session
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 from JobQueue.JobQueueAPI import bulkQueueJobs
-import ProdAgent.ResourceControl.ResourceControlAPI as ResourceControlAPI
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdAgent.WorkflowEntities import JobState
+from RequestInjector.RequestIterator import RequestIterator
+from MessageService.MessageService import MessageService
 
+import ProdAgent.ResourceControl.ResourceControlAPI as ResourceControlAPI
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
-from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 class ReqInjComponent:
     """
@@ -339,7 +341,7 @@ class ReqInjComponent:
             try: 
                 jobSpecID = self.iterator.currentJob
                 # NOTE: temporal fix for dealing with duplicate job spec:
-                JobStateChangeAPI.cleanout(jobSpecID)
+                JobState.cleanout(jobSpecID)
             except StandardError, ex:
                 logging.error('ERROR: '+str(ex))
         
@@ -480,10 +482,16 @@ class ReqInjComponent:
         
         # wait for messages
         while True:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             msgtype, payload = self.ms.get()
             self.ms.commit()
             logging.debug("ReqInjector: %s, %s" % (msgtype, payload))
             self.__call__(msgtype, payload)
+            Session.commit_all()
+            Session.close_all()
+
 
 
 

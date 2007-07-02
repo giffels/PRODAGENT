@@ -36,10 +36,13 @@ class JobSubmission(StateInterface):
        else:
            logging.debug('Start file cut')
            jobcuts=cutFile(stateParameters['jobSpecId'],stateParameters['jobCutSize'],stateParameters['maxJobs'])
+       message = 'QueueJob'
+       if self.args['JobInjection'] == 'direct':
+           message = 'CreateJob'
        for jobcut in jobcuts:
-           logging.debug("Emitting <CreateJob> event with payload: "+\
+           logging.debug("Emitting "+message+" event with payload: "+\
                str(jobcut['spec']))
-           self.ms.publish("CreateJob",jobcut['spec'])
+           self.ms.publish(message,jobcut['spec'])
        # END JOBCUTTING HERE
 
        stateParameters['jobIndex']+=1

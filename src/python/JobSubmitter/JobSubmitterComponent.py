@@ -15,22 +15,22 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.13 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.13 2007/05/16 14:19:38 evansde Exp $"
+__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.14 2007/05/16 14:42:48 evansde Exp $"
 
 import os
 import logging
 
-import ProdAgentCore.LoggingUtils  as LoggingUtils
-
-from MessageService.MessageService import MessageService
+from ProdCommon.Database import Session
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 from JobSubmitter.Registry import retrieveSubmitter
-from ProdCommon.MCPayloads.JobSpec import JobSpec
-from JobState.JobStateAPI import JobStateChangeAPI
-from JobState.JobStateAPI import JobStateInfoAPI
-from ProdAgentCore.ProdAgentException import ProdAgentException
 from JobSubmitter.JSException import JSException
+from MessageService.MessageService import MessageService
+from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdAgent.WorkflowEntities import JobState
+import ProdAgentCore.LoggingUtils  as LoggingUtils
 
 class JobSubmitterComponent:
     """
@@ -163,7 +163,7 @@ class JobSubmitterComponent:
                 self.ms.publish("TrackJob", jobSpecId)
                 self.ms.commit()
                 try:
-                    JobStateChangeAPI.submit(jobSpecId)
+                    JobState.submit(jobSpecId)
                 except ProdAgentException, ex:
                     # NOTE: this should be stored in the logger
                     # NOTE: we can have different errors here
@@ -195,7 +195,7 @@ class JobSubmitterComponent:
                 self.ms.publish("TrackJob", specId)
                 self.ms.commit()
                 try:
-                    JobStateChangeAPI.submit(specId)
+                    JobState.submit(specId)
                 except ProdAgentException, ex:
                     # NOTE: this should be stored in the logger
                     # NOTE: we can have different errors here
@@ -282,7 +282,7 @@ class JobSubmitterComponent:
         # //
         #//
         try:
-            stateInfo = JobStateInfoAPI.general(jobSpecId)
+            stateInfo = JobState.general(jobSpecId)
         except StandardError, ex:
             #  //
             # // Error here means JobSpecID is unknown to 
@@ -358,8 +358,14 @@ class JobSubmitterComponent:
  
         # wait for messages
         while True:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             msgtype, payload = self.ms.get()
             self.ms.commit()
             logging.debug("JobSubmitter: %s, %s" % (msgtype, payload))
             self.__call__(msgtype, payload)
+            Session.commit_all()
+            Session.close_all()
+
 

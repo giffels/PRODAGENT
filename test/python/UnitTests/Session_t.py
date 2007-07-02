@@ -18,8 +18,8 @@ class SessionUnitTests(unittest.TestCase):
     """
 
     def setUp(self):
-        #logging.getLogger().setLevel(logging.DEBUG)
-        logging.getLogger().setLevel(logging.WARNING)
+        logging.getLogger().setLevel(logging.DEBUG)
+        #logging.getLogger().setLevel(logging.WARNING)
 
     def testA(self):
         print('Inserting workflows')
@@ -27,6 +27,8 @@ class SessionUnitTests(unittest.TestCase):
             Session.set_database(dbConfig)
             Session.connect()
             Session.start_transaction()
+            Session.execute("SELECT asdf FROM bla;")
+            return
             workflows=[]
             for i in xrange(0,10):
                 workflow={}

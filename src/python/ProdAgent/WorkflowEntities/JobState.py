@@ -182,7 +182,7 @@ def submit(jobSpecId):
        rowsModified=Session.execute(sqlStr)
        if rowsModified!=1:
           try:
-             generalState=JobStateInfoAPIMySQL.general(jobSpecId)
+             generalState=general(jobSpecId)
              state=generalState['State']
           except:
              state="Undefined"
@@ -392,8 +392,14 @@ def setRacer(jobSpecId, maxRacers):
       #WRAPPER
       #Job.setMaxRacers(jobSpecId,maxRacers)
 
-      sqlStr1="""UPDATE js_JobSpec SET MaxRacers="%s" WHERE
-             JobSpecID="%s"; """ %(str(maxRacers),str(jobSpecId))
+      if maxRacers == 'max':
+           sqlStr1="""
+           UPDATE js_JobSpec SET Racers=MaxRacers+1,
+           Retries=MaxRetries+1 WHERE
+           JobSpecID="%s"; """ %(str(jobSpecId))
+      else:
+           sqlStr1="""UPDATE js_JobSpec SET MaxRacers="%s" WHERE
+           JobSpecID="%s"; """ %(str(maxRacers),str(jobSpecId))
       rowsModified=Session.execute(sqlStr1)
       if rowsModified!=1:
          raise ProdException(exceptions[3019]+str(jobSpecId),3019)

@@ -7,8 +7,8 @@ input and output file accounting.
 
 """
 
-__revision__ = "$Id: MergeAccountantComponent.py,v 1.5 2007/03/05 12:19:41 ckavka Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: MergeAccountantComponent.py,v 1.6 2007/06/22 19:38:18 fvlingen Exp $"
+__version__ = "$Revision: 1.6 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -26,7 +26,7 @@ import logging
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
 # trigger api
-from Trigger.TriggerAPI.TriggerAPI import TriggerAPI 
+from ProdAgent.Trigger.Trigger import Trigger
 
 # ProdAgent exception
 from ProdAgentCore.ProdAgentException import ProdAgentException
@@ -488,7 +488,7 @@ class MergeAccountantComponent:
         self.ms.subscribeTo("MergeAccountant:SetJobCleanupFlag")
        
         # set trigger access for cleanup
-        self.trigger = TriggerAPI(self.ms) 
+        self.trigger = Trigger(self.ms) 
 
         # set message service instance for PM interaction
         File.ms = self.ms
@@ -496,16 +496,16 @@ class MergeAccountantComponent:
         # wait for messages
         while True:
 
+
+            # get message
+            messageType, payload = self.ms.get()
+            self.ms.commit()
             # create session object
             Session.set_database(dbConfig)
             Session.connect()
 
             # start transaction
             Session.start_transaction()
-
-            # get message
-            messageType, payload = self.ms.get()
-            self.ms.commit()
 
             # process it
             self.__call__(messageType, payload)

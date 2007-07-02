@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.28 2007/04/08 09:59:24 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.29 2007/07/02 19:58:36 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -31,8 +31,11 @@ from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentBOSS import BOSSCommands
+<<<<<<< LCGSubmitter.py
+=======
 from JobState.JobStateAPI import JobStateInfoAPI 
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
+>>>>>>> 1.29
 
 from popen2 import Popen4
 import select
@@ -162,7 +165,6 @@ class LCGSubmitter(SubmitterInterface):
         schedulercladfile = "%s/%s_scheduler.clad" % (os.path.dirname(self.parameters['Wrapper']),self.parameters['JobName'])
         try:
            jobType=self.parameters['JobSpecInstance'].parameters['JobType']
-           #jobType=JobStateInfoAPI.general(JobName)['JobType']  ## JobType is also in the JobStateInfoAPI
            userJDL=self.getUserJDL(jobType)
            self.createJDL(schedulercladfile,swversion,swarch,userJDL)
         except InvalidFile, ex:

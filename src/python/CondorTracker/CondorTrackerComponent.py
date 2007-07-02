@@ -11,20 +11,18 @@ import time
 import logging
 from logging.handlers import RotatingFileHandler
 
-
-from MessageService.MessageService import MessageService
-from ProdAgentCore.Configuration import loadProdAgentConfiguration
-from ProdAgentCore.LoggingUtils import installLogHandler
-from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdCommon.Database import Session
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 from FwkJobRep.ReportState import checkSuccess
 from FwkJobRep.FwkJobReport import FwkJobReport
 from FwkJobRep.ReportParser import readJobReport
-
-import JobState.JobStateAPI.JobStateInfoAPI as JobStateInfoAPI
-import JobState.JobStateAPI.JobStateChangeAPI as JobStateChangeAPI
-
-from ProdCommon.MCPayloads.JobSpec import JobSpec
+from MessageService.MessageService import MessageService
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdAgentCore.LoggingUtils import installLogHandler
+from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdAgent.WorkflowEntities import JobState
+from ProdAgentDB.Config import defaultConfig as dbConfig
 
 from CondorTracker.Registry import retrieveTracker
 import  CondorTracker.CondorTrackerDB as TrackerDB
@@ -210,7 +208,7 @@ class CondorTrackerComponent:
 
         """
         try:
-            jobState = JobStateInfoAPI.general(jobSpecId)
+            jobState = JobState.general(jobSpecId)
             jobCache = jobState['CacheDirLocation']
         except ProdAgentException, ex:
             msg = "Unable to Publish Report for %s\n" % jobSpecId
@@ -253,7 +251,7 @@ class CondorTrackerComponent:
 
         """
         try:
-            jobState = JobStateInfoAPI.general(jobSpecId)
+            jobState = JobState.general(jobSpecId)
             jobCache = jobState['CacheDirLocation']
         except ProdAgentException, ex:
             msg = "Unable to Publish Report for %s\n" % jobSpecId
@@ -304,10 +302,16 @@ class CondorTrackerComponent:
         self.ms.commit()
         # wait for messages
         while True:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             type, payload = self.ms.get()
             self.ms.commit()
             logging.debug("CondorTracker: %s, %s" % (type, payload))
             self.__call__(type, payload)
+            Session.commit_all()
+            Session.close_all()
+
             
     
         

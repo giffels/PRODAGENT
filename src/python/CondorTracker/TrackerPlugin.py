@@ -8,7 +8,7 @@ Interface class for Tracker Plugins
 
 import logging
 import  CondorTracker.CondorTrackerDB as TrackerDB
-from JobState.JobStateAPI import JobStateInfoAPI
+from ProdAgent.WorkflowEntities import JobState
 
 class TrackerPlugin:
     """
@@ -150,7 +150,7 @@ class TrackerPlugin:
 
         """
         try:
-            stateInfo = JobStateInfoAPI.general(jobSpecId)
+            stateInfo = JobState.general(jobSpecId)
         except Exception, ex:
             msg = "ERROR: Cant get JobCache for %s\n" % jobSpecId
             msg += str(ex)

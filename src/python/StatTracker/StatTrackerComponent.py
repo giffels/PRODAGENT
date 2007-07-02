@@ -9,20 +9,23 @@ Subscribes to JobSuccess/JobFailure messages and parses the job report,
 and inserts the data into tables in the ProdAgentDB.
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: StatTrackerComponent.py,v 1.3 2006/08/08 16:17:10 evansde Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: StatTrackerComponent.py,v 1.4 2007/06/22 19:36:46 fvlingen Exp $"
 __author__ = "evansde@fnal.gov"
 
 
+from logging.handlers import RotatingFileHandler
 import os
 import logging
-from logging.handlers import RotatingFileHandler
+import time
 
+from ProdCommon.Database import Session
 
-from MessageService.MessageService import MessageService
-from StatTracker.JobStatistics import jobReportToJobStats
 from FwkJobRep.ReportParser import readJobReport
-from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
+from MessageService.MessageService import MessageService
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdAgent.Trigger.Trigger import Trigger
+from StatTracker.JobStatistics import jobReportToJobStats
 
 class StatTrackerComponent:
     """
@@ -130,7 +133,7 @@ class StatTrackerComponent:
         """                                   
         # create message service
         self.ms = MessageService()
-        self.trigger=TriggerAPI(self.ms)                                                             
+        self.trigger=Trigger(self.ms)                                                             
         # register
         self.ms.registerAs("StatTracker")
         
@@ -146,7 +149,13 @@ class StatTrackerComponent:
         while True:
             msgtype, payload = self.ms.get()
             self.ms.commit()
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             self.__call__(msgtype, payload)
+            Session.commit_all()
+            Session.close_all()
+
 
 
 

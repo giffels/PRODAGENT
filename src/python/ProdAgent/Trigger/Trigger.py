@@ -5,6 +5,8 @@ Class that implements trigger functionality for
 Different components to synchronize work
 """
 
+import logging
+
 from ProdAgent.Core.Codes import exceptions
 from ProdCommon.Core.GlobalRegistry import GlobalRegistry
 from ProdCommon.Core.GlobalRegistry import retrieveHandler
@@ -45,6 +47,16 @@ class Trigger:
         does not exists.
      
         """
+        msg = """
+Setting triggerID/jobID/flagID %s / %s / %s 
+        """ % (triggerId, jobSpecId, flagId)
+        logging.debug(msg)
+        logging.debug("Locking trigger rows")
+        sqlStr = """ 
+        SELECT * FROM tr_Trigger WHERE TriggerID='%s' AND
+        JobSpecID='%s' FOR UPDATE
+        """ % (triggerId, jobSpecId)
+        Session.execute(sqlStr)
         #update flags
         sqlStr = """UPDATE tr_Trigger SET FlagValue="finished" WHERE
         TriggerID="%s" AND JobSpecID="%s" 
@@ -64,6 +76,7 @@ class Trigger:
         Session.execute(sqlStr)
         rows = Session.fetchall()
         # if flags are set invoke action
+        logging.debug("test "+jobSpecId+" "+str(rows))
         if rows[0][0] == 1:
             sqlStr = """SELECT ActionName FROM tr_Action WHERE TriggerID="%s" 
             AND JobSpecID="%s" ; """ % (triggerId, jobSpecId)

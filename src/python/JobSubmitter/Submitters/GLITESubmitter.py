@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: GLITESubmitter.py,v 1.4 2006/12/06 14:14:52 evansde Exp $"
+__revision__ = "$Id: GLITESubmitter.py,v 1.5 2007/03/13 11:48:58 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -31,8 +31,6 @@ from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentBOSS import BOSSCommands
-from JobState.JobStateAPI import JobStateInfoAPI 
-
 
 from popen2 import Popen4
 import select

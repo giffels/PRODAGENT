@@ -21,6 +21,7 @@ JobSuccess - Job completed, this event will include a ref to a Framework
 import string
 import socket
 
+from ProdCommon.Database import Session
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
 from ProdCommon.DataMgmt.DBS.DBSErrors import DBSWriterError, formatEx,DBSReaderError
@@ -32,7 +33,8 @@ from DBSAPI.dbsApiException import DbsException
 import os,base64,time,exceptions
 from FwkJobRep.ReportParser import readJobReport
 from MessageService.MessageService import MessageService
-from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdAgent.Trigger.Trigger import Trigger
 
 import logging
 import ProdAgentCore.LoggingUtils  as LoggingUtils
@@ -984,7 +986,7 @@ class DBSComponent:
         """
         # create message service
         self.ms = MessageService()
-        self.trigger=TriggerAPI(self.ms)                                                                      
+        self.trigger=Trigger(self.ms)                                                                      
         # register
         self.ms.registerAs("DBS2Interface")
                                                                                 
@@ -1009,6 +1011,13 @@ class DBSComponent:
             type, payload = self.ms.get()
             self.ms.commit()
             logging.debug("DBSComponent: %s, %s" % (type, payload))
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             self.__call__(type, payload)
+            Session.commit_all()
+            Session.close_all()
+            self.ms.commit()
+
                                                                                 
 

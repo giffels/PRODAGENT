@@ -45,6 +45,7 @@ class ProdMgrComponent:
        try:
             self.args = {}
             self.args['Logfile'] = None
+            self.args['JobInjection'] = 'direct'
             self.args['JobSize']=100
             self.args['Locations']='none'
             self.args['ProdMgrFeedback']='delay'
@@ -391,8 +392,9 @@ Retrying later.
 
             for handlerName in Registry.HandlerRegistry.keys():
                handler=retrieveHandler(handlerName)
-               handler.ms=self.ms
-               handler.trigger=self.trigger
+               handler.ms = self.ms
+               handler.trigger = self.trigger
+               handler.args = self.args
 
     
             # register
@@ -430,14 +432,12 @@ Retrying later.
             # wait for messages
             while True:
                 # SESSION: the message service uses the current session
-                logging.debug('')
-                Session.set_database(dbConfig)
-                Session.connect()
-                Session.start_transaction()
-
                 type, payload = self.ms.get()
                 logging.debug("Receiving message of type: "+str(type)+\
                    ", payload: "+str(payload))
+                Session.set_database(dbConfig)
+                Session.connect()
+                Session.start_transaction()
                 self.__call__(type, payload)
                 # we want to commit after the call has been sucessfuly completed
                 # as this message will tell us the state of the component when

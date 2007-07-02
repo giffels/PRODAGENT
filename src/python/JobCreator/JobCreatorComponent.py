@@ -5,34 +5,32 @@ _JobCreatorComponent_
 JobCreator component
 
 """
-import socket
-import urllib2
 import logging
-
 import os
+import socket
 import tarfile
 import time
+import urllib2
 
-import ProdAgentCore.LoggingUtils as LoggingUtils
-from ProdAgentCore.Configuration import prodAgentName
 
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.Database import Session
 
+from MessageService.MessageService import MessageService
+from MessageService.MessageServiceStatus import MessageServiceStatus
+from ProdAgentCore.Configuration import prodAgentName
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdAgent.Trigger.Trigger import Trigger
+from ProdAgent.WorkflowEntities import JobState
+
+from JobCreator.JCException import JCException
 from JobCreator.Registry import retrieveGenerator
 from JobCreator.Registry import retrieveCreator
 
-from JobCreator.JCException import JCException
-from MessageService.MessageService import MessageService
-from MessageService.MessageServiceStatus import MessageServiceStatus
-from JobState.JobStateAPI import JobStateChangeAPI
-from JobState.JobStateAPI import JobStateInfoAPI
-from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
-
 import JobCreator.Creators
 import JobCreator.Generators
-from ProdAgentDB import Session
-
+import ProdAgentCore.LoggingUtils as LoggingUtils
 
 
 class JobCreatorComponent:
@@ -324,18 +322,18 @@ class JobCreatorComponent:
             # // Register job creation for jobname, provide Cache Area
             #//  and set job state to InProgress
 
-            if not JobStateInfoAPI.isRegistered(jobname):
+            if not JobState.isRegistered(jobname):
                 # FRANK (5 lines)
                 if jobType == "Merge":
-                    JobStateChangeAPI.register(jobname, 'Merge',\
+                    JobState.register(jobname, 'Merge',\
                                         int(self.args['mergeMaxRetries']),\
                                         1, workflowName)
                 else:
-                    JobStateChangeAPI.register(jobname, 'Processing',\
+                    JobState.register(jobname, 'Processing',\
                                         int(self.args['maxRetries']),\
                                         1, workflowName)
-            JobStateChangeAPI.create(jobname, jobCache)
-            JobStateChangeAPI.inProgress(jobname)
+            JobState.create(jobname, jobCache)
+            JobState.inProgress(jobname)
         except Exception, ex:
             # NOTE: we can have different errors here 
             # NOTE: transition, submission, other...
@@ -409,7 +407,7 @@ class JobCreatorComponent:
         self.ms = MessageService()
         # create message service status object
         self.mss = MessageServiceStatus()
-        self.trigger=TriggerAPI(self.ms)                                                                                
+        self.trigger=Trigger(self.ms)                                                                                
         # register
         self.ms.registerAs("JobCreator")
 
@@ -423,10 +421,16 @@ class JobCreatorComponent:
  
         # wait for messages
         while True:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             type, payload = self.ms.get()
             self.ms.commit()
             logging.debug("JobCreator: %s, %s" % (type, payload))
             self.__call__(type, payload)
+            Session.commit_all()
+            Session.close_all()
+
                                                                                 
 
 def createBulkSpecTar(bulkSpec, tarfileName):

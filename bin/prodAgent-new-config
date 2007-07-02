@@ -243,6 +243,7 @@ componentFields = {
     "WorkflowSpecDir" : '/tmp',
     "JobSize" : '10',
     "JobCutSize" : '500',
+    "JobInjection" : 'direct',
     "ProdMgrs":'https://localhost:8443/clarens/',
     "RetrievalInterval":"01:00:00",
     "AgentTag":"please insert a proper value",
@@ -370,6 +371,10 @@ retrieved from the prodmgr associated to an allocation is 100, this will result
 in 9 jobs. 8 with 12 events and one with 4 events.
 -ProdMgrs: The prodmgrs this prodagent will receive requests from. This is a comma
 separated list of urls.
+-JobInjection : If set to 'direct' , CreateJob events are thrown when retrieving
+work from the prodmanager (retrieved work goes directly to the submission queue. 
+If set to 'buffer', QueueJob events are thrown when retrieving
+work form the prodmganager (retrieved work is buffered in the jobqueue.
 -RetrievalInterval: The time between retrievals of requests from prodmgrs using the 
 HH:MM:SS format. Every so often the prodagent will contact its associated prodmgrs
 to retrieve requests if available.
