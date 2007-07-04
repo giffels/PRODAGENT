@@ -583,11 +583,7 @@ def jobSpecId(id,bossCfgDir):
         outp=outp.split("NAME")[1].strip()
     except:
         outp=""
-    subDir=subdir(id,bossCfgDir)
-    
-    if subDir.find('crab_')>=0:
-        outp=outp+"_"+id.split('.')[1]
-
+        
     return outp
 
 
@@ -796,7 +792,9 @@ def archive(jobId,bossCfgDir):
 
 def Delete(jobId,bossCfgDir):
     # print "boss delete -taskid %s -noprompt -c %s"%(jobId.split('.')[0],bossCfgDir)
-    outfile=executeCommand("boss delete -taskid %s -noprompt -c %s"%(jobId.split('.')[0],bossCfgDir))
+#    outfile=executeCommand("boss delete -taskid %s -noprompt -c %s"%(jobId.split('.')[0],bossCfgDir))
+    outfile=executeCommand("bossAdmin SQL -query \"update JOB set STATUS='K',STOP_T='-1' where TASK_ID='%s'  and CHAIN_ID='%s'\" -c %s"%(jobId.split('.')[0],jobId.split('.')[1],bossCfgDir))
+    outfile=executeCommand("boss archive -taskid %s -jobid %s -c %s"%(jobId.split('.')[0],jobId.split('.')[1],bossCfgDir))
     # print outfile
     return
 
