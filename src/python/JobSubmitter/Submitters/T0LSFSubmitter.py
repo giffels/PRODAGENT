@@ -8,11 +8,16 @@ Bulk and single LSF submissions
 
 """
 import os
+import socket
 import logging
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
 from JobSubmitter.JSException import JSException
+
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+
+from ProdAgent.Resources.LSF import LSFConfiguration
 
 
 bulkUnpackerScriptMain = \
@@ -53,12 +58,14 @@ fi
 
 
 
-def bulkUnpackerScript(bulkSpecTarName):
+def bulkUnpackerScript(bulkSpecTarName,jobSpecName):
     """
     _bulkUnpackerScript_
 
-    Unpacks bulk spec tarfile, searches for required spec passed to
-    script as argument $1
+    Unpacks bulk spec tarfile,
+
+    for real bulk submission we have to use job arrays and
+    construct the jobSpecName from the job index
 
     If file not found, it generates a failure report and exits
     Otherwise, JOB_SPEC_FILE will be set to point to the script
@@ -66,7 +73,7 @@ def bulkUnpackerScript(bulkSpecTarName):
     
     """
     lines = [
-        "JOB_SPEC_NAME=$1\n", 
+        "JOB_SPEC_NAME=%s-JobSpec.xml\n" % jobSpecName, 
         "BULK_SPEC_NAME=\"%s\"\n" % bulkSpecTarName,
         "echo \"This Job Using Spec: $JOB_SPEC_NAME\"\n",
         "tar -zxf $BULK_SPEC_NAME\n",
@@ -101,11 +108,22 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             raise JSException(msg, ClassInstance = self)
 
         if not self.pluginConfig.has_key("LSF"):
-            lsfsetup = self.pluginConfig.newBlock("LSF")
-            lsfsetup['Queue'] = "8nh"
-            lsfsetup['LsfLogDir'] = "None"
-            lsfsetup['CmsRunLogDir'] = "None"
-            lsfsetup['NodeType'] = "None"
+            self.pluginConfig.newBlock("LSF")
+
+        if not self.pluginConfig['LSF'].has_key('Queue'):
+            self.pluginConfig['LSF']['Queue'] = "8nh"
+
+        if not self.pluginConfig['LSF'].has_key('LsfLogDir'):
+            self.pluginConfig['LSF']['LsfLogDir'] = "None"
+
+        if not self.pluginConfig['LSF'].has_key('CmsRunLogDir'):
+            self.pluginConfig['LSF']['CmsRunLogDir'] = "None"
+
+        if not self.pluginConfig['LSF'].has_key('NodeType'):
+            self.pluginConfig['LSF']['NodeType'] = "None"
+
+        if not self.pluginConfig['LSF'].has_key('Resource'):
+            self.pluginConfig['LSF']['Resource'] = "None"
 
         return
 
@@ -168,35 +186,46 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         #  //If it is a bulk submit, there will be multiple entries,
         # // plus self.isBulk will be True
         #//
+        failureList = []
         for jobSpec, cacheDir in self.toSubmit.items():
             logging.debug("Submit: %s from %s" % (jobSpec, cacheDir) )
             logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
             self.makeWrapperScript(os.path.join(cacheDir,"lsfsubmit.sh"),jobSpec,cacheDir)
 
-        #  //
-        # // Submit LSF job
-        #//
-        if ( self.pluginConfig['LSF']['NodeType'] != "None" ):
-            lsfSubmitCommand = 'bsub -R "type=%s"' % self.pluginConfig['LSF']['NodeType']
+            # //
+            # // Submit LSF job
+            # //
+            lsfSubmitCommand = 'bsub'
 
-        lsfSubmitCommand += ' -q %s' % self.pluginConfig['LSF']['Queue']
-        lsfSubmitCommand += ' -g /groups/tier0/reconstruction'
-        lsfSubmitCommand += ' -J %s' % jobSpec
-
-        if ( self.pluginConfig['LSF']['LsfLogDir'] == "None" ):
-            lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
-        else:
-            lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (self.pluginConfig['LSF']['LsfLogDir'],jobSpec)
-
-        #lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
-        #lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
-
-        lsfSubmitCommand += ' < %s' % os.path.join(cacheDir,"lsfsubmit.sh")
-
-        logging.debug("T0LSFSubmitter.doSubmit: %s" % lsfSubmitCommand)
-        output = self.executeCommand(lsfSubmitCommand)
-        logging.info("T0LSFSubmitter.doSubmit: %s " % output)
+            lsfSubmitCommand += ' -q %s' % self.pluginConfig['LSF']['Queue']
         
+            if ( self.pluginConfig['LSF']['Resource'] != "None" ):
+                lsfSubmitCommand += ' -R "%s"' % self.pluginConfig['LSF']['Resource']
+            elif ( self.pluginConfig['LSF']['NodeType'] != "None" ):
+                lsfSubmitCommand += ' -R "type==%s"' % self.pluginConfig['LSF']['NodeType']
+
+            lsfSubmitCommand += ' -g %s' % LSFConfiguration.getGroup()
+            lsfSubmitCommand += ' -J %s' % jobSpec
+
+            if ( self.pluginConfig['LSF']['LsfLogDir'] == "None" ):
+                lsfSubmitCommand += ' -oo /dev/null'
+            else:
+                lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (self.pluginConfig['LSF']['LsfLogDir'],jobSpec)
+
+            # lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
+            # lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
+
+            lsfSubmitCommand += ' < %s' % os.path.join(cacheDir,"lsfsubmit.sh")
+
+            try:
+                output = self.executeCommand(lsfSubmitCommand)
+                logging.info("T0LSFSubmitter.doSubmit: %s " % output)
+            except RuntimeError, err:
+                failureList.append(jobSpec)
+
+            if len(failureList) > 0:
+                raise JSException("Submission Failed", FailureList = failureList)
+
 
     def makeWrapperScript(self, filename, jobName, cacheDir):
         """
@@ -206,32 +235,34 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         job
         
         """
-        
+
+        # need to know this host name
+        hostname = socket.getfqdn()
+
         #  //
         # // Generate main executable script for job
         #//
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        script.append("export STAGE_SVCCLASS=t0input\n")
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
-        for fname  in self.jobInputFiles:
-            script.append("rfcp lxgate39.cern.ch:%s . \n" % fname)
+        for fname in self.jobInputFiles:
+            script.append("rfcp %s:%s . \n" % (hostname,fname))
 
         if self.isBulk:
-            script.extend(bulkUnpackerScript(self.specSandboxName))
+            script.extend(bulkUnpackerScript(self.specSandboxName, jobName))
         else:
             script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
                           self.singleSpecName)   
-            
-        script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName)
+
+        script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s > /dev/null 2>&1\n" % self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
-        script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1 \n")
-        script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s/FrameworkJobReport.xml \n" % cacheDir)
+        script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1\n")
+        script.append("rfcp ./FrameworkJobReport.xml %s:%s/FrameworkJobReport.xml\n" % (hostname,cacheDir))
 
         outputlogfile = jobName
-        outputlogfile += '.`date +%Y%m%d.%k.%M.%S`.log'
+        outputlogfile += '.`date +%s`.log'
 
         if ( self.pluginConfig['LSF']['CmsRunLogDir'] != "None" ):
             script.append("rfcp ./run.log %s/%s\n" % (self.pluginConfig['LSF']['CmsRunLogDir'],outputlogfile))
