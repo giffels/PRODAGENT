@@ -10,6 +10,7 @@ from JobState.Database.Api.TransitionException import TransitionException
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Connect import connect 
 
+import logging
 
 ##########################################################################
 # register method
@@ -348,6 +349,7 @@ def cleanout(jobSpecId):
        conn=connect(False)
        dbCur=conn.cursor()
        try:
+           logging.info("test0 cleanout jobSPecID: "+str(jobSpecId))
            dbCur.execute("START TRANSACTION")
            sqlStr4="""DELETE FROM js_JobSpec WHERE 
                      JobSpecID="%s";""" %(jobSpecId)
@@ -385,8 +387,13 @@ def setRacer(jobSpecId,maxRacers):
        try:
 
            dbCur.execute("START TRANSACTION")
-           sqlStr1="""UPDATE js_JobSpec SET MaxRacers="%s" WHERE
-                      JobSpecID="%s"; """ %(str(maxRacers),str(jobSpecId)) 
+           if maxRacers == 'max':
+               sqlStr1="""UPDATE js_JobSpec SET Racers=MaxRacers+1,
+Retries=MaxRetries+1 WHERE
+                   JobSpecID="%s"; """ %(str(jobSpecId)) 
+           else:
+               sqlStr1="""UPDATE js_JobSpec SET MaxRacers="%s" WHERE
+                   JobSpecID="%s"; """ %(str(maxRacers),str(jobSpecId)) 
            rowsModified=dbCur.execute(sqlStr1)
            if rowsModified!=1:
               raise ProdAgentException("This jobspec with ID "+\
@@ -404,7 +411,7 @@ def purgeStates():
    conn=connect(False)
    dbCur=conn.cursor()
    try:
-
+       logging.info("test1 purging states")
        dbCur.execute("START TRANSACTION")
        sqlStr1="""DELETE FROM js_JobSpec;"""
        sqlStr2="""DELETE FROM js_JobInstance;"""
