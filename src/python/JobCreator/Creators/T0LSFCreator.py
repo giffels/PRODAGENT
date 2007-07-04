@@ -42,12 +42,28 @@ class T0LSFCreator(CreatorInterface):
             msg = "Creator Plugin Config could not be loaded for:\n"
             msg += self.__class__.__name__
             raise JCException(msg, ClassInstance = self)
-            
-	if not self.pluginConfig.has_key("SoftwareSetup"):
-            swsetup = self.pluginConfig.newBlock("SoftwareSetup")
-            swsetup['ScramCommand'] = "scramv1"
-            swsetup['ScramArch'] = "slc3_ia32_gcc323"
 
+        if not self.pluginConfig.has_key('StageOut'):
+            self.pluginConfig.newBlock('StageOut')
+
+        if not self.pluginConfig['StageOut'].has_key('Command'):
+            self.pluginConfig['StageOut']['Command'] = "rfcp"
+
+        if not self.pluginConfig['StageOut'].has_key('LFNPrefix'):
+            self.pluginConfig['StageOut']['LFNPrefix'] = "None"
+
+        if not self.pluginConfig['StageOut'].has_key('SEName'):
+            self.pluginConfig['StageOut']['SEName'] = "srm.cern.ch"
+
+	if not self.pluginConfig.has_key('SoftwareSetup'):
+            self.pluginConfig.newBlock('SoftwareSetup')
+
+        if not self.pluginConfig['SoftwareSetup'].has_key('ScramCommand'):
+            self.pluginConfig['SoftwareSetup']['ScramCommand'] = "scramv1"
+
+        if not self.pluginConfig['SoftwareSetup'].has_key('ScramArch'):
+            self.pluginConfig['SoftwareSetup']['ScramArch'] = "slc3_ia32_gcc323"
+            
         return
 
     
@@ -183,6 +199,19 @@ class T0LSFCreator(CreatorInterface):
         taskObject['PreStageOutCommands'].append(
             ". $VO_CMS_SW_DIR/cmsset_default.sh"
             )
+
+        #if ( self.pluginConfig['StageOut']['Command'] != "None" and
+        #     self.pluginConfig['StageOut']['LFNPrefix'] != "None" and
+        #     self.pluginConfig['StageOut']['SEName'] != "None" ):
+
+        #    runres = taskObject['RunResDB']
+
+        #    overrideBase = "/%s/StageOutParameters/Override" % 'stageOut1'
+        #    runres.addPath(overrideBase)
+        #    runres.addData("/%s/command" % overrideBase, self.pluginConfig['StageOut']['Command'])
+        #    #runres.addData("/%s/option" % overrideBase, option)
+        #    runres.addData("/%s/se-name" % overrideBase, self.pluginConfig['StageOut']['SEName'])
+        #    runres.addData("/%s/lfn-prefix" % overrideBase, self.pluginConfig['StageOut']['LFNPrefix'])
         
         return
     
