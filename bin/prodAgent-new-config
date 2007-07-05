@@ -270,6 +270,16 @@ componentFields = {
     "PollInterval" : 3600,
     "ExportCommand" : "cp ProdAgentStatus.sql ..",
     },
+    
+    "ProdMon" : {
+    "ComponentDir" : None,
+    "RssFeed" : "no",
+    "exportMaxBatchSize" : "100",
+    "exportInterval" : "00:05:00",
+    "Team" : "Unknown",
+    "DisableExport" : "True",
+    "DashboardURL" : "http://lxarda16.cern.ch/dashboard/request.py/getPAinfo",
+    },
 
     "JobKiller" : {
     "ComponentDir" : None,
@@ -395,7 +405,15 @@ it is set to "delay" it will wait until the data is properly merged.
 -Enabled: Set this parameter to -yes- to get full accounting support. When it is set to
 -no-, only triggering for cleanups of files will be generated, with no updates on
 internal database.
-"""
+""",
+  "ProdMon"              :\
+  """
+   -Team: production team name 
+   -DisableExport: Set to true to disable monitoring data export.
+   -DashboardURL: external monitoring export URL.
+   -exportMaxBatchSize: Max number of jobs to export in each cycle.
+   -exportInterval: Time between export cycles in seconds.
+   """
     }
 
 if componentList == []:

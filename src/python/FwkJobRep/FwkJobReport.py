@@ -37,6 +37,7 @@ class FwkJobReport:
         self.timing = {}
         self.storageStatistics = None
         self.generatorInfo = {}
+        self.dashboardId = None
 
 
     def wasSuccess(self):
@@ -142,6 +143,8 @@ class FwkJobReport:
             result.attrs['WorkflowSpecID'] = self.workflowSpecId
         if self.jobType != None:
             result.attrs['JobType'] = self.jobType
+        if self.dashboardId != None:
+            result.attrs['DashboardId'] = self.dashboardId
 
         #  //
         # // Save ExitCode
@@ -254,7 +257,7 @@ class FwkJobReport:
         self.jobSpecId = improvNode.attrs.get("JobSpecID", None)
         self.jobType = improvNode.attrs.get("JobType", None)
         self.workflowSpecId =improvNode.attrs.get("WorkflowSpecID", None)
-
+        self.dashboardId =improvNode.attrs.get("DashboardId", None)
         
         exitQ = IMProvQuery(
             "/FrameworkJobReport/ExitCode[attribute(\"Value\")]")

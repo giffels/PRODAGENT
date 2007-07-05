@@ -67,7 +67,7 @@ class FwkJobRepHandler(ContentHandler):
             "Inputs" : self.noResponse,
             "Runs" : self.noResponse,
             "Run" : self.noResponse,
-            "SkippedEvent" : self.skippedFile,
+            "SkippedEvent" : self.skippedEvent,
             "SkippedFile" : self.skippedFile,
             "Checksum" : self.checksum,
             "SiteDetail" : self.siteDetail,

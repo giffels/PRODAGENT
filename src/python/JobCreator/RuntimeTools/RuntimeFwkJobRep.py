@@ -56,6 +56,14 @@ def getSyncCE():
         return result
     return result
 
+def getDashboardId():
+    """
+    _getDashboardId_
+    
+    Extract dashboard id from environemt variable
+    """
+    return os.environ.get("PRODAGENT_DASHBOARD_ID", "Unknown")
+
 
 def processFrameworkJobReport():
     """
@@ -150,7 +158,10 @@ def processFrameworkJobReport():
     if os.path.exists("end.time"):
         report.timing['AppEndTime'] = file("end.time").read().strip()
         
-        
+    #  //    
+    # // add dashboard id
+    #//
+    report.dashboardId = getDashboardId()
     
     #  //
     # // write out updated report

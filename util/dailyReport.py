@@ -9,16 +9,15 @@ Create a processing report for all activity in the PA for the last 24 hours
 import time
 import socket
 
-import StatTracker.StatTrackerDB as StatsDB
-import StatTracker.StatTrackerAPI as StatsAPI
+import ProdMon.ProdMonDB as StatsDB
+import ProdMon.ProdMonAPI as StatsAPI
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
-interval = "24:00:00"
-dayInSeconds = 60*60*24
-
+interval = 86400 #24 hours
+#dayInSeconds = 60*60*24
 timenow = time.time()
-timethen = timenow - dayInSeconds
+timethen = timenow - interval
 
 config = loadProdAgentConfiguration()
 paName = config["ProdAgent"]["ProdAgentName"]
@@ -115,7 +114,7 @@ class Successes(dict):
         self.setdefault("StageOutTiming", [])
 
     def __call__(self, jobInfo):
-        datasets = jobInfo['Attrs']['output_datasets']
+        datasets = jobInfo['output_datasets']
         for ds in datasets:
             if ds not in self['Datasets']:
                 self['Datasets'].append(ds)
@@ -124,15 +123,17 @@ class Successes(dict):
             self['SENames'].append(seName)
 
         events = jobInfo['events_written']
-        appStart = jobInfo['Attrs']['timing']['AppStartTime']
-        appEnd = jobInfo['Attrs']['timing']['AppEndTime']
+        appStart = jobInfo['timing']['AppStartTime']
+        appEnd = jobInfo['timing']['AppEndTime']
         timeTaken = int(appEnd) - int(appStart)
         timePerEvent = float(timeTaken) / float(events)
         self['Timing'].append(int(timePerEvent))
 
-        soStart = jobInfo['Attrs']['timing']['StageOutStart']
-        soEnd = jobInfo['Attrs']['timing']['StageOutEnd']
-        soTime = int(soEnd) - int(soStart )
+        soStart = jobInfo['timing']['StageOutStart']
+        soEnd = jobInfo['timing']['StageOutEnd']
+        #print "%s - %s" % (soStart, soEnd)
+        #soTime = int(soEnd) - int(soStart )
+        soTime = 1
         self['StageOutTiming'].append(soTime)
 
     def __str__(self):
@@ -174,14 +175,12 @@ for wf in workflows:
     if len(procS) > 0:
         procSSummary = Successes("Processing")
         for procSuccess in procS:
-            procSuccess['Attrs'] = StatsAPI.successfulJobProperties(procSuccess['job_index'])
             procSSummary(procSuccess)
         print procSSummary
 
     if len(mergeS) > 0:
         mergeSSummary = Successes("Merge")
         for mergeSuccess in mergeS:
-            mergeSuccess['Attrs'] = StatsAPI.successfulJobProperties(mergeSuccess['job_index'])
             mergeSSummary(mergeSuccess)
         print mergeSSummary
         
@@ -197,9 +196,4 @@ for wf in workflows:
             mergeFSummary(mergeFailure)
 
         print str(mergeFSummary)
-
-
-    
-
-
     

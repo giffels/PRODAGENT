@@ -20,7 +20,7 @@ except getopt.GetoptError, ex:
 
 workflowMatch = None
 workflowName = None
-interval = "24:00:00"
+interval = 86400 #24 hours
 doTiming = False
 
 
@@ -39,9 +39,7 @@ if workflowMatch == None:
     workflowMatch = ""
 
 
-
-
-import StatTracker.StatTrackerAPI as Stats
+import ProdMon.ProdMonAPI as Stats
 
 
 if workflowName != None:
@@ -61,29 +59,15 @@ for wf in allWorkflows:
 
         procSuccess = Stats.processingSuccessDetails(wf, interval)
         mergeSuccess = Stats.mergeSuccessDetails(wf, interval)
-
-        procProps = {}
-        mergeProps = {}
-        
-        for procJob in procSuccess:
-            procProps[procJob['job_spec_id']] = procJob
-            procProps[procJob['job_spec_id']]['attrs'] = \
-               Stats.successfulJobProperties(procJob['job_index'])
-
-        for mergeJob in mergeSuccess:
-            mergeProps[mergeJob['job_spec_id']] = mergeJob
-            mergeProps[mergeJob['job_spec_id']]['attrs'] = \
-               Stats.successfulJobProperties(mergeJob['job_index'])
-        
             
         if doTiming:
             procTimes = []
             mergeTimes = []
-            
-            for props in procProps.values():
+
+            for props in procSuccess:
                 events = props['events_written']
-                appStart = props['attrs']['timing']['AppStartTime']
-                appEnd = props['attrs']['timing']['AppEndTime']
+                appStart = props['timing']['AppStartTime']
+                appEnd = props['timing']['AppEndTime']
                 timeTaken = int(appEnd) - int(appStart)
                 timePerEvent = float(timeTaken) / float(events)
                 procTimes.append(int(timePerEvent))
@@ -94,8 +78,8 @@ for wf in allWorkflows:
             minProcTime = 0
             if len(procTimes) > 0:
                 avgProcTime = float(sum(procTimes)) / float (len(procTimes))
-            maxProcTime = max(procTimes)
-            minProcTime =  min(procTimes)
+                maxProcTime = max(procTimes)
+                minProcTime =  min(procTimes)
 
             msg = "Processing Times (secs):\tAvg Time/Event: "
             msg += "%s " % avgProcTime

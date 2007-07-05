@@ -799,3 +799,146 @@ CREATE TABLE we_Workflow
    ) Type=InnoDB;
 
 
+/*
+ *	ProdMon tables
+ */
+ 
+CREATE TABLE prodmon_Resource (
+       resource_id INT NOT NULL AUTO_INCREMENT, 
+       site_name VARCHAR(255) NOT NULL,
+       ce_hostname VARCHAR(255),
+       se_hostname VARCHAR(255),
+       PRIMARY KEY (resource_id)
+) TYPE = InnoDB;
+
+CREATE TABLE prodmon_Workflow (
+       workflow_id INT NOT NULL AUTO_INCREMENT,
+       workflow_name VARCHAR(255) NOT NULL,
+       request_id INTEGER NOT NULL,
+       app_version VARCHAR(255) NOT NULL,
+       PRIMARY KEY (workflow_id)
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_Job_errors (
+       error_id INT NOT NULL AUTO_INCREMENT,
+       error_type VARCHAR(255) NOT NULL,
+       UNIQUE(error_type),
+       PRIMARY KEY (error_id)
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_Datasets (
+       dataset_id INT NOT NULL AUTO_INCREMENT,
+       dataset_name VARCHAR(255) NOT NULL,
+       UNIQUE(dataset_name),
+       PRIMARY KEY (dataset_id)
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_LFN (
+       file_id INT NOT NULL AUTO_INCREMENT,
+       file_name VARCHAR(255) NOT NULL,
+       UNIQUE(file_name),
+       PRIMARY KEY (file_id)
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_Job (
+       job_id INT NOT NULL AUTO_INCREMENT,
+       workflow_id INT NOT NULL,
+       job_spec_id VARCHAR(255) NOT NULL,
+       type VARCHAR(255) NOT NULL,
+       PRIMARY KEY (job_id),
+       INDEX (workflow_id, job_spec_id),
+       FOREIGN KEY (workflow_id) REFERENCES prodmon_Workflow(workflow_id)
+       	ON DELETE CASCADE
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_Job_instance (
+       instance_id INT NOT NULL AUTO_INCREMENT,
+       job_id INT NOT NULL,
+       resource_id INT NOT NULL,
+       dashboard_id VARCHAR(255),
+       worker_node VARCHAR(255) NOT NULL,
+       exit_code INT,
+       evts_read INT NOT NULL,
+       evts_written INT NOT NULL,
+       error_id INT,
+       error_message BLOB,
+       start_time INT,
+       end_time INT,
+       exported BOOLEAN DEFAULT FALSE NOT NULL,
+       PRIMARY KEY (instance_id),
+       INDEX (job_id, resource_id, error_id),
+       FOREIGN KEY (job_id) REFERENCES prodmon_Job (job_id)
+       	ON DELETE CASCADE,
+       FOREIGN KEY (resource_id) REFERENCES prodmon_Resource (resource_id)
+       	ON DELETE CASCADE,
+       FOREIGN KEY (error_id) REFERENCES prodmon_Job_errors (error_id)
+       	ON DELETE CASCADE
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_input_datasets_map (
+       workflow_id INT NOT NULL,
+       dataset_id INT NOT NULL,
+       INDEX (workflow_id, dataset_id),
+       FOREIGN KEY (workflow_id) REFERENCES prodmon_Workflow (workflow_id)
+       	ON DELETE CASCADE,
+       FOREIGN KEY (dataset_id) REFERENCES prodmon_Datasets (dataset_id)
+       	ON DELETE CASCADE
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_output_datasets_map (
+       workflow_id INT NOT NULL,
+       dataset_id INT NOT NULL,
+       INDEX (workflow_id, dataset_id),
+       FOREIGN KEY (workflow_id) REFERENCES prodmon_Workflow (workflow_id)
+       	ON DELETE CASCADE,
+       FOREIGN KEY (dataset_id) REFERENCES prodmon_Datasets (dataset_id)
+        ON DELETE CASCADE
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_input_LFN_map (
+       instance_id INT NOT NULL,
+       file_id INT NOT NULL,
+       INDEX (instance_id, file_id),
+       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
+       	ON DELETE CASCADE,
+       FOREIGN KEY (file_id) REFERENCES prodmon_LFN (file_id)
+        ON DELETE CASCADE
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_output_LFN_map (
+       instance_id INT NOT NULL,
+       file_id INT NOT NULL,
+       INDEX (instance_id, file_id),
+       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
+        ON DELETE CASCADE,
+       FOREIGN KEY (file_id) REFERENCES prodmon_LFN (file_id)
+        ON DELETE CASCADE
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_output_runs (
+       instance_id INT NOT NULL,
+       run INT NOT NULL,
+       INDEX (instance_id),
+       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
+       	ON DELETE CASCADE
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_skipped_events (
+       instance_id INT NOT NULL,
+       run INT NOT NULL,
+       event INT NOT NULL,
+       INDEX (instance_id),
+       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
+        ON DELETE CASCADE
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_Job_timing (
+       timing_id INT NOT NULL AUTO_INCREMENT,
+       instance_id INT NOT NULL,
+       timing_type VARCHAR(255) NOT NULL,
+       value INT NOT NULL,
+       PRIMARY KEY (timing_id),
+       INDEX (instance_id),
+       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
+        ON DELETE CASCADE
+)TYPE=InnoDB;
