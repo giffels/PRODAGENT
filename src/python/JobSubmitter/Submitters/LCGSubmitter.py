@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.29 2007/07/02 19:58:36 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.30 2007/07/02 21:23:29 fvlingen Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -31,11 +31,8 @@ from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentBOSS import BOSSCommands
-<<<<<<< LCGSubmitter.py
-=======
 from JobState.JobStateAPI import JobStateInfoAPI 
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
->>>>>>> 1.29
 
 from popen2 import Popen4
 import select
