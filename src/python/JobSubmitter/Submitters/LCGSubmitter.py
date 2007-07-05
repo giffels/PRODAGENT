@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.27 2007/04/06 17:18:55 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.29 2007/07/02 19:58:36 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -32,6 +32,7 @@ from JobSubmitter.JSException import JSException
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentBOSS import BOSSCommands
 from JobState.JobStateAPI import JobStateInfoAPI 
+from ProdAgentCore.PluginConfiguration import loadPluginConfig
 
 from popen2 import Popen4
 import select
@@ -138,10 +139,24 @@ class LCGSubmitter(SubmitterInterface):
             raise ProdAgentException("Failed Job Declaration")
 
         JobName=self.parameters['JobName']
+
+        #  //
+        # // CMSSW version
+        #//
         if len(self.parameters['AppVersions'])> 0:
           swversion=self.parameters['AppVersions'][0]  # only one sw version for now
         else:
           raise ProdAgentException("No CMSSW version found!")
+
+        #  //
+        # // CMSSW arch
+        #//
+        swarch = None
+        creatorPluginConfig = loadPluginConfig("JobCreator",
+                                                  "Creator")
+        if creatorPluginConfig['SoftwareSetup'].has_key('ScramArch'):
+           if creatorPluginConfig['SoftwareSetup']['ScramArch'].find("slc4")>=0:
+              swarch=creatorPluginConfig['SoftwareSetup']['ScramArch']
 
         ## prepare scheduler related file 
         schedulercladfile = "%s/%s_scheduler.clad" % (os.path.dirname(self.parameters['Wrapper']),self.parameters['JobName'])
@@ -149,7 +164,7 @@ class LCGSubmitter(SubmitterInterface):
            jobType=self.parameters['JobSpecInstance'].parameters['JobType']
            #jobType=JobStateInfoAPI.general(JobName)['JobType']  ## JobType is also in the JobStateInfoAPI
            userJDL=self.getUserJDL(jobType)
-           self.createJDL(schedulercladfile,swversion,userJDL)
+           self.createJDL(schedulercladfile,swversion,swarch,userJDL)
         except InvalidFile, ex:
            raise ProdAgentException("Failed to create JDL: %s"%ex)
 
@@ -287,7 +302,7 @@ class LCGSubmitter(SubmitterInterface):
         return UserJDLRequirementsFile
 
       
-    def createJDL(self, cladfilename,swversion,UserJDLRequirementsFile):
+    def createJDL(self, cladfilename,swversion,swarch,UserJDLRequirementsFile):
         """
         _createJDL_
     
@@ -329,9 +344,13 @@ class LCGSubmitter(SubmitterInterface):
             sitelist+="target.GlueSEUniqueID==\"%s\""%i+" || "
           sitelist=sitelist[:len(sitelist)-4]
           anyMatchrequirements+=sitelist+"))"
-          
+        
+        if swarch:
+          archrequirement=" && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
+        else:
+          archrequirement=""
 
-        requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) %s;\n'%(user_requirements,swversion,anyMatchrequirements)
+        requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) %s %s;\n'%(user_requirements,swversion,archrequirement,anyMatchrequirements)
         logging.debug('%s'%requirements)
         declareClad.write(requirements)
         declareClad.write("Environment = {\"PRODAGENT_DASHBOARD_ID=%s\"};\n"%self.parameters['DashboardID'])
