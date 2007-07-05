@@ -138,7 +138,7 @@ class JobQueueDB:
                         self.siteIndexBySE.keys()
                         )
                 else:
-                    newSites.append(siteMatch)
+                    newSites.add(siteMatch)
         newSiteList = list(newSites)
         dictInstance['SiteList'] = newSiteList
         
