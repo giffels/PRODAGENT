@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.3 2006/08/08 16:17:10 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.1 2007/07/05 14:24:59 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -50,16 +50,16 @@ class ProdMonComponent:
         self.args.setdefault("exportInterval", "00:05:00")
         self.args.setdefault("Team", "Unknown")
         self.args.setdefault("AgentName", "Unknown")
-        self.args.setdefault("DisableExport", True)
+        self.args.setdefault("exportEnabled", False)
         
         # override default with provided values and convert to correct types
         try:
             self.args.update(args)
             self.args["exportMaxBatchSize"] = int(self.args["exportMaxBatchSize"])
-            if str(self.args["DisableExport"]).lower() in ("false", "no"):
-                self.args["DisableExport"] = False
+            if str(self.args["exportEnabled"]).lower() in ("true", "yes"):
+                self.args["exportEnabled"] = True
             else:
-                self.args["DisableExport"] = True
+                self.args["exportEnabled"] = False
         except StandardError, ex:
             msg = "Error handling configuration"
             msg += str(ex)
@@ -111,10 +111,10 @@ class ProdMonComponent:
         elif event == "ProdMon:StopExport":
             logging.info("Export halted by ProdMon:StopExport message")
             self.ms.remove("ProdMon:Export")
-            self.args["DisableExport"] = True
+            self.args["exportEnabled"] = False
             return
         elif event == "ProdMon:StartExport":
-            self.args["DisableExport"] = False
+            self.args["exportEnabled"] = True
             self.ms.remove("ProdMon:Export")
             logging.info("Export started")
             self.export()
@@ -225,7 +225,7 @@ class ProdMonComponent:
         
         """
         
-        if self.args["DisableExport"]:
+        if not self.args["exportEnabled"]:
             logging.error("Unable to publish to Dashboard, export disabled")
             return
         
@@ -277,7 +277,7 @@ class ProdMonComponent:
         # restart publishing loop
         # replace existing publish messages (if present)
         self.ms.remove("ProdMon:Export")
-        if not self.args["DisableExport"]:
+        if not self.args["exportInterval"]:
             self.ms.publish("ProdMon:Export", "", self.args['exportInterval'])
         
         # wait for messages

@@ -274,10 +274,10 @@ componentFields = {
     "ProdMon" : {
     "ComponentDir" : None,
     "RssFeed" : "no",
+    "Team" : "Unknown",
     "exportMaxBatchSize" : "100",
     "exportInterval" : "00:05:00",
-    "Team" : "Unknown",
-    "DisableExport" : "True",
+    "exportEnabled" : "False",
     "DashboardURL" : "http://lxarda16.cern.ch/dashboard/request.py/getPAinfo",
     },
 
