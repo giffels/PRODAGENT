@@ -100,7 +100,7 @@ class RequestIterator:
 
     
         self.generators = GeneratorMaker()
-        self.generators(self.workflowSpec.payload)
+        self.workflowSpec.payload.operate(self.generators)
         
         
         

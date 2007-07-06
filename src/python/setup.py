@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.40 2007/06/19 21:01:50 hufnagel Exp $"
+__revision__ = "$Id: setup.py,v 1.43 2007/07/05 14:25:03 swakef Exp $"
 
 from distutils.core import setup
 
@@ -63,6 +63,7 @@ packages = [
     'ProdMgrInterface',
     'ProdMgrInterface.States',
     'ProdMgrInterface.States.Aux',
+    'RelValInjector',
     'RepackerInjector',
     'RequestInjector',
     'ResourceMonitor',
