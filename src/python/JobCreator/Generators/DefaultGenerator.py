@@ -34,6 +34,7 @@ from JobCreator.DashboardTools import installDashboardInfo, writeDashboardInfo
 from JobCreator.SVSuiteTools import InsertSVSuiteDetails, PopulateSVSuite
 from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
 from JobCreator.CmsGenTools import InsertCmsGenStructure, PopulateCmsGenScript
+from JobCreator.LogArchTools import InstallLogArch, PopulateLogArch
 
 import inspect
 import os
@@ -130,6 +131,7 @@ class DefaultGenerator(GeneratorInterface):
         taskObject(InsertSVSuiteDetails())
         taskObject(InsertJobReportTools())
         taskObject(InsertCleanUp())
+        taskObject(InstallLogArch())
         taskObject(NewInsertStageOut())
 
         #  //
@@ -150,6 +152,7 @@ class DefaultGenerator(GeneratorInterface):
         taskObject(PopulateCmsGenScript("JobSpecNode"))
         taskObject(PopulateSVSuite())
         taskObject(PopulateCleanUp())
+        taskObject(PopulateLogArch())
         taskObject(NewPopulateStageOut())
         #  //
         # // Physical Job Creation starts here

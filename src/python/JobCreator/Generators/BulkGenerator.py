@@ -33,6 +33,7 @@ from JobCreator.RunResTools import BulkCMSSWRunResDB, InsertDirInRunRes
 from JobCreator.StageOutTools import NewInsertStageOut
 from JobCreator.StageOutTools import NewPopulateStageOut
 from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
+from JobCreator.LogArchTools import InstallLogArch, PopulateLogArch
 from JobCreator.BulkTools import InstallUnpacker, InstallUserSandbox
 from JobCreator.FastMergeTools import InstallBulkFastMerge
 from JobCreator.DashboardTools import installBulkDashboardInfo, writeDashboardInfo
@@ -120,6 +121,7 @@ class BulkGenerator(GeneratorInterface):
         taskObject(InstallRunResComponent())
         taskObject(InsertJobReportTools())
         taskObject(InsertCleanUp())
+        taskObject(InstallLogArch())
         taskObject(InstallBulkFastMerge())
         taskObject(NewInsertStageOut())
         taskObject(InstallUserSandbox())
@@ -135,6 +137,7 @@ class BulkGenerator(GeneratorInterface):
         taskObject(PopulateMainScript())
         taskObject(PopulateCmsGenScript("PayloadNode"))
         taskObject(PopulateCleanUp())
+        taskObject(PopulateLogArch())
         taskObject(NewPopulateStageOut())
         
         logging.debug("JobGenerator:Creating Physical Job")
