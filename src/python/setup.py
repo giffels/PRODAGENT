@@ -63,6 +63,7 @@ packages = [
     'ProdMgrInterface',
     'ProdMgrInterface.States',
     'ProdMgrInterface.States.Aux',
+    'ProdMon',
     'RelValInjector',
     'RepackerInjector',
     'RequestInjector',
