@@ -11,7 +11,6 @@ import os
 import time
 import logging
 from logging.handlers import RotatingFileHandler
-from threading import Thread, Condition
 
 from MessageService.MessageService import MessageService
 
@@ -39,6 +38,8 @@ class ResourceMonitorComponent:
         self.args.setdefault("PollInterval", 600 )
         self.args.update(args)
         self.args['PollInterval'] = float(self.args['PollInterval'])
+        self.pollDelay = float(self.args['PollInterval'])
+
         #  //
         # // Default is to start polling resources right away
         #//
@@ -53,9 +54,6 @@ class ResourceMonitorComponent:
         msg += " ==> Monitor = %s\n" % self.args['MonitorName']
         msg += " ==> PollInterval = %s s\n" % self.args['PollInterval']
         logging.info(msg)
-        self.cond = Condition()
-        
-
         
     def __call__(self, event, payload):
         """
@@ -68,16 +66,20 @@ class ResourceMonitorComponent:
         logging.debug("Payload: %s" % payload)
         logging.debug("Current Monitor: %s" % self.args['MonitorName'])
         
-        
         if event == "ResourceMonitor:Start":
             logging.info("Starting RM...")
             self.activePolling = True
+            return
 
         if event == "ResourceMonitor:Stop":
             logging.info("Stopping RM...")
             self.activePolling = False
+            return
             
-            
+        if event == "ResourceMonitor:Poll":
+            self.pollResources()
+            return            
+
         elif event == "ResourceMonitor:SetMonitor":
             #  //
             # // Payload should be name of registered creator
@@ -170,11 +172,13 @@ class ResourceMonitorComponent:
         self.ms.subscribeTo("ResourceMonitor:SetMonitor")
         self.ms.subscribeTo("ResourceMonitor:StartDebug")
         self.ms.subscribeTo("ResourceMonitor:EndDebug")
-        
-        # start polling thread
-        pollingThread = Poll(self.pollResources)
-        pollingThread.start()
-        
+        self.ms.subscribeTo("ResourceMonitor:Poll")
+       
+        # generate first polling cycle
+        self.ms.remove("ResourceMonitor:Poll")
+        self.ms.publish("ResourceMonitor:Poll", "")
+        self.ms.commit()
+ 
         # wait for messages
         while True:
             type, payload = self.ms.get()
@@ -195,7 +199,6 @@ class ResourceMonitorComponent:
             logging.debug("pollResources:Inactive")
         else:
             logging.debug("pollResources:Active")
-            self.cond.acquire()
             monitor = self.loadMonitor()
             if monitor != None:
                 try:
@@ -211,34 +214,10 @@ class ResourceMonitorComponent:
                 logging.debug("%s Resources Available" % resourceConstraints)
                 
                 self.publishResources(resourceConstraints)
-                
-            self.cond.release()
-        time.sleep(self.args['PollInterval'])
+        
+        # generate new polling cycle
+        self.ms.publish('ResourceMonitor:Poll', '', self.pollDelay)
+        self.ms.commit()
+       
         return returnValue
     
-    
-        
-class Poll(Thread):
-    """
-    Thread that performs polling
-    """
-
-    
-
-    def __init__(self, poll):
-        """
-        __init__
-
-        Initialize thread and set polling callback
-        """
-        Thread.__init__(self)
-        self.poll = poll;
-
-    def run(self):
-        """
-        __run__
-
-        Performs polling 
-        """
-        while True:
-            self.poll()
