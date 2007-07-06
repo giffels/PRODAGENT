@@ -13,11 +13,14 @@ import logging
 
 from MessageService.MessageService import MessageService
 import ProdAgentCore.LoggingUtils as LoggingUtils
-
+from ProdAgentDB.Config import defaultConfig as dbConfig
 from RelValInjector.RelValSpecMgr import RelValSpecMgr
-
+from ProdCommon.Database import Session
 
 from JobQueue.JobQueueAPI import bulkQueueJobs
+
+import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
+import ProdAgent.WorkflowEntities.Job as WEJob
 
 
 class RelValInjectorComponent:
@@ -157,24 +160,34 @@ class RelValInjectorComponent:
         
         specMgr = RelValSpecMgr(relValSpecFile, self.sites, **self.args)
 
-        try:
-            tests = specMgr()
-        except Exception, ex:
-            msg = "Error invoking RelValSpecMgr for file\n"
-            msg += "%s\n" % relValSpecFile
-            msg += str(ex)
-            logging.error(msg)
-            return
+        #try:
+        tests = specMgr()
+        #except Exception, ex:
+        #    msg = "Error invoking RelValSpecMgr for file\n"
+        #    msg += "%s\n" % relValSpecFile
+        #    msg += str(ex)
+        #    logging.error(msg)
+        #    return
 
         workflows = set()
+        workflowIds = set()
         [ workflows.add(x['WorkflowSpecFile']) for x in tests ]
-
+        [ workflowIds.add(x['WorkflowSpecId']) for x in tests ]
+        
+        for workflowId in workflowIds:
+            msg = "Registering Workflow Entity: %s" % workflowId
+            logging.debug(msg)
+            WEWorkflow.register(workflowId, {"owner" : "RelValInjector" })
+        
         for workflow in workflows:
             msg = "Publishing NewWorkflow/NewDataset for \n %s\n "% workflow
             logging.debug(msg)
             self.ms.publish("NewWorkflow", workflow)
             self.ms.publish("NewDataset", workflow)
             self.ms.commit()
+
+        
+
             
         self.allJobs = []
         for test in tests:
@@ -218,6 +231,14 @@ class RelValInjectorComponent:
                 
                 })
             self.allJobs.append(jobSpec)
+            logging.debug("Registering Job Entity: %s.%s" % (
+                test['WorkflowSpecId'], jobSpec)
+                          )
+            WEJob.register(test['WorkflowSpecId'], None, {
+                'id' : jobSpec, 'owner' : 'RelValInjector',
+                'job_type' : "Processing", "max_retries" : 3,
+                "max_racers" : 1,
+                })
             
         bulkQueueJobs(sites, *jobs)
         
@@ -257,6 +278,12 @@ class RelValInjectorComponent:
         #self.ms.commit()
         
         while True:
-            messageType, payload = self.ms.get()
-            self.__call__(messageType, payload)
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
+            type, payload = self.ms.get()
             self.ms.commit()
+            logging.debug("RelValInjector: %s, %s" % (type, payload))
+            self.__call__(type, payload)
+            Session.commit_all()
+            Session.close_all()

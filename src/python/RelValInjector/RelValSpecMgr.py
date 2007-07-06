@@ -121,14 +121,14 @@ x
       
 
         for test in self.tests:
-            #try:
-            self.makeJobs(test)
-            #except Exception, ex:
-            #    msg = "Error Creating jobs for test: %s\n" % test['Name']
-            #    msg += "Skipping Test..."
-            #    test['BadTest'] = True
-            #    logging.error(msg)
-            #    continue
+            try:
+                self.makeJobs(test)
+            except Exception, ex:
+                msg = "Error Creating jobs for test: %s\n" % test['Name']
+                msg += "Skipping Test..."
+                test['BadTest'] = True
+                logging.error(msg)
+                continue
             
         self.tests = [ x for x in self.tests if x['BadTest'] == False ]
         return self.tests
@@ -306,7 +306,7 @@ if __name__ == '__main__':
         
         }
     sites = ['CERN', 'FNAL']
-    specFile = "/home/evansde/work/PRODAGENT/cmssw/CMSSW_1_5_0_pre4/PyRelValSpec.xml"
+    specFile = "/home/evansde/work/PRODAGENT/src/python/RelValInjector/Oli.xml"
 
     mgr = RelValSpecMgr(specFile, sites, **args)
     mgr()
