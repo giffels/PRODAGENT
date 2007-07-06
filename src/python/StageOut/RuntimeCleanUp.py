@@ -54,7 +54,7 @@ class CleanUpManager:
     Object that is invoked to do the cleanup operation
 
     """
-    def __init__(self, cleanUpTaskState, inputTaskState ):
+    def __init__(self, cleanUpTaskState, inputTaskState = None ):
         self.state = cleanUpTaskState
         self.inputState = inputTaskState
         #  //
@@ -63,7 +63,25 @@ class CleanUpManager:
         self.taskName = self.state.taskAttrs['Name']
         self.config = self.state._RunResDB.toDictionary()[self.taskName]
 
+        if self.inputState != None:
+            self.cleanUpInput()
+        else:
+            self.cleanUpFileList()
 
+        self.setupCleanup()
+        
+
+    def cleanUpInput(self):
+        """
+        _cleanUpInput_
+
+        This cleanup node is for cleaning after an input job
+        Eg post merge cleanup
+        
+        """
+        msg = "Cleaning up input files for job: "
+        msg += self.inputState.taskAttrs['Name']
+        print msg
         self.inputState.loadJobReport()
         inputReport = self.inputState.getJobReport()
         
@@ -74,7 +92,38 @@ class CleanUpManager:
         
         self.inputFiles = [ i['LFN'] for i in inputFileDetails ] 
 
+
+    def cleanUpFileList(self):
+        """
+        _cleanUpFileList_
+
+        List of LFNs is provided in the RunResDB for this node
+
+        """
+        msg = "Cleaning up list of files:\n"
+
+        lfnList = self.config.get("RemoveLFN", [])
+        if len(lfnList) == 0:
+            msg += "No Files Found in Configuration!!!"
+
+        for lfn in lfnList:
+            msg += " Removing: %s\n" % lfn
+
+        print msg
+
+        self.inputFiles = lfnList
+        return
         
+        
+        
+
+    def setupCleanup(self):
+        """
+        _setupCleanup_
+
+        Setup for cleanup operation: Read in siteconf and TFC
+
+        """
         
         self.success = []
         self.failed = []
