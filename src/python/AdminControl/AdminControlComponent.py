@@ -11,9 +11,11 @@ import os
 import logging
 import time
 
-from logging.handlers import RotatingFileHandler
+
 from MessageService.MessageService import MessageService
 import ProdAgentCore.LoggingUtils as LoggingUtils
+from ProdCommon.Database import Session
+from ProdAgentDB.Config import defaultConfig as dbConfig
 
 from AdminControl.Registry import retrieveBot
 import AdminControl.Bots
@@ -249,8 +251,15 @@ class AdminControlComponent:
         
         # wait for messages
         while True:
-            messageType, payload = self.ms.get()
-            self.__call__(messageType, payload)
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
+            type, payload = self.ms.get()
             self.ms.commit()
-        
+            logging.debug("AdminControl: %s, %s" % (type, payload))
+            self.__call__(type, payload)
+            Session.commit_all()
+            Session.close_all()
+            
+            
 
