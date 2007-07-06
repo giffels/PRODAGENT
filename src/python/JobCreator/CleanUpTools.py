@@ -35,13 +35,15 @@ class InsertCleanUp:
         #  //Should be bash shell commands as strings
         taskObject['PreCleanUpCommands'] = []
         taskObject['PostCleanUpCommands'] = []
-
         #  //
         # // Determine what is being staged out from the parent node
         #//  (This should be a CMSSW node)
         parent = taskObject.parent
         if parent == None:
+            msg = "CleanUp Task has no parent, assuming file list..."
+            print msg
             # no parent => dont know what to stage out
+            taskObject['CleanUpFor'] = None
             return
 
         if parent['Type'] != "CMSSW":
@@ -101,10 +103,32 @@ class PopulateCleanUp:
         runres = taskObject['RunResDB']
         toName = taskObject['Name']
         cleanUpFor = taskObject['CleanUpFor']
-        paramBase = "/%s/CleanUpParameters" % toName
-        runres.addPath(paramBase)
+        if cleanUpFor != None:
+            msg = "Configuring CleanUp task for parent node input"
+            print msg
+            paramBase = "/%s/CleanUpParameters" % toName
+            runres.addPath(paramBase)
+            
+            runres.addData("/%s/CleanUpFor" % paramBase, cleanUpFor)
+        else:
+            #  //
+            # // List of LFNs to remove in JobSpec
+            #//
+            msg = "Configuring CleanUp node for list of LFNs"
+            print msg
+            specNode = taskObject.get("JobSpecNode", None)
+            if specNode == None:
+                specNode = taskObject['PayloadNode']
 
-        runres.addData("/%s/CleanUpFor" % paramBase, cleanUpFor)
+            lfnList = specNode.configuration.split()
+            for lfn in lfnList:
+                if lfn.strip() == "":
+                    continue
+                runres.addData("%s/RemoveLFN" % toName, lfn)
+                
+                
+
+                
         return
                        
                         

@@ -22,7 +22,7 @@ from IMProv.IMProvQuery import IMProvQuery
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 
 from ShREEK.ControlPoints.CondImpl.CheckExitCode import CheckExitCode
-from ShREEK.ControlPoints.ActionImpl.BasicActions import KillJob
+from ShREEK.ControlPoints.ActionImpl.BasicActions import SetNextTask
 
 class InsertStageOut:
     """
@@ -285,11 +285,12 @@ class NewPopulateStageOut:
         #//
         controlP = taskObject['ShREEKTask'].endControlPoint
         exitCheck = CheckExitCode()
-        exitCheck.attrs['OnFail'] = "killJob"
-        exitAction = KillJob("killJob")
+        exitCheck.attrs['OnFail'] = "skipToLog"
+        exitAction = SetNextTask("skipToLog")
+        exitAction.content = "logArchive"
         controlP.addConditional(exitCheck)
         controlP.addAction(exitAction)
-      
+        
         #  //
         # // Populate the RunResDB
         #//

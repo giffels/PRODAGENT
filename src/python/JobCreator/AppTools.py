@@ -38,7 +38,7 @@ import JobCreator.RuntimeTools.RuntimeFwkJobRep as RuntimeFwkJobRep
 from JobCreator.FastMergeTools import installFastMerge
 
 from ShREEK.ControlPoints.CondImpl.CheckExitCode import CheckExitCode
-from ShREEK.ControlPoints.ActionImpl.BasicActions import KillJob 
+from ShREEK.ControlPoints.ActionImpl.BasicActions import SetNextTask
 
 #  //
 # // Following script segment contains the standard script 
@@ -155,8 +155,9 @@ class InsertAppDetails:
         #//
         controlP = taskObject['ShREEKTask'].endControlPoint
         exitCheck = CheckExitCode()
-        exitCheck.attrs['OnFail'] = "killJob"
-        exitAction = KillJob("killJob")
+        exitCheck.attrs['OnFail'] = "skipToLog"
+        exitAction = SetNextTask("skipToLog")
+        exitAction.content = "logArchive"
         controlP.addConditional(exitCheck)
         controlP.addAction(exitAction)
         
@@ -225,8 +226,9 @@ class InsertBulkAppDetails:
         #//
         controlP = taskObject['ShREEKTask'].endControlPoint
         exitCheck = CheckExitCode()
-        exitCheck.attrs['OnFail'] = "killJob"
-        exitAction = KillJob("killJob")
+        exitCheck.attrs['OnFail'] = "skipToLog"
+        exitAction = SetNextTask("skipToLog")
+        exitAction.content = "logArchive"
         controlP.addConditional(exitCheck)
         controlP.addAction(exitAction)
         

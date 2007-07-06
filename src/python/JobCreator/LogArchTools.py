@@ -8,7 +8,7 @@ Tools for populating a LogArchive type TaskObject as part of a job
 """
 
 import inspect, os
-
+import logging
 from ProdCommon.MCPayloads.PayloadNode import listAllNames
 import JobCreator.RuntimeTools.RuntimeLogArch as RuntimeLogArch
 from xml.sax import make_parser
