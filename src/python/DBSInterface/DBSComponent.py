@@ -155,6 +155,8 @@ class DBSComponent:
         self.args.setdefault("CloseBlockFiles", 100 )        
         self.args.setdefault("skipGlobalMigration", False )
 
+        self.args.setdefault("DataMode", "mc" )
+
         self.args.update(args)
 
         if self.args['Logfile'] == None:
@@ -177,14 +179,13 @@ class DBSComponent:
             self.args['BadReportfile'] = os.path.join(self.args['ComponentDir'],
                                                       "FailedJobReportList.txt")
 
-        self.BadReport = open(self.args['BadReportfile'],'a')
+        #self.BadReport = open(self.args['BadReportfile'],'a')
         #  //
         # // Log Failed fileblock injection into PhEDEx
         #//
         if self.args['BadTMDBInjectfile'] == None:
             self.args['BadTMDBInjectfile'] = os.path.join(self.args['ComponentDir'],
                                                       "FailedTMDBInject.txt")
-                                                                                                                                          
         #self.BadTMDBInject = open(self.args['BadTMDBInjectfile'],'a')
 
         
@@ -225,6 +226,7 @@ class DBSComponent:
 
             
         if event == "JobSuccess":
+            self.BadReport = open(self.args['BadReportfile'],'a')
             #logging.info("Job Succeeded: %s" % payload)
             try:
                 self.handleJobReport(payload)
@@ -287,6 +289,7 @@ class DBSComponent:
                 return
 
         if event == "DBSInterface:RetryFailures":
+            self.BadReport = open(self.args['BadReportfile'],'a')
             #logging.info("DBSInterface:RetryFailures Event")
             try:
                 self.RetryFailures(self.args['BadReportfile'],self.BadReport)
@@ -481,6 +484,15 @@ class DBSComponent:
          except DbsException, ex:
           logging.error("%s\n" % formatEx(ex))
           return
+
+         #
+         #  remove lumi sections fro mc data
+         # 
+         if ( self.args['DataMode'] == "mc" ):
+            if len(jobreport.files)>0:
+               for outFile in jobreport.files:
+                   outFile.lumisections = {}
+
          #  //
          # // Insert Files to block and datasets 
          #//
