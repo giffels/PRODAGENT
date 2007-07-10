@@ -130,6 +130,11 @@ class LCGCreator(CreatorInterface):
             "SCRAM_ARCH",
             self.pluginConfig['SoftwareSetup']['ScramArch'])
 
+        taskObject['Environment'].addVariable(
+            "BUILD_ARCH",
+            self.pluginConfig['SoftwareSetup']['ScramArch'])
+
+
         taskObject['PreTaskCommands'].append(
            setupScramEnvironment(". $VO_CMS_SW_DIR/cmsset_default.sh"))
 
