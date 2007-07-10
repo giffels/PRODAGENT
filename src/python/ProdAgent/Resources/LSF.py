@@ -14,7 +14,6 @@ import fcntl, select, sys, os
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
-
 def makeNonBlocking(fd):
     fl = fcntl.fcntl(fd, fcntl.F_GETFL)
     try:
@@ -40,7 +39,7 @@ class LSFConfiguration:
             msg += str(ex)
             logging.error(msg)
             raise RuntimeError, msg
-                                                                                                                                                 
+
         if config.has_key("LSF"):
 
             try:
@@ -70,14 +69,14 @@ class LSFInterface:
     Bjobs API
     """
 
-    def executeCommand(command):
+    def executeBjobs(command):
         """
-        _executeCommand_
+        _executeBjobs_
 
         Util it execute the command provided in a popen object
 
         """
-        logging.debug("SubmitterInterface.executeCommand:%s" % command)
+        logging.debug("SubmitterInterface.executeBjobs:%s" % command)
 
         child = popen2.Popen3(command, 1) # capture stdout and stderr from command
         child.tochild.close()             # don't need to talk to child
@@ -90,6 +89,7 @@ class LSFInterface:
         outdata = errdata = ''
         outeof = erreof = 0
         stdoutBuffer = ""
+        stderrBuffer = ""
         while 1:
             ready = select.select([outfd,errfd],[],[]) # wait for input
             if outfd in ready[0]:
@@ -100,6 +100,7 @@ class LSFInterface:
             if errfd in ready[0]:
                 errchunk = errfile.read()
                 if errchunk == '': erreof = 1
+                stderrBuffer += errchunk
                 sys.stderr.write(errchunk)
             if outeof and erreof: break
             select.select([],[],[],.1) # give a little time for buffers to fill
@@ -110,18 +111,29 @@ class LSFInterface:
             msg = "Error retrieving child exit code: %s\n" % ex
             msg = "while executing command:\n"
             msg += command
-            logging.error("BulkSubmitterInterface:Failed to Execute Command")
+            logging.error("LSFInterface:Failed to Execute Command")
             logging.error(msg)
             raise RuntimeError, msg
-        
+
+        #logging.info("stdout = '%s'" % stdoutBuffer)
+        #logging.info("stderr = '%s'" % stderrBuffer)
+
+        #
+        # bjobs exits with error if no jobs found
+        #
+        if ( stderrBuffer == "No job found\n" ):
+            return stdoutBuffer
+
         if exitCode:
             msg = "Error executing command:\n"
             msg += command
             msg += "Exited with code: %s\n" % exitCode
-            logging.error("SubmitterInterface:Failed to Execute Command")
+            logging.error("LSFInterface:Failed to Execute Command")
             logging.error(msg)
             raise RuntimeError, msg
-        return  stdoutBuffer
+        else:
+            return stdoutBuffer
+
 
     def bjobs(specificJobId = None):
         """
@@ -141,9 +153,9 @@ class LSFInterface:
         logging.debug("T0LSFTracker.bjobs: Checking jobs in LSF")
 
         if ( specificJobId != None ) :
-            output = LSFInterface.executeCommand("/usr/bin/bjobs -a -w -g " + LSFConfiguration.getGroup() + " -J " + specificJobId)
+            output = LSFInterface.executeBjobs("/usr/bin/bjobs -a -w -g " + LSFConfiguration.getGroup() + " -J " + specificJobId)
         else :
-            output = LSFInterface.executeCommand("/usr/bin/bjobs -a -w -g " + LSFConfiguration.getGroup())
+            output = LSFInterface.executeBjobs("/usr/bin/bjobs -a -w -g " + LSFConfiguration.getGroup())
 
         #logging.debug("T0LSFTracker.bjobs: %s " % output)
 
@@ -163,7 +175,7 @@ class LSFInterface:
         return statusDict
 
     bjobs = staticmethod(bjobs)
-    executeCommand = staticmethod(executeCommand)
+    executeBjobs = staticmethod(executeBjobs)
 
 
 class LSFStatus:
