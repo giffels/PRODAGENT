@@ -3,65 +3,23 @@ SET GLOBAL TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 /* Do not commit after every transaction*/
 SET AUTOCOMMIT = 0;
 
+
 /*
- ***********************JOB STATE TABLES****************************
-
--js_JobType and js_JobSpec are represented as one table
--tr_FlagInstance and tr_TriggerInstance are represented as one table
-
-   Action
-    | 1
-    |
-    | *   *      1 
-tr_Trigger---------js_JobSpec
-                        | 1
-                        |
-                        | *
-                  js_JobInstance
-
-There is no relation between triggers and
-js_JobInstance as this deals with 
-job submission which is a seperate component and has its
-own states managed by external components.
+ *CREATE TABLE js_JobSpec(
+ *  JobSpecID VARCHAR(255) NOT NULL,
+ *  JobType VARCHAR(255) NOT NULL,
+ *  MaxRetries INT NOT NULL,
+ *  MaxRacers INT NOT NULL,
+ *  Retries INT NOT NULL,
+ *  Racers INT NOT NULL,
+ *  Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+ *  State ENUM("register","create","inProgress","finished") 
+ *      NOT NULL,
+ *  WorkflowID VARCHAR(255) default ' ',
+ *  CacheDirLocation VARCHAR(255) NULL,
+ *  PRIMARY KEY (JobSpecID)
+ *  ) TYPE=InnoDB;
  */
-
-/* 
-A JobSpec table contains information related to the the request (not 
-the actual jobs being run):
--JobSpecID: Assigned by the ProdAgent Manager
--JobType: Assigned by the ProdAgent Manager (e.g. merge job, generation job,...)
--MaxRetries: Number of times the error handler should resubmit a job 
-for this job spec.
--Retries: Number of times the error handler has already handled a failure.
--State: The state a job class can be in. Below a diagram of the state 
-order (which needs to be enforced by an database access layer.
-
-register--->create-->inProgress-->finished
-
-inProgress hides the complex state of many jobs failing an being re submitted.
-
--CacheDir Location: Even when you resubmit, you will still use the same 
-tarfile generated which is located in the CacheDir
--MaxRacers: The maximum number of (the same) jobs we can submit 
-simultaneously (usually you only submit one at a time).
--Racers: number of jobs running. During creation that contains all the 
-necessary files to run the job.
-*/
-CREATE TABLE js_JobSpec(
-   JobSpecID VARCHAR(255) NOT NULL,
-   JobType VARCHAR(255) NOT NULL,
-   MaxRetries INT NOT NULL,
-   MaxRacers INT NOT NULL,
-   Retries INT NOT NULL,
-   Racers INT NOT NULL,
-   Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
-   State ENUM("register","create","inProgress","finished") 
-       NOT NULL,
-   WorkflowID VARCHAR(255) default ' ',
-   CacheDirLocation VARCHAR(255) NULL,
-   PRIMARY KEY (JobSpecID)
-   ) TYPE=InnoDB;
-
 
 /*
 A job instance is a job submission based on the job spec.  There can be 
@@ -71,23 +29,25 @@ multiple job instance running at the same time associated to a job class.
 -JobReportLocation: where the jobs report is stored.
 
 */
-CREATE TABLE js_JobInstance(
-   JobSpecID VARCHAR(255) NOT NULL,
-   JobInstanceID VARCHAR(255) ,
-   Location VARCHAR(255) ,
-   /* Once a job failed a job report can be generated and 
-      the url of this send to the error handler. The error
-      handler stores this job report locally and registers
-      the location of it in the JobReportLocation variable */
-   JobReportLocation VARCHAR(255),
-   Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
-   /* Not every MySQL version supports cascade or foreign keys */
-   CONSTRAINT `0_1` FOREIGN KEY(JobSpecID) 
-       REFERENCES js_JobSpec(JobSpecID) 
-       ON DELETE CASCADE,
-   INDEX(JobSpecID),
-   UNIQUE(JobInstanceID)
-   ) TYPE=InnoDB;
+/*
+ *CREATE TABLE js_JobInstance(
+ *  JobSpecID VARCHAR(255) NOT NULL,
+ *  JobInstanceID VARCHAR(255) ,
+ *  Location VARCHAR(255) ,
+ *  Once a job failed a job report can be generated and 
+ *     the url of this send to the error handler. The error
+ *     handler stores this job report locally and registers
+ *     the location of it in the JobReportLocation variable 
+ *  JobReportLocation VARCHAR(255),
+ *  Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+ *   Not every MySQL version supports cascade or foreign keys
+ *  CONSTRAINT `0_1` FOREIGN KEY(JobSpecID) 
+ *      REFERENCES we_Job(JobS) 
+ *      ON DELETE CASCADE,
+ *  INDEX(JobSpecID),
+ *  UNIQUE(JobInstanceID)
+ *  ) TYPE=InnoDB;
+ */
 
 /*
 The Job(spec) state is defined by:
@@ -103,29 +63,6 @@ We do not use the MySQL triggers as the actions are external
 to MySQL.
 */
 
-CREATE TABLE tr_Trigger(
-   JobSpecID VARCHAR(255) NOT NULL,
-   TriggerID VARCHAR(255) NOT NULL,
-   FlagID VARCHAR(255) NOT NULL,
-   FlagValue ENUM("null","start","finished") NOT NULL,
-   Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
-   /* Not every MySQL version supports cascade or foreign keys */
-   CONSTRAINT `0_2` FOREIGN KEY(JobSpecID) 
-       REFERENCES js_JobSpec(JobSpecID) 
-       ON DELETE CASCADE,
-   UNIQUE(JobSpecID,TriggerID,FlagID),
-   INDEX(TriggerID)
-   ) TYPE=InnoDB;
-
-CREATE TABLE tr_Action(
-   JobSpecID VARCHAR(255) NOT NULL,
-   TriggerID VARCHAR(255) NOT NULL,
-   /* Action name associated to this trigger. This name
-   is associated to some python code in an action registery
-   */
-   ActionName VARCHAR(255) NOT NULL,
-   UNIQUE(JobSpecID,TriggerID,ActionName)
-   ) TYPE=InnoDB;
 
 
    
@@ -707,7 +644,7 @@ CREATE INDEX jq_workflow_index USING BTREE ON jq_queue (workflow_id);
  */
 
 /*
- * ======================End CondorTracker tables===============
+ * ======================Start CondorTracker tables===============
  */
 
 CREATE TABLE ct_job(
@@ -797,6 +734,43 @@ CREATE TABLE we_Workflow
     primary key(id),
     index(priority)
    ) Type=InnoDB;
+
+/*
+ ************************Trigger****************************
+ *
+ *
+ *  Action
+ *   | 1
+ *   |
+ *   | *   *      1 
+ * tr_Trigger---------we_Job
+ *               
+ */
+
+CREATE TABLE tr_Trigger(
+   JobSpecID VARCHAR(255) NOT NULL,
+   TriggerID VARCHAR(255) NOT NULL,
+   FlagID VARCHAR(255) NOT NULL,
+   FlagValue ENUM("null","start","finished") NOT NULL,
+   Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+   /* Not every MySQL version supports cascade or foreign keys */
+   CONSTRAINT `0_2` FOREIGN KEY(JobSpecID) 
+       REFERENCES we_Job(id) 
+       ON DELETE CASCADE,
+   UNIQUE(JobSpecID,TriggerID,FlagID),
+   INDEX(TriggerID)
+   ) TYPE=InnoDB;
+
+CREATE TABLE tr_Action(
+   JobSpecID VARCHAR(255) NOT NULL,
+   TriggerID VARCHAR(255) NOT NULL,
+   /* Action name associated to this trigger. This name
+   is associated to some python code in an action registery
+   */
+   ActionName VARCHAR(255) NOT NULL,
+   UNIQUE(JobSpecID,TriggerID,ActionName)
+   ) TYPE=InnoDB;
+
 
 
 /*
