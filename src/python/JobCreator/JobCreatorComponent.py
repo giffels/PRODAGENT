@@ -11,7 +11,7 @@ import socket
 import tarfile
 import time
 import urllib2
-
+import traceback
 
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
@@ -84,7 +84,8 @@ class JobCreatorComponent:
                 return
             except StandardError, ex:
                 msg = "Failed to Create Job: %s\n" % payload
-                msg += "Details: %s" % str(ex)
+                msg += "Details: %s\n" % str(ex)
+                msg += "Traceback: %s\n" % traceback.format_exc()
                 logging.error(msg)
                 return
 
@@ -96,6 +97,7 @@ class JobCreatorComponent:
             except Exception, ex:
                 msg = "Failed to handle NewWorkflow: %s\n" % payload
                 msg += str(ex)
+                msg += "\nTraceback: %s\n" % traceback.format_exc()
                 logging.error(msg)
                 return
             
@@ -195,7 +197,7 @@ class JobCreatorComponent:
         if primaryJobSpec == None:
             logging.error("Unable to Create Job for: %s" % jobSpecFile)
             return
-
+        
         
         
         if not primaryJobSpec.isBulkSpec():
@@ -205,6 +207,7 @@ class JobCreatorComponent:
             jobSpecToPublish = self.handleJobSpecInstance(primaryJobSpec)
             jobname = primaryJobSpec.parameters['JobName']
             logging.debug("Publishing SubmitJob: %s" % jobname)
+            logging.debug("Publishing SubmitJob:File=%s" % jobSpecToPublish)
             self.ms.publish("AcceptedJob", jobname)
             self.ms.publish("SubmitJob", jobSpecToPublish)
             self.ms.commit()
@@ -229,6 +232,11 @@ class JobCreatorComponent:
                 continue
             
             newSpecFile = self.handleJobSpecInstance(specInstance)
+            if newSpecFile == None:
+                msg = "No JobSpec Returned due to error\n"
+                msg += "unable to proceed with Job Submission\n\n"
+                logging.error(msg)
+                return
             newSpecs[specID] = newSpecFile
             if firstSpec == None:
                 firstSpec = newSpecFile
@@ -321,9 +329,9 @@ class JobCreatorComponent:
             #  // 
             # // Register job creation for jobname, provide Cache Area
             #//  and set job state to InProgress
-
             if not JobState.isRegistered(jobname):
                 # FRANK (5 lines)
+                logging.debug("job is NOT registered, registering...")
                 if jobType == "Merge":
                     JobState.register(jobname, 'Merge',\
                                         int(self.args['mergeMaxRetries']),\
@@ -332,15 +340,21 @@ class JobCreatorComponent:
                     JobState.register(jobname, 'Processing',\
                                         int(self.args['maxRetries']),\
                                         1, workflowName)
+            logging.debug("job state has been  registered")                    
             JobState.create(jobname, jobCache)
+            logging.debug("job state has been created")                    
             JobState.inProgress(jobname)
+            logging.debug("job state is in progress")
         except Exception, ex:
             # NOTE: we can have different errors here 
             # NOTE: transition, submission, other...
-            logging.error("JobState Error:%s" % str(ex))
+            msg = "JobState Error: %s\n" % str(ex)
+            msg += "Traceback: %s\n" % traceback.format_exc()
+            logging.error(msg)
             return
 
         try:
+
             cleanFlags = self.mss.isSubscribedTo("SetJobCleanupFlag") 
             logging.debug("Found following components for cleanup flags " + \
                 str(cleanFlags))
@@ -364,11 +378,14 @@ class JobCreatorComponent:
                 #  //
                 # // Only set the action if there are components
                 #//  that need it.
+                logging.debug("Cleanup action installed for %s" % jobname)
                 self.trigger.setAction(jobname,"cleanup","jobCleanAction")
         except Exception, ex:
             # NOTE: we can have different errors here 
             # NOTE: transition, submission, other...
-            logging.error("Cleanup flag Error:%s" % str(ex))
+            msg = "Cleanup flag Error: %s\n" % str(ex)
+            msg += "Traceback: %s\n" % traceback.format_exc()
+            logging.error(msg)
             return
         
         return newJobSpec
