@@ -40,38 +40,59 @@ def gridProxySubject():
         
     
 
-def generateGlobalJobID(taskObject):
-    """
-    _generateGlobalJobID_
+##def generateGlobalJobID(taskObject):
+##    """
+##    _generateGlobalJobID_
 
-    Generate a global job ID for the dashboard
+##    Generate a global job ID for the dashboard
 
-    """
-    try:
-        prodAgentConfig = loadProdAgentConfiguration()
-        prodAgentName = prodAgentConfig['ProdAgent']['ProdAgentName']
-    except StandardError:
-        prodAgentName = "ProdAgent" 
+##    WONT WORK FOR BULK OPS
 
-    hostname = socket.gethostname()
-    if hostname not in prodAgentName:
-        prodAgentName = "%s@%s" % (prodAgentName, socket.gethostname())
+##    """
+##    try:
+##        prodAgentConfig = loadProdAgentConfiguration()
+##        prodAgentName = prodAgentConfig['ProdAgent']['ProdAgentName']
+##    except StandardError:
+##        prodAgentName = "ProdAgent" 
 
-    prodAgentName = prodAgentName.replace("_", "-")
-    jobSpecId = taskObject['JobSpecNode'].jobName
-    jobName = jobSpecId.replace("_", "-")    
-    result = "ProdAgent_%s_%s" %(
-        prodAgentName,
-        jobName,
-        )
+##    hostname = socket.gethostname()
+##    if hostname not in prodAgentName:
+##        prodAgentName = "%s@%s" % (prodAgentName, socket.gethostname())
 
-    taskName = "ProdAgent_%s_%s" % ( taskObject['JobSpecNode'].workflow,
-                                     prodAgentName)
+##    prodAgentName = prodAgentName.replace("_", "-")
+##    jobSpecId = taskObject['JobSpecNode'].jobName
+##    jobName = jobSpecId.replace("_", "-")    
+##    result = "ProdAgent_%s_%s" %(
+##        prodAgentName,
+##        jobName,
+##        )
+
+##    taskName = "ProdAgent_%s_%s" % ( taskObject['JobSpecNode'].workflow,
+##                                     prodAgentName)
     
-    return result, taskName
+##    return result, taskName
 
 
 
+
+def installPADetails(dashboardInfo):
+    """
+    _installPADetails_
+
+    Add PA IDs & meta information to dashboard info
+
+    """
+    prodAgentConfig = loadProdAgentConfiguration()
+    paBlock = prodAgentConfig.get('ProdAgent', {})
+    prodMonBlock = prodAgentConfig.get("ProdMon", {})
+
+    paName = paBlock.get("ProdAgentName", "ProdAgent")
+    team = prodMonBlock.get("Team", "NoTeam")
+
+    dashboardInfo['ProdAgent'] = paName
+    dashboardInfo['ProductionTeam'] = team
+    return
+                                  
 
 
 def installDashboardInfo(taskObject):
@@ -83,11 +104,12 @@ def installDashboardInfo(taskObject):
 
     """
     dashboardInfo = DashboardInfo()
-    dashboardInfo.job, dashboardInfo.task = generateGlobalJobID(taskObject)
+    dashboardInfo.job, dashboardInfo.task = generateDashboardID(taskObject['JobSpecNode'])
     dashboardInfo['GridUser'] = gridProxySubject()
     dashboardInfo['User'] = os.environ.get('USER', 'ProdAgent')
-
-
+    dashboardInfo['Workflow'] = taskObject['RequestName']
+    dashboardInfo['JobType'] = taskObject['JobType']
+    installPADetails(dashboardInfo)
     taskObject['DashboardInfoInstance'] =  dashboardInfo
     taskObject['DashboardInfo'] =  IMProvDoc("DashboardMonitoring")
     taskObject['DashboardInfo'].addNode(dashboardInfo.save())
@@ -111,8 +133,9 @@ def installBulkDashboardInfo(taskObject):
     dashboardInfo.task = taskObject['RequestName']
     dashboardInfo['GridUser'] = gridProxySubject()
     dashboardInfo['User'] = os.environ.get('USER', 'ProdAgent')
-    
-    
+    dashboardInfo['Workflow'] = taskObject['RequestName']
+    dashboardInfo['JobType'] = taskObject['JobType']
+    installPADetails(dashboardInfo)
     taskObject['DashboardInfoInstance'] =  dashboardInfo
     taskObject['DashboardInfo'] =  IMProvDoc("DashboardMonitoring")
     taskObject['DashboardInfo'].addNode(dashboardInfo.save())
