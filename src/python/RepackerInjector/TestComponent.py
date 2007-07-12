@@ -38,14 +38,16 @@ def usage():
 argsDict = {
             "ComponentDir" : os.getcwd(),
             "Logfile"      : "RepackerInjector.log",
-            "CMSSW_Arch" : "slc3_ia32_gcc323",
-            "CMSSW_Ver"  : "CMSSW_1_3_1",
+            "CMSSW_Arch" : "slc4_ia32_gcc345",
+            "CMSSW_Ver"  : "CMSSW_1_5_0",
             "CMSSW_Dir"  : "/uscmst1/prod/sw/cms/",
-            "RepackerCfgTmpl" : "/home/kss/cmswork/projects/PA/RepakerInjector_2/EventFilter/StorageManager/test/testRepackerTmpl.cfg",
+            "RepackerCfgTmpl" : "/home/kss/cmswork/projects/PA/LumiServer/PRODAGENT/src/python/RepackerInjector/test/testRepackerTmpl.cfg",
             "JobGroup" : "ankylosis",
             "JobLabel" : "RepackerInjectorTest",
-            "DbsUrl" : "https://cmsdbsprod.cern.ch:8443/cms_dbs_int_tier0_writer/servlet/DBSServlet",
-            "DbsLevel" : "ERROR"
+            "DbsUrl" : "http://cmssrv17.fnal.gov:8989/DBS_1_0_5_STABLE/servlet/DBSServlet",
+            "DbsLevel" : "ERROR",
+            "LogStreamHandler" : "1",
+            "LogLevel" : "debug"
             }
 
 valid = [ 'ComponentDir=',]

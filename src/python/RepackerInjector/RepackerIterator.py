@@ -103,7 +103,7 @@ class RepackerIterator:
 	    os.makedirs(self.specCache)
 
 
-    def __call__(self, inputLFNs ):
+    def __call__(self, inputLFNs):
 	"""
 	_operator()_
 
@@ -113,9 +113,9 @@ class RepackerIterator:
 	including LFNs and event ranges etc.
 
 	"""
-	newJobSpec = self.createJobSpec(inputLFNs)
+	JSPath,JSFile,JSObj = self.createJobSpec(inputLFNs)
 	self.count += 1
-	return newJobSpec
+	return (JSPath,JSFile,JSObj)
 
 
 
@@ -175,7 +175,7 @@ class RepackerIterator:
 
 	jobSpec.save(jobSpecFile)
 
-	return "file://%s" % jobSpecFile
+	return ("file://%s" % jobSpecFile,jobSpecFile,jobSpec)
 
 
 

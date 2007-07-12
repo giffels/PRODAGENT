@@ -8,8 +8,8 @@ Component for generating Repacker JobSpecs
 
 
 
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.7 2007/06/25 14:06:27 evansde Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.8 2007/06/25 17:12:07 hufnagel Exp $"
 __author__ = "kss"
 
 
@@ -20,6 +20,7 @@ import ProdAgentCore.LoggingUtils as LoggingUtils
 import ConfigDB
 import DbsLink
 import RepackerIterator
+from RepackerHelper import RepackerHelper
 import os
 import sys
 import traceback
@@ -48,7 +49,7 @@ class RepackerInjectorComponent:
 
     """
     def __init__(self, **args):
-        self.workflow_by_ds={}
+        #self.workflow_by_ds={}
         self.args = {}
         #  //
         # // Set default args
@@ -64,6 +65,9 @@ class RepackerInjectorComponent:
         logging.info(msg)
         logging.info("args %s"%str(args))
         logging.info("URL=[%s] level=[%s]" % (self.args["DbsUrl"],self.args["DbsLevel"]))
+
+        # Create repacker helper for generation and modification of workflow and job specs
+        self.repacker_helper=RepackerHelper(args)
 
 
     def __call__(self, message, payload):
@@ -100,50 +104,6 @@ class RepackerInjectorComponent:
 
 
 
-    def createNewWorkflow(self, filename, primaryDS, procDS, runNumber):
-        """
-        _createNewWorkflow_
-        
-        Create new workflow spec
-        For the dataset/run info provided
-        and save the file in the location provided.
-        Returns the new spec instance
-
-        """
-        requestId = str(runNumber)
-        channel = primaryDS
-        group = self.args['JobGroup']
-        label = procDS
-        cfg = self.args['RepackerCfgTmpl']
-        loader = CMSSWAPILoader(self.args['CMSSW_Arch'],
-                                self.args['CMSSW_Ver'],
-                                self.args['CMSSW_Dir']) # XXX
-        loader.load()
-        import FWCore.ParameterSet.parseConfig as ConfigParser
-        cmsCfg = ConfigParser.parseCfgFile(cfg)
-        cfgWrapper = CMSSWConfig()
-        cfgWrapper.originalCfg = file(cfg).read()
-        cfgWrapper.loadConfiguration(cmsCfg)
-        cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
-        cfgInt.validateForProduction()
-
-        wfmaker =Tier0WorkflowMaker(requestId, channel, label)
-        wfmaker.setRunNumber(runNumber)
-        wfmaker.changeCategory("data");
-        wfmaker.setCMSSWVersion(self.args['CMSSW_Ver'])
-        wfmaker.setPhysicsGroup(group)
-        wfmaker.setConfiguration(cfgWrapper, Type = "instance")
-        wfmaker.setPSetHash("NA")
-        wfmaker.addInputDataset("/%s/%s/RAW" % (primaryDS ,
-                                                procDS)
-                                )
-
-        spec = wfmaker.makeWorkflow()
-        spec.save(filename)
-        return spec
-
-
-        return 
 
     def doStartNewRun(self, payload):
         """
@@ -170,39 +130,13 @@ class RepackerInjectorComponent:
 
 
         #  //
-        # // Generate hash for workflow and check to see if it exists
-        #//  already. 
-        workflowHash = "%s-%s-%s" % (run_number,
-                                     primary_ds_name,
-                                     processed_ds_name)
-
-        workflowDir = os.path.join(self.args['ComponentDir'], workflowHash)
-        workflowFile = os.path.join(workflowDir,
-                                    "%s-Workflow.xml" % workflowHash)
+        # // Generate workflow
+        #// 
+        workflowFile,workflowHash=self.repacker_helper.prepareWorkflow(run_number, primary_ds_name, processed_ds_name)
         
-        if os.path.exists(workflowFile):
-            logging.info("Workflow Spec exists: Reloading state...")
-            logging.debug("Loading: %s" % workflowFile)
-            repacker_iter = self.workflow_by_ds[workflowHash]
-            repacker_iter.load(workflowDir)
-        else:
-            logging.info("Creating new workflow: %s" % workflowHash)
-            if not os.path.exists(workflowDir):
-                os.makedirs(workflowDir)
-            spec = self.createNewWorkflow(workflowFile,
-                                          primary_ds_name,
-                                          processed_ds_name,
-                                          run_number)
-            
-            self.ms.publish("NewWorkflow", workflowFile)
-            self.ms.publish("NewDataset",workflowFile)
-            self.ms.commit()
-            logging.info("Creating new iterator: %s" % workflowHash)
-            repacker_iter = RepackerIterator.RepackerIterator(workflowFile,
-                                                              workflowDir)
-            self.workflow_by_ds[workflowHash] = repacker_iter
-            repacker_iter.save(workflowDir)
-            
+        self.ms.publish("NewWorkflow", workflowFile)
+        self.ms.publish("NewDataset",workflowFile)
+        self.ms.commit()
         
         #
         # Final solution is not supposed to need run number.
@@ -218,12 +152,14 @@ class RepackerInjectorComponent:
                                           run_number)
 
         for i in file_res:
-            lfn,tags=i
+            lfn,tags,file_lumis=i
             logging.info("Found file %s" % lfn)
+            lumi_info={"lumiavg":1.05}
             res_job_error=self.submit_job(lfn,
                                           tags,
                                           primary_ds_name,
                                           processed_ds_name,
+                                          lumi_info,
                                           workflowHash)
             if(not res_job_error):
                 dbslink.setFileStatus(lfn, "submitted")
@@ -234,7 +170,7 @@ class RepackerInjectorComponent:
         return
 
 
-    def submit_job(self, lfn, tags, pri_ds, pro_ds, ds_key):
+    def submit_job(self, lfn, tags, pri_ds, pro_ds, lumi_info, ds_key):
         logging.info("Creating job for file [%s] tags %s"%(lfn,str(tags)))
         #
         # FIXME: NewStreamerEventStreamFileReader cannot use LFN
@@ -242,17 +178,13 @@ class RepackerInjectorComponent:
         #
         pfn = 'rfio:/?path=/castor/cern.ch/cms' + lfn
         logging.info("Creating job for file [%s] tags %s"%(pfn,str(tags)))
-        rep_iter = self.workflow_by_ds[ds_key]
-#		job_spec=spec.createJobSpec()
-        job_spec = rep_iter([pfn])
+
+        # Creating job_spec
+        job_spec=self.repacker_helper.createJobSpec(ds_key, tags, [pfn], lumi_info)
+        
         self.ms.publish("CreateJob",job_spec)
         self.ms.commit()
 
-        #  //
-        # // Save iterator state
-        #//
-        rep_iter.save(rep_iter.workingDir)
-        
         logging.info("CreateJob signal sent, js [%s]"%(job_spec,))
         return 0
 
