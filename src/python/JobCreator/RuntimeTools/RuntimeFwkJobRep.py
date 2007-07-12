@@ -44,7 +44,7 @@ def getSyncCE():
         #  //
         # // LCG, Sync CE from edg command
         #//
-        command = "edg-brokerinfo getCE"
+        command = "glite-brokerinfo getCE"
         pop = popen2.Popen3(command)
         pop.wait()
         exitCode = pop.poll()

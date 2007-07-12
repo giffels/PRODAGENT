@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.8 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.8 2006/11/10 22:31:02 evansde Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.9 2006/11/30 22:08:05 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -58,7 +58,7 @@ def getSyncCE():
         #  //
         # // LCG, Sync CE from edg command
         #//
-        command = "edg-brokerinfo getCE"
+        command = "glite-brokerinfo getCE"
         pop = popen2.Popen3(command)
         pop.wait()
         exitCode = pop.poll()
