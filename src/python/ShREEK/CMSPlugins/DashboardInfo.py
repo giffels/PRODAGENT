@@ -19,7 +19,7 @@ from IMProv.IMProvLoader import loadIMProvFile
 from IMProv.IMProvQuery import IMProvQuery
 
 from ShREEK.CMSPlugins.ApMonLite.ApMonDestMgr import ApMonDestMgr
-
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 def generateDashboardID(jobSpec):
     """
@@ -41,12 +41,30 @@ def generateDashboardID(jobSpec):
     workflowId = workflowId.replace("_", "-")
     taskName = "ProdAgent_%s_%s" % ( workflowId,
                                      prodAgentName)
+    subCount = jobSpec.parameters.get('SubmissionCount', 0)
+    jobName = "%s-%s" % (jobName, subCount)
     
     return taskName, jobName
 
 
 
+def extractDashboardID(jobSpecFile):
+    """
+    _extractDashboardID_
 
+    Read job spec file and extract the Dashboard ID
+
+    """
+    jobSpec = JobSpec()
+    try:
+        jobSpec.load(jobSpecFile)
+    except Exception, ex:
+        msg = "Error loading JobSpec File: %s\n" % jobSpecFile
+        msg += str(ex)
+        print msg
+        return (None, None)
+    
+    return generateDashboardID(jobSpec)
 
 
 

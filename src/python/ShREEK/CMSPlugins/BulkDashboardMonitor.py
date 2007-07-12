@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: BulkDashboardMonitor.py,v 1.1 2007/01/29 22:16:29 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: BulkDashboardMonitor.py,v 1.2 2007/07/12 18:10:58 afanfani Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -119,7 +119,6 @@ class BulkDashboardMonitor(ShREEKMonitor):
         self.destPort = int(kwargs['ServerPort'])
         dashboardInfoFile = kwargs['DashboardInfo']
         dashboardInfoFile = os.path.expandvars(dashboardInfoFile)
-        dashboardID = os.environ.get("PRODAGENT_DASHBOARD_ID", None)
         self.dashboardInfo = DashboardInfo()
         self.dashboardInfo.read(dashboardInfoFile)
         
@@ -132,10 +131,7 @@ class BulkDashboardMonitor(ShREEKMonitor):
             return
         dashboardTask, dashboardJob = generateDashboardID(jobSpec)
 
-        if dashboardID != None:
-            dashboardJob = dashboardId
         
-            
         self.dashboardInfo.task = dashboardTask
         self.dashboardInfo.job = dashboardJob
         

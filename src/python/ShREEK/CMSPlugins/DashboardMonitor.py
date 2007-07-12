@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.9 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.9 2006/11/30 22:08:05 evansde Exp $"
+__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.10 2007/07/12 18:10:58 afanfani Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -15,10 +15,12 @@ __author__ = "evansde@fnal.gov"
 from ShREEK.ShREEKMonitor import ShREEKMonitor
 from ShREEK.ShREEKPluginMgr import registerShREEKMonitor
 
-from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, extractDashboardID
 from ShREEK.CMSPlugins.ApMonLite.ApMonDestMgr import ApMonDestMgr
 from ShREEK.CMSPlugins.EventLogger import EventLogger
 from IMProv.IMProvQuery import IMProvQuery
+
+
 
 import os
 import time
@@ -99,23 +101,41 @@ class DashboardMonitor(ShREEKMonitor):
         self.destPort = int(kwargs['ServerPort'])
         dashboardInfoFile = kwargs['DashboardInfo']
         dashboardInfoFile = os.path.expandvars(dashboardInfoFile)
-        dashboardID = os.environ.get("PRODAGENT_DASHBOARD_ID", None)
+
+        jobSpecFile = os.environ.get("PRODAGENT_JOBSPEC", None)
+        if jobSpecFile == None:
+            msg = "No JobSpec file found in job...\n"
+            msg += "Aborting dashboard publication...\n"
+            print msg
+            return
+
+        
         self.dashboardInfo = DashboardInfo()
         try:
             self.dashboardInfo.read(dashboardInfoFile)
-            if dashboardID != None:
-                self.dashboardInfo.job = dashboardID
+        except Exception, ex:
+            msg = "Unable to read DashboardInfo file\n"
+            msg += "%s\n" % str(ex)
+            msg += "Some information may be missing..."
+            print msg
+            
+        self.dashboardInfo.task, dashboardInfo.job = \
+                                 extractDashboardID(jobSpecFile)
+        
+        try:
             self.dashboardInfo.addDestination(self.destHost, self.destPort)
-        except StandardError, ex:
-            msg = "ERROR: Unable to load Dashboard Info File:\n"
-            msg += "%s\n" % dashboardInfoFile
+        except Exception, ex:
+            msg = "Error adding Dashboard Destination\n"
             msg += "Unable to communicate to Dashboard\n"
             print msg
             self.dashboardInfo = None
             return
 
+
         cluster = self.dashboardInfo.task
-        node = kwargs['ProdAgentJobID']
+        node = kwargs.get('ProdAgentJobID', None)
+        if node == None:
+            return
         self.apmon = ApMonDestMgr(cluster, node)
         destQ = IMProvQuery("ShREEKMonitorCfg/EventDestination")
         dests = destQ(self.monitorConfig)
@@ -207,6 +227,8 @@ class DashboardMonitor(ShREEKMonitor):
             lastEvent = self.eventLogger.latestEvent
             
         self.eventLogger = None
+        if self.apmon == None:
+            return
         self.apmon.connect()
         for i in range(0, 5):
             self.apmon.send(
@@ -239,6 +261,8 @@ class DashboardMonitor(ShREEKMonitor):
         if self.eventLogger == None:
             return
 
+        if self.apmon == None:
+            return
         self.apmon.connect()
         self.apmon.send(
             SyncCE = self.syncCE,
@@ -270,7 +294,6 @@ class DashboardMonitor(ShREEKMonitor):
 
         """
         if self.eventLogger == None:
-            print "No Event Logger"
             return
 
         try:
