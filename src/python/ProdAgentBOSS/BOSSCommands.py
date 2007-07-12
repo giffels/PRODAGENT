@@ -8,7 +8,7 @@ import string
 import os
 import signal
 import re
-from JobState.JobStateAPI import JobStateInfoAPI 
+from ProdAgent.WorkflowEntities import JobState
 import shutil
 from ProdAgentCore.ProdAgentException import ProdAgentException
 
@@ -583,7 +583,7 @@ def jobSpecId(id,bossCfgDir):
         outp=outp.split("NAME")[1].strip()
     except:
         outp=""
-
+        
     return outp
 
 
@@ -747,8 +747,8 @@ def FailedSubmission(bossJobId,bossCfgDir):
     
     taskid=bossJobId.split('.')[0]
     try:
-        jobMaxRetries=JobStateInfoAPI.general(jobSpecId(bossJobId,bossCfgDir))['MaxRetries']
-        Retries=JobStateInfoAPI.general(jobSpecId(bossJobId,bossCfgDir))['Retries']
+        jobMaxRetries=JobState.general(jobSpecId(bossJobId,bossCfgDir))['MaxRetries']
+        Retries=JobState.general(jobSpecId(bossJobId,bossCfgDir))['Retries']
     except:
         jobMaxRetries=0
         Retries=0
@@ -792,7 +792,9 @@ def archive(jobId,bossCfgDir):
 
 def Delete(jobId,bossCfgDir):
     # print "boss delete -taskid %s -noprompt -c %s"%(jobId.split('.')[0],bossCfgDir)
-    outfile=executeCommand("boss delete -taskid %s -noprompt -c %s"%(jobId.split('.')[0],bossCfgDir))
+#    outfile=executeCommand("boss delete -taskid %s -noprompt -c %s"%(jobId.split('.')[0],bossCfgDir))
+    outfile=executeCommand("bossAdmin SQL -query \"update JOB set STATUS='K',STOP_T='-1' where TASK_ID='%s'  and CHAIN_ID='%s'\" -c %s"%(jobId.split('.')[0],jobId.split('.')[1],bossCfgDir))
+    outfile=executeCommand("boss archive -taskid %s -jobid %s -c %s"%(jobId.split('.')[0],jobId.split('.')[1],bossCfgDir))
     # print outfile
     return
 
