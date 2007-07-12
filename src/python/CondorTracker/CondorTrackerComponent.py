@@ -22,6 +22,7 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.LoggingUtils import installLogHandler
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgent.WorkflowEntities import JobState
+from ProdAgent.WorkflowEntities import Job as WEJob
 from ProdAgentDB.Config import defaultConfig as dbConfig
 
 from CondorTracker.Registry import retrieveTracker
@@ -208,8 +209,8 @@ class CondorTrackerComponent:
 
         """
         try:
-            jobState = JobState.general(jobSpecId)
-            jobCache = jobState['CacheDirLocation']
+            jobState = WEJob.get(jobSpecId)
+            jobCache = jobState['cache_dir']
         except ProdAgentException, ex:
             msg = "Unable to Publish Report for %s\n" % jobSpecId
             msg += "Since It is not known to the JobState System:\n"
@@ -229,16 +230,22 @@ class CondorTrackerComponent:
             badReport.write(jobReport)
             self.ms.publish("JobFailed" ,jobReport)
             self.ms.commit()
+            WEJob.registerFailure(jobSpecId, "run")
+            Session.commit_all()
             logging.info("JobFailed Published For %s" % jobSpecId)
             return
         if checkSuccess(jobReport):
             self.ms.publish("JobSuccess", jobReport)
             self.ms.commit()
+            WEJob.setState(jobSpecId, "finished")
+            Session.commit_all()
             logging.info("JobSuccess Published For %s" % jobSpecId)
             return
         else:
             self.ms.publish("JobFailed" ,jobReport)
             self.ms.commit()
+            WEJob.registerFailure(jobSpecId, "run")
+            Session.commit_all()
             logging.info("JobFailed Published For %s" % jobSpecId)
             return
 
@@ -252,7 +259,7 @@ class CondorTrackerComponent:
         """
         try:
             jobState = JobState.general(jobSpecId)
-            jobCache = jobState['CacheDirLocation']
+            jobCache = jobState['cache_dir']
         except ProdAgentException, ex:
             msg = "Unable to Publish Report for %s\n" % jobSpecId
             msg += "Since It is not known to the JobState System:\n"
@@ -273,6 +280,8 @@ class CondorTrackerComponent:
         badReport.write(jobReport)
         self.ms.publish("JobFailed" ,jobReport)
         self.ms.commit()
+        WEJob.registerFailure(jobSpecId, "run")
+        Session.commit_all()
         logging.info("JobFailed Published For %s" % jobSpecId)
         return
         
