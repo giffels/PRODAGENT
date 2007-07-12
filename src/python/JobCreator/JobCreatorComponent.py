@@ -23,6 +23,7 @@ from ProdAgentCore.Configuration import prodAgentName
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdAgent.Trigger.Trigger import Trigger
 from ProdAgent.WorkflowEntities import JobState
+from ProdAgent.WorkflowEntities import Job as WEJob
 
 from JobCreator.JCException import JCException
 from JobCreator.Registry import retrieveGenerator
@@ -311,6 +312,14 @@ class JobCreatorComponent:
             os.makedirs(jobCache)
 
             
+        if not WEJob.exists(jobname):
+            numberOfAttempts = 0
+        else:
+            jobData = WEJob.get(jobname)
+            numberOfAttempts = jobData.get('retries', 0)
+
+        jobSpec.parameters['SubmissionCount'] = numberOfAttempts
+        
         try:
             gen = retrieveGenerator(self.args['GeneratorName'])
             creator = retrieveCreator(self.args['CreatorName'])
