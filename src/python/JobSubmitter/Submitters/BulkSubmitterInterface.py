@@ -18,7 +18,7 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentCore.ProdAgentException import ProdAgentException
 
-
+import ShREEK.CMSPlugins.DashboardInfo  as DashboardUtils
 
 def makeNonBlocking(fd):
     fl = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -107,6 +107,10 @@ class BulkSubmitterInterface:
         # // Invoke whatever is needed to do the submission
         #//
         self.doSubmit()
+        #  //
+        # // Publish submissions to dashboard
+        #//
+        self.publishSubmitToDashboard()
         return
     
     def checkPluginConfig(self):
@@ -195,7 +199,7 @@ class BulkSubmitterInterface:
             raise RuntimeError, msg
         return  stdoutBuffer
     
-    def publishSubmitToDashboard(self, dashboardInfo):
+    def publishSubmitToDashboard(self):
         """
         _publishSubmitToDashboard_
 
@@ -205,14 +209,30 @@ class BulkSubmitterInterface:
         it here for time being.
 
         """
-        #if dashboardInfo == None:
-        #    logging.debug(
-        #        "SubmitterInterface: No DashboardInfo available for job"
-        #        )
-        #    return
-        #dashboardInfo['ApplicationVersion'] = self.listToString(self.parameters['AppVersions'])
-        #dashboardInfo['TargetCE'] = self.listToString(self.parameters['Whitelist'])
-        #dashboardInfo.addDestination("lxgate35.cern.ch", 8884)
-        #dashboardInfo.publish(5)
+        appData = str(self.applicationVersions)
+        appData = appData.replace("[", "")
+        appData = appData.replace("]", "")
+        whitelist = str(self.whitelist)
+        whitelist = whitelist.replace("[", "")
+        whitelist = whitelist.replace("]", "")
+        
+        for jobId, jobCache in self.toSubmit.items():
+            jobSpec = self.specFiles[jobId]
+            dashInfoFile = os.path.join(jobCache, "DashboardInfo.xml")
+            if not os.path.exists(dashInfoFile):
+                msg = "Dashboard Info file not found\n"
+                msg += "%s\n" % dashInfoFile
+                msg += "Skipping publication for %s\n" % jobId
+                logging.warning(msg)
+                continue
+            dashData = DashboardUtils.DashboardInfo()
+            dashData.read(dashInfoFile)
+            dashData.task, dashData.job = \
+                           DashboardUtils.extractDashboardID(jobSpec)
+            
+            dashData['ApplicationVersion'] = appData
+            dashData['TargetCE'] = whitelist
+            dashData.addDestination("lxgate35.cern.ch", 8884)
+            dashData.publish(5)
         return
     
