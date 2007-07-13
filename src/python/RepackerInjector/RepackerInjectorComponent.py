@@ -19,6 +19,7 @@ import ProdAgentCore.LoggingUtils as LoggingUtils
 #import MySQLdb
 import ConfigDB
 import DbsLink
+from LumiServerLink import LumiServerLink
 import RepackerIterator
 from RepackerHelper import RepackerHelper
 import os
@@ -68,6 +69,7 @@ class RepackerInjectorComponent:
 
         # Create repacker helper for generation and modification of workflow and job specs
         self.repacker_helper=RepackerHelper(args)
+        self.lumisrv=LumiServerLink(url=self.args["LumiServerUrl"],level=self.args["DbsLevel"])
 
 
     def __call__(self, message, payload):
@@ -154,7 +156,9 @@ class RepackerInjectorComponent:
         for i in file_res:
             lfn,tags,file_lumis=i
             logging.info("Found file %s" % lfn)
-            lumi_info={"lumiavg":1.05}
+            lumisection=file_lumis[0]['LumiSectionNumber']
+            lumi_info=self.lumisrv.getLumiInfo(run_number,lumisection)
+            print "LUMIINFO",lumi_info
             res_job_error=self.submit_job(lfn,
                                           tags,
                                           primary_ds_name,

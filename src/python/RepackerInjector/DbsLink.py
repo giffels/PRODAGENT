@@ -43,14 +43,14 @@ class DbsLink:
         res=[]
         try:
             file_list=self.con.listLFNs(path=dbspath, queryableMetaData="NOTSET")
-            #print "FILELIST:",file_list
+            print "FILELIST:",file_list
             #file_list=self.con.listLFNs(path=dbspath)
             for i in file_list:
                 lfn=i['LogicalFileName']
 
                 #check if LFN belongs to correct run
                 lumiList = self.con.listFileLumis(lfn)
-                #print "LUMILIST:",lumiList
+                print "LUMILIST:",lumiList
                 file_lumis=[]
                 for lumi in lumiList:
                     if lumi['RunNumber'] == run:

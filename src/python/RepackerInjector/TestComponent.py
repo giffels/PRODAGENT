@@ -47,7 +47,8 @@ argsDict = {
             "DbsUrl" : "http://cmssrv17.fnal.gov:8989/DBS_1_0_5_STABLE/servlet/DBSServlet",
             "DbsLevel" : "ERROR",
             "LogStreamHandler" : "1",
-            "LogLevel" : "debug"
+            "LogLevel" : "debug",
+            "LumiServerUrl" : "http://cmssrv18.fnal.gov:8080/lumi/servlet/LumiServlet"
             }
 
 valid = [ 'ComponentDir=',]

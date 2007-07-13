@@ -59,13 +59,41 @@ class RepackerHelper:
         # Set lumi data here
         print "Set LumiData",lumi_data
         cfgInstance = pickle.loads(job_spec.payload.cfgInterface.rawCfg)
-        #print "DUMP:",cfgInstance.dumpConfig()
         #print "PRODUCERS:",cfgInstance.producers_()
         # Get producers list (lumi module is EDProducer)
         producers_list=cfgInstance.producers_()
         mod_lumi=producers_list['lumi']
-        print "LumiModule",mod_lumi.parameterNames_()
+        print "LumiModule",mod_lumi.parameterNames_(),dir(mod_lumi)
+        #Get template pset for the lumi module
+        pset_name=mod_lumi.parameterNames_()[0]
+        pset=getattr(mod_lumi,pset_name)
+
+        #Clean the template pset name
+        delattr(mod_lumi,pset_name)
+        print "LumiModule2",mod_lumi.parameterNames_()
+
+        #Create the real PSet name"
+        pset_name="LB"+str(lumi_data['lsnumber'])
+        pset.setLabel(pset_name)
+        #Set parameters
+        pset.avglumi=lumi_data['avglumi']
+        pset.avglumierr=lumi_data['avglumierr']
+        pset.lumisecqual=int(lumi_data['lumisecqual'])
+        pset.livefrac=lumi_data['livefrac']
+        pset.lsnumber=int(lumi_data['lsnumber'])
+
+        pset.lumietsum=lumi_data['det_et_sum']
+        pset.lumietsumerr=lumi_data['det_et_err']
+        pset.lumietsumqual=lumi_data['det_et_qua']
+        pset.lumiocc=lumi_data['det_occ_sum']
+        pset.lumioccerr=lumi_data['det_occ_err']
+        pset.lumioccqual=lumi_data['det_occ_qua']
+        
+        #Insert the pset into the lumi module
+        setattr(mod_lumi,pset_name,pset)
+        
         # bla-bla
+        print "DUMP:",cfgInstance.dumpConfig()
 
         # save spec after update
         job_spec.save(job_spec_file)
