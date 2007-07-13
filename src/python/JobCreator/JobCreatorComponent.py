@@ -209,6 +209,11 @@ class JobCreatorComponent:
             jobname = primaryJobSpec.parameters['JobName']
             logging.debug("Publishing SubmitJob: %s" % jobname)
             logging.debug("Publishing SubmitJob:File=%s" % jobSpecToPublish)
+            if jobSpecToPublish == None:
+                msg = "No JobSpec Returned due to error\n"
+                msg += "unable to proceed with Job Submission\n\n"
+                logging.error(msg)
+                return
             self.ms.publish("AcceptedJob", jobname)
             self.ms.publish("SubmitJob", jobSpecToPublish)
             self.ms.commit()
@@ -319,7 +324,7 @@ class JobCreatorComponent:
             numberOfAttempts = jobData.get('retries', 0)
 
         jobSpec.parameters['SubmissionCount'] = numberOfAttempts
-        
+
         try:
             gen = retrieveGenerator(self.args['GeneratorName'])
             creator = retrieveCreator(self.args['CreatorName'])

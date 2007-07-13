@@ -13,7 +13,7 @@ import os
 import socket
 import time
 
-from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, generateDashboardID
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, generateDashboardID, extractDashboardID
 from IMProv.IMProvDoc import IMProvDoc
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
@@ -104,7 +104,7 @@ def installDashboardInfo(taskObject):
 
     """
     dashboardInfo = DashboardInfo()
-    dashboardInfo.job, dashboardInfo.task = generateDashboardID(taskObject['JobSpecNode'])
+    dashboardInfo.job, dashboardInfo.task = extractDashboardID(taskObject['JobSpecNode'])
     dashboardInfo['GridUser'] = gridProxySubject()
     dashboardInfo['User'] = os.environ.get('USER', 'ProdAgent')
     dashboardInfo['Workflow'] = taskObject['RequestName']
