@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.10 2007/07/12 18:10:58 afanfani Exp $"
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.11 2007/07/12 19:53:37 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -119,7 +119,7 @@ class DashboardMonitor(ShREEKMonitor):
             msg += "Some information may be missing..."
             print msg
             
-        self.dashboardInfo.task, dashboardInfo.job = \
+        self.dashboardInfo.task, self.dashboardInfo.job = \
                                  extractDashboardID(jobSpecFile)
         
         try:
