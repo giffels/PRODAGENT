@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.21 2007/01/18 16:51:27 evansde Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.23 2007/03/13 11:48:24 bacchi Exp $"
 
 import os
 import logging
@@ -23,7 +23,8 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentBOSS import BOSSCommands
 
 
-from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo,extractDashboardID
+
 
 class SubmitterInterface:
     """
@@ -240,7 +241,13 @@ class SubmitterInterface:
             # no need to add timestamp, this makes the ID inconsistent
             # between submission and runtime evansde 18/01/07
             # re-add the timestamp so that at least LCG resubmission are recorded (hopefully) properly afnafani 07/03/07 
-            dashboardInfo.job = "%s_%s" % (dashboardInfo.job, time.time())
+#AF            dashboardInfo.job = "%s_%s" % (dashboardInfo.job, time.time())
+# AF : trying to extract DashboardID from JobSpec:  from ID
+            jobSpecFile = "%s/%s-JobSpec.xml" % (
+                os.path.dirname(jobCreationArea), self.parameters['JobName'])
+            dashboardInfo.task, dashboardInfo.job = \
+                           extractDashboardID(jobSpecFile)
+#AF
             dashboardInfo['Scheduler'] = self.__class__.__name__
             self.parameters['DashboardInfo'] = dashboardInfo
             self.parameters['DashboardID'] = dashboardInfo.job
@@ -318,6 +325,7 @@ class SubmitterInterface:
                 "SubmitterInterface: No DashboardInfo available for job"
                 )
             return
+
         dashboardInfo['ApplicationVersion'] = self.listToString(self.parameters['AppVersions'])
         dashboardInfo['TargetCE'] = self.listToString(self.parameters['Whitelist'])
         dashboardInfo.addDestination("lxgate35.cern.ch", 8884)
