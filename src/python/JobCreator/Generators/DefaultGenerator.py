@@ -113,10 +113,10 @@ class DefaultGenerator(GeneratorInterface):
 
         logging.debug("JobGenerator: Job Directory: %s" % directory)
         cacheDir = os.path.dirname(directory)
-        
+
+        jobSpec.parameters['ProdAgentName'] = prodAgentName()
         jobSpec.save(jobSpecFile)
         jobSpec.save(runtimeJobSpecFile)
-        jobSpec.parameters['ProdAgentName'] = prodAgentName()
 
         #  //
         # // Insert Standard Objects into TaskObject tree
