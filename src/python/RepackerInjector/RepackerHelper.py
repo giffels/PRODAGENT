@@ -56,21 +56,24 @@ class RepackerHelper:
 
 
     def _setLumiData(self,job_spec_file,job_spec,lumi_data):
+        if(len(lumi_data)<=1):
+            logging.info("Insufficient lumi data - ignoring")
+            return
         # Set lumi data here
-        print "Set LumiData",lumi_data
+        #print "Set LumiData",lumi_data
         cfgInstance = pickle.loads(job_spec.payload.cfgInterface.rawCfg)
         #print "PRODUCERS:",cfgInstance.producers_()
         # Get producers list (lumi module is EDProducer)
         producers_list=cfgInstance.producers_()
         mod_lumi=producers_list['lumi']
-        print "LumiModule",mod_lumi.parameterNames_(),dir(mod_lumi)
+        #print "LumiModule",mod_lumi.parameterNames_(),dir(mod_lumi)
         #Get template pset for the lumi module
         pset_name=mod_lumi.parameterNames_()[0]
         pset=getattr(mod_lumi,pset_name)
 
         #Clean the template pset name
         delattr(mod_lumi,pset_name)
-        print "LumiModule2",mod_lumi.parameterNames_()
+        #print "LumiModule2",mod_lumi.parameterNames_()
 
         #Create the real PSet name"
         pset_name="LB"+str(lumi_data['lsnumber'])
@@ -93,10 +96,11 @@ class RepackerHelper:
         setattr(mod_lumi,pset_name,pset)
         
         # bla-bla
-        print "DUMP:",cfgInstance.dumpConfig()
+        #print "DUMP:",cfgInstance.dumpConfig()
 
         # save spec after update
         job_spec.save(job_spec_file)
+        return
 
 
     def prepareWorkflow(self, run_number, primary_ds_name, processed_ds_name):

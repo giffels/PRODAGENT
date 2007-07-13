@@ -46,9 +46,9 @@ argsDict = {
             "JobLabel" : "RepackerInjectorTest",
             "DbsUrl" : "http://cmssrv17.fnal.gov:8989/DBS_1_0_5_STABLE/servlet/DBSServlet",
             "DbsLevel" : "ERROR",
+            "LumiServerUrl" : "http://cmssrv18.fnal.gov:8080/lumi/servlet/LumiServlet",
             "LogStreamHandler" : "1",
-            "LogLevel" : "debug",
-            "LumiServerUrl" : "http://cmssrv18.fnal.gov:8080/lumi/servlet/LumiServlet"
+            "LogLevel" : "debug"
             }
 
 valid = [ 'ComponentDir=',]

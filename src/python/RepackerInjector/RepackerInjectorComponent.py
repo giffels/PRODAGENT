@@ -69,7 +69,10 @@ class RepackerInjectorComponent:
 
         # Create repacker helper for generation and modification of workflow and job specs
         self.repacker_helper=RepackerHelper(args)
-        self.lumisrv=LumiServerLink(url=self.args["LumiServerUrl"],level=self.args["DbsLevel"])
+        if(self.args.has_key('LumiServerUrl')):
+            self.lumisrv=LumiServerLink(url=self.args["LumiServerUrl"],level=self.args["DbsLevel"])
+        else:
+            self.lumisrv=LumiServerLink(url=None,level=self.args["DbsLevel"])
 
 
     def __call__(self, message, payload):
@@ -158,7 +161,7 @@ class RepackerInjectorComponent:
             logging.info("Found file %s" % lfn)
             lumisection=file_lumis[0]['LumiSectionNumber']
             lumi_info=self.lumisrv.getLumiInfo(run_number,lumisection)
-            print "LUMIINFO",lumi_info
+            #print "LUMIINFO",lumi_info
             res_job_error=self.submit_job(lfn,
                                           tags,
                                           primary_ds_name,

@@ -12,9 +12,14 @@ class LumiServerLink:
     def __init__(self,**kw):
         self.con=None
         self.cache={}
-        print "Connecting to DBS [%s]"%(kw['url'],)
+        self.lumiserver_url=kw['url']
         try:
-            self.con = LumiApi(kw)
+            if(self.lumiserver_url):
+                logging.info("Connecting to LumiServer [%s]"%(kw['url'],))
+                self.con = LumiApi(kw)
+            else:
+                self.con=None
+                logging.info("IGNORING LUMI DATA - LumiServerUrl was not set !!!")
         except LumiException, ex:
             msg = "Error in LumiServerLink with LumiApi\n"
             msg += "%s\n" % formatEx(ex)
@@ -22,8 +27,12 @@ class LumiServerLink:
 
 
     def getLumiInfo(self,run_number,lumisection):
-        print "Getting LumiInfo for run",run_number,"lumisection",lumisection
         lumi_info={"lsnumber":long(lumisection)}
+        
+        if(not self.con):
+            return lumi_info
+            
+        logging.info("Getting LumiInfo for run %s lumisection %s"%(str(run_number),str(lumisection)))
         
         lumi_sum=self._getSummary(run_number,lumisection)
         lumi_info['avglumi']=float(lumi_sum.get('delivered_et_lumi','0.0'))
@@ -74,14 +83,14 @@ class LumiServerLink:
 
     def _getSummary(self,run,lumisection):
         try:
-            print "Getting LumiSummary for run",run,"lumisection",lumisection
+            logging.info("Getting LumiInfo SUMMARY for run %s lumisection %s"%(str(run),str(lumisection)))
             cachekey="_sum_%s_%s"%(str(run),str(lumisection))
             ret=self.cache.get(cachekey,{})
             if(len(ret)>0):
-                print "Got from cache for %s"%cachekey
+                #print "Got from cache for %s"%cachekey
                 return ret
             ret=self.con.listLumiSummary(str(run),str(lumisection),"ET")
-            print "LUMISUMMARY",ret
+            #print "LUMISUMMARY",ret
             ret=ret[0]
             self.cache[cachekey]=ret
             return ret
@@ -95,15 +104,15 @@ class LumiServerLink:
 
     def _getDetails(self,run,lumisection,lumi_option):
         try:
-            print "Getting Lumi_%s_details for run"%lumi_option,run,"lumisection",lumisection
+            logging.info("Getting LumiInfo DETAILS %s for run %s lumisection %s"%(lumi_option,str(run),str(lumisection)))
             cachekey="_%s_det_%s_%s"%(lumi_option,str(run),str(lumisection))
             ret=self.cache.get(cachekey,{})
             if(len(ret)>0):
-                print "Got from cache for %s"%cachekey
+                #print "Got from cache for %s"%cachekey
                 return ret
             ret=self.con.listLumiByBunch(str(run),str(lumisection),lumi_option)
             self.cache[cachekey]=ret
-            print "LUMI_%s_DET"%lumi_option,ret
+            #print "LUMI_%s_DET"%lumi_option,ret
             return ret
         except LumiException, ex:
             msg="Caught LUMIServer Exception: %s: %s "  % (ex.msg, ex.code )
