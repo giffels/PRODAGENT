@@ -6,8 +6,8 @@
 ShREEK monitor manager module.
 """
 
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: ShREEKMonitorMgr.py,v 1.2 2007/03/07 22:54:19 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: ShREEKMonitorMgr.py,v 1.3 2007/06/07 12:56:00 evansde Exp $"
 
 from ShREEK.ShREEKException import ShREEKException
 from ShREEK.ShREEKPluginMgr import ShREEKPlugins
@@ -30,7 +30,7 @@ class ShREEKMonitorMgr(dict):
         self.executionMgr = executionMgrRef
         self.monitorConfig = None
         self.updatorConfig = None
-        self.ignoreErrors = False
+        self.ignoreErrors = True
         self.state = MonitorState()
         
 
