@@ -19,7 +19,7 @@ valid = [
     'activate', 'deactivate',
     
     'processing-threshold=', 'merge-threshold=', # standard thresholds
-    'min-submit='                                # for new site mode 
+    'min-submit=', 'max-submit='                 # for new site mode 
     
     ]
 
@@ -38,8 +38,8 @@ setThisValue = None
 
 procThreshold = 100
 mergeThreshold = 10
-minSubmit = 50
-
+minSubmit = 1
+maxSubmit = 500
 
 usage = """
 resourceControl.py --<MODE>     # Mode is one of: new, edit, drop, list
@@ -57,6 +57,8 @@ resourceControl.py --<MODE>     # Mode is one of: new, edit, drop, list
                                 # Thresholds for triggering new submission
                                 # for merge or processing jobs respectively
             --min-submit=<INT>  # Minimum number of processing jobs to submit
+                                # in a single attempt for bulk ops. (new, edit)
+            --max-submit=<INT>  # Maximum number of processing jobs to submit
                                 # in a single attempt for bulk ops. (new, edit)
 
             --set-threshold=<thresholdName> # set/add threshold name with value
@@ -107,6 +109,8 @@ for opt, arg in opts:
         
     if opt == "--min-submit":
         minSubmit = int(arg)
+    if opt == "--max-submit":
+        maxSubmit = int(arg)
 
     if opt == "--set-threshold":
         setThreshold = arg
@@ -178,12 +182,14 @@ def newMode():
     
     resCon.updateThresholds(siteIndex, processingThreshold = procThreshold,
                             mergeThreshold = mergeThreshold,
-                            minimumSubmission = minSubmit)
+                            minimumSubmission = minSubmit,
+                            maximumSubmission = maxSubmit)
 
     msg += " Initial Thresholds for site set to:\n"
     msg += " Processing Threshold: %s\n" % procThreshold
     msg += " Merge Threshold: %s\n" % mergeThreshold
     msg += " Minimum Submission: %s\n" % minSubmit
+    msg += " Maximum Submission: %s\n" % maxSubmit
     
     Session.commit_all()
     Session.close_all()
