@@ -30,6 +30,14 @@ class LogArchMgr:
         self.inputTasks = self.config.get("InputTasks", [])
         self.regexps = self.config.get("LogMatchRegexp", [])
 
+        self.doStageOut = True
+        doingStageOut = self.config.get("DoStageOut", [])
+        if len(doingStageOut) > 0:
+            control = doingStageOut[-1]
+            if control == "False":
+                self.doStageOut = False
+        
+
         self.workflowSpecId = self.config['WorkflowSpecID'][0]
         self.jobSpecId = self.config['WorkflowSpecID'][0]
         
@@ -88,6 +96,9 @@ class LogArchMgr:
         #  //
         # // Try to stage out log archive
         #//
+        if not self.doStageOut:
+            print "Stage Out of LogArchive is disabled."
+            return
         print "Attempting Stage Out of LogArchive..."
         try:
             stager = StageOutMgr(**self.overrideParams)

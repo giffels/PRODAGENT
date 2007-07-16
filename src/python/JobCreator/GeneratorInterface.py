@@ -20,7 +20,7 @@ class GeneratorInterface:
         self.creator = None
         self.workflowCache = None
         self.jobCache = None
-        
+        self.componentConfig = {}
 
 
 

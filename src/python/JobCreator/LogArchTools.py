@@ -23,6 +23,7 @@ class InstallLogArch:
     Install standard fields into a LogArch TaskObject
 
     """
+
     def __call__(self, taskObject):
         if taskObject['Type'] != "LogArchive":
             return
@@ -40,6 +41,7 @@ class InstallLogArch:
             if item == taskName:
                 continue
             runres.addData("/%s/InputTasks" % taskName, item)
+
 
         taskObject['PreLogArchCommands'] = []
         taskObject['PostLogArchCommands'] = []
@@ -70,6 +72,8 @@ class PopulateLogArch:
     Convert TaskObject fields & data into actual scripts
 
     """
+    def __init__(self, noStageOut = True):
+        self.noStageOut = noStageOut
     
     
     def __call__(self, taskObject):
@@ -111,6 +115,13 @@ class PopulateLogArch:
         #//
         for regexp in taskObject['LogMatchRegexps']:
             runres.addData("%s/LogMatchRegexp" % taskName, regexp)
+
+
+        #  //
+        # // Disable/enable stage out of log archive
+        #//
+        runres.addData("%s/DoStageOut" % taskName, str(self.noStageOut))
+        
             
         #  //
         # // If an override stage out location has been provided

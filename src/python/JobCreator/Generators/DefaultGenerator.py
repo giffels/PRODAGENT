@@ -158,7 +158,7 @@ class DefaultGenerator(GeneratorInterface):
         taskObject(PopulateCmsGenScript("JobSpecNode"))
         taskObject(PopulateSVSuite())
         taskObject(PopulateCleanUp())
-        taskObject(PopulateLogArch())
+        taskObject(PopulateLogArch(self.componentConfig.get("LogArchStageOut", False)))
         taskObject(NewPopulateStageOut())
         #  //
         # // Physical Job Creation starts here

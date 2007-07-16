@@ -51,12 +51,19 @@ class JobCreatorComponent:
         self.args['maxRetries'] = 3
         self.args['mergeMaxRetries'] = 3
         self.args['HashDirs'] = True
+        self.args['LogArchStageOut'] = False
         self.args.update(args)
         self.prodAgent = prodAgentName()
         self.job_state = self.args['JobState']
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
+
+        if str(self.args['LogArchStageOut']).lower() in ("true", "yes"):
+            self.args['LogArchStageOut'] = True
+        else:
+            self.args['LogArchStageOut'] = False
+
 
         LoggingUtils.installLogHandler(self)
         msg = "JobCreator Started:\n"
@@ -155,6 +162,7 @@ class JobCreatorComponent:
         creator = retrieveCreator(self.args['CreatorName'])
         gen.creator = creator
         gen.workflowCache = wfCache
+        gen.componentConfig = self.args
         gen.actOnWorkflowSpec(spec, wfCache)
 
         return

@@ -65,6 +65,7 @@ class TaskObjectMaker:
     def __init__(self, jobType = "Processing"):
         self.jobType = jobType
 
+
     def __call__(self, payloadNode):
         """
         _makeTaskObject_
@@ -137,7 +138,7 @@ class BulkGenerator(GeneratorInterface):
         taskObject(PopulateMainScript())
         taskObject(PopulateCmsGenScript("PayloadNode"))
         taskObject(PopulateCleanUp())
-        taskObject(PopulateLogArch())
+        taskObject(PopulateLogArch(self.componentConfig.get("LogArchStageOut", False)))
         taskObject(NewPopulateStageOut())
         
         logging.debug("JobGenerator:Creating Physical Job")
