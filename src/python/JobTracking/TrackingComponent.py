@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.37 2007/05/21 07:47:39 bacchi Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.36.4.1 2007/05/22 20:00:25 afanfani Exp $"
 
 import socket
 import time
@@ -229,7 +229,8 @@ class TrackingComponent:
                 try:
                     int(j.split()[0])>0
                     jid=j.split()[0]+"."+j.split()[1]+"."+j.split()[2]
-                    st=j.split()[5]
+                    #st=j.split()[5]
+                    st=j.split()[4]
                     logging.info(j)
                 except StandardError, ex:
                     # logging.debug("Incorrect JobId \n %s \n skipping line"%j)
