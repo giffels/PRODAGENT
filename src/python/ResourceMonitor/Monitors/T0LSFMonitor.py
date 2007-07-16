@@ -7,6 +7,8 @@ ResourceMonitor plugin for the T0 LSF submission system
 
 """
 
+import logging
+
 from ResourceMonitor.Monitors.MonitorInterface import MonitorInterface
 from ResourceMonitor.Registry import registerMonitor
 
@@ -25,41 +27,59 @@ class T0LSFMonitor(MonitorInterface):
     """
     
     def __call__(self):
+
         result = []
 
         siteName = "CERN"
         if self.allSites.get(siteName, None) == None:
             #  //
-            # // Cant do much if we can find a CERN entry...
+            # // Cant do much if we can't find a CERN entry...
             #//
             msg = "ERROR: No Resource Control Entry for site: %s" % siteName
             msg += "This is a pretty big problem for the Tier 0..."
             raise RuntimeError, msg
+        
+        try:
+            jobList = LSFInterface.bjobs()
+        except Exception, ex:
+            # can only happen if bjobs call failed
+            # do nothing in this case, next loop will work
+            logging.debug("Call to bjobs failed, do nothing")
+            return result
+
+        activeJobs = 0
+        for jobID in jobList.keys():
+            if ( jobList[jobID] == 'PEND' or jobList[jobID] == 'RUN' ):
+                activeJobs += 1
+
+        logging.info("Number of active jobs is %d" % activeJobs)
+
         siteData = self.allSites[siteName]
         siteIndex = siteData['SiteIndex']
         siteThresholds = self.siteThresholds[siteName]
-        siteAttrs = self.siteAttributes[siteName]
-        
-        numJobs = 0
-        jobList = LSFInterface.bjobs()
-        for jobID in jobList.keys():
-            if ( jobList[jobID] == 'PEND' or jobList[jobID] == 'RUN' ):
-                numJobs += 1
+        #siteAttrs = self.siteAttributes[siteName]
 
-        procThresh = siteThresholds.get("processingThreshold", 0)
-        test = numJobs - procThresh
+        processingThreshold = siteThresholds.get("processingThreshold")
+        missingJobs = processingThreshold - activeJobs
 
-        minSubmit = siteThresholds.get("minimumSubmission", 1)
+        minSubmit = siteThresholds.get("minimumSubmission")
+        maxSubmit = siteThresholds.get("maximumSubmission")
+
+        logging.debug("processingThreshold = %d , minSubmit = %d , maxSubmit = %d"
+                      % (processingThreshold,minSubmit,maxSubmit))
 
         #  //
         # // Check if we are below the threshold
         #//    and over the submission minimum
-        if ( test < 0 and abs(test) >= minSubmit ):
+        if ( missingJobs >= minSubmit ):
             constraint = self.newConstraint()
-            constraint['count'] = abs(test)
+            if ( missingJobs > maxSubmit ):
+                constraint['count'] = maxSubmit
+            else:
+                constraint['count'] = missingJobs
             #constraint['type'] = "Processing"
             constraint['site'] = self.allSites[siteName]['SiteIndex']
-            print str(constraint)
+            logging.info("Releasing %d jobs" % constraint['count'])
             result.append(constraint)
 
         return result
