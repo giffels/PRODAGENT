@@ -207,7 +207,7 @@ class RequestIterator:
             jobSpec.addWhitelistSite(siteWhite)
             
         jobSpec.save(jobSpecFile)        
-        return "file://%s" % jobSpecFile
+        return jobSpecFile
         
         
     def generateJobConfig(self, jobSpecNode):
