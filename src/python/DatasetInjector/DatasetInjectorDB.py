@@ -224,13 +224,24 @@ def makeJobDef(rawDict):
     result['SkipEvents'] = rawDict['skip_events']
     result['MaxEvents'] = rawDict['max_events']
     result['Fileblock'] = rawDict['fileblock']
-    
-    seNames =  rawDict['se_names'].tostring().split(',')
+
+
+    try:
+        
+        seNames =  rawDict['se_names'].tostring()
+    except Exception, ex:
+        seNames = str(rawDict['se_names'])
+        
+    seNames = seNames.split(',')
     seNames = map(lambda x : x.strip(), seNames)
     result['SENames'] = filter(lambda x : x != "", seNames)
     
-
-    lfns = rawDict['lfns'].tostring().split(',')
+    try:
+        lfns = rawDict['lfns'].tostring()
+    except Exception, ex:
+        lfns = str(rawDict['lfns'])
+        
+    lfns = lfns.split(',')
     lfns = map(lambda x : x.strip(), lfns)
     result['LFNS'] = filter(lambda x : x.strip(), lfns)
     return result

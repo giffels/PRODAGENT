@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.15 2007/04/30 19:18:34 dmason Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.16 2007/07/16 12:02:41 evansde Exp $"
+__version__ = "$Revision: 1.16 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -358,29 +358,23 @@ class DatasetInjectorComponent:
             # // first check site prefs are known (if any)
             #//
             sites = []
-            sitePref = self.iterator.sitePref
-            if sitePref != None:
+            
+            
+            #  //
+            # // List Of sites?
+            #//                    
+            for s in self.iterator.allowedSites:
                 #  //
-                # // List Of sites?
+                # // Do we know about this site?
                 #//
-                if sitePref.find(",") > -1:
-                    sitePrefs = sitePref.split(',')
-                else:
-                    sitePrefs = [sitePref]
-
-                    
-                for s in sitePrefs:
-                    #  //
-                    # // Do we know about this site?
-                    #//
-                    siteIndex = ResourceControlAPI.knownSite(s)
-                    if siteIndex == None:
-                        msg = "Error: Site %s not known\n" % s
-                        msg += "Cannot queue jobs for unknown site!!!"
-                        logging.error(msg)
-                        return
-                    sites.append(s)
-
+                siteIndex = ResourceControlAPI.knownSite(s)
+                if siteIndex == None:
+                    msg = "Error: Site %s not known\n" % s
+                    msg += "Cannot queue jobs for unknown site!!!"
+                    logging.error(msg)
+                    continue
+                sites.append(s)
+                
             logging.info("Sites List: %s" % sites)
             bulkQueueJobs(sites, *jobSpecs)
             return
@@ -431,5 +425,6 @@ class DatasetInjectorComponent:
             msgtype, payload = self.ms.get()
             self.ms.commit()
             self.__call__(msgtype, payload)
+
 
         
