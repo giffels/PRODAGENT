@@ -65,7 +65,7 @@ class RepackerHelper:
         #print "PRODUCERS:",cfgInstance.producers_()
         # Get producers list (lumi module is EDProducer)
         producers_list=cfgInstance.producers_()
-        mod_lumi=producers_list['lumi']
+        mod_lumi=producers_list['lumiProducer']
         #print "LumiModule",mod_lumi.parameterNames_(),dir(mod_lumi)
         #Get template pset for the lumi module
         pset_name=mod_lumi.parameterNames_()[0]
@@ -76,13 +76,13 @@ class RepackerHelper:
         #print "LumiModule2",mod_lumi.parameterNames_()
 
         #Create the real PSet name"
-        pset_name="LB"+str(lumi_data['lsnumber'])
+        pset_name="LS"+str(lumi_data['lsnumber'])
         pset.setLabel(pset_name)
         #Set parameters
-        pset.avglumi=lumi_data['avglumi']
-        pset.avglumierr=lumi_data['avglumierr']
+        pset.avginslumi=lumi_data['avginslumi']
+        pset.avginslumierr=lumi_data['avginslumierr']
         pset.lumisecqual=int(lumi_data['lumisecqual'])
-        pset.livefrac=lumi_data['livefrac']
+        pset.deadfrac=lumi_data['deadfrac']
         pset.lsnumber=int(lumi_data['lsnumber'])
 
         pset.lumietsum=lumi_data['det_et_sum']
