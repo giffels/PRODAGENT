@@ -55,29 +55,34 @@ _StandardPackages = [ShREEK, IMProv, StageOut, ProdCommon.MCPayloads,
                      ProdCommon.Core,
                      ProdCommon.CMSConfigTools, RunRes, FwkJobRep, SVSuite]
 
-def makeTaskObject(jobSpecNode):
-    """
-    _makeTaskObject_
 
-    Operator to act on a JobSpecNode instance and generate a TaskObject
-    for it.
+class TaskObjectMaker:
+    def __init__(self, jobSpecInstance):
+        self.jobSpecInstance = jobSpecInstance
 
-    """
-    taskName = jobSpecNode.name
-    taskObj = TaskObject(taskName)
-    taskObj['Type'] = jobSpecNode.type
-    taskObj['RequestName'] = jobSpecNode.workflow
-    taskObj['JobName'] = jobSpecNode.jobName
-    taskObj['JobType'] = jobSpecNode.jobType
-    setattr(jobSpecNode, "taskObject", taskObj)
+    def __call__(self, jobSpecNode):
+        """
+        _makeTaskObject_
+        
+        Operator to act on a JobSpecNode instance and generate a TaskObject
+        for it.
+        
+        """
+        taskName = jobSpecNode.name
+        taskObj = TaskObject(taskName)
+        taskObj['Type'] = jobSpecNode.type
+        taskObj['RequestName'] = jobSpecNode.workflow
+        taskObj['JobName'] = jobSpecNode.jobName
+        taskObj['JobType'] = jobSpecNode.jobType
+        setattr(jobSpecNode, "taskObject", taskObj)
+        
+        if jobSpecNode.parent != None:
+            parentTaskObj = getattr(jobSpecNode.parent, "taskObject")
+            parentTaskObj.addChild(taskObj)
     
-    if jobSpecNode.parent != None:
-        parentTaskObj = getattr(jobSpecNode.parent, "taskObject")
-        parentTaskObj.addChild(taskObj)
-    
-    taskObj['JobSpecNode'] = jobSpecNode
-    
-    return 
+        taskObj['JobSpecNode'] = jobSpecNode
+        taskObj['JobSpecInstance'] = self.jobSpecInstance
+        return 
 
 
 class DefaultGenerator(GeneratorInterface):
@@ -102,6 +107,7 @@ class DefaultGenerator(GeneratorInterface):
 
         jobname = jobSpec.parameters['JobName']
         self._JobSpec = jobSpec
+        makeTaskObject = TaskObjectMaker(jobSpec)
         self._JobSpec.payload.operate(makeTaskObject)
         self._TaskObject = self._JobSpec.payload.taskObject
         self._WorkingDir = jobCache

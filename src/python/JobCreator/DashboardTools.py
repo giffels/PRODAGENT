@@ -104,7 +104,7 @@ def installDashboardInfo(taskObject):
 
     """
     dashboardInfo = DashboardInfo()
-    dashboardInfo.task , dashboardInfo.job = extractDashboardID(taskObject['JobSpecNode'])
+    dashboardInfo.task , dashboardInfo.job = generateDashboardID(taskObject['JobSpecInstance'])
     dashboardInfo['GridUser'] = gridProxySubject()
     dashboardInfo['User'] = os.environ.get('USER', 'ProdAgent')
     dashboardInfo['Workflow'] = taskObject['RequestName']
