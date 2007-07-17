@@ -14,7 +14,7 @@ import os
 import logging
 
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-from ProdCommon.MCPayloads.LFNAlgorithm import createUnmergedLFNs
+from ProdCommon.MCPayloads.LFNAlgorithm import DefaultLFNMaker
 from ProdCommon.CMSConfigTools.ConfigAPI.CfgGenerator import CfgGenerator
 from ProdCommon.CMSConfigTools.SeedService import randomSeed
 
@@ -179,8 +179,9 @@ class RequestIterator:
         jobSpec.setJobName(jobName)
         jobSpec.setJobType("Processing")
         jobSpec.parameters['RunNumber'] = self.count
+
         
-        
+        jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
         jobSpec.payload.operate(self.generateJobConfig)
         jobSpec.payload.operate(self.generateCmsGenConfig)
         specCacheDir =  os.path.join(
@@ -190,10 +191,7 @@ class RequestIterator:
         jobSpecFile = os.path.join(specCacheDir,
                                    "%s-JobSpec.xml" % jobName)
         self.ownedJobSpecs[jobName] = jobSpecFile
-        #  //
-        # // generate LFNs for output modules
-        #//
-        createUnmergedLFNs(jobSpec)
+
         
         #  //
         # // Add site pref if set

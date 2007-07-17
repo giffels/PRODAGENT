@@ -15,7 +15,7 @@ import logging
 
 
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-from ProdCommon.MCPayloads.LFNAlgorithm import createUnmergedLFNs
+from ProdCommon.MCPayloads.LFNAlgorithm import DefaultLFNMaker
 from ProdCommon.CMSConfigTools.ConfigAPI.CfgGenerator import CfgGenerator
 from PileupTools.PileupDataset import PileupDataset, createPileupDatasets, getPileupSites
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
@@ -290,7 +290,8 @@ class DatasetIterator:
         jobSpec.setJobType("Processing")
         jobSpec.parameters['RunNumber'] = self.count
 
-        
+
+        jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
         jobSpec.payload.operate(self.generateJobConfig)
 
 
@@ -302,10 +303,6 @@ class DatasetIterator:
                                    "%s-JobSpec.xml" % jobName)
         self.ownedJobSpecs[jobName] = jobSpecFile
         
-        #  //
-        # // generate LFNs for output modules
-        #//
-        createUnmergedLFNs(jobSpec)
 
         #  //
         # // Add site pref if set
