@@ -54,8 +54,8 @@ class RepackerHelper:
             from LumiServerLink import getLumiServerLink
             lslink=getLumiServerLink(self.args)
             lslink.setLumiData(job_spec_file,job_spec,run_number,lumisection)
-            rep_iter.save(rep_iter.workingDir)
 
+        rep_iter.save(rep_iter.workingDir)
         return job_spec_path
         
 
