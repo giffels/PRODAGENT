@@ -42,7 +42,7 @@ def generateDashboardID(jobSpec):
     taskName = "ProdAgent_%s_%s" % ( workflowId,
                                      prodAgentName)
     subCount = jobSpec.parameters.get('SubmissionCount', 0)
-    jobName = "%s-%s" % (jobName, subCount)
+    jobName = "%s_%s" % (jobName, subCount)
     
     return taskName, jobName
 
