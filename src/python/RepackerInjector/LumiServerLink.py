@@ -1,3 +1,13 @@
+"""
+_LumiServerLink_
+
+Provides LumiData from LumiServer and populates JobSpec's config file with lumi data.
+
+"""
+
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.11 2007/07/13 19:00:26 kosyakov Exp $"
+__author__ = "kss"
 
 
 import logging
@@ -6,6 +16,8 @@ from lumiException import *
 from lumiOptions import LumiOptionParser
 from lumiApi import LumiApi
 from ProdCommon.DataMgmt.DBS.DBSErrors import DBSReaderError, formatEx
+import pickle
+
 
 
 class LumiServerLink:
@@ -24,6 +36,14 @@ class LumiServerLink:
             msg = "Error in LumiServerLink with LumiApi\n"
             msg += "%s\n" % formatEx(ex)
             raise DBSReaderError(msg)
+
+
+
+    def setLumiData(self,job_spec_file,job_spec,run_number,lumisection):
+        lumi_info=self.getLumiInfo(run_number,lumisection)
+        #print "LUMIINFO",lumi_info
+        self._int_setLumiData(job_spec_file,job_spec,lumi_info)
+
 
 
     def getLumiInfo(self,run_number,lumisection):
@@ -121,3 +141,63 @@ class LumiServerLink:
             # XXX MUST SET DATA QUALITY FLAG
             return {}
 
+
+
+    def _int_setLumiData(self,job_spec_file,job_spec,lumi_data):
+        if(len(lumi_data)<=1):
+            logging.info("Insufficient lumi data - ignoring")
+            return
+        # Set lumi data here
+        #print "Set LumiData",lumi_data
+        cfgInstance = pickle.loads(job_spec.payload.cfgInterface.rawCfg)
+        #print "PRODUCERS:",cfgInstance.producers_()
+        # Get producers list (lumi module is EDProducer)
+        producers_list=cfgInstance.producers_()
+        mod_lumi=producers_list['lumiProducer']
+        #print "LumiModule",mod_lumi.parameterNames_(),dir(mod_lumi)
+        #Get template pset for the lumi module
+        pset_name=mod_lumi.parameterNames_()[0]
+        pset=getattr(mod_lumi,pset_name)
+
+        #Clean the template pset name
+        delattr(mod_lumi,pset_name)
+        #print "LumiModule2",mod_lumi.parameterNames_()
+
+        #Create the real PSet name"
+        pset_name="LS"+str(lumi_data['lsnumber'])
+        pset.setLabel(pset_name)
+        #Set parameters
+        pset.avginslumi=lumi_data['avginslumi']
+        pset.avginslumierr=lumi_data['avginslumierr']
+        pset.lumisecqual=int(lumi_data['lumisecqual'])
+        pset.deadfrac=lumi_data['deadfrac']
+        pset.lsnumber=int(lumi_data['lsnumber'])
+
+        pset.lumietsum=lumi_data['det_et_sum']
+        pset.lumietsumerr=lumi_data['det_et_err']
+        pset.lumietsumqual=lumi_data['det_et_qua']
+        pset.lumiocc=lumi_data['det_occ_sum']
+        pset.lumioccerr=lumi_data['det_occ_err']
+        pset.lumioccqual=lumi_data['det_occ_qua']
+        
+        #Insert the pset into the lumi module
+        setattr(mod_lumi,pset_name,pset)
+        
+        # bla-bla
+        #print "DUMP:",cfgInstance.dumpConfig()
+
+        # save spec after update
+        job_spec.save(job_spec_file)
+        return
+
+
+
+lumi_server_dict={}
+
+def getLumiServerLink(args):
+    url=args['LumiServerUrl']
+    if(lumi_server_dict.has_key(url)):
+        return lumi_server_dict[url]
+    lsl=LumiServerLink(url=args["LumiServerUrl"],level=args["DbsLevel"])
+    lumi_server_dict[url]=lsl
+    return lsl

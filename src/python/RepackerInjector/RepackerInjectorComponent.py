@@ -8,32 +8,19 @@ Component for generating Repacker JobSpecs
 
 
 
-__version__ = "$Revision: 1.8 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.8 2007/06/25 17:12:07 hufnagel Exp $"
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.11 2007/07/13 19:00:26 kosyakov Exp $"
 __author__ = "kss"
 
 
 import logging
 from MessageService.MessageService import MessageService
 import ProdAgentCore.LoggingUtils as LoggingUtils
-#import MySQLdb
 import ConfigDB
 import DbsLink
-from LumiServerLink import LumiServerLink
-import RepackerIterator
 from RepackerHelper import RepackerHelper
-import os
-import sys
-import traceback
 from ProdCommon.MCPayloads.Tier0WorkflowMaker import Tier0WorkflowMaker
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-
-from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWAPILoader import CMSSWAPILoader
-from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
-from ProdCommon.CMSConfigTools.ConfigAPI.CfgGenerator import CfgGenerator
-import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
-
-from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 
 """
@@ -69,10 +56,11 @@ class RepackerInjectorComponent:
 
         # Create repacker helper for generation and modification of workflow and job specs
         self.repacker_helper=RepackerHelper(args)
-        if(self.args.has_key('LumiServerUrl')):
-            self.lumisrv=LumiServerLink(url=self.args["LumiServerUrl"],level=self.args["DbsLevel"])
-        else:
-            self.lumisrv=LumiServerLink(url=None,level=self.args["DbsLevel"])
+        #if(self.args.has_key('LumiServerUrl')):
+        #    self.lumisrv=LumiServerLink(url=self.args["LumiServerUrl"],level=self.args["DbsLevel"])
+        #else:
+        #    self.lumisrv=LumiServerLink(url=None,level=self.args["DbsLevel"])
+            
 
 
     def __call__(self, message, payload):
@@ -160,13 +148,14 @@ class RepackerInjectorComponent:
             lfn,tags,file_lumis=i
             logging.info("Found file %s" % lfn)
             lumisection=file_lumis[0]['LumiSectionNumber']
-            lumi_info=self.lumisrv.getLumiInfo(run_number,lumisection)
+            #lumi_info=self.lumisrv.getLumiInfo(run_number,lumisection)
             #print "LUMIINFO",lumi_info
             res_job_error=self.submit_job(lfn,
                                           tags,
                                           primary_ds_name,
                                           processed_ds_name,
-                                          lumi_info,
+                                          run_number,
+                                          lumisection,
                                           workflowHash)
             if(not res_job_error):
                 dbslink.setFileStatus(lfn, "submitted")
@@ -177,7 +166,7 @@ class RepackerInjectorComponent:
         return
 
 
-    def submit_job(self, lfn, tags, pri_ds, pro_ds, lumi_info, ds_key):
+    def submit_job(self, lfn, tags, pri_ds, pro_ds, run_number, lumisection, ds_key):
         logging.info("Creating job for file [%s] tags %s"%(lfn,str(tags)))
         #
         # FIXME: NewStreamerEventStreamFileReader cannot use LFN
@@ -187,7 +176,7 @@ class RepackerInjectorComponent:
         logging.info("Creating job for file [%s] tags %s"%(pfn,str(tags)))
 
         # Creating job_spec
-        job_spec=self.repacker_helper.createJobSpec(ds_key, tags, [pfn], lumi_info)
+        job_spec=self.repacker_helper.createJobSpec(ds_key, tags, [pfn], run_number, lumisection)
         
         self.ms.publish("CreateJob",job_spec)
         self.ms.commit()

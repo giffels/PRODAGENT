@@ -1,23 +1,26 @@
+"""
+_RepackerHelper_
+
+Creates and manipulates Workflow and Job Specs for teh RepackerInjectorComponent
+
+"""
+
+
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.11 2007/07/13 19:00:26 kosyakov Exp $"
+__author__ = "kss"
+
 
 import logging
 from MessageService.MessageService import MessageService
 import ProdAgentCore.LoggingUtils as LoggingUtils
-#import MySQLdb
-import ConfigDB
-import DbsLink
 import RepackerIterator
 import os
-import sys
-import traceback
-import pickle
 from ProdCommon.MCPayloads.Tier0WorkflowMaker import Tier0WorkflowMaker
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-
-
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWAPILoader import CMSSWAPILoader
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 from ProdCommon.CMSConfigTools.ConfigAPI.CfgGenerator import CfgGenerator
-
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 
@@ -41,66 +44,22 @@ class RepackerHelper:
         logging.info("Done parsing template file [%s]"%cfg)
 
 
-    def createJobSpec(self, ds_key, tags, pfn_list, lumi_data):
+    def createJobSpec(self, ds_key, tags, pfn_list, run_number, lumisection):
         rep_iter = self.workflow_by_ds[ds_key]
         job_spec_path,job_spec_file,job_spec = rep_iter(pfn_list)
         #print "CFG_1",job_spec.payload.cfgInterface.rawCfg
         #print "CFG_2",job_spec.payload.configuration
 
-        self._setLumiData(job_spec_file,job_spec,lumi_data)
-        
-        rep_iter.save(rep_iter.workingDir)
+        if(self.args.has_key('LumiServerUrl')):
+            from LumiServerLink import getLumiServerLink
+            lslink=getLumiServerLink(self.args)
+            lslink.setLumiData(job_spec_file,job_spec,run_number,lumisection)
+            rep_iter.save(rep_iter.workingDir)
 
         return job_spec_path
         
 
 
-    def _setLumiData(self,job_spec_file,job_spec,lumi_data):
-        if(len(lumi_data)<=1):
-            logging.info("Insufficient lumi data - ignoring")
-            return
-        # Set lumi data here
-        #print "Set LumiData",lumi_data
-        cfgInstance = pickle.loads(job_spec.payload.cfgInterface.rawCfg)
-        #print "PRODUCERS:",cfgInstance.producers_()
-        # Get producers list (lumi module is EDProducer)
-        producers_list=cfgInstance.producers_()
-        mod_lumi=producers_list['lumiProducer']
-        #print "LumiModule",mod_lumi.parameterNames_(),dir(mod_lumi)
-        #Get template pset for the lumi module
-        pset_name=mod_lumi.parameterNames_()[0]
-        pset=getattr(mod_lumi,pset_name)
-
-        #Clean the template pset name
-        delattr(mod_lumi,pset_name)
-        #print "LumiModule2",mod_lumi.parameterNames_()
-
-        #Create the real PSet name"
-        pset_name="LS"+str(lumi_data['lsnumber'])
-        pset.setLabel(pset_name)
-        #Set parameters
-        pset.avginslumi=lumi_data['avginslumi']
-        pset.avginslumierr=lumi_data['avginslumierr']
-        pset.lumisecqual=int(lumi_data['lumisecqual'])
-        pset.deadfrac=lumi_data['deadfrac']
-        pset.lsnumber=int(lumi_data['lsnumber'])
-
-        pset.lumietsum=lumi_data['det_et_sum']
-        pset.lumietsumerr=lumi_data['det_et_err']
-        pset.lumietsumqual=lumi_data['det_et_qua']
-        pset.lumiocc=lumi_data['det_occ_sum']
-        pset.lumioccerr=lumi_data['det_occ_err']
-        pset.lumioccqual=lumi_data['det_occ_qua']
-        
-        #Insert the pset into the lumi module
-        setattr(mod_lumi,pset_name,pset)
-        
-        # bla-bla
-        #print "DUMP:",cfgInstance.dumpConfig()
-
-        # save spec after update
-        job_spec.save(job_spec_file)
-        return
 
 
     def prepareWorkflow(self, run_number, primary_ds_name, processed_ds_name):
