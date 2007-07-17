@@ -9,9 +9,10 @@ tables for the stat information
 """
 
 
-from ProdMon.ProdMonDB import insertStats, getMergeInputFiles, getWorkflow, \
-                                                                getJobType
-
+from ProdMon.ProdMonDB import insertStats, getMergeInputFiles
+from ProdAgent.WorkflowEntities import Job
+from ShREEK.CMSPlugins.DashboardInfo import extractDashboardID
+import os
 
 class JobStatistics(dict):
     """
@@ -101,6 +102,8 @@ class JobStatistics(dict):
             self.__recordWorkflow(jobRepInstance)
         if self["job_type"] == None:
             self.__recordJobType(jobRepInstance)
+        if self["dashboard_id"] == None:
+            self.__recordDasboardId(jobRepInstance)
         
         return
 
@@ -197,7 +200,9 @@ class JobStatistics(dict):
         """
         Set workflowId from db if not in jobReport
         """
-        self["workflow_spec_id"] = getWorkflow(jobRepInst.jobSpecId)
+        #self["workflow_spec_id"] = getWorkflow(jobRepInst.jobSpecId)
+        generalInfo = Job.get(jobRepInst.jobSpecId)
+        self["workflow_spec_id"] = generalInfo['workflow_id']
         return
         
         
@@ -205,7 +210,8 @@ class JobStatistics(dict):
         """
         Set job id from db if not in jobReport
         """
-        self["job_type"] = getJobType(jobRepInst.jobSpecId)
+        generalInfo = Job.get(jobRepInst.jobSpecId)
+        self["job_type"] = generalInfo['job_type']
         return
 
 
@@ -222,6 +228,17 @@ class JobStatistics(dict):
         self['input_files'] = getMergeInputFiles(jobRepInst.jobSpecId)
         return
     
+
+    def __recordDasboardId(self, jobRepInst):
+        """
+        Set dashbaord id from jobSpec
+        """
+        generalInfo = Job.get(jobRepInst.jobSpecId)
+        cacheDir = generalInfo['cache_dir']
+        jobSpecFile = os.path.join(cacheDir, "%s-JobSpec.xml" % jobRepInst.jobSpecId)
+        self["dashboard_id"] = extractDashboardID(jobSpecFile)[1]
+        return
+
 
 def jobReportToJobStats(jobRepInstance):
     """

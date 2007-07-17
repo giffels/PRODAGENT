@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.1 2007/07/05 14:24:59 swakef Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.2 2007/07/05 16:26:03 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -210,7 +210,7 @@ class ProdMonComponent:
                         logging.error(msg)
 
             except StandardError, ex:
-                msg = "Error inserting Stats into DB for report:\n"
+                msg = "Error inserting Stats into DB for report: %s\n" % report.jobSpecId
                 msg += str(ex)
                 logging.error(msg)
                 return

@@ -9,7 +9,7 @@ from xml.dom.minidom import Document
 import logging
 from ProdMon.ProdMonDB import getJobInstancesToExport, markInstancesExported, \
                                                         getJobStatistics
-import urllib, urllib2, gzip
+import urllib, urllib2
 
 USER_AGENT = \
 "ProdMon/1.0 https://twiki.cern.ch/twiki/bin/view/CMS/ProdAgentProdMon"
@@ -34,7 +34,7 @@ def exportToDashboard(maxRecords, url, team, agent):
         
         # format and export
         prodReport = createProdReport(instances, team, agent)
-    
+
         # send to dashboard
         sendToDashboard(prodReport.toxml(), url)
 
@@ -141,8 +141,13 @@ def instancesToXML(document, parent, instances):
         instance_node = document.createElement("instance")
         
         # add dashboard id
+        # used by dashboard as a unique key so should be present
+        # if missing use instance_id to ensure uniqueness of instances
+        # TODO: When dashboard_id guarenteed remove this extra code
         if instanceInfo["dashboard_id"] != None:
             instance_node.setAttribute("dashboard_id", str(instanceInfo["dashboard_id"]))
+        else:
+            instance_node.setAttribute("instance_id", str(instanceInfo["instance_id"]))
         
         parent.appendChild(instance_node)
 

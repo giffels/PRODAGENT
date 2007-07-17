@@ -7,12 +7,11 @@ and for recalling and formating as XML
 
 """
 
-# TODO: stored procedures for frequent operations?
+#TODO: stored procedures for frequent operations?
 
 import logging
 import MySQLdb
 from ProdAgentDB.Connect import connect
-
 
 # function to escape and quote a value or replace None with "NULL"
 addQuotes = lambda x: (x != None) and \
@@ -363,34 +362,6 @@ def getMergeInputFiles(jobSpecId):
             result.append(f)
     return result
 
-
-def getWorkflow(jobSpecId):
-    """
-    Get workflow name from db for a job
-    """
-    sqlStr = """SELECT WorkflowID FROM js_JobSpec WHERE JobSpecID =
-                 %s;""" % addQuotes(jobSpecId)
-    connection = connect()
-    dbCur = connection.cursor()
-    dbCur.execute(sqlStr)
-    result = removeTuple(dbCur.fetchone())
-    dbCur.close()
-    return result
-
-    
-def getJobType(jobSpecId):
-    """
-    Get jobType from db for a job
-    """
-    sqlStr = """SELECT JobType from js_JobSpec WHERE 
-    JobSpecID = %s;""" % addQuotes(jobSpecId)
-    connection = connect()
-    dbCur = connection.cursor()
-    dbCur.execute(sqlStr)
-    result = removeTuple(dbCur.fetchone())
-    dbCur.close()
-    return result
-    
 
 def getJobInstancesToExport(maxItems):
     """
