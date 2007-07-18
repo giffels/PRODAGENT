@@ -12,7 +12,6 @@ for the job.
 
 import sys
 import os
-import tarfile
 import re
 
 from FwkJobRep.TaskState import TaskState
@@ -87,12 +86,18 @@ class LogArchMgr:
         # // Create the tarfile
         #//
         tarName = "%s-LogArch.tgz" % self.jobSpecId
-        self.tarfile = tarfile.open(tarName, 'w:gz')                    
+        self.tarfile = os.path.join(os.getcwd(), self.jobSpecId)
+        if not os.path.exists(self.tarfile):
+            os.makedirs(self.tarfile)
+            
+            
                                     
         for task in self.inputTasks:
             self.processTask(task)
-        self.tarfile.close()
-
+            
+        tarComm = " tar -zcf %s %s" % (tarName, self.jobSpecId)
+        os.system(tarComm)
+        
         #  //
         # // Try to stage out log archive
         #//
@@ -147,7 +152,9 @@ class LogArchMgr:
         for item in toArchive:
             src = os.path.join(taskDir, item)
             print "Archiving File: %s" % src
-            self.tarfile.add(src, "%s/%s/%s" % (self.jobSpecId, task, item))
+            command = "/bin/cp -f %s %s" % (src, self.tarfile)
+            os.system(command)
+            #self.tarfile.add(src, "%s/%s/%s" % (self.jobSpecId, task, item))
             
         return
         
