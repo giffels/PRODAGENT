@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.14 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.14 2007/05/16 14:42:48 evansde Exp $"
+__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.15 2007/07/02 21:23:29 fvlingen Exp $"
 
 import os
 import logging
@@ -136,13 +136,14 @@ class JobSubmitterComponent:
             self.ms.commit()
             return
         
-
-
+        # get submission counter
+        submissionCount = jobSpecInstance.parameters['SubmissionCount']
 
         if not jobSpecInstance.isBulkSpec():
             logging.debug("Non Bulk Submission")
             jobSpecId = jobSpecInstance.parameters['JobName']
-            jobCache = self.checkJobState(jobSpecId)
+            jobState = self.checkJobState(jobSpecId)
+            jobCache = jobState.get('CacheDirLocation', None)
             msg = "jobSpecId=%s\n" % jobSpecId
             msg += "jobCache=%s\n" % jobCache
             logging.debug(msg)
@@ -151,6 +152,18 @@ class JobSubmitterComponent:
                 # // JobState check failed and published a SubmissionFailed event
                 #//  nothing more to do
                 return
+
+            # get submission counter from database
+            retriesNumber = jobState['Retries']
+
+            # update jobSpec with new submission counter if necessary
+            if (int(retriesNumber) != int(submissionCount)):
+                jobSpecInstance.parameters['SubmissionCount'] = \
+                    str(retriesNumber)
+                jobSpecInstance.save(jobSpecFile)
+                logging.debug("Submission counter updated to " + \
+                              str(retriesNumber))
+            
             jobToSubmit = os.path.join(jobCache, jobSpecId)
             result = self.invokeSubmitter(jobCache, jobToSubmit,
                                           jobSpecId, jobSpecInstance,
@@ -179,7 +192,8 @@ class JobSubmitterComponent:
         #//  with JobStates then invoke submitter on bulk spec.
         usedSpecs = {}
         for specId, specFile in jobSpecInstance.bulkSpecs.items():
-            specCache = self.checkJobState(specId)
+            jobState = self.checkJobState(specId)
+            specCache = JobState.get('CacheDirLocation', None)
             if specCache == None:
                 msg = "Bulk Spec Problem with JobState for %s\n" % specId
                 msg += "Skipping job"
@@ -293,7 +307,7 @@ class JobSubmitterComponent:
             logging.error(msg)
             self.ms.publish("SubmissionFailed", jobSpecId)
             self.ms.commit()
-            return
+            return {}
         except ProdAgentException, ex:
             #  //
             # // Error here means JobSpecID is unknown to 
@@ -304,7 +318,7 @@ class JobSubmitterComponent:
             logging.error(msg)
             self.ms.publish("SubmissionFailed", jobSpecId)
             self.ms.commit()
-            return
+            return {}
 
         cacheDir = stateInfo.get('CacheDirLocation', 'UnknownCache')
         if not os.path.exists(cacheDir):
@@ -313,7 +327,7 @@ class JobSubmitterComponent:
             logging.error(msg)
             self.ms.publish("SubmissionFailed", jobSpecId)
             self.ms.commit()            
-            return
+            return {}
             
         numRacers = stateInfo['Racers'] # number of currently submitted
         maxRacers = stateInfo['MaxRacers'] # limit on parallel jobs
@@ -328,9 +342,9 @@ class JobSubmitterComponent:
             logging.warning(msg)
             self.ms.publish("SubmissionFailed", jobSpecId)
             self.ms.commit()
-            return
+            return {}
 
-        return cacheDir
+        return stateInfo
         
         
 
