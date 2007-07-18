@@ -258,7 +258,8 @@ class T0LSFSubmitter(BulkSubmitterInterface):
 
         script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s > /dev/null 2>&1\n" % self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
-        script.append("./run.sh $JOB_SPEC_FILE | gzip > ./run.log.gz 2>&1\n")
+        script.append("/usr/bin/time ./run.sh $JOB_SPEC_FILE > ./run.log 2>&1\n")
+        script.append("gzip run.log\n")
         script.append("rfcp ./FrameworkJobReport.xml %s:%s/FrameworkJobReport.xml\n" % (hostname,cacheDir))
 
         outputlogfile = jobName
