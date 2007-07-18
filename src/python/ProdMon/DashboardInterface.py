@@ -142,13 +142,14 @@ def instancesToXML(document, parent, instances):
         
         # add dashboard id
         # used by dashboard as a unique key so should be present
-        # if missing use instance_id to ensure uniqueness of instances
+        # if missing fake it to ensure uniqueness of instances
         # TODO: When dashboard_id guarenteed remove this extra code
-        if instanceInfo["dashboard_id"] != None:
-            instance_node.setAttribute("dashboard_id", str(instanceInfo["dashboard_id"]))
-        else:
-            instance_node.setAttribute("instance_id", str(instanceInfo["instance_id"]))
+        if instanceInfo["dashboard_id"] == None:
+            instanceInfo["dashboard_id"] = "_".join((instanceInfo["job_spec_id"], \
+                            str(instanceInfo["timing"]["AppStartTime"]), \
+                            str(instanceInfo["instance_id"])))
         
+        instance_node.setAttribute("dashboard_id", str(instanceInfo["dashboard_id"]))
         parent.appendChild(instance_node)
 
         # add resource node

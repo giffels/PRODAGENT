@@ -4,20 +4,20 @@
     
     Warning: Jobs are not inserted in a transaction therefore duplicates
         are possible on multiple invocation
-            Each job uses a transcation and MySQL forbids nested transcations
+            Each job uses a transaction and MySQL forbids nested transcations
 """
 
 from ProdMon.JobStatistics import JobStatistics
 from ProdMon.ProdMonDB import insertNewWorkflow, removeTuple, addQuotes
 import MySQLdb
+from ProdCommon.Database import Session
+from ProdAgentDB.Config import defaultConfig as dbConfig
+#for dict cursor
 from ProdAgentDB.Connect import connect
-import os
-import sys
-import time
 
-#TODO: Chane database connection handling
+import os, sys, time, getopt
 
-CONNECTION_STRING="-uroot -pXXXXX --socket=/srv/localstage/cmsprod/mysqldata/mysql.sock PRODAGENT_0_3_0 devWork"
+db_id = "migrate"
 
 def migrate():
     """
@@ -25,32 +25,36 @@ def migrate():
     """
     
     print "Connecting to database"
-    connection = connect()
-    #dbCur = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
-    #dbCur.execute("BEGIN")
+    Session.set_database(dbConfig)
+    Session.connect(sessionID=db_id)
+    #Session.start_transaction()
 
-    print "Wipe old DB"
-    wipeDB(connection)
+    print "Make way for new data"
+    wipeDB()
+
+    print "Load StatTracker data..."
+    loadStatTrackerDB()
 
     print "Migrating workflows..."
-    migrateWorkflows(connection)
+    migrateWorkflows()
+    
+    
     
     print "Migrating jobs..."
-    migrateJobs(connection)
+    migrateJobs()
     
-    #dbCur.execute("COMMIT")
-    
+    #Session.execute("COMMIT")
+    Session.commit_all()
+    Session.close_all()
     print "Migration Successful"
     
     return
 
 
-def wipeDB(connection):
+def wipeDB():
     """
     Wipe ProdMon tables
     """
-    
-    dbCur = connection.cursor()
     
     tables = """prodmon_Datasets prodmon_Job prodmon_Job_errors 
     prodmon_Job_instance prodmon_Job_timing prodmon_LFN prodmon_Resource
@@ -59,27 +63,51 @@ def wipeDB(connection):
     prodmon_skipped_events"""
     
     for table in tables.split():
-        dbCur.execute("DELETE FROM %s" % table)
-        dbCur.execute("COMMIT")    
-
+        Session.execute("DELETE FROM %s" % table, sessionID=db_id)
+        #Session.commit()    
     return
 
 
-def loadStatTrackerDB(connection):
+def loadStatTrackerDB():
     """
-    Load StatTRacker tables into DB
+    Load StatTracker tables into DB
+     NB. Hardcoded to use a socket
+     
+     Also need to give prodAgentUser privileges (use appropriae values) with
+         GRANT ALL ON devWork.* TO "ProdAgentUser"@"localhost";
+         FLUSH PRIVILEGES;     
     """
     
-    result = os.system("mysql %s < %s" % (CONNECTION_STRING, file))
+    command = "mysql -u%s -p%s --socket=%s %s < %s" % (dbConfig["user"], \
+                                            dbConfig["passwd"], \
+                                            dbConfig["socketFileLocation"], \
+                                            dbConfig["dbName"], \
+                                            input)
+    
+    result = os.system(command)
     if (result):
-        raise RuntimeError, "Error loading StatTracker data from %s" % file
+        raise RuntimeError, "Error loading StatTracker data from %s" % str(file)
     return
-
-
-def migrateJobs(connection):
     
+#    Session.start_transaction()
+#    
+#    #get StatTracker sql and import
+#    file = open(input, "r")
+#    while file:
+#        sql = file.readline()
+#        if sql != "":
+#            Session.execute(sql)
+#    file.close()
+#    
+#    Session.commit()
+    
+
+
+
+def migrateJobs():
+    
+    connection = connect()
     dbCur = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
-    dbCur1 = connection.cursor()
     
     dbCur.execute("""SELECT workflow_spec_id, job_spec_id, exit_code, status, site_name,
                host_name, se_name, events_read, events_written, job_type, job_index FROM st_job_success""")
@@ -113,18 +141,30 @@ def migrateJobs(connection):
         if stats["job_spec_id"] in (None, "", "None", "Unknown"):
             continue
         
-        #if workflow_spec_id missing replace get from job_spec_id (first 3 "
+        #if workflow_spec_id missing replace get from job_spec_id
         if stats["workflow_spec_id"] in (None, "", "None", "Unknown"):
-            stats["workflow_spec_id"] = \
-                        "-".join(stats["job_spec_id"].split("-")[0:3])
+            
+            #for merges remove sename-job-id
+            if stats["job_spec_id"].find("mergejob") > 0:
+                stats["workflow_spec_id"] = \
+                        "-".join(stats["job_spec_id"].split("-")[:-3])
+                
+                #handle node names that contain a - themselves
+                if stats["workflow_spec_id"].split("-")[-1].isalpha():
+                    stats["workflow_spec_id"] = \
+                        "-".join(stats["workflow_spec_id"].split("-")[:-1])
+            else:
+                #for normal jobs remve last -id field
+                stats["workflow_spec_id"] = \
+                        "-".join(stats["job_spec_id"].split("-")[:-1])
         
         #get timings (for successful jobs)
         if stats["exit_code"] == 0:
-            dbCur1.execute("""SELECT attr_name, attr_value FROM st_job_attr WHERE 
-            attr_class = "timing" AND job_index = %s;""" % addQuotes(job_index))
-            timings = dbCur1.fetchall()
+            Session.execute("""SELECT attr_name, attr_value FROM st_job_attr WHERE 
+            attr_class = "timing" AND job_index = %s;""" % addQuotes(job_index), sessionID=db_id)
+            timings = Session.fetchall()
             for type, value in timings:
-                stats["timing"][type] = int(value.tostring())    #is an array for some reason
+                stats["timing"][type] = int(value.tostring())    #an array for some reason
         
         #get job type
         if stats["job_type"] in (None, "None"):
@@ -133,17 +173,17 @@ def migrateJobs(connection):
             else:
                 stats["job_type"] = "Processing"
         
-        #fake dashboad_id
-        stats["dashboard_id"] = str(stats["job_spec_id"] + "-" + \
-                                           str(stats["timing"]["AppStartTime"]))
+        #fake dashboard_id
+        #leave to be handled in exportToDashboard()
         
         #add errors if a failure
         if stats["exit_code"] != 0:
-            dbCur1.execute("""SELECT error_type, error_desc FROM st_job_failure
-                         WHERE job_index = %s""" % addQuotes(job_index))
-            result = dbCur.fetchone()
-            if result != None:
-                stats["error_type"], stats["error_desc"] = result
+            Session.execute("""SELECT error_type, error_desc FROM st_job_failure
+                         WHERE job_index = %s""" % addQuotes(job_index), sessionID=db_id)
+            result = Session.fetchone(sessionID=db_id)
+            if result != None and result[0] != None and result[1] != None:
+                stats["error_type"] = result[0]
+                stats["error_desc"] = result[1].tostring()
         
         #self.setdefault("task_name", None)
         
@@ -151,38 +191,35 @@ def migrateJobs(connection):
         print str(stats)
         #time.sleep(.05)
         stats.insertIntoDB()
-
+        
     dbCur.close()
-    dbCur1.close()
 
 
-def migrateWorkflows(connection):
+def migrateWorkflows():
     """
     Needs at least one successful job for each workflow
     """
     
-    dbCur = connection.cursor()
-    
     #get workflows from job tables
-    dbCur.execute("SELECT DISTINCT workflow_spec_id FROM st_job_success")
-    workflows_success = [removeTuple(workflow) for workflow in dbCur.fetchall()]
-#    dbCur.execute("SELECT DISTINCT workflow_spec_id FROM st_job_failure WHERE workflow_spec_id != \"None\"")
-#    workflows_failure = [removeTuple(workflow) for workflow in dbCur.fetchall()]
+    Session.execute("SELECT DISTINCT workflow_spec_id FROM st_job_success", sessionID=db_id)
+    workflows_success = [removeTuple(workflow) for workflow in Session.fetchall(sessionID=db_id)]
+#    Session.execute("SELECT DISTINCT workflow_spec_id FROM st_job_failure WHERE workflow_spec_id != \"None\"")
+#    workflows_failure = [removeTuple(workflow) for workflow in Session.fetchall()]
 #    
 #    #get workflows for all failed jobs
 #    #    first part of job_spec_id is workflow, strip job number (9 characters long)
-#    dbCur.execute("select DISTINCT REPLACE(job_spec_id, RIGHT(job_spec_id, 9), \"\") from st_job_failure")
-#    workflows_failure2 = [removeTuple(workflow) for workflow in dbCur.fetchall()]
+#    Session.execute("select DISTINCT REPLACE(job_spec_id, RIGHT(job_spec_id, 9), \"\") from st_job_failure")
+#    workflows_failure2 = [removeTuple(workflow) for workflow in Session.fetchall()]
     
     #add workflows with successful jobs
     for workflow in workflows_success:
 
         #get output dataset
-        dbCur.execute("""SELECT attr_value FROM st_job_attr JOIN st_job_success
+        Session.execute("""SELECT attr_value FROM st_job_attr JOIN st_job_success
                          WHERE st_job_success.job_index = st_job_attr.job_index
                          AND st_job_attr.attr_class = "output_datasets" AND 
-                         st_job_success.workflow_spec_id = %s LIMIT 1""" % addQuotes(workflow))
-        output_dataset = removeTuple(dbCur.fetchone()).tostring()    #array for some reason
+                         st_job_success.workflow_spec_id = %s LIMIT 1""" % addQuotes(workflow), sessionID=db_id)
+        output_dataset = removeTuple(Session.fetchone(sessionID=db_id)).tostring()    #array for some reason
         
         output_datasets = []
         output_datasets.append(output_dataset)
@@ -203,12 +240,34 @@ def migrateWorkflows(connection):
 #        if workflow not in (workflows_success, workflows_failure):
 #            insertNewWorkflow(workflow, 0, (), (), "Unknown")
     
-    dbCur.close()
     return
 
-
+def usage():
+    print "Usage: migrateStatTracker.py --input=<inpout_file>"
+    return
     
 if __name__ == "__main__":
     
-    #file = sys.argv[1]
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "h:", ["help", "input="])
+    except getopt.GetoptError:
+        usage()
+        sys.exit(2)
+    
+    #initial args
+    input = None
+    
+    for o, a in opts:
+        if o in ("-h", "--help"):
+            usage()
+            sys.exit()
+        if o in ("--input"):
+            input = a
+    
+    if input == None:
+        usage()
+        sys.exit(2)
+        
+    
+    #now do the migration    
     migrate()

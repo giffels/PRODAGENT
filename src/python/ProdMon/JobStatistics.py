@@ -103,7 +103,7 @@ class JobStatistics(dict):
         if self["job_type"] == None:
             self.__recordJobType(jobRepInstance)
         if self["dashboard_id"] == None:
-            self.__recordDasboardId(jobRepInstance)
+            self.__recordDashboardId(jobRepInstance)
         
         return
 
@@ -229,7 +229,7 @@ class JobStatistics(dict):
         return
     
 
-    def __recordDasboardId(self, jobRepInst):
+    def __recordDashboardId(self, jobRepInst):
         """
         Set dashbaord id from jobSpec
         """
