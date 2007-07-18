@@ -258,14 +258,14 @@ class T0LSFSubmitter(BulkSubmitterInterface):
 
         script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s > /dev/null 2>&1\n" % self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
-        script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1\n")
+        script.append("./run.sh $JOB_SPEC_FILE | gzip > ./run.log.gz 2>&1\n")
         script.append("rfcp ./FrameworkJobReport.xml %s:%s/FrameworkJobReport.xml\n" % (hostname,cacheDir))
 
         outputlogfile = jobName
-        outputlogfile += '.`date +%s`.log'
+        outputlogfile += '.`date +%s`.log.gz'
 
         if ( self.pluginConfig['LSF']['CmsRunLogDir'] != "None" ):
-            script.append("rfcp ./run.log %s/%s\n" % (self.pluginConfig['LSF']['CmsRunLogDir'],outputlogfile))
+            script.append("rfcp ./run.log.gz %s/%s\n" % (self.pluginConfig['LSF']['CmsRunLogDir'],outputlogfile))
 
         #script.extend(missingJobReportCheck(jobName))
 
