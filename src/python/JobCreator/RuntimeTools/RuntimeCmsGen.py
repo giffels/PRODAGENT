@@ -51,7 +51,7 @@ class CmsGenSetup:
 
         """
         keysList = [
-            'executable', 'generator', 'firstRun', 'maxEvents',
+            'generator', 'firstRun', 'maxEvents',
             'randomSeed', 'fileName',
 
             ]
@@ -87,8 +87,6 @@ class CmsGenSetup:
 
         """
         args = ""
-        args += " --executable=%s " % (
-            self.jobSpecNode.applicationControls['executable'],)
         args += " --generator=%s " % (
             self.jobSpecNode.applicationControls['generator'],)
         args += " --run=%s "  % (
