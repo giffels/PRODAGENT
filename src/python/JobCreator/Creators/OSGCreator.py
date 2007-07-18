@@ -120,6 +120,9 @@ class OSGCreator(CreatorInterface):
         if typeVal == "CMSSW":
             self.handleCMSSWTaskObject(taskObject)
             return
+        if typeVal == "CmsGen":
+            self.handleCMSSWTaskObject(taskObject)
+            return
         elif typeVal == "Script":
             self.handleScriptTaskObject(taskObject)
             return

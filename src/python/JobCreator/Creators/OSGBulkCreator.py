@@ -120,6 +120,9 @@ class OSGBulkCreator(CreatorInterface):
         if typeVal == "CMSSW":
             self.handleCMSSWTaskObject(taskObject)
             return
+        if typeVal == "CmsGen":
+            self.handleCMSSWTaskObject(taskObject)
+            return
         elif typeVal == "Script":
             self.handleScriptTaskObject(taskObject)
             return
@@ -282,18 +285,17 @@ class OSGBulkCreator(CreatorInterface):
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.BulkDashboardMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.BulkEventMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.PerfMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.CMSMetrics")
         
+
         #  //
-        # // Insert list of metrics to be generated
+        # // Perf Monitor
         #//
-        shreekConfig.addUpdator("ChildProcesses")
-        shreekConfig.addUpdator("ProcessToBinary")
-
-    
-        
-
-        
+        perfMonitor =  shreekConfig.newMonitorCfg()
+        perfMonitor.setMonitorName("perfmonitor-1")
+        perfMonitor.setMonitorType("perf-monitor")
+        shreekConfig.addMonitorCfg(perfMonitor)
         
         #  //
         # // Dashboard Monitoring
