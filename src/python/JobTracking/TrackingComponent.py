@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.37.4.1 2007/06/29 13:05:05 gcodispo Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.39 2007/07/12 15:19:58 afanfani Exp $"
 
 import socket
 import time
@@ -264,7 +264,8 @@ class TrackingComponent:
                     try:
                         int(j.split()[0])>0
                         jid=j.split()[0]+"."+j.split()[1]+"."+j.split()[2]
-                        st=j.split()[5]
+                        #st=j.split()[5]
+                        st=j.split()[4]
                         logging.info(j)
                     except StandardError, ex:
                         # logging.debug("Incorrect JobId \n %s \n skipping line"%j)
@@ -713,7 +714,11 @@ class TrackingComponent:
         fjr=readJobReport(self.reportfilename)
         try:
             jobCacheDir=JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
-        except:
+        except Exception, ex:
+            msg = "Cant get JobCache from JobState for %s\n" %fjr[0].jobSpecId
+            msg += str(ex)
+            logging.warning(msg)
+            #fallback to a dir in JobTracking....it won't be picekd up by JobCleanup
             jobCacheDir=self.args['ComponentDir'] + "/%s"%fjr[0].jobSpecId
         logging.debug("jobCacheDir = %s"%jobCacheDir)
 
