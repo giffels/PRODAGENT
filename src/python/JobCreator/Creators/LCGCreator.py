@@ -96,6 +96,8 @@ class LCGCreator(CreatorInterface):
             self.handleStageOut(taskObject)
         elif typeVal == "CleanUp":
             self.handleCleanUp(taskObject)
+        elif typeVal == "LogArchive":
+            self.handleLogArchive(taskObject)
         else:
             return
 
@@ -201,6 +203,18 @@ class LCGCreator(CreatorInterface):
 
         return
 
+    def handleLogArchive(self, taskObject):
+        """
+        _handleCleanup_
+                                                                                                                            
+        Handle a Logrch type task object. 
+                                                                                                                            
+        """
+        taskObject['PreLogArchCommands'].append(
+            ". $VO_CMS_SW_DIR/cmsset_default.sh"
+            )
+                                                                                                                            
+        return
     
 
     
