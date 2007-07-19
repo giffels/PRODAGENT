@@ -337,6 +337,7 @@ class JobCreatorComponent:
             gen = retrieveGenerator(self.args['GeneratorName'])
             creator = retrieveCreator(self.args['CreatorName'])
             gen.creator = creator
+            gen.componentConfig = self.args
             gen.workflowCache = wfCache
             gen.jobCache = jobCache
             newJobSpec = gen.actOnJobSpec(jobSpec, jobCache)
