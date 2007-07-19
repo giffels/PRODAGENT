@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.39 2007/07/12 15:19:58 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.40 2007/07/19 13:54:39 afanfani Exp $"
 
 import socket
 import time
@@ -638,7 +638,7 @@ class TrackingComponent:
 
         for jobspec in jobspecs:
             try:
-                JobStateChangeAPI.finished(jobspec)
+                JobState.finished(jobspec)
             except Exception, ex:
                 msg = "Error setting job state to finished for job: %s\n" % jobspec
                 msg += str(ex)
@@ -809,7 +809,7 @@ class TrackingComponent:
         try:
             self.failedJobsPublished[jobId[0]+"_"+jobSpecId] += 0
         except StandardError:
-            JobStateChangeAPI.submitFailure(msg)
+            JobState.submitFailure(msg)
             
             logging.info("SubmissionFailed: %s" % msg)
             self.msThread.publish("SubmissionFailed", msg)
