@@ -71,12 +71,15 @@ class LCGBulkCreator(CreatorInterface):
         if typeVal == "CmsGen":
             self.handleCMSSWTaskObject(taskObject)
             return
-
         elif typeVal == "Script":
             self.handleScriptTaskObject(taskObject)
             return
         elif typeVal == "StageOut":
             self.handleStageOut(taskObject)
+        elif typeVal == "CleanUp":
+            self.handleCleanUp(taskObject)
+        elif typeVal == "LogArchive":
+            self.handleLogArchive(taskObject)
         else:
             return
 
@@ -163,6 +166,35 @@ class LCGBulkCreator(CreatorInterface):
     
         return
     
+    def handleCleanUp(self, taskObject):
+        """
+        _handleCleanup_
+                                                                                                                          
+        Handle a Cleanup type task object. For FNAL, manipulate the stage out
+        settings to do a dCache dccp stage out
+                                                                                                                          
+        """
+        taskObject['PreCleanUpCommands'].append(
+            ". $VO_CMS_SW_DIR/cmsset_default.sh"
+            )
+                                                                                                                          
+        return
+                                                                                                                          
+    def handleLogArchive(self, taskObject):
+        """
+        _handleCleanup_
+                                                                                                                          
+                                                                                                                          
+        Handle a Logrch type task object.
+                                                                                                                          
+                                                                                                                          
+        """
+        taskObject['PreLogArchCommands'].append(
+            ". $VO_CMS_SW_DIR/cmsset_default.sh"
+            )
+                                                                                                                          
+                                                                                                                          
+        return
     
     
 
