@@ -297,60 +297,6 @@ def isRegistered(JobSpecId):
        return Job.exists(JobSpecId)   
 
        
-def lastLocations(JobSpecId):
-       """
-
-       _lastLocations_
-
-       Last locations of where jobs have been submitted.
-       Returns the last locations where this job
-       has been submitted, or an error if no
-       location was found.
-
-       input:
-       -JobSpecId Internal Id used by the prod agent.
-
-       returns:
-       -an array with locations or an error
-       """
-       sqlStr='SELECT Location from js_JobInstance WHERE JobSpecID="'+\
-       JobSpecId+'";'
-       Session.execute(sqlStr)
-       rows=Session.fetchall()
-       if len(rows)==0:
-           raise ProdException(exceptions[3020]+str(JobSpecId),3020)
-       result=[]
-       for i in rows:
-           result.append(i[0])
-       return result
-
-def jobReports(JobSpecId):
-       """
-
-       _jobReports_
-
-       Returns the locations of the job reports of failed jobs.
-       Returns an array of job report locations associated to a job that
-       has failed multiple times.
-
-       input:
-       -JobSpecId Internal Id used by the prod agent.
-
-       returns:
-       -an array of strings representing job report locations (xml files)
-       or an array
-       """
-       sqlStr='SELECT JobReportLocation FROM js_JobInstance WHERE '+ \
-       'JobSpecID="'+JobSpecId+'" AND JobReportLocation<>"NULL";'
-       Session.execute(sqlStr)
-       #this query will not return many (= thousands) of results.
-       rows=Session.fetchall()
-       result=[]
-       #convert to an array:
-       #NOTE: can this be done more efficient?
-       for i in rows:
-          result.append(i[0])
-       return result
 
 def jobSpecTotal():
        #WRAPPER
@@ -367,10 +313,10 @@ def retrieveJobIDs(workflowIDs=[]):
        if len(workflowIDs)==0:
            return
     if type(workflowIDs)==list:
-       sqlStr=""" SELECT JobSpecID FROM js_JobSpec WHERE WorkflowID IN %s
+       sqlStr=""" SELECT id FROM we_Job WHERE workflow_id IN %s
            """ %(str(tuple(workflowIDs)))
     else:
-       sqlStr=""" SELECT JobSpecID FROM js_JobSpec WHERE WorkflowID="%s"
+       sqlStr=""" SELECT id FROM we_Job WHERE workflow_id="%s"
            """ %(str(workflowIDs))
     Session.execute(sqlStr)
     result=Session.fetchall()
