@@ -732,7 +732,7 @@ def selectDetails(workflowSpecId, sinceTime=86400, jobType = None, success = Non
             JOIN prodmon_Job, prodmon_Workflow WHERE prodmon_Job.job_id = 
             prodmon_Job_instance.job_id AND prodmon_Job.workflow_id = 
             prodmon_Workflow.workflow_id AND prodmon_Workflow.workflow_name = 
-            %s AND end_time > (UNIX_TIMESTAMP(NOW()) - %s)
+            %s AND insert_time > ADDTIME(NOW(), SEC_TO_TIME(-%s))
             """ % (addQuotes(workflowSpecId),
                                         sinceTime)
 
@@ -818,8 +818,8 @@ def activeWorkflowSpecs(interval=86400):
     sqlStr = """SELECT DISTINCT workflow_name FROM prodmon_Workflow JOIN prodmon_Job, 
     prodmon_Job_instance WHERE prodmon_Workflow.workflow_id = 
     prodmon_Job.workflow_id AND prodmon_Job_instance.job_id = 
-    prodmon_Job.job_id AND prodmon_Job_instance.end_time > 
-    (UNIX_TIMESTAMP(NOW()) - %s);""" % interval
+    prodmon_Job.job_id AND prodmon_Job_instance.insert_time > 
+    ADDTIME(NOW(), SEC_TO_TIME(-%s));""" % interval
     
     Session.set_database(dbConfig)
     Session.connect()
@@ -856,7 +856,7 @@ def selectSiteDetails(site, interval=86400, workflow=None, type=None):
             prodmon_Job, prodmon_Job_instance, prodmon_Workflow WHERE 
             prodmon_Resource.resource_id = prodmon_Job_instance.resource_id 
             AND prodmon_Job.job_id = prodmon_Job_instance.job_id AND 
-            prodmon_Job_instance.end_time > (UNIX_TIMESTAMP(NOW()) - %s)
+            prodmon_Job_instance.insert_time > ADDTIME(NOW(), SEC_TO_TIME(-%s))
             """ % interval
     if site != None:
         sqlStr += " AND prodmon_Resource.resource_name = " % addQuotes(site)
