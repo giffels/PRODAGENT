@@ -26,6 +26,7 @@ from ProdCommon.Database import Session
 from ProdCommon.Core.ProdException import ProdException
 
 from ProdAgent.ResourceControl.ResourceControlDB import ResourceControlDB
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 
 class JobQueueDBError(ProdException):
@@ -43,6 +44,34 @@ class JobQueueDBError(ProdException):
 reduceList = lambda x, y : str(x) + ", " + str(y)
 
 
+def verifySites():
+    """
+    _verifySites_
+
+    (Safely) Extract the VerifySites parameter from the JobQueue
+    configuration block. Convert this to a True/False value
+    and return it, default is True (verify sites against site DB)
+
+    """
+    try:
+        paConfig = loadProdAgentConfiguration()
+    except Exception, ex:
+        msg = "Unable to load PA Config: %s\n" % str(ex)
+        msg += "VerifySites defaulting to True"
+        logging.debug(msg)
+        return True
+    jobQueueConfig = paConfig.get("JobQueue", {})
+    verify = jobQueueConfig.get("VerifySites", True)
+    result = True
+    if str(verify).lower() in ("false", "no"):
+        result = False
+    if str(verify).lower() in ("true", "yes"):
+        result = True
+    return result
+    
+
+
+
 
 
 
@@ -54,6 +83,8 @@ class JobQueueDB:
     Requires a Session to be established before construction
     
     """
+    _VerifySites = verifySites()
+    
     def __init__(self):
         self.siteMatchData =  []
         self.siteIndexByName = {}
@@ -117,6 +148,9 @@ class JobQueueDB:
                 msg += "Cannot queue job spec without proper information\n"
                 raise JobQueueDBError(msg, MissingKey = key,
                                       RequiredKeys = reqKeys)
+
+        if not self._VerifySites:
+            return
 
         if not dictInstance.has_key('SiteList'):
             return
@@ -217,8 +251,8 @@ class JobQueueDB:
 
         """
         jobSpecDicts = list(jobSpecDicts)
-
         sitesList = [ self.getSiteIndex(x) for x in listOfSites]
+        
         _INSERTLIMIT = 2000
 
         if sitesList == []:
