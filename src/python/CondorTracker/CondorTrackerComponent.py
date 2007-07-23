@@ -230,22 +230,22 @@ class CondorTrackerComponent:
             badReport.write(jobReport)
             self.ms.publish("JobFailed" ,jobReport)
             self.ms.commit()
-            WEJob.registerFailure(jobSpecId, "run")
-            Session.commit_all()
+            #WEJob.registerFailure(jobSpecId, "run")
+            #Session.commit_all()
             logging.info("JobFailed Published For %s" % jobSpecId)
             return
         if checkSuccess(jobReport):
             self.ms.publish("JobSuccess", jobReport)
             self.ms.commit()
-            WEJob.setState(jobSpecId, "finished")
-            Session.commit_all()
+            #WEJob.setState(jobSpecId, "finished")
+            #Session.commit_all()
             logging.info("JobSuccess Published For %s" % jobSpecId)
             return
         else:
             self.ms.publish("JobFailed" ,jobReport)
             self.ms.commit()
-            WEJob.registerFailure(jobSpecId, "run")
-            Session.commit_all()
+            #WEJob.registerFailure(jobSpecId, "run")
+            #Session.commit_all()
             logging.info("JobFailed Published For %s" % jobSpecId)
             return
 
@@ -280,8 +280,8 @@ class CondorTrackerComponent:
         badReport.write(jobReport)
         self.ms.publish("JobFailed" ,jobReport)
         self.ms.commit()
-        WEJob.registerFailure(jobSpecId, "run")
-        Session.commit_all()
+        #WEJob.registerFailure(jobSpecId, "run")
+        #Session.commit_all()
         logging.info("JobFailed Published For %s" % jobSpecId)
         return
         
