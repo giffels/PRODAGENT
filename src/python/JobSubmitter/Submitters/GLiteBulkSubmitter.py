@@ -6,7 +6,7 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.2 2007/04/24 15:23:48 evansde Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.3 2007/04/30 10:35:03 afanfani Exp $"
 
 import os
 import logging
@@ -472,11 +472,13 @@ fi
         # // white list for anymatch clause
         #//
         anyMatchrequirements = ""
-        if not 'Whitelist' in self.pluginConfig['GLITE'].keys():
-            self.pluginConfig['GLITE']['Whitelist'] = None
-        
-        if self.pluginConfig['GLITE']['Whitelist']!=None and self.pluginConfig['GLITE']['Whitelist']!='None':
-            Whitelist = self.pluginConfig['GLITE']['Whitelist'].split(',')
+        if len(self.whitelist)>0:
+        #if not 'Whitelist' in self.pluginConfig['GLITE'].keys():
+        #    self.pluginConfig['GLITE']['Whitelist'] = None
+        # 
+        #if self.pluginConfig['GLITE']['Whitelist']!=None and self.pluginConfig['GLITE']['Whitelist']!='None':
+        #    Whitelist = self.pluginConfig['GLITE']['Whitelist'].split(',')
+            Whitelist = self.whitelist
             anyMatchrequirements = " && ("
             sitelist = ""
             for i in Whitelist:
@@ -500,7 +502,7 @@ fi
         #  //
         # // building jdl
         #//
-        requirements = 'Requirements = %s %s;%s\n' \
+        requirements = 'Requirements = %s %s %s ;\n' \
                        %(user_requirements,swClause,anyMatchrequirements)
         logging.info('%s'%requirements)
         declareClad.write(requirements)
