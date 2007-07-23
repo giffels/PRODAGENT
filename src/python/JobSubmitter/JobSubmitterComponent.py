@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.15 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.15 2007/07/02 21:23:29 fvlingen Exp $"
+__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.16 2007/07/18 11:43:18 ckavka Exp $"
 
 import os
 import logging
@@ -193,7 +193,7 @@ class JobSubmitterComponent:
         usedSpecs = {}
         for specId, specFile in jobSpecInstance.bulkSpecs.items():
             jobState = self.checkJobState(specId)
-            specCache = JobState.get('CacheDirLocation', None)
+            specCache = jobState.get('CacheDirLocation', None)
             if specCache == None:
                 msg = "Bulk Spec Problem with JobState for %s\n" % specId
                 msg += "Skipping job"
