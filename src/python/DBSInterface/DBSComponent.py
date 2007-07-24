@@ -412,6 +412,17 @@ class DBSComponent:
             self.handlePhEDExInjectBlock(payload)
             return
 
+        if event == "PhEDExInjectDataset":
+            try:
+               self.handlePhEDExInjectDataset(payload)
+               return
+            except DBSReaderError, ex:
+                logging.error("Failed to PhEDExInjectDataset: %s" % payload)
+            except StandardError, ex:
+                logging.error("Failed to PhEDExInjectDataset")
+                logging.error("Details: %s" % str(ex))
+                return
+
         if event == "DBSInterface:StartDebug":
             logging.getLogger().setLevel(logging.DEBUG)
             return
@@ -600,6 +611,7 @@ class DBSComponent:
         #  //
         # // Migrate to Global DBS all the Closed blocks of the dataset
         #//
+
         MigrateBlockList = reader.listFileBlocks(datasetPath, onlyClosedBlocks = True)
         for MigrateBlock in MigrateBlockList:
             self.handleMigrateBlock(MigrateBlock)
@@ -741,7 +753,7 @@ class DBSComponent:
         #  //
         # // Get the datasetPath the block belong to
         #//
-        reader= DBSReader(GlobalDBSURL)
+        reader = DBSReader(GlobalDBSURL)
         datasetPath= reader.blockToDatasetPath(fileBlockName)
         #  //
         # // Inject that block to PhEDEx
@@ -751,7 +763,7 @@ class DBSComponent:
             raise RuntimeError, msg
         workingdir="/tmp"
         if dropdir != "None": workingdir=dropdir 
-        tmdbInjectBlock(DBSConf['DBSURL'], datasetPath, fileBlockName, phedexConfig, workingDir=workingdir,nodes=Nodes)
+        tmdbInjectBlock(GlobalDBSURL, datasetPath, fileBlockName, phedexConfig, workingDir=workingdir,nodes=Nodes)
         return
 
     def getPhEDExConfig(self):
@@ -824,6 +836,20 @@ class DBSComponent:
                 self.BadTMDBInject.flush()
                 return
         return
+
+
+    def handlePhEDExInjectDataset(self,datasetPath):
+        """
+        Inject a dataset from Global DBS to PhEDEx
+        """
+        DBSConf= getGlobalDBSDLSConfig()
+        GlobalDBSURL=DBSConf['DBSURL']
+        reader = DBSReader(GlobalDBSURL,level='ERROR')
+        #  //
+        # // inject each fileblock of the dataset
+        # //
+        for blockName in reader.listFileBlocks(datasetPath):
+           self.handlePhEDExInjectBlock(blockName)
 
 
     def PhEDExRetryFailures(self,fileName, filehandle):
@@ -1002,6 +1028,7 @@ class DBSComponent:
         self.ms.subscribeTo("DBSInterface:StartDebug")
         self.ms.subscribeTo("DBSInterface:EndDebug")
         self.ms.subscribeTo("PhEDExInjectBlock")
+        self.ms.subscribeTo("PhEDExInjectDataset")
         self.ms.subscribeTo("PhEDExRetryFailures")
         self.ms.subscribeTo("SetJobCleanupFlag")
         self.ms.subscribeTo("MigrationRetryFailures")
