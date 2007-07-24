@@ -11,6 +11,7 @@ import logging
 import os
 import pickle
 import time
+import traceback
 
 from IMProv.IMProvLoader import loadIMProvFile
 from IMProv.IMProvQuery import IMProvQuery
@@ -112,9 +113,11 @@ x
                 self.makeWorkflow(test)
             except Exception, ex:
                 msg = "Error Creating workflow for test: %s\n" % test['Name']
-                msg += "Skipping Test..."
+                msg += "Skipping Test...\n"
                 test['BadTest'] = True
                 logging.error(msg)
+                dbg = traceback.format_exc()
+                logging.debug("Traceback:\n%s\n" % dbg)
                 continue
             
             

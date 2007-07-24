@@ -15,12 +15,14 @@ from MessageService.MessageService import MessageService
 import ProdAgentCore.LoggingUtils as LoggingUtils
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from RelValInjector.RelValSpecMgr import RelValSpecMgr
+from RelValInjector.RelValStatus import RelValStatus
 from ProdCommon.Database import Session
 
 from JobQueue.JobQueueAPI import bulkQueueJobs
 
 import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
 import ProdAgent.WorkflowEntities.Job as WEJob
+import ProdAgent.WorkflowEntities.Utilities as WEUtils
 
 
 class RelValInjectorComponent:
@@ -124,12 +126,24 @@ class RelValInjectorComponent:
         """
         logging.info("RelValInjector.poll()")
         #  //
-        # // TODO: Poll DB tables for complete workflows  
-        #//
-        #self.ms.publish("RelValInjector:Poll", "",
-        #                self.args['PollInterval'])
-        #self.ms.commit()        
-        
+        # // Poll WorkflowEntities to find all workflows owned by
+        #//  this component
+        relvalWorkflows = WEUtils.listWorkflowsByOwner("RelValInjector")
+        workflows = WEWorkflow.get(relvalWorkflows)
+        for workflow in workflows:
+            logging.debug(
+                "Polling for state of workflow: %s\n" % workflow['id'])
+            status = RelValStatus(self.ms, **workflow)
+            status()
+            
+        self.ms.publish("RelValInjector:Poll", "",
+                        self.args['PollInterval'])
+        self.ms.commit()        
+        return
+
+  
+
+
 
     def inject(self, relValSpecFile):
         """
@@ -169,23 +183,28 @@ class RelValInjectorComponent:
         #    logging.error(msg)
         #    return
 
-        workflows = set()
-        workflowIds = set()
-        [ workflows.add(x['WorkflowSpecFile']) for x in tests ]
-        [ workflowIds.add(x['WorkflowSpecId']) for x in tests ]
+        workflowIds = {}
         
-        for workflowId in workflowIds:
+        [ workflowIds.__setitem__(x['WorkflowSpecId'], x['WorkflowSpecFile']) for x in tests ]
+        
+        for workflowId, workflowFile in workflowIds.items():
             msg = "Registering Workflow Entity: %s" % workflowId
             logging.debug(msg)
-            WEWorkflow.register(workflowId, {"owner" : "RelValInjector" })
-        
-        for workflow in workflows:
-            msg = "Publishing NewWorkflow/NewDataset for \n %s\n "% workflow
-            logging.debug(msg)
-            self.ms.publish("NewWorkflow", workflow)
-            self.ms.publish("NewDataset", workflow)
-            self.ms.commit()
+            WEWorkflow.register(
+                workflowId,
+                {"owner" : "RelValInjector",
+                 "workflow_spec_file" : workflowFile,
+                 
+                 })
+            
 
+            msg = "Publishing NewWorkflow/NewDataset for \n"
+            msg += " %s\n "% workflowFile
+            logging.debug(msg)
+            self.ms.publish("NewWorkflow", workflowFile)
+            self.ms.publish("NewDataset", workflowFile)
+            self.ms.commit()
+            
         
 
             
@@ -210,9 +229,6 @@ class RelValInjectorComponent:
         Submit a test by dropping the JobSpecs into the JobQueue.
         
         """
-        #  //
-        # // TODO:  Track each job spec ID as a RelVal job
-        #//         Track each unique workflow spec
         #  //
         # // Add jobs to the JobQueue via the JobQueue API
         #//
@@ -273,9 +289,9 @@ class RelValInjectorComponent:
 
         self.ms.subscribeTo("RelValInjector:Poll")
 
-        #self.ms.publish("RelValInjector:Poll", "",
-        #                self.args['PollInterval'])
-        #self.ms.commit()
+        self.ms.publish("RelValInjector:Poll", "",
+                        self.args['PollInterval'])
+        self.ms.commit()
         
         while True:
             Session.set_database(dbConfig)
