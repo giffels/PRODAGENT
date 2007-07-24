@@ -38,9 +38,8 @@ def migrate():
     print "Migrating workflows..."
     migrateWorkflows()
     
-    
-    
     print "Migrating jobs..."
+    print "You may ignore the database warnings... (probably)"
     migrateJobs()
     
     #Session.execute("COMMIT")
@@ -188,8 +187,8 @@ def migrateJobs():
         #self.setdefault("task_name", None)
         
         #save jobStatistics object
-        print str(stats)
-        #time.sleep(.05)
+        #print str(stats)
+
         stats.insertIntoDB()
         
     dbCur.close()
@@ -215,14 +214,14 @@ def migrateWorkflows():
     for workflow in workflows_success:
 
         #get output dataset
-        Session.execute("""SELECT attr_value FROM st_job_attr JOIN st_job_success
+        Session.execute("""SELECT DISTINCT attr_value FROM st_job_attr JOIN st_job_success
                          WHERE st_job_success.job_index = st_job_attr.job_index
                          AND st_job_attr.attr_class = "output_datasets" AND 
-                         st_job_success.workflow_spec_id = %s LIMIT 1""" % addQuotes(workflow), sessionID=db_id)
-        output_dataset = removeTuple(Session.fetchone(sessionID=db_id)).tostring()    #array for some reason
+                         st_job_success.workflow_spec_id = %s""" % addQuotes(workflow), sessionID=db_id)
+        output_datasets = Session.fetchall(sessionID=db_id)#.tostring()    #array for some reason
         
-        output_datasets = []
-        output_datasets.append(output_dataset)
+        output_datasets = [removeTuple(x).tostring() for x in output_datasets]
+        #output_datasets.append(output_dataset)
         
         #insert workflow with correct name, fake request_id of 0, 
         #no input datasets and an unknown CMSSW version

@@ -36,7 +36,8 @@ def exportToDashboard(maxRecords, url, team, agent):
         prodReport = createProdReport(instances, team, agent)
 
         # send to dashboard
-        sendToDashboard(prodReport.toxml(), url)
+        # takes list of (key, value) pairs
+        HTTPpost([("report", prodReport.toxml())], url)
 
         # update instance's status
         markInstancesExported(instances)
@@ -222,20 +223,25 @@ def addTextNode(document, parent, name, value):
     return
 
 
-def sendToDashboard(message, url):
+def HTTPpost(params, url):
     """
-    send message to dashboard via http post
+    Do a http post with params to url
+    
+    params is a list of tuples of key,value pairs
     """
     
-    #try:
-    data = urllib.urlencode([("report", message)])
+    logging.debug("contacting %s" % url)    
+    
+    data = urllib.urlencode(params)
+    #put who we are in headers
     headers = { 'User-Agent' : USER_AGENT }
     req = urllib2.Request(url, data, headers)
+    
+    #logging.debug("with request:\n%s" % str(req))
+    
     response = urllib2.urlopen(req, data)
         
-    logging.debug("http code: %s, message: %s, response %s" \
+    logging.debug("received http code: %s, message: %s, response: %s" \
          % (response.code, response.msg, str(response.read())))
             
-    #except IOError, ex:
-     #   raise RuntimeError, "Communication error with Dashboard: %s" % str(ex)
     return

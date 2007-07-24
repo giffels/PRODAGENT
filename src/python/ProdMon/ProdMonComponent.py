@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.2 2007/07/05 16:26:03 swakef Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.3 2007/07/17 15:53:14 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -89,6 +89,7 @@ class ProdMonComponent:
         self.ms = None
         
         logging.info("ProdMon Component Started")
+        logging.info("with config: %s" % self.args)
 
 
     def __call__(self, event, payload):
@@ -277,7 +278,7 @@ class ProdMonComponent:
         # restart publishing loop
         # replace existing publish messages (if present)
         self.ms.remove("ProdMon:Export")
-        if not self.args["exportInterval"]:
+        if self.args["exportEnabled"]:
             self.ms.publish("ProdMon:Export", "", self.args['exportInterval'])
         
         # wait for messages
