@@ -196,15 +196,11 @@ class InsertBulkAppDetails:
         # // Add an empty structured file to contain the PSet after
         #//  it is converted from the Python format. 
         taskObject.addStructuredFile("PSet.py")
-        # AWFUL HACK : add option -e only for version matching CMSSW_1_5
-        if taskObject['CMSProjectVersion'].rfind("CMSSW_1_5")<0:
-          taskObject['CMSCommandLineArgs'] = " PSet.py "
-        else:
+        # AWFUL HACK : add option -e for all but CMSSW_1_4 versions
+        if taskObject['CMSProjectVersion'].rfind("CMSSW_1_4")<0:
           taskObject['CMSCommandLineArgs'] = " PSet.py -e "
-        
-
-     
-            
+        else:
+          taskObject['CMSCommandLineArgs'] = " PSet.py "
             
         #  //
         # // Add structures to enable manipulation of task main script
