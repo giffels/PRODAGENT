@@ -6,7 +6,7 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.3 2007/04/30 10:35:03 afanfani Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.4 2007/07/23 23:46:54 afanfani Exp $"
 
 import os
 import logging
@@ -483,7 +483,8 @@ fi
             sitelist = ""
             for i in Whitelist:
                 logging.debug("Whitelist element %s"%i)
-                sitelist+="target.GlueSEUniqueID==\"%s\""%i+" || "
+                sitelist+="Member(\"%s\" , other.GlueCESEBindGroupSEUniqueID)"%i+" || "
+                #sitelist+="target.GlueSEUniqueID==\"%s\""%i+" || "
             sitelist = sitelist[:len(sitelist)-4]
             anyMatchrequirements+=sitelist+")"
 
