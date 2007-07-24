@@ -6,7 +6,7 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.5 2007/07/24 00:10:09 afanfani Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.6 2007/07/24 13:26:58 afanfani Exp $"
 
 import os
 import logging
@@ -487,48 +487,11 @@ fi
             logging.error(msg)
             raise InvalidFile(msg)
 
-#
-#        if not 'JDLRequirementsFile' in self.pluginConfig['GLITE'].keys():
-#            self.pluginConfig['GLITE']['JDLRequirementsFile']=None
-#
-#        if self.pluginConfig['GLITE']['JDLRequirementsFile']!=None and self.pluginConfig['GLITE']['JDLRequirementsFile']!='None':
-#            if os.path.exists(self.pluginConfig['GLITE']['JDLRequirementsFile']) :
-#                UserReq = None
-#                logging.debug(
-#                    "createJDL: using JDLRequirementsFile " \
-#                    +self.pluginConfig['GLITE']['JDLRequirementsFile']
-#                    )
-#                fileuserjdl = open(
-#                    self.pluginConfig['GLITE']['JDLRequirementsFile'], 'r'
-#                    )
-#                cladMap = fileuserjdl.read().strip().split(';')
-#                for p in cladMap:
-#                    p = p.strip()
-#                    if len(p) == 0 or p[0]=='#' :
-#                        continue
-#                    # extract the Requirements specified by the user
-#                    if p.find("Requirements") > 0 :
-#                        UserReq = p.split('=')
-#                    else :
-#                        declareClad.write(p + ';\n')
-#                if UserReq != None :
-#                    user_requirements=" %s && "%UserReq
-#            else:
-#                msg="JDLRequirementsFile File Not Found: %s" \
-#                     %self.pluginConfig['GLITE']['JDLRequirementsFile']
-#                logging.error(msg) 
-#                raise InvalidFile(msg)
-
         #  //
         # // white list for anymatch clause
         #//
         anyMatchrequirements = ""
         if len(self.whitelist)>0:
-        #if not 'Whitelist' in self.pluginConfig['GLITE'].keys():
-        #    self.pluginConfig['GLITE']['Whitelist'] = None
-        # 
-        #if self.pluginConfig['GLITE']['Whitelist']!=None and self.pluginConfig['GLITE']['Whitelist']!='None':
-        #    Whitelist = self.pluginConfig['GLITE']['Whitelist'].split(',')
             Whitelist = self.whitelist
             anyMatchrequirements = " && ("
             sitelist = ""
