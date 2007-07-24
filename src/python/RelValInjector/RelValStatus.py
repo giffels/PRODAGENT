@@ -87,10 +87,13 @@ class RelValStatus:
                 logging.debug("Publishing MigrateToGlobal for %s" % dataset)
                 self.msgSvcRef.publish("DBSInterface:MigrateDatasetToGlobal",
                                        dataset)
-                #  //
-                # // TODO: PhEDEx Injection of dataset
-                #//  (waiting on DBSInterface:PhEDExInjectDataset event)
-            self.msgSvcRef.commit()
+                self.msgSvcRef.commit()
+                logging.debug(
+                    "Publishing PhEDExInjectDataset for %s" % dataset)
+                self.msgSvcRef.publish("PhEDExInjectDataset",
+                                       dataset)
+                self.msgSvcRef.commit()
+                
             Session.commit_all()
                 
 
