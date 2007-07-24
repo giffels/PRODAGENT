@@ -8,8 +8,8 @@ Component for generating Repacker JobSpecs
 
 
 
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.11 2007/07/13 19:00:26 kosyakov Exp $"
+__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.12 2007/07/17 20:46:19 kosyakov Exp $"
 __author__ = "kss"
 
 
@@ -19,7 +19,6 @@ import ProdAgentCore.LoggingUtils as LoggingUtils
 import ConfigDB
 import DbsLink
 from RepackerHelper import RepackerHelper
-from ProdCommon.MCPayloads.Tier0WorkflowMaker import Tier0WorkflowMaker
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
 
@@ -125,11 +124,12 @@ class RepackerInjectorComponent:
         #  //
         # // Generate workflow
         #// 
-        workflowFile,workflowHash=self.repacker_helper.prepareWorkflow(run_number, primary_ds_name, processed_ds_name)
-        
-        self.ms.publish("NewWorkflow", workflowFile)
-        self.ms.publish("NewDataset",workflowFile)
-        self.ms.commit()
+        workflowFile,workflowHash,createdNewWorkflow = self.repacker_helper.prepareWorkflow(run_number, primary_ds_name, processed_ds_name)
+
+        if createdNewWorkflow:
+            self.ms.publish("NewWorkflow", workflowFile)
+            self.ms.publish("NewDataset",workflowFile)
+            self.ms.commit()
         
         #
         # Final solution is not supposed to need run number.

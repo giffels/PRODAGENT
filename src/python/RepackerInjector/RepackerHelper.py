@@ -6,8 +6,8 @@ Creates and manipulates Workflow and Job Specs for teh RepackerInjectorComponent
 """
 
 
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.11 2007/07/13 19:00:26 kosyakov Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: RepackerHelper.py,v 1.6 2007/07/17 20:51:28 kosyakov Exp $"
 __author__ = "kss"
 
 
@@ -68,7 +68,9 @@ class RepackerHelper:
 
         workflowDir = os.path.join(self.args['ComponentDir'], workflowHash)
         workflowFile = os.path.join(workflowDir, "%s-Workflow.xml" % workflowHash)
-        
+
+        createdNewWorkflow = False
+
         if os.path.exists(workflowFile):
             logging.info("Workflow Spec exists: Reloading state...")
             logging.debug("Loading: %s" % workflowFile)
@@ -84,7 +86,9 @@ class RepackerHelper:
             repacker_iter = RepackerIterator.RepackerIterator(workflowFile, workflowDir)
             self.workflow_by_ds[workflowHash] = repacker_iter
             repacker_iter.save(workflowDir)
-        return (workflowFile,workflowHash)
+            createdNewWorkflow = True
+
+        return (workflowFile,workflowHash,createdNewWorkflow)
 
 
     def _createNewWorkflow(self, filename, primaryDS, procDS, runNumber):
@@ -108,7 +112,7 @@ class RepackerHelper:
         cfgInt = cfgWrapper.loadConfiguration(self.cmsCfg)
         cfgInt.validateForProduction()
 
-        wfmaker =Tier0WorkflowMaker(requestId, channel, label)
+        wfmaker = Tier0WorkflowMaker(requestId, channel, label)
         wfmaker.setRunNumber(runNumber)
         wfmaker.changeCategory("data");
         wfmaker.setCMSSWVersion(self.args['CMSSW_Ver'])
