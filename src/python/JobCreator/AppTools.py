@@ -38,7 +38,7 @@ import JobCreator.RuntimeTools.RuntimeFwkJobRep as RuntimeFwkJobRep
 from JobCreator.FastMergeTools import installFastMerge
 
 from ShREEK.ControlPoints.CondImpl.CheckExitCode import CheckExitCode
-from ShREEK.ControlPoints.ActionImpl.BasicActions import KillJob 
+from ShREEK.ControlPoints.ActionImpl.BasicActions import SetNextTask
 
 #  //
 # // Following script segment contains the standard script 
@@ -127,15 +127,12 @@ class InsertAppDetails:
         # // Add an empty structured file to contain the PSet after
         #//  it is converted from the Python format. 
         taskObject.addStructuredFile("PSet.py")
-        # AWFUL HACK : add option -e only for version matching CMSSW_1_5
-        if taskObject['CMSProjectVersion'].rfind("CMSSW_1_5")<0: 
-          taskObject['CMSCommandLineArgs'] = " PSet.py "
-        else: 
+        # AWFUL HACK : add option -e to all bu CMSSW_1_4 versions 
+        if taskObject['CMSProjectVersion'].rfind("CMSSW_1_4")<0:
           taskObject['CMSCommandLineArgs'] = " PSet.py -e "
+        else:
+          taskObject['CMSCommandLineArgs'] = " PSet.py "
 
-     
-            
-            
         #  //
         # // Add structures to enable manipulation of task main script
         #//  These fields are used to add commands and script calls
@@ -155,8 +152,9 @@ class InsertAppDetails:
         #//
         controlP = taskObject['ShREEKTask'].endControlPoint
         exitCheck = CheckExitCode()
-        exitCheck.attrs['OnFail'] = "killJob"
-        exitAction = KillJob("killJob")
+        exitCheck.attrs['OnFail'] = "skipToLog"
+        exitAction = SetNextTask("skipToLog")
+        exitAction.content = "logArchive"
         controlP.addConditional(exitCheck)
         controlP.addAction(exitAction)
         
@@ -198,14 +196,12 @@ class InsertBulkAppDetails:
         # // Add an empty structured file to contain the PSet after
         #//  it is converted from the Python format. 
         taskObject.addStructuredFile("PSet.py")
-        # AWFUL HACK : add option -e only for version matching CMSSW_1_5
-        if taskObject['CMSProjectVersion'].rfind("CMSSW_1_5")<0:
-          taskObject['CMSCommandLineArgs'] = " PSet.py "
-        else:
+        # AWFUL HACK : add option -e to all but CMSSW_1_4 versions
+        if taskObject['CMSProjectVersion'].rfind("CMSSW_1_4")<0:
           taskObject['CMSCommandLineArgs'] = " PSet.py -e "
-        
+        else:
+          taskObject['CMSCommandLineArgs'] = " PSet.py "
 
-     
             
             
         #  //
@@ -225,8 +221,9 @@ class InsertBulkAppDetails:
         #//
         controlP = taskObject['ShREEKTask'].endControlPoint
         exitCheck = CheckExitCode()
-        exitCheck.attrs['OnFail'] = "killJob"
-        exitAction = KillJob("killJob")
+        exitCheck.attrs['OnFail'] = "skipToLog"
+        exitAction = SetNextTask("skipToLog")
+        exitAction.content = "logArchive"
         controlP.addConditional(exitCheck)
         controlP.addAction(exitAction)
         
