@@ -201,12 +201,11 @@ class RepackerIterator:
 
 	jobCfg = generator(self.currentJob, **args)
 
-	for outModName, outModData in jobCfg.outputModules.items():
-	    print outModName, outModData
-
+	#for outModName, outModData in jobCfg.outputModules.items():
+	    #logging.debug("outModName = %s, outModData = %s" % (outModName, outModData))
 
 	jobSpecNode.cfgInterface = jobCfg
-	return
+	return 
 
 
 
