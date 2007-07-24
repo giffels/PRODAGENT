@@ -4,11 +4,6 @@
 
 """
 import sys,os,getopt,time
-from DBSInterface.DBSComponent import getGlobalDBSDLSConfig
-from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
-from ProdCommon.DataMgmt.DBS.DBSErrors import DBSReaderError, formatEx
-from DBSAPI.dbsApiException import DbsException
-
 
 usage = "\n Usage: python PhEDExInjectMergeRegistered.py <options> \n Options: \n --datasetPath=</primarydataset/datatier/processeddataset> \n --help \t\t\t\t print this help \n"
 valid = [ 'datasetPath=' , 'help']
@@ -32,15 +27,10 @@ if datasetpath == None:
     sys.exit(1)
 
 
-DBSConf=getGlobalDBSDLSConfig()
-dbsreader= DBSReader(DBSConf['DBSURL'])
-blocks=dbsreader.listFileBlocks(datasetpath)
-
 from MessageService.MessageService import MessageService 
 ms = MessageService()
 
-for fileblockName in blocks:
- print "publising Event: PhEDExInjectBlock Payload: %s"%fileblockName
- ms.registerAs("Test")
- ms.publish("PhEDExInjectBlock",fileblockName)
- ms.commit()
+print "publising Event: PhEDExInjectDataset Payload: %s"%datasetpath
+ms.registerAs("Test")
+ms.publish("PhEDExInjectDataset",datasetpath)
+ms.commit()
