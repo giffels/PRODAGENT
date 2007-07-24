@@ -40,10 +40,8 @@ class RelValStatus:
     Workflow
 
     """
-    def __init__(self, msgSvcRef,  **workflowDetails):
-        #  //
-        # // Note: probably want more state information from workflow:
-        #//  dataset names etc.
+    def __init__(self, config, msgSvcRef,  **workflowDetails):
+        self.configuration = config
         self.msgSvcRef = msgSvcRef
         self.workflowDetails = workflowDetails
         self.workflow = workflowDetails['id']
@@ -51,7 +49,8 @@ class RelValStatus:
         self.workflowSpec = WorkflowSpec()
         self.workflowSpec.load(self.workflowFile)
         
-            
+        self.doMigration = self.configuration.get("MigrateToGlobal", False)
+        self.doInjection = self.configuration.get("InjectToPhEDEx", False)
 
         
     def __call__(self):
@@ -84,15 +83,19 @@ class RelValStatus:
             # // Close Blocks and migrate to global
             #//  Inject them into PhEDEx
             for dataset in self.mergedDatasets():
-                logging.debug("Publishing MigrateToGlobal for %s" % dataset)
-                self.msgSvcRef.publish("DBSInterface:MigrateDatasetToGlobal",
-                                       dataset)
-                self.msgSvcRef.commit()
-                logging.debug(
-                    "Publishing PhEDExInjectDataset for %s" % dataset)
-                self.msgSvcRef.publish("PhEDExInjectDataset",
-                                       dataset)
-                self.msgSvcRef.commit()
+                if self.doMigration:
+                    logging.debug(
+                        "Publishing MigrateToGlobal for %s" % dataset)
+                    self.msgSvcRef.publish(
+                        "DBSInterface:MigrateDatasetToGlobal",
+                        dataset)
+                    self.msgSvcRef.commit()
+                if self.doInjection:
+                    logging.debug(
+                        "Publishing PhEDExInjectDataset for %s" % dataset)
+                    self.msgSvcRef.publish("PhEDExInjectDataset",
+                                           dataset)
+                    self.msgSvcRef.commit()
                 
             Session.commit_all()
                 

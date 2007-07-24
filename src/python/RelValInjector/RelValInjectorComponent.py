@@ -43,6 +43,9 @@ class RelValInjectorComponent:
         self.args['SlowJob'] = 50
         self.args['SitesList'] = None
         self.args['PollInterval'] = "00:10:00"
+        self.args['MigrateToGlobal'] = False
+        self.args['InjectToPhEDEx'] = False
+        
         self.args.update(args)
 
         if self.args['Logfile'] == None:
@@ -66,6 +69,22 @@ class RelValInjectorComponent:
         for sitename in self.args['SitesList'].split(','):
             if len(sitename.strip()) > 0:
                 self.sites.append(sitename.strip())
+
+        #  //
+        # // manage migration and injection
+        #//
+        if str(self.args['MigrateToGlobal']).lower() in ("true", "yes"):
+            self.args['MigrateToGlobal'] = True
+        else:
+            self.args['MigrateToGlobal'] = False
+        if str(self.args['InjectToPhEDEx']).lower() in ("true", "yes"):
+            self.args['InjectToPhEDEx'] = True
+        else:
+            self.args['InjectToPhEDEx'] = False
+
+        if self.args['MigrateToGlobal'] == False:
+            # Cant inject without migration
+            self.args['InjectToPhEDEx'] = False
         
 
         LoggingUtils.installLogHandler(self)
@@ -73,6 +92,8 @@ class RelValInjectorComponent:
         msg += " Current Release: %s\n" % self.args['CurrentVersion']
         msg += " Current Arch: %s\n" % self.args['CurrentArch']
         msg += " Current CMS_PATH: %s\n" % self.args['CurrentCMSPath']
+        msg += " Migrate to Global DBS: %s\n" % self.args['MigrateToGlobal']
+        msg += " Inject to PhEDEx:      %s\n" % self.args['InjectToPhEDEx']
         msg += "Jobs to be sent to Sites:\n"
         for site in self.sites:
             msg += " ==> %s\n" % site
@@ -133,7 +154,7 @@ class RelValInjectorComponent:
         for workflow in workflows:
             logging.debug(
                 "Polling for state of workflow: %s\n" % workflow['id'])
-            status = RelValStatus(self.ms, **workflow)
+            status = RelValStatus(self.args, self.ms, **workflow)
             status()
             
         self.ms.publish("RelValInjector:Poll", "",
