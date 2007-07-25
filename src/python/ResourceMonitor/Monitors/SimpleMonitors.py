@@ -17,6 +17,8 @@ from ResourceMonitor.Registry import registerMonitor
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.Database import Session
 
+import commands
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 class PollInterface(dict):
     """
@@ -103,12 +105,10 @@ class PABOSSPoll(PollInterface):
         Query BOSS Here....
 
         """
-        BOSSdbConfig = dbConfig
-        BOSSdbConfig['dbName'] = "%s_BOSS"%(dbConfig['dbName'],)
+        config = loadProdAgentConfiguration()
+        BOSSconfig = config.getConfig("BOSS")
+        bossCfgDir = BOSSconfig['configDir']
 
-        Session.set_database(BOSSdbConfig)
-        Session.connect()
-        Session.start_transaction()
 
         sqlStr1 = \
         """
@@ -118,11 +118,25 @@ class PABOSSPoll(PollInterface):
         """
         select count(JOB.ID) from CHAIN,JOB where JOB.CHAIN_ID=CHAIN.ID and JOB.TASK_ID=CHAIN.TASK_ID and CHAIN.NAME like '%merge%' and JOB.STATUS not in ('W','SA');
         """
-        Session.execute(sqlStr1)
-        numProcessing = Session.fetchone()[0]
-        Session.execute(sqlStr2)
-        numMerge = Session.fetchone()[0]
-        Session.close_all()
+        processingout=commands.getoutput("bossAdmin SQL -query \"%s\" -c %s"%(sqlStr1,bossCfgDir))
+        numProcessing=long(processingout.strip().split('\n')[1])
+
+        mergeout=commands.getoutput("bossAdmin SQL -query \"%s\" -c %s"%(sqlStr2,bossCfgDir))
+        numMerge=long(mergeout.strip().split('\n')[1])
+
+        #
+        #BOSSdbConfig = dbConfig
+        #BOSSdbConfig['dbName'] = "%s_BOSS"%(dbConfig['dbName'],)
+        #
+        #Session.set_database(BOSSdbConfig)
+        #Session.connect()
+        #Session.start_transaction()
+        # 
+        #Session.execute(sqlStr1)
+        #numProcessing = Session.fetchone()[0]
+        #Session.execute(sqlStr2)
+        #numMerge = Session.fetchone()[0]
+        #Session.close_all()
                                                                                                                            
         total = numProcessing + numMerge
         self['Total'] = total
