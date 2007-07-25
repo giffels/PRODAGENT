@@ -10,6 +10,7 @@ that many ResourcesAvailable events are generated
 import os
 import time
 import logging
+import traceback
 from logging.handlers import RotatingFileHandler
 
 from MessageService.MessageService import MessageService
@@ -17,6 +18,8 @@ from MessageService.MessageService import MessageService
 import ResourceMonitor.Monitors
 from ResourceMonitor.Registry import retrieveMonitor
 
+from ProdCommon.Database import Session
+from ProdAgentDB.Config import defaultConfig as dbConfig
 
 from ProdAgentCore.ResourceConstraint import ResourceConstraint
 from ProdAgentCore.PluginConfiguration import PluginConfiguration
@@ -117,13 +120,17 @@ class ResourceMonitorComponent:
         """
         try:
             monitor = retrieveMonitor(self.args['MonitorName'])
-        except StandardError, ex:
+        except Exception, ex:
             msg = "Failed to load monitor named: %s\n" % (
                 self.args['MonitorName'],
                 )
             msg += str(ex)
             msg += "\nUnable to poll for resources..."
             logging.error(msg)
+
+            dbgMsg = str(traceback.format_exc())
+            logging.debug(dbgMsg)
+            
             return None
 
         if self.args['MonitorPluginConfig'] != None:
@@ -181,10 +188,15 @@ class ResourceMonitorComponent:
  
         # wait for messages
         while True:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             type, payload = self.ms.get()
             self.ms.commit()
             logging.debug("ResourceMonitor: %s, %s" % (type, payload))
             self.__call__(type, payload)
+            Session.commit_all()
+            Session.close_all()
             
             
 
@@ -194,30 +206,34 @@ class ResourceMonitorComponent:
 
 
         """
-        returnValue = 0
-        if not self.activePolling:
-            logging.debug("pollResources:Inactive")
-        else:
-            logging.debug("pollResources:Active")
-            monitor = self.loadMonitor()
-            if monitor != None:
-                try:
-                    resourceConstraints = monitor()
-                except StandardError, ex:
-                    msg = "Error invoking monitor:"
-                    msg += self.args['MonitorName']
-                    msg += "\n%s\n" % str(ex)
-                    logging.error(msg)
-                    resourceConstr = ResourceConstraint()
-                    resourceConstr['count'] = 0
-                    resourceConstraints = [resourceConstr]
-                logging.debug("%s Resources Available" % resourceConstraints)
-                
-                self.publishResources(resourceConstraints)
-        
-        # generate new polling cycle
-        self.ms.publish('ResourceMonitor:Poll', '', self.pollDelay)
-        self.ms.commit()
+        try:
+            returnValue = 0
+            if not self.activePolling:
+                logging.debug("pollResources:Inactive")
+            else:
+                logging.debug("pollResources:Active")
+                monitor = self.loadMonitor()
+                if monitor != None:
+                    try:
+                        resourceConstraints = monitor()
+                    except Exception, ex:
+                        msg = "Error invoking monitor:"
+                        msg += self.args['MonitorName']
+                        msg += "\n%s\n" % str(ex)
+                        logging.error(msg)
+                        dbgMsg = str(traceback.format_exc())
+                        logging.debug(dbgMsg)
+                        
+                        resourceConstr = ResourceConstraint()
+                        resourceConstr['count'] = 0
+                        resourceConstraints = [resourceConstr]
+                    logging.debug("%s Resources Available" % resourceConstraints)
+                    
+                    self.publishResources(resourceConstraints)
+        finally:
+            # generate new polling cycle
+            self.ms.publish('ResourceMonitor:Poll', '', self.pollDelay)
+            self.ms.commit()
        
         return returnValue
     
