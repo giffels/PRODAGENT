@@ -219,9 +219,21 @@ class RequestIterator:
         if jobSpecNode.name not in self.generators.keys():
             return
         generator = self.generators[jobSpecNode.name]
-        jobCfg = generator(self.currentJob,
-                           maxEvents = self.eventsPerJob,
-                           firstRun = self.count)
+
+        useOutputMaxEv = False
+        if jobSpecNode.cfgInterface != None:
+            outMaxEv = jobSpecNode.cfgInterface.maxEvents['output']
+            if outMaxEv != None:
+                useOutputMaxEv = True
+
+        if useOutputMaxEv:
+            jobCfg = generator(self.currentJob,
+                               maxEventsWritten = self.eventsPerJob,
+                               firstRun = self.count)
+        else:
+            jobCfg = generator(self.currentJob,
+                               maxEvents = self.eventsPerJob,
+                               firstRun = self.count)
         
         #  //
         # // Is there pileup for this node?
