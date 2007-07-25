@@ -11,6 +11,8 @@ import time
 import popen2
 from MessageService.MessageService import MessageService
 from ProdCommon.MCPayloads.JobSpec import JobSpec
+from ProdCommon.Database import Session
+from ProdAgentDB.Config import defaultConfig as dbConfig
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -306,10 +308,18 @@ class JobQueueComponent:
         
         # wait for messages
         while True:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
             type, payload = self.ms.get()
             self.ms.commit()
             logging.debug("JobQueueComponent: %s, %s" % (type, payload))
             self.__call__(type, payload)
+            Session.commit_all()
+            Session.close_all()
+            
+            
+            
                                                                                
 
             
