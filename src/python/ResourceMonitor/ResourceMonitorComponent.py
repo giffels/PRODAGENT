@@ -38,10 +38,9 @@ class ResourceMonitorComponent:
         self.args['MonitorName'] = None
         self.args['Logfile'] = None
         self.args['MonitorPluginConfig'] = None
-        self.args.setdefault("PollInterval", 600 )
+        self.args.setdefault("PollInterval", "01:00:00" )
         self.args.update(args)
-        self.args['PollInterval'] = float(self.args['PollInterval'])
-        self.pollDelay = float(self.args['PollInterval'])
+        self.pollDelay = self.args['PollInterval']
 
         #  //
         # // Default is to start polling resources right away
