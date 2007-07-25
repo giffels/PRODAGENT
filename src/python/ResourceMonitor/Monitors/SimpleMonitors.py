@@ -103,9 +103,32 @@ class PABOSSPoll(PollInterface):
         Query BOSS Here....
 
         """
-        self['Total'] = 0
-        self['Merge'] = None
-        self['Processing'] = None
+        BOSSdbConfig = dbConfig
+        BOSSdbConfig['dbName'] = "%s_BOSS"%(dbConfig['dbName'],)
+
+        Session.set_database(BOSSdbConfig)
+        Session.connect()
+        Session.start_transaction()
+
+        sqlStr1 = \
+        """
+        select count(JOB.ID) from CHAIN,JOB where JOB.CHAIN_ID=CHAIN.ID and JOB.TASK_ID=CHAIN.TASK_ID and CHAIN.NAME not like '%merge%' and JOB.STATUS not in ('W','SA');
+        """
+        sqlStr2 = \
+        """
+        select count(JOB.ID) from CHAIN,JOB where JOB.CHAIN_ID=CHAIN.ID and JOB.TASK_ID=CHAIN.TASK_ID and CHAIN.NAME like '%merge%' and JOB.STATUS not in ('W','SA');
+        """
+        Session.execute(sqlStr1)
+        numProcessing = Session.fetchone()[0]
+        Session.execute(sqlStr2)
+        numMerge = Session.fetchone()[0]
+        Session.close_all()
+                                                                                                                           
+        total = numProcessing + numMerge
+        self['Total'] = total
+        self['Processing'] = numProcessing
+        self['Merge'] = numMerge
+
         return
         
 
@@ -216,8 +239,74 @@ class PABOSSMonitor(MonitorInterface):
         poll the BOSS DB and calculate the difference
 
         """
-        pass
-    
+        result = []
+                                                                                                                           
+        #  //
+        # // Get information for Default site
+        #//
+        siteName = "Default"
+        if self.allSites.get(siteName, None) == None:
+            #  //
+            # // Cant do much if we can find a Default
+            #//
+            msg = "ERROR: No Resource Control Entry for site: %s \n" % siteName
+            msg += "Need to have a site with this name defined..."
+            raise RuntimeError, msg
+        siteData = self.allSites[siteName]
+        siteThresholds = self.siteThresholds[siteName]
+                                                                                                                           
+        procThresh = siteThresholds.get("processingThreshold", None)
+        if procThresh == None:
+            msg = "No processingThreshold found for site entry: %s\n" % (
+                siteName,)
+            raise RuntimeError, msg
+        mergeThresh = siteThresholds.get("mergeThreshold", None)
+        if mergeThresh == None:
+            msg = "No mergeThreshold found for site entry: %s\n" % (
+                siteName,)
+            raise RuntimeError, msg
+                                                                                                                           
+        #  //
+        # // Poll the BOSSDB
+        #//
+        poller = PABOSSPoll()
+        poller()
+                                                                                                                           
+        #  //
+        # // check the counts against the thresholds and make
+        #//  resource constraints as needed
+        if poller['Processing'] != None:
+            logging.info(" Processing jobs are: %s Threshold: %s"%(poller['Processing'],procThresh))
+            test = poller['Processing'] - procThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "Processing"
+                result.append(constraint)
+        if poller['Merge'] != None:
+            logging.info(" Merge jobs are: %s Threshold: %s"%(poller['Merge'],mergeThresh))
+            test = poller['Merge'] - mergeThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "Merge"
+                result.append(constraint)
+
+        if (poller['Merge'] == None) and (poller['Processing'] == None):
+            test = poller['Processing'] - procThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                result.append(constraint)
+                                                                                                                           
+        #  //
+        # // return the contstraints
+        #//
+        return result
+
+
+
+        return result  
         
 
     
