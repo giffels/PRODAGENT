@@ -150,6 +150,7 @@ class JobQueueDB:
                                       RequiredKeys = reqKeys)
 
         if not self._VerifySites:
+            dictInstance['SiteList'] = ['NULL']
             return
 
         if not dictInstance.has_key('SiteList'):
