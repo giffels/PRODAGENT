@@ -5,8 +5,8 @@ Provides LumiData from LumiServer and populates JobSpec's config file with lumi 
 
 """
 
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.11 2007/07/13 19:00:26 kosyakov Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: LumiServerLink.py,v 1.4 2007/07/17 20:46:18 kosyakov Exp $"
 __author__ = "kss"
 
 
@@ -77,7 +77,7 @@ class LumiServerLink:
             old_bunch=bunch
             sum=float(b['ET']['et_lumi'])
             err=float(b['ET']['et_lumi_err'])
-            qua=float(b['ET']['et_lumi_qlty'])
+            qua=int(float(b['ET']['et_lumi_qlty']))
             lumi_info['det_et_sum'].append(sum)
             lumi_info['det_et_err'].append(err)
             lumi_info['det_et_qua'].append(qua)
@@ -92,7 +92,7 @@ class LumiServerLink:
             old_bunch=bunch
             sum=float(b['OCC']['occ_lumi'])
             err=float(b['OCC']['occ_lumi_err'])
-            qua=float(b['OCC']['occ_lumi_qlty'])
+            qua=int(float(b['OCC']['occ_lumi_qlty']))
             lumi_info['det_occ_sum'].append(sum)
             lumi_info['det_occ_err'].append(err)
             lumi_info['det_occ_qua'].append(qua)
