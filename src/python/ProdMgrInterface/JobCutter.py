@@ -8,8 +8,8 @@ returned from the ProdMgr.
 
 """
 
-__revision__ = "$Id: JobCutter.py,v 1.10 2007/05/31 23:13:57 fvlingen Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: JobCutter.py,v 1.11 2007/06/27 03:34:50 fvlingen Exp $"
+__version__ = "$Revision: 1.11 $"
 __author__ = "fvlingen@caltech.edu"
 
 
@@ -78,6 +78,7 @@ def cut(job_id,jobCutSize):
     logging.debug("Writing job cut specs to: "+str(jobSpecDir))
     listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,job_run_numbers,jobSpec.parameters['EventCount'],\
         RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
+    logging.debug("test10")
     for i in xrange(0,len(listOfSpecs)):
         listOfSpecs[i]['owner'] = 'prodmgr'
     logging.debug("Registering job cuts")

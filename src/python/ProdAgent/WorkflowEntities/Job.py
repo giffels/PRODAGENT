@@ -179,10 +179,11 @@ def registerFailure(jobID,failureState,parameters={}):
        """ %(str(jobID))
    rowsModified=Session.execute(sqlStr)
    jobDetails=get(jobID)
+   logging.debug("test: Job details : "+str(jobDetails))
    if not jobDetails:
        raise ProdException(exceptions[3012]+'undefined',3012) 
    if(int(jobDetails['retries'])>(int(jobDetails['max_retries'])-1) ):
-       raise ProdException(exceptions[3013]+str(jobDetails['MaxRetries']),3013)
+       raise ProdException(exceptions[3013]+str(jobDetails['max_retries']),3013)
 
    if failureState!='run' and rowsModified!=1:
        raise ProdException(exceptions[3014],3014)
@@ -192,7 +193,7 @@ def registerFailure(jobID,failureState,parameters={}):
            raise ProdException(exceptions[3018]+str(jobDetails['status']),3018)
        if int(jobDetails['racers'])==0:
            raise ProdException(exceptions[3016]+str(jobDetails['status']),3016)
-       raise ProdException(exceptions[3017]+str(generalState['MaxRetries']),3017)
+       raise ProdException(exceptions[3017]+str(generalState['max_retries']),3017)
 
 def setCacheDir(jobID,cacheDir):
    """

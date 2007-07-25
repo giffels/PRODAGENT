@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BOSSKiller.py,v 1.5 2007/06/21 07:52:50 ckavka Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: BOSSKiller.py,v 1.6 2007/06/29 08:11:00 afanfani Exp $"
+__version__ = "$Revision: 1.6 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -21,9 +21,7 @@ from BossSession import BossSession, SchedulerError, BossError
 
 from BossSession import SUBMITTED
 
-
-from JobState.JobStateAPI import  JobStateChangeAPI, \
-                                  JobStateInfoAPI
+from ProdAgent.WorkflowEntities import JobState
 
 from ProdAgentCore.ProdAgentException import ProdAgentException
 
@@ -67,7 +65,7 @@ class BOSSKiller:
 
         # verify that the job exists
         try:
-            stateInfo = JobStateInfoAPI.general(jobSpecId)
+            stateInfo = JobState.general(jobSpecId)
         except StandardError, ex:
             msg = "Cannot retrieve JobState Information for %s\n" % jobSpecId
             msg += str(ex)
@@ -84,7 +82,7 @@ class BOSSKiller:
         # allowed retries so jobs will not be resubmitted, or even
         # not submitted at all if they have not been submitted yet
         try:
-            JobStateChangeAPI.doNotAllowMoreSubmissions([jobSpecId])
+            JobState.doNotAllowMoreSubmissions([jobSpecId])
         except ProdAgentException, ex:
             msg = "Updating max racers fields failed for job %s\n" % jobSpecId
             msg += str(ex)
@@ -146,7 +144,7 @@ class BOSSKiller:
         logging.info("BOSSKiller.killWorkflow(%s)" % workflowSpecId)
 
         # get job ids for workflows workflowSpecId
-        jobs = JobStateInfoAPI.retrieveJobIDs([workflowSpecId])
+        jobs = JobState.retrieveJobIDs([workflowSpecId])
 
         totalJobs = len(jobs)
         if totalJobs == 0:
@@ -213,7 +211,7 @@ class BOSSKiller:
         self.killJob(jobSpecId, erase=True)
 
         # remove all entries
-        JobStateChangeAPI.cleanout(jobSpecId)
+        JobState.cleanout(jobSpecId)
 
     def eraseWorkflow(self, workflowSpecId):
         """
@@ -231,7 +229,7 @@ class BOSSKiller:
         logging.info("BOSSKiller.eraseWorkflow(%s)" % workflowSpecId)
 
         # get job ids for workflows workflowSpecId
-        jobs = JobStateInfoAPI.retrieveJobIDs([workflowSpecId])
+        jobs = JobState.retrieveJobIDs([workflowSpecId])
 
         totalJobs = len(jobs)
         if totalJobs == 0:
@@ -365,7 +363,7 @@ class BOSSKiller:
 
                 # verify that the job exists
                 try:
-                    stateInfo = JobStateInfoAPI.general(str(jid))
+                    stateInfo = JobState.general(str(jid))
 
                     # verify that it has not finished
                     if stateInfo['State'] in ["finished"]:
@@ -385,7 +383,7 @@ class BOSSKiller:
             # do not allow resubmisions for it
             try:
                 logging.info("JobSpecId list: "+ str(jobSpecId)) 
-                JobStateChangeAPI.doNotAllowMoreSubmissions(jobSpecId)
+                JobState.doNotAllowMoreSubmissions(jobSpecId)
 
             # error, operation failed
             except ProdAgentException, ex:

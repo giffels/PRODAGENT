@@ -296,7 +296,18 @@ def isRegistered(JobSpecId):
        #WRAPPER
        return Job.exists(JobSpecId)   
 
-       
+def doNotAllowMoreSubmissions(jobSpecIds = []):
+       """
+       _doNotAllowSubmission_
+ 
+       Set racers to maxRacers + 1 and retries to maxRetries + 1
+ 
+       """
+       for jobSpecId in jobSpecIds:
+           sqlStr="UPDATE we_Job SET "+    \
+                  "racers=max_racers+1, retries=max_retries+1 "+ \
+                  "WHERE id=\""+ str(jobSpecId)+ "\";"
+       Session.execute(sqlStr)
 
 def jobSpecTotal():
        #WRAPPER

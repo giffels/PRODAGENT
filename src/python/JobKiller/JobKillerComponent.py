@@ -5,17 +5,20 @@ _JobKillerComponent_
 ProdAgent Component that kills jobs by job spec or workflow Id
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: JobKillerComponent.py,v 1.1 2007/02/01 17:20:45 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: JobKillerComponent.py,v 1.3 2007/05/04 14:16:40 ckavka Exp $"
 __author__ = "evansde@fnal.gov"
 
 
 import os
 import logging
 
+from ProdCommon.Database import Session
 
-import ProdAgentCore.LoggingUtils as LoggingUtils
 from MessageService.MessageService import MessageService
+from ProdAgentDB.Config import defaultConfig as dbConfig
+import ProdAgentCore.LoggingUtils as LoggingUtils
+
 
 from JobKiller.Registry import retrieveKiller
 
@@ -293,10 +296,16 @@ class JobKillerComponent:
         
         # wait for messages
         while True:
+            Session.set_database(dbConfig)
+            Session.connect()
+            Session.start_transaction()
+
             logging.info("JobKiller ready")
             msgtype, payload = self.ms.get()
-            self.ms.commit()
             self.__call__(msgtype, payload)
+            Session.commit_all()
+            Session.close_all()
+            self.ms.commit()
 
 
 
