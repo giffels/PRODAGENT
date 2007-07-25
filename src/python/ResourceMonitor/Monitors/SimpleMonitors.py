@@ -10,7 +10,7 @@ a site-less resources available event
 
 """
 
-
+import logging
 from ResourceMonitor.Monitors.MonitorInterface import MonitorInterface
 from ResourceMonitor.Registry import registerMonitor
 
@@ -66,14 +66,13 @@ class PAJobStatePoll(PollInterface):
 
         sqlStr1 = \
         """
-        SELECT COUNT(JobSpecID) FROM js_JobSpec
-           WHERE JobType="Processing" AND State='inProgress';
+        SELECT COUNT(id) FROM we_Job
+           WHERE job_type="Processing" AND status='inProgress';
         """
-
         sqlStr2 = \
         """
-        SELECT COUNT(JobSpecID) FROM js_JobSpec
-           WHERE JobType="Merge" AND State='inProgress';
+        SELECT COUNT(id) FROM we_Job
+           WHERE job_type="Merge" AND status='inProgress';
         """
 
         Session.execute(sqlStr1)
@@ -139,7 +138,7 @@ class PAJobStateMonitor(MonitorInterface):
             #  //
             # // Cant do much if we can find a Default
             #//
-            msg = "ERROR: No Resource Control Entry for site: %s" % siteName
+            msg = "ERROR: No Resource Control Entry for site: %s \n" % siteName
             msg += "Need to have a site with this name defined..."
             raise RuntimeError, msg
         siteData = self.allSites[siteName]
@@ -159,21 +158,23 @@ class PAJobStateMonitor(MonitorInterface):
         #  //
         # // Poll the JobStatesDB
         #//
-        poller = PAJobStatesPoll()
+        poller = PAJobStatePoll()
         poller()
 
         #  //
         # // check the counts against the thresholds and make
         #//  resource constraints as needed
         if poller['Processing'] != None:
-            test = poller['Processing'] - procThres
+            logging.info(" Processing jobs are: %s Threshold: %s"%(poller['Processing'],procThresh))
+            test = poller['Processing'] - procThresh
             if test < 0:
                 constraint = self.newConstraint()
                 constraint['count'] = abs(test)
                 constraint['type'] = "Processing"
                 result.append(constraint)
         if poller['Merge'] != None:
-            test = poller['Merge'] - mergeThres
+            logging.info(" Merge jobs are: %s Threshold: %s"%(poller['Merge'],mergeThresh))
+            test = poller['Merge'] - mergeThresh
             if test < 0:
                 constraint = self.newConstraint()
                 constraint['count'] = abs(test)
@@ -181,7 +182,7 @@ class PAJobStateMonitor(MonitorInterface):
                 result.append(constraint)
 
         if (poller['Merge'] == None) and (poller['Processing'] == None):
-            test = poller['Processing'] - procThres
+            test = poller['Processing'] - procThresh
             if test < 0:
                 constraint = self.newConstraint()
                 constraint['count'] = abs(test)
