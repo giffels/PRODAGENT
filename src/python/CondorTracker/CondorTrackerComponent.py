@@ -235,10 +235,10 @@ class CondorTrackerComponent:
             logging.info("JobFailed Published For %s" % jobSpecId)
             return
         if checkSuccess(jobReport):
+            WEJob.setState(jobSpecId, "finished")
             self.ms.publish("JobSuccess", jobReport)
             self.ms.commit()
-            #WEJob.setState(jobSpecId, "finished")
-            #Session.commit_all()
+            Session.commit_all()
             logging.info("JobSuccess Published For %s" % jobSpecId)
             return
         else:
