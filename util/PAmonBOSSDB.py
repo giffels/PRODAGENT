@@ -1091,7 +1091,6 @@ class MySQL_Query:
         return 1
 
     def Execute(self):
-
        out = commands.getoutput( self.__query + ' 2> /dev/null' ).split('\n')
        # stderr is redirected to /dev/null
 
@@ -1326,6 +1325,7 @@ class Params:
                          2 display the efficiencies
                          3 is for debugging
       - URL is a html file with the output 
+      - Plugin is the BOSS scheduler used
     """
     
     def __init__(self):
@@ -1344,6 +1344,8 @@ class Params:
         
         self.Verbose  = ""
         self.URL      = ""
+
+        self.Plugin   = ""
 
     def Copy( self ):
 
@@ -1364,6 +1366,8 @@ class Params:
         newparams.Verbose     = self.Verbose
         newparams.URL         = self.URL
         
+        newparams.Plugin      = self.Plugin        
+
         return newparams
 
     def Print(self):
@@ -1393,7 +1397,7 @@ class Params:
         print "Classify  : ", self.Classify
         print "Type      : ", self.Type
         print "Merge     : ", self.Merge
-
+        print "Plugin    : ", self.Plugin
         print
         print "Print options : "
         print "Verbose : ", self.Verbose
@@ -1415,6 +1419,7 @@ class Params:
         if self.Merge              != "" : return 1
         if self.Verbose            != "" : return 1
         if self.URL                != "" : return 1
+        if self.Plugin             != "" : return 1
 
         return 0
 
@@ -1494,6 +1499,13 @@ class Params:
             newparams.URL = refparams.URL
         else:
             newparams.URL = self.URL
+
+        #  --- Plugin
+        if refparams.Plugin != "":
+            newparams.Plugin = refparams.Plugin
+        else:
+            newparams.Plugin = self.Plugin
+
             
         return newparams
 
@@ -1578,6 +1590,10 @@ class ProdmonXMLParser(saxutils.DefaultHandler):
             os.system( "rm -f "+value )
             self.tmp.URL     = value
 
+        if name == 'plugin':
+            self.tmp.Plugin    = value
+
+
         if name == 'query' :
   
             self.in_default = 0
@@ -1632,9 +1648,9 @@ def Usage():
     manfile.write("=head1 USAGE                                                                                                                  \n")
     manfile.write("                                                                                                                              \n")
     manfile.write("B<PAmonBOSSDB.py>                                                                                                             \n")
-    manfile.write("B<--user>=I<DB_user_ID_1> B<--password>=I<ID_passwd_1> B<--socket>=I<socket_1>|B<--host>=I<DB_host_1> B<--dababase>=I<DB_1>   \n")
-    manfile.write("[B<--user>=I<DB_user_ID_2> B<--password>=I<ID_passwd_2> B<--socket>=I<socket_2>|B<--host>=I<DB_host_2> B<--dababase>=I<DB_2> ... \n")
-    manfile.write("B<--user>=I<DB_user_ID_N> B<--password>=I<ID_passwd_N> B<--socket>=I<socket_N>|B<--host>=I<DB_host_N> B<--dababase>=I<DB_N>]  \n")
+    manfile.write("B<--user>=I<DB_user_ID_1> B<--password>=I<ID_passwd_1> B<--socket>=I<socket_1>|B<--host>=I<DB_host_1> B<--database>=I<DB_1>   \n")
+    manfile.write("[B<--user>=I<DB_user_ID_2> B<--password>=I<ID_passwd_2> B<--socket>=I<socket_2>|B<--host>=I<DB_host_2> B<--database>=I<DB_2> ... \n")
+    manfile.write("B<--user>=I<DB_user_ID_N> B<--password>=I<ID_passwd_N> B<--socket>=I<socket_N>|B<--host>=I<DB_host_N> B<--database>=I<DB_N>]  \n")
     manfile.write("[B<--classify>=sites|workflows] [B<--type>=status|codes] [B<--merge>=yes|no|both]                                             \n")
     manfile.write("[B<--workflow>=I<workflow1> ...  B<--workflow>=I<workflowN>]                                                                  \n")
     manfile.write("[B<--site>=I<site1> ...  B<--site>=I<siteN>]                                                                                  \n") 
@@ -1642,6 +1658,7 @@ def Usage():
     manfile.write("[B<--verbose>=I<verbose-level>]                                                                                               \n")
     manfile.write("[B<--url>=I<filename>]                                                                                                        \n")
     manfile.write("[B<--cfg-file>=I<filename>]                                                                                                   \n")
+    manfile.write("[B<--plugin>=I<name of the BOSS plugin scheduler>]                           \n")
     manfile.write("[B<--help>]                                                                                                                   \n")
     manfile.write("                                                                                                                              \n")
     manfile.write("=head1 DESCRIPTION                                                                                                            \n")
@@ -1667,6 +1684,7 @@ def Usage():
     manfile.write("When the I<both> value is set, the query is duplicated into two queries, with I<yes> and I<no> values respectively,           \n")
     manfile.write("and inheriting the rest of the options.                                                                                       \n")
     manfile.write("                                                                                                                              \n")
+    manfile.write("B<plugin> argument is needed to select the kind of BOSS scheduler plugin used. Possible values are I<edg> (default), I<gliteCollection>,  I<gliteParam>.               \n")
     manfile.write("=head1 OPTIONS                                                                                                                \n")
     manfile.write("                                                                                                                              \n")
     manfile.write("=over 8                                                                                                                       \n")
@@ -1749,9 +1767,9 @@ def WarningMessage():
         print " USAGE:"
         print 
         print " PAmonBOSSDB.py",
-        print " --user=DB_user_D_1 --password=D_passwd_1 --host=DB_host_1 --dababase=DB_1",
-        print "[--user=DB_user_D_2 --password=D_passwd_2 --host=DB_host_2 --dababase=DB_2 ... ",
-        print "--user=DB_user_D_N --password=D_passwd_N --host=DB_host_N --dababase=DB_N]",
+        print " --user=DB_user_D_1 --password=D_passwd_1 --host=DB_host_1 --database=DB_1",
+        print "[--user=DB_user_D_2 --password=D_passwd_2 --host=DB_host_2 --database=DB_2 ... ",
+        print "--user=DB_user_D_N --password=D_passwd_N --host=DB_host_N --database=DB_N]",
         print "[--type=status|codes] [--merge=yes|no] [--workflow=workflow1 ...  --workflow=workflowN]",
         print "[--site=site1 ...  --site=siteN]", 
         print "[--from=initial_time [--until=final_time]] [--last=period]",
@@ -1795,6 +1813,7 @@ def ParseArguments():
               'last='      ,     \
               'cfg-file='  ,     \
               'verbose='   ,     \
+              'plugin='    ,     \
               'url='             \
               ]
     
@@ -1861,6 +1880,12 @@ def ParseArguments():
           if merge != 'yes' and merge != 'no' and merge != "both":
               Usage()
           shell_params.Merge = merge
+
+       if opt == "--plugin":
+          plugin= arg
+          if plugin != 'edg' and plugin != 'gliteCollection' and plugin != 'gliteParam' :
+              Usage()
+          shell_params.Plugin= plugin
 
        if opt == "--workflow":
            shell_params.Workflows.append( arg )
@@ -1994,6 +2019,10 @@ def SingleQuery( params, i):
    if params.URL != "" :
       url = params.URL
 
+   if params.Plugin != "" :
+      plugin = params.Plugin
+   else: 
+      plugin = 'edg'
 
    # --------------------------------------------------------------------------- #
    #      QUERY OBJECTS : CREATON AND ATTRBUTES                                  #
@@ -2019,14 +2048,17 @@ def SingleQuery( params, i):
    # ------------------------------
  
    t_cmssw           = MySQL_Table( 'cmssw'           )
-   t_sched_edg       = MySQL_Table( 'SCHED_edg'       )
+
+   SCHED_plugin="SCHED_%s"%plugin
+   t_sched_edg = MySQL_Table( SCHED_plugin )
    t_job             = MySQL_Table( 'JOB'             )     
  
    t_ended_cmssw     = MySQL_Table( 'ENDED_cmssw'     )
-   t_ended_sched_edg = MySQL_Table( 'ENDED_SCHED_edg' )
+   ENDED_SCHED_plugin="ENDED_SCHED_%s"%plugin
+   t_ended_sched_edg = MySQL_Table( ENDED_SCHED_plugin)
    t_ended_job       = MySQL_Table( 'ENDED_JOB'       )
  
-   t_task            = MySQL_Table( 'TASK'            )
+   t_chain           = MySQL_Table( 'CHAIN'            )
  
    # ------------------------------
    #  usual id's columns
@@ -2034,21 +2066,27 @@ def SingleQuery( params, i):
  
    c_cmssw_id                = MySQL_Column( t_cmssw,           'ID'      )
    c_cmssw_task_id           = MySQL_Column( t_cmssw,           'TASK_ID' )
+   c_cmssw_chain_id          = MySQL_Column( t_cmssw,           'CHAIN_ID' )
    c_ended_cmssw_id          = MySQL_Column( t_ended_cmssw,     'ID'      )
    c_ended_cmssw_task_id     = MySQL_Column( t_ended_cmssw,     'TASK_ID' )
+   c_ended_cmssw_chain_id     = MySQL_Column( t_ended_cmssw,     'CHAIN_ID' )
                                                                            
    c_sched_edg_id            = MySQL_Column( t_sched_edg,       'ID'      )
    c_sched_edg_task_id       = MySQL_Column( t_sched_edg,       'TASK_ID' )
+   c_sched_edg_chain_id      = MySQL_Column( t_sched_edg,      'CHAIN_ID')
    c_ended_sched_edg_id      = MySQL_Column( t_ended_sched_edg, 'ID'      )
    c_ended_sched_edg_task_id = MySQL_Column( t_ended_sched_edg, 'TASK_ID' )
+   c_ended_sched_edg_chain_id = MySQL_Column( t_ended_sched_edg, 'CHAIN_ID')
  
    c_job_id                  = MySQL_Column( t_job,             'ID'      )
    c_job_task_id             = MySQL_Column( t_job,             'TASK_ID' )
+   c_job_chain_id            = MySQL_Column( t_job,             'CHAIN_ID')
    c_ended_job_id            = MySQL_Column( t_ended_job,       'ID'      )
    c_ended_job_task_id       = MySQL_Column( t_ended_job,       'TASK_ID' )
- 
-   c_task_id                 = MySQL_Column( t_task,            'ID'      )
- 
+   c_ended_job_chain_id      = MySQL_Column( t_ended_job,       'CHAIN_ID')
+
+   c_chain_id                = MySQL_Column( t_chain,           'TASK_ID' )  
+
    # ------------------------------
    #  other usual columns
    # ------------------------------
@@ -2058,14 +2096,14 @@ def SingleQuery( params, i):
    c_ended_job_stop_t        = MySQL_Column( t_ended_job, 'STOP_T'    )
    c_ended_job_sub_t         = MySQL_Column( t_ended_job, 'SUB_T'     )
  
-   c_task_name               = MySQL_Column( t_task,      'TASK_NAME' )
- 
+   c_chain_name              = MySQL_Column( t_chain,     'NAME' ) 
+
    # ------------------------------
    #  usual required columns
    # ------------------------------
 
-   c__task_name              = t_task.AddColumn( 'TASK_NAME' )
- 
+   c__chain_name             = t_chain.AddColumn( 'NAME' ) 
+
    c_task_exit               = t_cmssw.AddColumn(           'TASK_EXIT' )
    c_ended_task_exit         = t_ended_cmssw.AddColumn(     'TASK_EXIT' )
  
@@ -2076,24 +2114,32 @@ def SingleQuery( params, i):
    #  complete query creation: TYPE
    # ------------------------------
  
-   q.AddTable( t_task      )
+   q.AddTable( t_chain      )
    q.AddTable( t_cmssw     )
    q.AddTable( t_sched_edg )
 
  
    q.AddJoin( MySQL_Join( c_cmssw_id,      c_sched_edg_id      ) )
    q.AddJoin( MySQL_Join( c_cmssw_task_id, c_sched_edg_task_id ) )
-   q.AddJoin( MySQL_Join( c_task_id,       c_sched_edg_task_id ) )
- 
-   q_ended.AddTable( t_task            )
+   q.AddJoin( MySQL_Join( c_job_chain_id,       c_sched_edg_chain_id ) )
+   q.AddJoin( MySQL_Join( c_cmssw_chain_id,       c_sched_edg_chain_id ) )
+   q.AddJoin( MySQL_Join( c_chain_id,       c_sched_edg_task_id ) )
+   if plugin != 'edg':
+      q.AddJoin( MySQL_Join( c_chain_id,       c_sched_edg_chain_id ) )
+
+   q_ended.AddTable( t_chain            )
    q_ended.AddTable( t_ended_cmssw     )
    q_ended.AddTable( t_ended_sched_edg )
 
  
    q_ended.AddJoin( MySQL_Join( c_ended_cmssw_id,      c_ended_sched_edg_id      ) )
    q_ended.AddJoin( MySQL_Join( c_ended_cmssw_task_id, c_ended_sched_edg_task_id ) )
-   q_ended.AddJoin( MySQL_Join( c_task_id,             c_ended_sched_edg_task_id ) )
-       
+   q_ended.AddJoin( MySQL_Join( c_ended_job_chain_id,      c_ended_sched_edg_chain_id ) )
+   q_ended.AddJoin( MySQL_Join( c_ended_cmssw_chain_id,      c_ended_sched_edg_chain_id ) )
+   q_ended.AddJoin( MySQL_Join( c_chain_id,             c_ended_sched_edg_task_id ) )
+   if plugin != 'edg':
+      q_ended.AddJoin( MySQL_Join( c_chain_id,             c_ended_sched_edg_chain_id ) )
+
    if type == 'codes':
       
       q.AddTable(       t_job       )
@@ -2101,7 +2147,7 @@ def SingleQuery( params, i):
       
       q.AddJoin( MySQL_Join(       c_cmssw_id,            c_job_id            ) )
       q.AddJoin( MySQL_Join(       c_cmssw_task_id,       c_job_task_id       ) )
-
+      
       q_ended.AddJoin( MySQL_Join( c_ended_cmssw_id,      c_ended_job_id      ) )
       q_ended.AddJoin( MySQL_Join( c_ended_cmssw_task_id, c_ended_job_task_id ) )
 
@@ -2138,14 +2184,16 @@ def SingleQuery( params, i):
  
       reqs = []
       for workflow in workflows :
-         reqs.append( c_task_name.LIKE( '%'+workflow+'%' ) )
+         reqs.append( c_chain_name.LIKE( '%'+workflow+'%' ) )
  
       q.AddRequirement(       Req_OR( *reqs ) )
       q_ended.AddRequirement( Req_OR( *reqs ) )
  
-      q.AddJoin(       MySQL_Join( c_task_id, c_cmssw_task_id       ) )
-      q_ended.AddJoin( MySQL_Join( c_task_id, c_ended_cmssw_task_id ) )
+      q.AddJoin(       MySQL_Join( c_chain_id, c_cmssw_task_id       ) )
+      q_ended.AddJoin( MySQL_Join( c_chain_id, c_ended_cmssw_task_id ) )
  
+
+
  
    if len( sites ) > 0 :
      
@@ -2200,14 +2248,17 @@ def SingleQuery( params, i):
  
    if merge == 'yes' :
       
-       q.AddRequirement(       c_task_name.LIKE('%mergejob%') )
-       q_ended.AddRequirement( c_task_name.LIKE('%mergejob%') )
+       q.AddRequirement(       c_chain_name.LIKE('%mergejob%') )
+       q_ended.AddRequirement( c_chain_name.LIKE('%mergejob%') )
+
+
        
    elif merge == 'no' :
       
-       q.AddRequirement(       c_task_name.NOTLIKE('%mergejob%') )
-       q_ended.AddRequirement( c_task_name.NOTLIKE('%mergejob%') )
+       q.AddRequirement(       c_chain_name.NOTLIKE('%mergejob%') )
+       q_ended.AddRequirement( c_chain_name.NOTLIKE('%mergejob%') )
  
+
    # ------------------------------
    #      QUERY                    
    # ------------------------------
@@ -2539,11 +2590,11 @@ def Workflows( params ) :
        query = MySQL_Query()
        query.Connect( connection )
 
-       task_table = MySQL_Table( "TASK" )
-       task_name = task_table.AddColumn( "TASK_NAME" )
-       query.AddRequirement( task_name.NOTLIKE( "%mergejob%" ) )
+       chain_table = MySQL_Table( "CHAIN" )
+       chain_name = chain_table.AddColumn( "NAME" )
+       query.AddRequirement( chain_name.NOTLIKE( "%mergejob%" ) )
        
-       query.AddTable( task_table )
+       query.AddTable( chain_table )
        query.Query()
        
        ntuple = query.Execute()
