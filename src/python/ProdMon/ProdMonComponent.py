@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.3 2007/07/17 15:53:14 swakef Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.4 2007/07/24 13:55:06 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -234,10 +234,11 @@ class ProdMonComponent:
             exportToDashboard(self.args['exportMaxBatchSize'],
                               self.args['DashboardURL'],
                               self.args["Team"],
-                              self.args["AgentName"])
+                              self.args["AgentName"],
+                              self.args["ComponentDir"])
         
         except Exception, ex:
-            msg = "Error exporting data to external monitoring:\n"
+            msg = "Error exporting data to external monitoring: "
             msg += str(ex)
             logging.error(msg)
             

@@ -10,12 +10,13 @@ import logging
 from ProdMon.ProdMonDB import getJobInstancesToExport, markInstancesExported, \
                                                         getJobStatistics
 import urllib, urllib2
+import os
 
 USER_AGENT = \
 "ProdMon/1.0 https://twiki.cern.ch/twiki/bin/view/CMS/ProdAgentProdMon"
 
 
-def exportToDashboard(maxRecords, url, team, agent):
+def exportToDashboard(maxRecords, url, team, agent, dir):
     """
     _exportToDashboard_
     
@@ -23,27 +24,23 @@ def exportToDashboard(maxRecords, url, team, agent):
     
     """
     
-    try:
-        instances = getJobInstancesToExport(maxRecords)
+    instances = getJobInstancesToExport(maxRecords)
         
-        if not instances:
-            return
+    if not instances:
+        return
         
-        logging.debug("%s job instances to export to external monitoring" % \
+    logging.debug("%s job instances to export to external monitoring" % \
                                                                 len(instances))
         
-        # format and export
-        prodReport = createProdReport(instances, team, agent)
+    # format and export
+    prodReport = createProdReport(instances, team, agent)
 
-        # send to dashboard
-        # takes list of (key, value) pairs
-        HTTPpost([("report", prodReport.toxml())], url)
-
-        # update instance's status
-        markInstancesExported(instances)
-    
-    except Exception, ex:
-        raise RuntimeError, "Error exporting data to dashboard: %s" % str(ex)
+    # send to dashboard
+    # takes list of (key, value) pairs
+    HTTPpost([("report", prodReport.toxml())], url, \
+                                 onFailureFile = os.path.join(dir, "Failed.txt"))
+    # update instance's status
+    markInstancesExported(instances)
     
     logging.debug("export complete")
     return
@@ -223,25 +220,35 @@ def addTextNode(document, parent, name, value):
     return
 
 
-def HTTPpost(params, url):
+def HTTPpost(params, url, onFailureFile = None):
     """
     Do a http post with params to url
     
     params is a list of tuples of key,value pairs
     """
     
-    logging.debug("contacting %s" % url)    
+    try:
+        logging.debug("contacting %s" % url)    
     
-    data = urllib.urlencode(params)
-    #put who we are in headers
-    headers = { 'User-Agent' : USER_AGENT }
-    req = urllib2.Request(url, data, headers)
+        data = urllib.urlencode(params)
+        #put who we are in headers
+        headers = { 'User-Agent' : USER_AGENT }
+        req = urllib2.Request(url, data, headers)
     
-    #logging.debug("with request:\n%s" % str(req))
-    
-    response = urllib2.urlopen(req, data)
+        response = urllib2.urlopen(req, data)
         
-    logging.debug("received http code: %s, message: %s, response: %s" \
-         % (response.code, response.msg, str(response.read())))
-            
+        logging.debug("received http code: %s, message: %s, response: %s" \
+                      % (response.code, response.msg, str(response.read())))
+        
+    except IOError, ex:
+        #record the report that failed then rethrow
+
+        if onFailureFile != None:
+            file = open(onFailureFile, "w")
+            file.write(req.get_data())
+            file.close()
+            msg = str(ex)
+            msg += "\nA copy of the failed report is in %s" % onFailureFile
+        
+        raise IOError, msg
     return
