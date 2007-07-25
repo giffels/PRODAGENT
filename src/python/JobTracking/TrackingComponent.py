@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.40 2007/07/19 13:54:39 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.41 2007/07/19 17:41:25 afanfani Exp $"
 
 import socket
 import time
@@ -378,10 +378,6 @@ class TrackingComponent:
                 logging.debug("%s exists=%s"%(self.reportfilename,os.path.exists(self.reportfilename)))
                 success=False
                 if os.path.exists(self.reportfilename):
-                    #AF: remove the notifyJobState since it's blocking the rest of the code
-                    #AFlogging.debug("Notify JobState.finished: %s" % self.reportfilename)
-                    #AFself.notifyJobState(self.reportfilename)
-
                     logging.debug("check Job Success %s"%checkSuccess(self.reportfilename))
                     success=checkSuccess(self.reportfilename)
                 else:
@@ -403,9 +399,8 @@ class TrackingComponent:
                 
                     
                 if success:
-                        
                     self.jobSuccess(jobId)
-                        
+                    self.notifyJobState(jobSpecId) 
                 else:
                     try:
                         self.cmsErrorJobs[jobId[0]+"_"+jobSpecId]+=0
@@ -623,23 +618,18 @@ class TrackingComponent:
         pass
     
 
-    def notifyJobState(self, jobReportFile):
+    def notifyJobState(self, jobId):
         """
         _notifyJobState_
 
         Notify the JobState DB of finished jobs
 
         """
-        reports = readJobReports(jobReportFile)
-        jobspecs = []
-        for report in reports:
-            if report.jobSpecId not in jobspecs:
-                jobspecs.append(report.jobSpecId)
+        try:
 
-        for jobspec in jobspecs:
-            try:
-                JobState.finished(jobspec)
-            except Exception, ex:
+          JobState.finished(jobId)
+          Session.commit_all()
+        except Exception, ex:
                 msg = "Error setting job state to finished for job: %s\n" % jobspec
                 msg += str(ex)
                 logging.error(msg)
