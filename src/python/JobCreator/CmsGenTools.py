@@ -23,6 +23,7 @@ from ShREEK.ControlPoints.ActionImpl.BasicActions import KillJob
 #//
 CmsGenScriptUrl = "http://cern.ch/ceballos/alpgen/bin/cmsGen.py"
 
+import ProdCommon.CmsGen 
 
 class InsertCmsGenStructure:
     """
@@ -135,6 +136,7 @@ class PopulateCmsGenScript:
         taskObject['PreTaskCommands'].append(
             "./RuntimeCmsGen.py"
             )
+
         
         for item in taskObject['PreTaskCommands']:
             exeScript.append(item)
@@ -142,8 +144,19 @@ class PopulateCmsGenScript:
         #  //
         # // Pull in the cmsGen tool from the web and
         #// make sure it is executable
-        exeScript.append("wget %s -O cmsGen" % CmsGenScriptUrl)
+        #exeScript.append("wget %s -O cmsGen" % CmsGenScriptUrl)
+
+        #  //
+        # // Install script from ProdCommon.CmsGen
+        #//
+        cmsGenScript = inspect.getsourcefile(ProdCommon.CmsGen)
+        cmsGenScript = cmsGenScript.replace("__init__.py", "cmsGen.py")
+        taskObject.attachFile(cmsGenScript)
+        
+        exeScript.append("ln -s ./cmsGen.py cmsGen") 
         exeScript.append("chmod +x cmsGen") 
+
+        
         
         exeScript.append("( # Start App Subshell")
         for item in taskObject['PreAppCommands']:
