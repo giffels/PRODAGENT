@@ -55,9 +55,10 @@ class LumiServerLink:
         logging.info("Getting LumiInfo for run %s lumisection %s"%(str(run_number),str(lumisection)))
         
         lumi_sum=self._getSummary(run_number,lumisection)
-        lumi_info['avginslumi']=float(lumi_sum.get('delivered_et_lumi','0.0'))
-        lumi_info['avginslumierr']=float(lumi_sum.get('delivered_et_lumi_err','0.0'))
-        lumi_info['lumisecqual']=long(float(lumi_sum.get('delivered_et_lumi_qlty','0')))
+        #print "LUMI_SUM",lumi_sum
+        lumi_info['avginslumi']=float(lumi_sum.get('instant_et_lumi','0.0'))
+        lumi_info['avginslumierr']=float(lumi_sum.get('instant_et_lumi_err','0.0'))
+        lumi_info['lumisecqual']=long(float(lumi_sum.get('instant_et_lumi_qlty','0')))
         lumi_info['deadfrac']=float(lumi_sum.get('live_frac','0.0'))
 
         lumi_info['det_et_sum']=[]
