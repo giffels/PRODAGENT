@@ -126,9 +126,12 @@ class Successes(dict):
         appStart = jobInfo['timing']['AppStartTime']
         appEnd = jobInfo['timing']['AppEndTime']
         timeTaken = int(appEnd) - int(appStart)
-        timePerEvent = float(timeTaken) / float(events)
-        self['Timing'].append(int(timePerEvent))
-
+        if float(events) > 0. :
+          timePerEvent = float(timeTaken) / float(events)
+          self['Timing'].append(int(timePerEvent))
+        else:
+          print "WARNING: no events are there"
+          
         soStart = jobInfo['timing']['StageOutStart']
         soEnd = jobInfo['timing']['StageOutEnd']
         #print "%s - %s" % (soStart, soEnd)
