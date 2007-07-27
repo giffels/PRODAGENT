@@ -35,9 +35,6 @@ class RelValInjectorComponent:
     def __init__(self, **args):
         self.args = {}
         self.args['Logfile'] = None
-        self.args['CurrentArch'] = None
-        self.args['CurrentCMSPath'] = None
-        self.args['CurrentVersion'] = None
         self.args['FastJob'] = 250
         self.args['MediumJob'] = 100
         self.args['SlowJob'] = 50
@@ -89,9 +86,6 @@ class RelValInjectorComponent:
 
         LoggingUtils.installLogHandler(self)
         msg = "RelValInjector Component Started:\n"
-        msg += " Current Release: %s\n" % self.args['CurrentVersion']
-        msg += " Current Arch: %s\n" % self.args['CurrentArch']
-        msg += " Current CMS_PATH: %s\n" % self.args['CurrentCMSPath']
         msg += " Migrate to Global DBS: %s\n" % self.args['MigrateToGlobal']
         msg += " Inject to PhEDEx:      %s\n" % self.args['InjectToPhEDEx']
         msg += "Jobs to be sent to Sites:\n"
@@ -120,16 +114,6 @@ class RelValInjectorComponent:
             logging.getLogger().setLevel(logging.INFO)
             return
         
-        if message == "RelValInjector:SetCurrentVersion":
-            self.args['CurrentVersion'] = payload
-            return
-        if message == "RelValInjector:SetCurrentArch":
-            self.args['CurrentArch'] = payload
-            return
-        if message == "RelValInjector:SetCurrentCMSPath":
-            self.args['CurrentCMSPath'] = payload
-            return
-
         if message == "RelValInjector:Inject":
             self.inject(payload)
             return
@@ -180,17 +164,6 @@ class RelValInjectorComponent:
             logging.error(msg)
             return
 
-        #  //
-        # // Check variables pointing to the release are all set
-        #//
-        for argName in ['CurrentVersion', 'CurrentArch', 'CurrentCMSPath']:
-            if self.args[argName] == None:
-                msg = "Unable to create workflows:\n"
-                msg += "Variable  %s not set!\n" % argName
-                msg += "This variable should be set either in the PA Config\n"
-                msg += "Or via a RelValInjector:Set%s event" % argName
-                logging.error(msg)
-                return
         
         
         specMgr = RelValSpecMgr(relValSpecFile, self.sites, **self.args)
@@ -300,9 +273,6 @@ class RelValInjectorComponent:
         # subscribe to messages
         self.ms.subscribeTo("RelValInjector:StartDebug")
         self.ms.subscribeTo("RelValInjector:EndDebug")
-        self.ms.subscribeTo("RelValInjector:SetCurrentVersion")
-        self.ms.subscribeTo("RelValInjector:SetCurrentArch")
-        self.ms.subscribeTo("RelValInjector:SetCurrentCMSPath")
         self.ms.subscribeTo("RelValInjector:Inject")
 
         self.ms.subscribeTo("JobSuccess")

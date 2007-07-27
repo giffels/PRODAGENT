@@ -15,6 +15,7 @@ import traceback
 
 from IMProv.IMProvLoader import loadIMProvFile
 from IMProv.IMProvQuery import IMProvQuery
+from IMProv.IMProvNode import IMProvNode
 
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWAPILoader import CMSSWAPILoader
@@ -42,9 +43,29 @@ class RelValTest(dict):
         self.setdefault("PickleFile", None)
         self.setdefault("InputDataset", None)
         self.setdefault("WorkflowSpecId", None)
+        self.setdefault("CMSSWVersion", None)
+        self.setdefault("CMSSWArchitecture", None)
+        self.setdefault("CMSPath", None)
         self.setdefault("WorkflowFile", None)
         self.setdefault("JobSpecs", {}) # map jobspecid: jobspecFile
         self.setdefault("BadTest", False)
+
+    def save(self):
+        """
+        _save_
+
+        convert to improv node
+
+        """
+        node = IMProvNode("RelValTest", None, Name = self['Name'])
+        for key, val in self.items():
+            if key in ["Name", "JobSpecs", "BadTest"]:
+                continue
+
+            if val != None:
+                node.addNode(IMProvNode(key, None, Value = str(val)))
+        return node
+        
 
     def load(self, improvNode):
         """
@@ -188,15 +209,15 @@ x
             return
         
         workingDir = os.path.join(self.args['ComponentDir'],
-                                  self.args['CurrentVersion'],
+                                  testInstance['CMSSWVersion'],
                                   testInstance['Name'])
         if not os.path.exists(workingDir):
             os.makedirs(workingDir)
 
             
-        loader = CMSSWAPILoader(self.args['CurrentArch'],
-                                self.args['CurrentVersion'],
-                                self.args['CurrentCMSPath'])
+        loader = CMSSWAPILoader(testInstance['CMSSWArchitecture'],
+                                testInstance['CMSSWVersion'],
+                                testInstance['CMSPath'])
         loader.load()
         cfgWrapper = CMSSWConfig()
         process = pickle.load(file(testInstance['PickleFile']))
@@ -205,11 +226,11 @@ x
         loader.unload()
         
         maker = WorkflowMaker(
-            "%s-%s" % ( self.args['CurrentVersion'], 
+            "%s-%s" % ( testInstance['CMSSWVersion'], 
                         self.timestamp),
             testInstance['Name'], 'RelVal')
         
-        maker.setCMSSWVersion(self.args['CurrentVersion'])
+        maker.setCMSSWVersion(testInstance['CMSSWVersion'])
         maker.setPhysicsGroup("dataOps")
         maker.setConfiguration(cfgWrapper, Type = "instance")
 
