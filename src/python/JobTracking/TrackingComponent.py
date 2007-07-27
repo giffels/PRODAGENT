@@ -19,11 +19,11 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.41 2007/07/19 17:41:25 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.42 2007/07/25 21:09:45 afanfani Exp $"
 
 import socket
 import time
-import os
+import os,re
 from shutil import copy
 from shutil import rmtree
 import string
@@ -33,6 +33,7 @@ from popen2 import Popen4
 # threads
 from threading import Thread, Condition
 from ProdAgentCore.Configuration import ProdAgentConfiguration
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from MessageService.MessageService import MessageService
 from FwkJobRep.ReportState import checkSuccess
 from FwkJobRep.FwkJobReport import FwkJobReport
@@ -40,6 +41,7 @@ from FwkJobRep.ReportParser import readJobReport
 
 from ProdCommon.Database import Session
 from ProdAgent.WorkflowEntities import JobState
+from ProdAgent.WorkflowEntities import Job as WEJob
 from ProdAgentDB.Config import defaultConfig as dbConfig
 
 import select
@@ -705,11 +707,38 @@ class TrackingComponent:
         try:
             jobCacheDir=JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
         except Exception, ex:
-            msg = "Cant get JobCache from JobState for %s\n" %fjr[0].jobSpecId
+            msg = "Cant get JobCache from JobState.general for xxx %s xxx\n" %fjr[0].jobSpecId
             msg += str(ex)
             logging.warning(msg)
-            #fallback to a dir in JobTracking....it won't be picekd up by JobCleanup
-            jobCacheDir=self.args['ComponentDir'] + "/%s"%fjr[0].jobSpecId
+            try: 
+              WEjobState = WEJob.get(fjr[0].jobSpecId)
+              jobCacheDir = WEjobState['cache_dir']
+            except Exception, ex:
+              msg = "Cant get JobCache from Job.get['cache_dir'] for xxx %s xxx\n" %fjr[0].jobSpecId
+              msg += str(ex)
+              logging.warning(msg)
+              # try guessing the JobCache area based on jobspec name
+              try:
+                # split the jobspec into workflow/run
+                spec=fjr[0].jobSpecId
+                reDash = re.compile('-')
+                iterator = reDash.finditer(spec)
+                for match in iterator: 
+                  end=match.end()
+                workfow=spec[:end-1]
+                run=spec[end:]
+
+                PAconfig = loadProdAgentConfiguration()
+                jobCreatorCfg = PAconfig.getConfig("JobCreator")
+                jobCreatorDir = os.path.expandvars(jobCreatorCfg['ComponentDir'])
+                jobCacheDir="%s/%s/%s"%(jobCreatorDir,workflow,run)                                                                                                   
+              except Exception, ex:
+                msg = "Cant guess JobCache in JobCreator dir" 
+                msg += str(ex)
+                logging.warning(msg)
+                #fallback to a dir in JobTracking....it won't be picekd up by JobCleanup
+                jobCacheDir=self.args['ComponentDir'] + "/%s"%fjr[0].jobSpecId
+
         logging.debug("jobCacheDir = %s"%jobCacheDir)
 
         newPath=jobCacheDir+"/JobTracking/"+success+"/"+lastdir+"/"
@@ -764,7 +793,11 @@ class TrackingComponent:
         try:
             jobMaxRetries=JobState.general(fjr[0].jobSpecId)['MaxRetries']
         except:
-            jobMaxRetries=0
+           try: 
+             jobMaxRetries=WEjobState['max_retries']
+           except:
+             jobMaxRetries=10
+
         logging.info("maxretries=%s and resub = %s\n"%(jobMaxRetries,resub))
         if success=="Success" or int(jobMaxRetries)<=int(resub):
             try:
@@ -775,10 +808,7 @@ class TrackingComponent:
             if BOSSCommands.taskEnded(jobId[0],self.bossCfgDir):
                 try:
                     rmtree(subPath)
-                    BOSSCommands.Archive(jobId[0],self.bossCfgDir)
-                    # os.remove("%s/BossArchive_%s_g0.tar"%(subPath,taskid))
-                    # logging.debug("removed %s/BossArchive_%s_g0.tar"%(subPath,taskid))
-                    # os.remove("%s/BossClassAdFile_%s"%(subPath,taskid))
+                    BOSSCommands.archive(jobId[0],self.bossCfgDir)
                     logging.info("removed %s for task %s"%(subPath,taskid))
                 except:
                     logging.error("Failed to remove submission files")
