@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.4 2007/07/24 13:55:06 swakef Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.5 2007/07/25 15:13:23 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -46,7 +46,7 @@ class ProdMonComponent:
         self.args.setdefault("ComponentDir", None)
         self.args.setdefault("Logfile", None)
         self.args.setdefault("DashboardURL", "http://lxarda16.cern.ch/dashboard/request.py/getPAinfo")
-        self.args.setdefault("exportMaxBatchSize", 100)
+        self.args.setdefault("exportMaxBatchSize", 500)
         self.args.setdefault("exportInterval", "00:05:00")
         self.args.setdefault("Team", "Unknown")
         self.args.setdefault("AgentName", "Unknown")

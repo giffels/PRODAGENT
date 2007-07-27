@@ -108,6 +108,10 @@ def migrateJobs():
     connection = connect()
     dbCur = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
     
+    #get list of known workflows
+    Session.execute("SELECT DISTINCT workflow_name FROM prodmon_Workflow", sessionID=db_id)
+    workflows = [removeTuple(workflow) for workflow in Session.fetchall(sessionID=db_id)]
+    
     dbCur.execute("""SELECT workflow_spec_id, job_spec_id, exit_code, status, site_name,
                host_name, se_name, events_read, events_written, job_type, job_index FROM st_job_success""")
     jobs = dbCur.fetchall()
@@ -140,7 +144,7 @@ def migrateJobs():
         if stats["job_spec_id"] in (None, "", "None", "Unknown"):
             continue
         
-        #if workflow_spec_id missing replace get from job_spec_id
+        #if workflow_spec_id missing replace from job_spec_id
         if stats["workflow_spec_id"] in (None, "", "None", "Unknown"):
             
             #for merges remove sename-job-id
@@ -153,9 +157,15 @@ def migrateJobs():
                     stats["workflow_spec_id"] = \
                         "-".join(stats["workflow_spec_id"].split("-")[:-1])
             else:
-                #for normal jobs remve last -id field
+                #for normal jobs remove last -id field
                 stats["workflow_spec_id"] = \
                         "-".join(stats["job_spec_id"].split("-")[:-1])
+        
+        #skip if from unknown workflow
+        if stats["workflow_spec_id"] not in workflows:
+            print "Skipping %s, workflow %s unknown" % (stats["job_spec_id"], \
+                                                        stats["workflow_spec_id"])
+            continue
         
         #get timings (for successful jobs)
         if stats["exit_code"] == 0:
@@ -227,9 +237,9 @@ def migrateWorkflows():
         #no input datasets and an unknown CMSSW version
         insertNewWorkflow(workflow, 0, (), output_datasets, "Unknown")
 
-#    #for failed don't worry about output_datasets, as long as one job succeeded have info
-#    #if not - well...
-#    
+    #for failed don't worry about output_datasets, as long as one job succeeded have info
+    #if not - well...
+  
 #    #ignore workflow "None" - when job not linked back to workflow in db
 #    for workflow in workflows_failure:
 #        if workflow not in (workflows_success):

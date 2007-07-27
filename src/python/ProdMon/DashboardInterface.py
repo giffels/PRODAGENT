@@ -25,12 +25,12 @@ def exportToDashboard(maxRecords, url, team, agent, dir):
     """
     
     instances = getJobInstancesToExport(maxRecords)
+    
+    logging.debug("%s job instances to export to external monitoring" % \
+                                                                len(instances))
         
     if not instances:
         return
-        
-    logging.debug("%s job instances to export to external monitoring" % \
-                                                                len(instances))
         
     # format and export
     prodReport = createProdReport(instances, team, agent)
@@ -163,11 +163,8 @@ def instancesToXML(document, parent, instances):
         addTextNode(document, instance_node, "start_time", instanceInfo["timing"]["AppStartTime"])
         addTextNode(document, instance_node, "end_time", instanceInfo["timing"]["AppEndTime"])
         
-        # add error info
-        # if instanceInfo["error_type"]:
+        # add error type
         addTextNode(document, instance_node, "error_type", instanceInfo["error_type"])
-        # if instanceInfo["error_desc"]:
-        addTextNode(document, instance_node, "error_message", instanceInfo["error_message"])
         
         # LFN's
         input_node = document.createElement("input_files")
