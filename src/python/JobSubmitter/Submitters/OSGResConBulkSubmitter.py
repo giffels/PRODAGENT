@@ -10,7 +10,7 @@ XML file.
 
 """
 
-__revision__ = "$Id: OSGBulkSubmitter.py,v 1.4 2007/05/08 06:43:54 evansde Exp $"
+__revision__ = "$Id: OSGResConBulkSubmitter.py,v 1.1 2007/06/08 19:51:20 evansde Exp $"
 
 import os
 import logging
@@ -293,7 +293,13 @@ class OSGResConBulkSubmitter(BulkSubmitterInterface):
         ceMap = createCEMap()
         
         matchedJobMgr = None
-        for sitePref in  self.whitelist:
+        for sitePref in self.whitelist:
+            try:
+                intSitePref = int(sitePref)
+                sitePref = intSitePref
+            except ValueError:
+                pass
+                
             if sitePref not in ceMap.keys():
                 logging.debug("lookupGlobusScheduler: No match: %s" % sitePref)
                 continue
