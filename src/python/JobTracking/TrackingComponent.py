@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.42 2007/07/25 21:09:45 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.43 2007/07/27 18:33:37 afanfani Exp $"
 
 import socket
 import time
@@ -700,7 +700,10 @@ class TrackingComponent:
             return
         
         lastdir=os.path.dirname(self.reportfilename).split('/').pop()
-        
+
+        # fallback to a dir in JobTracking....it won't be picked up by JobCleanup
+        fallbackCacheDir=self.args['ComponentDir'] + "/%s"%fjr[0].jobSpecId 
+
         baseDir=os.path.dirname(self.reportfilename)+"/"
         #logging.info("baseDir = %s"%baseDir)
         fjr=readJobReport(self.reportfilename)
@@ -719,25 +722,24 @@ class TrackingComponent:
               logging.warning(msg)
               # try guessing the JobCache area based on jobspec name
               try:
-                # split the jobspec into workflow/run
+                # split the jobspec=workflow-run into workflow/run
                 spec=fjr[0].jobSpecId
-                reDash = re.compile('-')
-                iterator = reDash.finditer(spec)
-                for match in iterator: 
-                  end=match.end()
-                workfow=spec[:end-1]
-                run=spec[end:]
+                end=spec.rfind('-')
+                workflow=spec[:end]
+                run=spec[end+1:]
 
                 PAconfig = loadProdAgentConfiguration()
                 jobCreatorCfg = PAconfig.getConfig("JobCreator")
                 jobCreatorDir = os.path.expandvars(jobCreatorCfg['ComponentDir'])
                 jobCacheDir="%s/%s/%s"%(jobCreatorDir,workflow,run)                                                                                                   
+                if not os.path.exists(jobCacheDir):
+                  jobCacheDir=fallbackCacheDir
+
               except Exception, ex:
                 msg = "Cant guess JobCache in JobCreator dir" 
                 msg += str(ex)
                 logging.warning(msg)
-                #fallback to a dir in JobTracking....it won't be picekd up by JobCleanup
-                jobCacheDir=self.args['ComponentDir'] + "/%s"%fjr[0].jobSpecId
+                jobCacheDir=fallbackCacheDir
 
         logging.debug("jobCacheDir = %s"%jobCacheDir)
 
