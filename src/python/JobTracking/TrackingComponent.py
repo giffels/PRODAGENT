@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.43 2007/07/27 18:33:37 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.44 2007/07/28 14:18:35 afanfani Exp $"
 
 import socket
 import time
@@ -701,12 +701,13 @@ class TrackingComponent:
         
         lastdir=os.path.dirname(self.reportfilename).split('/').pop()
 
-        # fallback to a dir in JobTracking....it won't be picked up by JobCleanup
-        fallbackCacheDir=self.args['ComponentDir'] + "/%s"%fjr[0].jobSpecId 
-
         baseDir=os.path.dirname(self.reportfilename)+"/"
         #logging.info("baseDir = %s"%baseDir)
         fjr=readJobReport(self.reportfilename)
+
+        # fallback to a dir in JobTracking....it won't be picked up by JobCleanup
+        fallbackCacheDir=self.args['ComponentDir'] + "/%s"%fjr[0].jobSpecId
+
         try:
             jobCacheDir=JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
         except Exception, ex:
