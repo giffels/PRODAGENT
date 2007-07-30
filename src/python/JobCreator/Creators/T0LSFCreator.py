@@ -88,6 +88,9 @@ class T0LSFCreator(CreatorInterface):
         if typeVal == "CMSSW":
             self.handleCMSSWTaskObject(taskObject)
             return
+        elif typeVal == "CmsGen":
+            self.handleCMSSWTaskObject(taskObject)
+            return 
         elif typeVal == "StageOut":
             self.handleStageOut(taskObject)
             return
