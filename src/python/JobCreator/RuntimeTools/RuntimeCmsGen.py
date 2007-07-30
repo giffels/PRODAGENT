@@ -94,9 +94,18 @@ class CmsGenSetup:
 
         args += " --seed=%s " % (
             self.jobSpecNode.applicationControls['randomSeed'],)
-        
+        # 
+        # selection efficiency
+        #
+        selectionEff = self.jobSpecNode.applicationControls.get("SelectionEfficiency", None)
+        maxEvents = self.jobSpecNode.applicationControls['maxEvents']
+        if selectionEff != None:
+                newMaxEv = float(maxEvents) / float(selectionEff)
+                maxEvents = int(newMaxEv)
+
         args += " --number-of-events=%s " % (
-            self.jobSpecNode.applicationControls['maxEvents'],)
+             maxEvents,)
+        #    self.jobSpecNode.applicationControls['maxEvents'],)
 
         args += " --job-report=FrameworkJobReport.xml "
         args += " --cfg=CmsGen.cfg "
