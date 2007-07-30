@@ -139,6 +139,7 @@ maker.changeCategory(category)
 maker.setCmsGenParameters(generator  = generatorString[0])
 
 if selectionEfficiency != None:
+    maker.addSelectionEfficiency(selectionEfficiency)
     maker.addCmsGenSelectionEfficiency(selectionEfficiency)
 
 #                         , executable = executableString[0]
