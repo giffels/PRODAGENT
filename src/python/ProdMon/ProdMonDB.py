@@ -13,9 +13,6 @@ import logging
 import MySQLdb
 from ProdCommon.Database import Session
 from ProdAgentDB.Config import defaultConfig as dbConfig
-#for dict cursor
-from ProdAgentDB.Connect import connect
-
 
 # function to escape and quote a value or replace None with "NULL"
 # may not be needed with new session class - check!
@@ -489,12 +486,12 @@ def getJobInstancesInfo(instance_ids):
     getJobInstanceInfo
     
     Get info for a set of job instances 
-    does not provide infor from job table only from instance
+    does not provide info from job table only from instance
     
     Returns a tuple of dictionary objects
     """
     if not instance_ids:
-        return {}
+        return ()
 
     sqlStr = """SELECT job_id, instance_id, site_name, ce_hostname, se_hostname, 
     exit_code, evts_read, evts_written, start_time, end_time, error_message, 
@@ -509,14 +506,19 @@ def getJobInstancesInfo(instance_ids):
             first = False
         sqlStr += " instance_id = " + addQuotes(instance)
     sqlStr += ");"
-    connection = connect()
-    Session = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
+    Session.set_database(dbConfig)
+    Session.connect()
     Session.execute(sqlStr)
+    temp = Session.fetchall()
 
-    results = Session.fetchall()
-    # Session.close() # TODO: fails with this, why?
-    Session = connection.cursor()
+    results = []
+    for instance in temp:
+        i = {}
+        i["job_id"], i["instance_id"], i["site_name"], i["ce_hostname"], i["se_hostname"], \
+                i["exit_code"], i["evts_read"], i["evts_written"], i["start_time"], i["end_time"], i["error_message"], \
+                i["worker_node"], i["dashboard_id"] = instance
+        results.append(i)
     
     for instance in results:
         instance_id = instance["instance_id"]

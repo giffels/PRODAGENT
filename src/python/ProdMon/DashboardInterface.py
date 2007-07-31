@@ -71,7 +71,10 @@ def createProdReport(instances, team_name, agent_name):
     
     # get info for each instance
     jobStatistics = getJobStatistics(instances)
-
+    
+    if not jobStatistics:
+        raise RuntimeError, "Unable to get statistics for instance_id(s) %s" % str(instances)
+    
     # call jobToXML() for each job and its instances
     # iterate through instances pre-sorted by job - form list of instances
     # for each job and pass both to jobToXML()
