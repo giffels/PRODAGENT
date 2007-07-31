@@ -296,7 +296,7 @@ if __name__ == '__main__':
         raise RuntimeError, msg
 
     if not os.path.exists(jobSpec):
-        msg += "Cannot find JobSpec file:\n %s\n" % jobSpec
+        msg = "Cannot find JobSpec file:\n %s\n" % jobSpec
         msg += "Unable to proceed\n"
         raise RuntimeError, msg
 
