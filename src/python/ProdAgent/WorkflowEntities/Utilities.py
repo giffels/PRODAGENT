@@ -31,7 +31,7 @@ def listWorkflowsByOwner(ownerName):
     return result
 
 
-def jobsForWorkflow(workflow, status = None):
+def jobsForWorkflow(workflow, jobtype = None, status = None):
     """
     _jobsForWorkflow_
 
@@ -41,12 +41,21 @@ def jobsForWorkflow(workflow, status = None):
     """
     jobIDs = WEWorkflow.getJobIDs([workflow])
 
-    if status == None:
+    if (status == None) and (jobtype == None):
         return jobIDs
 
     jobData = WEJob.get(jobIDs)
 
-    result = [ x['id'] for x in jobData if x['status'] == status ]
+    
+    if jobtype != None:
+        jobData = [ x for x in jobData if x['job_type'] == jobtype ]
+
+    
+        
+    if status != None:
+        jobData = [ x for x in jobData if x['status'] == status ]
+
+    result = [ x['id'] for x in jobData ]
     
     return result
     
