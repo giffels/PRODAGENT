@@ -13,6 +13,7 @@ import sys
 import os
 from FwkJobRep.TaskState import TaskState
 from ProdCommon.MCPayloads.JobSpec import JobSpec
+from RunRes.RunResComponent import RunResComponent
 
 class NodeFinder:
 
@@ -38,12 +39,40 @@ class FastMergeUnpacker:
         self.taskState = TaskState(os.getcwd())
         self.taskState.loadRunResDB()
         self.config = self.taskState.configurationDict()
-
+        
         finder = NodeFinder(self.taskState.taskName())
         self.jobSpec.payload.operate(finder)
         self.jobSpecNode = finder.result
-
+        
         self.jobSpecNode.loadConfiguration()
+
+        #  //
+        # // Update output dataset information in RunResDB to 
+        #//  match input job spec for merges
+        taskName = self.taskState.taskAttrs['Name'] 
+        del self.config['Output']['Datasets']
+        self.taskState._RunResDB = RunResComponent()
+        runresData = {taskName : self.config}
+        self.taskState._RunResDB.populate(runresData)
+        
+        for dataset in self.jobSpecNode._OutputDatasets:
+            if dataset['DataTier'] == "":
+                continue
+            dsPath = "/%s/Output/Datasets%s" % (
+                taskName, dataset.name())
+            self.taskState._RunResDB.addPath(dsPath)
+            for key, val in dataset.items():
+                self.taskState._RunResDB.addData("/%s/%s" % (dsPath, key), str(val))
+                
+        
+        handle = open(self.taskState.runresdb, 'w')
+        dom = self.taskState._RunResDB.makeDOMElement()
+        handle.write(dom.toprettyxml())
+        handle.close()
+        self.taskState.loadRunResDB()
+
+
+            
         
         cfgInt = self.jobSpecNode.cfgInterface
         inputFiles = cfgInt.inputFiles
