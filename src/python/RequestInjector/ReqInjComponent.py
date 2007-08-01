@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.28 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.28 2007/06/22 14:04:10 evansde Exp $"
+__version__ = "$Revision: 1.29 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.29 2007/07/02 21:23:53 fvlingen Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -169,6 +169,10 @@ class ReqInjComponent:
              logging.error("ERROR Loading NEW Workflow: %s : %s" % (workflowName, ex))
              logging.error("Cannot create jobs for Workflow : %s "%workflowName)
              return
+        except:
+             logging.error("ERROR Loading NEW Workflow: %s " % (workflowName))
+             logging.error("Cannot create jobs for Workflow : %s "%workflowName)
+             return
 
         self.iterator = newIterator
         self.iterator.loadPileupDatasets()
@@ -268,6 +272,15 @@ class ReqInjComponent:
             # // first check site prefs are known (if any)
             #//
             sites = []
+            if self.iterator == None:
+               msg = "RequestInjector: No Workflow Set or Invalid one, cannot create job"
+               msg += "You need to send a RequestInjector:SetWorkflow event"
+               msg += "With the file containing the workflow as the payload\n"
+               msg += "or\n"
+               msg += "Remove the invalid workflow files from RequestInjector/WorkflowCache and retry"
+               logging.warning(msg)
+               return None
+
             sitePref = self.iterator.sitePref
             if sitePref != None:
                 #  //
