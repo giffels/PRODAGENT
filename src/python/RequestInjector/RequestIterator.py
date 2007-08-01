@@ -91,7 +91,11 @@ class RequestIterator:
         self.eventsPerJob = 10 
         
         self.workflowSpec = WorkflowSpec()
-        self.workflowSpec.load(workflowSpecFile)
+        try:
+         self.workflowSpec.load(workflowSpecFile)
+        except:
+         logging.error("ERROR Loading Workflow: %s " % (workflowSpecFile))
+         return
 
         if self.workflowSpec.parameters.get("RunIncrement", None) != None:
             self.runIncrement = int(
