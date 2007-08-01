@@ -11,8 +11,8 @@ if the dataset is large.
 """
 
 
-__revision__ = "$Id: DatasetInjectorComponent.py,v 1.16 2007/07/16 12:02:41 evansde Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: DatasetInjectorComponent.py,v 1.17 2007/07/16 13:17:44 evansde Exp $"
+__version__ = "$Revision: 1.17 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -382,7 +382,7 @@ class DatasetInjectorComponent:
         else:
             for job in jobSpecs:
                 logging.debug("Publishing CreateJob: %s" % job['JobSpecFile'])
-                self.ms.publish("CreateJob", jobSpec['JobSpecFile'])
+                self.ms.publish("CreateJob", job['JobSpecFile'])
                 self.ms.commit()
                 
 
