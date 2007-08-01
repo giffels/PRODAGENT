@@ -217,6 +217,13 @@ class CondorTrackerComponent:
             msg += str(ex)
             logging.error(msg)
             return
+        except Exception, ex:
+            msg = "Unable to Publish Report for %s\n" % jobSpecId
+            msg += "Since It is not known to the JobState System:\n"
+            msg += str(ex)
+            logging.error(msg)
+            return
+
         jobReport = "%s/FrameworkJobReport.xml" % jobCache
         if not os.path.exists(jobReport):
             logging.info("Missing Report for %s" % jobSpecId)
@@ -258,7 +265,7 @@ class CondorTrackerComponent:
 
         """
         try:
-            jobState = JobState.general(jobSpecId)
+            jobState = WEJob.get(jobSpecId)
             jobCache = jobState['cache_dir']
         except ProdAgentException, ex:
             msg = "Unable to Publish Report for %s\n" % jobSpecId
@@ -266,6 +273,13 @@ class CondorTrackerComponent:
             msg += str(ex)
             logging.error(msg)
             return
+        except Exception, ex:
+            msg = "Unable to Publish Report for %s\n" % jobSpecId
+            msg += "Since It is not known to the JobState System:\n"
+            msg += str(ex)
+            logging.error(msg)
+            return
+
         jobReport = "%s/FrameworkJobReport.xml" % jobCache
         logging.info("Creating Failure Report for %s" % jobSpecId)
         badReport = FwkJobReport(jobSpecId)
