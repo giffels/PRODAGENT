@@ -213,7 +213,6 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        script.append("export STAGE_SVCCLASS=t0input\n")
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
         for fname  in self.jobInputFiles:
