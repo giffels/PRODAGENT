@@ -612,7 +612,7 @@ CREATE TABLE rc_site_attr(
 CREATE TABLE jq_queue(
    job_index INT NOT NULL AUTO_INCREMENT,
    job_spec_id VARCHAR(255) NOT NULL,
-   job_spec_file VARCHAR(255) NOT NULL,
+   job_spec_file TEXT NOT NULL,
    job_type VARCHAR(255) NOT NULL,
    workflow_id VARCHAR(255) NOT NULL, 
    priority INT DEFAULT 0,
@@ -681,7 +681,7 @@ CREATE TABLE we_Job(
    cache_dir            varchar(255),
    events_processed     int             default 0,
    id                   varchar(255)    not null,
-   job_spec_file        varchar(255),
+   job_spec_file        text,
    job_type             varchar(150)    not null,
    max_retries          int             default 1,
    max_racers           int             default 1,
@@ -729,7 +729,7 @@ CREATE TABLE we_Workflow
     priority              int(11)         not null,
     prod_mgr_url          varchar(255)    not null,
     run_number_count      int(11)         not null,
-    workflow_spec_file    varchar(255)   default 'not_downloaded',
+    workflow_spec_file    text   default 'not_downloaded',
     workflow_type          enum("event", "file") default 'event',
     primary key(id),
     index(priority)
