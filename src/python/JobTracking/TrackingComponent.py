@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.44 2007/07/28 14:18:35 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.45 2007/07/29 21:22:52 afanfani Exp $"
 
 import socket
 import time
@@ -811,7 +811,7 @@ class TrackingComponent:
             if BOSSCommands.taskEnded(jobId[0],self.bossCfgDir):
                 try:
                     rmtree(subPath)
-                    BOSSCommands.archive(jobId[0],self.bossCfgDir)
+                    BOSSCommands.archive(jobId,self.bossCfgDir)
                     logging.info("removed %s for task %s"%(subPath,taskid))
                 except:
                     logging.error("Failed to remove submission files")
