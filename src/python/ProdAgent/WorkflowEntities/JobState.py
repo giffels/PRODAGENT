@@ -191,6 +191,18 @@ def finished(jobSpecId):
        #WRAPPER
        Job.setState(jobSpecId,'finished')
 
+def failed(jobSpecId):
+       """
+
+       _failed_
+
+       Job(specication) has failed.
+
+       returns nothing or an error if the state change is not valid 
+       """
+       #WRAPPER
+       Job.setState(jobSpecId,'failed')
+
 
 def cleanout(jobSpecId):
       """

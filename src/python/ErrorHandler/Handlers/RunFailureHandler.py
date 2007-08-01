@@ -129,6 +129,7 @@ class RunFailureHandler(HandlerInterface):
                   "a job run failure "+ \
                   "Maximum number of retries reached!" +\
                   " Submitting a failure job and cleanup event ")
+                  JobState.failed(jobId)
                   self.publishEvent("FailureCleanup",(jobId))
                   self.publishEvent("GeneralJobFailure",(jobId))
 

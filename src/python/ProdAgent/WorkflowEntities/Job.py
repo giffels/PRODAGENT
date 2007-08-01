@@ -306,6 +306,14 @@ def setState(jobID,state,parameters={}):
             if not job:
                 raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
             raise ProdException(exceptions[3010]+':'+str(jobID),3010)
+   elif state=="failed": 
+       sqlStr="""UPDATE we_Job SET status='finished' """
+       if sqlSetStr!='':
+            sqlStr+=sqlSetStr
+       sqlStr+="""WHERE id='%s' AND status='inProgress' """ %(str(jobID))
+       rowsModified=Session.execute(sqlStr)
+       if rowsModified!=1:
+            raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
    elif state=="reallyFinished": 
        sqlStr="""UPDATE we_Job SET status='reallyFinished' """
        if sqlSetStr!='':
