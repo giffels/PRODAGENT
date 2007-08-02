@@ -1,4 +1,0 @@
-egee-rb-03.cnaf.infn.it
-cp $PRODAGENT_WORKDIR/edg_wl_ui.conf.CMS_CNAF $PRODAGENT_WORKDIR/edg_wl_ui.conf.CMS; cp $PRODAGENT_WORKDIR/edg_wl_ui_cmd_var.conf.CMS_CNAF $PRODAGENT_WORKDIR/edg_wl_ui_cmd_var.conf.CMS
-gdrb08.cern.ch
-cp $PRODAGENT_WORKDIR/edg_wl_ui.conf.CMS_CERN $PRODAGENT_WORKDIR/edg_wl_ui.conf.CMS; cp $PRODAGENT_WORKDIR/edg_wl_ui_cmd_var.conf.CMS_CERN $PRODAGENT_WORKDIR/edg_wl_ui_cmd_var.conf.CMS
