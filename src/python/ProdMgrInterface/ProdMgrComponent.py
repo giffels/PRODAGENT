@@ -222,6 +222,9 @@ class ProdMgrComponent:
             request_type=components[3].split("=")[1]
             logging.debug("Add request: "+requestId+" with priority "+priority+" for prodmgr: "+prodMgr)
             parameters={'priority':priority,'request_type':request_type,'prod_mgr_url':prodMgr,'owner':'ProdMgrInterface'}
+#AF : default for new request
+            parameters['workflow_spec_file']='not_downloaded'
+#AF
             Workflow.register(requestID,parameters) 
             logging.debug("Added request. There are now "+str(Workflow.amount())+" requests in the queue ")
         except Exception,ex:
@@ -344,6 +347,9 @@ Retrying later.
                     registered = Workflow.get(request[0])
                     if not registered:
                         logging.debug("Registering "+request[0])
+#AF : default for new request
+                        parameters['workflow_spec_file']='not_downloaded'
+#AF
                         Workflow.register(request[0],parameters)
                     else:
                         logging.debug("Renewing registration of "+request[0])
