@@ -729,7 +729,7 @@ CREATE TABLE we_Workflow
     priority              int(11)         not null,
     prod_mgr_url          varchar(255)    not null,
     run_number_count      int(11)         not null,
-    workflow_spec_file    text   default 'not_downloaded',
+    workflow_spec_file    text            not null,
     workflow_type          enum("event", "file") default 'event',
     primary key(id),
     index(priority)
