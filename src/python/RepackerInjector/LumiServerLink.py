@@ -5,8 +5,8 @@ Provides LumiData from LumiServer and populates JobSpec's config file with lumi 
 
 """
 
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: LumiServerLink.py,v 1.4 2007/07/17 20:46:18 kosyakov Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: LumiServerLink.py,v 1.6 2007/07/26 20:30:35 kosyakov Exp $"
 __author__ = "kss"
 
 
@@ -46,15 +46,22 @@ class LumiServerLink:
 
 
 
-    def getLumiInfo(self,run_number,lumisection):
-        lumi_info={"lsnumber":long(lumisection)}
+    def getLumiInfo(self,lumiList):
+
+        #
+        # FIXME: need to loop over all lumi sections
+        #
+        runNumber = long(lumiList[0]['RunNumber'])
+        lumiSectionNumber = long(lumiList[0]['LumiSectionNumber'])
+
+        lumi_info={"lsnumber":lumiSectionNumber}
         
         if(not self.con):
             return lumi_info
-            
-        logging.info("Getting LumiInfo for run %s lumisection %s"%(str(run_number),str(lumisection)))
+
+        logging.info("Getting LumiInfo for run %s lumisection %s" % (runNumber,lumiSectionNumber))
         
-        lumi_sum=self._getSummary(run_number,lumisection)
+        lumi_sum=self._getSummary(runNumber,lumiSectionNumber)
         #print "LUMI_SUM",lumi_sum
         lumi_info['avginslumi']=float(lumi_sum.get('instant_et_lumi','0.0'))
         lumi_info['avginslumierr']=float(lumi_sum.get('instant_et_lumi_err','0.0'))
@@ -68,7 +75,7 @@ class LumiServerLink:
         lumi_info['det_occ_err']=[]
         lumi_info['det_occ_qua']=[]
 
-        lumi_et_det=self._getDetails(run_number,lumisection,"ET")
+        lumi_et_det=self._getDetails(runNumber,lumiSectionNumber,"ET")
         old_bunch=0
         for b in lumi_et_det:
             bunch=int(b['bunch_number'])
@@ -83,7 +90,7 @@ class LumiServerLink:
             lumi_info['det_et_err'].append(err)
             lumi_info['det_et_qua'].append(qua)
             
-        lumi_occ_det=self._getDetails(run_number,lumisection,"OCC")
+        lumi_occ_det=self._getDetails(runNumber,lumiSectionNumber,"OCC")
         old_bunch=0
         for b in lumi_occ_det:
             bunch=int(b['bunch_number'])

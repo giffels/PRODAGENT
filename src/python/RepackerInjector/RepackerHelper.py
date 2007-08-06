@@ -6,8 +6,8 @@ Creates and manipulates Workflow and Job Specs for teh RepackerInjectorComponent
 """
 
 
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: RepackerHelper.py,v 1.6 2007/07/17 20:51:28 kosyakov Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: RepackerHelper.py,v 1.7 2007/07/24 14:26:33 hufnagel Exp $"
 __author__ = "kss"
 
 
@@ -44,16 +44,15 @@ class RepackerHelper:
         logging.info("Done parsing template file [%s]"%cfg)
 
 
-    def createJobSpec(self, ds_key, tags, pfn_list, run_number, lumisection):
+    def createJobSpec(self, ds_key, tags, lfnList, lumiList):
+
         rep_iter = self.workflow_by_ds[ds_key]
-        job_spec_path,job_spec_file,job_spec = rep_iter(pfn_list)
-        #print "CFG_1",job_spec.payload.cfgInterface.rawCfg
-        #print "CFG_2",job_spec.payload.configuration
+        job_spec_path,job_spec_file,job_spec = rep_iter(lfnList)
 
         if(self.args.has_key('LumiServerUrl')):
             from LumiServerLink import getLumiServerLink
             lslink=getLumiServerLink(self.args)
-            lslink.setLumiData(job_spec_file,job_spec,run_number,lumisection)
+            lslink.setLumiData(job_spec_file,job_spec,lumiList)
 
         rep_iter.save(rep_iter.workingDir)
         return job_spec_path

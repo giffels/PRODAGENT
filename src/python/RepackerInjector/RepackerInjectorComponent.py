@@ -8,8 +8,8 @@ Component for generating Repacker JobSpecs
 
 
 
-__version__ = "$Revision: 1.12 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.12 2007/07/17 20:46:19 kosyakov Exp $"
+__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.13 2007/07/24 14:26:33 hufnagel Exp $"
 __author__ = "kss"
 
 
@@ -130,7 +130,7 @@ class RepackerInjectorComponent:
             self.ms.publish("NewWorkflow", workflowFile)
             self.ms.publish("NewDataset",workflowFile)
             self.ms.commit()
-        
+
         #
         # Final solution is not supposed to need run number.
         # The run number is discovered in the DBS query and
@@ -144,40 +144,58 @@ class RepackerInjectorComponent:
                                           processed_ds_name,
                                           run_number)
 
+##        for i in file_res:
+##            lfn,tags,file_lumis=i
+
+##            res_job_error=self.submit_job([lfn],
+##                                          tags,
+##                                          primary_ds_name,
+##                                          processed_ds_name,
+##                                          file_lumis,
+##                                          workflowHash)
+
+##            if(not res_job_error):
+##                dbslink.setFileStatus(lfn, "submitted")
+##                dbslink.commit()
+
+##                logging.info("Submitted job for %s" % lfn)
+
+        lfnList = []
+        tagList = []
+        lumiList = []
         for i in file_res:
             lfn,tags,file_lumis=i
-            logging.info("Found file %s" % lfn)
-            lumisection=file_lumis[0]['LumiSectionNumber']
-            #lumi_info=self.lumisrv.getLumiInfo(run_number,lumisection)
-            #print "LUMIINFO",lumi_info
-            res_job_error=self.submit_job(lfn,
-                                          tags,
-                                          primary_ds_name,
-                                          processed_ds_name,
-                                          run_number,
-                                          lumisection,
-                                          workflowHash)
-            if(not res_job_error):
+            lfnList.append(lfn)
+            tagList.extend(tags)
+            lumiList.extend(file_lumis)
+
+        res_job_error=self.submit_job(lfnList,
+                                      tagList,
+                                      primary_ds_name,
+                                      processed_ds_name,
+                                      lumiList,
+                                      workflowHash)
+
+        if(not res_job_error):
+            for lfn in lfnList:
                 dbslink.setFileStatus(lfn, "submitted")
                 dbslink.commit()
-                logging.info("Submitted job for %s" % lfn)
 
+            logging.info("Submitted job for %s" % lfnList)
+            
         dbslink.close()
+
         return
 
+    #
+    # Create job spec and then publish CreateJob event
+    #
+    def submit_job(self, lfnList, tagList, pri_ds, pro_ds, lumiList, ds_key):
 
-    def submit_job(self, lfn, tags, pri_ds, pro_ds, run_number, lumisection, ds_key):
-        logging.info("Creating job for file [%s] tags %s"%(lfn,str(tags)))
-        #
-        # FIXME: NewStreamerEventStreamFileReader cannot use LFN
-        #        either fix that or resolve PFN here via TFC
-        #
-        pfn = 'rfio:/?path=/castor/cern.ch/cms' + lfn
-        logging.info("Creating job for file [%s] tags %s"%(pfn,str(tags)))
+        logging.info("Creating job for files [%s] tags %s"%(lfnList,tagList))
 
-        # Creating job_spec
-        job_spec=self.repacker_helper.createJobSpec(ds_key, tags, [pfn], run_number, lumisection)
-        
+        job_spec=self.repacker_helper.createJobSpec(ds_key, tagList, lfnList, lumiList)
+
         self.ms.publish("CreateJob",job_spec)
         self.ms.commit()
 
