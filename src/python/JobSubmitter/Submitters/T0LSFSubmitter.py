@@ -223,8 +223,8 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             except RuntimeError, err:
                 failureList.append(jobSpec)
 
-            if len(failureList) > 0:
-                raise JSException("Submission Failed", FailureList = failureList)
+        if len(failureList) > 0:
+            raise JSException("Submission Failed", FailureList = failureList)
 
 
     def makeWrapperScript(self, filename, jobName, cacheDir):
