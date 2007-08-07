@@ -16,6 +16,8 @@ from ShREEK.CMSPlugins.ApMon.DashboardAPI import DashboardAPI
 import ShREEK.CMSPlugins.TraceUtils as TraceUtils
 
 
+from FwkJobRep.ReportParser import readJobReport
+
 
 import os
 import time
@@ -147,9 +149,9 @@ class JobTimeout(ShREEKMonitor):
                     except Exception, ex:
                         msg = "Unable to load FrameworkJobReport.xml:\n"
                         msg += str(ex)
-                        msg += "Cannot update framework report..."
+                        msg += "\n Cannot update framework report..."
                         print msg
-                        jobRep == None
+                        jobRep = None
                     if jobRep != None:
                         jobRep.exitCode = 50114
                         jobRep.status = "Failed"
