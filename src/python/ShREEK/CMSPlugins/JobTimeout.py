@@ -145,7 +145,13 @@ class JobTimeout(ShREEKMonitor):
                     print msg
                     self.timeoutValue+self.hardKillTimeoutDelay
                     try:
-                        jobRep = readJobReport("FrameworkJobReport.xml")[0]
+                        report=readJobReport("FrameworkJobReport.xml")
+                        if len(report)>0:
+                           jobRep = report[0]
+                        else:
+                           msg = "Empty FrameworkJobReport.xml. \n Cannot update framework report..."
+                           print msg
+                           jobRep = None
                     except Exception, ex:
                         msg = "Unable to load FrameworkJobReport.xml:\n"
                         msg += str(ex)
