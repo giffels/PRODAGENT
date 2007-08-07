@@ -8,8 +8,8 @@ returned from the ProdMgr.
 
 """
 
-__revision__ = "$Id: JobCutter.py,v 1.11 2007/06/27 03:34:50 fvlingen Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: JobCutter.py,v 1.12 2007/07/25 20:24:28 fvlingen Exp $"
+__version__ = "$Revision: 1.12 $"
 __author__ = "fvlingen@caltech.edu"
 
 
@@ -30,11 +30,14 @@ import math
 import os
 
 jobSpecDir='/tmp'
-
+maxRetries=None
 try:
     config = loadProdAgentConfiguration()
     compCfg = config.getConfig("ProdMgrInterface")
     jobSpecDir=compCfg['JobSpecDir']
+    jobStatesCfg = config.getConfig("JobStates")
+    if jobStatesCfg.has_key('maxRetries'):
+       maxRetries=jobStatesCfg['maxRetries']
 except StandardError, ex:
     msg = "Error reading configuration:\n"
     msg += str(ex)
@@ -48,8 +51,7 @@ def cut(job_id,jobCutSize):
     by a prodmgr into a number of smaller jobs as specified 
     by the jobCutSize parameter in the prodagent config file.
     """
-    global jobSpecDir
-
+    global jobSpecDir,maxRetries
     # generate the jobspec
     jobDetails=Allocation.get(job_id)['details']
     workflowspec=Workflow.get(job_id.split('_')[1])['workflow_spec_file']
@@ -81,6 +83,8 @@ def cut(job_id,jobCutSize):
     logging.debug("test10")
     for i in xrange(0,len(listOfSpecs)):
         listOfSpecs[i]['owner'] = 'prodmgr'
+        if maxRetries:
+           listOfSpecs[i]['max_retries']=maxRetries
     logging.debug("Registering job cuts")
     Job.register(None,job_id,listOfSpecs)
     Session.commit()
@@ -88,7 +92,7 @@ def cut(job_id,jobCutSize):
     return listOfSpecs 
 
 def cutFile(job_ids,jobCutSize,maxJobs):
-    global jobSpecDir
+    global jobSpecDir,maxRetries
 
     logging.debug("Job_ids: "+str(job_ids))
     jobIDs=job_ids.split(',')
@@ -125,6 +129,8 @@ def cutFile(job_ids,jobCutSize,maxJobs):
         logging.debug("Registering job cuts")
         for i in xrange(0,len(listOfSpecs)):
             listOfSpecs[i]['owner'] = 'prodmgr'
+            if maxRetries:
+               listOfSpecs[i]['max_retries']=maxRetries
         Job.register(None,job_id,listOfSpecs)
     Session.commit()
     return listOfSpecs
