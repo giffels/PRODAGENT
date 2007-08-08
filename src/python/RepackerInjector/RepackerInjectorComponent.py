@@ -8,8 +8,8 @@ Component for generating Repacker JobSpecs
 
 
 
-__version__ = "$Revision: 1.13 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.13 2007/07/24 14:26:33 hufnagel Exp $"
+__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: RepackerInjectorComponent.py,v 1.14 2007/08/06 14:14:01 hufnagel Exp $"
 __author__ = "kss"
 
 
@@ -144,45 +144,46 @@ class RepackerInjectorComponent:
                                           processed_ds_name,
                                           run_number)
 
-##        for i in file_res:
-##            lfn,tags,file_lumis=i
-
-##            res_job_error=self.submit_job([lfn],
-##                                          tags,
-##                                          primary_ds_name,
-##                                          processed_ds_name,
-##                                          file_lumis,
-##                                          workflowHash)
-
-##            if(not res_job_error):
-##                dbslink.setFileStatus(lfn, "submitted")
-##                dbslink.commit()
-
-##                logging.info("Submitted job for %s" % lfn)
-
-        lfnList = []
-        tagList = []
-        lumiList = []
         for i in file_res:
             lfn,tags,file_lumis=i
-            lfnList.append(lfn)
-            tagList.extend(tags)
-            lumiList.extend(file_lumis)
 
-        res_job_error=self.submit_job(lfnList,
-                                      tagList,
-                                      primary_ds_name,
-                                      processed_ds_name,
-                                      lumiList,
-                                      workflowHash)
+            res_job_error=self.submit_job([lfn],
+                                          tags,
+                                          primary_ds_name,
+                                          processed_ds_name,
+                                          file_lumis,
+                                          workflowHash)
 
-        if(not res_job_error):
-            for lfn in lfnList:
+            if(not res_job_error):
                 dbslink.setFileStatus(lfn, "submitted")
                 dbslink.commit()
 
-            logging.info("Submitted job for %s" % lfnList)
-            
+                logging.info("Submitted job for %s" % lfn)
+
+##        lfnList = []
+##        tagList = []
+##        lumiList = []
+##        for i in file_res:
+##            lfn,tags,file_lumis=i
+##            lfnList.append(lfn)
+##            tagList.extend(tags)
+##            lumiList.extend(file_lumis)
+
+##        if ( len(lfnList) > 0 ):
+##            res_job_error=self.submit_job(lfnList,
+##                                          tagList,
+##                                          primary_ds_name,
+##                                          processed_ds_name,
+##                                          lumiList,
+##                                          workflowHash)
+
+##            if(not res_job_error):
+##                for lfn in lfnList:
+##                    dbslink.setFileStatus(lfn, "submitted")
+##                    dbslink.commit()
+
+##                logging.info("Submitted job for %s" % lfnList)
+
         dbslink.close()
 
         return
