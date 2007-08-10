@@ -53,7 +53,6 @@ class LCGBulkCreator(CreatorInterface):
             swsetup = self.pluginConfig.newBlock("SoftwareSetup")
             swsetup['ScramCommand'] = "scramv1"
             swsetup['ScramArch'] = "slc3_ia32_gcc323"
-        #    swsetup['SetupCommand'] = ". /uscms/prod/sw/cms/setup/bashrc"
 
         return
 
@@ -165,6 +164,10 @@ class LCGBulkCreator(CreatorInterface):
         settings to do a dCache dccp stage out
         
         """
+        taskObject['Environment'].addVariable(
+            "SCRAM_ARCH",
+            self.pluginConfig['SoftwareSetup']['ScramArch'])
+
         taskObject['PreStageOutCommands'].append(
             ". $VO_CMS_SW_DIR/cmsset_default.sh"
             )
@@ -179,6 +182,10 @@ class LCGBulkCreator(CreatorInterface):
         settings to do a dCache dccp stage out
                                                                                                                           
         """
+        taskObject['Environment'].addVariable(
+            "SCRAM_ARCH",
+            self.pluginConfig['SoftwareSetup']['ScramArch'])
+
         taskObject['PreCleanUpCommands'].append(
             ". $VO_CMS_SW_DIR/cmsset_default.sh"
             )
@@ -188,12 +195,14 @@ class LCGBulkCreator(CreatorInterface):
     def handleLogArchive(self, taskObject):
         """
         _handleCleanup_
-                                                                                                                          
-                                                                                                                          
+
         Handle a Logrch type task object.
                                                                                                                           
-                                                                                                                          
         """
+        taskObject['Environment'].addVariable(
+            "SCRAM_ARCH",
+            self.pluginConfig['SoftwareSetup']['ScramArch'])
+
         taskObject['PreLogArchCommands'].append(
             ". $VO_CMS_SW_DIR/cmsset_default.sh"
             )
@@ -286,5 +295,4 @@ class LCGBulkCreator(CreatorInterface):
 #  // registration based on import of entire module)
 # // 
 #//
-#registerCreator(LCGBulkCreator, "lcg")
 registerCreator(LCGBulkCreator, LCGBulkCreator.__name__)
