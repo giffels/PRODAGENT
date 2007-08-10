@@ -599,10 +599,11 @@ class DatasetIterator:
         #//  to get any new blocks and files
         localDBS = getLocalDBSURL()
         dbsWriter = DBSWriter(localDBS)
+        globalDBS = getGlobalDBSURL()
 
         try:
             dbsWriter.importDataset(
-                self.dbsUrl,
+                globalDBS, 
                 self.inputDataset(),
                 localDBS,
                 self.onlyClosedBlocks
