@@ -18,6 +18,8 @@ import ShREEK.CMSPlugins.TraceUtils as TraceUtils
 
 from FwkJobRep.ReportParser import readJobReport
 
+from FwkJobRep.TaskState import TaskState, getTaskState
+from FwkJobRep.MergeReports import updateReport
 
 import os
 import time
@@ -134,12 +136,14 @@ class JobTimeout(ShREEKMonitor):
                         msg += "#"
                     msg += "\n"
 
-                #  //
-                # // Add error report to FwkJobReport for this dir.
-                #//
                 handle = open("exit.status", "w")
                 handle.write("50114")
                 handle.close()
+                hardTimeOutTotal = self.timeoutValue + \
+                                   self.hardKillTimeoutDelay
+                #  //
+                # // Add error report to FwkJobReport for this dir.
+                #//
                 if os.path.exists("FrameworkJobReport.xml"):
                     msg += "Editing Job Report..."
                     print msg
@@ -161,14 +165,38 @@ class JobTimeout(ShREEKMonitor):
                     if jobRep != None:
                         jobRep.exitCode = 50114
                         jobRep.status = "Failed"
-                        hardTimeOutTotal = self.timeoutValue + \
-                                           self.hardKillTimeoutDelay
                         errDesc = jobRep.addError(50114, "KilledByJobTimeout")
                         errDesc['Description'] = \
                         """
                         Job Exceeded hard timeout of %s and was killed
                         """ % hardTimeOutTotal
                         jobRep.write("FrameworkJobReport.xml")
+                else:
+                #  //
+                # // Add error report to FwkJobReport for the input task if we are in stageOut 
+                #//
+                    state = TaskState(os.getcwd())
+                    state.loadRunResDB()
+                    config = state.configurationDict()
+                    if config.has_key('StageOutParameters'):
+                      if config['StageOutParameters'].has_key('StageOutFor'):
+                        inputTask = config['StageOutParameters']['StageOutFor'][0]
+                        inputState = getTaskState(inputTask)
+                        inputReport = inputState.getJobReport()
+                        inputReport.exitCode = 50114
+                        inputReport.status = "Failed"
+                        errDesc = inputReport.addError(50114, "KilledByJobTimeout")
+                        errDesc['Description'] = \
+                        """
+                        Job Exceeded hard timeout of %s and was killed during task %s
+                        """ % (hardTimeOutTotal,config['Name'])
+                        inputState.saveJobReport()
+                        reportToUpdate = inputState.getJobReport()
+                        msg += "Editing top level Job Report..."
+                        toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
+                                  "FrameworkJobReport.xml")        
+                        updateReport(toplevelReport, reportToUpdate)
+
 
                 if cmsRunProcess != -1:
                     self.tracebackProcess(cmsRunProcess)
