@@ -188,8 +188,8 @@ class JobTimeout(ShREEKMonitor):
                         errDesc = inputReport.addError(50114, "KilledByJobTimeout")
                         errDesc['Description'] = \
                         """
-                        Job Exceeded hard timeout of %s and was killed during task %s
-                        """ % (hardTimeOutTotal,config['Name'])
+                        Job Exceeded hard timeout of %s and was killed during StageOut task 
+                        """ % (hardTimeOutTotal,)
                         inputState.saveJobReport()
                         reportToUpdate = inputState.getJobReport()
                         msg += "Editing top level Job Report..."
