@@ -8,8 +8,8 @@ returned from the ProdMgr.
 
 """
 
-__revision__ = "$Id: JobCutter.py,v 1.12 2007/07/25 20:24:28 fvlingen Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: JobCutter.py,v 1.13 2007/08/07 21:10:34 afanfani Exp $"
+__version__ = "$Revision: 1.13 $"
 __author__ = "fvlingen@caltech.edu"
 
 
@@ -80,9 +80,11 @@ def cut(job_id,jobCutSize):
     logging.debug("Writing job cut specs to: "+str(jobSpecDir))
     listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,job_run_numbers,jobSpec.parameters['EventCount'],\
         RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
+    jobType = jobSpec.parameters['JobType']
     logging.debug("test10")
     for i in xrange(0,len(listOfSpecs)):
         listOfSpecs[i]['owner'] = 'prodmgr'
+        listOfSpecs[i]['job_type'] = jobType  
         if maxRetries:
            listOfSpecs[i]['max_retries']=maxRetries
     logging.debug("Registering job cuts")
@@ -129,6 +131,7 @@ def cutFile(job_ids,jobCutSize,maxJobs):
         logging.debug("Registering job cuts")
         for i in xrange(0,len(listOfSpecs)):
             listOfSpecs[i]['owner'] = 'prodmgr'
+            listOfSpecs[i]['job_type'] = 'Processing'
             if maxRetries:
                listOfSpecs[i]['max_retries']=maxRetries
         Job.register(None,job_id,listOfSpecs)
