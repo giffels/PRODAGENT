@@ -1,9 +1,0 @@
-
-   $Id: README,v 1.5 2006/11/07 05:13:19 fvlingen Exp $
-
-Exception Codes:
-------------
-3000  : No result in local last service call table with for a certain component. 
-3001  : General database error
-3002  : No connection when trying to start transaction
-3003  : No transaction has started when trying to get a cursor
