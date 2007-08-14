@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BOSSKiller.py,v 1.6 2007/06/29 08:11:00 afanfani Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: BOSSKiller.py,v 1.7 2007/07/25 20:24:27 fvlingen Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -77,17 +77,6 @@ class BOSSKiller:
             msg = "Cannot kill job %s, since it has finished\n" % jobSpecId
             logging.error(msg)
             raise Exception, msg
-
-        # set number of executions to be equal to the maximum number of
-        # allowed retries so jobs will not be resubmitted, or even
-        # not submitted at all if they have not been submitted yet
-        try:
-            JobState.doNotAllowMoreSubmissions([jobSpecId])
-        except ProdAgentException, ex:
-            msg = "Updating max racers fields failed for job %s\n" % jobSpecId
-            msg += str(ex)
-            logging.error(msg)
-            raise
 
         # get job information from BOSS
         try:
@@ -209,6 +198,17 @@ class BOSSKiller:
 
         # kill job
         self.killJob(jobSpecId, erase=True)
+
+        # set number of executions to be equal to the maximum number of
+        # allowed retries so jobs will not be resubmitted, or even
+        # not submitted at all if they have not been submitted yet
+        try:
+            JobState.doNotAllowMoreSubmissions([jobSpecId])
+        except ProdAgentException, ex:
+            msg = "Updating max racers fields failed for job %s\n" % jobSpecId
+            msg += str(ex)
+            logging.error(msg)
+            raise
 
         # remove all entries
         JobState.cleanout(jobSpecId)
