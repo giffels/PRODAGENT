@@ -495,7 +495,7 @@ def getJobInstancesInfo(instance_ids):
 
     sqlStr = """SELECT job_id, instance_id, site_name, ce_hostname, se_hostname, 
     exit_code, evts_read, evts_written, start_time, end_time, error_message, 
-    worker_node, dashboard_id FROM prodmon_Job_instance JOIN prodmon_Resource WHERE 
+    worker_node, dashboard_id, UNIX_TIMESTAMP(insert_time) FROM prodmon_Job_instance JOIN prodmon_Resource WHERE 
     prodmon_Job_instance.resource_id = prodmon_Resource.resource_id AND ("""
 
     first = True
@@ -517,7 +517,7 @@ def getJobInstancesInfo(instance_ids):
         i = {}
         i["job_id"], i["instance_id"], i["site_name"], i["ce_hostname"], i["se_hostname"], \
                 i["exit_code"], i["evts_read"], i["evts_written"], i["start_time"], i["end_time"], i["error_message"], \
-                i["worker_node"], i["dashboard_id"] = instance
+                i["worker_node"], i["dashboard_id"], i["insert_time"] = instance
         results.append(i)
     
     for instance in results:

@@ -163,8 +163,14 @@ def instancesToXML(document, parent, instances):
         addTextNode(document, instance_node, "events_written", instanceInfo["evts_written"])
         addTextNode(document, instance_node, "events_read", instanceInfo["evts_read"])
         addTextNode(document, instance_node, "exit_code", instanceInfo["exit_code"])
+        
+        #start and end time
         addTextNode(document, instance_node, "start_time", instanceInfo["timing"]["AppStartTime"])
-        addTextNode(document, instance_node, "end_time", instanceInfo["timing"]["AppEndTime"])
+        #if end_time not available take db insert time instead
+        if instanceInfo["timing"]["AppEndTime"] != None:
+            addTextNode(document, instance_node, "end_time", instanceInfo["timing"]["AppEndTime"])
+        else:
+            addTextNode(document, instance_node, "end_time", instanceInfo["insert_time"])
         
         # add error type
         addTextNode(document, instance_node, "error_type", instanceInfo["error_type"])
@@ -251,4 +257,5 @@ def HTTPpost(params, url, onFailureFile = None):
             msg += "\nA copy of the failed report is in %s" % onFailureFile
         
         raise IOError, msg
+    raise IOError, str(ex)
     return
