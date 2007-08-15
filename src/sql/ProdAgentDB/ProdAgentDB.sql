@@ -839,7 +839,7 @@ CREATE TABLE prodmon_Job_instance (
        start_time INT,
        end_time INT,
        exported BOOLEAN DEFAULT FALSE NOT NULL,
-       insert_time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+       insert_time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP,
        PRIMARY KEY (instance_id),
        INDEX (job_id, resource_id, error_id, exported, insert_time),
        FOREIGN KEY (job_id) REFERENCES prodmon_Job (job_id)
