@@ -113,10 +113,10 @@ def migrateJobs():
     workflows = [removeTuple(workflow) for workflow in Session.fetchall(sessionID=db_id)]
     
     dbCur.execute("""SELECT workflow_spec_id, job_spec_id, exit_code, status, site_name,
-               host_name, se_name, events_read, events_written, job_type, job_index FROM st_job_success""")
+               host_name, se_name, events_read, events_written, job_type, job_index, time FROM st_job_success""")
     jobs = dbCur.fetchall()
     dbCur.execute("""SELECT workflow_spec_id, job_spec_id, exit_code, status, site_name,
-               host_name, se_name, job_type, job_index FROM st_job_failure""")
+               host_name, se_name, job_type, job_index, time FROM st_job_failure""")
     jobs += dbCur.fetchall()
     
     for job in jobs:
@@ -134,7 +134,8 @@ def migrateJobs():
         stats["host_name"] = job["host_name"]
         stats["se_name"] = job["se_name"]
         stats["ce_name"] = "Unknown"
-        stats["job_type"] = job["job_type"] 
+        stats["job_type"] = job["job_type"]
+        stats["insert_time"] = job["time"]
         
         #events missing for failures - set to 0
         stats["events_read"] = job.get("events_read", 0) 
