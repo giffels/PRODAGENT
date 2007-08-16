@@ -38,6 +38,7 @@ from JobCreator.BulkTools import InstallUnpacker, InstallUserSandbox
 from JobCreator.FastMergeTools import InstallBulkFastMerge
 from JobCreator.DashboardTools import installBulkDashboardInfo, writeDashboardInfo
 from JobCreator.CmsGenTools import InsertCmsGenStructure, PopulateCmsGenScript
+from JobCreator.FrontierTools import InsertFrontierTools
 
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, generateDashboardID
 
@@ -120,6 +121,7 @@ class BulkGenerator(GeneratorInterface):
         taskObject(InsertBulkAppDetails("PayloadNode"))
         taskObject(InsertCmsGenStructure("PayloadNode"))
         taskObject(InstallRunResComponent())
+        taskObject(InsertFrontierTools(self.componentConfig.get("FrontierDiagnostic", False)))
         taskObject(InsertJobReportTools())
         taskObject(InsertCleanUp())
         taskObject(InstallLogArch())

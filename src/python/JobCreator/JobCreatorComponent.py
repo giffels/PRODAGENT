@@ -52,6 +52,7 @@ class JobCreatorComponent:
         self.args['mergeMaxRetries'] = 3
         self.args['HashDirs'] = True
         self.args['LogArchStageOut'] = False
+        self.args['FrontierDiagnostic'] = False
         self.args.update(args)
         self.prodAgent = prodAgentName()
         self.job_state = self.args['JobState']
@@ -63,6 +64,11 @@ class JobCreatorComponent:
             self.args['LogArchStageOut'] = True
         else:
             self.args['LogArchStageOut'] = False
+
+        if str(self.args['FrontierDiagnostic']).lower() in ("true", "yes"):
+            self.args['FrontierDiagnostic'] = True
+        else:
+            self.args['FrontierDiagnostic'] = False
 
 
         LoggingUtils.installLogHandler(self)
