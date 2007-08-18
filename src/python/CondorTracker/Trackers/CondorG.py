@@ -67,7 +67,10 @@ class CondorG(TrackerPlugin):
                     logging.warning(msg)
                     self.TrackerDB.jobFailed(subId)
                     continue
-                condorLogFile = "%s/%s-condor.log" % (cache, subId)
+                # first check if shortened version exists...
+                condorLogFile = "%s/condor.log" % cache
+                if not os.path.exists(condorLogFile):
+                   condorLogFile = "%s/%s-condor.log" % (cache, subId)
                 if not os.path.exists(condorLogFile):
                     msg = "Cannot find condor log file:\n%s\n" % condorLogFile
                     msg += "Declaring job aborted"
@@ -156,7 +159,10 @@ class CondorG(TrackerPlugin):
                     logging.warning(msg)
                     self.TrackerDB.jobFailed(runId)
                     continue
-                condorLogFile = "%s/%s-condor.log" % (cache, runId)
+                # first check if shortened version exists...
+                condorLogFile = "%s/condor.log" % cache
+                if not os.path.exists(condorLogFile):
+                   condorLogFile = "%s/%s-condor.log" % (cache, runId)
                 if not os.path.exists(condorLogFile):
                     msg = "Cannot find condor log file:\n%s\n" % condorLogFile
                     msg += "Declaring job aborted"
