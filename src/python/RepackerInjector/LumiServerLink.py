@@ -5,8 +5,8 @@ Provides LumiData from LumiServer and populates JobSpec's config file with lumi 
 
 """
 
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: LumiServerLink.py,v 1.6 2007/07/26 20:30:35 kosyakov Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: LumiServerLink.py,v 1.7 2007/08/06 14:14:01 hufnagel Exp $"
 __author__ = "kss"
 
 
@@ -39,8 +39,9 @@ class LumiServerLink:
 
 
 
-    def setLumiData(self,job_spec_file,job_spec,run_number,lumisection):
-        lumi_info=self.getLumiInfo(run_number,lumisection)
+    def setLumiData(self,job_spec_file,job_spec,lumiList):
+
+        lumi_info=self.getLumiInfo(lumiList)
         #print "LUMIINFO",lumi_info
         self._int_setLumiData(job_spec_file,job_spec,lumi_info)
 
