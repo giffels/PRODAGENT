@@ -34,7 +34,7 @@ argsDict = {
             'dbName':'CMSCALD',
             'host':'cmscald',
             'user':'REPACK_DEV',
-            'passwd':'REPACK_DEV_CMS2007',
+            'passwd':'****',
             'socketFileLocation':'',
             'portNr':'',
             'refreshPeriod' : 4*3600 ,
