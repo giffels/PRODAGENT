@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.45 2007/07/29 21:22:52 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.46 2007/08/01 14:33:22 afanfani Exp $"
 
 import socket
 import time
@@ -721,13 +721,16 @@ class TrackingComponent:
               msg = "Cant get JobCache from Job.get['cache_dir'] for xxx %s xxx\n" %fjr[0].jobSpecId
               msg += str(ex)
               logging.warning(msg)
-              # try guessing the JobCache area based on jobspec name
+              # try guessing the JobCache area based on jobspecId name
               try:
-                # split the jobspec=workflow-run into workflow/run
+                # split the jobspecid=workflow-run into workflow/run
                 spec=fjr[0].jobSpecId
                 end=spec.rfind('-')
                 workflow=spec[:end]
                 run=spec[end+1:]
+                # additional split for PM jobspecid that are in the form ....jobcut-workflow-run
+                pmspec=workflow.find('jobcut-')
+                if pmspec > 0: workflow=workflow[pmspec+7:]
 
                 PAconfig = loadProdAgentConfiguration()
                 jobCreatorCfg = PAconfig.getConfig("JobCreator")
