@@ -453,8 +453,12 @@ class JobQueueDB:
         """
         if len(indices) == 0:
             return {}
+        indexString = str(reduce(reduceList, indices))
         sqlStr += " ( "
-        sqlStr += str(reduce(reduceList, indices))
+        sqlStr += indexString
+        sqlStr += " )"
+        sqlStr += " ORDER BY FIELD(job_index, "
+        sqlStr += indexString
         sqlStr += " );"
         Session.execute(sqlStr)
 
