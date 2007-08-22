@@ -397,6 +397,88 @@ class JobQueueDB:
         result = [ x[0] for x in result ]
         
         return result
+
+    def retrieveReleasedJobsAtSites(self, count = 1, jobType = None,
+                                    workflow = None, *sites):
+        """
+        _retrieveReleasedJobsAtSites_
+
+        Get a list of size count matching job indexes from the DB tables
+        matched by:
+
+        optional workflow id
+        optional job type
+        required list of site index values.
+
+        that have been released from the DB.
+
+        This is a history method for job queue
+        
+        """
+        sqlStr = \
+        """
+        SELECT DISTINCT jobQ.job_index FROM jq_queue jobQ LEFT OUTER JOIN
+        jq_site siteQ ON jobQ.job_index = siteQ.job_index WHERE status = 'released'
+
+        """
+        
+        if workflow != None:
+            sqlStr +=" AND workflow_id=\"%s\" " % workflow
+
+        if jobType != None:
+            sqlStr +=  " AND job_type=\"%s\" " % jobType
+                
+        sqlStr += " AND "
+
+
+        if len(sites) > 0:
+            siteStr = ""
+            for s in sites:
+                siteStr += "%s," % s
+            siteStr = siteStr[:-1]
+            
+            sqlStr += " ( siteQ.site_index IN (%s) " % siteStr
+            sqlStr += " OR siteQ.site_index IS NULL ) "
+        else:
+            sqlStr += " siteQ.site_index IS NULL "
+        
+        sqlStr += " ORDER BY priority DESC, time DESC LIMIT %s;" % count
+        
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        result = [ x[0] for x in result ]
+        
+        return result
+
+
+
+    def retrieveReleasedJobs(self, count = 1, jobType = None,
+                             workflow = None):
+        """
+        _retrieveReleasedJobs_
+
+        Retrieve released Jobs without specifying site information
+
+        This is a history method for job queue
+
+        """
+        sqlStr = \
+        """
+        SELECT DISTINCT job_index FROM jq_queue WHERE status = 'released' 
+        """
+
+        if workflow != None:
+            sqlStr +=" AND workflow_id=\"%s\" " % workflow
+
+        if jobType != None:
+            sqlStr +=  " AND job_type=\"%s\" " % jobType
+            
+        sqlStr += " ORDER BY priority DESC, time DESC LIMIT %s;" % count
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        result = [ x[0] for x in result ]
+        
+        return result
                 
 
     def countJobsForSite(self, siteIndex):
