@@ -52,10 +52,12 @@ class ReportJobSuccess(StateInterface):
             if not we_job:
                raise
             logging.debug('Retrieved job spec for: '+str(job_spec_id))
-        except:
+        #AF except:
+        except Exception, ex:
             logging.debug("Job: "+str(job_spec_id)+ \
                 " has been removed when "+\
                 " workflow was removed. Not doing anything (case 1)")
+            logging.debug("Details: %s"%(str(ex)))
             return
         if we_job['owner'] != 'prodmgr':
             logging.debug("Job: "+str(job_spec_id)+ \
