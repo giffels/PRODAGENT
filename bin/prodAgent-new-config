@@ -128,11 +128,13 @@ coreFields = {
     },
 
     'LocalDBS' :{
-    "DBSURL": "http://cmsdbs.cern.ch/cms/prod/comp/DBS/CGIServer/prodquery",
+    "DBSURL": "None",
+    "ReadDBSURL": "None",
     },
 
     "GlobalDBSDLS" : {
     "DBSURL": "https://cmsdbsprod.cern.ch:8443/cms_dbs_prod_global_writer/servlet/DBSServlet",
+    "ReadDBSURL": "http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet", 
     },
 
     "PhEDExConfig" : {
