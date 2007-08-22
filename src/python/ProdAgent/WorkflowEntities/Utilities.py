@@ -46,10 +46,18 @@ def jobsForWorkflow(workflow, jobtype = None, status = None):
 
     jobData = WEJob.get(jobIDs)
 
+    #  //
+    # // type safety checks: always return list
+    #//
+    if jobData == None :
+        return []
+    
+    if type(jobData) != type(list()) :
+        jobData = [jobData] 
     
     if jobtype != None:
         jobData = [ x for x in jobData if x['job_type'] == jobtype ]
-
+        
     
         
     if status != None:
