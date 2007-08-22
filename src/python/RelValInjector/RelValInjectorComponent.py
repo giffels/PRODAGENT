@@ -136,10 +136,11 @@ class RelValInjectorComponent:
         relvalWorkflows = WEUtils.listWorkflowsByOwner("RelValInjector")
         workflows = WEWorkflow.get(relvalWorkflows)
         for workflow in workflows:
-            logging.debug(
-                "Polling for state of workflow: %s\n" % workflow['id'])
-            status = RelValStatus(self.args, self.ms, **workflow)
-            status()
+            if workflow != 0:
+                logging.debug(
+                    "Polling for state of workflow: %s\n" % str(workflow['id']))
+                status = RelValStatus(self.args, self.ms, **workflow)
+                status()
             
         self.ms.publish("RelValInjector:Poll", "",
                         self.args['PollInterval'])

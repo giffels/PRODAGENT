@@ -225,10 +225,9 @@ x
         cfgInt.validateForProduction()
         loader.unload()
         
-        maker = WorkflowMaker(
-            "%s-%s" % ( testInstance['CMSSWVersion'], 
-                        self.timestamp),
-            testInstance['Name'], 'RelVal')
+        maker = WorkflowMaker(str(self.timestamp),
+                              testInstance['Name'],
+                              'RelVal')
         
         maker.setCMSSWVersion(testInstance['CMSSWVersion'])
         maker.setPhysicsGroup("dataOps")
@@ -279,6 +278,7 @@ x
             iterator = RequestIterator(testInstance['WorkflowSpecFile'],
                                        testInstance['WorkingDir'])
             self.iterators[testName] = iterator
+            iterator.count = 1
             logging.info("Created RequestIterator for %s" % (
                 testInstance['WorkflowSpecId'],))
             iterator.save(testInstance['WorkingDir'])
