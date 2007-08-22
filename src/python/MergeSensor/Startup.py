@@ -6,8 +6,8 @@ Start the component, reading its configuration from
 the common configuration file, which is accessed by environment variable
 
 """
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: Startup.py,v 1.9 2007/03/28 16:46:13 ckavka Exp $"
+__version__ = "$Revision: 1.9 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -28,8 +28,8 @@ try:
 
     # Local DBS configuration
     localDBSConfig = config.get("LocalDBS")
-    if 'DBSURL' in localDBSConfig.keys():
-        compCfg["DBSURL"] = localDBSConfig["DBSURL"]  
+    if 'ReadDBSURL' in localDBSConfig.keys():
+        compCfg["ReadDBSURL"] = localDBSConfig["ReadDBSURL"]  
 
 except StandardError, ex:
     msg = "Error reading configuration:\n"

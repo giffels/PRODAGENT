@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.66 2007/06/08 10:31:14 ckavka Exp $"
+__version__ = "$Revision: 1.66 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -76,7 +76,7 @@ class MergeSensorComponent:
         
         # initialize the server
         self.args = {}
-        self.args.setdefault("DBSURL",
+        self.args.setdefault("ReadDBSURL",
           "http://cmssrv18.fnal.gov:8989/DBS/servlet/DBSServlet")
         self.args.setdefault("ComponentDir", None)
         self.args.setdefault("PollInterval", 60 )
@@ -264,7 +264,7 @@ class MergeSensorComponent:
 
         while not connected:
             try:
-                self.dbsReader = DBSReader(self.args["DBSURL"])
+                self.dbsReader = DBSReader(self.args["ReadDBSURL"])
 
             except (DBSReaderError, DbsConnectionError), ex:
                 logging.error("""Failing to connect to DBS: (exception: %s)
