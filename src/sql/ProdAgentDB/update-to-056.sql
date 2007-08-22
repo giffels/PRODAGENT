@@ -1,0 +1,1 @@
+ALTER TABLE prodmon_Job_instance MODIFY insert_time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP;
