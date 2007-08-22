@@ -135,6 +135,7 @@ def getGlobalDBSDLSConfig():
                                                                                                                                                  
         dbsConfig = {
         'DBSURL' : globalConfig['DBSURL'],
+        'ReadDBSURL' : globalConfig['ReadDBSURL'],
         }
         return dbsConfig
 
@@ -150,6 +151,7 @@ class DBSComponent:
         self.args = {}
 
         self.args.setdefault("DBSURL","http://cmssrv18.fnal.gov:8989/DBS/servlet/DBSServlet")
+        self.args.setdefault("ReadDBSURL","http://cmssrv18.fnal.gov/DBS/servlet/DBSServlet")
         self.args.setdefault("Logfile", None)
         self.args.setdefault("BadReportfile", None)
         self.args.setdefault("BadDatasetfile", None)
@@ -600,7 +602,8 @@ class DBSComponent:
         # // Find all the blocks of the dataset
         #//
         LocalDBSurl=self.args['DBSURL']
-        reader = DBSReader(LocalDBSurl,level='ERROR')
+        ReadLocalDBSurl=self.args['ReadDBSURL']
+        reader = DBSReader(ReadLocalDBSurl,level='ERROR')
         #
         # Close the not empty blocks that are still open:
         #
@@ -748,12 +751,13 @@ class DBSComponent:
         """
         DBSConf= getGlobalDBSDLSConfig()
         GlobalDBSURL=DBSConf['DBSURL']
+        ReadGlobalDBSURL=DBSConf['ReadDBSURL']
 
         phedexConfig,dropdir,Nodes=self.getPhEDExConfig() 
         #  //
         # // Get the datasetPath the block belong to
         #//
-        reader = DBSReader(GlobalDBSURL)
+        reader = DBSReader(ReadGlobalDBSURL)
         datasetPath= reader.blockToDatasetPath(fileBlockName)
         #  //
         # // Inject that block to PhEDEx
@@ -844,7 +848,8 @@ class DBSComponent:
         """
         DBSConf= getGlobalDBSDLSConfig()
         GlobalDBSURL=DBSConf['DBSURL']
-        reader = DBSReader(GlobalDBSURL,level='ERROR')
+        ReadGlobalDBSURL=DBSConf['ReadDBSURL']
+        reader = DBSReader(ReadGlobalDBSURL,level='ERROR')
         #  //
         # // inject each fileblock of the dataset
         # //
