@@ -27,6 +27,7 @@ detailedFlag = False
 usage = """
 jobQueue.py Dump State of Job Queue to stdout
             --detailed
+            --released
             --workflow=<WorkflowID>  # filter by workflow
             --site=<SiteIndex>       # filter by site index match
             --type=<Merge|Processing># filter by job type
@@ -45,6 +46,8 @@ except getopt.GetoptError, ex:
 for opt, arg in opts:
     if opt == "--detailed":
         detailedFlag  = True
+    if opt == "--released":
+        releasedFlag  = True
     if opt == "--workflow":
         workflow = arg
     if opt == "--site":
