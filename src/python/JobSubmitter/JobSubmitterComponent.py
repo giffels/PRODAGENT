@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.16 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.16 2007/07/18 11:43:18 ckavka Exp $"
+__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.17 2007/07/23 16:42:41 afanfani Exp $"
 
 import os
 import logging
@@ -31,6 +31,8 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdAgent.WorkflowEntities import JobState
 import ProdAgentCore.LoggingUtils  as LoggingUtils
+
+from ProdCommon.Core.ProdException import ProdException
 
 class JobSubmitterComponent:
     """
@@ -177,7 +179,7 @@ class JobSubmitterComponent:
                 self.ms.commit()
                 try:
                     JobState.submit(jobSpecId)
-                except ProdAgentException, ex:
+                except (ProdAgentException, ProdException) , ex:
                     # NOTE: this should be stored in the logger
                     # NOTE: we can have different errors here
                     # NOTE: transition, submission, other...
@@ -185,6 +187,7 @@ class JobSubmitterComponent:
                     msg = "Accessing Job State Failed for job %s\n" % jobSpecId
                     msg += str(ex)
                     logging.error(msg) 
+                 
             return
         
         #  //
