@@ -58,15 +58,15 @@ def get(workflowID=[]):
        return []
    if len(workflowID)==1:
        sqlStr="""SELECT events_processed,id,owner,priority,prod_mgr_url,
-       workflow_spec_file,workflow_type FROM we_Workflow WHERE id="%s"
+       workflow_spec_file,workflow_type,max_sites FROM we_Workflow WHERE id="%s"
        """ %(str(workflowID[0]))
    else:
        sqlStr="""SELECT events_processed,id,owner,priority,prod_mgr_url,
-       workflow_spec_file,workflow_type FROM we_Workflow WHERE id IN 
+       workflow_spec_file,workflow_type,max_sites FROM we_Workflow WHERE id IN 
        %s """ %(str(tuple(workflowID)))
    Session.execute(sqlStr)
    description=['events_processed','id','owner','priority','prod_mgr_url',\
-   'workflow_spec_file','workflow_type']
+   'workflow_spec_file','workflow_type', 'max_sites']
    result=Session.convert(description,Session.fetchall())
    if len(result)==1:
       return result[0]
@@ -202,13 +202,14 @@ def register(workflowID, parameters={}, renew = False):
    if not renew:
        descriptionMap={'priority':'priority','request_type':'workflow_type',\
        'prod_mgr_url':'prod_mgr_url','workflow_spec_file':'workflow_spec_file','owner':'owner',\
-       'run_number_count':'run_number_count'}
+       'run_number_count':'run_number_count',
+                       'max_sites' : 'max_sites'}
        # check with attributes are provided.
        parameters['run_number_count']=offset
    else:
        descriptionMap={'priority':'priority','request_type':'workflow_type',\
-       'prod_mgr_url':'prod_mgr_url','workflow_spec_file':'workflow_spec_file','owner':'owner' }
-
+       'prod_mgr_url':'prod_mgr_url','workflow_spec_file':'workflow_spec_file','owner':'owner', 'max_sites' : 'max_sites' }
+       
    description=parameters.keys()
    # create values part
    sqlStrValues='('
@@ -280,5 +281,57 @@ def setWorkflowLocation(workflowID,workflowLocation):
    sqlStr="""UPDATE we_Workflow SET workflow_spec_file="%s" 
    WHERE id="%s" """ %(str(workflowLocation),str(workflowID))
    Session.execute(sqlStr)
+
+def setMaxSites(workflowID, maxSites = None):
+    """
+    _setMaxSites_
+
+    Set MaxSites parameter for a workflow
+
+    None means dont restrict site count, (sets it to NULL)
+
+    """
+    if maxSites == None:
+        value = "NULL"
+    else:
+        value = int(maxSites)
+        
+    sqlStr="""UPDATE we_Workflow SET max_sites=%s WHERE id="%s"; """ %(
+        str(value),str(workflowID)) 
+    
+    Session.execute(sqlStr)
+    return
+
+
+def associateSiteToWorkflow(workflowID, siteIndex):
+    """
+    _associateSiteToWorkflow_
+
+    for the workflow spec ID provided, add an association
+    with the site index from rc_site table indicating that the
+    workflow has been
+
+    """
+    sqlStr = """INSERT INTO we_workflow_site_assoc (workflow_id, site_index)
+                  VALUES ("%s", %s) ON DUPLICATE KEY UPDATE site_index = VALUES(site_index) ;""" % (workflowID, siteIndex)
+    
+    Session.execute(sqlStr)
+    return
+
+def getAssociatedSites(workflowID):
+    """
+    _getAssociatedSites_
+
+    Return a list of associated site indices from rc_site
+    that have associations to the workflow ID provided
+
+    """
+    sqlStr = """SELECT site_index FROM  we_workflow_site_assoc WHERE
+                  workflow_id="%s"; """ % workflowID
+    Session.execute(sqlStr)
+    
+    result = Session.fetchall()
+    result = [ x[0] for x in result ]
+    return result
 
 
