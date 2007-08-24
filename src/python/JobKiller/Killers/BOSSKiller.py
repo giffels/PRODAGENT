@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BOSSKiller.py,v 1.7 2007/07/25 20:24:27 fvlingen Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: BOSSKiller.py,v 1.8 2007/08/14 13:01:57 afanfani Exp $"
+__version__ = "$Revision: 1.8 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -106,16 +106,24 @@ class BOSSKiller:
         try:
             job.kill("1", 180)
 
-            # archive if requested
-            if erase:
-                job.archive("1")
-
         # deal with BOSS specific error
         except (SchedulerError, BossError), err:
-            msg = "Cannot get information for task %s, BOSS error: %s" % \
+            msg = "Failed BOSS kill for task %s, BOSS error: %s" % \
                   (jobSpecId, str(err))
             logging.error(msg)
-            raise Exception, msg
+            #AF: do not raise exception
+            # raise Exception, msg
+            pass
+
+        # archive if requested
+        if erase:
+           try:
+                job.archive("1")
+           except (SchedulerError, BossError), err:
+             msg = "Failed BOSS archive for task %s, BOSS error: %s" % \
+                   (jobSpecId, str(err))
+             logging.error(msg)
+
 
     def killWorkflow(self, workflowSpecId):
         """
