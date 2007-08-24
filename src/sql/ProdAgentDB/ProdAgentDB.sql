@@ -605,6 +605,9 @@ CREATE TABLE rc_site_attr(
     ON DELETE CASCADE
 ) TYPE = InnoDB;
 
+
+
+
 /*
  * ======================Start JobQueue tables===============
  */
@@ -730,10 +733,25 @@ CREATE TABLE we_Workflow
     prod_mgr_url          varchar(255)    not null,
     run_number_count      int(11)         not null,
     workflow_spec_file    text            not null,
+    max_sites             int              default NULL,
     workflow_type          enum("event", "file") default 'event',
     primary key(id),
     index(priority)
    ) Type=InnoDB;
+
+/*
+ * Link Workflows to associated sites in rc_site table	
+ *	
+ */
+CREATE TABLE we_workflow_site_assoc (
+   workflow_id  varchar(255) not null,
+   site_index INT,
+   FOREIGN KEY (workflow_id) REFERENCES we_Workflow(id)
+     ON DELETE CASCADE,
+   FOREIGN KEY (site_index) REFERENCES rc_site(site_index)
+
+) Type=InnoDB;
+
 
 /*
  ************************Trigger****************************
