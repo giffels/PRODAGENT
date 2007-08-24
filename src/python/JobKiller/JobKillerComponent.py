@@ -5,8 +5,8 @@ _JobKillerComponent_
 ProdAgent Component that kills jobs by job spec or workflow Id
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: JobKillerComponent.py,v 1.3 2007/05/04 14:16:40 ckavka Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: JobKillerComponent.py,v 1.4 2007/07/25 20:24:26 fvlingen Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -19,6 +19,8 @@ from MessageService.MessageService import MessageService
 from ProdAgentDB.Config import defaultConfig as dbConfig
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
+from JobQueue.JobQueueDB import JobQueueDB
+from MergeSensor.MergeSensorDB import MergeSensorDB
 
 from JobKiller.Registry import retrieveKiller
 
@@ -131,6 +133,39 @@ class JobKillerComponent:
         
         """
         logging.info("Erasing Workflow: %s" % workflowSpecId)
+
+        #  //
+        # // Stop watching the unmerged datasets
+        #//
+        MergeDatabase = MergeSensorDB()
+        datasets=MergeDatabase.getDatasetListFromWorkflow(workflowSpecId)
+        for dataset in datasets:
+            self.ms.publish("MergeSensor:CloseDataset", dataset)
+            self.ms.commit()
+            logging.debug("Send MergeSensor:CloseDataset Event for dataset : %s"%dataset)
+
+        #  //
+        # // Remove jobs for the JobQueue, if any, flagging them as "released"
+        #//
+        byType=None
+        jobQueue = JobQueueDB()
+        try: 
+            jobIds = jobQueue.retrieveJobs(1000000, byType, workflowSpecId)
+            if len(jobIds)>0:
+               jobQueue.flagAsReleased(*jobIds)
+            else:
+               logging.debug("No jobs in JobQueue associated to the workflow %s" % \
+                         workflowSpecId)
+
+        except Exception, ex:
+            msg = "Error invoking erase Workflow on %s\n" % workflowSpecId
+            msg += "while removing jobs from JobQueue"
+            msg += "%s\n" % str(ex)
+            logging.error(msg)
+
+        #  //
+        # // Remove jobs loading the killer plugin
+        #//  
         killer = self.loadKiller()
         if killer == None:
             msg = "Problem Loading Killer Plugin, unable to erase "
