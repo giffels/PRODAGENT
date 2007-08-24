@@ -12,6 +12,7 @@ CREATE TABLE we_workflow_site_assoc (
    site_index INT,
    FOREIGN KEY (workflow_id) REFERENCES we_Workflow(id)
      ON DELETE CASCADE,
-   FOREIGN KEY (site_index) REFERENCES rc_site(site_index)
+   FOREIGN KEY (site_index) REFERENCES rc_site(site_index),
+   UNIQUE (workflow_id, site_index)
 
 ) Type=InnoDB;
