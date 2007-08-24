@@ -6,14 +6,15 @@ General Exception class for ProdAgent modules
 
 """
 
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: ProdAgentException.py,v 1.1 2006/05/18 23:32:14 fvlingen Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: ProdAgentException.py,v 1.2 2006/09/25 20:54:56 fvlingen Exp $"
 
 import exceptions
 import inspect
 import logging
+from ProdCommon.Core.ProdException import ProdException
 
-class ProdAgentException(exceptions.Exception):
+class ProdAgentException(ProdException):
     """
     _ProdAgentException_
 
