@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeSensorDB.py,v 1.22 2007/06/08 10:31:43 ckavka Exp $"
+__version__ = "$Revision: 1.22 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -382,6 +382,80 @@ class MergeSensorDB:
         # return it
         return datasetList
         
+    ##########################################################################
+    # get dataset name from workflow name
+    ##########################################################################
+    def getDatasetListFromWorkflow(self, workflowName):
+        """
+        __getDatasetListFromWorkflow__
+
+        Get the list of datasets belonging to a workflow
+                                                                                
+        Arguments:
+                                                                                
+          workflow name
+                                                                                
+        Return:
+                                                                                
+          the list of all dataset names which are currently in open status
+          and belong to the workflow
+
+                                                                                                                    
+        """
+        # get cursor
+        try:
+            cursor = self.conn.cursor()
+                                                                                
+        except MySQLdb.Error:
+                                                                                
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+                                                                                
+        # select open datasets
+        sqlCommand = """
+                     SELECT prim, processed, tier
+                       FROM merge_dataset
+                       WHERE status="open" 
+                       AND workflow='""" + workflowName + """'
+                     """
+        # execute command
+        try:
+            cursor.execute(sqlCommand)
+                                                                                
+        except MySQLdb.Error:
+                                                                                
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+                                                                                
+            # retry
+            cursor.execute(sqlCommand)
+                                                                                
+        # process results
+        rows = cursor.rowcount
+        # return empty list if no watched datasets
+        if rows == 0:
+                                                                                
+            # close cursor
+            cursor.close()
+                                                                                
+            # emtpy list
+            return []
+                                                                                
+        # build list
+        rows = cursor.fetchall()
+        datasetList = ["/%s/%s/%s" % elem for elem in rows]
+                                                                                
+        # close cursor
+        cursor.close()
+                                                                                
+        # return it
+        return datasetList
+
+
     ##########################################################################
     # get dataset information
     ##########################################################################
@@ -1027,7 +1101,8 @@ class MergeSensorDB:
         
         # return it
         return result
-    
+
+
     ##########################################################################
     # add a file to a dataset
     ##########################################################################
