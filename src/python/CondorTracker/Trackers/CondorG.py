@@ -94,10 +94,6 @@ class CondorG(TrackerPlugin):
             else:
                 status = classad['JobStatus']
                 
-                
-            if not status in range(1,6):
-               logging.debug("Bad condor status flag: %s" % status)
-               continue
 
             if status == 1:
                 logging.debug("Job %s is pending" % (subId))
@@ -135,6 +131,12 @@ class CondorG(TrackerPlugin):
                 self.TrackerDB.jobFailed(subId)
                 logging.debug("Job %s has failed" % (subId))
                 continue
+
+                
+            if not status in range(1,6):
+               logging.debug("Bad condor status flag: %s" % status)
+               continue
+
             logging.debug("at end, status was %s" % status)
         return
 
