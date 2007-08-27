@@ -8,14 +8,15 @@ Component for generating Repacker JobSpecs using T0 package and T0Stat Db
 
 
 
-__version__ = "$Revision: 1.15 $"
-__revision__ = "$Id: RepackerInjectorComponent.py,v 1.15 2007/08/08 11:17:35 hufnagel Exp $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: T0RepackerInjectorComponent.py,v 1.1 2007/08/20 21:16:05 kosyakov Exp $"
 __author__ = "kss"
 
 
 import logging
 from MessageService.MessageService import MessageService
 import ProdAgentCore.LoggingUtils as LoggingUtils
+from T0.RepackMgr.RepackerGenerator import RepackerGenerator
 from T0.SplitInjector.RepackerSplitGenerator import SplitJobGenerator
 from ProdCommon.Database import DbSession
 
@@ -36,7 +37,7 @@ class T0RepackerInjectorComponent:
         msg = "T0RepackerInjector Started:\n"
         logging.info(msg)
         logging.info("args %s"%str(args))
-        self.split_gens={}
+        self.repack_gens={}
         self.current_run=0
 
 
@@ -86,11 +87,17 @@ class T0RepackerInjectorComponent:
         if(self.current_run==run_number):
             logging.error("Already started run %s" % str(run_number))
             return
-        sjg=SplitJobGenerator(run_number,"Run-%s"%str(run_number),self.args,self.db)
-        self.split_gens[run_number]=sjg
+        #sjg=SplitJobGenerator(run_number,"Run-%s"%str(run_number),self.args,self.db)
+
+        repack=RepackerGenerator(run_number,"Run-%s"%str(run_number),self.args,self.db)
+        split_plugin=SplitJobGenerator()
+        repack.registerAlgoPlugin('split',split_plugin)
+        #report=repack.pollAndCreateJobs()
+        
+        self.repack_gens[run_number]=repack
         self.current_run=run_number
-        self.ms.publish("NewWorkflow",sjg.wf_path)
-        self.ms.publish("NewDataset",sjg.wf_path)
+        self.ms.publish("NewWorkflow",repack.wf_path)
+        self.ms.publish("NewDataset",repack.wf_path)
         self.ms.commit()
 
 
@@ -111,13 +118,17 @@ class T0RepackerInjectorComponent:
 
     def do_db_poll(self):
         print "db_poll"
-        fname,updated_ts,job_name=self.split_gens[self.current_run].pollAndCreateJobs()
-        if(not fname):
+        #fname,updated_ts,job_name
+        repack=self.repack_gens[self.current_run]
+        report=repack.pollAndCreateJobs()
+        if(not report):
             print "No new files/trigger sections"
             return
-        print fname,job_name,updated_ts.keys()
-        self.split_gens[self.current_run].updateTsStatus(updated_ts.keys(),job_name)
-        self.submit_job(fname)
+        for algo in report.keys():
+            fname,updated_ts,job_name=report[algo]
+            print fname,job_name,updated_ts.keys()
+            repack.updateTsStatus(updated_ts.keys(),job_name)
+            self.submit_job(fname)
 
 
     def pollLoop(self):
