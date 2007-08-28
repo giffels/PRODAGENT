@@ -67,6 +67,16 @@ creatorTemplate = {
     "SetupCommand" : None,
     
     },
+
+    #  //
+    # // JobTimeout Settings 
+    #//
+    "JobTimeout" :{
+    "UseJobTimeout" : "False",
+    "Timeout" :        None,
+    "HardKillDelay" :  None,
+
+    },
     #  //
     # // Standard Settings for contacting Dashboard
     #//
