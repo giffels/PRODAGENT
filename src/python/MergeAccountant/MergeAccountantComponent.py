@@ -7,8 +7,8 @@ input and output file accounting.
 
 """
 
-__revision__ = "$Id: MergeAccountantComponent.py,v 1.6 2007/06/22 19:38:18 fvlingen Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: MergeAccountantComponent.py,v 1.7 2007/07/02 21:23:30 fvlingen Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -30,6 +30,7 @@ from ProdAgent.Trigger.Trigger import Trigger
 
 # ProdAgent exception
 from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdCommon.Core.ProdException import ProdException
 
 # ProdAgent database
 from ProdAgentDB.Config import defaultConfig as dbConfig
@@ -252,7 +253,7 @@ class MergeAccountantComponent:
 
         try:
             self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
-        except ProdAgentException:
+        except (ProdAgentException, ProdException):
             logging.error("trying to continue processing success event")
 
         # verify enable condition
@@ -349,6 +350,7 @@ class MergeAccountantComponent:
 
     def jobFailed(self, jobName):
         """
+
         _jobFailed_
 
         A job has failed. Non merge jobs are ignored.
@@ -380,7 +382,7 @@ class MergeAccountantComponent:
 
         try:
             self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
-        except ProdAgentException:
+        except (ProdAgentException, ProdException):
             logging.error("trying to continue processing failure event")
 
         # verify enable condition
