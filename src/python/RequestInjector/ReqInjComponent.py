@@ -6,8 +6,8 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.29 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.29 2007/07/02 21:23:53 fvlingen Exp $"
+__version__ = "$Revision: 1.30 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.30 2007/08/01 14:17:30 afanfani Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -23,6 +23,8 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdAgent.WorkflowEntities import JobState
 from RequestInjector.RequestIterator import RequestIterator
 from MessageService.MessageService import MessageService
+
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 import ProdAgent.ResourceControl.ResourceControlAPI as ResourceControlAPI
 import ProdAgentCore.LoggingUtils as LoggingUtils
@@ -296,13 +298,26 @@ class ReqInjComponent:
                     #  //
                     # // Do we know about this site?
                     #//
+
+                    config = loadProdAgentConfiguration()
+                    JQConfig = config.getConfig("JobQueue")
+                    VerifySites = JQConfig.get("VerifySites", None)
+                    if str(VerifySites).lower() in ("false", "no"):
+                          VerifySites = False
+                    if str(VerifySites).lower() in ("true", "yes"):
+                          VerifySites = True
+
                     siteIndex = ResourceControlAPI.knownSite(s)
                     if siteIndex == None:
+                       if VerifySites:
                         msg = "Error: Site %s not known\n" % s
                         msg += "Cannot queue jobs for unknown site!!!"
                         logging.error(msg)
                         return
-                    sites.append(s)
+                    if VerifySites:
+                       sites.append(s)
+                    else:
+                       sites=[]
 
             logging.info("Sites List: %s" % sites)
             bulkQueueJobs(sites, *jobSpecs)
