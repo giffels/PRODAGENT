@@ -8,8 +8,8 @@ Component for generating Repacker JobSpecs using T0 package and T0Stat Db
 
 
 
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: T0RepackerInjectorComponent.py,v 1.1 2007/08/20 21:16:05 kosyakov Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: T0RepackerInjectorComponent.py,v 1.2 2007/08/27 17:16:44 kosyakov Exp $"
 __author__ = "kss"
 
 
@@ -32,8 +32,8 @@ class T0RepackerInjectorComponent:
         self.args.update(args)
         self.args['PollInterval']="00:00:15"
         self.args['WorkDir']=self.args['ComponentDir']
-        self.db=DbSession.getSession(self.args)
         LoggingUtils.installLogHandler(self)
+        self.db=DbSession.getSession(self.args)
         msg = "T0RepackerInjector Started:\n"
         logging.info(msg)
         logging.info("args %s"%str(args))
@@ -117,22 +117,28 @@ class T0RepackerInjectorComponent:
 
 
     def do_db_poll(self):
-        print "db_poll"
+        """
+         _do_db_poll_
+         Calls RepackerGenerator to get list of ready for repacking files
+         and to send the list to plugins for processing
+         
+        """
+        logging.info("db_poll")
         #fname,updated_ts,job_name
         repack=self.repack_gens[self.current_run]
         report=repack.pollAndCreateJobs()
         if(not report):
-            print "No new files/trigger sections"
+            logging.info("No new files/trigger sections")
             return
         for algo in report.keys():
             fname,updated_ts,job_name=report[algo]
-            print fname,job_name,updated_ts.keys()
+            logging.info(fname+" "+job_name+" "+str(updated_ts.keys()))
             repack.updateTsStatus(updated_ts.keys(),job_name)
             self.submit_job(fname)
 
 
     def pollLoop(self):
-        print "pollLoop"
+        #print "pollLoop"
         logging.info("Poll Loop invoked...")
 
         if(self.current_run):
