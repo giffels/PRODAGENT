@@ -6,8 +6,8 @@ Common logging setup for all components
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: LoggingUtils.py,v 1.2 2007/02/27 09:02:10 ckavka Exp $"
+__version__ = "$Revision: 1.2 $"
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -37,6 +37,9 @@ def installLogHandler(componentRef):
     # get RSS feed status for this component
     rss = str(componentRef.args.get("RssFeed", "no")).lower()
     rss = rss in ['yes', 'y']
+
+    # get StreamHandler request
+    sh_flag=componentRef.args.get("LogStreamHandler",0)
       
     if defaultLevel.lower() == "debug":
         loggingLevel = logging.DEBUG
@@ -46,6 +49,11 @@ def installLogHandler(componentRef):
     logFormatter = logging.Formatter("%(asctime)s:%(message)s")
     logHandler.setFormatter(logFormatter)
     logging.getLogger().addHandler(logHandler)
+
+    if(sh_flag):
+        logStreamHandler=logging.StreamHandler()
+        logging.getLogger().addHandler(logStreamHandler)
+        
     logging.getLogger().setLevel(loggingLevel)
 
     # add RSS feed abilities only if required
