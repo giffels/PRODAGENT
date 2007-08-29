@@ -91,7 +91,7 @@ def getRequestInjectorConfig():
    #   print msg
    #   sys.exit(1)
 
-   return ReqInjConfig.get("ComponentDir", None),ReqInjConfig.get("FirstRun", "None")
+   return ReqInjConfig.get("ComponentDir", None),ReqInjConfig.get("FirstRun", "None"),ReqInjConfig.get("QueueJobMode", "None")
  
 def checkWorkflow(workflow):
    """
@@ -100,7 +100,7 @@ def checkWorkflow(workflow):
    WorkflowExists=False
    
    workflowBase = os.path.basename(workflow)
-   RequestDir,firstrun = getRequestInjectorConfig()
+   RequestDir,firstrun,queuemode = getRequestInjectorConfig()
    workflowCache="%s/WorkflowCache"%RequestDir
    if not os.path.exists(workflowCache):
       msg = "Error: there is no WorkflowCache area ==> %s"%workflowCache
@@ -114,7 +114,7 @@ def checkWorkflow(workflow):
    else:
       msg=" Workflow %s is NEW since the %s doesn't exist"%(workflowBase,workflowCacheFile)
       print msg
-   return WorkflowExists,firstrun
+   return WorkflowExists,firstrun,queuemode
 
 ## use MessageService
 ms = MessageService()
@@ -128,7 +128,6 @@ ms.publish("JobSubmitter:StartDebug","none")
 ms.commit()
 ms.publish("TrackingComponent:StartDebug","none")
 ms.commit()
-
 
 ## Set Creator/Submitter
 if submissiontype == "LCG": 
@@ -147,7 +146,14 @@ if submissiontype == "T0LSF":
 ms.commit()
 
 ## Set Workflow and run 
-WorkflowExists,firstrun=checkWorkflow(workflow)
+WorkflowExists,firstrun,queuemode=checkWorkflow(workflow)
+
+if str(queuemode).lower() in ("true", "yes"):
+   queuemode = True
+   ms.publish("JobQueue:StartDebug","none")
+   ms.commit()
+else:
+   queuemode = False
 
 if WorkflowExists:
  ## reload the Workflow and start from last run 
@@ -190,7 +196,11 @@ if run != "None":
   runcomment=" run %s"%str(run)
 else:
   runcomment=" last run for %s "%workflowBase
-print " Trying to submit %s jobs with %s events each starting from %s"%(njobs,str(nevts),runcomment)
+
+if queuemode:
+  print " Trying to insert in JobQueue %s jobs with %s events each starting from %s "%(njobs,str(nevts),runcomment)
+else:
+  print " Trying to submit %s jobs with %s events each starting from %s"%(njobs,str(nevts),runcomment)
 
 if submissiontype == "GliteBulk":
  ms.publish("RequestInjector:ResourcesAvailable", str(njobs) )
