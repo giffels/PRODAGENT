@@ -776,21 +776,20 @@ def archive(jobId,bossCfgDir):
     Boss 4 command to manually archive jobs in the BOSS db
     (i.e. move jobe entries to ENDED_ tables )
     """
-    #logging.debug("Boss4 getoutput start %s "%jobId)
-    #print "Boss4 getoutput start %s "%jobId
-    try:
-        taskid = jobId[0].split('.')[0]
-        chainid=jobId[0].split('.')[1]
-        resub=jobId[0].split('.')[2]
-    except:
-        pass
-
-    outfile=executeCommand("boss archive -taskid %s -jobid %s"%(taskid,chainid) + " -c " + bossCfgDir)
+    
+    outfile=executeCommand("boss archive -taskid %s -jobid %s"%(jobId.split('.')[0],jobId.split('.')[1]) + " -c " + bossCfgDir)
     outp=outfile
     return outp
 
 
 def Delete(jobId,bossCfgDir):
+    """
+    BOSS4Delete
+
+    Boss 4 command to manually archive jobs in the BOSS db
+    (i.e. move jobe entries to ENDED_ tables ) after setting to killed the job
+    """
+    
     # print "boss delete -taskid %s -noprompt -c %s"%(jobId.split('.')[0],bossCfgDir)
 #    outfile=executeCommand("boss delete -taskid %s -noprompt -c %s"%(jobId.split('.')[0],bossCfgDir))
     outfile=executeCommand("bossAdmin SQL -query \"update JOB set STATUS='K',STOP_T='-1' where TASK_ID='%s'  and CHAIN_ID='%s'\" -c %s"%(jobId.split('.')[0],jobId.split('.')[1],bossCfgDir))
