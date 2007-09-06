@@ -5,7 +5,7 @@ _CondorMonitor_
 ResourceMonitor plugin that monitors a condor Q
 
 """
-
+import logging
 from ResourceMonitor.Monitors.MonitorInterface import MonitorInterface
 from ResourceMonitor.Registry import registerMonitor
 
@@ -25,12 +25,14 @@ class CondorMonitor(MonitorInterface):
     """
     
     def __call__(self):
+        logging.debug("calling CondorMonitor...")
         result = []
         #  // 
         # // get list of all active gatekeepers from DB info
         #//
         activeGatekeepers = [
             self.allSites[x]['CEName'] for x in self.activeSites ]
+        logging.debug(str(activeGatekeepers))
 
         #  //
         # // Reverse lookup table for ce -> site name
@@ -52,12 +54,18 @@ class CondorMonitor(MonitorInterface):
         #//
         for gatekeeper, jobcounts in mergeInfo.items():
             idle = jobcounts["Idle"]
-            site = ceToSite[gatekeeper]
-            mergeThresh = self.siteThresholds[site]["mergeThreshold"]
-            test = idle - mergeThresh
+            msg="mergeInfo: %s"%str(mergeInfo)
+            logging.debug(msg)
+            msg="gatekeeper: %s"%gatekeeper
+            logging.debug(msg)
+            if ceToSite.get(gatekeeper):
+              site = ceToSite[gatekeeper]
+              mergeThresh = self.siteThresholds[site]["mergeThreshold"]
+              test = idle - mergeThresh
+              msg="CondorMonitor Merge: Site=%s, Idle=%s, Thresh=%s, Test=%s"%(site,idle,mergeThresh,test)
+              logging.debug(msg)
 
-
-            if test < 0:
+              if test < 0:
                 constraint = self.newConstraint()
                 constraint['count'] = abs(test)
                 constraint['type'] = "Merge"
@@ -68,13 +76,16 @@ class CondorMonitor(MonitorInterface):
 
         for gatekeeper, jobcounts in processingInfo.items():
             idle = jobcounts["Idle"]
-            site = ceToSite[gatekeeper]
-            procThresh = self.siteThresholds[site]["processingThreshold"]
-            minSubmit = self.siteThresholds[site]["minimumSubmission"]
-            test = idle - procThresh
+            if ceToSite.get(gatekeeper):
+              site = ceToSite[gatekeeper]
+              procThresh = self.siteThresholds[site]["processingThreshold"]
+              minSubmit = self.siteThresholds[site]["minimumSubmission"]
+              maxSubmit = self.siteThresholds[site]["maximumSubmission"]
+              test = idle - procThresh
+              msg="CondorMonitor Proc: Site=%s, Idle=%s, Thresh=%s, Test=%s"%(site,idle,procThresh,test)
+              logging.debug(msg)
             
-            
-            if test < 0:
+              if test < 0:
                 if abs(test) < minSubmit:
                     #  //
                     # // below threshold, but not enough for a bulk
@@ -82,6 +93,9 @@ class CondorMonitor(MonitorInterface):
                     continue
                 constraint = self.newConstraint()
                 constraint['count'] = abs(test)
+                # enforce maximum number to submit
+                if constraint['count'] > maxSubmit:
+                   constraint['count'] = maxSubmit
                 constraint['type'] = "Processing"
                 constraint['site'] = self.allSites[site]['SiteIndex']
                 print str(constraint)
