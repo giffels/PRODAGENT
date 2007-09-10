@@ -79,7 +79,7 @@ def processFrameworkJobReport():
     state.dumpJobReport()
     
     
-
+    badReport = False
     try:
         state.loadJobReport()
     except Exception, ex:
@@ -91,6 +91,7 @@ def processFrameworkJobReport():
         #//
         print "Error Reading JobReport:"
         print str(ex)
+        badReport = False
         state._JobReport = None
 
     #  //
@@ -104,19 +105,29 @@ def processFrameworkJobReport():
     report = state.getJobReport()
     exitCode = state.getExitStatus()
     reportStatus = "Success"
+    if badReport:
+        #  //
+        # // Unreadable report => make sure this gets logged
+        #//
+        exitCode = 50115
+        reportStatus = "Failed"
+        
+        
     if exitCode == None:
         print "WARNING: CANNOT FIND EXIT STATUS..."
-        reportStatus = "Unknown"
-    else:
-        if exitCode != 0:
-            reportStatus = "Failed"
+        exitCode = 50116
+        reportStatus = "Failed"
+        
+    if exitCode != 0:
+        reportStatus = "Failed"
 
     report.status = reportStatus
+    report.exitCode = exitCode
     report.workflowSpecId = state.taskAttrs['WorkflowSpecID']
     report.jobSpecId = state.taskAttrs['JobSpecID']
     report.jobType = state.taskAttrs['JobType']
-    if exitCode != None:
-        report.exitCode = exitCode
+    
+    
     if report.name == None:
         taskName = state.taskAttrs['Name']
         report.name = taskName
