@@ -91,7 +91,7 @@ def processFrameworkJobReport():
         #//
         print "Error Reading JobReport:"
         print str(ex)
-        badReport = False
+        badReport = True
         state._JobReport = None
 
     #  //
