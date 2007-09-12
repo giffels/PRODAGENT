@@ -371,6 +371,26 @@ class JobQueueDB:
         return result
 
 
+    def queueLength(self, jobType = None):
+        """
+        _queueLength_
+
+        Return the total number of pending jobs of the type provided.
+        If type is not set, then all types are included
+        
+        """
+        
+        sqlStr = \
+        """
+        SELECT COUNT(job_index) FROM jq_queue WHERE status = 'new'
+
+        """
+        if jobType != None:
+            sqlStr +=  " AND job_type=\"%s\" " % jobType
+        sqlStr += ";"
+        Session.execute(sqlStr)
+        result = Session.fetchone()
+        return int(result[0])
 
     def retrieveJobs(self, count = 1, jobType = None,
                      workflow = None):

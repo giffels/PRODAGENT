@@ -121,3 +121,20 @@ def releaseJobs( *jobDefs):
     Session.close_all()
     return
 
+def queueLength(jobType = None):
+    """
+    _queueLength_
+
+    Get the number of jobs in the queue, optionally distinguishing by
+    type
+
+    """
+    Session.connect()
+    Session.start_transaction()
+    
+    jobQ = JobQueueDB()
+    length = jobQ.queueLength(jobType)
+    
+    Session.commit_all()
+    Session.close_all()
+    return length
