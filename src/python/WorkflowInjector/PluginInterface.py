@@ -10,7 +10,7 @@ provides several helper utils
 import os
 
 from JobQueue.JobQueueAPI import bulkQueueJobs
-
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
 def hashList(listOfSites):
     """
@@ -74,9 +74,25 @@ class PluginInterface:
     
     
 
-    
-                  
+    def loadWorkflow(self, specFile):
+        """
+        _loadWorkflow_
 
+        Helper method, since every plugin will have to do
+        something with a workflow
+
+        """
+        spec = WorkflowSpec()
+        try:
+            spec.load(specFile)
+        except Exception, ex:
+            msg = "Unable to read workflow spec file:\n%s\n" % specFile
+            msg += str(ex)
+            raise RuntimeError, msg
+
+        return spec
+        
+        
     def __call__(self, payload):
         """
         _operator()_
