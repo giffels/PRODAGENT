@@ -15,6 +15,8 @@ from IMProv.IMProvDoc import IMProvDoc
 from ProdCommon.MCPayloads.DatasetTools import getOutputDatasetDetails
 from ProdCommon.MCPayloads.DatasetTools import getOutputDatasets
 from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
+from ProdCommon.MCPayloads.MergeTools import getSizeBasedMergeDatasetsFromNode
+
 
 def unquote(strg):
     """remove leading and trailing quotes from string"""
@@ -62,6 +64,7 @@ class InstallRunResComponent:
         newComponent.addPath("/%s/Application" % objName)
         newComponent.addPath("/%s/Input" % objName)
         newComponent.addPath("/%s/Output" % objName)
+        newComponent.addPath("/%s/SizeBasedMerge" % objName)
 
 
         taskObject['RunResDB'] = newComponent
@@ -79,6 +82,15 @@ class CMSSWRunResDB:
     This makes it easy to find output, catalogs, job reports etc at runtime.
 
     """
+    def __init__(self, **compArgs):
+        self.args = compArgs
+        self.mergeThresh = self.args.get("MinMergeFileSize", 2000000000)
+        self.doSizeMerge = self.args.get("SizeBasedMerge", False)
+        if str(self.doSizeMerge).lower() == "true":
+            self.doSizeMerge = True
+        else:
+            self.doSizeMerge = False
+    
     def __call__(self, taskObject):
         """
         _operator()_
@@ -106,7 +118,10 @@ class CMSSWRunResDB:
                            os.path.join("$PRODAGENT_JOB_DIR",
                                         taskObject['RuntimeDirectory'],
                                         "FrameworkJobReport.xml"))
-
+        newComponent.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
+                             self.doSizeMerge)
+        newComponent.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
+                             self.mergeThresh)
         #  //
         # // Datasets
         #//
@@ -116,6 +131,7 @@ class CMSSWRunResDB:
 
         runresComp.addPath("/%s/Output/Datasets" % objName)
         datasets = getOutputDatasetDetails(payloadNode)
+        datasets.extend(getSizeBasedMergeDatasetsFromNode(payloadNode))
         for dataset in datasets:
             if dataset['DataTier'] == "":
                 continue
@@ -199,6 +215,15 @@ class BulkCMSSWRunResDB:
     This makes it easy to find output, catalogs, job reports etc at runtime.
 
     """
+    def __init__(self, **compArgs):
+        self.args = compArgs
+        self.mergeThresh = self.args.get("MinMergeFileSize", 2000000000)
+        self.doSizeMerge = self.args.get("SizeBasedMerge", False)
+        if str(self.doSizeMerge).lower() == "true":
+            self.doSizeMerge = True
+        else:
+            self.doSizeMerge = False
+            
     def __call__(self, taskObject):
         """
         _operator()_
@@ -226,7 +251,10 @@ class BulkCMSSWRunResDB:
                            os.path.join("$PRODAGENT_JOB_DIR",
                                         taskObject['RuntimeDirectory'],
                                         "FrameworkJobReport.xml"))
-
+        runresComp.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
+                           self.doSizeMerge)
+        runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
+                           self.mergeThresh)
         #  //
         # // Datasets
         #//
@@ -234,6 +262,7 @@ class BulkCMSSWRunResDB:
             
         runresComp.addPath("/%s/Output/Datasets" % objName)
         datasets = getOutputDatasets(payloadNode)
+        datasets.extend(getSizeBasedMergeDatasetsFromNode(payloadNode))
         for dataset in datasets:
             if dataset['DataTier'] == "":
                 continue

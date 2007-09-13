@@ -145,7 +145,7 @@ class BulkGenerator(GeneratorInterface):
         
         logging.debug("JobGenerator:Creating Physical Job")
         taskObject(FlatTaskDirBuilder(directory))
-        taskObject(BulkCMSSWRunResDB())
+        taskObject(BulkCMSSWRunResDB(**self.componentConfig))
         taskObject(InsertDirInRunRes())
         writeDashboardInfo(taskObject, jobTemplate)
         taskObject(WriteStructuredFiles())

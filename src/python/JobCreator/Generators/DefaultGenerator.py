@@ -166,7 +166,7 @@ class DefaultGenerator(GeneratorInterface):
         logging.debug("JobGenerator:Creating Physical Job")
         taskObject(FlatTaskDirBuilder(directory))
         taskObject(CMSSWRunResDB())
-        taskObject(InsertDirInRunRes())
+        taskObject(InsertDirInRunRes(**self.componentConfig))
         writeDashboardInfo(taskObject, cacheDir)
         taskObject(WriteStructuredFiles())
         taskObject(WriteIMProvDocs())
