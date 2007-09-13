@@ -246,8 +246,12 @@ componentFields = {
     "JobSize" : '10',
     "JobCutSize" : '500',
     "JobInjection" : 'direct',
+    "ParallelRequests" : "1",
     "ProdMgrs":'https://localhost:8443/clarens/',
+    "QueueLow" : "100",
+    "QueueHigh" : "1000",
     "RetrievalInterval":"01:00:00",
+    "QueueInterval":"00:01:00",
     "AgentTag":"please insert a proper value",
     "Locations":"please insert a proper value",
     "ProdMgrFeedback":"direct",
@@ -395,7 +399,15 @@ If set to 'buffer', QueueJob events are thrown when retrieving
 work form the prodmganager (retrieved work is buffered in the jobqueue.
 -RetrievalInterval: The time between retrievals of requests from prodmgrs using the 
 HH:MM:SS format. Every so often the prodagent will contact its associated prodmgrs
-to retrieve requests if available.
+to retrieve requests if available. 
+-QueueInterval. The time between two events that check the queue lenght for 
+determining if we need to acquire more work.
+-ParallelRequests : The number of requests the prodagent will process in parallel.
+e.g. if it is 4, it will acquire requests from the prodmgr using a round robin 
+approach on the requests.
+-QueueLow : the threshold after which the queue will be automatically filled by the 
+ProdMgrInterface
+-QueueHigh: the maximum number of jobs allowed in the queue.
 -AgentTag: the id used to identify the agent. Although the DN of the ProdAgent certificate
 uniquely identifies the prodagent, the AgentTag is a short hand version that is used for
 request retrieval. Potentially multiple prodagents can have the same agent tag (which means
