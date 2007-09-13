@@ -20,6 +20,7 @@ import time
 from ProdCommon.Database import Session
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
+from JobQueue.JobQueueDB import JobQueueDB
 from MessageService.MessageService import MessageService
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentCore.Codes import errors
@@ -41,14 +42,18 @@ class ProdMgrComponent:
 
     """
     def __init__(self, **args):
-
+    
        try:
             self.args = {}
+            self.args['JobQueue'] =  JobQueueDB()
             self.args['Logfile'] = None
             self.args['JobInjection'] = 'direct'
-            self.args['JobSize']=100
-            self.args['Locations']='none'
-            self.args['ProdMgrFeedback']='delay'
+            self.args['QueueLow'] = 10
+            self.args['QueueHigh'] = 30
+            self.args['QueueInterval'] = '00:01:00'
+            self.args['ParallelRequests'] = 1
+            self.args['Locations'] = 'none'
+            self.args['ProdMgrFeedback'] = 'delay'
             self.args.update(args)
             if self.args['Logfile'] == None:
                self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
@@ -61,13 +66,17 @@ class ProdMgrComponent:
             #  //
             # // Set up formatting for the logger and set the
             #//  logging level to info level
+            if (self.args['QueueHigh'] < self.args['QueueLow']) or \
+                (self.args['QueueLow'] < 0) :
+                logging.debug("QueueHigh smaller than QueueLow")
+                logging.debug("or QueueLow is negative, using default settings")
+                self.args['QueueLow'] = 10
+                self.args['QueueHigh'] = 30
             logFormatter = logging.Formatter("%(asctime)s:%(module)s:%(message)s")
             logHandler.setFormatter(logFormatter)
             logging.getLogger().addHandler(logHandler)
             logging.getLogger().setLevel(logging.DEBUG)
             logging.info("ProdMgrComponent Started...")
-            if(self.args['JobSize']<1):
-               raise ProdAgentException("ERROR: JobSize is smaller than 1 :"+str(self.args['JobSize']))
             logging.info("I am going to sleep for 30 seconds to give other components the")
             logging.info("chance to start up and subscribe to my messages, otherwise I might")
             logging.info("send messages before components have subscribed to them")
@@ -96,19 +105,16 @@ class ProdMgrComponent:
         if event == "ProdMgrInterface:AddRequest":
             self.addRequest(payload)
             return
-        if event == "ProdMgrInterface:RemoveIdlingAllocs":
-            self.removeIdling(payload)
-            return
 
         #  //
         # // Actual work done by this component
         #//
         if event == "ProdMgrInterface:ResourcesAvailable":
             try:
-                payloadVal = int(payload)
+                jobVal = int(payload)
             except ValueError:
-                payloadVal = 1
-            self.retrieveWork(payloadVal)
+                jobVal = 1
+            self.retrieveWork(jobVal)
             return
         elif event =="ProdMgrInterface:SetLocations":
             logging.debug("Contacting prodmgrs to set locations")
@@ -116,10 +122,9 @@ class ProdMgrComponent:
         elif event =="ProdMgrInterface:AcquireRequests":
             logging.debug("Contacting prodmgrs to acquire new requests")
             self.acquireRequests(payload)
-        elif event =="ProdMgrInterface:JobSize":
-            logging.debug("Setting job size to: "+str(payload))
-            self.args['JobSize']=int(payload)
-            return
+        elif event =="ProdMgrInterface:CheckQueue":
+            logging.debug("Checking Queue")
+            self.checkQueue(payload)
         elif event =="ProdMgrInterface:JobCutSize":
             logging.debug("Setting job cut size to: "+str(payload))
             self.args['JobCutSize']=int(payload)
@@ -170,7 +175,6 @@ class ProdMgrComponent:
            if componentStateInfo.has_key('state'):
                if componentStateInfo['state']=='start':
                    componentStateInfo['parameters']={}
-                   componentStateInfo['parameters']['jobSize']=self.args['JobSize']
                    componentStateInfo['parameters']['jobCutSize']=self.args['JobCutSize']
                    componentStateInfo['parameters']['numberOfJobs']=numberOfJobs 
                    componentStateInfo['parameters']['requestIndex']=0
@@ -191,12 +195,6 @@ class ProdMgrComponent:
            logging.debug("retrieveWork event handled")
        except Exception,ex:
            logging.debug("ERROR "+str(ex))              
-
-    def removeIdling(self,payload):
-        # we not need any state info here 
-        # as it is not a problem if it does not succeed.
-        # we try again during the next get idling event.
-        pass
 
     def addRequest(self, requestURL):
         """
@@ -378,10 +376,34 @@ Retrying later.
             self.ms.publish("NewDataset",workflowFileName) 
             self.ms.publish("NewWorkflow",workflowFileName) 
               
-        if payload==self.args['RandomCheck']:
-            self.args['RandomCheck']=str(random.random())
+        if payload==self.args['RandomCheck']['AcquireRequests']:
+            self.args['RandomCheck']['AcquireRequests'] =str(random.random())
             logging.debug("Contacting prodmgrs again in (HH:MM:SS): "+str(interval))
-            self.ms.publish("ProdMgrInterface:AcquireRequests",str(self.args['RandomCheck']),interval)
+            self.ms.publish("ProdMgrInterface:AcquireRequests", \
+                str(self.args['RandomCheck']['AcquireRequests']), interval)
+
+    def checkQueue(self, payload):
+       
+        # we do not do anything if the queue is turned off.
+        if self.args['JobInjection'] == 'direct':
+            logging.debug('Queue use is not activated. Not doing anything')
+            return
+        interval = self.args['QueueInterval']
+        logging.debug("Get job queue length")
+        length = self.args['JobQueue'].queueLength()
+        logging.debug("Queue length is: "+str(length))
+        if  length < int(self.args['QueueLow']):
+            logging.debug('Queue length below minimum treshold. Acquiring work:')
+            jobsNeeded = int(self.args['QueueHigh'])-length
+            logging.debug('Emitting ProdMgr:ResourcesAvailable with '+\
+                str(jobsNeeded)+' Jobs') 
+            self.ms.publish("ProdMgrInterface:ResourcesAvailable", \
+                str(jobsNeeded))    
+        if payload == self.args['RandomCheck']['CheckQueue']:
+            self.args['RandomCheck']['CheckQueue'] =str(random.random())
+            logging.debug("Checking queue again in (HH:MM:SS): "+str(interval))
+            self.ms.publish("ProdMgrInterface:CheckQueue", \
+                str(self.args['RandomCheck']['CheckQueue']), interval)
         
     def startComponent(self):
         """
@@ -412,10 +434,9 @@ Retrying later.
             self.ms.subscribeTo("ProdMgrInterface:EndDebug")
             self.ms.subscribeTo("ProdMgrInterface:AddRequest")
             self.ms.subscribeTo("ProdMgrInterface:AcquireRequests")
-            self.ms.subscribeTo("ProdMgrInterface:RemoveIdlingAllocs")
+            self.ms.subscribeTo("ProdMgrInterface:CheckQueue")
             self.ms.subscribeTo("ProdMgrInterface:ResourcesAvailable")
             self.ms.subscribeTo("ProdMgrInterface:SetLocations")
-            self.ms.subscribeTo("ProdMgrInterface:JobSize")
             self.ms.subscribeTo("ProdMgrInterface:JobCutSize")
             self.ms.subscribeTo("JobSuccess")
             self.ms.subscribeTo("ProdMgrInterface:JobSuccess")
@@ -427,9 +448,15 @@ Retrying later.
             # emit a acquire requests message.
             # add a random number to distinguish between requests injected
             # by persons and by this component.
-            self.args['RandomCheck']=str(random.random()) 
+            self.args['RandomCheck'] = {}
+            self.args['RandomCheck']['AcquireRequests'] = str(random.random()) 
+            self.args['RandomCheck']['CheckQueue'] = str(random.random()) 
             self.ms.remove("ProdMgrInterface:AcquireRequests")
-            self.ms.publish("ProdMgrInterface:AcquireRequests",str(self.args['RandomCheck']))
+            self.ms.remove("ProdMgrInterface:CheckQueue")
+            self.ms.publish("ProdMgrInterface:AcquireRequests", \
+                 str(self.args['RandomCheck']['AcquireRequests']))
+            self.ms.publish("ProdMgrInterface:CheckQueue", \
+                 str(self.args['RandomCheck']['CheckQueue']))
             self.ms.publish("ProdMgrInterface:SetLocations",'')
             self.ms.commit()
             logging.debug('Setting database access parameters')

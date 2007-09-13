@@ -4,14 +4,17 @@ import logging
 import os
 import time
 
+from ProdCommon.Database import Session
+
 from ProdAgentCore.Codes import errors
 from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdCommon.Database import Session
+
 from ProdMgrInterface import State
 from ProdMgrInterface.JobCutter import cut
 from ProdMgrInterface.JobCutter import cutFile
 from ProdMgrInterface.Registry import registerHandler
 from ProdMgrInterface.States.StateInterface import StateInterface 
+
 
 class JobSubmission(StateInterface):
 
@@ -36,13 +39,28 @@ class JobSubmission(StateInterface):
        else:
            logging.debug('Start file cut')
            jobcuts=cutFile(stateParameters['jobSpecId'],stateParameters['jobCutSize'],stateParameters['maxJobs'])
-       message = 'QueueJob'
-       if self.args['JobInjection'] == 'direct':
-           message = 'CreateJob'
-       for jobcut in jobcuts:
-           logging.debug("Emitting "+message+" event with payload: "+\
-               str(jobcut['spec']))
-           self.ms.publish(message,jobcut['spec'])
+       jobSpecs = []
+       for jobcut in jobcuts['specs']:
+           if self.args['JobInjection'] == 'direct':
+               logging.debug("Emitting CreateJob event with payload: "+\
+                   str(jobcut['spec']))
+               self.ms.publish("CreateJob", jobcut['spec'])
+           else:
+           # get information required for bulkQueueJobs API
+               jobData = {
+                       'JobSpecId' :        jobcut['id'], \
+                       'JobSpecFile' :      jobcut['spec'], \
+                       'JobType' :          jobcut['job_type'], \
+                       'WorkflowSpecId' :   jobcuts['workflow'], \
+                       'WorkflowPriority' : jobcuts['priority']
+                       }
+               jobSpecs.append(jobData)
+           # fill the JobQueue
+       if self.args['JobInjection'] != 'direct':
+            sites=[]
+            logging.info("Sites List: %s" % sites)
+            self.args['JobQueue'].loadSiteMatchData()
+            self.args['JobQueue'].insertJobSpecsForSites(sites, *jobSpecs)
        # END JOBCUTTING HERE
 
        stateParameters['jobIndex']+=1

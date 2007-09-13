@@ -8,8 +8,8 @@ returned from the ProdMgr.
 
 """
 
-__revision__ = "$Id: JobCutter.py,v 1.13 2007/08/07 21:10:34 afanfani Exp $"
-__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: JobCutter.py,v 1.14 2007/08/13 19:17:08 afanfani Exp $"
+__version__ = "$Revision: 1.14 $"
 __author__ = "fvlingen@caltech.edu"
 
 
@@ -70,6 +70,23 @@ def cut(job_id,jobCutSize):
     jobSpec.load(jobSpecFile)
     jobSpec.parameters['ProdMgr']='generated'
 
+    WorkflowSpecId = jobSpec.payload.workflow
+    WorkflowPriority = 1
+    try:
+        WorkflowPriority = \
+            Workflow.get(workflowID = WorkflowSpecId)['priority']
+    except Exception, ex:
+        logging.debug("Priority Not found for workflow: %s . Details: %s" \
+            %(WorkflowSpecId,str(ex)))
+        try:
+            pmworkflow = job_id.split('_')[1]
+            logging.debug("Looking for priority of workflow: %s" \
+                % (pmworkflow))
+            WorkflowPriority = Workflow.get(workflowID = pmworkflow)['priority']
+        except Exception, ex:
+            logging.debug("Priority Not found for workflow: %s . Details: %s" \
+                % (pmWorkflow, str(ex)))
+
     eventCount=int(jobSpec.parameters['EventCount'])
     # find out how many jobs we want to cut.
     jobs=int(math.ceil(float(eventCount)/float(jobCutSize)))
@@ -81,7 +98,6 @@ def cut(job_id,jobCutSize):
     listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,job_run_numbers,jobSpec.parameters['EventCount'],\
         RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
     jobType = jobSpec.parameters['JobType']
-    logging.debug("test10")
     for i in xrange(0,len(listOfSpecs)):
         listOfSpecs[i]['owner'] = 'prodmgr'
         listOfSpecs[i]['job_type'] = jobType  
@@ -91,7 +107,8 @@ def cut(job_id,jobCutSize):
     Job.register(None,job_id,listOfSpecs)
     Session.commit()
     logging.debug("Jobs registered")
-    return listOfSpecs 
+    return {'specs' : listOfSpecs, 'workflow' : WorkflowSpecId, \
+        'priority' : WorkflowPriority} 
 
 def cutFile(job_ids,jobCutSize,maxJobs):
     global jobSpecDir,maxRetries
@@ -119,6 +136,7 @@ def cutFile(job_ids,jobCutSize,maxJobs):
         jobSpec= JobSpec()
         jobSpec.load(jobSpecFile)
         jobSpec.parameters['ProdMgr']='generated'
+
         fileData={}
         fileData['LFN']=jobDetails['lfn']
         jobSpec.addAssociatedFiles('fileList', fileData)
@@ -136,4 +154,5 @@ def cutFile(job_ids,jobCutSize,maxJobs):
                listOfSpecs[i]['max_retries']=maxRetries
         Job.register(None,job_id,listOfSpecs)
     Session.commit()
-    return listOfSpecs
+    return {'specs' : listOfSpecs, 'workflow' : 'test', \
+        'priority' : 1} 
