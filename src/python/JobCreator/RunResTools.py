@@ -118,9 +118,9 @@ class CMSSWRunResDB:
                            os.path.join("$PRODAGENT_JOB_DIR",
                                         taskObject['RuntimeDirectory'],
                                         "FrameworkJobReport.xml"))
-        newComponent.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
+        runresComp.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
                              self.doSizeMerge)
-        newComponent.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
+        runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
                              self.mergeThresh)
         #  //
         # // Datasets
