@@ -194,7 +194,6 @@ class BulkEventMonitor(ShREEKMonitor):
 
         """
         if self.eventLogger == None:
-            print "No Event Logger"
             return
 
         try:

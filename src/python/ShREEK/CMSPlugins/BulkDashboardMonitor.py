@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: BulkDashboardMonitor.py,v 1.2 2007/07/12 18:10:58 afanfani Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: BulkDashboardMonitor.py,v 1.3 2007/07/12 19:53:37 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -295,7 +295,6 @@ class BulkDashboardMonitor(ShREEKMonitor):
 
         """
         if self.eventLogger == None:
-            print "No Event Logger"
             return
 
         try:
