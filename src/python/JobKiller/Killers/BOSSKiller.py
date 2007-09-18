@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BOSSKiller.py,v 1.9 2007/08/24 11:11:16 afanfani Exp $"
-__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: BOSSKiller.py,v 1.10 2007/09/18 12:57:31 afanfani Exp $"
+__version__ = "$Revision: 1.10 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -169,8 +169,7 @@ class BOSSKiller:
 
             # not yet submitted, no need to kill it
             except JobNotSubmittedException, msg:
-                logging.debug("job %s not yet submitted, no need to kill it" % \
-                             jobName)
+                logging.debug("job %s not yet submitted or finished, no need to kill it" % jobName)
 
             # other error, stop
             except Exception, msg:
