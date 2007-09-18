@@ -319,7 +319,7 @@ def doNotAllowMoreSubmissions(jobSpecIds = []):
            sqlStr="UPDATE we_Job SET "+    \
                   "racers=max_racers+1, retries=max_retries+1 "+ \
                   "WHERE id=\""+ str(jobSpecId)+ "\";"
-       Session.execute(sqlStr)
+           Session.execute(sqlStr)
 
 def jobSpecTotal():
        #WRAPPER
