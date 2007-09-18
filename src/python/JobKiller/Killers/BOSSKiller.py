@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BOSSKiller.py,v 1.8 2007/08/14 13:01:57 afanfani Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: BOSSKiller.py,v 1.9 2007/08/24 11:11:16 afanfani Exp $"
+__version__ = "$Revision: 1.9 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -76,7 +76,7 @@ class BOSSKiller:
         if stateInfo['State'] == "finished":
             msg = "Cannot kill job %s, since it has finished\n" % jobSpecId
             logging.error(msg)
-            raise Exception, msg
+            raise JobNotSubmittedException, msg
 
         # get job information from BOSS
         try:
