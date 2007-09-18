@@ -75,7 +75,7 @@ def processFrameworkJobReport():
     """
     state = TaskState(os.getcwd())
     state.loadRunResDB()        
-    
+    state.loadJobSpecNode()
     state.dumpJobReport()
     
     
@@ -132,13 +132,18 @@ def processFrameworkJobReport():
         taskName = state.taskAttrs['Name']
         report.name = taskName
         
-    
+
+    #  //
+    # // generate sizes and checksums
+    #//
+    state.generateFileStats()
     
     #  //
     # // match files to datasets.
     #//
     state.assignFilesToDatasets()
-    state.generateFileStats()
+
+
 
     
     #  //
