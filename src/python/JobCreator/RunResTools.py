@@ -130,32 +130,32 @@ class CMSSWRunResDB:
             payloadNode = taskObject["PayloadNode"]
 
         runresComp.addPath("/%s/Output/Datasets" % objName)
-        datasets = getOutputDatasetDetails(payloadNode)
-        datasets.extend(getSizeBasedMergeDatasetsFromNode(payloadNode))
-        for dataset in datasets:
-            if dataset['DataTier'] == "":
-                continue
-            dsPath = "/%s/Output/Datasets%s" % (
-                objName, dataset.name())
-            runresComp.addPath(dsPath)
-            for key, val in dataset.items():
-                runresComp.addData("/%s/%s" % (dsPath, key), unquote(str(val)))
-        #  //
-        # // Output Catalogs
-        #//
-        runresComp.addPath("/%s/Output/Catalogs" % objName)
-        cfgInt = payloadNode.cfgInterface
-        for modName, item in cfgInt.outputModules.items():
-            if item.get('catalog', None) == None:
-                continue
-            catalog = unquote(item['catalog'])
-            catPath = "/%s/Output/Catalogs/%s" % (objName, modName)
-            runresComp.addData(
-                catPath,
-                os.path.join("$PRODAGENT_JOB_DIR",
-                             taskObject['RuntimeDirectory'],
-                             catalog)
-                )
+##        datasets = getOutputDatasetDetails(payloadNode)
+##        datasets.extend(getSizeBasedMergeDatasetsFromNode(payloadNode))
+##        for dataset in datasets:
+##            if dataset['DataTier'] == "":
+##                continue
+##            dsPath = "/%s/Output/Datasets%s" % (
+##                objName, dataset.name())
+##            runresComp.addPath(dsPath)
+##            for key, val in dataset.items():
+##                runresComp.addData("/%s/%s" % (dsPath, key), unquote(str(val)))
+##        #  //
+##        # // Output Catalogs
+##        #//
+##        runresComp.addPath("/%s/Output/Catalogs" % objName)
+##        cfgInt = payloadNode.cfgInterface
+##        for modName, item in cfgInt.outputModules.items():
+##            if item.get('catalog', None) == None:
+##                continue
+##            catalog = unquote(item['catalog'])
+##            catPath = "/%s/Output/Catalogs/%s" % (objName, modName)
+##            runresComp.addData(
+##                catPath,
+##                os.path.join("$PRODAGENT_JOB_DIR",
+##                             taskObject['RuntimeDirectory'],
+##                             catalog)
+##                )
             
         #  //
         # // Number of Events from Source
@@ -261,16 +261,17 @@ class BulkCMSSWRunResDB:
         payloadNode = taskObject["PayloadNode"]
             
         runresComp.addPath("/%s/Output/Datasets" % objName)
-        datasets = getOutputDatasets(payloadNode)
-        datasets.extend(getSizeBasedMergeDatasetsFromNode(payloadNode))
-        for dataset in datasets:
-            if dataset['DataTier'] == "":
-                continue
-            dsPath = "/%s/Output/Datasets%s" % (
-                objName, dataset.name())
-            runresComp.addPath(dsPath)
-            for key, val in dataset.items():
-                runresComp.addData("/%s/%s" % (dsPath, key), unquote(str(val)))
+##        datasets = getOutputDatasets(payloadNode)
+
+##        datasets.extend(getSizeBasedMergeDatasetsFromNode(payloadNode))
+##        for dataset in datasets:
+##            if dataset['DataTier'] == "":
+##                continue
+##            dsPath = "/%s/Output/Datasets%s" % (
+##                objName, dataset.name())
+##            runresComp.addPath(dsPath)
+##            for key, val in dataset.items():
+##                runresComp.addData("/%s/%s" % (dsPath, key), unquote(str(val)))
         #  //
         # // Output Catalogs
         #//
