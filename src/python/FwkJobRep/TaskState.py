@@ -11,8 +11,8 @@ The object is instantiated with a directory that contains the task.
 
 """
 
-__version__ = "$Revision: 1.13 $"
-__revision__ = "$Id: TaskState.py,v 1.13 2007/05/07 06:51:24 evansde Exp $"
+__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: TaskState.py,v 1.14 2007/05/07 10:12:03 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -29,6 +29,11 @@ from RunRes.RunResDBAccess import loadRunResDB
 from FwkJobRep.ReportParser import readJobReport
 from FwkJobRep.CatalogParser import readCatalog
 from FwkJobRep.SiteLocalConfig import loadSiteLocalConfig
+
+from ProdCommon.MCPayloads.JobSpec import JobSpec
+from ProdCommon.MCPayloads.DatasetTools import getOutputDatasetDetails
+from ProdCommon.MCPayloads.MergeTools import getSizeBasedMergeDatasetsFromNode
+
 
 
 lfnSearch = lambda fileInfo, lfn:  fileInfo.get("LFN", None) == lfn
@@ -64,6 +69,8 @@ def getTaskState(taskName):
     taskState = TaskState(dirname)
     taskState.loadJobReport()
     taskState.loadRunResDB()
+    if os.environ.has_key("PRODAGENT_JOBSPEC"):
+        taskState.loadJobSpecNode()
     return taskState
 
 
@@ -80,6 +87,7 @@ class TaskState:
         self.dir = taskDirectory
         self.jobReport = os.path.join(self.dir, "FrameworkJobReport.xml")
         self.runresdb = os.path.join(self.dir, "RunResDB.xml")
+        self.jobSpecNode = None
         
         self.taskAttrs = {}
         self.taskAttrs.setdefault("Name", None)
@@ -88,7 +96,8 @@ class TaskState:
         self.taskAttrs.setdefault("WorkflowSpecID", None)
         self.taskAttrs.setdefault("JobSpecID", None)
         self.taskAttrs.setdefault("JobType", None)
-        
+        self.taskAttrs.setdefault("DoSizeMerge", False)
+        self.taskAttrs.setdefault("MinMergeFileSize", 2000000000)
         
         self._RunResDB = None
         self._JobReport = None
@@ -98,7 +107,7 @@ class TaskState:
         self.jobReportLoaded = False
         self.catalogsLoaded = False
         self.siteConfigLoaded = False
-        
+        self.jobSpecLoaded = False
 
     def taskName(self):
         """
@@ -126,15 +135,52 @@ class TaskState:
 
         dbDict = self._RunResDB.toDictionary()
         self.taskAttrs['Name'] = dbDict.keys()[0]
+        tName = self.taskAttrs['Name']
         
         self.taskAttrs['WorkflowSpecID'] = \
-                 dbDict[self.taskAttrs['Name']]['WorkflowSpecID'][0]
+                 dbDict[tName]['WorkflowSpecID'][0]
         self.taskAttrs['JobSpecID'] = \
-                 dbDict[self.taskAttrs['Name']]['JobSpecID'][0]
+                 dbDict[tName]['JobSpecID'][0]
         self.taskAttrs['JobType'] = \
-                      dbDict[self.taskAttrs['Name']]['JobType'][0]
+                      dbDict[tName]['JobType'][0]
+
+        if not dbDict[tName].has_key('SizeBasedMerge'):
+            return
+        doSizeMerge = dbDict[tName]['SizeBasedMerge'].get("DoSizeMerge", [])
+        if len(doSizeMerge) > 0:
+            if str(doSizeMerge[0]).lower() == "true":
+                self.taskAttrs["DoSizeMerge"] = True
+
+        mergeSize = dbDict[tName]['SizeBasedMerge'].get("MinMergeFileSize", [])
+        if len(mergeSize) > 0:
+            size = int(mergeSize[0])
+            self.taskAttrs["MinMergeFileSize"] = size
+            
+        
         return
 
+    def loadJobSpecNode(self):
+        """
+        _loadJobSpecNode_
+
+        Load the job spec file referenced by PRODAGENT_JOB_SPEC env var and extract the node
+        from it with the name provided
+        
+        """
+        if not os.environ.has_key("PRODAGENT_JOBSPEC"):
+            print " No PRODAGENT_JOBSPEC set"
+            return
+        specFile = os.environ['PRODAGENT_JOBSPEC']
+        if not os.path.exists(specFile):
+            print "Job Spec File %s does not exist" % specFile
+            return
+        jobSpec = JobSpec()
+        jobSpec.load(specFile)
+        self.jobSpecNode = jobSpec.findNode(self.taskAttrs['Name'])
+        self.jobSpecLoaded = True
+        return
+
+        
 
     def configurationDict(self):
         """
@@ -148,6 +194,9 @@ class TaskState:
         except StandardError, ex:
             result = {}
         return result
+
+
+
 
     def getExitStatus(self):
         """
@@ -249,18 +298,6 @@ class TaskState:
     
 
 
-    def loadCatalogs(self):
-        """
-        _loadCatalogs_
-
-        Load information from all the output catalogs
-
-        """
-        self._CatalogEntries = []
-        for catalog in self.outputCatalogs():
-            self._CatalogEntries.extend(self.listFiles(catalog))
-        self.catalogsLoaded = True
-        return
                                         
     def loadSiteConfig(self):
         """
@@ -300,49 +337,23 @@ class TaskState:
         Retrieve a list of output datasets from the RunResDB
         
         """
-        result = []
-        if not self.runresLoaded:
-            return result
-
-        dbDict = self._RunResDB.toDictionary()
-
-        try:
-            datasets = dbDict[self.taskAttrs['Name']]['Output']['Datasets']
-        except KeyError:
+        if not self.jobSpecLoaded:
             return []
 
-        for primaryKey, primaryValue in datasets.items():
-            if type(primaryValue) != type({}): continue
-            for dataTier, dataTierValue in primaryValue.items():
-                if type(dataTierValue) != type({}): continue
-                for processedDS, datasetContents in dataTierValue.items():
-                    for dataKey, dataValue in datasetContents.items():
-                        if len(dataValue) == 0:
-                            datasetContents[dataKey] = None
-                        if len(dataValue) == 1:
-                            datasetContents[dataKey] = dataValue[0]
-                    result.append(datasetContents)
-        return result
-        
-        
-    def outputCatalogs(self):
-        """
-        _outputCatalogs_
+        datasets = getOutputDatasetDetails(self.jobSpecNode)
+        datasets.extend(getSizeBasedMergeDatasetsFromNode(self.jobSpecNode))
+        outModules = self.jobSpecNode.cfgInterface.outputModules
 
-        Retrieve a list of output catalogs from the RunResDB
+        for dataset in datasets:
+            modName = dataset.get('OutputModuleName', None)
+            if outModules.has_key(modName):
+                dataset['LFNBase'] = outModules[modName].get('LFNBase', None)
+                dataset['MergedLFNBase'] = outModules[modName].get('MergedLFNBase', None)
         
-        """
-        result = []
-        if not self.runresLoaded:
-            return result
-        dbDict = self._RunResDB.toDictionary()
-        try:
-            catalogs = dbDict[self.taskAttrs['Name']]['Output']['Catalogs']
-        except KeyError:
-            return []
-        for value in catalogs.values():
-            result.append(os.path.basename(value[0]))
-        return result
+
+        return datasets
+        
+        
 
     def inputSource(self):
         """
@@ -371,17 +382,6 @@ class TaskState:
         return result
         
 
-    def listFiles(self, catalog):
-        """
-        _listFiles_
-
-        For the catalog file provided, read the catalog and generate
-        a list of FwkJobRep.FileInfo dictionaries
-
-        """
-        if not os.path.exists(catalog):
-            return []
-        return readCatalog(catalog)
 
     
 
@@ -400,33 +400,67 @@ class TaskState:
         datasets = self.outputDatasets()
         datasetMap = {}
         for dataset in datasets:
-            outModName = dataset.get("OutputModuleName", None)
-            if outModName != None:
-                if not datasetMap.has_key(outModName):
-                    datasetMap[outModName] = []
-                datasetMap[outModName].append(dataset)
-            
+            datasetMap[dataset['OutputModuleName']] = dataset
+        
         for fileInfo in self._JobReport.files:
-            outModLabel = fileInfo.get("ModuleLabel", None)
-            if outModLabel == None:
-                continue
-            if datasetMap.has_key(outModLabel):
-                for datasetEntry in datasetMap[outModLabel]:
-                    datasetForFile = fileInfo.newDataset()
-                    datasetForFile.update(datasetEntry)
-                msg = "File: %s\n" % fileInfo['LFN']
-                msg += "Produced By Output Module: %s\n" % outModLabel
-                msg += "Associated To Datasets:\n"
-                for ds in fileInfo.dataset:
-                    msg += " ==> /%s/%s/%s\n" % (
-                        ds['PrimaryDataset'],
-                        ds['DataTier'],
-                        ds['ProcessedDataset'],
-                        )
-                print msg
-                
+            self.matchDataset(fileInfo, datasetMap)
         return
         
+
+    def matchDataset(self, fileInfo, datasetMap):
+        """
+        _matchDataset_
+
+        Associate the file to a dataset, switching it to the merged dataset and LFN
+        if the size is over the correct value
+
+        """
+        outModLabel = fileInfo.get("ModuleLabel", None)
+        print "Output Module Label: %s" % outModLabel
+        if outModLabel == None:
+            return
+        if self.taskAttrs['DoSizeMerge']:
+            print "Doing Size Merge Check"
+            if fileInfo['Size'] >= self.taskAttrs['MinMergeFileSize']:
+                #  //
+                # // File bigger than threshold
+                #//
+                mergeModLabel = "%s-Merged" % outModLabel
+                ds = datasetMap.get(mergeModLabel, None)
+                unmergedDs = datasetMap.get(outModLabel, None)
+                
+                if ds != None:
+                    outModLabel = mergeModLabel
+                    newLFN = "%s/%s" % ( unmergedDs['MergedLFNBase'],
+                                         os.path.basename(fileInfo['LFN']))
+                    fileInfo['LFN'] = newLFN
+                    msg = "File Associated to Merge Output based on size:\n"
+                    msg += " %s\n Size = %s\n" % (newLFN, fileInfo['Size'])
+                    print msg
+            else:
+                print "File is smaller than %s" % self.taskAttrs['MinMergeFileSize']
+        if datasetMap.has_key(outModLabel):
+            datasetForFile = fileInfo.newDataset()
+            datasetForFile.update(datasetMap[outModLabel])
+            msg = "File: %s\n" % fileInfo['LFN']
+            msg += "Produced By Output Module: %s\n" % outModLabel
+            msg += "Associated To Datasets:\n"
+            for ds in fileInfo.dataset:
+                msg += " ==> /%s/%s/%s\n" % (
+                    ds['PrimaryDataset'],
+                    ds['DataTier'],
+                    ds['ProcessedDataset'],
+                    )
+            print msg
+        return
+    
+                
+                
+        
+
+
+            
+            
     
 
     def generateFileStats(self):
@@ -437,22 +471,9 @@ class TaskState:
         size and cksum value
 
         """
-        if not self.catalogsLoaded:
-            self.loadCatalogs()
        
         for fileInfo in self._JobReport.files:
             pfn = fileInfo['PFN']
-            lfn = fileInfo['LFN']
-            matchedFile = {}
-            matchedCatFiles = \
-                 [i for i in self._CatalogEntries if lfnSearch(i, lfn)]
-            if len(matchedCatFiles) > 0:
-                matchedFile = matchedCatFiles[-1]
-
-            if matchedFile.has_key("GUID"):
-                fileInfo['GUID'] = matchedFile['GUID']
-            
-            
             if pfn.startswith("file:"):
                 pfn = pfn.replace("file:", "")
             if not os.path.exists(pfn):
