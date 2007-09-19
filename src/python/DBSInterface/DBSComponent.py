@@ -162,6 +162,8 @@ class DBSComponent:
         self.args.setdefault("skipGlobalMigration", False )
         self.args.setdefault("skipPhEDExInjection", True )
         self.args.setdefault("DataMode", "mc" )
+        self.args.setdefault("DropBranches", False )
+        self.args.setdefault("DropParent", False )
 
         self.args.update(args)
 
@@ -177,6 +179,17 @@ class DBSComponent:
             self.skipPhEDExInjection = True
         else:
             self.skipPhEDExInjection = False
+
+        if str(self.args['DropBranches']).lower() == "true":
+            self.DropBranches = True
+        else:
+            self.DropBranches = False
+
+        if str(self.args['DropParent']).lower() == "true":
+            self.DropParent = True
+        else:
+            self.DropParent = False
+
 
 
 # use the LoggingUtils
@@ -464,6 +477,7 @@ class DBSComponent:
         #  //
         # //  Create Processing Datsets based on workflow
         #//
+
         logging.info(">>>>> create Processing Dataset ")
         dbswriter.createDatasets(workflowSpec)
         #  //
@@ -521,13 +535,28 @@ class DBSComponent:
           logging.error("%s\n" % formatEx(ex))
           return
 
-         #
-         #  remove lumi sections fro mc data
-         # 
          if ( self.args['DataMode'] == "mc" ):
             if len(jobreport.files)>0:
                for outFile in jobreport.files:
+                   #
+                   #  remove lumi sections from mc data
+                   #
                    outFile.lumisections = {}
+                   #
+                   #  remove branches info (optionally)
+                   #
+                   if self.DropBranches:
+                      if len(outFile.branches)>0 :
+                         outFile.branches = []
+                   #
+                   #  remove parents info (optionally)
+                   #
+                   if self.DropParent:
+                      if len(outFile.inputFiles)>0:
+                         outFile.inputFiles = []
+                      for adataset in outFile.dataset:
+                         adataset['ParentDataset'] = None
+
 
          #  //
          # // Insert Files to block and datasets 
