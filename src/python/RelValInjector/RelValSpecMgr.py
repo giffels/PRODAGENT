@@ -57,7 +57,7 @@ class RelValTest(dict):
         convert to improv node
 
         """
-        node = IMProvNode("RelValTest", None, Name = self['Name'])
+        node = IMProvNode("RelValTest")
         for key, val in self.items():
             if key in ["Name", "JobSpecs", "BadTest"]:
                 continue
@@ -75,7 +75,6 @@ class RelValTest(dict):
         RelValTest node
 
         """
-        self['Name'] = improvNode.attrs.get("Name", None)
         for child in improvNode.children:
             if self.has_key(child.name):
                 value = child.attrs.get("Value", None)
@@ -124,6 +123,7 @@ x
             msg = "Unable to load RelValSpec File:\n"
             msg += " %s\n" % self.relvalSpecFile
             msg += "Error:\n %s\n" % str(ex)
+            msg += "Traceback: %s\n" % traceback.format_exc()
             logging.error(msg)
             return result 
 
@@ -133,7 +133,7 @@ x
             try:
                 self.makeWorkflow(test)
             except Exception, ex:
-                msg = "Error Creating workflow for test: %s\n" % test['Name']
+                msg = "Error Creating workflow for test: %s\n" % test['PickleFile']
                 msg += "Skipping Test...\n"
                 test['BadTest'] = True
                 logging.error(msg)
@@ -148,7 +148,7 @@ x
             try:
                 self.makeJobs(test)
             except Exception, ex:
-                msg = "Error Creating jobs for test: %s\n" % test['Name']
+                msg = "Error Creating jobs for test: %s\n" % test['PickleFile']
                 msg += "Skipping Test..."
                 test['BadTest'] = True
                 logging.error(msg)
@@ -174,9 +174,6 @@ x
                  newTest = RelValTest()
                  newTest.load(test)
                  newTest['Site'] = site
-                 speed = newTest.get('SpeedCategory', "Slow")
-                 eventsPerJob = self.args[speed]
-                 newTest['EventsPerJob'] = eventsPerJob
                  self.tests.append(newTest)
                  
 
@@ -200,20 +197,6 @@ x
         and add the, to the test instance
         
         """
-        logging.info("Processing : %s" % testInstance['Name'])
-        testName = testInstance['Name']
-        if self.workflows.has_key(testName):
-            testInstance['WorkflowSpecId'] = self.workflows[testName]
-            testInstance['WorkflowSpecFile'] = self.workflowFiles[testName]
-            testInstance['WorkingDir'] = self.workingDirs[testName]
-            return
-        
-        workingDir = os.path.join(self.args['ComponentDir'],
-                                  testInstance['CMSSWVersion'],
-                                  testInstance['Name'])
-        if not os.path.exists(workingDir):
-            os.makedirs(workingDir)
-
             
         loader = CMSSWAPILoader(testInstance['CMSSWArchitecture'],
                                 testInstance['CMSSWVersion'],
@@ -223,6 +206,75 @@ x
         process = pickle.load(file(testInstance['PickleFile']))
         cfgInt = cfgWrapper.loadConfiguration(process)
         cfgInt.validateForProduction()
+
+        #  //
+        # // Get release validation PSet from process
+        #//
+        relValPSet = getattr(process, "ReleaseValidation", None)
+        if relValPSet == None:
+            msg = "Unable to extract ReleaseValidation PSet from pickled cfg for \n"
+            msg += "%s\n" % testInstance['PickleFile']
+            logging.error(msg)
+            return
+
+        testName = getattr(relValPSet, "primaryDatasetName", None)
+        testInstance['Name'] = testName.value()
+        if testName == None:
+            msg = "No primaryDatasetName parameter in ReleaseValidation PSet\n"
+            msg += "%s\n" % testInstance['PickleFile']
+            logging.error(msg)
+            return
+
+        totalEvents = getattr(relValPSet, "totalNumberOfEvents", None)
+        if totalEvents == None:
+            msg = "No totalNumberOfEvents  parameter in ReleaseValidation PSet\n"
+            msg += "%s\n" % testInstance['PickleFile']
+            logging.error(msg)
+            return
+        testInstance['TotalEvents'] = totalEvents.value()
+
+        eventsPerJob = getattr(relValPSet, "eventsPerJob", None)
+        speedCat = getattr(relValPSet, "speedCategory", None)
+
+        if (eventsPerJob == None) and (speedCat == None):
+            msg = "ReleaseValidation PSet must contain one of either eventsPerJob or speedCategory\n"
+            msg += "%s\n" % testInstance['PickleFile']
+            logging.error(msg)
+            return
+        
+        if eventsPerJob != None:
+            testInstance['EventsPerJob'] = eventsPerJob.value()
+        else:
+            testInstance['SpeedCategory'] = speedCat.value()
+            if not self.args.has_key(testInstance['SpeedCategory']):
+                msg = "Unknown Speed Category: %s\n" % testInstance['SpeedCategory']
+                msg += "In file: %s\n" % testInstance['PickleFile']
+                logging.error(msg)
+                return
+
+            testInstance['EventsPerJob'] = self.args[testInstance['SpeedCategory']]
+            
+        msg = "Processing : %s\n" % testInstance['Name']
+        msg += "From Pickle: %s\n" % testInstance['PickleFile']
+        msg += "TotalEvents: %s\n" % testInstance['TotalEvents']
+        msg += "EventsPerJob: %s\n" % testInstance['EventsPerJob']
+        msg += "SpeedCategory: %s\n" % testInstance['SpeedCategory']
+        logging.info(msg)
+        
+        if self.workflows.has_key(testInstance['Name']):
+            testInstance['WorkflowSpecId'] = self.workflows[testInstance['Name']]
+            testInstance['WorkflowSpecFile'] = self.workflowFiles[testInstance['Name']]
+            testInstance['WorkingDir'] = self.workingDirs[testInstance['Name']]
+            return
+
+
+        workingDir = os.path.join(self.args['ComponentDir'],
+                                  testInstance['CMSSWVersion'],
+                                  testInstance['Name'])
+        if not os.path.exists(workingDir):
+            os.makedirs(workingDir)
+
+
         loader.unload()
         
         maker = WorkflowMaker(str(self.timestamp),
@@ -246,15 +298,15 @@ x
         specFile = "/%s/%s-Workflow.xml" % (workingDir, maker.workflowName) 
         spec.save(specFile)
 
-        self.workflows[testName] = str(maker.workflowName)
-        self.workflowFiles[testName] = specFile
-        self.workingDirs[testName] = workingDir
+        self.workflows[testInstance['Name']] = str(maker.workflowName)
+        self.workflowFiles[testInstance['Name']] = specFile
+        self.workingDirs[testInstance['Name']] = workingDir
         
         testInstance['WorkflowSpecId'] = str(maker.workflowName)
         testInstance['WorkflowSpecFile'] = specFile
         testInstance['WorkingDir'] = workingDir
 
-        msg = "Workflow created for test: %s" % testName
+        msg = "Workflow created for test: %s" % testInstance['Name']
         logging.info(msg)
 
         
@@ -322,15 +374,12 @@ if __name__ == '__main__':
         "Fast" : 100,
         "Slow" : 50,
         "Medium" : 75,
-        
-        'CurrentArch' : "slc4_ia32_gcc345",
-        "CurrentCMSPath" :"/uscms/home/cms_admin/SL4",
-        "CurrentVersion" : "CMSSW_1_5_0_pre4",
-        
+        "VerySlow" : 25,
         
         }
     sites = ['CERN', 'FNAL']
-    specFile = "/home/evansde/work/PRODAGENT/src/python/RelValInjector/Oli.xml"
+    specFile = "/home/evansde/work/PRODAGENT/relval_workflows.xml"
+    #specFile = "/home/evansde/work/PRODAGENT/src/python/RelValInjector/Oli.xml"
 
     mgr = RelValSpecMgr(specFile, sites, **args)
     mgr()

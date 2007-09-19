@@ -38,6 +38,7 @@ class RelValInjectorComponent:
         self.args['FastJob'] = 250
         self.args['MediumJob'] = 100
         self.args['SlowJob'] = 50
+        self.args['VerySlowJob'] = 25
         self.args['SitesList'] = None
         self.args['PollInterval'] = "00:10:00"
         self.args['MigrateToGlobal'] = False
@@ -55,9 +56,11 @@ class RelValInjectorComponent:
         self.args['FastJob'] = int(self.args['FastJob'])
         self.args['MediumJob'] = int(self.args['MediumJob'])
         self.args['SlowJob'] = int(self.args['SlowJob'])
+        self.args['VerySlowJob'] = int(self.args['VerySlowJob'])
         self.args['Fast'] = self.args['FastJob']
         self.args['Medium'] = self.args['MediumJob']
         self.args['Slow'] = self.args['SlowJob']
+        self.args['VerySlow'] = self.args['VerySlowJob']
         
         #  //
         # // List of sites to get RelVal jobs
