@@ -162,7 +162,7 @@ class DBSComponent:
         self.args.setdefault("skipGlobalMigration", False )
         self.args.setdefault("skipPhEDExInjection", True )
         self.args.setdefault("DataMode", "mc" )
-        self.args.setdefault("DropBranches", False )
+        self.args.setdefault("DropBranches", True )
         self.args.setdefault("DropParent", False )
 
         self.args.update(args)
