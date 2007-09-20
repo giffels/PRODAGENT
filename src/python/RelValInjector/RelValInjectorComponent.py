@@ -138,6 +138,8 @@ class RelValInjectorComponent:
         #//  this component
         relvalWorkflows = WEUtils.listWorkflowsByOwner("RelValInjector")
         workflows = WEWorkflow.get(relvalWorkflows)
+        if type(workflows) != type(list()) :
+            workflows = [workflows] 
         for workflow in workflows:
             if workflow != 0:
                 logging.debug(
