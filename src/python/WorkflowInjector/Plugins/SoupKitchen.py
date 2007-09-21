@@ -60,6 +60,8 @@ class SoupKitchen(PluginInterface):
         self.siteName = None
         self.loadPayload(payload)
 
+
+        jobsList = []
         jobsCount = 0
         for dataset in self.datasets:
             factory = DatasetJobFactory(self.workflow,
@@ -67,11 +69,21 @@ class SoupKitchen(PluginInterface):
                                         self.dbsUrl,
                                         InitialRun = jobsCount)
             factory.allowedSites = [self.siteName]
-            jobsList  = factory()
+            jobsList.extend(factory())
             jobsCount += len(jobsList)
-            
-            logging.info("Generated %s JobSpecs for dataset %s" % (len(jobsList), dataset))        
-            bulkQueueJobs([self.siteName], *jobsList)
+            logging.info("Generated JobSpecs for dataset %s" %  dataset)        
+        #  //
+        # // Mix up the jobs List a few times
+        #//
+        random.shuffle(jobsList)
+        random.shuffle(jobsList)
+        random.shuffle(jobsList)
+
+        #  //
+        # //  Insert jobs into queue
+        #//
+        logging.info("Generated Total %s JobSpecs " % len(jobsList))        
+        bulkQueueJobs([self.siteName], *jobsList)
         return
         
 
