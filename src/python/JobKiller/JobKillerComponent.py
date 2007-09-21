@@ -5,8 +5,8 @@ _JobKillerComponent_
 ProdAgent Component that kills jobs by job spec or workflow Id
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: JobKillerComponent.py,v 1.4 2007/07/25 20:24:26 fvlingen Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: JobKillerComponent.py,v 1.5 2007/08/24 14:13:36 afanfani Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -271,6 +271,19 @@ class JobKillerComponent:
 
         """
         logging.info("Killing Task: %s" % taskSpecId)
+
+        # build payload for TaskTracking component
+        try:
+            payload = taskSpecId.split(':')[0] + '::' + \
+                      taskSpecId.split(':')[2]
+
+        # wrong task specification id
+        except IndexError, msg:
+            logging.error("Cannot split taskSpecId:" + str(msg))
+
+            return
+
+        # load killer plugin
         killer = self.loadKiller()
         if killer == None:
             msg = "Problem Loading Killer Plugin, unable to kill task: %s" % (
@@ -279,7 +292,7 @@ class JobKillerComponent:
             logging.error(msg)
 
             # publish a task killed failed message
-            self.ms.publish("TaskKilledFailed", taskSpecId)
+            self.ms.publish("TaskKilledFailed", payload)
             self.ms.commit()
  
             return
@@ -292,12 +305,12 @@ class JobKillerComponent:
             logging.error(msg)
 
             # publish a task killed failed message
-            self.ms.publish("TaskKilledFailed", taskSpecId)
+            self.ms.publish("TaskKilledFailed", payload)
             self.ms.commit()
 
             return
 
-        self.ms.publish("TaskKilled", taskSpecId)
+        self.ms.publish("TaskKilled", payload)
         self.ms.commit()
 
         return
