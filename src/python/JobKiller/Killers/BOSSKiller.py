@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BOSSKiller.py,v 1.10 2007/09/18 12:57:31 afanfani Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: BOSSKiller.py,v 1.11 2007/09/18 13:02:57 afanfani Exp $"
+__version__ = "$Revision: 1.11 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -19,7 +19,7 @@ from JobKiller.KillerExceptions import InvalidJobException, \
  
 from BossSession import BossSession, SchedulerError, BossError
 
-from BossSession import SUBMITTED
+from BossSession import ALL
 
 from ProdAgent.WorkflowEntities import JobState
 
@@ -111,18 +111,15 @@ class BOSSKiller:
             msg = "Failed BOSS kill for task %s, BOSS error: %s" % \
                   (jobSpecId, str(err))
             logging.error(msg)
-            #AF: do not raise exception
-            # raise Exception, msg
-            pass
 
         # archive if requested
         if erase:
-           try:
+            try:
                 job.archive("1")
-           except (SchedulerError, BossError), err:
-             msg = "Failed BOSS archive for task %s, BOSS error: %s" % \
-                   (jobSpecId, str(err))
-             logging.error(msg)
+            except (SchedulerError, BossError), err:
+                msg = "Failed BOSS archive for task %s, BOSS error: %s" % \
+                      (jobSpecId, str(err))
+                logging.error(msg)
 
 
     def killWorkflow(self, workflowSpecId):
@@ -169,7 +166,9 @@ class BOSSKiller:
 
             # not yet submitted, no need to kill it
             except JobNotSubmittedException, msg:
-                logging.debug("job %s not yet submitted or finished, no need to kill it" % jobName)
+                logging.debug(
+                   "job %s not yet submitted or finished, no need to kill it" \
+                   % jobName)
 
             # other error, stop
             except Exception, msg:
@@ -305,6 +304,9 @@ class BOSSKiller:
             # get the user's proxy if specified
             splittedPayload = taskSpecId.split(':') 
 
+            # set default selection for jobs to kill
+            jobsToKill = 'all'
+
             # export it if necessary
             if len(splittedPayload) > 1:
                 logging.info("requires proxy export")
@@ -316,6 +318,12 @@ class BOSSKiller:
                 os.environ['X509_USER_PROXY'] = str(proxy)
                 logging.info("proxy environment set = " + \
                              str(os.environ['X509_USER_PROXY']))
+
+                # Retrive jobs to kill from payload
+                if len(splittedPayload) == 3 and splittedPayload[2] != 'all':
+                    jobsToKill = eval(str(splittedPayload[2]))
+                    logging.info("Jobs Recovered by Payload = "+ \
+                                 str(jobsToKill)) 
 
             # create a BOSS session
             bossSession = BossSession(self.bossConfigDir, '2', \
@@ -346,14 +354,28 @@ class BOSSKiller:
         logging.info("Taskid: "+ str(taskId))
         jobSpecId = []
         try:
-            njobs = task[taskId].load(SUBMITTED)
+            njobs = task[taskId].load(ALL)
             jobs = task[taskId].jobsDict()
             logging.info("LOAD RESULT: "+ str(njobs) + "     " + str(jobs))
+            jobsReadyToKill = []
+            ls = ""
 
             # process all jobs
             for jobid, jobMap in jobs.iteritems():
                 job = task[taskId].Job(jobid)
-                jobSpecId.append(job.staticInfo()["NAME"])
+
+                # consider all job names
+                if str(jobsToKill) == "all":
+                    jobSpecId.append(job.staticInfo()["NAME"])
+                    jobsReadyToKill.append(jobid)
+                    ls = "all"
+
+                # consider only user wanted job names
+                elif int(jobid) in jobsToKill:
+                    logging.info("Jobid: "+ str(jobid) + " match with  " + \
+                                 str(jobsToKill))
+                    jobSpecId.append(job.staticInfo()["NAME"])
+                    jobsReadyToKill.append(jobid)
 
         # error
         except (BossError), err:
@@ -366,18 +388,22 @@ class BOSSKiller:
         if len(jobSpecId) > 0:
 
             # yes, process all of them
-            for jid in jobSpecId:   
+            for jid in xrange(len(jobSpecId)):   
 
                 # verify that the job exists
                 try:
-                    stateInfo = JobState.general(str(jid))
+                    logging.info("jobSpecID:" + str(jobSpecId[jid]))
+                    stateInfo = JobState.general(str(jobSpecId[jid]))
 
                     # verify that it has not finished
                     if stateInfo['State'] in ["finished"]:
                         msg = "job %s is terminated, cannot be killed\n" % \
-                              str(jid)
+                              str(jobSpecId[jid])
                         logging.info(msg)
-                        del jid
+
+                        # remove job from jobs ready to kill list
+                        del jobSpecId[jid]
+                        del jobsReadyToKill[jid]
 
                 # error, remove it
                 except StandardError, ex:
@@ -387,9 +413,9 @@ class BOSSKiller:
                     logging.info(msg)
                     del jid
 
-            # do not allow resubmisions for it
+            # do not allow resubmisions for them
             try:
-                logging.info("JobSpecId list: "+ str(jobSpecId)) 
+                logging.info("JobSpecId list: "+ str(jobSpecId) + "\n") 
                 JobState.doNotAllowMoreSubmissions(jobSpecId)
 
             # error, operation failed
@@ -400,11 +426,17 @@ class BOSSKiller:
                 logging.error(msg)
                 raise
 
-            # kill all jobs in task
+            # kill selected jobs in task
             logging.info("Try to kill Task "+str(taskId))
         
-            try: 
-                task[taskId].kill("all")
+            if ls != "all":
+                ls = str(jobsReadyToKill[0])
+                for jid in xrange(1, len(jobsReadyToKill)):
+                    ls = ls + "," + str(jobsReadyToKill[jid])
+
+            logging.info("Jobs to kill: "+ str(ls))
+            try:
+                task[taskId].kill(str(ls))
 
             # error
             except SchedulerError, err:
@@ -414,8 +446,8 @@ class BOSSKiller:
                 logging.error(msg)
              
             # remove information from BOSS database
-            task[taskId].archive("all")
-            logging.info("Task killed and Archived")  
+            task[taskId].archive(str(ls))
+            logging.info("Jobs "+ str(ls) +" killed and Archived")
        
         # no jobs to kill 
         else:
