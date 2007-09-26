@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.46 2007/08/01 14:33:22 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.1 2007/09/24 12:30:34 gcodispo Exp $"
 
 import traceback
 import time
@@ -408,12 +408,12 @@ class TrackingComponent:
 #            if jobId[1]=="SA":
             jobScheduler=BOSSCommands.scheduler(jobId[0],self.bossCfgDir)
             logging.debug("JobScheduler=%s"%jobScheduler)
-            if jobScheduler=="edg":
+            if jobScheduler == "edg" :
                 sched_id=BOSSCommands.schedulerId(jobId[0],self.bossCfgDir)
                 logging.info("Aborted Job Sched_id=%s"%sched_id)
                 if sched_id!="":
                     BOSSCommands.executeCommand("edg-job-get-logging-info -v 2 %s > %s/edgLoggingInfo.log"%(sched_id,os.path.dirname(self.reportfilename)))
-            elif jobScheduler=="glite":
+            elif jobScheduler.find("glite") != -1 :
                 sched_id=BOSSCommands.schedulerId(jobId[0],self.bossCfgDir)
                 logging.info("Aborted Job Sched_id=%s"%sched_id)
                 if sched_id!="":
@@ -466,8 +466,12 @@ class TrackingComponent:
             self.dashboardPublish(jobId[0],"ENDED_")
             logging.info(outp)
             # if successful output retrieval
-            if (outp.find("-force")<0 and outp.find("error")< 0 and outp.find("already been retrieved") < 0 ):
-                self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
+            if  outp.find("-force") < 0 and \
+                outp.find("error")< 0 and \
+                outp.find("already been retrieved") < 0 :
+                self.reportfilename = BOSSCommands.reportfilename(
+                    jobId,self.directory
+                    )
                 logging.debug("%s exists=%s"%(self.reportfilename,os.path.exists(self.reportfilename)))
                 success=False
                 # is the FwkJobReport there?
@@ -502,7 +506,8 @@ class TrackingComponent:
                     logging.error( jobId.__str__() + " " + jobSpecId.__str__() )
 
             # else if output retrieval failed
-            elif outp.find("Unable to find output sandbox file:")>=0:
+            elif outp.find("Unable to find output sandbox file:") >= 0 \
+                     or outp.find("Error extracting files ") >= 0 :
                 jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
                 logging.info( "%s no FrameworkReport " + jobId.__str__() + " : creating a dummy one" )
                 fwjr=FwkJobReport()
