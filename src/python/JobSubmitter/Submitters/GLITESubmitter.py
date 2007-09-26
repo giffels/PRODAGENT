@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: GLITESubmitter.py,v 1.5 2007/03/13 11:48:58 bacchi Exp $"
+__revision__ = "$Id: GLITESubmitter.py,v 1.6 2007/07/02 21:23:29 fvlingen Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -30,6 +30,11 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from JobSubmitter.JSException import JSException
 from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdAgentCore.Configuration import ProdAgentConfiguration
+
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentBOSS import BOSSCommands
 
 from popen2 import Popen4
@@ -141,7 +146,11 @@ class GLITESubmitter(SubmitterInterface):
         ## prepare scheduler related file 
         schedulercladfile = "%s/%s_scheduler.clad" % (os.path.dirname(self.parameters['Wrapper']),self.parameters['JobName'])
         try:
-           self.createJDL(schedulercladfile,swversion)
+           #self.createJDL(schedulercladfile,swversion)
+           jobType=self.parameters['JobSpecInstance'].parameters['JobType']
+ 	   userJDL=self.getUserJDL(jobType)
+           self.createJDL(schedulercladfile,userJDL)
+
         except InvalidFile, ex:
           raise ProdAgentException("Failed to create JDL: %s"%ex)
 
@@ -200,7 +209,31 @@ class GLITESubmitter(SubmitterInterface):
         return
 
 
-    def createJDL(self, cladfilename,swversion):
+    def getUserJDL(self,jobType):
+        """
+        _getUserJDL_
+                                                                                        
+        get the user defined JDL in the Submitter config file according to the job type:          o Merge type: look for MergeJDLRequirementsFile first, then default to JDLRequirementsFile
+          o Porcessing type: look for JDLRequirementsFile
+        """
+        UserJDLRequirementsFile="None"
+        #
+        #  For Merge jobs use Merge JDLRequirementsFile if it's configured
+        #
+        if jobType == "Merge":
+           if 'MergeJDLRequirementsFile' in self.pluginConfig['GLITE'].keys():
+              UserJDLRequirementsFile=self.pluginConfig['GLITE']['MergeJDLRequirementsFile']
+              return UserJDLRequirementsFile
+        #
+        #  Use JDLRequirementsFile if it's configured
+        #
+        if 'JDLRequirementsFile' in self.pluginConfig['GLITE'].keys():
+           UserJDLRequirementsFile=self.pluginConfig['GLITE']['JDLRequirementsFile']
+           return UserJDLRequirementsFile
+                                                                                        
+        return UserJDLRequirementsFile
+
+    def createJDL(self, cladfilename,UserJDLRequirementsFile):
         """
         _createJDL_
     
@@ -208,18 +241,17 @@ class GLITESubmitter(SubmitterInterface):
         """
 
         declareClad=open(cladfilename,"w")
-                                                                                            
-        if not 'JDLRequirementsFile' in self.pluginConfig['GLITE'].keys():
-          self.pluginConfig['GLITE']['JDLRequirementsFile']=None
-
-        ## combine with the JDL provided by the user
+        #  //
+        # // combine with the JDL provided by the user
+        #//
         user_requirements=""
-
-        if self.pluginConfig['GLITE']['JDLRequirementsFile']!=None and self.pluginConfig['GLITE']['JDLRequirementsFile']!='None':
-          if os.path.exists(self.pluginConfig['GLITE']['JDLRequirementsFile']) :
+                                                                                                                 
+        if UserJDLRequirementsFile!="None":
+                                                                                                                 
+          if os.path.exists(UserJDLRequirementsFile) :
             UserReq = None
-            logging.debug("createJDL: using JDLRequirementsFile "+self.pluginConfig['GLITE']['JDLRequirementsFile'])
-            fileuserjdl=open(self.pluginConfig['GLITE']['JDLRequirementsFile'],'r')
+            logging.debug("createJDL: using JDLRequirementsFile "+UserJDLRequirementsFile)
+            fileuserjdl=open(UserJDLRequirementsFile,'r')
             inlines=fileuserjdl.readlines()
             for inline in inlines :
               ## extract the Requirements specified by the user
@@ -230,13 +262,16 @@ class GLITESubmitter(SubmitterInterface):
                 if inline.find('#') != 0 and len(inline) > 1 :
                    declareClad.write(inline)
             if UserReq != None :
-              user_requirements=" %s && "%UserReq
+                    user_requirements=" %s && "%UserReq
           else:
-            msg="JDLRequirementsFile File Not Found: %s"%self.pluginConfig['GLITE']['JDLRequirementsFile']
-            logging.error(msg) 
+            msg="JDLRequirementsFile File Not Found: %s"%UserJDLRequirementsFile
+            logging.error(msg)
             raise InvalidFile(msg)
+                                                                                                                 
+        #  //
+        # // white list for anymatch clause
+        #//
         anyMatchrequirements=""
-#        self.parameters['Whitelist']=['gridba6.ba.infn.it']
 
         logging.debug("Whitelist is empty %s"%(self.parameters['Whitelist']!=[]))
         if self.parameters['Whitelist']!=[]:
@@ -248,8 +283,39 @@ class GLITESubmitter(SubmitterInterface):
           sitelist=sitelist[:len(sitelist)-4]
           anyMatchrequirements+=sitelist+")"
           
+        #  //
+        # // CMSSW arch
+        #//
+        swarch = None
+        creatorPluginConfig = loadPluginConfig("JobCreator",
+                                                  "Creator")
+        if creatorPluginConfig['SoftwareSetup'].has_key('ScramArch'):
+           if creatorPluginConfig['SoftwareSetup']['ScramArch'].find("slc4")>=0:
+              swarch=creatorPluginConfig['SoftwareSetup']['ScramArch']
+                                                                                                                 
+        if swarch:
+          archrequirement=" && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
+        else:
+          archrequirement=""
+                                                                                                                 
+        #  //
+        # // software version requirements
+        #//
+        #  if len(self.parameters['AppVersions'])> 0:
+        #     swVersion=self.parameters['AppVersions'][0]  #
+        swClause = "("
+        for swVersion in self.applicationVersions:
+            swClause += "Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) " % swVersion            if swVersion != self.applicationVersions[-1]:
+                # Not last element, need logical AND
+                swClause += " && "
+        swClause += ")"
 
-        requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) %s;\n'%(user_requirements,swversion,anyMatchrequirements)
+        #  //
+        # // building jdl
+        #//
+        requirements = 'Requirements = %s %s %s %s ;\n' \
+                       %(user_requirements,swClause,archrequirement,anyMatchrequirements)
+
         logging.debug('%s'%requirements)
         declareClad.write(requirements)
         declareClad.write("Environment = {\"PRODAGENT_DASHBOARD_ID=%s\"};\n"%self.parameters['DashboardID'])         
