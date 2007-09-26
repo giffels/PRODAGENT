@@ -6,7 +6,7 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.6 2007/07/24 13:26:58 afanfani Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.7 2007/07/24 13:45:22 afanfani Exp $"
 
 import os
 import logging
@@ -470,16 +470,15 @@ fi
             UserReq = None
             logging.debug("createJDL: using JDLRequirementsFile "+UserJDLRequirementsFile)
             fileuserjdl=open(UserJDLRequirementsFile,'r')
-            cladMap = fileuserjdl.read().strip().split(';')
-            for p in cladMap:
-                    p = p.strip()
-                    if len(p) == 0 or p[0]=='#' :
-                        continue
-                    # extract the Requirements specified by the user
-                    if p.find("Requirements") > 0 :
-                        UserReq = p.split('=')
-                    else :
-                        declareClad.write(p + ';\n')
+            inlines=fileuserjdl.readlines()
+            for inline in inlines :
+              ## extract the Requirements specified by the user
+              if inline.find('Requirements') > -1 and inline.find('#') == -1 :
+                UserReq = inline[ inline.find('=')+2 : inline.find(';') ]
+              ## write the other user defined JDL lines as they are
+              else :
+                if inline.find('#') != 0 and len(inline) > 1 :
+                   declareClad.write(inline)
             if UserReq != None :
                     user_requirements=" %s && "%UserReq
           else:
