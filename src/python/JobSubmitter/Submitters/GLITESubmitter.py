@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: GLITESubmitter.py,v 1.6 2007/07/02 21:23:29 fvlingen Exp $"
+__revision__ = "$Id: GLITESubmitter.py,v 1.7 2007/09/26 09:10:08 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -302,10 +302,11 @@ class GLITESubmitter(SubmitterInterface):
         # // software version requirements
         #//
         #  if len(self.parameters['AppVersions'])> 0:
-        #     swVersion=self.parameters['AppVersions'][0]  #
+        #     swVersion=self.parameters['AppVersions'][0] 
         swClause = "("
         for swVersion in self.applicationVersions:
-            swClause += "Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) " % swVersion            if swVersion != self.applicationVersions[-1]:
+            swClause += "Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) " % swVersion
+            if swVersion != self.applicationVersions[-1]:
                 # Not last element, need logical AND
                 swClause += " && "
         swClause += ")"
