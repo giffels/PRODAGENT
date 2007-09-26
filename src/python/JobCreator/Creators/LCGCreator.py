@@ -67,10 +67,17 @@ class LCGCreator(CreatorInterface):
             if self.pluginConfig['StageOut']['TransportMethod']=='None':
                self.pluginConfig['StageOut']['TransportMethod']="lcg"
 
-	if not self.pluginConfig.has_key("SoftwareSetup"):
-            swsetup = self.pluginConfig.newBlock("SoftwareSetup")
-            swsetup['ScramCommand'] = "scramv1"
-            swsetup['ScramArch'] = "slc3_ia32_gcc323"
+        if not self.pluginConfig.has_key("SoftwareSetup"):
+            msg = "Creator Plugin Config contains no SoftwareSetup Config:\n"
+            msg += self.__class__.__name__
+            logging.error(msg)
+            raise JCException(msg, ClassInstance = self)
+
+        if self.pluginConfig['SoftwareSetup']['SetupCommand'] != "None" :
+            self.swSetupCommand = self.pluginConfig['SoftwareSetup']['SetupCommand']
+        else:
+            self.swSetupCommand = "if (set -u; : $OSG_GRID) 2> /dev/null; then . $OSG_GRID/setup.sh; . $OSG_APP/cmssoft/cms/cmsset_default.sh;  else . $VO_CMS_SW_DIR/cmsset_default.sh; fi"
+
 
         return
 
@@ -140,12 +147,12 @@ class LCGCreator(CreatorInterface):
 
 
         taskObject['PreTaskCommands'].append(
-           setupScramEnvironment(". $VO_CMS_SW_DIR/cmsset_default.sh"))
+           setupScramEnvironment(self.swSetupCommand))
 
         scramSetup = taskObject.addStructuredFile("scramSetup.sh")
         scramSetup.interpreter = "."
         taskObject['PreAppCommands'].append(
-          setupScramEnvironment(". $VO_CMS_SW_DIR/cmsset_default.sh"))
+          setupScramEnvironment(self.swSetupCommand))
         taskObject['PreAppCommands'].append(". scramSetup.sh")
 
         scramSetup.append("#!/bin/bash")
@@ -187,7 +194,7 @@ class LCGCreator(CreatorInterface):
             self.pluginConfig['SoftwareSetup']['ScramArch'])
 
         taskObject['PreStageOutCommands'].append(
-            ". $VO_CMS_SW_DIR/cmsset_default.sh"
+            self.swSetupCommand
             )
     
         return
@@ -205,7 +212,7 @@ class LCGCreator(CreatorInterface):
             self.pluginConfig['SoftwareSetup']['ScramArch'])
                                                                                                                     
         taskObject['PreCleanUpCommands'].append(
-            ". $VO_CMS_SW_DIR/cmsset_default.sh"
+            self.swSetupCommand
             )
 
         return
@@ -222,7 +229,7 @@ class LCGCreator(CreatorInterface):
             self.pluginConfig['SoftwareSetup']['ScramArch'])
 
         taskObject['PreLogArchCommands'].append(
-            ". $VO_CMS_SW_DIR/cmsset_default.sh"
+            self.swSetupCommand
             )
                                                                                                                             
         return
