@@ -156,6 +156,7 @@ componentFields = {
     "JobCreator" : {
     "ComponentDir" : None,
     "CreatorName" : "testCreator",
+    "GeneratorName" : "Default",
     "CreatorPluginConfig": os.path.join(os.path.dirname(configFile), "CreatorPluginConfig.xml"),
     "RssFeed": "no",
 
