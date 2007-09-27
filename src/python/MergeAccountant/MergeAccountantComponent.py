@@ -7,8 +7,8 @@ input and output file accounting.
 
 """
 
-__revision__ = "$Id: MergeAccountantComponent.py,v 1.7 2007/07/02 21:23:30 fvlingen Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -230,10 +230,23 @@ class MergeAccountantComponent:
                            % (jobReport, msg))
             return
 
-        # get job name from first report
+        # get job name from first report (should be only one)
         try:
             report = reports[0]
             jobName = report.jobSpecId
+
+        # if cannot be done, signal error
+        except Exception, msg:
+
+            logging.error("Cannot process JobSuccess event for %s: %s" \
+                          % (jobReport, msg))
+            return
+
+        # get output file (should be only one)
+        try:
+            outputFiles = report.files
+            for outputFile in outputFiles:
+                mergedLfn = outputFile['LFN']
 
         # if cannot be done, signal error
         except Exception, msg:
@@ -323,7 +336,8 @@ class MergeAccountantComponent:
                     unFinishedFiles.append(fileName)
 
         # mark output file as 'merged'
-        database.updateOutputFile(datasetId, jobName=jobName, status='merged')
+        database.updateOutputFile(datasetId, jobName=jobName, \
+                                  status='merged', lfn = mergedLfn)
 
         # commit changes
         database.commit()
@@ -350,7 +364,6 @@ class MergeAccountantComponent:
 
     def jobFailed(self, jobName):
         """
-
         _jobFailed_
 
         A job has failed. Non merge jobs are ignored.
