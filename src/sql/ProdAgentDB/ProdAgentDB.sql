@@ -335,6 +335,7 @@ Fields:
 
  id       internal output file id
  name     file name
+ lfn      LFN of the merge output file
  instance creation instance number
  status   output file status status
  dataset  dataset id
@@ -346,6 +347,7 @@ CREATE TABLE merge_outputfile
   (
     id int NOT NULL auto_increment,
     name text NOT NULL default '',
+    lfn text NOT NULL default '',
     instance int NOT NULL default '1',
     status enum("merged", "do_it_again", "failed", "undermerge")
            default "undermerge",
