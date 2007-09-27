@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.23 2007/08/24 14:09:56 afanfani Exp $"
-__version__ = "$Revision: 1.23 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.24 2007/09/27 08:25:24 ckavka Exp $"
+__version__ = "$Revision: 1.24 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -677,7 +677,7 @@ class MergeSensorDB:
 
         """
 
-       # get cursor
+        # get cursor
         try:
             cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 
@@ -733,6 +733,76 @@ class MergeSensorDB:
 
         # return it
         return rows
+
+    def getDatasetFileMap(self, datasetId):
+        """
+        _getDatasetFileMap_
+
+        Retrieve a mapping of input LFN to output LFN for completed
+        merges.
+
+        """
+
+        # get cursor
+        try:
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+        
+        sqlStr = \
+        """
+        SELECT MI.name, MO.lfn FROM merge_inputfile MI
+          JOIN merge_outputfile MO  ON MI.mergedfile = MO.id
+            JOIN  merge_dataset DS  ON DS.id = MO.dataset
+              WHERE DS.id = %s;
+        """  % datasetId
+        
+        
+        # execute command
+        try:
+            cursor.execute(sqlStr)
+            
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlStr)
+
+        # process results
+        rows = cursor.rowcount
+        
+        # return empty list
+        if rows == 0:
+            
+            # close cursor
+            cursor.close()
+
+            # empty set
+            return {}
+        
+        # build list
+        rows = cursor.fetchall()
+        
+        # close cursor
+        cursor.close()
+
+        #  //
+        # // Reformat into a dictionary of input LFN: output LFN
+        #//  NULL entries are converted to None
+        result = {}
+        [ result.__setitem__(x['name'], x['lfn']) for x in rows ]
+        
+        # return it
+        return result
     
     ##########################################################################
     # get list of mergejobs of a dataset
