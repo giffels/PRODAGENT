@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.22 2007/06/08 10:31:43 ckavka Exp $"
-__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.23 2007/08/24 14:09:56 afanfani Exp $"
+__version__ = "$Revision: 1.23 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -1515,7 +1515,8 @@ class MergeSensorDB:
     ##########################################################################
 
     def updateOutputFile(self, datasetId, fileName = '', jobName = '', \
-                         status = "merged", incrementFailures = False):
+                         status = "merged", incrementFailures = False, \
+                         lfn = ""):
         """
         __updateOutputFile__
 
@@ -1533,6 +1534,7 @@ class MergeSensorDB:
           status -- new status (if any)
           incrementFailures -- indicates if failures counter must be
                                incremented
+          lfn -- output file LFN
         Return:
 
           none
@@ -1551,6 +1553,12 @@ class MergeSensorDB:
         else:
             failuresUpdate = ''
 
+        # update LFN if required
+        if lfn != '':
+            lfnUpdate = ", lfn = '" + lfn + "'"
+        else:
+            lfnUpdate = ''
+
         # get cursor
         try:
             cursor = self.conn.cursor()
@@ -1566,7 +1574,7 @@ class MergeSensorDB:
         sqlCommand = """
                      UPDATE merge_outputfile
                         SET status='""" + status + "'" + \
-                        failuresUpdate + """
+                        failuresUpdate + lfnUpdate + """
                       WHERE dataset='""" + str(datasetId) + """'
                         AND """ + checkCondition
 
