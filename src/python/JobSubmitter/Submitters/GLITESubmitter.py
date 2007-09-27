@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: GLITESubmitter.py,v 1.7 2007/09/26 09:10:08 afanfani Exp $"
+__revision__ = "$Id: GLITESubmitter.py,v 1.8 2007/09/26 09:36:05 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -297,20 +297,15 @@ class GLITESubmitter(SubmitterInterface):
           archrequirement=" && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
         else:
           archrequirement=""
-                                                                                                                 
         #  //
         # // software version requirements
         #//
-        #  if len(self.parameters['AppVersions'])> 0:
-        #     swVersion=self.parameters['AppVersions'][0] 
-        swClause = "("
-        for swVersion in self.applicationVersions:
-            swClause += "Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) " % swVersion
-            if swVersion != self.applicationVersions[-1]:
-                # Not last element, need logical AND
-                swClause += " && "
-        swClause += ")"
+        if len(self.parameters['AppVersions'])> 0:
+          swVersion=self.parameters['AppVersions'][0]  # only one sw version for now
+        else:
+          raise ProdAgentException("No CMSSW version found!")
 
+        swClause = "Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) " % swVersion
         #  //
         # // building jdl
         #//
