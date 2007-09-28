@@ -2,85 +2,89 @@
 """
 _TrackingComponent_
 
-Skeleton for a standalone server object that implements the ProdAgentClient
-as a daemonised thread, while it polls the BOSSDB to watch for
-jobs that complete.
+Tracking component implemented with a pool of threads for paraller polling
+of job information.
 
-When a job is completed this component should create one of two events.
+When a job is completed, this component publish one of two events:
 
-
-JobSuccess - The job completed successfully, extract the job report for that
-job and make it available, the location of the job report should be the payload
+JobSuccess - The job completed successfully, the job report is extracted
+job and made available. The location of the job report is the payload
 for the JobSuccess event.
 
-JobFailure - The job failed in someway and was abandoned. Retrieve debug
-information and make it available. The location of the error report should
-be the payload of the JobFailure event
+JobFailure - The job failed in someway and is abandoned, debug information
+is retrieved and made available. The location of the error report is the
+payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.2 2007/09/26 16:27:47 gcodispo Exp $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 
-import traceback
 import time
 import os
 from shutil import copy
 from shutil import rmtree
 import logging
-# PA configuration
-from ProdAgentCore.Configuration import ProdAgentConfiguration
-from ProdAgentCore.Configuration import loadProdAgentConfiguration
-from MessageService.MessageService import MessageService
-# fjr handling
-from FwkJobRep.ReportState import checkSuccess
-from FwkJobRep.FwkJobReport import FwkJobReport
-from FwkJobRep.ReportParser import readJobReport
+from copy import deepcopy
 
+# PA configuration
+from MessageService.MessageService import MessageService
 from ProdCommon.Database import Session
 from ProdAgent.WorkflowEntities import JobState
 from ProdAgent.WorkflowEntities import Job as WEJob
 from ProdAgentDB.Config import defaultConfig as dbConfig
-
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 from ProdAgentBOSS import BOSSCommands
-import  ProdAgentCore.LoggingUtils as LoggingUtils
-from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdAgentBOSS.BOSSCommands import BOSS
+import ProdAgentCore.LoggingUtils as LoggingUtils
 
+# Framework Job Report handling
+from FwkJobRep.ReportState import checkSuccess
+from FwkJobRep.FwkJobReport import FwkJobReport
+from FwkJobRep.ReportParser import readJobReport
 
+# Threads pool
+from JobTracking.PoolScheduler import PoolScheduler
+from JobTracking.JobStatus import JobStatus
+from ProdCommon.ThreadTools.WorkQueue import WorkQueue
+
+###############################################################################
+# Class: TrackingComponent                                                    #
+###############################################################################
 
 class TrackingComponent:
     """
     _TrackingComponent_
 
-    Really rudimentary server that runs a ComponentThread and periodically
-    polls the BOSSDB to search for completed jobs that it hasnt found yet.
+    Server that periodically polls the BOSSDB to search for completed jobs,
+    generating JobSuccess or JobFailed events.
 
-    This is a really quick and nasty placeholder for proof of principle/
-    example, and should probably be something much more involved...
-    
     """
+
     def __init__(self, **args):
-        
+       
+        # set default values for parameters 
         self.args = {}
-        self.args.setdefault("PollInterval", 10 )
+        self.args.setdefault("PollInterval", 10)
         self.args.setdefault("jobsToPoll", 100)
-        self.args.setdefault("ComponentDir","/tmp")
-#        self.args.setdefault("proxyCacheDir","NULL")
-        self.args['Logfile'] = None
-        self.args.setdefault("verbose",0)
+        self.args.setdefault("ComponentDir", "/tmp")
+        self.args.setdefault("configDir", None)
+        self.args.setdefault("ProdAgentWorkDir", None)
+        self.args.setdefault("PoolThreadsSize", 5)
+        self.args.setdefault("Logfile", None)
+        self.args.setdefault("verbose", 0)
+        self.args.setdefault("JobCreatorComponentDir", None)
         self.args.update(args)
 
-# Set up logging for this component
+        # set up logging for this component
         if self.args['Logfile'] == None:
-            self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
+            self.args['Logfile'] = os.path.join(self.args['ComponentDir'], \
                                                 "ComponentLog")
-
-# use the LoggingUtils
         LoggingUtils.installLogHandler(self)
+
         logging.info("JobTracking Component Initializing...")
 
-
-        # compute poll delay
+        # compute delay for get output operations
         delay = int(self.args['PollInterval'])
         if delay < 10:
             delay = 10 # a minimum value
@@ -93,33 +97,51 @@ class TrackingComponent:
                          minutes.zfill(2) + ':' + \
                          seconds.zfill(2)
         
-# Determine the location of the BOSS configuration files. These is expected
-# to be in the configDir of BOSS 
-        config = None
-        config = os.environ.get("PRODAGENT_CONFIG", None)
-        if config == None:
-           msg = "No ProdAgent Config file provided\n"
-           msg += "either set $PRODAGENT_CONFIG variable\n"
-           msg += "or provide the --config option"
-
-        cfgObject = ProdAgentConfiguration()
-        cfgObject.loadFromFile(config)
-        prodAgentConfig = cfgObject.get("ProdAgent")
-        workingDir = prodAgentConfig['ProdAgentWorkDir'] 
+        # get configuration information
+        workingDir = self.args['ProdAgentWorkDir'] 
         workingDir = os.path.expandvars(workingDir)
-        #self.bossCfgDir = workingDir + "/bosscfg/"
-        bossConfig = cfgObject.get("BOSS")
-        self.bossCfgDir = bossConfig['configDir'] 
+
+        # get BOSS configuration, set directory and verbose mode
+        self.bossCfgDir = self.args['configDir'] 
         logging.info("Using BOSS configuration from " + self.bossCfgDir)
 
-        self.directory=self.args["ComponentDir"]
-        self.verbose=(self.args["verbose"]==1)
+        self.directory = self.args["ComponentDir"]
+        self.jobCreatorDir = \
+                os.path.expandvars(self.args["JobCreatorComponentDir"])
+        self.verbose = (self.args["verbose"] == 1)
 
-        self.submittedJobs = {}
-        self.loadDict(self.submittedJobs,"submittedJobs")
+        # set BOSS path
+        BOSS.setBossCfgDir(self.bossCfgDir)
 
+        # create pool thread
+        params = {}
+        params['delay'] = delay
+        JobStatus.setParameters(params)
+        pool = WorkQueue([JobStatus.doWork] * int(self.args["PoolThreadsSize"]))
+
+        # create pool scheduler
+        params = {}
+        params['delay'] = delay
+        params['jobToPoll'] = self.args['jobsToPoll']
+        PoolScheduler(pool, params) 
+
+        # initialize members
+        self.ms = None
+        self.maxGetOutputAttempts = 3
+        self.database = dbConfig
+        self.bossDatabase = deepcopy(dbConfig)
+        self.bossDatabase['dbName'] += "_BOSS"
+
+        # initialize Session
+        Session.set_database(dbConfig)
+
+        # build submitted jobs structure
+        self.submittedJobs = self.loadDict()
+
+        # component running, display info
+        logging.getLogger().setLevel(logging.DEBUG)
         logging.info("JobTracking Component Started...")
-        logging.info("BOSS_ROOT = %s"%os.environ["BOSS_ROOT"])         
+        logging.info("BOSS_ROOT = %s" % os.environ["BOSS_ROOT"])
         logging.info("BOSS_VERSION = v4\n")
 
 
@@ -139,210 +161,132 @@ class TrackingComponent:
         elif event == "TrackingComponent:pollDB":
             self.checkJobs()
             return
+
+        # wrong event
+        logging.info("Unexpected event %s(%), ignored" % \
+                     (str(event), str(payload)))
         return
 
-
-    # it will be substituted by a threaded system
-    def pollLB(self):
+    def pollBossDb(self):
         """
-        _pollLB_
+        _pollBossDb_
 
-        Poll the LB through BOSS to update the job status
-        get completed job ids, making sure that
+        Poll the BOSS DB for completed job ids, making sure that
         only newly completed jobs are retrieved
 
-        return two lists, one for successful jobs, one of failed jobs
+        Return two lists, one with finished job ids and one with
+        failed job ids
+        """
+       
+        # build query 
+        query = """
+        select TASK_ID,CHAIN_ID,ID,STATUS from JOB order by TASK_ID,CHAIN_ID
         """
 
-        logging.info("****************pollLB")
-        jobNumber=300
-        timeout=0
-        goodJobs = []
-        badJobs = []
+        # get a BOSS session
+        adminSession = BOSS.getBossAdminSession()
 
-        command  = \
-                "bossAdmin SQL -query \"select DISTINCT TASK_INFO from TASK \" -c " + self.bossCfgDir
-        outfile=BOSSCommands.executeCommand( command )
-        if  outfile.find("Unknown column") != -1 or  outfile.find("No results") != -1:
-            certs = ['']
-        else :
-            certs=outfile.split()[1:]
-            logging.info("certs=%s"%certs)
+        # execute query
+        (adminSession, out) = BOSS.performBossQuery(adminSession, query)
         
-        for cert in certs:
-            if cert=='NULL':
-                cert='';
+        lines = out.split('\n')
 
-            command  = \
-                    'bossAdmin SQL -query "select j.TASK_ID from JOB j,TASK t ' + \
-                    "where TASK_INFO='" + cert + "' and t.ID=j.TASK_ID " +\
-                    'order by TASK_ID" -c ' + self.bossCfgDir
-            outfile = BOSSCommands.executeCommand( command )
-            #logging.debug(outfile)
-            
+        # get the status
+        finishedJobs, failedJobs = self.getStates(lines)
+
+        # return both lists
+        return finishedJobs, failedJobs
+
+    def getStates(self, lines):
+        """
+        _getState_
+
+        Get the status off all jobs passed as argument, returning a list
+        of finished and failed jobs.
+        """
+
+        # initialize counters for statistic
+        counters = ['pending', 'submitted', 'waiting', 'ready', 'scheduled', \
+                    'running', 'success', 'failure', 'cleared', 'other']
+        counter = {}
+        for ctr in counters:
+            counter[ctr] = 0 
+
+        # list of jobs
+        submittedJobs = {}
+        finishedJobs = []
+        failedJobs = []
+
+        # process all jobs
+        for j in lines[1:]:
+
+            # get job information
             try:
-                jobIds=outfile.split()[1:]
-                jobNumber=len(jobIds)
-                taskIds=list(set(jobIds))
-                # logging.info("TaskIds = %s\n"%taskIds)
-            except:
-                pass
+                job = j.strip().split()
+                (taskId, chainId, ident, status) = job
 
-            try:
-                timeout=jobNumber*5
-            except:
-                timeout=0
-                # logging.info("JobNumber = %d;timeout = %d\n"%(jobNumber,jobNumber*.5))
-            if timeout==0:
-                timeout=600
-            logging.info("number of jobs %d; timeout set to %d\n"%(jobNumber,timeout))
+            # line does not contain job information, ignore
+            except Exception:
+                continue
 
-            if cert == '' :
-                logging.debug("using environment X509_USER_PROXY")
-            elif os.path.exists(cert):
-                os.environ["X509_USER_PROXY"]=cert
-                logging.info("using %s"%os.environ["X509_USER_PROXY"])
+            # ignore non positive task ids
+            if int(taskId) <= 0:
+                logging.error("Incorrect job information from BOSS DB: " + \
+                              str(j))
+
+                continue
+ 
+            # build job id 
+            jid = taskId + "." + chainId + "." + ident
+ 
+            # publish information to dashboard if not submitted before
+            if not jid in self.submittedJobs.keys():
+
+                # no, publish information to dashboard
+                self.dashboardPublish(jid)
+
+            # include job in current structure
+            submittedJobs[jid] = 0
+
+            # process status
+            if status == 'E':
+                continue
+            elif status == 'OR' or status == 'SD' or status == 'O?':
+                counter['success'] += 1
+                finishedJobs.append([jid, status])
+            elif status == 'R' :
+                counter['running'] += 1
+            elif status == 'I':
+                counter['pending'] += 1
+            elif status == 'SW' :
+                counter['waiting'] += 1
+            elif status == 'SS':
+                counter['scheduled'] += 1
+            elif status == 'SA' or status == 'A' :
+                counter['failure'] += 1
+                failedJobs.append([jid, status])
+            elif status == 'SK' or status =='K':
+                counter['failure'] += 1
+                failedJobs.append([jid, status])
+            elif status == 'SU':
+                counter['submitted'] += 1
+            elif status == 'SE':
+                counter['cleared'] += 1
             else:
-                logging.info(
-                    "cert path " + cert + \
-                    " does not exists: trying to use the default one if there"
-                    )
+                counter['other'] += 1
 
-            outfile=BOSSCommands.executeCommand("boss RTupdate -jobid all -c " + self.bossCfgDir)
-            # logging.info("len taskids %s >0 = %s"%(len(taskIds),len(taskIds)>0))
-            while len(taskIds)>0 :
-                
-                # logging.debug("from taskid %d to taskid %d, maxId %d \n"%(startId,endId,maxId))
-                ids="%s"%taskIds.pop()
-                c=1
-                while c<=int(self.args["jobsToPoll"]) and len(taskIds)>0:
-                    ids+=",%s"%taskIds.pop()
-                    c+=1
-                logging.debug("ids = %s"%ids)
-                command = \
-                        "boss q -statusOnly -submitted -taskid " + ids \
-                        + " -c " + self.bossCfgDir
-                outfile = BOSSCommands.executeCommand( command, timeout )
-                logging.debug( ' BOSS OUTPUT: \n' + outfile)
-                
-                lines=[]
-                try:
-                    lines=outfile.split('\n')
-                    goods,bads = self.getStates( lines )
-                    goodJobs.extend( goods )
-                    badJobs.extend( bads )
-                except:
-                    pass
-        return goodJobs,badJobs
+        # display counters
+        logging.info("--------------------")
+        for ctr, value in counter.items():
+            logging.info(ctr + " jobs : " + str(value))
+        logging.info("--------------------")
 
+        # save submitted jobs and update dictionary
+        self.updateDict(self.submittedJobs, submittedJobs)
+        self.submittedJobs = submittedJobs
 
-
-    def pollBOSSDB(self):
-        """
-        _pollBOSSDB_
-
-        Poll the BOSSDB for completed job ids, making sure that
-        only newly completed jobs are retrieved
-
-        return two lists, one of successful job Ids, one of failed
-        job Ids
-        """
-        
-        logging.info("****************pollBOSSDB")
-        goodJobs = []
-        badJobs = []
-        
-#        command = \
-#                "boss q -statusOnly -submitted -avoidCheck -c " \
-#                + self.bossCfgDir
-
-        command = \
-                'bossAdmin SQL -query "select TASK_ID,CHAIN_ID,ID,STATUS' + \
-                ' from JOB order by TASK_ID,CHAIN_ID" -c ' + self.bossCfgDir
-        
-        outfile=BOSSCommands.executeCommand( command )
-        logging.debug( ' BOSS OUTPUT: \n' + outfile)
-        
-        lines=[]
-        
-        lines=outfile.split('\n')
-        goodJobs, badJobs = self.getStates( lines )
-        return goodJobs,badJobs
-
-
-
-    def getStates( self, lines ):
-
-        pending = []   
-        submitted = []   
-        waiting = []
-        ready = []
-        scheduled = []
-        running = []
-        success= []
-        failure = []
-        cleared = []
-        unknown = []
-
-        newSubmittedJobs={}
-
-        for j in lines[1:] :
-            j=j.strip()
-            try:
-                int(j.split()[0])>0
-                jid=j.split()[0]+"."+j.split()[1]+"."+j.split()[2]
-                st=j.split()[3]
-            except StandardError, ex:
-#                logging.debug("Incorrect JobId \n %s \n skipping line"%j)
-                jid=''
-                st=''
-            if jid !='':
-                try:
-                    newSubmittedJobs[jid]=self.submittedJobs[jid]
-                except StandardError,ex:
-                    newSubmittedJobs[jid]=0
-                    self.dashboardPublish(jid)
-
-            if st == 'E':
-                pass
-            elif st=='' and jid=='':
-                pass
-            elif st == 'OR' or st == 'SD' or st == 'O?':
-                success.append([jid,st])
-            elif st == 'R' :
-                running.append([jid,st])
-            elif st == 'I':
-                pending.append([jid,st])
-            elif st == 'SW' :
-                waiting.append([jid,st])
-            elif st == 'SS':
-                scheduled.append([jid,st])
-            elif st == 'SA' or st == 'A' :
-                failure.append([jid,st])
-            elif st == 'SK' or st=='K':
-                failure.append([jid,st])
-            elif st == 'SU':
-                submitted.append([jid,st])
-            elif st == 'SE':
-                cleared.append([jid,st])
-            else:
-                unknown.append([jid,st])
-
-        logging.info( "Pending   Jobs  : " + str( len(pending)   ) )
-        logging.info( "Submitted Jobs  : " + str( len(submitted) ) )
-        logging.info( "Waiting   Jobs  : " + str( len(waiting)   ) )
-        logging.info( "Ready     Jobs  : " + str( len(ready)     ) )
-        logging.info( "Scheduled Jobs  : " + str( len(scheduled) ) )
-        logging.info( "Running   Jobs  : " + str( len(running)   ) )
-        logging.info( "Success   Jobs  : " + str( len(success)   ) )
-        logging.info( "Failed    Jobs  : " + str( len(failure)   ) )
-        logging.info( "Cleared   Jobs  : " + str( len(cleared)   ) )
-        logging.info( "Others    Jobs  : " + str( len(unknown)   ) )
-
-        self.submittedJobs = newSubmittedJobs
-        self.saveDict(self.submittedJobs,"submittedJobs")
-
-        return success, failure
+        # return finished and failed jobs
+        return finishedJobs, failedJobs
 
 
     def checkJobs(self):
@@ -353,26 +297,19 @@ class TrackingComponent:
         jobId that is returned.
 
         """
-        # if BOSS db is empty there is an exception but you just don't have anything to do
 
-        logging.info("****************checkJobs")
-        try:
-            goodJobs, badJobs = self.pollLB()
-#            goodJobs, badJobs = self.pollBOSSDB()
-            self.handleFailed( badJobs )
-            self.handleFinished( goodJobs )
+        # get finished and failed jobs and handle them
+        finishedJobs, failedJobs = self.pollBossDb()
+        self.handleFailed(failedJobs)
+        self.handleFinished(finishedJobs)
 
-        except StandardError, ex:
-            logging.info( ex.__str__() )
-            logging.info( traceback.format_exc() )
-            return 0
+        # generate next polling cycle
+        logging.info("Waiting %s for next get output polling cycle" % \
+                     self.pollDelay)
+        self.ms.publish("TrackingComponent:pollDB", "", self.pollDelay)
+        self.ms.commit()
 
-        # sleep until next polling cycle
-        self.ms.publish("TrackingComponent:pollDB", "")
-        time.sleep(float(self.args["PollInterval"]))
-
-
-    def handleFailed( self, badJobs ):
+    def handleFailed(self, failedJobs):
         """
         _handleFailed_
 
@@ -380,468 +317,681 @@ class TrackingComponent:
 
         """
 
-        for jobId in badJobs:
+        # process all jobs
+        for jobId in failedJobs:
+
+            # get job specification id
             try:
-                jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
-            except:
-                logging.debug( "************ Bad jobid : " + jobId.__str__())
+                jobSpecId = BOSSCommands.jobSpecId(jobId[0], self.bossCfgDir)
+
+            # error
+            except StandardError, msg:
+                logging.error("Failed job with wrong job id %s. Error:\n%s" \
+                              % (jobId.__str__(), str(msg)))
                 continue
 
-            self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
+            # get framework jod report file name
+            reportfilename = BOSSCommands.reportfilename(jobId, self.directory)
+
+            # publish information to the dashboard
             self.dashboardPublish(jobId[0])
-            self.dashboardPublish(jobId[0],"ENDED_")
+            self.dashboardPublish(jobId[0], "ENDED_")
 
-            logging.info("Creating directory %s"%os.path.dirname(self.reportfilename))
-            try:
-                os.makedirs(os.path.dirname(self.reportfilename))
-            except:
-                pass
-                
-            logging.info( "Creating FrameworkReport %s" %self.reportfilename )
-            fwjr=FwkJobReport()
-            #fwjr.jobSpecId=self.BOSS4JobSpecId(jobId[0])
-            logging.info("JobSpecId=%s"%jobSpecId)
-            fwjr.jobSpecId=jobSpecId
-            fwjr.exitCode=-1
-            fwjr.status="Failed"
-            fwjr.write(self.reportfilename)
-#            if jobId[1]=="SA":
-            jobScheduler=BOSSCommands.scheduler(jobId[0],self.bossCfgDir)
-            logging.debug("JobScheduler=%s"%jobScheduler)
-            if jobScheduler == "edg" :
-                sched_id=BOSSCommands.schedulerId(jobId[0],self.bossCfgDir)
-                logging.info("Aborted Job Sched_id=%s"%sched_id)
-                if sched_id!="":
-                    BOSSCommands.executeCommand("edg-job-get-logging-info -v 2 %s > %s/edgLoggingInfo.log"%(sched_id,os.path.dirname(self.reportfilename)))
-            elif jobScheduler.find("glite") != -1 :
-                sched_id=BOSSCommands.schedulerId(jobId[0],self.bossCfgDir)
-                logging.info("Aborted Job Sched_id=%s"%sched_id)
-                if sched_id!="":
-                    BOSSCommands.executeCommand("glite-wms-job-logging-info -v 2 %s > %s/gliteLoggingInfo.log"%(sched_id,os.path.dirname(self.reportfilename)))
-            BOSSCommands.archive(jobId[0], self.bossCfgDir)
-            self.jobFailed(jobId)
-
-
-    def handleFinished( self, goodJobs ):
-        """
-        _handleFailed_
-
-        handle finished jobs: retrieve output
-        and notify execution failure/success
-
-        """
-
-        for jobId in goodJobs:
+            # create directory
+            directory = os.path.dirname(reportfilename)
+            logging.debug("Creating directory: " + directory)
 
             try:
-                jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
-            except:
-                logging.debug( "************ Bad jobid : " + jobId.__str__())
+                os.makedirs(os.path.dirname(reportfilename))
+
+            except Exception, msg:
+
+                # cannot create directory, go to next job
+                logging.error("Cannot create directory : " + str(msg))
                 continue
 
-            #if the job is ok for the scheduler retrieve output
-            command = \
-                    'bossAdmin SQL -query "select TASK_INFO from TASK t' \
-                    + ' where ID=' + jobId[0].split('.')[0] \
-                    + '" -c ' + self.bossCfgDir
-            
-            outfile = BOSSCommands.executeCommand( command )
-            if  outfile.find("Unknown column") == -1 and outfile.find("No results") == -1:
-            
-                cert=outfile.split()[1]
-                if cert=='NULL':
-                    pass
-                elif os.path.exists(cert):
-                    os.environ["X509_USER_PROXY"]=cert
-                    logging.info("using %s"%os.environ["X509_USER_PROXY"])
-                else:
-                    logging.info(
-                        "cert path " + cert + \
-                        " does not exists: trying to use the default one if there"
-                        )
-                
-            jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
-            outp=BOSSCommands.getoutput(jobId,self.directory,self.bossCfgDir)
-            logging.info("BOSS Getoutput ")
-            self.dashboardPublish(jobId[0],"ENDED_")
-            logging.info(outp)
-            # if successful output retrieval
-            if  outp.find("-force") < 0 and \
-                outp.find("error")< 0 and \
-                outp.find("already been retrieved") < 0 :
-                self.reportfilename = BOSSCommands.reportfilename(
-                    jobId,self.directory
-                    )
-                logging.debug("%s exists=%s"%(self.reportfilename,os.path.exists(self.reportfilename)))
-                success=False
-                # is the FwkJobReport there?
-                if os.path.exists(self.reportfilename):
-                    logging.debug("check Job Success %s"%checkSuccess(self.reportfilename))
-                    success=checkSuccess(self.reportfilename)
-                # FwkJobReport not there: create one based on BOSS DB
-                else:
-                    logging.debug("BOSS check Job Success %s"%BOSSCommands.checkSuccess(jobId[0],self.bossCfgDir))
-                    success=BOSSCommands.checkSuccess(jobId[0],self.bossCfgDir)
-                    fwjr=FwkJobReport()
-                    fwjr.jobSpecId=jobSpecId
-                    self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
-                    # job successful even if FwkJobReport not there
-                    if success:
-                        logging.info( "%s  no FrameworkReport" % (jobId.__str__() ))
-                        logging.info( "%s  Creating FrameworkReport" % (jobId.__str__() ))
-                        fwjr.status="Success"
-                        fwjr.exitCode=0
-                    # job failed
-                    else:
-                        fwjr.status="Failed"
-                        fwjr.exitCode=-1
-                    fwjr.write(self.reportfilename)
-                
-                # in both cases: is the job successful?
-                if success:
-                    self.jobSuccess(jobId)
-                    self.notifyJobState(jobSpecId) 
-                else:
-                    self.jobFailed(jobId)
-                    logging.error( jobId.__str__() + " " + jobSpecId.__str__() )
+            # create Framework Job Report
+            logging.debug("Creating report %s" % reportfilename)
 
-            # else if output retrieval failed
-            elif outp.find("Unable to find output sandbox file:") >= 0 \
-                     or outp.find("Error extracting files ") >= 0 \
-                     or outp.find("Error retrieving Output") >= 0:
-                jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
-                logging.info( "%s no FrameworkReport " + jobId.__str__() + " : creating a dummy one" )
-                fwjr=FwkJobReport()
-                fwjr.jobSpecId=jobSpecId
-                self.reportfilename=BOSSCommands.reportfilename(jobId,self.directory)
-                fwjr.exitCode=-1
-                fwjr.status="Failed"
-                fwjr.write(self.reportfilename)
-                BOSSCommands.Delete(jobId[0], self.bossCfgDir)
-                self.jobFailed(jobId)
-                                        
+            # create failure Framework Job Report
+            fwjr = FwkJobReport()
+            fwjr.jobSpecId = jobSpecId
+            fwjr.exitCode = -1
+            fwjr.status = "Failed"
+            fwjr.write(reportfilename)
+
+            # get grid log file
+            outdir = os.path.dirname(reportfilename)
+            BOSSCommands.loggingInfo( jobId[0], outdir, self.bossCfgDir )
+
+            # perform a BOSS archive operation
+            BOSSCommands.archive(jobId[0], self.bossCfgDir)
+
+            # generate a failure message
+            self.jobFailed(jobId, reportfilename)
+
+    def handleFinished(self, finishedJobs):
+        """
+        _handleFinished_
+
+        handle finished jobs: retrieve output and notify execution
+        failure or success
+
+        """
+
+        # process all jobs
+        for jobId in finishedJobs:
+
+            # get job specification id
+            try:
+                jobSpecId = BOSSCommands.jobSpecId(jobId[0], self.bossCfgDir)
+
+            # error
+            except StandardError, msg:
+                logging.error("Finished job with wrong job id %s. Error:\n%s" \
+                              % (jobId.__str__(), str(msg)))
+                continue
+
+            # perform the get output operation
+            jobInfo = {'jobId' : jobId,
+                       'jobSpecId' : jobSpecId,
+                       'directory' : self.directory,
+                       'configDir' : self.bossCfgDir }
+
+            jobInfo['output'] = self.getOutput(jobInfo)
+
+            # process the output
+            self.processOutput(jobInfo)
+                
+        return
+
+    def getOutput(self, jobInfo):
+        """
+        _getOutput_
+
+        perform the real get output operation
+
+        """
+
+        # get job information
+        jobId = jobInfo['jobId']
+        directory = jobInfo['directory']
+        configDir = jobInfo['configDir']
+
+        #  get output, trying at most maxGetOutputAttempts
+        retry = 0
+        while retry < self.maxGetOutputAttempts:
+
+            # perform get output operation
+            try:
+                outp = BOSSCommands.getoutput( jobId[0], directory, configDir )
+                break
+
+            # error
+            except Exception, msg:
+                logging.error(str(msg))
+                outp = "error"
+                retry += 1
+
+        logging.debug("BOSS Getoutput: " + outp)
+
+        # build return value:
+        return outp
+
+
+    def processOutput(self, jobInfo):
+        """
+        _processOutput_
+
+        process the output of a job and notify execution failure or success
+
+        """
+
+        # get job information
+        jobId = jobInfo['jobId']
+        jobSpecId = jobInfo['jobSpecId']
+        outp = jobInfo['output']
+
+        # publish information to the dashboard
+        self.dashboardPublish(jobId[0],"ENDED_")
+
+        # successful output retrieval?
+        if outp.find("-force") < 0 and \
+           outp.find("error") < 0 and \
+           outp.find("already been retrieved") < 0:
+
+            # yes, get report file name
+            reportfilename = BOSSCommands.reportfilename(jobId, \
+                                                         self.directory)
+            logging.debug("report file name %s exists: %s" % \
+                (reportfilename, os.path.exists(reportfilename)))
+
+            # job status
+            success = False
+
+            # is the FwkJobReport there?
+            if os.path.exists(reportfilename):
+
+                # check success
+                success = checkSuccess(reportfilename)
+                logging.debug("check Job Success: %s" % str(success))
+
+            # FwkJobReport not there: create one based on BOSS DB
             else:
-                logging.error(outp)
+
+                # check success
+                success = BOSSCommands.checkSuccess(jobId[0], \
+                                                    self.bossCfgDir)
+                logging.debug("check Job Success: %s" % str(success))
+
+                # create BOSS based Framework Job Report
+                fwjr = FwkJobReport()
+                fwjr.jobSpecId = jobSpecId
+                reportfilename = BOSSCommands.reportfilename(jobId, \
+                                                         self.directory)
+
+                # job successful even if job report is not there
+                if success:
+
+                    # set success status
+                    logging.info("Created successful report for %s" % \
+                                    jobId.__str__())
+                    fwjr.status = "Success"
+                    fwjr.exitCode = 0
+
+                # job failed
+                else:
+
+                    # set failed status
+                    fwjr.status = "Failed"
+                    fwjr.exitCode = -1
+
+                # store job report
+                fwjr.write(reportfilename)
+                
+            # in both cases: is the job successful?
+            if success:
+
+                # yes, generate a job successful message and change status
+                self.jobSuccess(jobId, reportfilename)
+                self.notifyJobState(jobSpecId)
+
+            else:
+
+                # no, generate a job failure message
+                self.jobFailed(jobId, reportfilename)
+
+        # else if output retrieval failed
+        elif outp.find("Unable to find output sandbox file:") >= 0 \
+                 or outp.find("Error retrieving Output") >= 0 \
+                 or outp.find("Error extracting files ") >= 0 :
+
+            logging.debug("Job " + jobId.__str__() + \
+                          " has no FrameworkReport : creating a dummy one")
+
+            # create job report
+            fwjr = FwkJobReport()
+            fwjr.jobSpecId = jobSpecId
+            reportfilename = BOSSCommands.reportfilename(jobId, \
+                                                            self.directory)
+            fwjr.exitCode = -1
+            fwjr.status = "Failed"
+
+            # store job report
+            fwjr.write(reportfilename)
+
+            # delete job information from BOSS DB
+            BOSSCommands.Delete(jobId[0], self.bossCfgDir)
+
+            # generate a failure message
+            self.jobFailed(jobId, reportfilename)
+            
+        # other problem... just display error                            
+        else:
+            logging.error(outp)
 
         return
 
-
-    def dashboardPublish(self,jobId,ended=""):
+    def dashboardPublish(self, jobId, ended=""):
         """
         _dashboardPublish_
         
         publishes dashboard info
         """
 
-        taskid=jobId.split('.')[0]
-        chainid=jobId.split('.')[1]
-        resub=jobId.split('.')[2]
-        dashboardInfoFile = BOSSCommands.subdir(jobId,self.bossCfgDir)+"/DashboardInfo%s_%s_%s.xml"%(taskid,chainid,resub)
-        # logging.debug("dashboardinfofile=%s"%dashboardInfoFile)
-        # logging.debug("dashboardinfofile exist =%s"%os.path.exists(dashboardInfoFile))
-        # logging.debug("ended  ='%s'"%ended)
+        # get job information       
+        (taskid, chainid, resub) = jobId.split('.')
 
-        
+        # define dashboard file name
+        dashboardInfoFile = BOSSCommands.subdir(jobId, self.bossCfgDir) + \
+                      "/DashboardInfo%s_%s_%s.xml" % (taskid, chainid, resub)
+
+        # check it
         if os.path.exists(dashboardInfoFile):
-            dashboardInfo = DashboardInfo()
-            try:
-               dashboardInfo.read(dashboardInfoFile)
-            except:
-  	       logging.error("Reading dashboardInfoFile "+dashboardInfoFile+" failed (jobId="+str(jobId)+")")
-  	       return
-            gridJobId=dashboardInfo['GridJobID']
-            dashboardInfo.clear()
-            # logging.debug("dashboardInfoJob=%s"%dashboardInfo.job)
-            # logging.debug("retrieving scheduler")
-            # logging.debug("jobid=%s"%jobId)
-            scheduler=BOSSCommands.scheduler(jobId,self.bossCfgDir,ended)
-            logging.debug("scheduler=%s"%scheduler)
-            schedulerI=BOSSCommands.schedulerInfo(self.bossCfgDir,jobId,scheduler,ended)
-            logging.debug("schedulerinfo%s"%schedulerI.__str__())
-            try:
-                dashboardInfo['StatusEnterTime']=time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(float(schedulerI['LAST_T'])))
-                dashboardInfo['StatusValue']=schedulerI['SCHED_STATUS']
-                dashboardInfo['StatusValueReason']=schedulerI['STATUS_REASON'].replace('-',' ')
-                dashboardInfo['StatusDestination']=schedulerI['DEST_CE']+"/"+schedulerI['DEST_QUEUE']
-                dashboardInfo['SubTimeStamp']=time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(float(schedulerI['SUBMITTED'])))
-                dashboardInfo['GridJobID']=gridJobId
-            
-                logging.debug("dashboardinfo%s"%dashboardInfo.__str__())
 
+            # it exists, get dashboard information
+            dashboardInfo = DashboardInfo()
+
+            try:
+                dashboardInfo.read(dashboardInfoFile)
+
+            # it does not work, abandon
+            except StandardError, msg:
+                logging.error("Reading dashboardInfoFile " + \
+                             dashboardInfoFile + " failed (jobId=" \
+                             + str(jobId) + ")\n" + str(msg))
+                return
+
+            # get grid job id
+            gridJobId = dashboardInfo['GridJobID']
+            dashboardInfo.clear()
+
+            # get scheduler info
+            schedulerI = BOSSCommands.schedulerInfo(self.bossCfgDir, jobId, \
+                                                    ended)
+            logging.debug("schedulerinfo: %s" % schedulerI.__str__())
+
+            # write dashboard information
+            dashboardInfo['StatusEnterTime'] = time.strftime( \
+                             '%Y-%m-%d %H:%M:%S', \
+                             time.gmtime(float(schedulerI['LAST_T'])))
+            dashboardInfo['StatusValue'] = schedulerI['SCHED_STATUS']
+            dashboardInfo['StatusValueReason'] = \
+                             schedulerI['STATUS_REASON'].replace('-',' ')
+            dashboardInfo['StatusDestination'] = schedulerI['DEST_CE'] + \
+                             "/" + schedulerI['DEST_QUEUE']
+            dashboardInfo['SubTimeStamp'] = time.strftime( \
+                             '%Y-%m-%d %H:%M:%S', \
+                             time.gmtime(float(schedulerI['SUBMITTED'])))
+            dashboardInfo['GridJobID'] = gridJobId
+
+            if schedulerI.has_key( "RB" ) :
+                dashboardInfo['RBname'] = schedulerI['RB']
+            
+            logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
+
+            # publish it
+            try:
                 dashboardInfo.publish(5)
-            except:
-                logging.debug("dashboardinfo%s"%dashboardInfo.__str__())
+
+            # error, cannot publish it
+            except StandardError, msg:
+                logging.error("Cannot publish dashboard information: " + \
+                              dashboardInfo.__str__() + "\n" + str(msg))
 
         return
-
-
-    def eventCallback(self, event, handler):
-        """
-        _eventCallback_
-
-        This method is called whenever an event is sent to this component,
-        but since this component publishes events rather than recieves
-        them, there is really nothing to do here.
-        
-        """
-        pass
-
 
     def notifyJobState(self, jobId):
         """
         _notifyJobState_
 
         Notify the JobState DB of finished jobs
-
         """
-        try:
 
-          JobState.finished(jobId)
-          Session.commit_all()
-        except Exception, ex:
-                msg = "Error setting job state to finished for job: %s\n" % jobspec
-                msg += str(ex)
-                logging.error(msg)
+        # set finished job state
+        try:
+            JobState.finished(jobId)
+            Session.commit()
+
+        # error
+        except StandardError, ex:
+            msg = "Error setting job state to finished for job: %s\n" \
+                  % jobId 
+            msg += str(ex)
+            logging.error(msg)
+
         return
 
-
-    def jobSuccess(self,jobId):
+    def jobSuccess(self, jobId, reportfilename):
         """
         _jobSuccess_
         
-        Pull the JobReport for the jobId from the DB,
-        present it in some way that the rest
-        of the prodAgent components can find it and transmit the 
-        JobSuccess event to the prodAgent
-        
+        Set success status for the job on BOSS DB and publish a JobSuccess
+        event to the prodAgent
         """
 
-        self.archiveJob("Success",jobId)
-        self.ms.publish("JobSuccess", self.reportfilename)
+        # set success job status
+        reportfilename = self.archiveJob("Success", jobId, reportfilename)
+
+        # publish success event
+        self.ms.publish("JobSuccess", reportfilename)
         self.ms.commit()
         
-        logging.info("published JobSuccess with payload :%s" % self.reportfilename)
+        logging.info("Published JobSuccess with payload :%s" % \
+                     reportfilename)
         return
 
-
-    def jobFailed(self, jobId):
+    def jobFailed(self, jobId, reportfilename):
         """
         _jobFailed_
         
-        Pull the error report for the jobId from the DB, 
-        present it in some way that the rest
-        of the prodAgent components can find it and transmit the 
-        JobFailure event to the prodAgent
-        
+        Set failure status for the job on BOSS DB and publish a JobFailed
+        event to the prodAgent
         """
         
-        #if it's the first time we see this failed job we  publish JobFailed event and add the job in failedJobsPublished dict
+        # archive the job in BOSS DB
+        reportfilename = self.archiveJob("Failed", jobId, reportfilename)
 
-        jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
-        self.archiveJob("Failed",jobId)
-        msg=self.reportfilename
-        logging.info("JobFailed: %s" % msg)
-        self.ms.publish("JobFailed", msg)
+        # publish job failed event
+        self.ms.publish("JobFailed", reportfilename)
         self.ms.commit()
-        logging.info("published JobFailed with payload %s"%msg)
+
+        logging.info("published JobFailed with payload: %s" % \
+                     reportfilename)
            
         return
 
 
-    def archiveJob(self,success,jobId):
+    def archiveJob(self, success, jobId, reportfilename):
         """
-        _archiveJob_ copy(self.reportfilename,newPath)
+        _archiveJob_
 
         Moves output file to archdir
         """
+
+        # get resubmission count
         try:
-            taskid=jobId[0].split('.')[0]
-            chainid=jobId[0].split('.')[1]
-            resub=jobId[0].split('.')[2]
-        except:
-            logging.error("archiveJob jobId split error\nNo Files deleted")
-            return
+            resub = jobId[0].split('.')[2]
+
+        except StandardError, msg:
+            logging.error("archiveJob for job %s failed: " % \
+                          (jobId[0], str(msg)))
+            return reportfilename
         
-        lastdir=os.path.dirname(self.reportfilename).split('/').pop()
+        # get directory information
+        lastdir = os.path.dirname(reportfilename).split('/').pop()
+        baseDir = os.path.dirname(reportfilename) + "/"
 
-        baseDir=os.path.dirname(self.reportfilename)+"/"
-        #logging.info("baseDir = %s"%baseDir)
-        fjr=readJobReport(self.reportfilename)
+        # get job report
+        fjr = readJobReport(reportfilename)
 
-        # fallback to a dir in JobTracking....it won't be picked up by JobCleanup
-        fallbackCacheDir=self.args['ComponentDir'] + "/%s"%fjr[0].jobSpecId
+        # fallback directory in JobTracking.
+        fallbackCacheDir = self.args['ComponentDir'] + "/%s" % fjr[0].jobSpecId
 
+        # try to get cache from JobState
         try:
-            jobCacheDir=JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
-        except Exception, ex:
-            msg = "Cant get JobCache from JobState.general for xxx %s xxx\n" %fjr[0].jobSpecId
+            jobCacheDir = JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
+
+        # error, cannot get cache location
+        except StandardError, ex:
+            msg = "Cannot get JobCache from JobState.general for %s\n" % \
+                  fjr[0].jobSpecId
             msg += str(ex)
             logging.warning(msg)
+
+            # try to get cache from WEJob
             try: 
-              WEjobState = WEJob.get(fjr[0].jobSpecId)
-              jobCacheDir = WEjobState['cache_dir']
-            except Exception, ex:
-              msg = "Cant get JobCache from Job.get['cache_dir'] for xxx %s xxx\n" %fjr[0].jobSpecId
-              msg += str(ex)
-              logging.warning(msg)
-              # try guessing the JobCache area based on jobspecId name
-              try:
-                # split the jobspecid=workflow-run into workflow/run
-                spec=fjr[0].jobSpecId
-                end=spec.rfind('-')
-                workflow=spec[:end]
-                run=spec[end+1:]
-                # additional split for PM jobspecid that are in the form
-                # jobcut-workflow-run
-                pmspec=workflow.find('jobcut-')
-                if pmspec > 0: workflow=workflow[pmspec+7:]
+                WEjobState = WEJob.get(fjr[0].jobSpecId)
+                jobCacheDir = WEjobState['cache_dir']
 
-                PAconfig = loadProdAgentConfiguration()
-                jobCreatorCfg = PAconfig.getConfig("JobCreator")
-                jobCreatorDir = os.path.expandvars(jobCreatorCfg['ComponentDir'])
-                jobCacheDir="%s/%s/%s"%(jobCreatorDir,workflow,run)                                                                                                   
-                if not os.path.exists(jobCacheDir):
-                  jobCacheDir=fallbackCacheDir
-
-              except Exception, ex:
-                msg = "Cant guess JobCache in JobCreator dir" 
+            # error, cannot get cache location
+            except StandardError, ex:
+                msg = "Cant get JobCache from Job.get['cache_dir'] for %s" % \
+                      fjr[0].jobSpecId
                 msg += str(ex)
                 logging.warning(msg)
-                jobCacheDir=fallbackCacheDir
 
-        logging.debug("jobCacheDir = %s"%jobCacheDir)
+                # try guessing the JobCache area based on jobspecId name
+                try:
 
-        newPath=jobCacheDir+"/JobTracking/"+success+"/"+lastdir+"/"
-        #logging.info("newPath = %s"%newPath)
-        
+                    # split the jobspecid=workflow-run into workflow/run
+                    spec = fjr[0].jobSpecId
+                    end = spec.rfind('-')
+                    workflow = spec[:end]
+                    run = spec[end+1:]
+
+                    # additional split for PM jobspecid that are in the form
+                    # jobcut-workflow-run
+                    pmspec = workflow.find('jobcut-')
+                    if pmspec > 0:
+                        workflow = workflow[pmspec+7:]
+
+                    # build cache directory on JobCreator area
+                    jobCacheDir = "%s/%s/%s" % \
+                                  (self.jobCreatorDir, workflow, run)
+
+                    # if it does not exist, use fallback
+                    if not os.path.exists(jobCacheDir):
+                        jobCacheDir = fallbackCacheDir
+
+                # error, cannot get cache location
+                except StandardError, ex:
+
+                    # use fallback
+                    msg = "Cant guess JobCache in JobCreator dir" 
+                    msg += str(ex)
+                    logging.warning(msg)
+                    jobCacheDir = fallbackCacheDir
+
+        logging.debug("jobCacheDir = %s" % jobCacheDir)
+
+        # build path and report file name
+        newPath = jobCacheDir + "/JobTracking/" + success + "/" + lastdir + "/"
+
+        # create directory if not there
         try:
             os.makedirs(newPath)
-        except:
-            pass
+
+        except Exception, msg:
+            logging.debug("cannot create directory %s: %s" % \
+                          (newPath, str(msg)))
+
+        # move report file
         try:
-            copy(self.reportfilename,newPath)
-            os.unlink(self.reportfilename)
-        except:
-            logging.error("failed to move %s to %s\n"%(self.reportfilename,newPath))
-            pass
-        self.reportfilename=newPath+os.path.basename(self.reportfilename)
-        files=os.listdir(baseDir)
+            copy(reportfilename, newPath)
+            os.unlink(reportfilename)
+
+        except Exception, msg:
+            logging.error("failed to move %s to %s: %s" % \
+                          (reportfilename, newPath, str(msg)))
+
+        # using new report path
+        reportfilename = newPath + os.path.basename(reportfilename)
         
+        # get other files
+        files = os.listdir(baseDir)
+        
+        # move all them
         for f in files:
-            (name,ext)=os.path.splitext(f)
+
+            # get extension
             try:
-                ext=ext.split('.')[1]
-            except:
-                ext=""
+                ext = os.path.splitext(f)[1]
+                ext = ext.split('.')[1]
+ 
+            except StandardError:
+                ext = ""
+
+            # create directory
             try:
-                os.makedirs(newPath+ext)
-            except:
+                os.makedirs(newPath + ext)
+
+            except Exception, msg:
                 pass
+#                logging.error("failed to create directory %s: %s" % \
+#                              (newPath + ext, str(msg)))
+
+            # move file
             try:
-                copy(baseDir+f,newPath+ext)
+                copy(baseDir+f, newPath+ext)
                 os.unlink(baseDir+f)
-            except:
-                logging.error("failed to move %s to %s\n"%(baseDir+f,newPath+ext))
-                pass
+
+            except Exception, msg:
+                logging.error("failed to move %s to %s: %s" % \
+                              (baseDir + f, newPath + ext, str(msg)))
+
+        # remove original files
         try:
             os.rmdir(baseDir)
-            logging.debug("removing baseDir %s"%baseDir)
+            logging.debug("removing baseDir %s" % baseDir)
 
-        except:
-            logging.error("error removing baseDir %s"%baseDir)
-
+        except Exception, msg:
+            logging.error("error removing baseDir %s: %s" % \
+                          (baseDir, str(msg)))
             
         try:
-            chainDir=baseDir.split('/')
+            chainDir = baseDir.split('/')
             chainDir.pop()
             chainDir.pop()
-            chainDir="/".join(chainDir)
-            logging.debug("removing chainDir %s"%chainDir)
+            chainDir = "/".join(chainDir)
+            logging.debug("removing chainDir %s" % chainDir)
             os.rmdir(chainDir)
-        except:
-            logging.error("error removing chainDir %s"%chainDir)
-        try:
-            jobMaxRetries=JobState.general(fjr[0].jobSpecId)['MaxRetries']
-        except:
-           try: 
-             jobMaxRetries=WEjobState['max_retries']
-           except:
-             jobMaxRetries=10
 
-        logging.info("maxretries=%s and resub = %s\n"%(jobMaxRetries,resub))
-        if success=="Success" or int(jobMaxRetries)<=int(resub):
+        except Exception, msg:
+            logging.error("error removing chainDir %s: %s" % \
+                          (chainDir, str(msg)))
+
+        # get max retries from JobState
+        try:
+            jobMaxRetries = JobState.general(fjr[0].jobSpecId)['MaxRetries']
+
+        # does not work, try from Workflow entities
+        except StandardError:
+
+            try: 
+                jobMaxRetries = WEjobState['max_retries']
+
+            # assume a default value
+            except StandardError:
+                jobMaxRetries = 10
+
+        logging.debug("maxretries = %s and resub = %s\n" % \
+                      (jobMaxRetries,resub))
+
+        # remove directory tree for finished jobs or when there will not
+        # be resubmitted
+        if success == "Success" or int(jobMaxRetries) <= int(resub):
+
+            # get submission path
             try:
-                subPath=BOSSCommands.subdir(jobId[0],self.bossCfgDir)
-            except:
-                subPath=""
-            logging.info("SubmissionPath '%s'"%subPath)
-            if BOSSCommands.taskEnded(jobId[0],self.bossCfgDir):
+                subPath = BOSSCommands.subdir(jobId[0], self.bossCfgDir)
+
+            except StandardError:
+                subPath = ""
+
+            logging.debug("SubmissionPath: %s" % subPath)
+
+            # set status to ended
+            if BOSSCommands.taskEnded(jobId[0], self.bossCfgDir):
+
+                # remove directory tree
                 try:
                     rmtree(subPath)
+ 
+                # error, cannot remove files
+                except Exception, msg:
+                    logging.error("Failed to remove files for job %s: %s" % \
+                                  (jobId, str(msg)))
+
+                # archive job
+                try:
                     BOSSCommands.archive(jobId[0], self.bossCfgDir)
-                    logging.info("removed %s for task %s"%(subPath,taskid))
-                except:
-                    logging.error("Failed to remove submission files")
-        return
 
+                # error, cannot archive job
+                except StandardError, msg:
+                    logging.error("Failed to archive job %s: %s" % \
+                                  (jobId, str(msg)))
 
-### not used?!?!
-    def subFailed(self, jobId, msg):
+        return reportfilename
+
+    def updateDict(self, old, new):
         """
-        _subFailed_
-        
-        Publishes a SubmissionFailed event
-        
+        _updateDict_
+
+        save information about active jobs in case of component restart, so
+        status is not sent twice to the dashboard.
+
+        all updates are done in single queries. Length should not be a problem
+        since default for mysql 4.0 is 1GB...
+
         """
-        
-        #if it's the first time we see this failed job we  publish JobFailed event and add the job in failedJobsPublished dict
-        jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
-        JobState.submitFailure(msg)
-        logging.info("SubmissionFailed: %s" % msg)
-        self.ms.publish("SubmissionFailed", msg)
-        self.ms.commit()
-        logging.info("published SubmissionFailed with payload %s"%msg)
-        return
 
+        # get new and old set of jobs id
+        newJobs = set(new.keys())
+        oldJobs = set(old.keys())
 
-### used to have persistent information about active jobs with 
-### and jobs with application failure so that, in case of component restart,
-### the related status is not sent twice to the dashboard
-    def saveDict(self,d,filename):
-        try:
-            f=open("%s/%s"%(self.directory,filename),'w')
-        except StandardError,ex:
-     #       logging.debug("Errore ad aprire il file")
-            return
-        for i in d:
-            t="%s %s\n" % (i,d[i])
-    #        logging.debug(t)
-            f.write(t)
-        f.close()
-        return
+        # get submitted jobs and lost jobs
+        submittedJobs = newJobs.difference(oldJobs)
+        lostJobs = oldJobs.difference(newJobs)
 
+        # only update if there are changes
+        if len(submittedJobs) == 0 and len(lostJobs) == 0:
+            return oldJobs
 
-### load information about jobs at the component startup
-    def loadDict(self,d,filename):
-        try:
-            f=open("%s/%s"%(self.directory,filename),'r')
-        except StandardError, ex:
-            return
-        lines=f.readlines()
-        for l in lines:
-            k,v=(l.strip()).split(' ')
-            d[k]=int(v)
-        f.close()
-        return
+        # open database
+        Session.connect("bossdb")
+        Session.start_transaction("bossdb")
 
+        Session.execute("use " + self.bossDatabase['dbName'], "bossdb")
 
+        # remove lost jobs
+        numberOfJobs = len(lostJobs)
+
+        if numberOfJobs != 0:
+
+            # update DB
+            jobs = ",".join(["'" + str(x) + "'" for x in lostJobs])
+            query = "delete from jt_activejobs where job_id in (" + jobs + ")" 
+
+            rowsModified = Session.execute(query, "bossdb")
+
+            if rowsModified != numberOfJobs:
+                logging.warning("Only %s of %s jobs removed from activejobs" % \
+                                (rowsModified, numberOfJobs))
+
+        # add new jobs
+        numberOfJobs = len(submittedJobs)
+
+        if numberOfJobs != 0:
+
+            # update DB
+            jobs = ",".join(["('" + str(x) + "')" for x in submittedJobs])
+            query = "replace into jt_activejobs(job_id) values " + jobs
+
+            rowsModified = Session.execute(query, "bossdb")
+
+            if rowsModified != numberOfJobs:
+                logging.warning("Only %s of %s jobs updated activejobs" % \
+                                (rowsModified, numberOfJobs))
+
+        # commit changes and set back default DB
+
+        Session.commit("bossdb")
+        Session.close("bossdb")
+
+        return new
+
+    def loadDict(self):
+        """
+        _loadDict_
+
+        load information about active jobs from database
+        """
+
+        # build dictionary
+        activeJobs = {}
+
+        # query database for active jobs information
+        Session.connect("bossdb")
+
+        Session.execute("use " + self.bossDatabase['dbName'], "bossdb")
+        Session.execute("select job_id from jt_activejobs", "bossdb")
+        results = Session.fetchall("bossdb")
+        Session.execute("use " + self.database['dbName'], "bossdb")
+
+        Session.close("bossdb")
+
+        # add jobs to dictionary
+        for jobId in results:
+            activeJobs[jobId[0]] = 0
+
+        return activeJobs
 
     def startComponent(self):
         """
         _startComponent_
 
-        Start up this component, start the ComponentThread and then
-        commence polling the DB
+        Start up this component, 
 
         """
 
@@ -863,14 +1013,21 @@ class TrackingComponent:
 
         # wait for messages
         while True:
-            Session.set_database(dbConfig)
-            Session.connect()
-            Session.start_transaction()
+
+            # create session
+            Session.connect("messages")
+            Session.start_transaction("messages")
+
+            # get a message
             type, payload = self.ms.get()
             self.ms.commit()
             logging.debug("TrackingComponent: %s, %s" % (type, payload))
+
+            # process it
             self.__call__(type, payload)
-            Session.commit_all()
-            Session.close_all()
+
+            # close session
+            Session.commit("messages")
+            Session.close("messages")
 
 
