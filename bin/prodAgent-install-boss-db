@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.18 2007/03/06 14:59:11 afanfani Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.19 2007/07/05 18:26:27 afanfani Exp $"
 
 import getpass
 import os
@@ -400,4 +400,44 @@ else:
    print "Warning: RealTime DB not Installed"
 os.popen('rm MySQLConfig.sql*')
 
+print ""
+print "Additional JobTracking BOSS table"
+print bossDbConfig['configDir']
 
+from BossSession import BossAdministratorSession, BossError
+
+adminSession = BossAdministratorSession(bossDbConfig['configDir'])
+
+createStream = \
+"""
+CREATE TABLE jt_group (
+  id INT NOT NULL auto_increment,
+  group_id INT,
+  task_id INT NOT NULL,
+  job_id INT NOT NULL,
+  PRIMARY KEY(id),
+  UNIQUE(task_id, job_id),
+  FOREIGN KEY (task_id) REFERENCES TASK(ID),
+  FOREIGN KEY (job_id) REFERENCES CHAIN(ID)
+);
+"""
+
+createStream2 = \
+"""
+CREATE TABLE jt_activejobs (
+  job_id varchar(255) NOT NULL,
+  UNIQUE(job_id)
+  );
+"""
+
+try:
+    out = adminSession.SQL( createStream )
+    print out
+    out = adminSession.SQL( createStream2 )
+    print out
+except BossError,e:
+    if e.__str__().find( "already exists" ) != -1 :
+        print "already set up, skipping\n"
+        pass
+    else:
+        print e.__str__()
