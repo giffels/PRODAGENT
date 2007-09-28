@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.1 2007/09/24 12:30:34 gcodispo Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.2 2007/09/26 16:27:47 gcodispo Exp $"
 
 import traceback
 import time
@@ -507,7 +507,8 @@ class TrackingComponent:
 
             # else if output retrieval failed
             elif outp.find("Unable to find output sandbox file:") >= 0 \
-                     or outp.find("Error extracting files ") >= 0 :
+                     or outp.find("Error extracting files ") >= 0 \
+                     or outp.find("Error retrieving Output") >= 0:
                 jobSpecId=BOSSCommands.jobSpecId(jobId[0],self.bossCfgDir)
                 logging.info( "%s no FrameworkReport " + jobId.__str__() + " : creating a dummy one" )
                 fwjr=FwkJobReport()
