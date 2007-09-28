@@ -167,10 +167,10 @@ def instancesToXML(document, parent, instances):
         #start and end time
         addTextNode(document, instance_node, "start_time", instanceInfo["timing"]["AppStartTime"])
         #if end_time not available take db insert time instead
-        if instanceInfo["timing"]["AppEndTime"] != None:
-            addTextNode(document, instance_node, "end_time", instanceInfo["timing"]["AppEndTime"])
-        else:
+        if instanceInfo["timing"]["AppEndTime"] in (None, 0):
             addTextNode(document, instance_node, "end_time", instanceInfo["insert_time"])
+        else:
+            addTextNode(document, instance_node, "end_time", instanceInfo["timing"]["AppEndTime"])
         
         # add error type
         addTextNode(document, instance_node, "error_type", instanceInfo["error_type"])
