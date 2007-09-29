@@ -254,7 +254,7 @@ def declare(bossCfgDir,parameters):
     return bossJobId
 
 
-def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir , workflow ):
+def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir , workflow ,mainJobSpecName):
     """
     BOSS4declareBulk
 
@@ -262,7 +262,7 @@ def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir , workflow ):
     """
 
     # xml file name
-    xmlfile ="%s/%s-declare.xml"% ( workingDir , workflow )
+    xmlfile ="%s/%s-declare.xml"% ( workingDir , mainJobSpecName)
     declareClad=open( xmlfile,"w" )
     declareClad.write(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
@@ -277,7 +277,7 @@ def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir , workflow ):
         bossJobType=""
 
     # wrapper filename
-    wrapperName = "%s/%s-submit" % (workingDir, workflow)
+    wrapperName = "%s/%s-submit" % (workingDir, mainJobSpecName)
     parameters = { 'Wrapper' : wrapperName }
 
     jobSpecList = jobList#.split('\n')
