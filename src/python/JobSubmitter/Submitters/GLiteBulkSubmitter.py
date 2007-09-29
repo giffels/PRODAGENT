@@ -6,7 +6,7 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.7 2007/07/24 13:45:22 afanfani Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.8 2007/09/26 08:38:47 afanfani Exp $"
 
 import os
 import logging
@@ -130,7 +130,8 @@ class GLiteBulkSubmitter(BulkSubmitterInterface):
             self.doBOSSSubmit()
             return
   
-        executable = "%s/%s-submit" % (self.workingDir, self.workflowName)
+#        executable = "%s/%s-submit" % (self.workingDir, self.workflowName)
+        executable = "%s/%s-submit" % (self.workingDir, self.mainJobSpecName) 
         logging.debug("makeWrapperScript = %s" % executable)
         #generate unique wrapper script
         self.makeWrapperScript( executable, "$1" )
@@ -147,7 +148,7 @@ class GLiteBulkSubmitter(BulkSubmitterInterface):
             self.bossJobId = \
                            BOSSCommands.declareBulk(
                 self.bossCfgDir, self.toSubmit, inpFileJDL,
-                self.workingDir , self.workflowName
+                self.workingDir , self.workflowName, self.mainJobSpecName
                 )
         except ProdAgentException, ex:
             raise JSException(str(ex), FailureList = self.toSubmit.keys())
@@ -256,8 +257,10 @@ fi
             script.append( self.bulkUnpackerScript )
 #            script.extend(bulkUnpackerScript(self.specSandboxName))
         else:
-            script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
+#AF            script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
+            script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s-JobSpec.xml\n" %
                           self.singleSpecName)   
+
             
         script.append(
             "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName 
@@ -287,38 +290,6 @@ fi
             msg += self.__class__.__name__
             raise JSException( msg, ClassInstance = self)
                              
-
-#         # expect globus scheduler in OSG block
-#         # self.pluginConfig['OSG']['GlobusScheduler']
-#         if not self.pluginConfig.has_key("OSG"):
-#             msg = "Plugin Config for: %s \n" % self.__class__.__name__
-#             msg += "Does not contain an OSG config block"
-#             raise JSException( msg , ClassInstance = self,
-#                                PluginConfig = self.pluginConfig)
-
-#         #  //
-#         # // Validate the value of the GlobusScheduler is present
-#         #//  and sane
-#         sched = self.pluginConfig['OSG'].get("GlobusScheduler", None)
-#         if sched in (None, "None", "none", ""):
-#             msg = "Invalid value for OSG GlobusScheduler in Submitter "
-#             msg += "plugin configuration: %s\n" % sched
-#             msg += "You must provide a valid scheduler"
-#             raise JSException( msg , ClassInstance = self,
-#                                PluginConfig = self.pluginConfig)
-          
-#         #  //
-#         # // Extract the mapping of SEName to Jobmanager from the
-#         #//  plugin config
-#         siteMapping = self.pluginConfig.get('SENameToJobmanager', None)
-#         if siteMapping == None:
-#             msg = "SENameToJobManager not provided in Submitter "
-#             msg += "pluging configuration\n"
-#             msg += "This is required for mapping merge jobs to the appropriate"
-#             msg += "Site based on fileblock name"
-#             raise JSException(msg, 
-#                               ClassInstance = self,
-#                               PluginConfig = self.pluginConfig)
 
     def doBOSSSubmit(self):
         """
@@ -353,7 +324,8 @@ fi
         logging.info("doBOSSSubmit : preparing jdl")
         
         ## prepare scheduler related file 
-        schedulercladfile = "%s/%s_scheduler.clad" % (self.workingDir ,self.workflowName)
+#        schedulercladfile = "%s/%s_scheduler.clad" % (self.workingDir ,self.workflowName)
+        schedulercladfile = "%s/%s_scheduler.clad" % (self.workingDir , self.mainJobSpecName )
         try:
            jobType=self.primarySpecInstance.parameters['JobType']
            userJDL=self.getUserJDL(jobType)
