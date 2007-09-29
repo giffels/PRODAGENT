@@ -1087,6 +1087,7 @@ class MySQL_Query:
         mysql_command += '\"'
 
         self.__query = mysql_command
+#AFdebug        print "mysql_command = %s"%mysql_command
 
         return 1
 
@@ -1684,7 +1685,7 @@ def Usage():
     manfile.write("When the I<both> value is set, the query is duplicated into two queries, with I<yes> and I<no> values respectively,           \n")
     manfile.write("and inheriting the rest of the options.                                                                                       \n")
     manfile.write("                                                                                                                              \n")
-    manfile.write("B<plugin> argument is needed to select the kind of BOSS scheduler plugin used. Possible values are I<edg> (default), I<gliteCollection>,  I<gliteParam>.               \n")
+    manfile.write("B<plugin> argument is needed to select the kind of BOSS scheduler plugin used. Possible values are I<edg> (default), I<gliteCollection>,  I<gliteParam>, I<glite>.               \n")
     manfile.write("=head1 OPTIONS                                                                                                                \n")
     manfile.write("                                                                                                                              \n")
     manfile.write("=over 8                                                                                                                       \n")
@@ -1883,7 +1884,7 @@ def ParseArguments():
 
        if opt == "--plugin":
           plugin= arg
-          if plugin != 'edg' and plugin != 'gliteCollection' and plugin != 'gliteParam' :
+          if plugin != 'edg' and plugin != 'gliteCollection' and plugin != 'gliteParam' and plugin != 'glite':
               Usage()
           shell_params.Plugin= plugin
 
@@ -2085,8 +2086,8 @@ def SingleQuery( params, i):
    c_ended_job_task_id       = MySQL_Column( t_ended_job,       'TASK_ID' )
    c_ended_job_chain_id      = MySQL_Column( t_ended_job,       'CHAIN_ID')
 
-   c_chain_id                = MySQL_Column( t_chain,           'TASK_ID' )  
-
+   c_chain_task_id            = MySQL_Column( t_chain,           'TASK_ID' )  
+   c_chain_id                 = MySQL_Column( t_chain,           'ID' )
    # ------------------------------
    #  other usual columns
    # ------------------------------
@@ -2123,9 +2124,8 @@ def SingleQuery( params, i):
    q.AddJoin( MySQL_Join( c_cmssw_task_id, c_sched_edg_task_id ) )
    q.AddJoin( MySQL_Join( c_job_chain_id,       c_sched_edg_chain_id ) )
    q.AddJoin( MySQL_Join( c_cmssw_chain_id,       c_sched_edg_chain_id ) )
-   q.AddJoin( MySQL_Join( c_chain_id,       c_sched_edg_task_id ) )
-   if plugin != 'edg':
-      q.AddJoin( MySQL_Join( c_chain_id,       c_sched_edg_chain_id ) )
+   q.AddJoin( MySQL_Join( c_chain_task_id,  c_sched_edg_task_id ) )
+   q.AddJoin( MySQL_Join( c_chain_id,       c_sched_edg_chain_id ) )
 
    q_ended.AddTable( t_chain            )
    q_ended.AddTable( t_ended_cmssw     )
@@ -2136,9 +2136,8 @@ def SingleQuery( params, i):
    q_ended.AddJoin( MySQL_Join( c_ended_cmssw_task_id, c_ended_sched_edg_task_id ) )
    q_ended.AddJoin( MySQL_Join( c_ended_job_chain_id,      c_ended_sched_edg_chain_id ) )
    q_ended.AddJoin( MySQL_Join( c_ended_cmssw_chain_id,      c_ended_sched_edg_chain_id ) )
-   q_ended.AddJoin( MySQL_Join( c_chain_id,             c_ended_sched_edg_task_id ) )
-   if plugin != 'edg':
-      q_ended.AddJoin( MySQL_Join( c_chain_id,             c_ended_sched_edg_chain_id ) )
+   q_ended.AddJoin( MySQL_Join( c_chain_task_id,             c_ended_sched_edg_task_id ) )
+   q_ended.AddJoin( MySQL_Join( c_chain_id,       c_ended_sched_edg_chain_id ) )
 
    if type == 'codes':
       
@@ -2189,8 +2188,8 @@ def SingleQuery( params, i):
       q.AddRequirement(       Req_OR( *reqs ) )
       q_ended.AddRequirement( Req_OR( *reqs ) )
  
-      q.AddJoin(       MySQL_Join( c_chain_id, c_cmssw_task_id       ) )
-      q_ended.AddJoin( MySQL_Join( c_chain_id, c_ended_cmssw_task_id ) )
+      q.AddJoin(       MySQL_Join( c_chain_task_id, c_cmssw_task_id       ) )
+      q_ended.AddJoin( MySQL_Join( c_chain_task_id, c_ended_cmssw_task_id ) )
  
 
 
