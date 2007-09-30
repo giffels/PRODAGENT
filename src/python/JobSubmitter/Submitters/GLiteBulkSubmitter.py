@@ -6,7 +6,7 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.8 2007/09/26 08:38:47 afanfani Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.9 2007/09/29 01:38:27 afanfani Exp $"
 
 import os
 import logging
@@ -368,7 +368,8 @@ fi
         # // Executing BOSS Submit command
         #//
         logging.debug ("GLITEBulkSubmitter.doSubmit: %s" % bossSubmit)
-        output = BOSSCommands.executeCommand(bossSubmit)
+        # execute command with timeout based on nb.of jobs = len(self.toSubmit)
+        output = BOSSCommands.executeBulkCommand(bossSubmit,len(self.toSubmit))
         logging.debug ("GLITEBulkSubmitter.doSubmit: %s" % output)
         if output.find("error")>=0:
             # // cleaning if bulk submission failed for max retries
@@ -394,6 +395,10 @@ fi
 
         # // composing boss jobid
         self.bossJobId=str(self.bossJobId)+"."+chainid+"."+resub
+
+        # // remove cladfile
+        os.remove(schedulercladfile)
+
         return 
 
     def getUserJDL(self,jobType):
