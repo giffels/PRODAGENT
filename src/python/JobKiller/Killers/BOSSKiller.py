@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BOSSKiller.py,v 1.11 2007/09/18 13:02:57 afanfani Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: BOSSKiller.py,v 1.12 2007/09/21 09:09:20 ckavka Exp $"
+__version__ = "$Revision: 1.12 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -101,21 +101,27 @@ class BOSSKiller:
         # get task id and job
         taskId = task.keys()[0]
         job = task[taskId] 
+        jobs = task[taskId].jobsDict()
 
+        #jobid=jobs.keys()[0]
+        for jobid in jobs.keys():
         # kill command through BOSS
-        try:
-            job.kill("1", 180)
+         try:
+            logging.debug(" killing task:%s job:%s"%(taskId,jobid))
+            #job.kill("1", 180)
+            job.kill(jobid, 180)
 
-        # deal with BOSS specific error
-        except (SchedulerError, BossError), err:
+         # deal with BOSS specific error
+         except (SchedulerError, BossError), err:
             msg = "Failed BOSS kill for task %s, BOSS error: %s" % \
                   (jobSpecId, str(err))
             logging.error(msg)
 
-        # archive if requested
-        if erase:
+         # archive if requested
+         if erase:
             try:
-                job.archive("1")
+#                job.archive("1")
+                 job.archive(jobid)
             except (SchedulerError, BossError), err:
                 msg = "Failed BOSS archive for task %s, BOSS error: %s" % \
                       (jobSpecId, str(err))
