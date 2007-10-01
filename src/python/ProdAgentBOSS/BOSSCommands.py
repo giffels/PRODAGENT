@@ -225,8 +225,18 @@ def resubmit(jobId, bossCfgDir):
     bossSubmit = "boss submit "
     bossSubmit += "-taskid %s " % task
     bossSubmit += "-jobid %s " % chain
-    bossSubmit += " -c " + bossCfgDir + " "
-    return bossSubmit
+    bossSubmit += " -reuseclad -c " + bossCfgDir + " "
+
+    try:
+        # get a BOSS session
+        adminSession = BOSS.getBossAdminSession()
+    
+        # get user proxy
+        cert = getUserProxy( adminSession, task )
+    except:
+        cert = ""
+
+    return bossSubmit, cert
 
 
 def submit(jobId, scheduler, bossCfgDir):
@@ -573,6 +583,7 @@ def executeCommand( command, timeout = 600, userProxy = "" ):
     """
 
     if userProxy != "" or userProxy != 'NULL':
+#        logging.info("export X509_USER_PROXY=" + userProxy + " ; " + command)
         command = "export X509_USER_PROXY=" + userProxy + " ; " + command
     
 #    f.write( command)
