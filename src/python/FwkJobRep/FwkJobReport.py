@@ -9,6 +9,7 @@ manipulating the bits and pieces of it.
 """
 
 from FwkJobRep.FileInfo import FileInfo
+from FwkJobRep.PerformanceReport import PerformanceReport
 
 from IMProv.IMProvNode import IMProvNode
 from IMProv.IMProvQuery import IMProvQuery
@@ -38,7 +39,7 @@ class FwkJobReport:
         self.storageStatistics = None
         self.generatorInfo = {}
         self.dashboardId = None
-
+        self.performance = PerformanceReport()
 
     def wasSuccess(self):
         """
@@ -223,7 +224,12 @@ class FwkJobReport:
         for key, val in self.generatorInfo.items():
             genInfo.addNode(IMProvNode("Data", None, Name = key,
                                        Value = str(val)))
-            
+
+
+        #  //
+        # // Save Performance Report
+        #//
+        result.addNode(self.performance.save())
         
         return result
 
@@ -327,6 +333,13 @@ class FwkJobReport:
                 int(err.attrs['ExitStatus']),
                 err.attrs['Type'])
             newErr['Description'] = err.chardata
+
+        #  //
+        # // Performance reports
+        #//
+        self.performance.load(improvNode)
+        
         return
 
         
+
