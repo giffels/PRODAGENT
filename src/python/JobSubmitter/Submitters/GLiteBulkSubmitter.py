@@ -6,7 +6,7 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.9 2007/09/29 01:38:27 afanfani Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.10 2007/09/30 10:14:12 afanfani Exp $"
 
 import os
 import logging
@@ -368,8 +368,8 @@ fi
         # // Executing BOSS Submit command
         #//
         logging.debug ("GLITEBulkSubmitter.doSubmit: %s" % bossSubmit)
-        # execute command with timeout based on nb.of jobs = len(self.toSubmit)
-        output = BOSSCommands.executeBulkCommand(bossSubmit,len(self.toSubmit))
+        # execute command with timeout based on nb.of jobs = len(self.toSubmit) with 60sec for each job
+        output = BOSSCommands.executeCommand(bossSubmit,len(self.toSubmit)*60)
         logging.debug ("GLITEBulkSubmitter.doSubmit: %s" % output)
         if output.find("error")>=0:
             # // cleaning if bulk submission failed for max retries
