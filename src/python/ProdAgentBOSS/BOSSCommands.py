@@ -509,62 +509,6 @@ def stoppid(pid,sig):
         ## be nice, children signal their parents mostly
         time.sleep(float(1))
 
-def executeBulkCommand(command,njobs,singletimeout=60):
-    """
-    _executeBulkCommand_
-                                                                                                                  
-    Util it execute the command provided in a popen object with a timeout
-                                                                                                                  
-    """
-    timeout=singletimeout*njobs 
-    logging.debug("timeout set to %s"%timeout)
-                                                                                                                  
-    try:
-        command="export X509_USER_PROXY=\"%s\";%s"%(os.environ["X509_USER_PROXY"],command)
-    except:
-        pass
-                                                                                                                  
-    p=Popen4(command)
-    p.tochild.close()
-    outfd=p.fromchild
-    outfno=outfd.fileno()
-     
-    fl=fcntl.fcntl(outfd,fcntl.F_GETFL,0)
-    fcntl.fcntl(outfd,fcntl.F_SETFL, fl | os.O_NONBLOCK)
-    err = -1
-    outc = []
-    outfeof = 0
-    maxt=time.time()+timeout
-    #logging.debug("from time %d to time %d"%(time.time(),maxt))
-    pid=p.pid
-    #logging.debug("process id of %s = %d"%(command,pid))
-    timeout=max(1,timeout/10)
-#    f.write("timeout=%s"%timeout)
-    timedOut=True
-    while 1:
-        (r,w,e)=select.select([outfno],[],[],timeout)
-        if len(r)>0:
-            outch=outfd.read()
-            if outch=='':
-                timedOut=False
-                break
-            outc.append(outch)
-        if time.time()>maxt:
-            break
-                                                                                                                  
-    # time.sleep(.1)
-
-    if timedOut:
-        logging.error("command %s timed out. timeout %d\n"%(command,timeout))
-        os.kill(pid,signal.SIGTERM)
-        stoppid(pid,signal.SIGTERM)
-        return ""
-    try:
-        output=string.join(outc,"")
-    except:
-        output=""
-    return output
-
    
     
 def getoutput(jobId,directory,bossCfgDir):
