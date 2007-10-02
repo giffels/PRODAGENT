@@ -71,6 +71,9 @@ def readMeminfo():
     for metric in result.keys():
         for line in content:
             if line.startswith(metric):
-                result[metric] = line.split(":", 1)[1].strip()
+                value = line.split(":", 1)[1]
+                value = value.replace("kB", "")
+                value = value.strip()
+                result[metric] = value
     return result
 
