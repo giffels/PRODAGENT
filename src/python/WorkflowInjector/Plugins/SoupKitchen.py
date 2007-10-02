@@ -67,11 +67,13 @@ class SoupKitchen(PluginInterface):
             factory = DatasetJobFactory(self.workflow,
                                         self.workingDir,
                                         self.dbsUrl,
+                                        InputDataset = dataset,
                                         InitialRun = jobsCount)
             factory.allowedSites = [self.siteName]
-            jobsList.extend(factory())
-            jobsCount += len(jobsList)
-            logging.info("Generated JobSpecs for dataset %s" %  dataset)        
+            jobsMade = factory()
+            jobsList.extend(jobsMade)
+            jobsCount += len(jobsMade)
+            logging.info("Generated %s JobSpecs for dataset %s" % (len(jobsMade), dataset))
         #  //
         # // Mix up the jobs List a few times
         #//
