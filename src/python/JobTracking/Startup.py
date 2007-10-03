@@ -6,7 +6,7 @@ Start the component, reading its configuration from
 the common configuration file, which is accessed by environment variable
 
 """
-__revision__ = "$Id: Startup.py,v 1.4 2006/08/07 15:02:57 evansde Exp $"
+__revision__ = "$Id: Startup.py,v 1.4.14.1 2007/09/28 15:01:10 ckavka Exp $"
 
 import os
 import sys
@@ -16,6 +16,7 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
 from ProdAgentCore.PostMortem import runWithPostMortem
 from JobTracking.TrackingComponent import TrackingComponent
+from ProdAgentCore.PluginConfiguration import loadPluginConfig
 
 #  //
 # // Find and load the Configuration
@@ -44,6 +45,25 @@ try:
     except AttributeError:
         compCfg['JobCreatorComponentDir'] = ""
         
+    try:
+
+        # get dashboard information from submitter configuration plugin
+        pluginConfig = loadPluginConfig("JobSubmitter", "Submitter")
+        dashboardCfg = pluginConfig.get('Dashboard', {})
+
+        # build dashboard info structure
+        dashboardInfo = {}
+        dashboardInfo['use'] = dashboardCfg["UseDashboardINFO"] 
+        dashboardInfo['address'] = dashboardCfg["DestinationHost"]
+        dashboardInfo['port'] = dashboardCfg["DestinationPort"]
+
+        # store it
+        compCfg["dashboardInfo"] = dashboardInfo
+
+    except Exception:
+
+        # problems, accept the default one
+        pass
 
 except StandardError, ex:
     msg = "Error reading configuration:\n"

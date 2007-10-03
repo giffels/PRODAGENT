@@ -9,6 +9,7 @@ import os
 import signal
 import re
 from ProdAgent.WorkflowEntities import JobState
+from ProdAgent.WorkflowEntities import Job as WEJob
 import logging
 import shutil
 from ProdAgentCore.ProdAgentException import ProdAgentException
@@ -416,7 +417,7 @@ def declare(bossCfgDir, parameters):
     return bossJobId
 
 
-def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir , workflow ):
+def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir, workflow, mainJobSpecName):
     """
     BOSS4declareBulk
 
@@ -424,7 +425,7 @@ def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir , workflow ):
     """
 
     # xml file name
-    xmlfile = "%s/%s-declare.xml"% ( workingDir , workflow )
+    xmlfile = "%s/%s-declare.xml"% ( workingDir , mainJobSpecName )
     declareClad = open( xmlfile,"w" )
     declareClad.write(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
@@ -439,7 +440,7 @@ def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir , workflow ):
         bossJobType = ""
 
     # wrapper filename
-    wrapperName = "%s/%s-submit" % (workingDir, workflow)
+    wrapperName = "%s/%s-submit" % (workingDir, mainJobSpecName )
     parameters = { 'Wrapper' : wrapperName }
 
     jobSpecUsedList = []
@@ -471,7 +472,8 @@ def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir , workflow ):
 #            % bossJobId
 #            )
         raise ProdAgentException("Job Declaration Failed")
-    #os.remove(xmlfile)
+
+    os.remove(xmlfile)
     return bossJobId
 
 
@@ -539,14 +541,14 @@ def schedulerInfo( bossCfgDir, jobId, ended = "" ):
     
     # build query
     query = \
-          "select SCHEDULER,SCHED_ID from " + ended + " JOB where TASK_ID=" \
+          "select SCHEDULER,SCHED_ID from " + ended + "JOB where TASK_ID=" \
           + taskid + " and CHAIN_ID="  + chainid + " and ID=" + resub 
     
     # execute query
     (adminSession, out) = BOSS.performBossQuery(adminSession, query)
 
     try :
-        schedI = out.split("\n")[1].strip().split()
+        schedInfo = out.split("\n")[1].strip().split()
         jobScheduler = schedInfo[0]
         schedinfo ['SCHED_ID'] = schedInfo[1]
     except IndexError:
@@ -583,7 +585,7 @@ def executeCommand( command, timeout = 600, userProxy = "" ):
     """
 
     if userProxy != "" or userProxy != 'NULL':
-#        logging.info("export X509_USER_PROXY=" + userProxy + " ; " + command)
+        logging.info("export X509_USER_PROXY=" + userProxy + " ; " + command)
         command = "export X509_USER_PROXY=" + userProxy + " ; " + command
     
 #    f.write( command)
@@ -1062,10 +1064,10 @@ def archive(jobId, bossCfgDir):
     (i.e. move jobe entries to ENDED_ tables )
     """
 
-    ids = jobId.split('.')
-    
+    (taskid, chainid, resub) = jobId.split('.')
+
     outfile = executeCommand(
-        "boss archive -taskid " + ids[0] + " -jobid " + ids[1] \
+        "boss archive -taskid " + taskid + " -jobid " + chainid \
         + " -c " + bossCfgDir
         )
 
@@ -1080,23 +1082,117 @@ def Delete(jobId, bossCfgDir):
     (i.e. move jobe entries to ENDED_ tables ) after setting to killed the job
     """
 
-    ids = jobId.split('.')
-    
+    (taskid, chainid, resub) = jobId.split('.')
+
     query = \
-          "update JOB set STATUS='E',STOP_T='-1' where TASK_ID=" + ids[0] + \
-          " and CHAIN_ID="  + ids[1] + " and ID=" + ids[2]
+          "update JOB set STATUS='E',STOP_T='-1' where TASK_ID=" + taskid + \
+          " and CHAIN_ID="  + chainid + " and ID=" + resub
 
     # get a BOSS session
     adminSession = BOSS.getBossAdminSession()
-    
+
     # execute query
     (adminSession, out) = BOSS.performBossQuery(adminSession, query)
-    
+
     out = executeCommand(
-        "boss archive -taskid " + ids[0] + " -jobid " + ids[1] \
+        "boss archive -taskid " + taskid + " -jobid " + chainid \
         + " -c " + bossCfgDir
         )
 
     return out
 
+
+def guessDashboardInfo(jobId, jobSpecId, bossCfgDir):
+    """
+    guess dashboard info file
+    """
+
+    # dashboard information
+    from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
+    dashboardInfo = DashboardInfo()
+
+    # get job information
+    (taskid, chainid, resub) = jobId.split('.')
+
+    # set BOSS path
+    BOSS.setBossCfgDir(bossCfgDir)
+
+    # get BOSS task
+    bossSession = BOSS.getBossSession()
+    bossTask = bossSession.makeBossTask( taskid ).taskMap()
+
+    # define dashboard file name
+    try :
+        jobCacheDir = JobState.general(jobSpecId)['CacheDirLocation']
+        logging.info("js cache_dir = " + jobCacheDir )
+    except StandardError, ex:
+        logging.info("failed to get cache_dir from js, trying with we" )
+        try :
+            WEjobState = WEJob.get( jobSpecId )
+            jobCacheDir = WEjobState['cache_dir']
+            logging.info("we cache_dir = " + jobCacheDir )
+        except StandardError, ex:
+            logging.info("failed to get cache_dir from we" )
+            return dashboardInfo, ''
+    dashboardInfoFile = os.path.join( jobCacheDir, "DashboardInfo.xml" )
+
+#    dashboardInfoFile = bossTask['SUB_PATH'] + \
+#                        "/DashboardInfo%s_%s.xml" % (taskid, chainid)
+
+    # check it
+    if os.path.exists(dashboardInfoFile):
+
+        try:
+            # it exists, get dashboard information
+            dashboardInfo.read(dashboardInfoFile)
+
+            # get rid of old info, keep just the identifier
+#            dashboardInfo.clear()
+            
+            # it does not work, abandon
+        except StandardError, msg:
+            logging.error("Reading dashboardInfoFile " + \
+                          dashboardInfoFile + " failed (jobId=" \
+                          + str(jobId) + ")\n" + str(msg))
+            return dashboardInfo, ''
+    else :
+        # if this is a crab job read from mlCommonInfo
+        try:
+            mlInfoFile = bossTask['SUB_PATH'].split('.boss_cache' )[0] + \
+                         '/mlCommonInfo'
+            logging.info( "guessing dashboardID from " + mlInfoFile )
+            fh = open( mlInfoFile, 'r' )
+            tmpdict = {}
+            for line in fh.readlines() :
+                (tag, value) = line.split(':')
+                tmpdict[ tag ] = value.strip()
+        except IOError:
+            logging.error( "Missing " + mlInfoFile )
+            # guess job dashboardID
+            pass 
+
+        try :
+            dashboardInfo.task = tmpdict['taskId']
+            dashboardInfo.job = ''
+        except KeyError:
+            logging.error( "unable to get dashboardID for job : " + jobId )
+            return dashboardInfo, ''
+        try :
+            dashboardInfo['JSTool'] =  tmpdict['tool']
+        except KeyError:
+            pass
+        try :
+            dashboardInfo['User'] = tmpdict['user']
+        except KeyError:
+            pass
+        try :
+            dashboardInfo['JSToolUI'] = tmpdict['tool_ui']
+        except KeyError:
+            pass
+        try :
+            dashboardInfo['TaskType'] = tmpdict['taskType']
+        except KeyError:
+            pass
+
+    return dashboardInfo, dashboardInfoFile
 

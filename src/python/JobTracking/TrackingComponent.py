@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.4 2007/09/28 15:03:05 ckavka Exp $"
+__version__ = "$Revision: 1.47.2.4 $"
 
 import time
 import os
@@ -74,6 +74,10 @@ class TrackingComponent:
         self.args.setdefault("Logfile", None)
         self.args.setdefault("verbose", 0)
         self.args.setdefault("JobCreatorComponentDir", None)
+        self.args.setdefault("dashboardInfo", \
+                             {'use' : 'True', \
+                              'address' : 'lxgate35.cern.ch', \
+                              'port' : '8884'})
         self.args.update(args)
 
         # set up logging for this component
@@ -138,12 +142,15 @@ class TrackingComponent:
         # build submitted jobs structure
         self.submittedJobs = self.loadDict()
 
+        # check for dashboard usage
+        self.usingDashboard = self.args['dashboardInfo']
+        logging.debug("DashboardInfo = %s" % str(self.usingDashboard))
+
         # component running, display info
         logging.getLogger().setLevel(logging.DEBUG)
         logging.info("JobTracking Component Started...")
         logging.info("BOSS_ROOT = %s" % os.environ["BOSS_ROOT"])
         logging.info("BOSS_VERSION = v4\n")
-
 
     def __call__(self, event, payload):
         """
@@ -243,7 +250,9 @@ class TrackingComponent:
             if not jid in self.submittedJobs.keys():
 
                 # no, publish information to dashboard
-                self.dashboardPublish(jid)
+                self.dashboardPublish(
+                    jid, BOSSCommands.jobSpecId(jid, self.bossCfgDir)
+                    )
 
             # include job in current structure
             submittedJobs[jid] = 0
@@ -334,8 +343,8 @@ class TrackingComponent:
             reportfilename = BOSSCommands.reportfilename(jobId, self.directory)
 
             # publish information to the dashboard
-            self.dashboardPublish(jobId[0])
-            self.dashboardPublish(jobId[0], "ENDED_")
+            self.dashboardPublish(jobId[0], jobSpecId)
+            self.dashboardPublish(jobId[0], jobSpecId, "ENDED_")
 
             # create directory
             directory = os.path.dirname(reportfilename)
@@ -453,7 +462,7 @@ class TrackingComponent:
         outp = jobInfo['output']
 
         # publish information to the dashboard
-        self.dashboardPublish(jobId[0],"ENDED_")
+        self.dashboardPublish(jobId[0], jobSpecId, "ENDED_")
 
         # successful output retrieval?
         if outp.find("-force") < 0 and \
@@ -552,74 +561,95 @@ class TrackingComponent:
 
         return
 
-    def dashboardPublish(self, jobId, ended=""):
+    def dashboardPublish(self, jobId, jobSpecId, ended=""):
         """
         _dashboardPublish_
         
         publishes dashboard info
         """
 
-        # get job information       
-        (taskid, chainid, resub) = jobId.split('.')
+        # dashboard information
+        ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
+            jobId, jobSpecId, self.bossCfgDir
+            )
+        if dashboardInfo.task == '' or dashboardInfo.task == None :
+            logging.error( "unable to retrieve DashboardId" )
+            return
 
-        # define dashboard file name
-        dashboardInfoFile = BOSSCommands.subdir(jobId, self.bossCfgDir) + \
-                      "/DashboardInfo%s_%s_%s.xml" % (taskid, chainid, resub)
+        # set dashboard destination
+        dashboardInfo.addDestination(
+            self.usingDashboard['address'], self.usingDashboard['port']
+            )
 
-        # check it
-        if os.path.exists(dashboardInfoFile):
+        # get scheduler info
+        schedulerI = BOSSCommands.schedulerInfo(self.bossCfgDir, jobId, \
+                                                ended)
+        
+        if len( schedulerI ) == 0:
+            logging.error("schedulerinfo: %s" % schedulerI.__str__())
+            return
+        
+        logging.debug("schedulerinfo: %s" % schedulerI.__str__())
+        
+        # if the dashboardInfo.job is not set,
+        # this is a crab job detected for the first time
+        # set it and write the info file 
+        if dashboardInfo.job == '' or dashboardInfo.job == None :
+            dashboardInfo.job = jobId.split('.')[1] + '_' + \
+                                schedulerI['SCHED_ID']
+            # create/update info file
+            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
+            dashboardInfo.write( dashboardInfoFile )
+    
+        # write dashboard information
+        dashboardInfo['GridJobID'] = schedulerI['SCHED_ID']
 
-            # it exists, get dashboard information
-            dashboardInfo = DashboardInfo()
-
-            try:
-                dashboardInfo.read(dashboardInfoFile)
-
-            # it does not work, abandon
-            except StandardError, msg:
-                logging.error("Reading dashboardInfoFile " + \
-                             dashboardInfoFile + " failed (jobId=" \
-                             + str(jobId) + ")\n" + str(msg))
-                return
-
-            # get grid job id
-            gridJobId = dashboardInfo['GridJobID']
-            dashboardInfo.clear()
-
-            # get scheduler info
-            schedulerI = BOSSCommands.schedulerInfo(self.bossCfgDir, jobId, \
-                                                    ended)
-            logging.debug("schedulerinfo: %s" % schedulerI.__str__())
-
-            # write dashboard information
+        
+        try :
             dashboardInfo['StatusEnterTime'] = time.strftime( \
                              '%Y-%m-%d %H:%M:%S', \
-                             time.gmtime(float(schedulerI['LAST_T'])))
+                             time.gmtime(float(schedulerI['LB_TIMESTAMP'])))
+        except KeyError:
+            pass
+
+        try :
             dashboardInfo['StatusValue'] = schedulerI['SCHED_STATUS']
+        except KeyError:
+            pass
+
+        try :
             dashboardInfo['StatusValueReason'] = \
-                             schedulerI['STATUS_REASON'].replace('-',' ')
+                                   schedulerI['STATUS_REASON'].replace('-',' ')
+        except KeyError:
+            pass
+
+        try :
             dashboardInfo['StatusDestination'] = schedulerI['DEST_CE'] + \
-                             "/" + schedulerI['DEST_QUEUE']
-            dashboardInfo['SubTimeStamp'] = time.strftime( \
-                             '%Y-%m-%d %H:%M:%S', \
-                             time.gmtime(float(schedulerI['SUBMITTED'])))
-            dashboardInfo['GridJobID'] = gridJobId
+                                                 "/" + schedulerI['DEST_QUEUE']
+        except KeyError:
+            pass
+        
+        try :
+            dashboardInfo['RBname'] = schedulerI['RB']
+        except KeyError:
+            pass
 
-            if schedulerI.has_key( "RB" ) :
-                dashboardInfo['RBname'] = schedulerI['RB']
-            
+#        dashboardInfo['SubTimeStamp'] = time.strftime( \
+#                             '%Y-%m-%d %H:%M:%S', \
+#                             time.gmtime(float(schedulerI['LAST_T'])))
+
+        # publish it
+        try:
             logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
+            dashboardInfo.publish(5)
 
-            # publish it
-            try:
-                dashboardInfo.publish(5)
-
-            # error, cannot publish it
-            except StandardError, msg:
-                logging.error("Cannot publish dashboard information: " + \
-                              dashboardInfo.__str__() + "\n" + str(msg))
+        # error, cannot publish it
+        except StandardError, msg:
+            logging.error("Cannot publish dashboard information: " + \
+                          dashboardInfo.__str__() + "\n" + str(msg))
 
         return
+
 
     def notifyJobState(self, jobId):
         """
