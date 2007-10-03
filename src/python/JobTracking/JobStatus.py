@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.1 2007/09/28 14:58:40 ckavka Exp $"
+__version__ = "$Revision: 1.1.2.1 $"
 
 import logging
 from ProdAgentBOSS.BOSSCommands import BOSS
@@ -93,7 +93,7 @@ class JobStatus:
                 prevcert = cert
                 continue
 
-            # evaulate valid certificates and set the environment
+            # evaluate valid certificates and set the environment
             if cert != 'NULL' and cert != '':
                 if os.path.exists(cert):
                     os.environ["X509_USER_PROXY"] = cert
@@ -138,7 +138,7 @@ class JobStatus:
                 logging.error( ex.__str__() )
                 logging.error( traceback.format_exc() )
 
-            tasklist = task
+            tasklist = task + ','
             prevcert = cert
 
         sleep(cls.params['delay'])
