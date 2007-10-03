@@ -16,7 +16,7 @@ import popen2
 from FwkJobRep.TaskState import TaskState
 from FwkJobRep.MergeReports import mergeReports
 from FwkJobRep.FwkJobReport import FwkJobReport
-
+import FwkJobRep.PerfLogParser as PerfReps
 
 def getSyncCE():
     """
@@ -178,6 +178,17 @@ def processFrameworkJobReport():
     # // add dashboard id
     #//
     report.dashboardId = getDashboardId()
+
+    #  //
+    # // Add Performance Report if logfiles are Available
+    #//
+    stderrLog = "%s-main.sh-stderr.log" % state.taskName()
+    perfReport = "PerfReport.log"
+    if not os.path.exists(stderrLog):
+        stderrLog = None
+    if not os.path.exists(perfReport):
+        perfReport = None
+    PerfReps.makePerfReports(perfRep, stderrLog, perfReport)
     
     #  //
     # // write out updated report
