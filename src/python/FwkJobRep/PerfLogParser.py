@@ -322,22 +322,68 @@ class TrigReportMaker:
                 "Error"   : elems[4],
                 }
         return result
+
+def average(numbers):
+    return sum(numbers) / len(numbers)   
+
+class PerfReportLogReportMaker:
+    """
+    _PerfReportLogReportMaker_
+
+    Read the output of the PerfReport.log file to generate
+    some CPU and memory usage metrics for the job
     
+    """
+    def __init__(self, logfilePath):
+        self.content = readReports("", logfilePath)
+        self.verbose = False
+        self.rss   =  []
+        self.vsize =  []
+        self.pcpu  =  []
+        self.pmem  =  []
+        
+
+    def __call__(self, perfRep):
+        """
+        _operator(PerformanceReport)_
+
+        Add details to the performance report provided
+
+        """
+        for line in self.content:
+            elems = line.split()
+            if len(elems) < 7: continue
+            
+            self.rss.append(int(elems[2]))
+            self.vsize.append(int(elems[3]))
+            self.pcpu.append(float(elems[4]))
+            self.pmem.append(float(elems[5]))
+
+            
+        if len(self.pcpu) > 0:
+            perfRep.addSummary("PercentCPU",
+                               MinPercentCPU = min(self.pcpu),
+                               MaxPercentCPU = max(self.pcpu),
+                               AvgPercentCPU = average(self.pcpu))
+        if len(self.pmem) > 0:
+            perfRep.addSummary("PhysicalMemory",
+                               MinPhysicalMemory = min(self.pmem),
+                               MaxPhysicalMemory = max(self.pmem),
+                               AvgPhysicalMemory = average(self.pmem))
+            
+        if len(self.rss) > 0:
+            perfRep.addSummary("RSSMemory",
+                               MinRSSMemory = min(self.rss),
+                               MaxRSSMemory = max(self.rss),
+                               AvgRSSMemory = average(self.rss))
+        if len(self.vsize) > 0:
+            perfRep.addSummary("VSizeMemory",
+                               MinVSizeMemory = min(self.vsize),
+                               MaxVSizeMemory = max(self.vsize),
+                               AvgVSizeMemory = average(self.vsize))
+            
+                           
+        return
+        
 
 
-if __name__ == '__main__':
-    stderr = "/home/evansde/work/PRODAGENT/src/python/JobCreator/detritus/RelVal-RelValSingleMuMinusPt100-1189520796/Processing/RelVal-RelValSingleMuMinusPt100-1189520796/cmsRun1/cmsRun1-main.sh-stderr.log"
-    trm = TimeReportMaker(stderr)
-    trm.verbose = True
-    from FwkJobRep.PerformanceReport import PerformanceReport
-    perfRep = PerformanceReport()
-    perfRep.getInfoOnWorker()
-    trm(perfRep)
-    
-    trigMaker = TrigReportMaker(stderr)
-    trigMaker.verbose = True
-    trigMaker(perfRep)
-    
-    handle = open("SamplePerfRep.xml", "w")
-    handle.write(perfRep.save().makeDOMElement().toprettyxml())
-    handle.close()
