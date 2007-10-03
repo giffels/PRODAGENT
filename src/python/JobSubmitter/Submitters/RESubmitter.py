@@ -26,6 +26,7 @@ import exceptions
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentBOSS import BOSSCommands
 
 class InvalidFile(exceptions.Exception):
@@ -51,8 +52,25 @@ class RESubmitter(SubmitterInterface):
         
         self.bossStrJobId = ""
         self.parameters['Scheduler'] = "glite"
-        
-        
+         # check for dashboard usage
+        self.usingDashboard = {'use' : 'True', \
+                               'address' : 'lxgate35.cern.ch', \
+                               'port' : '8884'}
+        try:
+            pluginConfig = loadPluginConfig("JobSubmitter", "Submitter")
+            dashboardCfg = pluginConfig.get('Dashboard', {})
+            self.usingDashboard['use'] = dashboardCfg.get(
+                "UseDashboard", "False"
+                )
+            self.usingDashboard['address'] = dashboardCfg.get(
+                "DestinationHost"
+                )
+            self.usingDashboard['port'] = dashboardCfg.get("DestinationPort")
+            logging.debug("DashboardInfo = %s" % dashboardInfo.__str__())
+        except:
+            logging.info("No Dashboard section in SubmitterPluginConfig")
+
+
     def checkPluginConfig(self):
         """
         _checkPluginConfig_
@@ -211,16 +229,19 @@ class RESubmitter(SubmitterInterface):
         If dashboardInfo is None, it is not available for this job.
 
         """
-        try:
-            taskid  = self.bossStrJobId.split(".")[0]
-            chainid = self.bossStrJobId.split(".")[1]
-            resub   = self.bossStrJobId.split(".")[2]
-        except:
+
+        if  self.usingDashboard['use'] != 'True':
             return
-        jobGridId = \
-                  BOSSCommands.schedulerId(self.bossStrJobId, self.bossCfgDir)
-        rbName = (jobGridId.split("/")[2]).split(":")[0]
-        #logging.info("Scheduler id from RESubmitter=%s"%jobGridId)
+        
+        jobSpecId = BOSSCommands.jobSpecId(jobId, self.bossCfgDir)
+
+        ( dashboardInfo, dashboardInfoFile ) = \
+          BOSSCommands.guessDashboardInfo(jobId, jobSpecId, self.bossCfgDir)
+        if dashboardInfo.task == '' :
+            logging.error( "unable to retrieve DashboardId" )
+            return
+        
+        dashboardInfo.job = chainid + '_' + schedulerI['SCHED_ID']
         dashboardInfo['ApplicationVersion'] = self.listToString(
             self.parameters['AppVersions']
             )
@@ -228,36 +249,17 @@ class RESubmitter(SubmitterInterface):
             self.parameters['Whitelist']
             )
         dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
-        
         dashboardInfo['Scheduler'] = 'RE'
-        dashboardInfo['GridJobID'] = jobGridId
-        dashboardInfo['RBname'] = rbName
-        dashboardinfodir = BOSSCommands.subdir(
-            self.bossStrJobId,self.bossCfgDir
+        dashboardInfo['GridJobID'] = \
+                                   BOSSCommands.schedulerId(jobId, bossCfgDir)
+
+        # set dashboard destination
+        dashboardInfo.addDestination(
+            self.usingDashboard['address'], self.usingDashboard['port']
             )
-#        dashboardInfo.write(
-#            os.path.join(os.path.dirname(self.parameters['JobCacheArea']),
-#                         'DashboardInfo.xml')
-#            )
 
-        try:
-            dashboardCfg = self.pluginConfig.get('Dashboard', {})
-            usingDashboard = dashboardCfg.get("UseDashboard", "False")
-            DashboardAddress = dashboardCfg.get("DestinationHost")
-            DashboardPort = dashboardCfg.get("DestinationPort")
-            dashboardInfo.addDestination(DashboardAddress, int(DashboardPort))
-            logging.debug("DashboardInfo = %s" % dashboardInfo.__str__())
-        except:
-            logging.info("No Dashboard section in SubmitterPluginConfig")
-            usingDashboard = "False"
-
-        if  usingDashboard.lower() == 'true':
-            dashboardInfo.publish(5)
-#          dashboardInfo.clear()
-            dashboardInfo.write(
-                dashboardinfodir + \
-                "/DashboardInfo%s_%s_%s.xml" % (taskid, chainid, resub)
-                )
+        dashboardInfo.write( dashboardInfoFile )
+        dashboardInfo.publish(5)
             
         return
       
