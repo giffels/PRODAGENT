@@ -188,7 +188,7 @@ def processFrameworkJobReport():
         stderrLog = None
     if not os.path.exists(perfReport):
         perfReport = None
-    PerfReps.makePerfReports(perfRep, stderrLog, perfReport)
+    PerfReps.makePerfReports(report.performance, stderrLog, perfReport)
     
     #  //
     # // write out updated report
