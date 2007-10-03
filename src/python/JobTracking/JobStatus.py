@@ -75,34 +75,40 @@ class JobStatus:
 
         # process by certificate
         tasks = out.split()[2:]
+        ntask = len(tasks)/2
         tasklist = ''
         prevcert = ''
+        i = 0
 
-        for i in range(len(tasks)/2):
+        while i < ntask :
             task = tasks[i*2]
             cert = tasks[i*2+1]
+            i += 1
 
-            # if last task, append and process
-            if i == len(tasks)/2-1 :
-                tasklist += tasks[i*2] + ','
-
-            # if same certificate group or just first entry,
-            # append and go to the next
-            elif cert == prevcert or tasklist == '' :
-                tasklist += task + ','
+            # if same certificate group or just first entry, append
+            if cert == prevcert or tasklist == '' :
                 prevcert = cert
-                continue
+
+                # if not last task, get next, otherwise process
+                if i != ntask :
+                    tasklist += task + ','
+                    continue
+                
+            # else if not same certificate, but anyway the last,
+            # process current tasklist and step back to process the last
+            elif cert != prevcert and i == ntask :
+                i -= 1
 
             # evaluate valid certificates and set the environment
-            if cert != 'NULL' and cert != '':
-                if os.path.exists(cert):
-                    os.environ["X509_USER_PROXY"] = cert
+            if prevcert != 'NULL' and prevcert != '':
+                if os.path.exists(prevcert):
+                    os.environ["X509_USER_PROXY"] = prevcert
                     logging.debug(
                         "using proxy " + os.environ["X509_USER_PROXY"]
                         )
                 else:
                     logging.debug(
-                      "cert path " + cert + \
+                      "cert path " + prevcert + \
                       " does not exists: trying to use the default one if there"
                       )
             tasklist = tasklist[:-1]
@@ -138,6 +144,8 @@ class JobStatus:
                 logging.error( ex.__str__() )
                 logging.error( traceback.format_exc() )
 
+            # if reached this point, there is at least one task left
+            # the current task goes anyway in the next query
             tasklist = task + ','
             prevcert = cert
 
