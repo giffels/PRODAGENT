@@ -387,3 +387,37 @@ class PerfReportLogReportMaker:
         
 
 
+def makePerfReports(perfRep, stderr = None, perfLog = None , verbose = False):
+    """
+    _makePerfReports_
+
+    Util to generate a perf report
+    """
+
+    if stderr != None:
+        try:
+            timeRep = TimeReportMaker(stderr)
+            timeRep.verbose = verbose
+            trigRep = TrigReportMaker(stderr)
+            trigRep.verbose = verbose
+            timeRep(perfRep)
+            trigRep(perfRep)
+
+        except Exception, ex:
+            msg = "Error Creating Performance Reports from stderr file:\n"
+            msg += "%s\n" % stderr
+            msg += str(ex)
+            print msg
+
+
+    if perfLog != None:
+        try:
+            perfLogMaker = PerfReportLogReportMaker(perfLog)
+            perfLogMaker.verbose = verbose
+            perfLogMaker(perfRep)
+        except Exception, ex:
+            msg = "Error creating performance reports from PerfReport.log\n"
+            msg += str(ex)
+            print msg
+
+    return
