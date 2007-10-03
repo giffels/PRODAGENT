@@ -479,6 +479,11 @@ class DBSComponent:
         #//
 
         logging.info(">>>>> create Processing Dataset ")
+        #// optionally drop dataset parentage 
+        if self.DropParent:
+           for adataset in workflowSpec.payload._OutputDatasets:
+               adataset['ParentDataset']=None
+
         dbswriter.createDatasets(workflowSpec)
         #  //
         # //  Create Merged Datasets for that workflow as well
