@@ -25,7 +25,6 @@ from ProdCommon.Core.GlobalRegistry import retrieveHandler
 from ProdCommon.Core.GlobalRegistry import GlobalRegistry
 
 
-
 class ErrorHandlerComponent:
     """
     _ErrorHandlerComponent_
@@ -68,6 +67,13 @@ class ErrorHandlerComponent:
          self.args['Events']={'JobFailed':'runFailureHandler', \
                               'SubmissionFailed':'submitFailureHandler', \
                               'CreateFailed':'createFailureHandler'}
+
+         # check if we need to use non default handlers
+         for handler in self.args['Events'].keys():
+
+             # assign the non default handler if provided
+             if self.args.has_key(handler):
+                 self.args['Events'][handler] = self.args[handler]
 
          if self.args['Logfile'] == None:
               self.args['Logfile'] = os.path.join(self.args['ComponentDir'],\
