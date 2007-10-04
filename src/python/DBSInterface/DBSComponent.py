@@ -431,8 +431,8 @@ class DBSComponent:
             try:
                self.handlePhEDExInjectDataset(payload)
                return
-            except DBSReaderError, ex:
-                logging.error("Failed to PhEDExInjectDataset: %s" % payload)
+#            except DBSReaderError, ex:
+#                logging.error("Failed to PhEDExInjectDataset: %s" % payload)
             except StandardError, ex:
                 logging.error("Failed to PhEDExInjectDataset")
                 logging.error("Details: %s" % str(ex))
