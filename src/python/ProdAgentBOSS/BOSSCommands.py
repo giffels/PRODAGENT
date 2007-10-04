@@ -1157,12 +1157,12 @@ def guessDashboardInfo(jobId, jobSpecId, bossCfgDir):
             return dashboardInfo, ''
     else :
         # if this is a crab job read from mlCommonInfo
+        tmpdict = {}
         try:
             mlInfoFile = bossTask['SUB_PATH'].split('.boss_cache' )[0] + \
                          '/mlCommonInfo'
             logging.info( "guessing dashboardID from " + mlInfoFile )
             fh = open( mlInfoFile, 'r' )
-            tmpdict = {}
             for line in fh.readlines() :
                 (tag, value) = line.split(':')
                 tmpdict[ tag ] = value.strip()
