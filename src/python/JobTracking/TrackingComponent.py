@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.48 2007/09/28 18:46:58 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.49 2007/10/04 14:21:41 afanfani Exp $"
 
 import traceback
 import time
@@ -599,7 +599,7 @@ class TrackingComponent:
           JobState.finished(jobId)
           Session.commit_all()
         except Exception, ex:
-                msg = "Error setting job state to finished for job: %s\n" % jobspec
+                msg = "Error setting job state to finished for job: %s\n" % jobId
                 msg += str(ex)
                 logging.error(msg)
         return
