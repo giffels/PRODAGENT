@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.3 2007/09/28 09:57:28 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.48 2007/09/28 18:46:58 afanfani Exp $"
 
 import traceback
 import time
@@ -782,6 +782,12 @@ class TrackingComponent:
                     logging.info("removed %s for task %s"%(subPath,taskid))
                 except:
                     logging.error("Failed to remove submission files")
+                # remove ..id file, so that re-declaration is possible if needed
+                try:
+                    os.remove("%s/%sid"%(jobCacheDir,fjr[0].jobSpecId))
+                except: 
+                    logging.info("not removed file %s/%sid"%(jobCacheDir,fjr[0].jobSpecId))
+                    pass
         return
 
 
