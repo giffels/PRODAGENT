@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.1 2007/09/28 14:58:40 ckavka Exp $"
-__version__ = "$Revision: 1.1.2.1 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 
 import logging
 from ProdAgentBOSS.BOSSCommands import BOSS
@@ -87,6 +87,7 @@ class JobStatus:
 
             # if same certificate group or just first entry, append
             if cert == prevcert or tasklist == '' :
+                tasklist += task + ','
                 prevcert = cert
 
                 # if not last task, get next, otherwise process
@@ -103,16 +104,16 @@ class JobStatus:
             if prevcert != 'NULL' and prevcert != '':
                 if os.path.exists(prevcert):
                     os.environ["X509_USER_PROXY"] = prevcert
-                    logging.debug(
+                    logging.info(
                         "using proxy " + os.environ["X509_USER_PROXY"]
                         )
                 else:
-                    logging.debug(
+                    logging.info(
                       "cert path " + prevcert + \
                       " does not exists: trying to use the default one if there"
                       )
             tasklist = tasklist[:-1]
-            logging.debug('LB query for tasks ' + tasklist)
+            logging.info('LB query for tasks ' + tasklist)
 
             # query group of tasks
             try :
