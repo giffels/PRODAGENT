@@ -6,9 +6,9 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.10 2007/09/30 10:14:12 afanfani Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.11 2007/10/01 09:42:43 afanfani Exp $"
 
-import os
+import os,time,string
 import logging
 
 
@@ -360,25 +360,30 @@ fi
             logging.info("BOSS RTMon not set xx")
         # // submission command
         bossSubmit = BOSSCommands.submit(
-            self.bossJobId, scheduler,self.bossCfgDir
+            self.bossJobId,scheduler,self.bossCfgDir
             )
         bossSubmit += " -schclassad %s"%schedulercladfile
-
+        # write submission logs
+        bossSubmit += " -logfile %s/%s-%s-submitLog " % (self.toSubmit[self.mainJobSpecName], self.mainJobSpecName , time.time())
         #  //
         # // Executing BOSS Submit command
         #//
         logging.debug ("GLITEBulkSubmitter.doSubmit: %s" % bossSubmit)
+        #
         # execute command with timeout based on nb.of jobs = len(self.toSubmit) with 60sec for each job
+        #
         output = BOSSCommands.executeCommand(bossSubmit,len(self.toSubmit)*60)
-        logging.debug ("GLITEBulkSubmitter.doSubmit: %s" % output)
+        logging.debug ("GLITEBulkSubmitter.doSubmit: output %s output" % output)
         if output.find("error")>=0:
             # // cleaning if bulk submission failed for max retries
             if self.isBulk:
                 BOSSCommands.FailedSubmission (
                     self.bossJobId + '.1',self.bossCfgDir
                     )
-#                raise JSException("Submission Failed", mainJobSpecName = self.mainJobSpecName)
-                raise JSException("Submission Failed", FailureList = self.toSubmit.keys()) 
+                failurejobs = self.checkPartialSubmissionFailure()
+                if len(failurejobs)>0:
+                   raise JSException("Submission Failed", FailureList = failurejobs) 
+                ##raise JSException("Submission Failed", FailureList = self.toSubmit.keys()) 
             else :
                 raise JSException("Submission Failed", FailureList = self.toSubmit.keys())             
             # // retrieving submission number
@@ -387,11 +392,20 @@ fi
             logging.debug("resub =%s"%resub)
         except:
             resub="1"
-        try:
-            chainid=(output.split("Scheduler ID for job")[1]).split("is")[0].strip()
+        try: 
+            ## do not rely on boss submit stdout and get infor from BOSS DB instead
+            #chainid=(output.split("Scheduler ID for job")[1]).split("is")[0].strip()
+            command = "bossAdmin SQL -query \"select CHAIN.ID from CHAIN where CHAIN.TASK_ID=%s\" -c %s"%(self.bossJobId, self.bossCfgDir)
+            ids=BOSSCommands.executeCommand( command )
+            for id in ids.strip().split('\n'):
+                if id.strip() != "ID" and id.strip() != "No results!":
+                   chainid=id.strip()
+                   break
         except:
-#            raise JSException("Submission Failed", mainJobSpecName = self.mainJobSpecName)
-            raise JSException("Submission Failed", FailureList = self.toSubmit.keys()) 
+            failurejobs = self.checkPartialSubmissionFailure()
+            if len(failurejobs)>0:
+               raise JSException("Submission Failed", FailureList = failurejobs)
+#            raise JSException("Submission Failed", FailureList = self.toSubmit.keys()) 
 
         # // composing boss jobid
         self.bossJobId=str(self.bossJobId)+"."+chainid+"."+resub
@@ -400,6 +414,24 @@ fi
         os.remove(schedulercladfile)
 
         return 
+
+    def checkPartialSubmissionFailure(self):
+        """
+        _checkPartialSubmissionFailure_
+
+         check which jobs failed the submission and return a list of jobnames that failed in submission, 
+         so that one can send a Submission Failure only for those
+        """
+        failurejobs = []
+        inJobList=string.join(self.toSubmit.keys(),"','")
+        inJobList="( '%s' )" %inJobList
+        command = "bossAdmin SQL -query \"select CHAIN.NAME from JOB,CHAIN where CHAIN.TASK_ID=JOB.TASK_ID  and CHAIN.ID=JOB.CHAIN_ID and CHAIN.NAME in %s and JOB.STATUS='W'\" -c %s"%(inJobList, self.bossCfgDir)
+        outjobs=BOSSCommands.executeCommand( command )
+        for ajob in outjobs.strip().split('\n'):
+            job=ajob.strip()
+            if job != "NAME" and job != "No results!":
+               failurejobs.append(job)
+        return failurejobs
 
     def getUserJDL(self,jobType):
         """
