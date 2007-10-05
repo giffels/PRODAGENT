@@ -20,6 +20,9 @@ import logging
 from WorkflowInjector.PluginInterface import PluginInterface
 from WorkflowInjector.Registry import registerPlugin
 
+from ProdCommon.JobFactory.DatasetJobFactory import DatasetJobFactory
+
+
 
 class DatasetFeeder(PluginInterface):
     """
@@ -31,8 +34,50 @@ class DatasetFeeder(PluginInterface):
     """
     def handleInput(self, payload):
         logging.info("DatasetFeeder: Handling %s" % payload)
+        self.workflow = None
+        self.dbsUrl = None
+        self.loadPayloads(payload)
+        
+        factory = DatasetJobFactory(self.workflow,
+                                    self.workingDir,
+                                    self.dbsUrl)
+                                    
+        jobs = factory()
+        for job in jobs:
+            self.queueJob(job['JobSpecId'], job['JobSpecFile'],
+                          job['JobType'],
+                          job['WorkflowSpecId'],
+                          job['WorkflowPriority'],
+                          *job['Sites'])
+            
+        
+        return
+        
+
+    def loadPayloads(self, workflowFile):
+        """
+        _loadPayloads_
+        
+        
+        """
+        self.workflow = self.loadWorkflow(workflowFile)
+        
+        
+        value = self.workflow.parameters.get("DBSURL", None)
+        if value != None:
+            self.dbsUrl = value
+
+        if self.dbsUrl == None:
+            msg = "Error: No DBSURL available for dataset:\n"
+            msg += "Cant get local DBSURL and one not provided with workflow"
+            logging.error(msg)
+            raise RuntimeError, msg
 
 
+
+        return
+        
+        
 registerPlugin(DatasetFeeder, DatasetFeeder.__name__)
 
 

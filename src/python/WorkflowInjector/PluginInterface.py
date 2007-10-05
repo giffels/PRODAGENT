@@ -21,7 +21,7 @@ def hashList(listOfSites):
     
     """
     listOfSites.sort()
-    hashval = "-"
+    hashVal = "-"
     hashVal = hashVal.join(listOfSites)
     return hashVal
 
@@ -109,7 +109,6 @@ class PluginInterface:
             siteList = self.siteLists[siteHash]
             if siteHash == "NOSITE":
                 siteList = []
-            
             bulkQueueJobs(siteList, *self.jobsToPublish[siteHash].values())
             
             #  //
