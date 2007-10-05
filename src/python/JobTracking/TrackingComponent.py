@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.49 2007/10/04 14:21:41 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.50 2007/10/04 17:55:40 afanfani Exp $"
 
 import traceback
 import time
@@ -365,7 +365,6 @@ class TrackingComponent:
         except StandardError, ex:
             logging.info( ex.__str__() )
             logging.info( traceback.format_exc() )
-            return 0
 
         # sleep until next polling cycle
         self.ms.publish("TrackingComponent:pollDB", "")
