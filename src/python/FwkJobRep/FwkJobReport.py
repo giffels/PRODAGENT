@@ -33,7 +33,9 @@ class FwkJobReport:
         self.errors = []
         self.skippedEvents = []
         self.skippedFiles = []
-        self.exitCode = 0
+        #  Set inital exitCode to an error code, it will be updated with 
+        #    the correct value if the post job steps run correctly
+        self.exitCode = 50117  
         self.siteDetails = {}
         self.timing = {}
         self.storageStatistics = None
