@@ -15,7 +15,7 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 #for dict cursor
 from ProdAgentDB.Connect import connect
 
-import os, sys, time, getopt
+import os, sys, time, getopt, re
 
 db_id = "migrate"
 
@@ -229,12 +229,14 @@ def migrateWorkflows():
                          WHERE st_job_success.job_index = st_job_attr.job_index
                          AND st_job_attr.attr_class = "output_datasets" AND 
                          st_job_success.workflow_spec_id = %s""" % addQuotes(workflow), sessionID=db_id)
-        output_datasets = Session.fetchall(sessionID=db_id)#.tostring()    #array for some reason
+        output_datasets = Session.fetchall(sessionID=db_id)
         
-        output_datasets = [removeTuple(x).tostring() for x in output_datasets]
-        #output_datasets.append(output_dataset)
-        
-        #insert workflow with correct name, fake request_id of 0, 
+        #change to DBS2 dataset format
+        for dataset in output_datasets:
+            dataset = removeTuple(dataset).tostring()    #array for some reason
+            dataset = re.sub('(.*)/(.*)/(.*CMSSW.*)', '\g<1>/\g<3>/\g<2>' , dataset)
+    
+        #insert workflow with fake request_id of 0, 
         #no input datasets and an unknown CMSSW version
         insertNewWorkflow(workflow, 0, (), output_datasets, "Unknown")
 
