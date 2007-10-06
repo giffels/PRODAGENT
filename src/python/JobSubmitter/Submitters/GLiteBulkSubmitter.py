@@ -6,7 +6,7 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.11 2007/10/01 09:42:43 afanfani Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.12 2007/10/05 20:38:56 afanfani Exp $"
 
 import os,time,string
 import logging
@@ -395,6 +395,7 @@ fi
         try: 
             ## do not rely on boss submit stdout and get infor from BOSS DB instead
             #chainid=(output.split("Scheduler ID for job")[1]).split("is")[0].strip()
+            chainid="1" # default chainid to 1
             command = "bossAdmin SQL -query \"select CHAIN.ID from CHAIN where CHAIN.TASK_ID=%s\" -c %s"%(self.bossJobId, self.bossCfgDir)
             ids=BOSSCommands.executeCommand( command )
             for id in ids.strip().split('\n'):
