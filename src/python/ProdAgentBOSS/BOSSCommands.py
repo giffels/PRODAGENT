@@ -410,20 +410,13 @@ def executeCommand(command,timeout=600):
     except:
         pass
 
-#    f=open("/bohome/bacchi/PRODAGENT_HEAD/PRODAGENT/BOSSCommands.log",'w')
-    
-#    f.write( command)
     p=Popen4(command)
     p.tochild.close()
     outfd=p.fromchild
     outfno=outfd.fileno()
-#    f.write("\npoint 1")
     
-#     signal.signal(signal.SIGCHLD,signal.SIG_IGN)
     fl=fcntl.fcntl(outfd,fcntl.F_GETFL,0)
-#    f.write("\npoint 2")
     fcntl.fcntl(outfd,fcntl.F_SETFL, fl | os.O_NONBLOCK)
-#    f.write("\npoint 2")
     err = -1
     outc = []
     outfeof = 0
@@ -432,7 +425,6 @@ def executeCommand(command,timeout=600):
     pid=p.pid
     #logging.debug("process id of %s = %d"%(command,pid))
     timeout=max(1,timeout/10)
-#    f.write("timeout=%s"%timeout)
     timedOut=True
     while 1:
         (r,w,e)=select.select([outfno],[],[],timeout)
@@ -449,26 +441,14 @@ def executeCommand(command,timeout=600):
     # time.sleep(.1)
 
     if timedOut:
-        #logging.error("command %s timed out. timeout %d\n"%(command,timeout))
-        # f.write("timedOut")
         os.kill(pid,signal.SIGTERM)
         stoppid(pid,signal.SIGTERM)
         return ""
-#    if err > 0:
- #       logging.error("command %s gave %d exit code"%(command,err))
-    #    p.wait()
-        #ogging.error(p.fromchild.read())
-
-        #eturn ""
         
     try:
         output=string.join(outc,"")
     except:
         output=""
-    #logging.debug("command output \n %s"%output)
-    #print "command output \n %s"%output
-    # f.write("output=%s"%output)
-    # f.close()
     return output
 
 
@@ -752,7 +732,7 @@ def FailedSubmission(bossJobId,bossCfgDir):
         jobMaxRetries=JobState.general(jobSpecId(bossJobId,bossCfgDir))['MaxRetries']
         Retries=JobState.general(jobSpecId(bossJobId,bossCfgDir))['Retries']
     except:
-        jobMaxRetries=0
+        jobMaxRetries=10
         Retries=0
     
 #     outfile=executeCommand("bossAdmin SQL -query \"select max(ID) resub from JOB where TASK_ID=%s\" -c %s"%(taskid,bossCfgDir))
