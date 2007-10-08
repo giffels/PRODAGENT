@@ -54,6 +54,7 @@ def insertStats(jobStatistics):
         __insertRuns(Session, jobStatistics)
         __insertSkippedEvents(Session, jobStatistics)
         __insertTimings(Session, jobStatistics)
+        __insertPerformanceReport(Session, jobStatistics)
         
         Session.commit()
         Session.close()
@@ -280,6 +281,66 @@ def __insertSkippedEvents(Session, jobStatistics):
                 "run": run, "event" : event},
                returns=False)
         
+        
+def __insertPerformanceReport(Session, jobStatistics):
+    """
+    Insert performance report
+    """
+    
+    #TODO: Add in proper core support
+    
+    perf_report = jobStatistics.get("performance_report", None)
+
+    if perf_report == None:
+        logging.warning("performance report not found - skipping")
+        return
+
+    #node properties
+    if len(perf_report.cpus) == 0 or len(perf_report.memory) == 0:
+        logging.warning("performance report: cpu/memory info not found")
+        return
+
+    # assume that all cpu's have same number of cores and that all have same properties
+    cpu = perf_report.cpus.values()[1]
+    node_id = __insertIfNotExist(Session, "prodmon_node_properties",
+                {"cpu_speed" : cpu["Speed"],
+                 "cpu_description" : cpu["Description"],
+                 "number_cpu" : len(perf_report.cpus),
+                 "number_core" : len(perf_report.cpus),
+                 "memory" : perf_report.memory["MemTotal"]},
+                 "node_id")
+    jobStatistics["database_ids"]["node_properties_id"] = node_id
+
+    #link node_properties and instance
+    __insert(Session, "prodmon_node_map",
+             {"instance_id" : jobStatistics["database_ids"]["instance_id"],
+              "node_id" : jobStatistics["database_ids"]["node_properties_id"]},
+              returns = False
+              )
+                 
+    #summary info
+    for metric_class, metric in perf_report.summaries.items():
+        for name, value in metric.items():
+            __insert(Session, "prodmon_performance_summary",
+                 {"instance_id" : jobStatistics["database_ids"]["instance_id"],
+                  "metric_class" : metric_class,
+                  "metric_name" : name,
+                  "metric_value" : value},
+                  "instance_id")
+
+    #module info
+    for module, details in perf_report.modules.items():
+        for metric_class, metrics in details.items():
+            for metric in metrics:
+                for name, value in metric.items():
+                    __insert(Session, "prodmon_performance_modules",
+                             {"instance_id" : jobStatistics["database_ids"]["instance_id"],
+                             "module_name" : module,
+                             "metric_class" : metric_class,
+                             "metric_name" : name,
+                             "metric_value" : value},
+                             returns = False)
+
             
 def __insertJobInstance(Session, jobStatistics):
     """

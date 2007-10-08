@@ -54,6 +54,9 @@ class JobStatistics(dict):
         self.setdefault("error_type", None)
         self.setdefault("error_code", None)
         self.setdefault("error_desc", None)
+
+        #perfornace records
+        self.setdefault("performance_report", None)
         
         # holds database_ids - used during insertions
         self.setdefault("database_ids", {})
@@ -96,6 +99,8 @@ class JobStatistics(dict):
         self['ce_name'] = jobRepInstance.siteDetails.get("ce-name","Unknown")
         
         self['dashboard_id'] = jobRepInstance.dashboardId
+        
+        self['performance_report'] = jobRepInstance.performance
         
         # Fill in values not always in fjr
         if self["workflow_spec_id"] == None:
