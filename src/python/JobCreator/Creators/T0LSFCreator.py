@@ -152,7 +152,15 @@ class T0LSFCreator(CreatorInterface):
                  HardKillDelay = timeoutCfg['HardKillDelay'])
             shreekConfig.addMonitorCfg(jobtimeout)
 
-
+        #  // 
+        # // Performance monitoring
+        #//
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.PerfMonitor")
+        perfMonitor =  shreekConfig.newMonitorCfg()
+        perfMonitor.setMonitorName("perfmonitor-1")
+        perfMonitor.setMonitorType("perf-monitor")
+        shreekConfig.addMonitorCfg(perfMonitor)
+        return
 
 
     def handleCMSSWTaskObject(self, taskObject):
