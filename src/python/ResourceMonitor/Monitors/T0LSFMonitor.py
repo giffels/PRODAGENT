@@ -14,6 +14,8 @@ from ResourceMonitor.Registry import registerMonitor
 
 from ProdAgent.Resources.LSF import LSFInterface
 
+from ProdAgent.WorkflowEntities import JobState
+
 
 class T0LSFMonitor(MonitorInterface):
     """
@@ -47,12 +49,20 @@ class T0LSFMonitor(MonitorInterface):
             logging.debug("Call to bjobs failed, do nothing")
             return result
 
-        activeJobs = 0
+        mergeJobs = 0
+        processingJobs = 0
         for jobID in jobList.keys():
             if ( jobList[jobID] == 'PEND' or jobList[jobID] == 'RUN' ):
-                activeJobs += 1
+                # database query for job information from the workflow entities table
+                # NOTE: might not work for ProdMgr jobs (not used for Tier0, so no problem)
+                stateInfo = JobState.general(jobID)
+                if ( stateInfo['JobType'] == 'Processing' ):
+                    processingJobs += 1
+                elif ( stateInfo['JobType'] == 'Merge' ):
+                    mergeJobs += 1
 
-        logging.info("Number of active jobs is %d" % activeJobs)
+        logging.info("Number of processing jobs is %d" % processingJobs)
+        logging.info("Number of merge jobs is %d" % mergeJobs)
 
         siteData = self.allSites[siteName]
         siteIndex = siteData['SiteIndex']
@@ -60,26 +70,39 @@ class T0LSFMonitor(MonitorInterface):
         #siteAttrs = self.siteAttributes[siteName]
 
         processingThreshold = siteThresholds.get("processingThreshold")
-        missingJobs = processingThreshold - activeJobs
+        mergeThreshold = siteThresholds.get("mergeThreshold")
+
+        missingProcessingJobs = processingThreshold - processingJobs
+        missingMergeJobs = mergeThreshold - mergeJobs
 
         minSubmit = siteThresholds.get("minimumSubmission")
         maxSubmit = siteThresholds.get("maximumSubmission")
 
-        logging.debug("processingThreshold = %d , minSubmit = %d , maxSubmit = %d"
-                      % (processingThreshold,minSubmit,maxSubmit))
+        logging.debug("processingThreshold = %d , mergeThreshold = %d , minSubmit = %d , maxSubmit = %d"
+                      % (processingThreshold,mergeThreshold,minSubmit,maxSubmit))
 
-        #  //
-        # // Check if we are below the threshold
-        #//    and over the submission minimum
-        if ( missingJobs >= minSubmit ):
+        # check if we should release processing jobs
+        if ( missingProcessingJobs >= minSubmit ):
             constraint = self.newConstraint()
-            if ( missingJobs > maxSubmit ):
+            if ( missingProcessingJobs > maxSubmit ):
                 constraint['count'] = maxSubmit
             else:
-                constraint['count'] = missingJobs
-            #constraint['type'] = "Processing"
+                constraint['count'] = missingProcessingJobs
+            constraint['type'] = "Processing"
             constraint['site'] = self.allSites[siteName]['SiteIndex']
-            logging.info("Releasing %d jobs" % constraint['count'])
+            logging.info("Releasing %d processing jobs" % constraint['count'])
+            result.append(constraint)
+
+        # check if we should release merge jobs 
+        if ( missingMergeJobs >= minSubmit ):
+            constraint = self.newConstraint()
+            if ( missingMergeJobs > maxSubmit ):
+                constraint['count'] = maxSubmit
+            else:
+                constraint['count'] = missingMergeJobs
+            constraint['type'] = "Merge"
+            constraint['site'] = self.allSites[siteName]['SiteIndex']
+            logging.info("Releasing %d merge jobs" % constraint['count'])
             result.append(constraint)
 
         return result
