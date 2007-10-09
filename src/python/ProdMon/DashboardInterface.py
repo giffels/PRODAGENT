@@ -145,7 +145,7 @@ def instancesToXML(document, parent, instances):
         # used by dashboard as a unique key so should be present
         # if missing fake it to ensure uniqueness of instances
         # TODO: When dashboard_id guarenteed remove this extra code
-        if instanceInfo["dashboard_id"] == None:
+        if instanceInfo["dashboard_id"] in (None, "Unknown", "unknown"):
             instanceInfo["dashboard_id"] = "_".join((instanceInfo["job_spec_id"], \
                             str(instanceInfo["timing"]["AppStartTime"]), \
                             str(instanceInfo["instance_id"])))
