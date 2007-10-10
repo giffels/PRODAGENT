@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.66 2007/06/08 10:31:14 ckavka Exp $"
-__version__ = "$Revision: 1.66 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.67 2007/08/22 21:05:13 afanfani Exp $"
+__version__ = "$Revision: 1.67 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1448,6 +1448,10 @@ class MergeSensorComponent:
             # dataset was removed
             except DatasetNotInDatabase, msg:
                 logging.warning(msg)
+                continue
+
+            except Exception, msg:
+                logging.warning(str(msg) + "\nReasuming polling later")
                 continue
             
             # update status
