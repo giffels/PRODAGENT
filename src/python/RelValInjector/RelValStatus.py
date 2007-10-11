@@ -12,8 +12,10 @@ import ProdAgent.WorkflowEntities.Utilities as WEUtils
 import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.MergeTools import createMergeDatasetWorkflow
-
+from MergeSensor.MergeSensorDB import MergeSensorDB
 from ProdCommon.Database import Session
+
+
 
 class ExtractDatasets:
     def __init__(self):
@@ -30,7 +32,20 @@ class ExtractDatasets:
 
 
 
-        
+def countOutstandingUnmergedFiles(dataset):
+    """
+    _countOutstandingUnmergedFiles_
+
+    Get the number of files awaiting merging for a dataset from
+    the MergeSensor DB
+
+    """
+    mergeDB = MergeSensorDB()
+    try:
+        filecount = len(mergeDB.getUnmergedFileListFromDataset(dataset))
+    except Exception, ex:
+        filecount = 0
+    return filecount
 
 class RelValStatus:
     """
@@ -71,8 +86,9 @@ class RelValStatus:
             # //  publish ForceMerge for datasets
             #//
             for dataset in self.unmergedDatasets():
-                logging.debug("Publishing ForceMerge for %s" % dataset)
-                self.msgSvcRef.publish("ForceMerge", dataset)
+                if countOutstandingUnmergedFiles(dataset) > 0:
+                    logging.debug("Publishing ForceMerge for %s" % dataset)
+                    self.msgSvcRef.publish("ForceMerge", dataset)
             self.msgSvcRef.commit()
             Session.commit_all()
 

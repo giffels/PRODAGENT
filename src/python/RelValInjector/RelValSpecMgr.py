@@ -20,9 +20,32 @@ from IMProv.IMProvNode import IMProvNode
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWAPILoader import CMSSWAPILoader
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
-from RequestInjector.RequestIterator import RequestIterator
+from ProdCommon.JobFactory.RequestJobFactory import RequestJobFactory
+from ProdCommon.JobFactory.DatasetJobFactory import DatasetJobFactory 
 
+#from RequestInjector.RequestIterator import RequestIterator
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+
+def getGlobalDBSURL():
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+    
+    try:
+        dbsConfig = config.getConfig("GlobalDBSDLS")
+    except StandardError, ex:
+        msg = "Error reading configuration for GlobalDBSDLS:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    return dbsConfig.get("DBSURL", None)
 
 class RelValTest(dict):
     """
@@ -42,6 +65,7 @@ class RelValTest(dict):
         self.setdefault("SelectionEfficiency", None)
         self.setdefault("PickleFile", None)
         self.setdefault("InputDataset", None)
+        self.setdefault("PileupDataset", None)
         self.setdefault("WorkflowSpecId", None)
         self.setdefault("CMSSWVersion", None)
         self.setdefault("CMSSWArchitecture", None)
@@ -49,6 +73,7 @@ class RelValTest(dict):
         self.setdefault("WorkflowFile", None)
         self.setdefault("JobSpecs", {}) # map jobspecid: jobspecFile
         self.setdefault("BadTest", False)
+        
 
     def save(self):
         """
@@ -105,7 +130,8 @@ class RelValSpecMgr:
         self.workflows = {}
         self.workflowFiles = {}
         self.workingDirs = {}
-        
+        self.dbsUrl = getGlobalDBSURL()
+        self.jobCounts = {}
         
     def __call__(self):
         """
@@ -170,19 +196,20 @@ x
         testNodes = testQ(improv)
         
         for test in testNodes:
-             for site in self.sites:
-                 newTest = RelValTest()
-                 newTest.load(test)
-                 newTest['Site'] = site
-                 self.tests.append(newTest)
-                 
+            for site in self.sites:
+                newTest = RelValTest()
+                newTest.load(test)
+                newTest['Site'] = site
+                self.tests.append(newTest)
+
+                
 
                  
             
         logging.info("Loaded %s tests from file:\n %s\n" % (
             len(self.tests),
             self.relvalSpecFile))
-
+        
         
         
         return
@@ -206,7 +233,7 @@ x
         process = pickle.load(file(testInstance['PickleFile']))
         cfgInt = cfgWrapper.loadConfiguration(process)
         cfgInt.validateForProduction()
-
+        cfgAsString = process.dumpConfig()
         #  //
         # // Get release validation PSet from process
         #//
@@ -253,7 +280,17 @@ x
                 return
 
             testInstance['EventsPerJob'] = self.args[testInstance['SpeedCategory']]
-            
+
+
+        inputDataset = getattr(relValPSet, "inputDatasetPath", None)
+        pileupDataset = getattr(relValPSet, "pileupDatasetPath", None)
+
+        if pileupDataset != None:
+            testInstance['PileupDataset'] = pileupDataset.value()
+
+        if inputDataset != None:
+            testInstance['InputDataset'] = inputDataset.value()
+        
         msg = "Processing : %s\n" % testInstance['Name']
         msg += "From Pickle: %s\n" % testInstance['PickleFile']
         msg += "TotalEvents: %s\n" % testInstance['TotalEvents']
@@ -265,9 +302,11 @@ x
             testInstance['WorkflowSpecId'] = self.workflows[testInstance['Name']]
             testInstance['WorkflowSpecFile'] = self.workflowFiles[testInstance['Name']]
             testInstance['WorkingDir'] = self.workingDirs[testInstance['Name']]
+            
+            loader.unload()
             return
 
-
+        self.jobCounts[testInstance['Name']] = 1
         workingDir = os.path.join(self.args['ComponentDir'],
                                   testInstance['CMSSWVersion'],
                                   testInstance['Name'])
@@ -284,7 +323,7 @@ x
         maker.setCMSSWVersion(testInstance['CMSSWVersion'])
         maker.setPhysicsGroup("dataOps")
         maker.setConfiguration(cfgWrapper, Type = "instance")
-
+        maker.setOriginalCfg(cfgAsString)
         psetHash = "NO_PSET_HASH"
         if cfgWrapper.configMetadata.has_key('PSetHash'):
             psetHash =  cfgWrapper.configMetadata['PSetHash']
@@ -293,11 +332,20 @@ x
         if testInstance['SelectionEfficiency']  != None:
             selEff = float(testInstance['SelectionEfficiency'] )
             maker.addSelectionEfficiency(selEff)
-            
+
+        if testInstance['PileupDataset'] != None:
+            maker.addPileupDataset(testInstance['PileupDataset'], 100)
+
+        if testInstance['InputDataset'] != None:
+            maker.addInputDataset(testInstance['InputDataset'])
+            maker.inputDataset["SplitType"] = "events"
+            maker.inputDataset["SplitSize"] = testInstance['EventsPerJob']              
         spec = maker.makeWorkflow()
+        spec.parameters['OnlySites'] = testInstance['Site']
+        spec.parameters['DBSURL'] = self.dbsUrl
         specFile = "/%s/%s-Workflow.xml" % (workingDir, maker.workflowName) 
         spec.save(specFile)
-
+        
         self.workflows[testInstance['Name']] = str(maker.workflowName)
         self.workflowFiles[testInstance['Name']] = specFile
         self.workingDirs[testInstance['Name']] = workingDir
@@ -305,7 +353,6 @@ x
         testInstance['WorkflowSpecId'] = str(maker.workflowName)
         testInstance['WorkflowSpecFile'] = specFile
         testInstance['WorkingDir'] = workingDir
-
         msg = "Workflow created for test: %s" % testInstance['Name']
         logging.info(msg)
 
@@ -326,40 +373,46 @@ x
             testInstance['Site'])
                      )
         testName = testInstance['WorkflowSpecId']
-        if not self.iterators.has_key(testName):
-            iterator = RequestIterator(testInstance['WorkflowSpecFile'],
-                                       testInstance['WorkingDir'])
-            self.iterators[testName] = iterator
-            iterator.count = 1
-            logging.info("Created RequestIterator for %s" % (
-                testInstance['WorkflowSpecId'],))
-            iterator.save(testInstance['WorkingDir'])
+        specInstance = WorkflowSpec()
+        specInstance.load(testInstance['WorkflowSpecFile'])
+        
+        if testInstance['InputDataset'] == None:
+            initialRun = self.jobCounts.get(testInstance['Name'], 1)
+            factory = RequestJobFactory(
+                specInstance,
+                testInstance['WorkingDir'],
+                testInstance['TotalEvents'],
+                InitialRun = initialRun,
+                EventsPerJob = testInstance['EventsPerJob'],
+                Sites = [testInstance['Site']])
+
+            jobsList = factory()
+            self.jobCounts[testInstance['Name']] += len(jobsList)
         else:
-            iterator = self.iterators[testName]
-            iterator.load(testInstance['WorkingDir'])
-            logging.info("Retrieved RequestIterator for %s" % (
-                testInstance['WorkflowSpecId'],))
             
-        iterator.sitePref = testInstance['Site']
-        iterator.eventsPerJob = testInstance['EventsPerJob']
+            factory = DatasetJobFactory(
+                specInstance,
+                testInstance['WorkingDir'],
+                specInstance.parameters['DBSURL'],
+                )
+            
+            jobsList = factory()
+            self.jobCounts[testInstance['Name']] += len(jobsList)
+            
         
-        totalEvents = float(testInstance['TotalEvents'])
-        eventsPerJob = float(testInstance['EventsPerJob'])
-        numJobs = int(totalEvents/eventsPerJob) +1
-        
-        msg = "Created %s jobs:\n" % numJobs
-        
-        for i in range(0, numJobs):
-            jobSpecFile = str(iterator())
-            jobSpecId = iterator.currentJob
+        msg = "Created %s jobs:\n" % len(jobsList)
+    
+        for job in jobsList:
+            jobSpecFile = job['JobSpecFile']
+            jobSpecId = job['JobSpecId']
             msg += "  %s\n" % jobSpecId
             testInstance['JobSpecs'][jobSpecId] = jobSpecFile
-
+            
         
         
         logging.info(msg)
             
-        iterator.save(testInstance['WorkingDir'])
+
         
         return
 
@@ -370,17 +423,17 @@ if __name__ == '__main__':
 
     args = {
         'ComponentDir' : '/home/evansde/work/PRODAGENT/src/python/RelValInjector/detritus',
-
+        
         "Fast" : 100,
         "Slow" : 50,
         "Medium" : 75,
         "VerySlow" : 25,
         
         }
-    sites = ['CERN', 'FNAL']
-    specFile = "/home/evansde/work/PRODAGENT/relval_workflows.xml"
-    #specFile = "/home/evansde/work/PRODAGENT/src/python/RelValInjector/Oli.xml"
+    sites = ['srm.cern.ch', 'cmssrm.fnal.gov']
+    specFile = "/home/evansde/work/CMSSW/CMSSW_1_7_0_pre5/src/Configuration/ReleaseValidation/data/relval_workflows.xml"
+    
 
     mgr = RelValSpecMgr(specFile, sites, **args)
     mgr()
-
+    
