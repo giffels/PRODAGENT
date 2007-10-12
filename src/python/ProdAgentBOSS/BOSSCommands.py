@@ -317,13 +317,8 @@ def subdir(id,bossCfgDir):
 
     This function retrieve job sub dir
     """
-    try:
-        taskid=id.split('.')[0]
-        chainid=id.split('.')[1]
-        resub=id.split('.')[2]
-    except:
-#        logging.error("Boss4subdir Jobid splitting error")
-        return ""
+
+    taskid=id.split('.')[0]
 
 ##         outfile=self.executeCommand("bossAdmin SQL -query \"select max(ID) ID from JOB where TASK_ID='%s' and CHAIN_ID ='%s'\" "%(taskid,chainid) + " -c " + self.bossCfgDir)
 ##         outp=outfile
@@ -346,56 +341,6 @@ def subdir(id,bossCfgDir):
         outp=""
     #logging.debug("BOSS4subdir outp '%s'"%outp)    
     return outp
-
-
-
-def schedulerInfo( bossCfgDir,id,scheduler,ended=""):
-        """
-        _BOSS4schedulerInfo_
-
-        Retrieves Scheduler info
-        """
-        try:
-            taskid=id.split('.')[0]
-            chainid=id.split('.')[1]
-            resub=id.split('.')[2]
-            
-        except:
-#            logging.error("Boss4 Jobid splitting error")
-            return ""
-        
-
-        schedinfo={}
-        try:
-            outfile=executeCommand("bossAdmin SQL -query \"select DEST_CE,DEST_QUEUE,SCHED_STATUS,STATUS_REASON from %sSCHED_%s where TASK_ID='%s' and CHAIN_ID='%s' and ID='%s'\""%(ended,scheduler,taskid,chainid,resub) + " -c " + bossCfgDir)
-            
-            outp=outfile
-        except:
-            schedinfo=""
-           
-        try:
-            ks=outp.split("\n")[0].strip().split()
-            #print ks
-            vs=outp.split("\n")[1].strip().split()
-            for i in range(len(ks)):
-                schedinfo[ks[i]]=vs[i]
-            #print vs
-#             a=ks.__iter__()
-#             b=vs.__iter__()
-#             while 1: 
-#                 try:
-#                     schedinfo[a.next()]=b.next()
-#                 except:
-#                     break
-                #logging.info("%s = %s"%(k,v))
-                
-        except:
-            schedinfo=""
-#        logging.debug("BOSS4schedulerInfo outp '%s'"%outp)    
-            
-        return schedinfo
-
-
 
 def executeCommand(command,timeout=600):
     """
@@ -741,7 +686,7 @@ def FailedSubmission(bossJobId,bossCfgDir):
 #         resub=int(outfile.split("resub")[1])
 #     except:
 #         return 
-    if Retries>=(jobMaxRetries-1):
+    if Retries >= (jobMaxRetries) and taskEnded(jobId, bossCfgDir):
         try:
             submissionDir=subdir(taskid+".1.1",bossCfgDir)
             shutil.rmtree(submissionDir)
@@ -778,5 +723,208 @@ def Delete(jobId,bossCfgDir):
     outfile=executeCommand("boss archive -taskid %s -jobid %s -c %s"%(jobId.split('.')[0],jobId.split('.')[1],bossCfgDir))
     # print outfile
     return
+
+
+def guessDashboardInfo(jobId, jobSpecId, bossCfgDir):
+    """
+    guess dashboard info file
+    """
+
+    # dashboard information
+    from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
+    dashboardInfo = DashboardInfo()
+
+    # get job information
+    taskid  = jobId.split('.')[0]
+
+    # define dashboard file name
+    try :
+        jobCacheDir = JobState.general(jobSpecId)['CacheDirLocation']
+        logging.info("js cache_dir = " + jobCacheDir )
+    except StandardError:
+        logging.info("failed to get cache_dir from js, trying with we" )
+        try :
+            WEjobState = WEJob.get( jobSpecId )
+            jobCacheDir = WEjobState['cache_dir']
+            logging.info("we cache_dir = " + jobCacheDir )
+        except StandardError:
+            logging.info("failed to get cache_dir from we" )
+            logging.info("failed to get cache_dir for job " + jobSpecId)
+            return dashboardInfo, ''
+    dashboardInfoFile = os.path.join( jobCacheDir, "DashboardInfo.xml" )
+
+#    dashboardInfoFile = bossTask['SUB_PATH'] + \
+#                        "/DashboardInfo%s_%s.xml" % (taskid, chainid)
+
+    # check it
+    if os.path.exists(dashboardInfoFile):
+
+        try:
+            # it exists, get dashboard information
+            dashboardInfo.read(dashboardInfoFile)
+
+            # get rid of old info, keep just the identifier
+#            dashboardInfo.clear()
+            
+            # it does not work, abandon
+        except StandardError, msg:
+            logging.error("Reading dashboardInfoFile " + \
+                          dashboardInfoFile + " failed (jobId=" \
+                          + str(jobId) + ")\n" + str(msg))
+            return dashboardInfo, ''
+    else :
+        # if this is a crab job read from mlCommonInfo
+        tmpdict = {}
+        try:
+            mlInfoFile = subdir(jobId, bossCfgDir).split('.boss_cache' )[0] + \
+                         '/mlCommonInfo'
+            logging.info( "guessing dashboardID from " + mlInfoFile )
+            fh = open( mlInfoFile, 'r' )
+            for line in fh.readlines() :
+                (tag, value) = line.split(':')
+                tmpdict[ tag ] = value.strip()
+        except IOError:
+            logging.error( "Missing " + mlInfoFile )
+            # guess job dashboardID
+
+        try :
+            dashboardInfo.task = tmpdict['taskId']
+            dashboardInfo.job = ''
+        except KeyError:
+            logging.error( "unable to get dashboardID for job : " + jobId )
+            return dashboardInfo, ''
+        try :
+            dashboardInfo['JSTool'] =  tmpdict['tool']
+        except KeyError:
+            pass
+        try :
+            dashboardInfo['User'] = tmpdict['user']
+        except KeyError:
+            pass
+        try :
+            dashboardInfo['JSToolUI'] = tmpdict['tool_ui']
+        except KeyError:
+            pass
+        try :
+            dashboardInfo['TaskType'] = tmpdict['taskType']
+        except KeyError:
+            pass
+
+    return dashboardInfo, dashboardInfoFile
+
+
+
+def schedulerInfo( bossCfgDir, jobId, ended = "" ):
+    """
+    _BOSS4schedulerInfo_
+    
+    Retrieves Scheduler info
+    """
+    
+    schedinfo = {}
+
+    try:
+        (taskid, chainid, resub) = jobId.split('.')
+    except ValueError:
+        logging.error("Boss4 JobId splitting error: " + jobId)
+        return schedinfo
+
+    query = \
+          "select SCHEDULER,SCHED_ID from " + ended + "JOB "+ \
+          " where TASK_ID=" + taskid + \
+          " and CHAIN_ID=" + chainid + " and ID=" + resub
+    
+    try:
+        out = executeCommand(
+            'bossAdmin SQL -query "' + query + '" -c ' + bossCfgDir
+            )
+    except:
+        logging.error("error executing: " + query + "\n" + outp)
+        return schedinfo
+
+    try :
+        schedInfo = out.split("\n")[1].strip().split()
+        jobScheduler = schedInfo[0]
+        schedinfo ['SCHED_ID'] = schedInfo[1]
+    except IndexError:
+        logging.error("Boss4 retrieving scheduler information error: " + out)
+        return schedinfo
+
+    if schedinfo ['SCHED_ID'] == 'NULL' or schedinfo ['SCHED_ID'] == '' :
+        logging.error("missing SCHED_ID: " + schedinfo ['SCHED_ID'])
+        schedinfo.pop('SCHED_ID')
+        return schedinfo
+
+    query = \
+          "select * from " + ended + "SCHED_" + jobScheduler + \
+          " where TASK_ID=" + taskid + \
+          " and CHAIN_ID=" + chainid + " and ID=" + resub
+    
+    try:
+        out = executeCommand(
+            'bossAdmin SQL -query "' + query + '" -c ' + bossCfgDir
+            )
+    except:
+        logging.error("Boss4 retrieving scheduler information error: " + out)
+        return schedinfo
+
+    try:
+        ks = out.split("\n")[0].strip().split()
+        vs = out.split("\n")[1].strip().split()
+        for i in range(len(ks)):
+            schedinfo[ks[i]] = vs[i]
+    except StandardError :
+        logging.debug("BOSS4schedulerInfo out " + schedinfo.__str__() )
+
+    return schedinfo
+
+
+def submittedJobs( jobId, bossCfgDir ) :
+    """
+    returns a dictionary with job name and scheduler id
+    for submitted jobs of a given task
+    """
+
+    taskId  = jobId.split('.')[0]
+    
+    jobs = {}
+    
+    query = """
+          select NAME,SCHED_ID from JOB,CHAIN where
+          SCHED_ID is not NULL and SCHED_ID!='' 
+          and CHAIN.ID=JOB.CHAIN_ID and JOB.TASK_ID=CHAIN.TASK_ID
+          and CHAIN.TASK_ID=%s
+          """ % ( taskId )
+
+    out = executeCommand(
+        'bossAdmin SQL -query "' + query + '" -c ' + bossCfgDir
+        )
+
+    result = out.split()[2:]
+    for i in  range( len(result)/2 ):
+        jobs[ result[i*2] ] = result[i*2+1]
+
+    return jobs
+
+
+def checkUserProxy():
+    """
+    Retrieve the user proxy for the task
+    """
+
+    output = executeCommand( "voms-proxy-info" )
+
+    try:
+        output = output.split("timeleft")[1].strip()
+        output = output.split(":")[1].strip()
+    except StandardError,ex:
+        logging.error(output)
+        logging.error("voms-proxy-init does not exist")
+        raise ProdAgentException("Missing Proxy")
+    
+    if output == "0:00:00":
+        logging.error(output)
+        logging.error("voms-proxy-init expired")
+        raise ProdAgentException("Proxy Expired")
 
 
