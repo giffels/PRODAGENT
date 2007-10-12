@@ -6,9 +6,10 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.12 2007/10/05 20:38:56 afanfani Exp $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.13 2007/10/06 14:58:50 afanfani Exp $"
+__version__ = "$Revision: 1.13 $"
 
-import os,time,string
+import os, time, string
 import logging
 
 
@@ -16,18 +17,13 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
 from JobSubmitter.JSException import JSException
 
-from JobSubmitter.Submitters.OSGUtils import standardScriptHeader
-from JobSubmitter.Submitters.OSGUtils import bulkUnpackerScript
-from JobSubmitter.Submitters.OSGUtils import missingJobReportCheck
-
-from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 
 from ProdAgentBOSS import BOSSCommands
-from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
 from ProdAgentCore.ProdAgentException import ProdAgentException
+
 import exceptions
 class InvalidFile(exceptions.Exception):
     def __init__(self,msg):
@@ -44,6 +40,7 @@ class GLiteBulkSubmitter(BulkSubmitterInterface):
     Actual submission is made through BOSS.
 
     """
+
     def doSubmit(self):
         """
         _doSubmit_
@@ -57,15 +54,18 @@ class GLiteBulkSubmitter(BulkSubmitterInterface):
         self.workflowName = self.primarySpecInstance.payload.workflow
         self.mainJobSpecName = self.primarySpecInstance.parameters['JobName']
         if not self.primarySpecInstance.parameters.has_key('BulkInputSandbox'):
-           msg="There is no BulkInputSandbox defined in the JobSpec. Submission cant go on..."
-           logging.error(msg)
-           return
+            msg="There is no BulkInputSandbox defined in the JobSpec. Submission cant go on..."
+            logging.error(msg)
+            return
         self.mainSandbox = \
                    self.primarySpecInstance.parameters['BulkInputSandbox']
         self.mainSandboxName = os.path.basename(self.mainSandbox)
         self.specSandboxName = None
         self.singleSpecName = None
         self.bossJobId = ""
+        self.submittedJobs = {}
+        self.failedSubmission = []
+        
         #  //
         # // Build a list of input files for every job
         #//
@@ -81,7 +81,7 @@ class GLiteBulkSubmitter(BulkSubmitterInterface):
                 )
             self.jobInputFiles.append(
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox'])
-        
+
         #  //
         # // Retrieve BOSS configuration files dir
         #//
@@ -89,6 +89,25 @@ class GLiteBulkSubmitter(BulkSubmitterInterface):
         bossConfig = cfgObject.get("BOSS")
         self.bossCfgDir = bossConfig['configDir']
         logging.debug("bossCfgDir = %s" % self.bossCfgDir)
+
+        #  //
+        # // check for dashboard usage
+        #//
+        self.usingDashboard = {'use' : 'True', \
+                               'address' : 'lxgate35.cern.ch', \
+                               'port' : '8884'}
+        try:
+            dashboardCfg = self.pluginConfig.get('Dashboard', {})
+            self.usingDashboard['use'] = dashboardCfg.get(
+                "UseDashboard", "False"
+                )
+            self.usingDashboard['address'] = dashboardCfg.get(
+                "DestinationHost"
+                )
+            self.usingDashboard['port'] = dashboardCfg.get("DestinationPort")
+            logging.debug("dashboardCfg = " + self.usingDashboard.__str__() )
+        except:
+            logging.info("No Dashboard section in SubmitterPluginConfig")
         
         self.workingDir = os.path.dirname(self.mainSandbox)
         logging.debug("workingDir = %s" % self.workingDir)
@@ -258,8 +277,10 @@ fi
 #            script.extend(bulkUnpackerScript(self.specSandboxName))
         else:
 #AF            script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
-            script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s-JobSpec.xml\n" %
-                          self.singleSpecName)   
+            script.append(
+                "JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s-JobSpec.xml\n" \
+                          % self.singleSpecName
+                )
 
             
         script.append(
@@ -306,20 +327,14 @@ fi
 #            raise JSException("Failed to find Job", mainJobSpecName = self.mainJobSpecName)
             raise JSException("Failed to find Job", FailureList = self.toSubmit.keys()) 
 
-        # proxy check
-        logging.info("doBOSSSubmit : proxy check")
-        try:
-            output=BOSSCommands.executeCommand("voms-proxy-info")
-            output=output.split("timeleft")[1].strip()
-            output=output.split(":")[1].strip()
-            if output=="0:00:00":
-                #logging.info( "You need a voms-proxy-init -voms cms")
-                logging.error("voms-proxy-init expired")
-        except StandardError,ex:
-            #print "You need a voms-proxy-init -voms cms"
-            logging.error("voms-proxy-init does not exist")
-            logging.error(output)
-            sys.exit()
+
+        # // Check proxy validity: an exception raised will stop the submission
+        #//
+        try :
+            BOSSCommands.checkUserProxy()
+        except ProdAgentException:
+            raise JSException( "Unable to find a valid certificate", \
+                               FailureList = self.toSubmit.keys() ) 
             
         logging.info("doBOSSSubmit : preparing jdl")
         
@@ -327,12 +342,12 @@ fi
 #        schedulercladfile = "%s/%s_scheduler.clad" % (self.workingDir ,self.workflowName)
         schedulercladfile = "%s/%s_scheduler.clad" % (self.workingDir , self.mainJobSpecName )
         try:
-           jobType=self.primarySpecInstance.parameters['JobType']
-           userJDL=self.getUserJDL(jobType)
-           self.createJDL(schedulercladfile,userJDL)
+            jobType=self.primarySpecInstance.parameters['JobType']
+            userJDL=self.getUserJDL(jobType)
+            self.createJDL(schedulercladfile,userJDL)
         except InvalidFile, ex:
 #           raise JSException("Failed to createJDL", mainJobSpecName = self.mainJobSpecName))
-           pass
+            pass
 
 
         #  //
@@ -340,10 +355,10 @@ fi
         #//
         bossSubmit = ""
         # // scheduler
-        scheduler  = "gliteCollection"
+        self.scheduler  = "gliteCollection"
         try:
-            scheduler = self.pluginConfig['GLITE']['Scheduler']
-            logging.info("BOSS Scheduler: " + scheduler)
+            self.scheduler = self.pluginConfig['GLITE']['Scheduler']
+            logging.info("BOSS Scheduler: " + self.scheduler)
         except:
             logging.info("Missing Scheduler, using gliteCollection")
             pass
@@ -353,16 +368,16 @@ fi
                 bossSubmit+=" -rtmon %s "%self.pluginConfig['GLITE']['RTMon']
                 logging.info("BOSS RTMon: " + self.pluginConfig['GLITE']['RTMon'])
             else:
-                bossSubmit+=" -rtmon NONE "
+                bossSubmit += " -rtmon NONE "
                 logging.info("BOSS RTMon not set")
         except:
-            bossSubmit+=" -rtmon NONE "
+            bossSubmit +=  " -rtmon NONE "
             logging.info("BOSS RTMon not set xx")
         # // submission command
         bossSubmit = BOSSCommands.submit(
-            self.bossJobId,scheduler,self.bossCfgDir
+            self.bossJobId, self.scheduler, self.bossCfgDir
             )
-        bossSubmit += " -schclassad %s"%schedulercladfile
+        bossSubmit += " -schclassad %s" % schedulercladfile
         # write submission logs
         bossSubmit += " -logfile %s/%s-%s-submitLog " % (self.toSubmit[self.mainJobSpecName], self.mainJobSpecName , time.time())
         #  //
@@ -373,43 +388,57 @@ fi
         # execute command with timeout based on nb.of jobs = len(self.toSubmit) with 60sec for each job
         #
         output = BOSSCommands.executeCommand(bossSubmit,len(self.toSubmit)*60)
+
+        #  // retrieve actually submitted jobs with their scheduler ID
+        # //  needed by the Dashboard 
+        taskSubmittedJobs = BOSSCommands.submittedJobs(
+            self.bossJobId, self.bossCfgDir
+            )
+        logging.debug( "########### " + taskSubmittedJobs.__str__() )
+        #  // check which jobs are actually submitted, filling up a dictionary
+        # //  with submittedJobs<->schedId and a list of failed
+        # //  (can be also used to report partial submissions...)
+        if not self.isBulk:
+            if self.singleSpecName in taskSubmittedJobs.keys() :
+                self.submittedJobs[ self.singleSpecName ] = \
+                                    taskSubmittedJobs[ self.singleSpecName ]
+            else:
+                self.failedSubmission.append( self.singleSpecName )
+                
+        # in case of bulk, check which jobs have a scheduler ID 
+        else :
+            for jobSpecName in self.toSubmit.keys() :
+                if jobSpecName in taskSubmittedJobs.keys() :
+                    self.submittedJobs[ jobSpecName ] = \
+                                        taskSubmittedJobs[ jobSpecName ]
+                else :
+                    self.failedSubmission.append( jobSpecName )
+        logging.debug( "########### " + self.submittedJobs.__str__() )
+        #  //
+        # // Raise Submission Failed
+        #//
         logging.debug ("GLITEBulkSubmitter.doSubmit: output %s output" % output)
+        failurejobs = []
         if output.find("error")>=0:
-            # // cleaning if bulk submission failed for max retries
             if self.isBulk:
-                BOSSCommands.FailedSubmission (
-                    self.bossJobId + '.1',self.bossCfgDir
-                    )
+            # // cleaning if bulk submission failed for max retries
+            #    BOSSCommands.FailedSubmission (
+            #        self.bossJobId + '.1',self.bossCfgDir
+            #        )
+            #
                 failurejobs = self.checkPartialSubmissionFailure()
-                if len(failurejobs)>0:
-                   raise JSException("Submission Failed", FailureList = failurejobs) 
-                ##raise JSException("Submission Failed", FailureList = self.toSubmit.keys()) 
             else :
-                raise JSException("Submission Failed", FailureList = self.toSubmit.keys())             
-            # // retrieving submission number
+                failurejobs = self.toSubmit.keys()
+
+        if len(failurejobs)>0:
+            raise JSException("Submission Failed", FailureList = failurejobs)
+
+        # // retrieving submission number
         try:
             resub=output.split("Resubmission number")[1].split("\n")[0].strip()
             logging.debug("resub =%s"%resub)
         except:
             resub="1"
-        try: 
-            ## do not rely on boss submit stdout and get infor from BOSS DB instead
-            #chainid=(output.split("Scheduler ID for job")[1]).split("is")[0].strip()
-            chainid="1" # default chainid to 1
-            command = "bossAdmin SQL -query \"select CHAIN.ID from CHAIN where CHAIN.TASK_ID=%s\" -c %s"%(self.bossJobId, self.bossCfgDir)
-            ids=BOSSCommands.executeCommand( command )
-            for id in ids.strip().split('\n'):
-                if id.strip() != "ID" and id.strip() != "No results!":
-                   chainid=id.strip()
-                   break
-        except:
-            failurejobs = self.checkPartialSubmissionFailure()
-            if len(failurejobs)>0:
-               raise JSException("Submission Failed", FailureList = failurejobs)
-#            raise JSException("Submission Failed", FailureList = self.toSubmit.keys()) 
-
-        # // composing boss jobid
-        self.bossJobId=str(self.bossJobId)+"."+chainid+"."+resub
 
         # // remove cladfile
         os.remove(schedulercladfile)
@@ -431,7 +460,7 @@ fi
         for ajob in outjobs.strip().split('\n'):
             job=ajob.strip()
             if job != "NAME" and job != "No results!":
-               failurejobs.append(job)
+                failurejobs.append(job)
         return failurejobs
 
     def getUserJDL(self,jobType):
@@ -447,15 +476,15 @@ fi
         #  For Merge jobs use Merge JDLRequirementsFile if it's configured
         #
         if jobType == "Merge":
-           if 'MergeJDLRequirementsFile' in self.pluginConfig['GLITE'].keys():
-              UserJDLRequirementsFile=self.pluginConfig['GLITE']['MergeJDLRequirementsFile']
-              return UserJDLRequirementsFile
+            if 'MergeJDLRequirementsFile' in self.pluginConfig['GLITE'].keys():
+                UserJDLRequirementsFile=self.pluginConfig['GLITE']['MergeJDLRequirementsFile']
+                return UserJDLRequirementsFile
         #
         #  Use JDLRequirementsFile if it's configured
         #
         if 'JDLRequirementsFile' in self.pluginConfig['GLITE'].keys():
-           UserJDLRequirementsFile=self.pluginConfig['GLITE']['JDLRequirementsFile']
-           return UserJDLRequirementsFile
+            UserJDLRequirementsFile=self.pluginConfig['GLITE']['JDLRequirementsFile']
+            return UserJDLRequirementsFile
 
         return UserJDLRequirementsFile
 
@@ -565,7 +594,60 @@ fi
 
         declareClad.close()
         return
-                
+
+
+    
+    def publishSubmitToDashboard( self ):
+        """
+        _publishSubmitToDashboard_
+
+        Publish the dashboard info to the appropriate destination
+
+        """
+
+        if  self.usingDashboard['use'] != 'True':
+            return
+        
+        appData = str(self.applicationVersions)
+        appData = appData.replace("[", "")
+        appData = appData.replace("]", "")
+        whitelist = str(self.whitelist)
+        whitelist = whitelist.replace("[", "")
+        whitelist = whitelist.replace("]", "")
+        
+
+        for jobSpecId, jobSchedId in self.submittedJobs.iteritems() :
+            ( dashboardInfo, dashboardInfoFile ) = \
+              BOSSCommands.guessDashboardInfo( 
+                self.bossJobId, jobSpecId, self.bossCfgDir
+                )
+        
+            # assign job dashboard id
+            if dashboardInfo.task == '' :
+                logging.error( "unable to retrieve DashboardId for job " + \
+                               jobSpecId )
+                continue
+        
+            # job basic information
+            dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
+            dashboardInfo['Scheduler'] = self.__class__.__name__
+            dashboardInfo['GridJobID'] = jobSchedId
+            dashboardInfo['SubTimeStamp'] = time.strftime('%Y-%m-%d %H:%M:%S')
+            dashboardInfo['ApplicationVersion'] = appData
+            dashboardInfo['TargetCE'] = whitelist
             
+            dashboardInfo.write( dashboardInfoFile )
+            logging.info("Created dashboardInfoFile " + dashboardInfoFile )
+
+            # publish to Dashboard
+            logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
+            dashboardInfo.addDestination(
+                self.usingDashboard['address'], self.usingDashboard['port']
+                )
+            dashboardInfo.publish(5)
+        return
+      
+
+
 
 registerSubmitter(GLiteBulkSubmitter, GLiteBulkSubmitter.__name__)
