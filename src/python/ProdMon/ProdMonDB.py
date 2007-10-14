@@ -301,7 +301,7 @@ def __insertPerformanceReport(Session, jobStatistics):
         return
 
     # assume that all cpu's have same number of cores and that all have same properties
-    cpu = perf_report.cpus.values()[1]
+    cpu = perf_report.cpus.values()[0]
     node_id = __insertIfNotExist(Session, "prodmon_node_properties",
                 {"cpu_speed" : cpu["Speed"],
                  "cpu_description" : cpu["Description"],
