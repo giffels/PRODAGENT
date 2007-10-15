@@ -2249,8 +2249,6 @@ def SingleQuery( params, i):
       
        q.AddRequirement(       c_chain_name.LIKE('%mergejob%') )
        q_ended.AddRequirement( c_chain_name.LIKE('%mergejob%') )
-
-
        
    elif merge == 'no' :
       
@@ -2431,7 +2429,7 @@ def TableStatus( ntuple, params, workflows=[] ):
           else:  # Classify == "workflows"
 
               element = SelectWorkflow( workflows, task )
-       
+                   
           if element not in elements :
                elements.append( element )
                table.AppendRow( element )
@@ -2439,7 +2437,7 @@ def TableStatus( ntuple, params, workflows=[] ):
           if element not in elements :
              elements.append( element )
              table.AppendRow( element )
-             
+
           if status == 'Done'      : table.IncItem( element, 'Done'    )
           if status == 'Scheduled' : table.IncItem( element, 'Sched'   )
           if status == 'Waiting'   : table.IncItem( element, 'Waiting' )
@@ -2601,17 +2599,19 @@ def Workflows( params ) :
        for row in ntuple.GetRows():
            wkf = row[0]                # workflow name
            wkf = wkf[: wkf.rfind("-")] # erase the last part of the name: -####
+           if wkf.rfind("jobcut-") :
+               wkf = wkf[wkf.rfind("jobcut-")+7 :]
            if wkf not in workflows:
                workflows.append( wkf )
 
        workflows.sort( lambda x,y : len(y)-len(x) )
-
+       
     return workflows
 
 def SelectWorkflow( list, item ) :
 
-    for x in list:
-        if item.find( x ) == 0 :
+     for x in list:
+        if item.find( x ) >= 0 :
           return x
 
 
