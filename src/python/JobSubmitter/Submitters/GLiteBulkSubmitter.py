@@ -6,8 +6,8 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.13 2007/10/06 14:58:50 afanfani Exp $"
-__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.14 2007/10/12 20:23:33 afanfani Exp $"
+__version__ = "$Revision: 1.14 $"
 
 import os, time, string
 import logging
@@ -389,33 +389,8 @@ fi
         #
         output = BOSSCommands.executeCommand(bossSubmit,len(self.toSubmit)*60)
 
-        #  // retrieve actually submitted jobs with their scheduler ID
-        # //  needed by the Dashboard 
-        taskSubmittedJobs = BOSSCommands.submittedJobs(
-            self.bossJobId, self.bossCfgDir
-            )
-        logging.debug( "########### " + taskSubmittedJobs.__str__() )
-        #  // check which jobs are actually submitted, filling up a dictionary
-        # //  with submittedJobs<->schedId and a list of failed
-        # //  (can be also used to report partial submissions...)
-        if not self.isBulk:
-            if self.singleSpecName in taskSubmittedJobs.keys() :
-                self.submittedJobs[ self.singleSpecName ] = \
-                                    taskSubmittedJobs[ self.singleSpecName ]
-            else:
-                self.failedSubmission.append( self.singleSpecName )
-                
-        # in case of bulk, check which jobs have a scheduler ID 
-        else :
-            for jobSpecName in self.toSubmit.keys() :
-                if jobSpecName in taskSubmittedJobs.keys() :
-                    self.submittedJobs[ jobSpecName ] = \
-                                        taskSubmittedJobs[ jobSpecName ]
-                else :
-                    self.failedSubmission.append( jobSpecName )
-        logging.debug( "########### " + self.submittedJobs.__str__() )
         #  //
-        # // Raise Submission Failed
+        # // Check Submission Failed
         #//
         logging.debug ("GLITEBulkSubmitter.doSubmit: output %s output" % output)
         failurejobs = []
@@ -430,6 +405,35 @@ fi
             else :
                 failurejobs = self.toSubmit.keys()
 
+        #  // retrieve actually submitted jobs with their scheduler ID
+        # //  needed by the Dashboard
+        taskSubmittedJobs = BOSSCommands.submittedJobs(
+            self.bossJobId, self.bossCfgDir
+            )
+        logging.debug( "########### " + taskSubmittedJobs.__str__() )
+        #  // check which jobs are actually submitted, filling up a dictionary
+        # //  with submittedJobs<->schedId and a list of failed
+        # //  (can be also used to report partial submissions...)
+        if not self.isBulk:
+            if self.singleSpecName in taskSubmittedJobs.keys() :
+                self.submittedJobs[ self.singleSpecName ] = \
+                                    taskSubmittedJobs[ self.singleSpecName ]
+            else:
+                self.failedSubmission.append( self.singleSpecName )
+                                                                                                                      
+        # in case of bulk, check which jobs have a scheduler ID
+        else :
+            for jobSpecName in self.toSubmit.keys() :
+                if jobSpecName in taskSubmittedJobs.keys() :
+                    self.submittedJobs[ jobSpecName ] = \
+                                        taskSubmittedJobs[ jobSpecName ]
+                else :
+                    self.failedSubmission.append( jobSpecName )
+        logging.debug( "########### " + self.submittedJobs.__str__() )
+
+        #  //
+        # // Raise Submission Failed
+        #//
         if len(failurejobs)>0:
             raise JSException("Submission Failed", FailureList = failurejobs)
 
