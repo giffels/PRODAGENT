@@ -7,8 +7,8 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdCommon.Database import Session
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface.Registry import registerHandler
-from ProdMgrInterface.Registry import retrieveHandler
 from ProdMgrInterface.States.StateInterface import StateInterface 
+from ProdMgrInterface.States.Aux import HandleJobSuccess
 import ProdMgrInterface.Interface as ProdMgrAPI
 
 
@@ -26,15 +26,14 @@ class QueuedMessages(StateInterface):
            amount=10
            messages=MessageQueue.retrieve('ProdMgrInterface',report_type,start,amount)
            while(len(messages)>0):
-               handler=retrieveHandler(report_type)
                for message in messages:
                    if not ignoreUrl.has_key(message['server_url']):
                        MessageQueue.remove(message['id'])
-                       result=handler.sendMessage(message['server_url'],message['parameters'])
+                       result=HandleJobSuccess.sendMessage(message['server_url'],message['parameters'])
                        if result['url']=='failed':
                            ignoreUrl[message['server_url']]='failed'
                        message['parameters']['result']=result['result']
-                       handler.handleResult(message['parameters'])
+                       HandleJobSuccess.handleResult(message['parameters'])
                    logging.debug("Retrieve next message in queue")
                start=start+amount
                messages=MessageQueue.retrieve('ProdMgrInterface',report_type,start,amount)
