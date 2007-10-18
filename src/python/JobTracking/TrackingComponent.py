@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.4 2007/09/28 15:03:05 ckavka Exp $"
-__version__ = "$Revision: 1.47.2.4 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.5 2007/10/03 18:16:11 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.5 $"
 
 import time
 import os
@@ -66,6 +66,7 @@ class TrackingComponent:
         # set default values for parameters 
         self.args = {}
         self.args.setdefault("PollInterval", 10)
+        self.args.setdefault("QueryInterval", 300)
         self.args.setdefault("jobsToPoll", 100)
         self.args.setdefault("ComponentDir", "/tmp")
         self.args.setdefault("configDir", None)
@@ -90,8 +91,8 @@ class TrackingComponent:
 
         # compute delay for get output operations
         delay = int(self.args['PollInterval'])
-        if delay < 10:
-            delay = 10 # a minimum value
+        if delay < 1:
+            delay = 1 # a minimum value
 
         seconds = str(delay % 60)
         minutes = str((delay / 60) % 60)
@@ -117,11 +118,17 @@ class TrackingComponent:
         # set BOSS path
         BOSS.setBossCfgDir(self.bossCfgDir)
 
+        # compute delay for get output operations
+        sleepTime = int(self.args['QueryInterval'])
+        if sleepTime < 15:
+            sleepTime = 15 # a minimum value
+
         # create pool thread
         params = {}
-        params['delay'] = delay
+        params['delay'] = sleepTime
         JobStatus.setParameters(params)
-        pool = WorkQueue([JobStatus.doWork] * int(self.args["PoolThreadsSize"]))
+        pool = \
+             WorkQueue([JobStatus.doWork] * int(self.args["PoolThreadsSize"]))
 
         # create pool scheduler
         params = {}
@@ -233,7 +240,7 @@ class TrackingComponent:
                 (taskId, chainId, ident, status) = job
 
             # line does not contain job information, ignore
-            except Exception:
+            except StandardError:
                 continue
 
             # ignore non positive task ids
@@ -247,7 +254,8 @@ class TrackingComponent:
             jid = taskId + "." + chainId + "." + ident
  
             # publish information to dashboard if not submitted before
-            if not jid in self.submittedJobs.keys():
+            if not jid in self.submittedJobs.keys() \
+                   and status not in [ 'S', 'W', 'SU', 'SW' ] :
 
                 # no, publish information to dashboard
                 self.dashboardPublish(
@@ -309,8 +317,8 @@ class TrackingComponent:
 
         # get finished and failed jobs and handle them
         finishedJobs, failedJobs = self.pollBossDb()
-        self.handleFailed(failedJobs)
         self.handleFinished(finishedJobs)
+        self.handleFailed(failedJobs)
 
         # generate next polling cycle
         logging.info("Waiting %s for next get output polling cycle" % \
@@ -340,11 +348,11 @@ class TrackingComponent:
                 continue
 
             # get framework jod report file name
-            reportfilename = BOSSCommands.reportfilename(jobId, self.directory)
+            reportfilename = BOSSCommands.reportfilename(jobId[0], \
+                                                         self.directory)
 
             # publish information to the dashboard
             self.dashboardPublish(jobId[0], jobSpecId)
-            self.dashboardPublish(jobId[0], jobSpecId, "ENDED_")
 
             # create directory
             directory = os.path.dirname(reportfilename)
@@ -353,7 +361,7 @@ class TrackingComponent:
             try:
                 os.makedirs(os.path.dirname(reportfilename))
 
-            except Exception, msg:
+            except StandardError, msg:
 
                 # cannot create directory, go to next job
                 logging.error("Cannot create directory : " + str(msg))
@@ -401,6 +409,9 @@ class TrackingComponent:
                               % (jobId.__str__(), str(msg)))
                 continue
 
+            # publish information to the dashboard
+            self.dashboardPublish(jobId[0], jobSpecId)
+
             # perform the get output operation
             jobInfo = {'jobId' : jobId,
                        'jobSpecId' : jobSpecId,
@@ -437,7 +448,7 @@ class TrackingComponent:
                 break
 
             # error
-            except Exception, msg:
+            except StandardError, msg:
                 logging.error(str(msg))
                 outp = "error"
                 retry += 1
@@ -461,16 +472,13 @@ class TrackingComponent:
         jobSpecId = jobInfo['jobSpecId']
         outp = jobInfo['output']
 
-        # publish information to the dashboard
-        self.dashboardPublish(jobId[0], jobSpecId, "ENDED_")
-
         # successful output retrieval?
         if outp.find("-force") < 0 and \
            outp.find("error") < 0 and \
            outp.find("already been retrieved") < 0:
 
             # yes, get report file name
-            reportfilename = BOSSCommands.reportfilename(jobId, \
+            reportfilename = BOSSCommands.reportfilename(jobId[0], \
                                                          self.directory)
             logging.debug("report file name %s exists: %s" % \
                 (reportfilename, os.path.exists(reportfilename)))
@@ -496,7 +504,7 @@ class TrackingComponent:
                 # create BOSS based Framework Job Report
                 fwjr = FwkJobReport()
                 fwjr.jobSpecId = jobSpecId
-                reportfilename = BOSSCommands.reportfilename(jobId, \
+                reportfilename = BOSSCommands.reportfilename(jobId[0], \
                                                          self.directory)
 
                 # job successful even if job report is not there
@@ -541,7 +549,7 @@ class TrackingComponent:
             # create job report
             fwjr = FwkJobReport()
             fwjr.jobSpecId = jobSpecId
-            reportfilename = BOSSCommands.reportfilename(jobId, \
+            reportfilename = BOSSCommands.reportfilename(jobId[0], \
                                                             self.directory)
             fwjr.exitCode = -1
             fwjr.status = "Failed"
@@ -549,7 +557,7 @@ class TrackingComponent:
             # store job report
             fwjr.write(reportfilename)
 
-            # delete job information from BOSS DB
+            # archive job, forcing a deleted status in the BOSS DB
             BOSSCommands.Delete(jobId[0], self.bossCfgDir)
 
             # generate a failure message
@@ -561,7 +569,7 @@ class TrackingComponent:
 
         return
 
-    def dashboardPublish(self, jobId, jobSpecId, ended=""):
+    def dashboardPublish(self, jobId, jobSpecId):
         """
         _dashboardPublish_
         
@@ -582,10 +590,9 @@ class TrackingComponent:
             )
 
         # get scheduler info
-        schedulerI = BOSSCommands.schedulerInfo(self.bossCfgDir, jobId, \
-                                                ended)
+        schedulerI = BOSSCommands.schedulerInfo(self.bossCfgDir, jobId)
         
-        if len( schedulerI ) == 0:
+        if len( schedulerI ) == 0 or not schedulerI.has_key('SCHED_ID') :
             logging.error("schedulerinfo: %s" % schedulerI.__str__())
             return
         
@@ -597,9 +604,9 @@ class TrackingComponent:
         if dashboardInfo.job == '' or dashboardInfo.job == None :
             dashboardInfo.job = jobId.split('.')[1] + '_' + \
                                 schedulerI['SCHED_ID']
-            # create/update info file
-            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-            dashboardInfo.write( dashboardInfoFile )
+#            # create/update info file
+#            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
+#            dashboardInfo.write( dashboardInfoFile )
     
         # write dashboard information
         dashboardInfo['GridJobID'] = schedulerI['SCHED_ID']
@@ -609,7 +616,7 @@ class TrackingComponent:
             dashboardInfo['StatusEnterTime'] = time.strftime( \
                              '%Y-%m-%d %H:%M:%S', \
                              time.gmtime(float(schedulerI['LB_TIMESTAMP'])))
-        except KeyError:
+        except StandardError:
             pass
 
         try :
@@ -638,6 +645,10 @@ class TrackingComponent:
 #                             '%Y-%m-%d %H:%M:%S', \
 #                             time.gmtime(float(schedulerI['LAST_T'])))
 
+        # create/update info file
+        logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
+        dashboardInfo.write( dashboardInfoFile )
+        
         # publish it
         try:
             logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
@@ -740,7 +751,8 @@ class TrackingComponent:
 
         # try to get cache from JobState
         try:
-            jobCacheDir = JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
+            jobCacheDir = \
+                        JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
 
         # error, cannot get cache location
         except StandardError, ex:
@@ -802,7 +814,7 @@ class TrackingComponent:
         try:
             os.makedirs(newPath)
 
-        except Exception, msg:
+        except StandardError, msg:
             logging.debug("cannot create directory %s: %s" % \
                           (newPath, str(msg)))
 
@@ -811,7 +823,7 @@ class TrackingComponent:
             copy(reportfilename, newPath)
             os.unlink(reportfilename)
 
-        except Exception, msg:
+        except StandardError, msg:
             logging.error("failed to move %s to %s: %s" % \
                           (reportfilename, newPath, str(msg)))
 
@@ -836,7 +848,7 @@ class TrackingComponent:
             try:
                 os.makedirs(newPath + ext)
 
-            except Exception, msg:
+            except StandardError, msg:
                 pass
 #                logging.error("failed to create directory %s: %s" % \
 #                              (newPath + ext, str(msg)))
@@ -846,7 +858,7 @@ class TrackingComponent:
                 copy(baseDir+f, newPath+ext)
                 os.unlink(baseDir+f)
 
-            except Exception, msg:
+            except StandardError, msg:
                 logging.error("failed to move %s to %s: %s" % \
                               (baseDir + f, newPath + ext, str(msg)))
 
@@ -855,7 +867,7 @@ class TrackingComponent:
             os.rmdir(baseDir)
             logging.debug("removing baseDir %s" % baseDir)
 
-        except Exception, msg:
+        except StandardError, msg:
             logging.error("error removing baseDir %s: %s" % \
                           (baseDir, str(msg)))
             
@@ -867,7 +879,7 @@ class TrackingComponent:
             logging.debug("removing chainDir %s" % chainDir)
             os.rmdir(chainDir)
 
-        except Exception, msg:
+        except StandardError, msg:
             logging.error("error removing chainDir %s: %s" % \
                           (chainDir, str(msg)))
 
@@ -909,9 +921,21 @@ class TrackingComponent:
                     rmtree(subPath)
  
                 # error, cannot remove files
-                except Exception, msg:
+                except StandardError, msg:
                     logging.error("Failed to remove files for job %s: %s" % \
                                   (jobId, str(msg)))
+
+                    # remove ..id file,
+                    # so that re-declaration is possible if needed
+                try:
+                    os.remove(
+                        "%s/%sid" % (jobCacheDir,fjr[0].jobSpecId)
+                        )
+                except: 
+                    logging.info( "not removed file %s/%sid" \
+                                  % (jobCacheDir,fjr[0].jobSpecId)
+                                  )
+                    pass
 
                 # archive job
                 try:
