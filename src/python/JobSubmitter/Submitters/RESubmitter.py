@@ -9,32 +9,23 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: RESubmitter.py,v 1.4 2007/03/15 09:32:54 bacchi Exp $"
-
+__revision__ = "$Id: RESubmitter.py,v 1.4.12.2 2007/10/03 18:14:03 gcodispo Exp $"
+__version__ = "$Revision: 1.4.12.2 $"
 #  //
 # // Configuration variables for this submitter
 #//
-#bossJobType = ""  # some predetermined type value from boss install here
-bossScheduler = "glite"
 
 #  //
 # // End of Config variables.
 #//
 import os
+import time
 import logging
-import exceptions
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
 from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentBOSS import BOSSCommands
-
-class InvalidFile(exceptions.Exception):
-    def __init__(self, msg):
-        args = "%s\n" % msg
-        exceptions.Exception.__init__(self, args)
-        pass
-
+from ProdAgent.WorkflowEntities.JobState import doNotAllowMoreSubmissions
 
 class RESubmitter(SubmitterInterface):
     """
@@ -45,20 +36,23 @@ class RESubmitter(SubmitterInterface):
     """
     
     def __init__(self):
-        SubmitterInterface.__init__(self)
-        #  //
-        # // BOSS installation consistency check.
-        #//
         
-        self.bossStrJobId = ""
+        SubmitterInterface.__init__(self)
+        
+        #  //
+        # // BOSS job variables
+        #//
+        self.taskId  = ''
+        self.chainId = ''
+        self.bossJobId = ''
         self.parameters['Scheduler'] = "glite"
+
          # check for dashboard usage
         self.usingDashboard = {'use' : 'True', \
                                'address' : 'lxgate35.cern.ch', \
                                'port' : '8884'}
         try:
-            pluginConfig = loadPluginConfig("JobSubmitter", "Submitter")
-            dashboardCfg = pluginConfig.get('Dashboard', {})
+            dashboardCfg = self.pluginConfig.get('Dashboard', {})
             self.usingDashboard['use'] = dashboardCfg.get(
                 "UseDashboard", "False"
                 )
@@ -66,8 +60,8 @@ class RESubmitter(SubmitterInterface):
                 "DestinationHost"
                 )
             self.usingDashboard['port'] = dashboardCfg.get("DestinationPort")
-            logging.debug("DashboardInfo = %s" % dashboardInfo.__str__())
-        except:
+            logging.debug("dashboardCfg = " + self.usingDashboard.__str__() )
+        except StandardError:
             logging.info("No Dashboard section in SubmitterPluginConfig")
 
 
@@ -81,7 +75,6 @@ class RESubmitter(SubmitterInterface):
         if self.pluginConfig == None:
             msg = "Failed to load Plugin Config for:\n"
             msg += self.__class__.__name__
-            # raise JSException( msg, ClassInstance = self)
             
         logging.debug(" plugin configurator %s"%self.pluginConfig)
             
@@ -115,17 +108,22 @@ class RESubmitter(SubmitterInterface):
     def __call__(self, workingDir, jobCreationArea, jobname, **args):
 
         self.parameters.update(args)
-        logging.info("jobname = %s" % jobname)
-        tmp = jobname.split('_')
-        chainId = tmp[len(tmp) - 1]
-        taskName = '_'.join(tmp[:len(tmp) - 1])
-        logging.info("TaskName = %s" % taskName)
-        taskId = BOSSCommands.getTaskIdFromName(taskName, self.bossCfgDir)
-        logging.info("TaskId = %s" % taskId)
-        self.parameters['TaskId'] = taskId + "." + chainId
-        self.parameters['JobName'] = '_'.join(tmp[:len(tmp) - 1])
-        logging.info("taskid = %s" % self.parameters['TaskId'])
+        self.parameters['JobName'] = jobname
+        logging.info("JobName = %s" % self.parameters['JobName'])
+
+        # get taskname
+        sep = jobname.rfind( '_' )
+        taskName = jobname[:sep]  
+        self.parameters['TaskName'] = taskName
+        logging.info("TaskName = %s" % self.parameters['TaskName'])
+
+         # get BOSS id     
+        self.chainId  = jobname[sep+1:]
+        self.taskId = BOSSCommands.getTaskIdFromName(taskName, self.bossCfgDir)
       
+        self.bossJobId = self.taskId + "." + self.chainId
+        logging.info("BOSS id = %s" % self.bossJobId)
+        
         self.doSubmit("", "")
       
     
@@ -140,51 +138,43 @@ class RESubmitter(SubmitterInterface):
         Initial tests: No FrameworkJobReport yet, stage back stdout log
         
         """
-        logging.info("taskid%s" % self.parameters['TaskId'])
 
-        try:
-            taskid = self.parameters['TaskId'].split('.')[0]
-            chainid = self.parameters['TaskId'].split('.')[1]
-            int(taskid)
-            int(chainid)
-            bossJobId = self.parameters['TaskId']
-        except:
-            bossJobId = None
-            # bossJobId=self.isBOSSDeclared()
+#        logging.info("taskid%s" % self.parameters['TaskId'])
+#        try:
+#            self.taskid = self.parameters['TaskId'].split('.')[0]
+#            self.chainId = self.parameters['TaskId'].split('.')[1]
+#            int(self.taskid)
+#            int(self.chainId)
+#            self.bossJobId = self.parameters['TaskId']
+#        except StandardError :
+#            self.bossJobId = None
+            # self.bossJobId=self.isBOSSDeclared()
 
-        logging.info("bossJobId%s" % bossJobId)
-        logging.debug( "RESubmitter.doSubmit bossJobId = %s" % bossJobId)
-        if bossJobId == None:
-            raise ProdAgentException("Failed Job Declaration")
+        logging.debug( "RESubmitter.doSubmit bossJobId = %s" % self.bossJobId)
+        if self.bossJobId == None:
+            raise ProdAgentException( "Failed Job Declaration", \
+                               self.parameters['JobName'] )
             
         ( bossSubmit, cert ) = \
-          BOSSCommands.resubmit(bossJobId, self.bossCfgDir)
-        
-        logging.info("Using certificate : " + cert)
+          BOSSCommands.resubmit(self.bossJobId, self.bossCfgDir)
+
+        if cert != '' :
+            logging.info("Using certificate : " + cert)
+
+        # // Check proxy validity: an exception raised will stop the submission
+        #//
         try:
-            output = BOSSCommands.executeCommand(
-                "voms-proxy-info", userProxy = cert
-                )
-            output = output.split("timeleft")[1].strip()
-            output = output.split(":")[1].strip()
-            if output == "0:00:00":
-                #logging.info( "You need a voms-proxy-init -voms cms")
-                logging.error("voms-proxy-init expired")
-                #sys.exit()
-        except StandardError,ex:
-            #print "You need a voms-proxy-init -voms cms"
-            logging.error("voms-proxy-init does not exist")
-            logging.error(output)
-            raise ProdAgentException("Proxy Expired")
-        # sys.exit()
-
-# // useless!!!
-#        try:
-#          if self.parameters['RTMon']!='':
-#            bossSubmit+="-rtmon %s "%self.parameters['RTMon']
-#        except:
-#          pass
-
+            BOSSCommands.checkUserProxy( cert )
+        except ProdAgentException, ex :
+            try:
+                doNotAllowMoreSubmissions([ self.parameters['JobName'] ])
+                raise
+            except ProdAgentException, ex:
+                msg = "Updating max racers fields failed for job %s\n" \
+                      % jobSpecId
+                msg += str(ex)
+                logging.error(msg)
+                raise
 
         # // Executing BOSS Submit command
         #//
@@ -192,32 +182,66 @@ class RESubmitter(SubmitterInterface):
         output = BOSSCommands.executeCommand(bossSubmit, userProxy = cert)
         logging.debug ("RESubmitter.doSubmit: %s" % output)
         if output.find("error") >= 0:
-            BOSSCommands.FailedSubmission(str(bossJobId), self.bossCfgDir)
-            raise ProdAgentException("Submission Failed")
-        #os.remove(cladfile)
+            logging.error ("RESubmitter.doSubmit: %s" % output)
+            BOSSCommands.FailedSubmission(self.bossJobId, self.bossCfgDir)
+            raise ProdAgentException( "Submission Failed" )
+
         try:
             resub = \
                   output.split("Resubmission number")[1].split("\n")[0].strip()
             logging.debug("resub = %s" % resub)
-        except:
+        except StandardError :
             resub = "1"
         try:
-            chainid = \
+            chainId = \
                     (output.split("Scheduler ID for job")[1]).split("is")[0].strip()
-        except:
-            BOSSCommands.FailedSubmission(str(bossJobId), self.bossCfgDir)
-            raise ProdAgentException("Submission Failed")
+        except StandardError :
+            logging.error ("RESubmitter.doSubmit: %s" % output)
+            BOSSCommands.FailedSubmission(self.bossJobId, self.bossCfgDir)
+            raise ProdAgentException( "Missing BOSS job id" )
 
-        self.bossStrJobId = str(bossJobId) + "." + chainid + "." + resub
-        logging.info("Submitter bossJobId = %s" % bossJobId)
-        #self.editDashboardInfo(self.parameters['DashboardInfo'])
+        if chainId != self.chainId :
+            strerr = "mismatching job id: " +  chainId + " != " + self.chainId
+            logging.error( strerr )
+            raise ProdAgentException( strerr )
+        
+        self.bossJobId = self.bossJobId + "." + resub
+        logging.info("Submitter bossJobId = %s" % self.bossJobId)
+        try :
+            self.parameters['DashboardInfo'] = None
+            self.editDashboardInfo(self.parameters['DashboardInfo'])
+            self.publishSubmitToDashboard(self.parameters['DashboardInfo'])
+        except StandardError, msg:
+            logging.error("Cannot publish dashboard information: " + \
+                          self.parameters['DashboardInfo'].__str__() + \
+                          "\n" + str(msg))
         return
+
 
 
     def publishSubmitToDashboard(self, dashboardInfo):
+        """
+        _publishSubmitToDashboard_
+
+        Publish the dashboard info to the appropriate destination
+
+        """
+        if dashboardInfo == None:
+            logging.debug(
+                "SubmitterInterface: No DashboardInfo available for job"
+                )
+            return
+
+        # set dashboard destination
+        logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
+        dashboardInfo.addDestination(
+            self.usingDashboard['address'], self.usingDashboard['port']
+            )
+
+        dashboardInfo.publish(5)
         return
-
-
+    
+    
     def editDashboardInfo(self, dashboardInfo):
         """
         _editDashboardInfo_
@@ -227,40 +251,57 @@ class RESubmitter(SubmitterInterface):
         
         
         If dashboardInfo is None, it is not available for this job.
-
+        
         """
-
+        
         if  self.usingDashboard['use'] != 'True':
             return
         
-        jobSpecId = BOSSCommands.jobSpecId(jobId, self.bossCfgDir)
-
-        ( dashboardInfo, dashboardInfoFile ) = \
-          BOSSCommands.guessDashboardInfo(jobId, jobSpecId, self.bossCfgDir)
+        jobSchedId = BOSSCommands.schedulerId(self.bossJobId, self.bossCfgDir)
+        
+        logging.info( self.parameters['JobName'] + '\n' + \
+                      self.parameters['TaskName'] + '\n' + \
+                      self.bossJobId + '\n' + \
+                      jobSchedId + '\n' )
+        
+        ( dashboardInfo, dashboardInfoFile ) = BOSSCommands.guessDashboardInfo(
+            self.bossJobId, self.parameters['JobName'], self.bossCfgDir
+            )
+        
+        # assign job dashboard id
         if dashboardInfo.task == '' :
             logging.error( "unable to retrieve DashboardId" )
             return
         
-        dashboardInfo.job = chainid + '_' + schedulerI['SCHED_ID']
-        dashboardInfo['ApplicationVersion'] = self.listToString(
-            self.parameters['AppVersions']
-            )
-        dashboardInfo['TargetCE'] = self.listToString(
-            self.parameters['Whitelist']
-            )
+        # job basic information
+        dashboardInfo.job = self.chainId + '_' + jobSchedId
         dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
-        dashboardInfo['Scheduler'] = 'RE'
-        dashboardInfo['GridJobID'] = \
-                                   BOSSCommands.schedulerId(jobId, bossCfgDir)
+        dashboardInfo['Scheduler'] = self.__class__.__name__
+        dashboardInfo['GridJobID'] = jobSchedId
+        dashboardInfo['SubTimeStamp'] = time.strftime( '%Y-%m-%d %H:%M:%S' )
+        
+#        dashboardInfo['SubTimeStamp'] = time.strftime( \
+#                             '%Y-%m-%d %H:%M:%S', \
+#                             time.gmtime(float(schedulerI['LAST_T'])))
 
-        # set dashboard destination
-        dashboardInfo.addDestination(
-            self.usingDashboard['address'], self.usingDashboard['port']
-            )
+#        # job requirements (not yet implemented
+#         try :
+#             dashboardInfo['ApplicationVersion'] = self.listToString(
+#                 self.parameters['AppVersions']
+#                 )
+#         except KeyError:
+#             logging.info ( "missing AppVersions" )
+#         try :
+#             dashboardInfo['TargetCE'] = self.listToString(
+#                 self.parameters['Whitelist']
+#                 )
+#         except KeyError:
+#             logging.info ("missing Whitelist" )
 
+        # write dashboard file
         dashboardInfo.write( dashboardInfoFile )
-        dashboardInfo.publish(5)
-            
+        logging.info("Created dashboardInfoFile " + dashboardInfoFile )
+
         return
       
 
