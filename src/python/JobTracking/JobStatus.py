@@ -12,14 +12,14 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.4 2007/10/04 10:35:38 ckavka Exp $"
+__version__ = "$Revision: 1.1.2.4 $"
 
 import logging
 from ProdAgentBOSS.BOSSCommands import BOSS
 from BossSession import BossError, SchedulerError
 
-from BossSession import SUBMITTED
+from BossSession import SUBMITTED, SCHEDULED
 import os, traceback
 from time import sleep
 
@@ -92,7 +92,6 @@ class JobStatus:
 
                 # if not last task, get next, otherwise process
                 if i != ntask :
-                    tasklist += task + ','
                     continue
                 
             # else if not same certificate, but anyway the last,
@@ -119,6 +118,7 @@ class JobStatus:
             try :
                 bossSession = BOSS.getBossSession()
                 taskDict = bossSession.query(SUBMITTED, tasklist)
+#                taskDict = bossSession.query(SCHEDULED, tasklist)
 
                 statusLog = '\n'
                 for taskObj in taskDict.values():
@@ -165,6 +165,7 @@ class JobStatus:
               'select j.TASK_ID,j.CHAIN_ID from JOB j left join jt_group g' \
               + ' on (j.TASK_ID=g.task_id and j.CHAIN_ID=g.job_id) ' \
               + ' where g.job_id IS NULL and j.CHAIN_ID IS NOT NULL' \
+              + " and j.STATUS not in ('SE','SD','SA')" \
               + ' order by j.TASK_ID'
 
         try:
@@ -204,7 +205,8 @@ class JobStatus:
         query = \
               'select g.task_id,g.job_id from JOB j right join jt_group g' \
               + ' on (j.TASK_ID=g.task_id and j.CHAIN_ID=g.job_id) ' \
-              + ' where j.CHAIN_ID IS NULL'
+              + ' where j.CHAIN_ID IS NULL ' \
+              + " or j.STATUS in ('SE','SD','SA')"
         try:
             adminSession = BOSS.getBossAdminSession()
             # perform BOSS query
