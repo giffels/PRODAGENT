@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.4 2007/10/04 10:35:38 ckavka Exp $"
-__version__ = "$Revision: 1.1.2.4 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.5 2007/10/18 17:29:46 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.5 $"
 
 import logging
 from ProdAgentBOSS.BOSSCommands import BOSS
@@ -32,7 +32,7 @@ class JobStatus:
     A static instance of this class deals with job status operations
     """
 
-    params = {'delay' : 30}     # parameters
+    params = {'delay' : 30, 'jobsToPoll' : 100}     # parameters
 
     def __init__(self):
         """
@@ -113,13 +113,52 @@ class JobStatus:
                       )
             tasklist = tasklist[:-1]
             logging.info('LB query for tasks ' + tasklist)
+            cls.bossQuery( tasklist, ntask )
 
+            # if reached this point, there is at least one task left
+            # the current task goes anyway in the next query
+            tasklist = task + ','
+            prevcert = cert
+
+        sleep(cls.params['delay'])
+
+
+    @classmethod
+    def bossQuery( cls, tasklist, taskn=1 ):
+        
+        subQuery = 1
+        jobRange = ""
+        jobs = int ( cls.params['jobsToPoll'] )
+
+        if taskn == 1:
+            query = "select count(job_id) from  jt_group where task_id=" \
+                    + tasklist
+
+            # get a BOSS session
+            adminSession = BOSS.getBossAdminSession()
+            
+            # query BOSS for user certificates  
+            (adminSession, out) = \
+                           BOSS.performBossQuery(adminSession, query)
+            del( adminSession )
+            
+            # define number of LB query
+            val = out.split()[1].strip()
+	    subQuery = int( int( val ) / jobs )
+
+        for i in range ( subQuery ) :
+            if subQuery > 1:
+                jobRange = str( i * jobs ) + ':' + str( (i + 1) * jobs)
+
+            logging.debug( 'LB query jobs ' + jobRange \
+                           +  ' of task ' + tasklist )
             # query group of tasks
             try :
                 bossSession = BOSS.getBossSession()
-                taskDict = bossSession.query(SUBMITTED, tasklist)
-#                taskDict = bossSession.query(SCHEDULED, tasklist)
+                taskDict = bossSession.query(SUBMITTED, tasklist, jobRange)
 
+                # WARNING: this log operation in memory consuming.
+                # To be removed
                 statusLog = '\n'
                 for taskObj in taskDict.values():
                     bossTask = taskObj.jobsDict()
@@ -131,6 +170,8 @@ class JobStatus:
                                   + jobTable['ID'] + '.' + jobTable['STATUS'] \
                                   + '\n'
                     logging.debug( statusLog )
+                    del ( bossTask )
+                # end log session
                 bossSession.clear()
                 del ( bossSession )
             except SchedulerError,e:
@@ -145,13 +186,7 @@ class JobStatus:
                 logging.error( ex.__str__() )
                 logging.error( traceback.format_exc() )
 
-            # if reached this point, there is at least one task left
-            # the current task goes anyway in the next query
-            tasklist = task + ','
-            prevcert = cert
 
-        sleep(cls.params['delay'])
-            
     @classmethod
     def addNewJobs(cls):
         """
