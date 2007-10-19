@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.5 2007/10/03 18:16:11 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.5 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.6 2007/10/18 17:05:07 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.6 $"
 
 import time
 import os
@@ -126,6 +126,7 @@ class TrackingComponent:
         # create pool thread
         params = {}
         params['delay'] = sleepTime
+        params['jobsToPoll'] = self.args['jobsToPoll']
         JobStatus.setParameters(params)
         pool = \
              WorkQueue([JobStatus.doWork] * int(self.args["PoolThreadsSize"]))
