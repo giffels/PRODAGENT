@@ -62,7 +62,7 @@ def insertStats(jobStatistics):
         # Close DB connection and re-throw
         Session.rollback()
         Session.close()
-        msg = "Failed to insert JobStatistics:\n\t %s\n" % str(ex)
+        msg = "Failed to insert JobStatistics: %s\n" % str(ex)
         raise RuntimeError, msg    
         
     logging.debug("Job successfully saved to database, id: %s" % 
@@ -129,9 +129,9 @@ def __setWorkflowId(Session, jobStatistics):
 
     # if workflow not in db must have missed a NewWorkflow event
     if jobStatistics['database_ids']["workflow_id"] == None:
-        msg = "workflow %s not found in prodmon database\n" % \
+        msg = "workflow %s not found in prodmon database " % \
                                             jobStatistics['workflow_spec_id']
-        msg += "Please alert developers\n"
+        msg += ". Did you publish a NewWorkflow event?\n"
         raise RuntimeError, msg
 
     return

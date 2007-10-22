@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.5 2007/07/25 15:13:23 swakef Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.6 2007/07/27 14:20:16 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -51,6 +51,7 @@ class ProdMonComponent:
         self.args.setdefault("Team", "Unknown")
         self.args.setdefault("AgentName", "Unknown")
         self.args.setdefault("exportEnabled", False)
+        self.args.setdefault("FailedDir", None)
         
         # override default with provided values and convert to correct types
         try:
@@ -60,6 +61,9 @@ class ProdMonComponent:
                 self.args["exportEnabled"] = True
             else:
                 self.args["exportEnabled"] = False
+            if self.args["FailedDir"] == None:
+                self.args["FailedDir"] = os.path.join(self.args['ComponentDir'],
+                                                "FailedJobReports")
         except StandardError, ex:
             msg = "Error handling configuration"
             msg += str(ex)
@@ -126,6 +130,8 @@ class ProdMonComponent:
         elif event == "NewWorkflow":
             self.newWorkflow(payload)
             return
+        elif event == "ProdMon:RetryFailures":
+            self.retryFailures()
         return
     
     
@@ -179,9 +185,11 @@ class ProdMonComponent:
         _extractStats_
 
         parse the report, convert it into JobStatistics objects and
-        insert them into the DB
+        insert them into the DB.
+        
 
         """
+        result = False
         try:
             reports = readJobReport(jobReportFile)
         except StandardError, ex:
@@ -195,11 +203,25 @@ class ProdMonComponent:
         for report in reports:
             logging.debug("Inserting into db %s" % report.jobSpecId)
             try:
-                stats = jobReportToJobStats(report)
-                stats.insertIntoDB()
+                try:
+                    stats = jobReportToJobStats(report)
+                    stats.insertIntoDB()
+                    result = True
+                    
+                except StandardError, ex:
+                    # If error on insert save for later retry
+                    if not os.path.isdir(self.args["FailedDir"]):
+                        os.mkdir(self.args["FailedDir"])
+                    report.write(os.path.join(self.args["FailedDir"], report.jobSpecId))
+                    msg = "Error inserting Stats into DB for report: %s\n" % report.jobSpecId
+                    msg += "report saved to %s\n" % str(self.args["FailedDir"])
+                    msg += str(ex)
+                    logging.error(msg)
+
+            finally:
                 #   //
                 #  // if report is a success, we also set the trigger
-                # //  to say we have finished with it.
+                # //  to allow the cleanup to procede.
                 if report.wasSuccess():
                     try:
                         self.trigger.setFlag("cleanup",
@@ -209,13 +231,8 @@ class ProdMonComponent:
                         msg = "Error setting cleanup flag for job: %s" % report.jobSpecId
                         msg += str(ex)
                         logging.error(msg)
-
-            except StandardError, ex:
-                msg = "Error inserting Stats into DB for report: %s\n" % report.jobSpecId
-                msg += str(ex)
-                logging.error(msg)
-                return
-        return
+                        
+        return result
     
     
     def export(self):
@@ -246,9 +263,25 @@ class ProdMonComponent:
         else:
             self.ms.publish("ProdMon:Export", "", self.args['exportInterval'])
         
-        
         return
             
+
+    def retryFailures(self):
+        """
+        Process list of insert failures and retry"
+        """
+        logging.info("Processing failed FrameworkJobReport inserts")
+        if os.path.isdir(self.args["FailedDir"]):
+            for file in os.listdir(self.args["FailedDir"]):
+                try:
+                    inserted = self.extractStats(os.path.join(self.args["FailedDir"], file))
+                    if inserted:
+                        os.remove(os.path.join(self.args["FailedDir"], file))
+                except Exception, ex:
+                    logging.error("Exception in retryFailures %s" % str(ex))
+        logging.info("Finished processing failed reports")
+        return
+
 
     def startComponent(self):
         """
@@ -273,6 +306,7 @@ class ProdMonComponent:
         self.ms.subscribeTo("ProdMon:StopExport")
         self.ms.subscribeTo("ProdMon:StartExport")
         self.ms.subscribeTo("NewWorkflow")
+        self.ms.subscribeTo("ProdMon:RetryFailures")
         # tell JobCreator to set ProdMon cleanup flag
         self.ms.subscribeTo("SetJobCleanupFlag")
         
