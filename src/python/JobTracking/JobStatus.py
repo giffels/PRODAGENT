@@ -12,14 +12,14 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.5 2007/10/18 17:29:46 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.5 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.6 2007/10/19 09:23:46 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.6 $"
 
 import logging
-from ProdAgentBOSS.BOSSCommands import BOSS
+from ProdAgentBOSS.BOSSCommands import BOSS, checkUserProxy
 from BossSession import BossError, SchedulerError
 
-from BossSession import SUBMITTED, SCHEDULED
+from BossSession import SUBMITTED
 import os, traceback
 from time import sleep
 
@@ -99,21 +99,19 @@ class JobStatus:
             elif cert != prevcert and i == ntask :
                 i -= 1
 
-            # evaluate valid certificates and set the environment
-            if prevcert != 'NULL' and prevcert != '':
-                if os.path.exists(prevcert):
-                    os.environ["X509_USER_PROXY"] = prevcert
-                    logging.info(
-                        "using proxy " + os.environ["X509_USER_PROXY"]
+            # evaluate valid certificates and perform the query
+            try :
+                checkUserProxy( prevcert )
+                tasklist = tasklist[:-1]
+
+                # ask BOSS for LB query
+                logging.info('BOSS query for tasks ' + tasklist)
+                cls.bossQuery( tasklist, ntask, prevcert )
+            except :
+                logging.info(
+                        "cert path " + prevcert + \
+                        " does not exists: skipping tasks " + tasklist
                         )
-                else:
-                    logging.info(
-                      "cert path " + prevcert + \
-                      " does not exists: trying to use the default one if there"
-                      )
-            tasklist = tasklist[:-1]
-            logging.info('LB query for tasks ' + tasklist)
-            cls.bossQuery( tasklist, ntask )
 
             # if reached this point, there is at least one task left
             # the current task goes anyway in the next query
@@ -124,14 +122,18 @@ class JobStatus:
 
 
     @classmethod
-    def bossQuery( cls, tasklist, taskn=1 ):
+    def bossQuery( cls, tasklist, taskn, cert ):
+        """
+        Perform the LB query through BOSS
+        """
         
         subQuery = 1
-        jobRange = ""
+        jobRange = "all"
         jobs = int ( cls.params['jobsToPoll'] )
 
+        # if just one task, evaluate if the size requires further splits
         if taskn == 1:
-            query = "select count(job_id) from  jt_group where task_id=" \
+            query = "select max(job_id) from  jt_group where task_id=" \
                     + tasklist
 
             # get a BOSS session
@@ -146,6 +148,7 @@ class JobStatus:
             val = out.split()[1].strip()
 	    subQuery = int( int( val ) / jobs )
 
+        # perform the query for the task range or for the job range in the task
         for i in range ( subQuery ) :
             if subQuery > 1:
                 jobRange = str( i * jobs ) + ':' + str( (i + 1) * jobs)
@@ -155,30 +158,21 @@ class JobStatus:
             # query group of tasks
             try :
                 bossSession = BOSS.getBossSession()
+
+                # set the environment
+                os.environ["X509_USER_PROXY"] = cert
+
+                # actual query
                 taskDict = bossSession.query(SUBMITTED, tasklist, jobRange)
 
-                # WARNING: this log operation in memory consuming.
-                # To be removed
-                statusLog = '\n'
-                for taskObj in taskDict.values():
-                    bossTask = taskObj.jobsDict()
-
-                    for jobTable  in bossTask.values():
-                        statusLog += \
-                                  'BOSS LB: ' + jobTable['TASK_ID'] + '.' \
-                                  + jobTable['CHAIN_ID'] + '.' \
-                                  + jobTable['ID'] + '.' + jobTable['STATUS'] \
-                                  + '\n'
-                    logging.debug( statusLog )
-                    del ( bossTask )
-                # end log session
+                # clear BossSession to release memory
                 bossSession.clear()
                 del ( bossSession )
+                logging.info("LB status retrieved for jobs " + jobRange \
+                             + ' of task ' + tasklist )
             except SchedulerError,e:
-                logging.warning(
-                    "Warning : Scheduler interaction failed for jobs:"\
-                    + e.__str__()
-                    )
+                logging.error("Failed to retrieve status for jobs " \
+                             + e.__str__() + ' of task ' + tasklist )
 
             except BossError,e:
                 logging.error( "BOSS Error : " + e.__str__() )
