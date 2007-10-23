@@ -1,4 +1,14 @@
 #!/usr/bin/env python
+"""
+_BOSSCommands_
+
+A set of function to deal with BOSS features
+and in general with OS and scheduler features
+
+"""
+
+__revision__ = "$Revision$"
+__version__ = "$Id$"
 
 import time
 from popen2 import Popen4
@@ -131,13 +141,13 @@ class BOSS:
 
 
 def checkSuccess(jobId, bossCfgDir):
+    """
+    check job success from the program exit code
+    """
     success = False
     try:
-        taskid  = jobId.split('.')[0]
-        chainid = jobId.split('.')[1]
-        resub   = jobId.split('.')[2]
-        #print resub
-    except IndexError:
+        (taskid, chainid, resub) = jobId.split('.')
+    except ValueError :
         logging.error("Boss4 JobId splitting error: " + jobId)
         return success
 
@@ -153,7 +163,7 @@ def checkSuccess(jobId, bossCfgDir):
         (adminSession, out) = BOSS.performBossQuery(adminSession, query)
 
         outp = out.split("CHAIN_PROGRAM_TYPE")[1].strip()
-    except:
+    except StandardError :
         return success
     if outp.find("crabjob") >= 0 :
         return checkCrabSuccess(jobId, bossCfgDir)
@@ -168,7 +178,7 @@ def checkSuccess(jobId, bossCfgDir):
             
             outp = out.split("TASK_EXIT")[1].strip()
             # print outp
-        except:
+        except StandardError:
         
             return success
 
@@ -180,13 +190,17 @@ def checkSuccess(jobId, bossCfgDir):
 
 
 def checkCrabSuccess(jobId, bossCfgDir ):
-    #print "CRAB"
+    """
+    check job success from the program specific exit code
+    """
+
     success = False
-    
-    taskid  = jobId.split('.')[0]
-    chainid = jobId.split('.')[1]
-    resub   = jobId.split('.')[2]
-    
+
+    try:
+        (taskid, chainid, resub) = jobId.split('.')
+    except ValueError :
+        logging.error("Boss4 JobId splitting error: " + jobId)
+        return success
     
     try:
         query  = \
@@ -194,6 +208,9 @@ def checkCrabSuccess(jobId, bossCfgDir ):
               " where TASK_ID=" + taskid + " and CHAIN_ID=" + chainid + \
               " and ID=" + resub
         
+        # set BOSS path
+        BOSS.setBossCfgDir(bossCfgDir)
+
         # get a BOSS session
         adminSession = BOSS.getBossAdminSession()
 
@@ -201,7 +218,7 @@ def checkCrabSuccess(jobId, bossCfgDir ):
         (adminSession, out) = BOSS.performBossQuery(adminSession, query)
 
         outp = out.split('JOB_EXIT_STATUS')[1].strip()
-    except:
+    except StandardError :
         
         return success
     
@@ -209,7 +226,7 @@ def checkCrabSuccess(jobId, bossCfgDir ):
         exeCode = outp.split()[0].strip()
         jobCode = outp.split()[1].strip()
         
-    except:
+    except StandardError :
         return success
     success = (exeCode == "0" and jobCode == "0")
     return success
@@ -218,7 +235,7 @@ def resubmit(jobId, bossCfgDir):
     """
     BOSSsubmit
     
-    BOSS command to submit a task
+    BOSS command to resubmit jobs from a task
     """
 
     task  = jobId.split('.')[0]
@@ -234,7 +251,7 @@ def resubmit(jobId, bossCfgDir):
     
         # get user proxy
         cert = getUserProxy( adminSession, task )
-    except:
+    except StandardError :
         cert = ""
 
     return bossSubmit, cert
@@ -250,18 +267,17 @@ def submit(jobId, scheduler, bossCfgDir):
     bossSubmit = "boss submit "
 
     ids = jobId.split(".")
-    taskid = ""
+
     try:
-        taskid = ids[0]
-    except:
+        bossSubmit += " -taskid " + ids[0]
+    except StandardError :
         raise ProdAgentException("Missing BOSS taskid")
     try:
-        bossSubmit += "-jobid %s " % ids[1]
-    except:
+        bossSubmit += " -jobid " + ids[1]
+    except StandardError :
         pass
-    
-    bossSubmit += "-taskid %s " % taskid
-    bossSubmit += "-scheduler %s " %  scheduler
+
+    bossSubmit += " -scheduler " + scheduler
     bossSubmit += " -c " + bossCfgDir + " "
     return bossSubmit
 
@@ -288,7 +304,7 @@ def getTaskIdFromName(taskName, bossCfgDir):
         (adminSession, out) = BOSS.performBossQuery(adminSession, query)
 
         outp = out.split('ID')[1].strip()
-    except:
+    except StandardError :
         return 0
     return outp
 
@@ -297,7 +313,7 @@ def chainTemplate(parameters, bossJobType):
     """
     BOSS4createXML
 
-    BOSS 4 command to declare a task
+    create an xml declare a task in BOSS
     """
 
     chain = "   <chain name=\"%s\">\n" % parameters['JobName']
@@ -466,7 +482,7 @@ def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir, workflow, mainJobSp
         logging.info( bossJobId.split(":")[1].split("\n")[0])
         bossJobId = bossJobId.split(":")[1].split("\n")[0].strip()
 #        print "bossJobId", bossJobId
-    except StandardError, ex:
+    except StandardError:
 #        logging.debug(
 #            "SubmitterInterface:BOSS Job ID: %s. BossJobId set to 0\n" \
 #            % bossJobId
@@ -477,19 +493,93 @@ def declareBulk(bossCfgDir, jobList, inpSandbox, workingDir, workflow, mainJobSp
     return bossJobId
 
 
+def declareToBOSS(bossCfgDir, parameters):
+    """
+    _declareToBOSS_
+    
+    Writes a file to allow an outside-boss knolwledge of the job
+    Parameters are extracted from this instance
+    
+    """
+
+    bossJobId = declare(bossCfgDir, parameters)
+
+    idFile = "%s/%sid" \
+             % (os.path.dirname(parameters['Wrapper']), parameters['JobName'])
+
+    handle = open(idFile, 'w')
+    handle.write("JobId=%s" % bossJobId)
+    handle.close()
+
+    return
+
+
+def isBOSSDeclared(Wrapper, JobName):
+    """
+    _isBOSSDeclared_
+    
+    If this job has been declared to BOSS, return the BOSS ID
+    from the cache area. If it has not, return None
+    
+    """
+    idFile = "%s/%sid" % (os.path.dirname(Wrapper), JobName)
+
+    if not os.path.exists(idFile):
+        #  //
+        # // No BOSS Id File ==> not declared
+        #//
+        return None
+    content = file(idFile).read().strip()
+    content = content.replace("JobId=", "")
+    try:
+        jobId = content
+    except ValueError:
+        jobId = None
+    return jobId
+
+
+
+def submittedJobs( jobId, bossCfgDir ) :
+    """
+    returns a dictionary with job name and scheduler id
+    for submitted jobs of a given task
+    """
+
+    taskId  = jobId.split('.')[0]
+    
+    jobs = {}
+    
+    query = """
+          select NAME,SCHED_ID from JOB,CHAIN where
+          SCHED_ID is not NULL and SCHED_ID!='' 
+          and CHAIN.ID=JOB.CHAIN_ID and JOB.TASK_ID=CHAIN.TASK_ID
+          and CHAIN.TASK_ID=%s
+          """ % ( taskId )
+
+    # set BOSS path
+    BOSS.setBossCfgDir(bossCfgDir)
+
+    # get a BOSS session
+    adminSession = BOSS.getBossAdminSession()
+
+    # execute query
+    (adminSession, out) = BOSS.performBossQuery(adminSession, query)
+
+    result = out.split()[2:]
+    for i in  range( len(result)/2 ):
+        jobs[ result[i*2] ] = result[i*2+1]
+
+    return jobs
+
+
 def subdir(jobId, bossCfgDir):
     """
     _BOSS4subdir_
 
-    This function retrieve job sub dir
+    This function retrieve job submission dir
     """
-    try:
-        taskid  = jobId.split('.')[0]
-        chainid = jobId.split('.')[1]
-        resub   = jobId.split('.')[2]
-    except IndexError:
-        logging.error("Boss4 JobId splitting error: " + jobId)
-        return ""
+
+    taskid  = jobId.split('.')[0]
 
     try:
         # set BOSS path
@@ -504,19 +594,19 @@ def subdir(jobId, bossCfgDir):
         # execute query
         (adminSession, out) = BOSS.performBossQuery(adminSession, query)
 
-    except:
+    except StandardError :
         out = ""
 
     try:
         out = out.split("SUB_PATH")[1].strip()
-    except:
+    except StandardError :
         out = ""
     #logging.debug("BOSS4subdir outp '%s'"%outp)    
     return out
 
 
 
-def schedulerInfo( bossCfgDir, jobId, ended = "" ):
+def schedulerInfo( bossCfgDir, jobId ):
     """
     _BOSS4schedulerInfo_
     
@@ -526,10 +616,8 @@ def schedulerInfo( bossCfgDir, jobId, ended = "" ):
     schedinfo = {}
     
     try:
-        taskid  = jobId.split('.')[0]
-        chainid = jobId.split('.')[1]
-        resub   = jobId.split('.')[2]
-    except IndexError:
+        (taskid, chainid, resub) = jobId.split('.')
+    except ValueError:
         logging.error("Boss4 JobId splitting error: " + jobId)
         return schedinfo
     
@@ -541,7 +629,7 @@ def schedulerInfo( bossCfgDir, jobId, ended = "" ):
     
     # build query
     query = \
-          "select SCHEDULER,SCHED_ID from " + ended + "JOB where TASK_ID=" \
+          "select SCHEDULER,SCHED_ID from JOB where TASK_ID=" \
           + taskid + " and CHAIN_ID="  + chainid + " and ID=" + resub 
     
     # execute query
@@ -555,9 +643,13 @@ def schedulerInfo( bossCfgDir, jobId, ended = "" ):
         logging.error("Boss4 retrieving scheduler information error: " + out)
         return schedinfo
 
+    if schedinfo ['SCHED_ID'] == 'NULL' or schedinfo ['SCHED_ID'] == '' :
+        schedinfo.pop('SCHED_ID')
+        return schedinfo
+
     # build query 
     query = \
-          "select * from " + ended + "SCHED_" + jobScheduler + \
+          "select * from SCHED_" + jobScheduler + \
           " where TASK_ID=" + taskid + \
           " and CHAIN_ID=" + chainid + " and ID=" + resub
     
@@ -569,7 +661,7 @@ def schedulerInfo( bossCfgDir, jobId, ended = "" ):
         vs = out.split("\n")[1].strip().split()
         for i in range(len(ks)):
             schedinfo[ks[i]] = vs[i]
-    except:
+    except StandardError :
         logging.debug("BOSS4schedulerInfo out " + schedinfo.__str__() )
             
     return schedinfo
@@ -584,7 +676,7 @@ def executeCommand( command, timeout = 600, userProxy = "" ):
 
     """
 
-    if userProxy != "" or userProxy != 'NULL':
+    if userProxy != "" and userProxy != 'NULL':
         logging.info("export X509_USER_PROXY=" + userProxy + " ; " + command)
         command = "export X509_USER_PROXY=" + userProxy + " ; " + command
     
@@ -640,7 +732,7 @@ def executeCommand( command, timeout = 600, userProxy = "" ):
         
     try:
         output = string.join(outc,"")
-    except:
+    except StandardError :
         output = ""
     #logging.debug("command output \n %s"%output)
     #print "command output \n %s"%output
@@ -681,7 +773,7 @@ def stoppid(pid, sig):
         nextpid = done.pop()
         try:
             os.kill(int(nextpid), sig)
-        except:
+        except StandardError :
             pass
         ## be nice, children signal their parents mostly
         time.sleep(float(1))
@@ -689,8 +781,36 @@ def stoppid(pid, sig):
 
 
 
-def getUserProxy( adminSession, taskid ):
+def checkUserProxy( cert='' ):
+    """
+    Retrieve the user proxy for the task
+    """
+
+    command = 'voms-proxy-info'
+
+    if cert != '' :
+        command += ' --file ' + cert
+
+    output = executeCommand( command, userProxy = cert )
+
+    try:
+        output = output.split("timeleft")[1].strip()
+        output = output.split(":")[1].strip()
+    except StandardError,ex:
+        logging.error(output)
+        logging.error("voms-proxy-init does not exist")
+        raise ProdAgentException("Missing Proxy")
     
+    if output == "0:00:00":
+        logging.error(output)
+        logging.error("voms-proxy-init expired")
+        raise ProdAgentException("Proxy Expired")
+
+
+def getUserProxy( adminSession, taskid ):
+    """
+    Retrieve the user proxy for the task
+    """
     # get task information 
     query = 'select TASK_INFO from TASK t where ID=' + taskid
     
@@ -700,12 +820,10 @@ def getUserProxy( adminSession, taskid ):
 
     if cert == 'NULL' or cert == '':
         cert = ''
-        pass
     
     # check certificate
     elif os.path.exists(cert):
         logging.debug("Using %s" % str(cert))
-        pass
 
     # wrong certificate, using default
     else:
@@ -718,15 +836,13 @@ def getUserProxy( adminSession, taskid ):
 
 def loggingInfo( jobId, directory, bossCfgDir ):
     """
-    perform scheduler listmatch
+    perform scheduler logging-info
 
     """
 
     try:
-        taskid  = jobId.split('.')[0]
-        chainid = jobId.split('.')[1]
-        resub   = jobId.split('.')[2]
-    except IndexError:
+        (taskid, chainid, resub) = jobId.split('.')
+    except ValueError:
         logging.error("Boss4 JobId splitting error: " + jobId)
         return
 
@@ -784,10 +900,8 @@ def getoutput( jobId, directory, bossCfgDir ):
 
     # get job information
     try:
-        taskid  = jobId.split('.')[0]
-        chainid = jobId.split('.')[1]
-        resub   = jobId.split('.')[2]
-    except IndexError:
+        (taskid, chainid, resub) = jobId.split('.')
+    except ValueError:
         logging.error("Boss4 JobId splitting error: " + jobId)
         return ""
 
@@ -803,7 +917,10 @@ def getoutput( jobId, directory, bossCfgDir ):
     getoutpath = "%s/BossJob_%s_%s/Submission_%s/" \
                  % (directory, taskid, chainid, resub)
 
-    os.makedirs( getoutpath )
+    try:
+        os.makedirs( getoutpath )
+    except OSError:
+        pass
 
     outfile = executeCommand(
         "boss getOutput -outdir " + getoutpath + " -logfile " + getoutpath \
@@ -822,11 +939,13 @@ def reportfilename(jobId, directory):
     Boss 4 command to define the correct FrameworkJobReport Location
     """
     try:
-        taskid  = jobId[0].split('.')[0]
-        chainid = jobId[0].split('.')[1]
-        resub   = jobId[0].split('.')[2]
-    except IndexError:
+        (taskid, chainid, resub) = jobId.split('.')
+    except ValueError:
         logging.error("Boss4 JobId splitting error: " + jobId)
+        return ""
+    except:
+        logging.error("Boss4 JobId splitting error: " + jobId)
+        logging.error("      with dir: " + directory)
         return ""
 
     return "%s/BossJob_%s_%s/Submission_%s/FrameworkJobReport.xml" \
@@ -841,14 +960,16 @@ def jobSpecId(jobId, bossCfgDir):
     """
     try:
         taskid = jobId.split('.')[0]
-    except:
+    except StandardError :
         return ""
     try:
         chainid = jobId.split('.')[1]
-    except:
+    except StandardError :
         #logging.error("Boss4 JobSpecId splitting error")
         chainid = "1"
 
+    # set BOSS path
+    BOSS.setBossCfgDir(bossCfgDir)
 
     # build query 
     query = \
@@ -864,7 +985,7 @@ def jobSpecId(jobId, bossCfgDir):
 
     try:
         out = out.split("NAME")[1].strip()
-    except:
+    except StandardError :
         out = ""
         
     return out
@@ -876,13 +997,11 @@ def schedulerId(jobId, bossCfgDir):
     """
     BOSS4schedulerId
 
-    Boss 4 command which retrieves the scheduler used to submit job
+    Boss 4 command which retrieves the scheduler id if the job
     """
     try:
-        taskid  = jobId.split('.')[0]
-        chainid = jobId.split('.')[1]
-        resub   = jobId.split('.')[2]
-    except IndexError:
+        (taskid, chainid, resub) = jobId.split('.')
+    except ValueError:
         logging.error("Boss4 JobId splitting error: " + jobId)
         return ""
 
@@ -902,12 +1021,12 @@ def schedulerId(jobId, bossCfgDir):
         # execute query
         (adminSession, out) = BOSS.performBossQuery(adminSession, query)
 
-    except:
+    except StandardError :
         out = ""
 
     try:
         out = out.split("SCHED_ID")[1].strip()
-    except:
+    except StandardError :
         out = ""
     #logging.debug("BOSS4schedulerId outp '%s'"%outp)    
     return out
@@ -921,10 +1040,8 @@ def scheduler( jobId, bossCfgDir, ended = "" ):
     """
 
     try:
-        taskid  = jobId.split('.')[0]
-        chainid = jobId.split('.')[1]
-        resub   = jobId.split('.')[2]
-    except IndexError:
+        (taskid, chainid, resub) = jobId.split('.')
+    except ValueError :
         logging.error("Boss4 JobId splitting error: " + jobId)
         return ""
 
@@ -944,12 +1061,12 @@ def scheduler( jobId, bossCfgDir, ended = "" ):
         # execute query
         (adminSession, out) = BOSS.performBossQuery(adminSession, query)
 
-    except:
+    except StandardError :
         out = ""
 
     try:
         out = out.split("SCHEDULER")[1].strip()
-    except:
+    except StandardError :
         out = ""
     #logging.debug("BOSS4scheduler outp '%s'"%outp)    
 
@@ -962,18 +1079,16 @@ def taskEnded(jobId, bossCfgDir):
 
     This Function tests if all jobs of a Task are ended
     """
-    try:
-        taskid  = jobId.split('.')[0]
-        chainid = jobId.split('.')[1]
-        resub   = jobId.split('.')[2]
-    except IndexError:
-        logging.error("Boss4 JobId splitting error: " + jobId)
-        return False
+
+    taskid  = jobId.split('.')[0]
 
     # build query 
     query = \
           "select count(*) Jobs from CHAIN where TASK_ID=" + taskid
-    
+
+    # set BOSS path
+    BOSS.setBossCfgDir(bossCfgDir)
+
     # get a BOSS session
     adminSession = BOSS.getBossAdminSession()
     
@@ -983,76 +1098,36 @@ def taskEnded(jobId, bossCfgDir):
     initialJobs = 0
     try:
         initialJobs = int(out.split("Jobs")[1])
-    except:
+    except StandardError :
         return False
     if initialJobs == 1:
         return True
     return False
 
 
-def declareToBOSS(bossCfgDir, parameters):
-    """
-    _declareToBOSS_
-    
-    Declare this job to BOSS.
-    Parameters are extracted from this instance
-    
-    """
-
-    bossJobId = declare(bossCfgDir, parameters)
-
-    idFile = "%s/%sid" \
-             % (os.path.dirname(parameters['Wrapper']), parameters['JobName'])
-
-    handle = open(idFile, 'w')
-    handle.write("JobId=%s" % bossJobId)
-    handle.close()
-
-    return
-
-
-def isBOSSDeclared(Wrapper, JobName):
-    """
-    _isBOSSDeclared_
-    
-    If this job has been declared to BOSS, return the BOSS ID
-    from the cache area. If it has not, return None
-    
-    """
-    idFile = "%s/%sid" % (os.path.dirname(Wrapper), JobName)
-
-    if not os.path.exists(idFile):
-        #  //
-        # // No BOSS Id File ==> not declared
-        #//
-        return None
-    content = file(idFile).read().strip()
-    content = content.replace("JobId=", "")
-    try:
-        jobId = content
-    except ValueError:
-        jobId = None
-    return jobId
-
-
 def FailedSubmission(jobId, bossCfgDir):
+    """
+    taskEnded
+
+    Handles a failed submission, removing task files if no more needed
+    """
     
     taskid = jobId.split('.')[0]
     try:
         jobMaxRetries = \
                       JobState.general(jobSpecId(jobId, bossCfgDir))['MaxRetries']
         Retries = JobState.general(jobSpecId(jobId, bossCfgDir))['Retries']
-    except:
-        jobMaxRetries = 0
+    except StandardError :
+        jobMaxRetries = 10
         Retries = 0
-    
-    if Retries >= (jobMaxRetries - 1):
+
+    if Retries >= (jobMaxRetries) and taskEnded(jobId, bossCfgDir):
         try:
             submissionDir = subdir(taskid + ".1.1", bossCfgDir)
             shutil.rmtree(submissionDir)
             Delete(jobId, bossCfgDir)
             
-        except:
+        except StandardError :
             pass
 
 
@@ -1063,8 +1138,12 @@ def archive(jobId, bossCfgDir):
     Boss 4 command to manually archive jobs in the BOSS db
     (i.e. move jobe entries to ENDED_ tables )
     """
-
-    (taskid, chainid, resub) = jobId.split('.')
+    try:
+        taskid  = jobId.split('.')[0]
+        chainid = jobId.split('.')[1]
+    except IndexError:
+        logging.error("Boss4 JobId splitting error: " + jobId)
+        return ""
 
     outfile = executeCommand(
         "boss archive -taskid " + taskid + " -jobid " + chainid \
@@ -1082,7 +1161,11 @@ def Delete(jobId, bossCfgDir):
     (i.e. move jobe entries to ENDED_ tables ) after setting to killed the job
     """
 
-    (taskid, chainid, resub) = jobId.split('.')
+    try:
+        (taskid, chainid, resub) = jobId.split('.')
+    except ValueError :
+        logging.error("Boss4 JobId splitting error: " + jobId)
+        return ""
 
     query = \
           "update JOB set STATUS='E',STOP_T='-1' where TASK_ID=" + taskid + \
@@ -1112,7 +1195,7 @@ def guessDashboardInfo(jobId, jobSpecId, bossCfgDir):
     dashboardInfo = DashboardInfo()
 
     # get job information
-    (taskid, chainid, resub) = jobId.split('.')
+    taskid  = jobId.split('.')[0]
 
     # set BOSS path
     BOSS.setBossCfgDir(bossCfgDir)
@@ -1125,14 +1208,15 @@ def guessDashboardInfo(jobId, jobSpecId, bossCfgDir):
     try :
         jobCacheDir = JobState.general(jobSpecId)['CacheDirLocation']
         logging.info("js cache_dir = " + jobCacheDir )
-    except StandardError, ex:
+    except StandardError:
         logging.info("failed to get cache_dir from js, trying with we" )
         try :
             WEjobState = WEJob.get( jobSpecId )
             jobCacheDir = WEjobState['cache_dir']
             logging.info("we cache_dir = " + jobCacheDir )
-        except StandardError, ex:
+        except StandardError:
             logging.info("failed to get cache_dir from we" )
+            logging.info("failed to get cache_dir for job " + jobSpecId)
             return dashboardInfo, ''
     dashboardInfoFile = os.path.join( jobCacheDir, "DashboardInfo.xml" )
 
@@ -1169,7 +1253,6 @@ def guessDashboardInfo(jobId, jobSpecId, bossCfgDir):
         except IOError:
             logging.error( "Missing " + mlInfoFile )
             # guess job dashboardID
-            pass 
 
         try :
             dashboardInfo.task = tmpdict['taskId']
