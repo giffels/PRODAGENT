@@ -215,6 +215,8 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             # lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
             # lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
 
+            lsfSubmitCommand += " -u hn-cms-dataops@cern.ch "
+
             lsfSubmitCommand += ' < %s' % os.path.join(cacheDir,"lsfsubmit.sh")
 
             try:
