@@ -9,5 +9,6 @@ Priority Algorithm plugins for the JobQueue
 __all__ = []
 
 import Default
+import LCGAdvanced
 
 
