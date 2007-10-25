@@ -27,7 +27,7 @@ from ProdCommon.Core.ProdException import ProdException
 
 from ProdAgent.ResourceControl.ResourceControlDB import ResourceControlDB
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
-
+from ProdAgent.WorkflowEntities.Workflow import associateSiteToWorkflow
 
 class JobQueueDBError(ProdException):
     """
@@ -621,3 +621,441 @@ class JobQueueDB:
         return
         
         
+    def retrieveJobsAtSitesNotWorkflow(self, count = 1, jobType = None,
+                                       notWFL = None, *sites):
+        """
+        _retrieveJobsAtSitesNotWorkflow_
+        
+        Get a list of size count matching job indexes from the DB tables
+        matched by:
+        
+        optional not matching workflow id
+        optional job type
+        required list of site index values.
+        
+        """
+        sqlStr = \
+               """
+               SELECT DISTINCT jobQ.job_index FROM jq_queue jobQ LEFT OUTER JOIN
+               jq_site siteQ ON jobQ.job_index = siteQ.job_index WHERE status =
+               'new'
+               
+               """
+
+        sqlStr = \
+               """
+               SELECT DISTINCT jobQ.job_index
+               FROM jq_queue jobQ LEFT OUTER JOIN (
+                 jq_site siteQ,
+                 ( SELECT
+                   job_index,
+                   IF( workflow_id IN
+                     ( SELECT DISTINCT workflow_id FROM jq_queue WHERE status = 'released')
+                   ,1,0) extra_priority
+                 FROM jq_queue ) AS jq_extra
+               ) ON ( jobQ.job_index = siteQ.job_index AND jobQ.job_index = jq_extra.job_index )
+               WHERE status = 'new'
+               """
+               
+
+        ## because this is a list of all workflows that won't run,
+        ## an empty list means any workflow.
+        ## notWFL is a commaseparated list of workflow ids or None
+        
+        if notWFL:
+            notWFLquoted='\''+notWFL.replace(',','\',\'')+'\''
+            sqlStr +=" AND NOT workflow_id IN (%s) " % notWFLquoted
+            
+        if jobType != None:
+            sqlStr +=  " AND job_type=\"%s\" " % jobType
+            
+        sqlStr += " AND "
+
+            
+        if len(sites) > 0:
+            siteStr = ""
+            for s in sites:
+                siteStr += "%s," % s
+            siteStr = siteStr[:-1]
+
+            sqlStr += " ( siteQ.site_index IN (%s) " % siteStr
+            sqlStr += " OR siteQ.site_index IS NULL ) "
+
+
+            """
+            siteMax SQL query
+            assumes jq_queue.workflow_id is similar to we_workflow_site_assoc.workflow_id
+            """
+
+            maxSitesSQL = \
+                        """
+                        AND workflow_id IN (
+                          SELECT aso.workflow_id FROM we_workflow_site_assoc aso WHERE
+                          (aso.site_index IN (%s) OR aso.site_index IS NULL)
+                        ) OR workflow_id NOT IN (
+                          SELECT aso.workflow_id FROM we_workflow_site_assoc aso
+                          GROUP BY aso.workflow_id
+                        )
+                        """ % siteStr
+                                    
+
+            
+        else:
+            sqlStr += " siteQ.site_index IS NULL "
+
+        sqlStr += " ORDER BY (priority + extra_priority ) DESC, time DESC LIMIT %s;" % count
+
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        result = [ x[0] for x in result ]
+        
+        return result
+
+
+    def retrieveJobsAtSitesNotWorkflowSitesMax(self, count = 1, jobType = None,
+                                       notWFL = None, *sites):
+        """
+        _retrieveJobsAtSitesNotWorkflowSitesMax_
+        
+        Get a list of size count matching job indexes from the DB tables
+        matched by:
+        
+        optional not matching workflow id
+        optional job type
+        required list of site index values.
+        
+        """
+
+        if len(sites) > 0:
+            siteStr = ""
+            for s in sites:
+                siteStr += "%s," % s
+            siteStr = siteStr[:-1]
+
+        else:
+            logging.info("This won't work with constraints without site restriction")
+            return
+
+        logging.info("Sites: %s" %siteStr)
+
+        """
+        all site indices that this siteStr can handle (because they share the same SE)
+        """
+        sqlStr = \
+               """
+               SELECT site_index FROM rc_site
+               WHERE se_name IN
+                 (SELECT se_name FROM rc_site WHERE site_index IN (%s))
+               ;
+               """ % siteStr
+
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        site_group = [ str(x[0]) for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("All site_index that this site can process: %s" %site_group)
+        site_group_txt=','.join(site_group)
+                                                        
+        """
+        main goal is to limit the number of WFs spread over sites and keeping as much resources busy:
+        - sites_max are assigned on release
+        - favour WFs that are already 'in process'
+        
+        implement max_sites in JQ selection.
+        - should be easier than eg in RM (RM has no view on the JQ, JQ has access to RM info.)
+        - misprediction is impossible (as new workflows are assigned to sites that can process jobs!)
+        
+        favouring based on priorities
+        - no interference with regular priorities (eg 10*priority + extra_priorities)
+        
+        Split the new jobs up in 4 categories (based on siteStr): PN, XN, FN and RN.
+        RN = All new jobs - (PN + XN + FN)
+        
+        max_sites increases are dealt with
+        - decreases are ignored
+        - setting the sites_max to NULL is equivalent to sites_max = +INF
+        
+        Can't work with pure SQL subqueries, as performance is very bad.
+        """
+
+        """
+        select all non-valid workflows based on group property
+        """
+        sqlStr= \
+                """
+                SELECT DISTINCT workflow_id FROM we_workflow_site_assoc
+                WHERE site_index IN
+                  (SELECT site_index FROM rc_site_attr
+                    WHERE attr_name = 'group' AND attr_value NOT IN
+                      (SELECT DISTINCT attr_value FROM rc_site_attr WHERE site_index IN (%s) AND attr_name = 'group')
+                  ); 
+                """ %siteStr
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        wf_not_in_group = [ x[0] for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("WFs not in any of this sites group: %s" %wf_not_in_group)
+        wf_not_in_group_txt='\''+'\',\''.join(wf_not_in_group)+'\''
+
+
+        """
+        drain modes
+        - drain: value 'current'
+        - drain: value 'merge'
+        """
+        sqlStr= \
+                """
+                SELECT attr_value FROM rc_site_attr
+                WHERE attr_name = 'drain' AND site_index IN (%s);
+                """ %siteStr
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        drain_modes = [ x[0] for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("drain modes for this siteStr: %s" %drain_modes)
+        drainSql=''
+        if 'merge' in drain_modes:
+            drainSql += """ AND jobQ.job_type = 'Merge' """
+        if 'processing' in drain_modes:
+            drainSql += """ AND jobQ.job_type = 'Processing' """ 
+        
+        sqlStr= "SELECT DISTINCT workflow_id FROM jq_queue;"
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        all_wfs = [ x[0] for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("all WFs in jq_queue: %s" %all_wfs)
+        
+        sqlStr= "SELECT DISTINCT id FROM we_Workflow;"
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        all_we_wfs = [ x[0] for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("all WFs in we_Workflow: %s" %all_we_wfs)
+
+        ## workflows not known to we_Workflows
+        all_rest=[]
+        for wf in all_wfs:
+            if wf not in all_we_wfs:
+                all_rest.append(wf)
+        logging.info("all WFs not known to we_Workflow: %s" %all_rest)
+
+        """
+        PN: (Processing New jobs) new jobs of workflows that are already in processing (ie have jobs in state 'released')
+        - with sites_max set: only on siteStr
+        - sites_max = NULL
+        """
+
+        sqlStr= "SELECT DISTINCT workflow_id FROM jq_queue WHERE status = 'released';"
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        wf_has_released = [ x[0] for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("all WFs with a job in state released: %s" %wf_has_released)
+
+        wf_in_we_Workflow_has_released=[]
+        for wf in wf_has_released:
+            if wf in all_we_wfs:
+                wf_in_we_Workflow_has_released.append(wf)
+        logging.info("all WFs in we_Workflow with a job in state released: %s" %wf_in_we_Workflow_has_released)
+
+        ## workflows with an assigned site_index ALWAYS have jobs in state released!!
+        ## hmmm, doesn't work in dummy mode. lets implement it just to make sure
+        sqlStr= "SELECT DISTINCT workflow_id FROM we_workflow_site_assoc;"
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        wf_with_site_aso = [ x[0] for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("all WFs in we_workflow_site_assoc: %s" %wf_with_site_aso)
+
+        sqlStr= "SELECT DISTINCT workflow_id FROM we_workflow_site_assoc WHERE site_index IN (%s) AND site_index IS NOT NULL;" % siteStr
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        wf_sites_max_on_site = [ x[0] for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("all WFs in we_workflow_site_assoc with sites_max already on this site: %s" %wf_sites_max_on_site)
+
+        sqlStr= "SELECT DISTINCT id FROM we_Workflow WHERE max_sites IS NULL;"
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        wf_sites_max_is_NULL = [ x[0] for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("all WFs in we_Workflow without max_sites: %s" %wf_sites_max_is_NULL)
+
+        pn_wfs=[]
+        for wf in wf_has_released+wf_with_site_aso:
+            if wf not in wf_sites_max_on_site+wf_sites_max_is_NULL+all_rest: continue
+            if wf not in pn_wfs:
+                pn_wfs.append(wf)
+     
+        logging.info("all WFs in PN: %s" %pn_wfs)
+        pn_wfs_txt='\''+'\',\''.join(pn_wfs)+'\''
+
+        """
+        XNb: (eXclusive New jobs type b) new jobs with sites_max set and
+        - number of assigned sites < sites_max
+        - siteStr not yet as a site
+        XN: (eXclusive New jobs) XNb jobs that are no PN 
+        """
+
+        sqlStr = \
+               """
+               SELECT we_Workflow.id FROM
+               we_Workflow LEFT OUTER JOIN
+               ( SELECT workflow_id, count(site_index) number FROM we_workflow_site_assoc
+                 WHERE workflow_id NOT IN
+                   ( SELECT DISTINCT workflow_id FROM we_workflow_site_assoc WHERE site_index IN (%s))
+                 GROUP BY workflow_id
+               ) AS b ON b.workflow_id = we_Workflow.id
+               WHERE
+                 (
+                  ( we_Workflow.max_sites > b.number AND we_Workflow.id = b.workflow_id)
+                  OR
+                  ( b.number IS NULL AND b.workflow_id IS NULL )
+                 ) AND we_Workflow.max_sites IS NOT NULL
+               ;
+               """ %siteStr
+
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        xnb_wfs = [ x[0] for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("all WFs in XNb: %s" %xnb_wfs)
+
+        xn_wfs = []
+        for wf in xnb_wfs:
+            if wf not in pn_wfs:
+                xn_wfs.append(wf)
+        logging.info("all WFs in XN: %s" %xn_wfs)
+        xn_wfs_txt='\''+'\',\''.join(xn_wfs)+'\''
+
+        ## list of workflows that fullfill a valid sites_max constraint for this siteStr
+        sites_max_wfs=wf_sites_max_is_NULL+wf_sites_max_on_site+xn_wfs
+        logging.info("all WFs that fullfill a sites_max constraint: %s" %sites_max_wfs)
+        
+        """
+        FN: (Filler New jobs): new jobs that are no PN and with workflows
+        - sites_max NULL
+        - not in we_Workflow (also assumed to have sites_max NULL)
+        """
+
+        sqlStr= "SELECT DISTINCT workflow_id FROM jq_queue WHERE status = 'new';"
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+        wf_has_new = [ x[0] for x in result ]
+        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.info("all WFs in jq_queue with new jobs: %s" %wf_has_new)
+        
+        fn_wfs=[]
+        for wf in wf_has_new:
+            if wf in pn_wfs: continue
+            if wf in wf_sites_max_is_NULL+all_rest:
+                fn_wfs.append(wf)
+        logging.info("all WFs in FN: %s" %fn_wfs)
+        fn_wfs_txt='\''+'\',\''.join(fn_wfs)+'\''
+
+        """
+        RN: (Rest New jobs) rest, these CANNOT be handled by this siteStr.
+        """
+
+        rn_wfs=[]
+        for wf in wf_has_new:
+            if wf not in fn_wfs+xn_wfs+pn_wfs:
+                rn_wfs.append(wf)
+        logging.info("all WFs in RN: %s" %rn_wfs)
+        rn_wfs_txt='\''+'\',\''.join(rn_wfs)+'\''
+
+
+        """
+        Ordering: 
+        - priority
+        - use order={} to set the ordering (strict >)
+        PN > XN > FN: {'pn':1,'xn':1}
+        FN > XN > PN: {'pn':-1,'xn':-1}
+        XN > FN > PN: {'pn':-1,'xn':1}
+        PN > FN > XN: {'pn':1,'xn':-1}
+        - no equality between PN, XN or FN priorities possible
+        
+        - further ordering by WF or random?
+        --> by FW, don't start new WFs unnecessary.
+        """
+
+        order={'pn':1,'xn':1}
+
+        sqlStr = \
+               """
+               SELECT jobQ.job_index,jobQ.workflow_id
+               FROM jq_queue jobQ LEFT OUTER JOIN (
+                 jq_site siteQ,
+                   ( SELECT
+                     job_index,
+                     IF( workflow_id IN (%s), %s,0) extra_pn,
+                     IF( workflow_id IN (%s), %s,0) extra_xn,
+                     IF( workflow_id IN (%s), 1,0) extra_fn           
+                   FROM jq_queue WHERE status = 'new'
+                   ) AS jq_extra
+               ) ON (jobQ.job_index = siteQ.job_index AND jobQ.job_index = jq_extra.job_index )
+               WHERE jobQ.status = 'new'
+               AND jobQ.workflow_id NOT IN (%s)
+        """ %(pn_wfs_txt,order['pn'],xn_wfs_txt,order['xn'],fn_wfs_txt,rn_wfs_txt)
+
+        ## because this is a list of all workflows that won't run,
+        ## an empty list means any workflow.
+        ## notWFL is a commaseparated list of workflow ids or None
+        
+        if notWFL:
+            notWFLquoted='\''+notWFL.replace(',','\',\'')+'\''
+            
+            sqlStr +=" AND NOT jobQ.workflow_id IN (%s) " % notWFLquoted
+            
+        if jobType != None:
+            sqlStr +=  " AND jobQ.job_type=\"%s\" " % jobType
+
+        ## this is different from JobType
+        sqlStr += drainSql
+
+        sqlStr +=" AND NOT jobQ.workflow_id IN (%s) " % wf_not_in_group_txt
+
+        """
+        use site_group here instead of siteStr!!!
+        """
+
+        sqlStr += \
+               """
+               AND ( siteQ.site_index IN (%s) 
+                   OR siteQ.site_index IS NULL
+               ) 
+               ORDER BY
+                 ( 10*priority + 4*extra_pn + 2*ABS(extra_pn)*extra_xn + (ABS(extra_pn)*ABS(extra_xn)-(ABS(extra_pn) +ABS(extra_xn))+1)*extra_fn) DESC,
+               jobQ.workflow_id
+               LIMIT %s
+               ;
+               """ %(site_group_txt,count)
+
+        logging.info("SQL used: %s" % sqlStr.replace('\n',''))
+
+        Session.execute(sqlStr)
+        result = Session.fetchall()
+
+        logging.info("Number of jobs found %s" %len(result))
+
+        jobs_to_be_released=[]
+        add_new_site=[]
+        for x in result:
+            if x[1] not in pn_wfs:
+                add_new_site.append(x[1])
+                pn_wfs.append(x[1])
+            jobs_to_be_released.append(x[0])
+
+        """
+        assign siteStr to sites_max
+        """
+        for wf in add_new_site:
+            logging.info("Adding new workflow %s to site %s for sites_max"%(wf,siteStr))
+            for siteindex in sites:
+                associateSiteToWorkflow(wf,siteindex)
+
+        """
+        the end
+        """
+        return jobs_to_be_released
