@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.6 2007/10/19 09:23:46 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.6 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.7 2007/10/23 09:40:54 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.7 $"
 
 import logging
 from ProdAgentBOSS.BOSSCommands import BOSS, checkUserProxy
@@ -146,7 +146,7 @@ class JobStatus:
             
             # define number of LB query
             val = out.split()[1].strip()
-	    subQuery = int( int( val ) / jobs )
+	    subQuery = int( int( val ) / jobs ) + 1
 
         # perform the query for the task range or for the job range in the task
         for i in range ( subQuery ) :
@@ -163,7 +163,7 @@ class JobStatus:
                 os.environ["X509_USER_PROXY"] = cert
 
                 # actual query
-                taskDict = bossSession.query(SUBMITTED, tasklist, jobRange)
+                bossSession.query(SUBMITTED, tasklist, jobRange)
 
                 # clear BossSession to release memory
                 bossSession.clear()
@@ -176,9 +176,6 @@ class JobStatus:
 
             except BossError,e:
                 logging.error( "BOSS Error : " + e.__str__() )
-            except StandardError, ex:
-                logging.error( ex.__str__() )
-                logging.error( traceback.format_exc() )
 
 
     @classmethod
