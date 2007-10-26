@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.7 2007/10/19 09:24:51 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.7 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.8 2007/10/26 10:08:34 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.8 $"
 
 import time
 import os
@@ -582,6 +582,11 @@ class TrackingComponent:
                     fwjr.status = "Failed"
                     fwjr.exitCode = -1
 
+                try:
+                    os.makedirs( os.path.dirname(reportfilename) )
+                except OSError:
+                    pass
+
                 # store job report
                 fwjr.write(reportfilename)
                 
@@ -612,6 +617,11 @@ class TrackingComponent:
                                                             self.directory)
             fwjr.exitCode = -1
             fwjr.status = "Failed"
+
+            try:
+                os.makedirs( os.path.dirname(reportfilename) )
+            except OSError:
+                pass
 
             # store job report
             fwjr.write(reportfilename)
