@@ -7,8 +7,8 @@ and in general with OS and scheduler features
 
 """
 
-__revision__ = "$Revision$"
-__version__ = "$Id$"
+__revision__ = "$Revision: 1.14.2.5 $"
+__version__ = "$Id: BOSSCommands.py,v 1.14.2.5 2007/10/23 16:46:10 gcodispo Exp $"
 
 import time
 from popen2 import Popen4
@@ -794,16 +794,15 @@ def checkUserProxy( cert='' ):
     output = executeCommand( command, userProxy = cert )
 
     try:
-        output = output.split("timeleft")[1].strip()
-        output = output.split(":")[1].strip()
-    except StandardError,ex:
+        output = output.split("timeleft  :")[1].strip()
+    except IndexError:
         logging.error(output)
-        logging.error("voms-proxy-init does not exist")
+        logging.error("user proxy does not exist")
         raise ProdAgentException("Missing Proxy")
     
     if output == "0:00:00":
         logging.error(output)
-        logging.error("voms-proxy-init expired")
+        logging.error("user proxy expired")
         raise ProdAgentException("Proxy Expired")
 
 
