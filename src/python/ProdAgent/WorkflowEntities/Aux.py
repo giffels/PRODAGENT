@@ -33,7 +33,7 @@ def removeJob(jobIDs=[] , entityType = 'job'):
        JobSpecID IN %s""" %(str(tuple(jobIDs)))
    Session.execute(sqlStr1)
    #Session.execute(sqlStr2)
-   #Session.execute(sqlStr3)
+   Session.execute(sqlStr3)
 
 
 def removeAllocation(allocationID=[]):
