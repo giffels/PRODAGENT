@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.6 2007/10/18 17:05:07 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.6 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.7 2007/10/19 09:24:51 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.7 $"
 
 import time
 import os
@@ -182,21 +182,141 @@ class TrackingComponent:
                      (str(event), str(payload)))
         return
 
-    def pollBossDb(self):
+
+    def pollFinished(self):
         """
-        _pollBossDb_
+        _pollFinished_
 
         Poll the BOSS DB for completed job ids, making sure that
         only newly completed jobs are retrieved
 
-        Return two lists, one with finished job ids and one with
-        failed job ids
+        Return a list of finished job ids
         """
-       
+
         # build query 
         query = """
-        select TASK_ID,CHAIN_ID,ID,STATUS from JOB order by TASK_ID,CHAIN_ID
+        select TASK_ID,CHAIN_ID,ID,STATUS from JOB
+        WHERE STATUS in ('OR', 'SD')
+        order by TASK_ID,CHAIN_ID
         """
+
+        return self.pollBossDB( query )
+
+
+    def pollFailed(self):
+        """
+        _pollFailed_
+
+        Poll the BOSS DB for completed job ids, making sure that
+        only newly completed jobs are retrieved
+
+        Return a list of failed job ids
+        """
+
+        # build query 
+        query = """
+        select TASK_ID,CHAIN_ID,ID,STATUS from JOB
+        WHERE STATUS in ('A', 'SA', 'K', 'SK')
+        order by TASK_ID,CHAIN_ID
+        """
+
+        return self.pollBossDB( query )
+
+
+    def pollNewJobs(self):
+        """
+        _pollNewJobsd_
+
+        Poll the BOSS DB for new job ids and handle they registration
+
+        Return a list of failed job ids
+        """
+
+        # initialize counters for statistic
+        counters = ['pending', 'submitted', 'waiting', 'ready', 'scheduled', \
+                    'running', 'cleared', 'other']
+        counter = {}
+        for ctr in counters:
+            counter[ctr] = 0
+
+        # list of jobs
+        submittedJobs = {}
+
+        # build query 
+        query = """
+        select TASK_ID,CHAIN_ID,ID,STATUS from JOB
+        WHERE STATUS not in ('A', 'SA', 'K', 'SK', 'OR', 'SD')
+        order by TASK_ID,CHAIN_ID
+        """
+        jobs = self.pollBossDB( query )
+        
+        # for jobId in jobs:
+        #    jid = jobId[0]
+        #    status = jobId[1]
+        
+        index = len ( jobs )
+        while index > 0 :
+            index -= 1
+            jid    = jobs[ index ][0]
+            status = jobs[ index ][1]
+            jobs.pop( index )
+
+            # publish information to dashboard if not submitted before
+            if not jid in self.submittedJobs.keys() \
+                   and status not in [ 'S', 'W', 'SU', 'SW' ] :
+
+                # no, publish information to dashboard
+                self.dashboardPublish(
+                    jid, BOSSCommands.jobSpecId(jid, self.bossCfgDir)
+                    )
+
+            # include job in current structure
+            submittedJobs[jid] = 0
+
+            # process status
+            if status == 'E':
+                continue
+            elif status == 'R' :
+                counter['running'] += 1
+            elif status == 'I':
+                counter['pending'] += 1
+            elif status == 'SW' :
+                counter['waiting'] += 1
+            elif status == 'SR':
+                counter['ready'] += 1
+            elif status == 'SS':
+                counter['scheduled'] += 1
+            elif status == 'SU':
+                counter['submitted'] += 1
+            elif status == 'SE':
+                counter['cleared'] += 1
+            else:
+                counter['other'] += 1
+
+        # display counters
+        logging.info("--------------------")
+        for ctr, value in counter.items():
+            logging.info(ctr + " jobs : " + str(value))
+        logging.info("--------------------")
+
+        # save submitted jobs and update dictionary
+        self.updateDict(self.submittedJobs, submittedJobs)
+        self.submittedJobs = submittedJobs
+
+        return 
+
+
+    def pollBossDB(self, query):
+        """
+        _pollFailed_
+
+        Poll the BOSS DB for job ids
+
+        Return a list of job ids
+        """
+        
+        # list of jobs
+        jobs = []
 
         # get a BOSS session
         adminSession = BOSS.getBossAdminSession()
@@ -205,32 +325,6 @@ class TrackingComponent:
         (adminSession, out) = BOSS.performBossQuery(adminSession, query)
         
         lines = out.split('\n')
-
-        # get the status
-        finishedJobs, failedJobs = self.getStates(lines)
-
-        # return both lists
-        return finishedJobs, failedJobs
-
-    def getStates(self, lines):
-        """
-        _getState_
-
-        Get the status off all jobs passed as argument, returning a list
-        of finished and failed jobs.
-        """
-
-        # initialize counters for statistic
-        counters = ['pending', 'submitted', 'waiting', 'ready', 'scheduled', \
-                    'running', 'success', 'failure', 'cleared', 'other']
-        counter = {}
-        for ctr in counters:
-            counter[ctr] = 0 
-
-        # list of jobs
-        submittedJobs = {}
-        finishedJobs = []
-        failedJobs = []
 
         # process all jobs
         for j in lines[1:]:
@@ -253,58 +347,11 @@ class TrackingComponent:
  
             # build job id 
             jid = taskId + "." + chainId + "." + ident
- 
-            # publish information to dashboard if not submitted before
-            if not jid in self.submittedJobs.keys() \
-                   and status not in [ 'S', 'W', 'SU', 'SW' ] :
 
-                # no, publish information to dashboard
-                self.dashboardPublish(
-                    jid, BOSSCommands.jobSpecId(jid, self.bossCfgDir)
-                    )
-
-            # include job in current structure
-            submittedJobs[jid] = 0
-
-            # process status
-            if status == 'E':
-                continue
-            elif status == 'OR' or status == 'SD' or status == 'O?':
-                counter['success'] += 1
-                finishedJobs.append([jid, status])
-            elif status == 'R' :
-                counter['running'] += 1
-            elif status == 'I':
-                counter['pending'] += 1
-            elif status == 'SW' :
-                counter['waiting'] += 1
-            elif status == 'SS':
-                counter['scheduled'] += 1
-            elif status == 'SA' or status == 'A' :
-                counter['failure'] += 1
-                failedJobs.append([jid, status])
-            elif status == 'SK' or status =='K':
-                counter['failure'] += 1
-                failedJobs.append([jid, status])
-            elif status == 'SU':
-                counter['submitted'] += 1
-            elif status == 'SE':
-                counter['cleared'] += 1
-            else:
-                counter['other'] += 1
-
-        # display counters
-        logging.info("--------------------")
-        for ctr, value in counter.items():
-            logging.info(ctr + " jobs : " + str(value))
-        logging.info("--------------------")
-
-        # save submitted jobs and update dictionary
-        self.updateDict(self.submittedJobs, submittedJobs)
-        self.submittedJobs = submittedJobs
+            jobs.append( [jid, status])
 
         # return finished and failed jobs
-        return finishedJobs, failedJobs
+        return jobs
 
 
     def checkJobs(self):
@@ -317,9 +364,12 @@ class TrackingComponent:
         """
 
         # get finished and failed jobs and handle them
-        finishedJobs, failedJobs = self.pollBossDb()
+        # finishedJobs, failedJobs = self.pollBossDb()
+        finishedJobs = self.pollFinished()
         self.handleFinished(finishedJobs)
+        failedJobs = self.pollFailed()
         self.handleFailed(failedJobs)
+        self.pollNewJobs()
 
         # generate next polling cycle
         logging.info("Waiting %s for next get output polling cycle" % \
@@ -334,6 +384,10 @@ class TrackingComponent:
         handle failed jobs
 
         """
+
+        logging.info("--------------------")
+        logging.info("failed jobs : " + str( len(failedJobs) ) )
+        logging.info("--------------------")
 
         # process all jobs
         for jobId in failedJobs:
@@ -396,6 +450,10 @@ class TrackingComponent:
         failure or success
 
         """
+
+        logging.info("--------------------")
+        logging.info("finished jobs : " + str( len(finishedJobs) ) )
+        logging.info("--------------------")
 
         # process all jobs
         for jobId in finishedJobs:
