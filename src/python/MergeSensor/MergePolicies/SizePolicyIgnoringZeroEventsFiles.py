@@ -6,8 +6,8 @@ Policy for merge based on file size ignoring files with 0 events.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: SizePolicyIgnoringZeroEventsFiles.py,v 1.1 2007/10/23 11:04:37 ckavka Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -171,8 +171,8 @@ class SizePolicyIgnoringZeroEventsFiles:
                 # verify if some files were selected or not
                 if selectedSet == []:
                     logging.info( \
-                       "Forced merge does not apply to fileblock %s " + \
-                       "due to non mergeable condition" % fileBlockId)
+                       ("Forced merge does not apply to fileblock %s " + \
+                       "due to non mergeable condition") % fileBlockId)
                     continue
                 else:
 
