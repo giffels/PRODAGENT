@@ -6,8 +6,8 @@ Policy for merge based on file size ignoring files with 0 events.
 
 """
 
-__revision__ = "$Id: SizePolicyIgnoringZeroEventsFiles.py,v 1.1 2007/10/23 11:04:37 ckavka Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -64,6 +64,9 @@ class SizePolicyIgnoringZeroEventsFiles:
         maxMergeFileSize = parameters['maxMergeFileSize']
         minMergeFileSize = parameters['minMergeFileSize']
 
+        # zero events file counter
+        ignoredFiles = 0
+
         # check all file blocks in dataset
         for fileBlock in fileList:
 
@@ -87,6 +90,7 @@ class SizePolicyIgnoringZeroEventsFiles:
                 # ignore zero events file
                 if files[startingFile]['eventcount'] == 0:
                     startingFile += 1
+                    ignoredFiles += 1
                     continue
 
                 selectedSet = [files[startingFile]['name']]
@@ -137,6 +141,9 @@ class SizePolicyIgnoringZeroEventsFiles:
 
             if forceMerge:
 
+                # zero events file counter
+                ignoredFiles = 0
+
                 # get a set of files which will not go over the maximum
                 # even if the size can be smaller that minimum
                 totalSize = 0
@@ -147,6 +154,7 @@ class SizePolicyIgnoringZeroEventsFiles:
 
                     # ignore zero events file
                     if file['eventcount'] == 0:
+                        ignoredFiles += 1
                         continue
 
                     # ignore too large files
@@ -184,6 +192,10 @@ class SizePolicyIgnoringZeroEventsFiles:
                 continue
 
         # nothing to merge
+        if ignoredFiles != 0:
+            logging.info("%s files with zero events were not considered" % \
+                         str(ignoredFiles))
+
         return ([], 0)
 
         
