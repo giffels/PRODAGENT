@@ -250,7 +250,12 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
                     self.assertEqual(ex['ErrorNr'],3009)
 
             print('test some more exceptions of jobstates')
-            for job in all_jobs:
+            bulkJobs = all_jobs[0:100]
+            Job.setState(bulkJobs,'released')
+            Job.setState(bulkJobs,'create')
+            Job.setState(bulkJobs,'inProgress')
+
+            for job in all_jobs[100:]:
                 try:
                     Job.setState(job,'inProgress')
                 except ProdException,ex:
@@ -266,8 +271,11 @@ class WorkflowEntitiesUnitTests(unittest.TestCase):
                 except ProdException,ex:
                     self.assertEqual(ex['ErrorNr'],3010)
 
+                Job.setState(job,'released')
+                Job.getByState(['released','created'])
+                Job.getByState('released')
+                Job.getByState()
                 Job.setState(job,'create')
-
                 try:
                     Job.setState(job,'create')
                 except ProdException,ex:
