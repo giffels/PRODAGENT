@@ -116,7 +116,7 @@ class WorkflowInjectorComponent:
             logging.error(msg)
             return
         plugin.args.update(self.args)
-
+        plugin.msRef = self.ms
         try:
             plugin(payload)
         except Exception, ex:

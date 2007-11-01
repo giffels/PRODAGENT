@@ -149,6 +149,13 @@ class BlockFeeder(PluginInterface):
             handle = open(self.persistFile, 'r')
             self.persistData = pickle.load(handle)
             handle.close()
+
+        #  //
+        # // New workflow?  If so, publish it
+        #//
+        if self.persistData.run == 1:
+            self.publishWorkflow(workflowFile)
+            
         onlyBlocks = self.workflow.parameters.get("OnlyBlocks", None)
         if onlyBlocks != None:
             msg = "OnlyBlocks setting conflicts with BlockFeeder\n"

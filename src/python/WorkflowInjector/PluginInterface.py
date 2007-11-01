@@ -40,6 +40,7 @@ class PluginInterface:
         self.workingDir = None
         self.jobsToPublish = {}
         self.siteLists = {}
+        self.msRef = None
         
     def queueJob(self, jobSpecId, jobSpecFile, jobType,
                  workflowSpecId, workflowPriority, *listOfSites):
@@ -117,7 +118,18 @@ class PluginInterface:
             
         return
 
+    def publishWorkflow(self, workflowPath):
+        """
+        _publishWorkflow_
 
+        Publish NewWorkflow and NewDataset events for the
+        workflow provided
+
+        """
+        self.msRef.publish("NewWorkflow", workflowPath)
+        self.msRef.publish("NewDataset", workflowPath)
+        self.msRef.commit()
+        return
 
     def handleInput(self, inputPayload):
         """
