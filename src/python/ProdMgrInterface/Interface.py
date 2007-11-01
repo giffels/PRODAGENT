@@ -9,8 +9,8 @@ but other facilitator can be used. The Interface methods
 insulate the ProdAgent code from this facilitator.
 """
 
-__revision__  =  "$Id: Interface.py,v 1.15 2007/06/02 05:23:05 fvlingen Exp $"
-__version__  =  "$Revision: 1.15 $"
+__revision__  =  "$Id: Interface.py,v 1.16 2007/06/05 23:53:12 fvlingen Exp $"
+__version__  =  "$Revision: 1.16 $"
 __author__  =  "fvlingen@caltech.edu"
 
 
@@ -37,6 +37,17 @@ def userID(serverUrl, componentID = "defaultComponent"):
 
     return Management.executeCall(serverUrl,  \
         "prodMgrRequest.userID", [], componentID)
+
+def increaseEvents(serverUrl, request_id, amount, \
+    componentID ="defaultComponent"):
+    """
+    _increaseEvents_
+  
+    Increase events of a particular workflow
+    """
+    return Management.executeCall(serverUrl,  \
+        "prodMgrRequest.increaseEvents", [[request_id],amount], componentID)
+    
 
 def acquireAllocation(serverUrl, request_id, amount, \
     componentID = "defaultComponent"):

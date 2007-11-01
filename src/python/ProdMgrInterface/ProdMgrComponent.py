@@ -10,11 +10,11 @@ and report back details of completed jobs
 
 """
 
+from logging.handlers import RotatingFileHandler
 
 import os
 import random
 import logging
-from logging.handlers import RotatingFileHandler
 import time
 
 from ProdCommon.Database import Session
@@ -34,6 +34,8 @@ from ProdAgent.WorkflowEntities import Workflow
 from ProdMgrInterface import State
 from ProdMgrInterface import Interface as ProdMgr
 
+import ProdMgrInterface.Interface as ProdMgrAPI
+
 class ProdMgrComponent:
     """
     _ProdMgrComponent_
@@ -49,6 +51,7 @@ class ProdMgrComponent:
             self.args['Logfile'] = None
             self.args['JobInjection'] = 'direct'
             self.args['QueueLow'] = 10
+            self.args['AllocationSize'] = 10
             self.args['QueueHigh'] = 30
             self.args['QueueInterval'] = '00:01:00'
             self.args['ParallelRequests'] = 1
@@ -140,6 +143,9 @@ class ProdMgrComponent:
             return
         elif event == "ProdMgrInterface:CleanWorkflow":
             self.cleanWorkflow(payload)
+            return
+        elif event == "ProdMgrInterface:IncreaseEvents":
+            self.increaseEvents(payload)
             return
 
 
@@ -331,6 +337,22 @@ Retrying later.
             self.ms.publish("ProdMgrInterface:CleanWorkflow",payload,"00:10:00")
         Workflow.remove(payload) 
 
+    def increaseEvents(self,payload):
+        """
+        _increaseEvents_
+
+        Increase events of a particular workflow at the prodmgr side.
+        Usefule if a PA is working on a request and needs to increase it.
+        """
+        payloadParts = payload.split(',')
+        workflow_id = payloadParts[0]
+        eventIncrease = int(payloadParts[1])
+        requestURL = Workflow.get(workflow_id)['prod_mgr_url']
+        logging.info("Increasing request: "+str(workflow_id)+\
+            " with "+str(eventIncrease)+ " events")
+        ProdMgrAPI.increaseEvents(requestURL, workflow_id, eventIncrease)
+        logging.info("Request increased")
+
     def acquireRequests(self,payload):
         
         interval=self.args['RetrievalInterval']
@@ -395,10 +417,21 @@ Retrying later.
         if  length < int(self.args['QueueLow']):
             logging.debug('Queue length below minimum treshold. Acquiring work:')
             jobsNeeded = int(self.args['QueueHigh'])-length
-            logging.debug('Emitting ProdMgr:ResourcesAvailable with '+\
-                str(jobsNeeded)+' Jobs') 
-            self.ms.publish("ProdMgrInterface:ResourcesAvailable", \
-                str(jobsNeeded))    
+
+            allocs = jobsNeeded / int(self.args['AllocationSize'])
+            rest = jobsNeeded-allocs*int(self.args['AllocationSize'])
+
+            for i in xrange(0,allocs):
+                logging.debug('Emitting ProdMgr:ResourcesAvailable with '+\
+                    str(self.args['AllocationSize'])+' Jobs') 
+                self.ms.publish("ProdMgrInterface:ResourcesAvailable",\
+                    str(self.args['AllocationSize']))
+
+            if rest > 0:
+                logging.debug('Emitting ProdMgr:ResourcesAvailable with '+\
+                    str(rest)+' Jobs') 
+                self.ms.publish("ProdMgrInterface:ResourcesAvailable", \
+                    str(rest))    
         if payload == self.args['RandomCheck']['CheckQueue']:
             self.args['RandomCheck']['CheckQueue'] =str(random.random())
             logging.debug("Checking queue again in (HH:MM:SS): "+str(interval))
@@ -443,6 +476,7 @@ Retrying later.
             self.ms.subscribeTo("GeneralJobFailure")
             self.ms.subscribeTo("ProdMgrInterface:SetJobCleanupFlag")
             self.ms.subscribeTo("ProdMgrInterface:CleanWorkflow")
+            self.ms.subscribeTo("ProdMgrInterface:IncreaseEvents")
             logging.debug("Subscription completed ")
             
             # emit a acquire requests message.
