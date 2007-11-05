@@ -18,7 +18,7 @@ import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
 
 
 
-class CondorKiller:
+class CondorKiller(KillerInterface):
     """
     _CondorKiller_
 
