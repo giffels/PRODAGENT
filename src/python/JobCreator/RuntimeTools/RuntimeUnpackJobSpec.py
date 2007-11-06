@@ -65,8 +65,7 @@ class JobSpecExpander:
                 #    badfile.write("10040")
                 #    badfile.close()
 
-            if self.config.has_key('UserSandbox'):
-                self.userSandbox()
+           
 
         else:
             #  //
@@ -75,7 +74,8 @@ class JobSpecExpander:
             self.createMergePSet()
         
             
-
+         if self.config.has_key('UserSandbox'):
+             self.userSandbox()
 
     def handleInputLink(self, config, inpLink):
         """
