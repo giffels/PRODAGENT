@@ -74,7 +74,7 @@ class JobSpecExpander:
             self.createMergePSet()
         
             
-         if self.config.has_key('UserSandbox'):
+        if self.config.has_key('UserSandbox'):
              self.userSandbox()
 
     def handleInputLink(self, config, inpLink):
