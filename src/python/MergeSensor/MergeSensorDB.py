@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.24 2007/09/27 08:25:24 ckavka Exp $"
-__version__ = "$Revision: 1.24 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.25 2007/09/27 20:12:41 evansde Exp $"
+__version__ = "$Revision: 1.25 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import MySQLdb
@@ -800,6 +800,75 @@ class MergeSensorDB:
         #//  NULL entries are converted to None
         result = {}
         [ result.__setitem__(x['name'], x['lfn']) for x in rows ]
+        
+        # return it
+        return result
+
+
+    def getFileBlocks(self, datasetId):
+        """
+        _getFileBlocks_
+
+        Return a map of LFN:Block name for all unmerged LFNs
+        in the dataset provided
+
+        """
+        
+        sqlStr = \
+        """
+        select MB.name AS block, MI.name AS file from merge_inputfile MI
+            JOIN merge_fileblock MB ON MB.id = MI.block
+               JOIN merge_dataset DS ON DS.id = MI.dataset
+                  WHERE DS.id = %s;
+
+        """ % datasetId
+        # get cursor
+        try:
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+        
+                
+        # execute command
+        try:
+            cursor.execute(sqlStr)
+            
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+
+            # retry
+            cursor.execute(sqlStr)
+
+        # process results
+        rows = cursor.rowcount
+        
+        # return empty list
+        if rows == 0:
+            
+            # close cursor
+            cursor.close()
+
+            # empty set
+            return {}
+        
+        # build list
+        rows = cursor.fetchall()
+        
+        # close cursor
+        cursor.close()
+
+        
+        result = {}
+        [ result.__setitem__(x['file'], x['block']) for x in rows ]
         
         # return it
         return result

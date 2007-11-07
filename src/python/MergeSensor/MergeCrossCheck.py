@@ -18,6 +18,17 @@ from MergeSensor.MergeSensorError import MergeSensorError, \
                                         DatasetNotInDatabase
 
 
+def listAllMergeDatasets():
+    """
+    _listAllMergeDatasets_
+
+    Get a list of all merge datasets currently watched by the merge sensor
+
+    """
+    mergeDB = MergeSensorDB()
+    datasets = getDatasetList()
+    return datasets
+
 
 
 class MergeSensorCrossCheck:
@@ -73,6 +84,14 @@ class MergeSensorCrossCheck:
         """
         return self.mergeDB.getDatasetFileMap(self.datasetId)
     
-    
+    def getBlocksMap(self):
+        """
+        _getBlocksMap_
+
+        Retrieve a map of LFN : block name for unmerged files
+
+        """
+        return self.mergeDB.getFileBlocks(self.datasetId)
+        
         
 
