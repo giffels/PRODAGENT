@@ -173,10 +173,6 @@ class ResourceControlDB:
         Session.execute(sqlStr)
         return
 
-    
-
-
-        
 
     def deactivate(self, siteName):
         """
@@ -185,9 +181,10 @@ class ResourceControlDB:
         Set a site to inactive status
 
         """
-        sqlStr = """UPDATE  rc_site SET is_active="false";"""
+        sqlStr = """UPDATE rc_site SET is_active="false" WHERE site_name = "%s";""" % siteName
         Session.execute(sqlStr)
         return
+
 
     def activate(self, siteName):
         """
@@ -196,12 +193,10 @@ class ResourceControlDB:
         Set a site to active status
 
         """
-        sqlStr = """UPDATE  rc_site SET is_active="true";"""
+        sqlStr = """UPDATE rc_site SET is_active="true" WHERE site_name = "%s";""" % siteName
         Session.execute(sqlStr)
         return
         
-    
-
 
     def siteThresholds(self, siteIndex):
         """
