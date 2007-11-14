@@ -15,7 +15,7 @@ import popen2
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.DaemonDetails import DaemonDetails
-
+from ProdAgentCore.ConfigCheck import configCheck
 
 def usage():
     usage = \
@@ -159,6 +159,9 @@ def startup():
         msg += "exiting...\n"
         print msg
         sys.exit(1)
+
+    configCheck(cfgObject)
+    
     for component in components:
         modRef = __import__(component, globals(), locals(), [])
         srcFile = inspect.getsourcefile(modRef)
@@ -202,10 +205,10 @@ This message dissappears in 15 seconds. """ %(offset)
                 print "You must shut it down before starting it"
                 sys.exit(1)
         
-
+                
         print "Starting Component %s:" % component
         print "With: ", startup
-        os.system("python %s " % startup)
+        os.system("%s %s " % (sys.executable, startup))
         time.sleep(1)
         daemon = DaemonDetails(daemonXml)
         if not daemon.isAlive():
