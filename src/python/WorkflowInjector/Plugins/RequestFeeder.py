@@ -38,7 +38,7 @@ class RequestFeeder(PluginInterface):
         self.initialRun = None
         self.sites = []
         self.loadPayload(payload)
-        
+        self.publishWorkflow(payload)
 
 
         factory = RequestJobFactory(self.workflow,

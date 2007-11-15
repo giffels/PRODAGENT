@@ -8,6 +8,7 @@ import os
 import sys
 import getopt
 import logging
+import hotshot, hotshot.stats
 logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler())
 
@@ -52,9 +53,23 @@ for key, val in argsDict.items():
         print msg
         sys.exit(1)
 
+class FakeMessageService:
+    def publish(self, event, payload):
+        msg = "Call to publish: %s %s from plugin" % (event, payload)
+        logging.info(msg)
+    def commit(self):
+        msg = "Commit called from plugin"
+        logging.info(msg)
 
+statsFile = "TestPlugin_%s.prof" % argsDict['Plugin']
+prof = hotshot.Profile(statsFile)
+prof.start()
 pluginInstance = retrievePlugin(argsDict['Plugin'])
+pluginInstance.msRef = FakeMessageService()
 pluginInstance.args.update(argsDict)
 pluginInstance(argsDict['Payload'])
-
-
+prof.stop()
+stats = hotshot.stats.load(statsFile)
+stats.strip_dirs()
+stats.sort_stats('time', 'calls')
+stats.print_stats(10)
