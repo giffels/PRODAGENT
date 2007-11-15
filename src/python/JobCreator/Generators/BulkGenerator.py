@@ -243,6 +243,7 @@ class BulkGenerator(GeneratorInterface):
         pythonObj = TaskObject("localPython")
         prodCommonObj = TaskObject("ProdCommon")
         binObj = TaskObject("localBin")
+        taskObj.attachFile(self.workflowFile)
         taskObj.addChild(pythonObj)
         taskObj.addChild(binObj)
         pythonObj.addChild(prodCommonObj)
@@ -272,7 +273,12 @@ class BulkGenerator(GeneratorInterface):
                                        "$PYTHONPATH", "`pwd`/localPython")
         taskObj.addEnvironmentVariable("PATH", "$PATH", "`pwd`/localBin")
         taskObj.addEnvironmentVariable("PRODAGENT_JOB_DIR", "`pwd`")
-        taskObj.addEnvironmentVariable("RUNRESDB_URL", "file://`pwd`/RunResDB.xml")
+        taskObj.addEnvironmentVariable(
+            "PRODAGENT_WORKFLOW_SPEC",
+            "`pwd`/%s" % os.path.basename(self.workflowFile))
+        
+        taskObj.addEnvironmentVariable("RUNRESDB_URL",
+                                       "file://`pwd`/RunResDB.xml")
         envMaker = BashEnvironmentMaker("jobEnvironment.sh")
         envMaker(taskObj)
 

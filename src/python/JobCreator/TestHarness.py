@@ -20,6 +20,7 @@ import os
 import sys
 import getopt
 import logging
+import hotshot, hotshot.stats
 logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler())
 
@@ -122,6 +123,7 @@ gen = retrieveGenerator(generator)
 creatorInst = retrieveCreator(creator)
 gen.creator = creatorInst
 gen.workflowCache = wfCache
+gen.workflowFile = workflowSpecFile
 print "Generator on Workflow Spec:"
 gen.actOnWorkflowSpec(workflowSpec, wfCache)
 
@@ -149,11 +151,20 @@ jobCache = os.path.join(wfCache, jobname)
 if not os.path.exists(jobCache):
     os.makedirs(jobCache)
 
+statsFile = "TestHarness_%s_%s.prof" % (generator, creator)
+prof = hotshot.Profile(statsFile)
+prof.start()
         
 gen = retrieveGenerator(generator)
 creatorInst = retrieveCreator(creator)
 gen.creator = creatorInst
 gen.workflowCache = wfCache
+gen.workflowFile = workflowSpecFile
 gen.jobCache = jobCache
 gen.actOnJobSpec(jobSpec, jobCache)
 
+prof.stop()
+stats = hotshot.stats.load(statsFile)
+stats.strip_dirs()
+stats.sort_stats('time', 'calls')
+stats.print_stats(10)

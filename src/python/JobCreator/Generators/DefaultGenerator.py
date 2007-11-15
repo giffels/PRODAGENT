@@ -213,6 +213,7 @@ class DefaultGenerator(GeneratorInterface):
         binObj = TaskObject("localBin")
         taskObj.addChild(pythonObj)
         taskObj.addChild(binObj)
+        taskObj.attachFile(self.workflowFile)
         pythonObj.addChild(prodCommonObj)
         
         prodCommonInit = inspect.getsourcefile(ProdCommon)
@@ -241,7 +242,12 @@ class DefaultGenerator(GeneratorInterface):
                                        "$PYTHONPATH", "`pwd`/localPython")
         taskObj.addEnvironmentVariable("PATH", "$PATH", "`pwd`/localBin")
         taskObj.addEnvironmentVariable("PRODAGENT_JOB_DIR", "`pwd`")
-        taskObj.addEnvironmentVariable("PRODAGENT_JOBSPEC", "`pwd`/%s-JobSpec.xml" % jobname)
+        taskObj.addEnvironmentVariable("PRODAGENT_JOBSPEC",
+                                       "`pwd`/%s-JobSpec.xml" % jobname)
+        taskObj.addEnvironmentVariable(
+            "PRODAGENT_WORKFLOW_SPEC",
+            "`pwd`/%s" % os.path.basename(self.workflowFile))
+        
         taskObj.addEnvironmentVariable("RUNRESDB_URL", "file://`pwd`/RunResDB.xml")
         
         envMaker = BashEnvironmentMaker("jobEnvironment.sh")
