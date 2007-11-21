@@ -23,9 +23,9 @@ from ProdAgent.Resources.LSF import LSFConfiguration
 bulkUnpackerScriptMain = \
 """
 
-echo "===Available JobSpecs:==="
-/bin/ls `pwd`/BulkSpecs
-echo "========================="
+#echo "===Available JobSpecs:==="
+#/bin/ls `pwd`/BulkSpecs
+#echo "========================="
 
 
 JOB_SPEC_FILE="`pwd`/BulkSpecs/$JOB_SPEC_NAME"
@@ -33,10 +33,10 @@ JOB_SPEC_FILE="`pwd`/BulkSpecs/$JOB_SPEC_NAME"
 PROCEED_WITH_SPEC=0
 
 if [ -e "$JOB_SPEC_FILE" ]; then
-   echo "Found Job Spec File: $JOB_SPEC_FILE"
+   #echo "Found Job Spec File: $JOB_SPEC_FILE"
    PROCEED_WITH_SPEC=1
 else
-   echo "Job Spec File Not Found: $JOB_SPEC_NAME"
+   #echo "Job Spec File Not Found: $JOB_SPEC_NAME"
    PROCEED_WITH_SPEC=0
 fi
 
@@ -268,6 +268,8 @@ class T0LSFSubmitter(BulkSubmitterInterface):
 
         if ( self.pluginConfig['LSF']['CmsRunLogDir'] != "None" ):
             script.append("rfcp ./run.log.gz %s/%s\n" % (self.pluginConfig['LSF']['CmsRunLogDir'],outputlogfile))
+
+        #script.append("sleep 3600")
 
         #script.extend(missingJobReportCheck(jobName))
 
