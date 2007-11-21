@@ -6,13 +6,14 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.1 2007/09/28 14:57:53 ckavka Exp $"
+__version__ = "$Revision: 1.1.2.1 $"
 
 from threading import Thread
 from time import sleep
 from sets import Set
 import logging
+from random import shuffle
 
 from JobTracking.JobStatus import JobStatus
 from ProdAgentBOSS.BOSSCommands import BOSS
@@ -252,5 +253,6 @@ class PoolScheduler(Thread):
         logging.debug("returning groups " + ret.__str__())
 
         # and return it
+        shuffle( ret )
         return ret
 
