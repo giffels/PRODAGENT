@@ -44,8 +44,8 @@ class AcquireJobs(StateInterface):
            logging.debug("stateType is recover")
            try:
                jobs=ProdMgrAPI.retrieve(requestURL,"acquireEventJob","ProdMgrInterface")
-           except ProdAgentException,ex:
-               if ex['ErrorNr']==3000:
+           except Exception,ex:
+               if ex.faultCode==3000:
                    logging.debug("No uncommited service calls: "+str(ex))
                    stateParameters['stateType']='normal'
        elif stateParameters['stateType']=='normal':
@@ -115,6 +115,7 @@ class AcquireJobs(StateInterface):
                allocation={}
                allocation['id']=job['jobSpecId']
                allocation['prod_mgr_url']=requestURL
+               allocation['events_allocated']=int(job['end_event'])-int(job['start_event'])+1
                allocation['details']=job
                allocations.append(allocation)
        if stateParameters['RequestType']=='file':

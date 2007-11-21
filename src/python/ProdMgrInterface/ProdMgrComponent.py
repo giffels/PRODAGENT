@@ -22,7 +22,6 @@ from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
 from JobQueue.JobQueueDB import JobQueueDB
 from MessageService.MessageService import MessageService
-from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentCore.Codes import errors
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdAgent.Trigger.Trigger import Trigger
@@ -30,6 +29,7 @@ from ProdAgent.Trigger.Trigger import Trigger
 from ProdMgrInterface.Registry import retrieveHandler
 from ProdMgrInterface.Registry import Registry
 from ProdMgrInterface import MessageQueue
+from ProdAgent.WorkflowEntities import Allocation
 from ProdAgent.WorkflowEntities import Workflow
 from ProdMgrInterface import State
 from ProdMgrInterface import Interface as ProdMgr
@@ -414,12 +414,34 @@ Retrying later.
         logging.debug("Get job queue length")
         length = self.args['JobQueue'].queueLength()
         logging.debug("Queue length is: "+str(length))
+
         if  length < int(self.args['QueueLow']):
             logging.debug('Queue length below minimum treshold. Acquiring work:')
             jobsNeeded = int(self.args['QueueHigh'])-length
 
+            logging.debug("Checking if there are allocations with missing events")
+            allocations = Allocation.hasMissingEvents()
+            for allocation in allocations:
+                logging.debug("Missing events found for: "+str(allocation['id']))
+                allocation['details']['end_event'] = allocation['details']['start_event']+ allocation['events_missed'] - 1
+                logging.debug("Prepare state for job submission")
+                stateParameters = {}
+                stateParameters['jobSpecId'] = allocation['id']
+                stateParameters['jobCutSize'] = self.args['JobCutSize']
+                stateParameters['RequestType'] = 'event'
+                jobSubmission = retrieveHandler('JobSubmission')
+                jobs = jobSubmission.jobCutAccounting(stateParameters, allocation)
+                logging.debug('Jobs submitted, resetting missed events')
+                Allocation.setEventsMissed(allocation['id'], 0)
+                jobsNeeded = jobsNeeded - len(jobs)
+                logging.debug(str(jobsNeeded)+' jobs needed')
+                if jobsNeeded <= 0:
+                    logging.debug('Reached maximum jobs needed. Breaking')
+                    break
+
             allocs = jobsNeeded / int(self.args['AllocationSize'])
             rest = jobsNeeded-allocs*int(self.args['AllocationSize'])
+
 
             for i in xrange(0,allocs):
                 logging.debug('Emitting ProdMgr:ResourcesAvailable with '+\

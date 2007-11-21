@@ -76,7 +76,6 @@ Setting triggerID/jobID/flagID %s / %s / %s
         Session.execute(sqlStr)
         rows = Session.fetchall()
         # if flags are set invoke action
-        logging.debug("test "+jobSpecId+" "+str(rows))
         if rows[0][0] == 1:
             sqlStr = """SELECT ActionName FROM tr_Action WHERE TriggerID="%s" 
             AND JobSpecID="%s" ; """ % (triggerId, jobSpecId)

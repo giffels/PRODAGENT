@@ -9,14 +9,13 @@ but other facilitator can be used. The Interface methods
 insulate the ProdAgent code from this facilitator.
 """
 
-__revision__  =  "$Id: Interface.py,v 1.16 2007/06/05 23:53:12 fvlingen Exp $"
-__version__  =  "$Revision: 1.16 $"
+__revision__  =  "$Id: Interface.py,v 1.17 2007/11/01 15:30:06 fvlingen Exp $"
+__version__  =  "$Revision: 1.17 $"
 __author__  =  "fvlingen@caltech.edu"
 
 
 import logging
 
-from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdMgrInterface import Management
 
 service_map = {'userID':'prodMgrRequest.userID', \

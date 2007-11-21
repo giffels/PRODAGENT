@@ -3,8 +3,8 @@
 import logging 
 import os
 
-from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdCommon.Database import Session
+from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdMgrInterface import MessageQueue
 from ProdAgent.WorkflowEntities import Allocation
 from ProdAgent.WorkflowEntities import File
@@ -78,6 +78,15 @@ def sendMessage(url,parameters):
        # check if the associated allocation needs to be released.
        request_id=parameters['jobSpecId'].split('_')[1]
        return {'result':finished,'url':'fine'}
+   except Exception, ex:
+       if(ex.faultCode == 2001):
+           logging.debug('For some reason the workflow disappeared at the prodmgr')
+           logging.debug('Taking appropriate action on my side')
+           return {'result':1,'url':'fine'}
+       if(ex.faultCode == 2035):
+           logging.debug('For some reason this allocation was already registered')
+           logging.debug('Ignoring what just happened')
+           return {'result':0,'url':'fine'}
    except ProdAgentException, ex:
        logging.debug("Problem connecting to server: "+url+" "+str(ex))
        message={}

@@ -254,6 +254,7 @@ componentFields = {
     "QueueHigh" : "1000",
     "RetrievalInterval":"01:00:00",
     "QueueInterval":"00:01:00",
+    "AllocationSize" : "10",
     "AgentTag":"please insert a proper value",
     "Locations":"please insert a proper value",
     "ProdMgrFeedback":"direct",
@@ -404,6 +405,9 @@ HH:MM:SS format. Every so often the prodagent will contact its associated prodmg
 to retrieve requests if available. 
 -QueueInterval. The time between two events that check the queue lenght for 
 determining if we need to acquire more work.
+-AllcoationSize. The maximum number of jobs per allocation. This is to prevent
+large allocations (unless this is set to very large), and prevent slow updates
+at the prodmgr level.
 -ParallelRequests : The number of requests the prodagent will process in parallel.
 e.g. if it is 4, it will acquire requests from the prodmgr using a round robin 
 approach on the requests.

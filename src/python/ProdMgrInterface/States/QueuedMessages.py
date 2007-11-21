@@ -3,7 +3,6 @@
 import logging 
 
 from ProdAgentCore.Codes import errors
-from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdCommon.Database import Session
 from ProdMgrInterface import MessageQueue
 from ProdMgrInterface.Registry import registerHandler

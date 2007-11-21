@@ -5,7 +5,6 @@ import os
 
 from FwkJobRep.ReportParser import readJobReport
 from ProdAgentCore.Codes import errors
-from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdCommon.Database import Session
 from ProdMgrInterface import MessageQueue
 from ProdAgent.WorkflowEntities import Allocation
@@ -36,8 +35,10 @@ class ReportJobSuccess(StateInterface):
             try:
                 logging.debug('jobspecid is: '+str(report[-1].jobSpecId))
             except Exception,ex:
-                msg = """ERROR: Something is wrong with the generated job report.
-                  check if it exists and if it is proper formatted. ProdMgr
+                msg = """WARNING: Something might be wrong with the generated job report.
+                  Unless this is a merge job or a non prodmgr job 
+                  then you can ignore this message.  If it is a prodmgr process job check if 
+                  it exists and if it is proper formatted.  ProdMgr
                   will ignore this job as it has not sufficient information
                   to handle this. It might be that this is prodmgr job in which 
                   case some residu information is left in the database. %s
@@ -47,6 +48,7 @@ class ReportJobSuccess(StateInterface):
             job_spec_id=report[-1].jobSpecId
         logging.debug('Retrieving job spec')
         try:
+            Job.setState(job_spec_id,"finished")
             logging.debug('Retrieving job spec for : '+str(job_spec_id))
             we_job=Job.get(job_spec_id)
             if not we_job:
@@ -79,6 +81,14 @@ class ReportJobSuccess(StateInterface):
             logging.debug("Registering associated generated files for this job")
             File.register(job_spec_id,files)
 
+        logging.debug("Finding missed events")
+        missingEvents = int(we_job['events_allocated']) - total
+        if missingEvents < 0:
+            missingEvents = 0
+        allocation = Allocation.get(we_job['allocation_id'])
+        logging.debug("Updating allocation details")
+        logging.debug("Registering missed events to associated allocation")
+        Allocation.setEventsMissedIncrement(we_job['allocation_id'], missingEvents)
         # remove the job spec file.
         logging.debug("removing job spec file from job: "+str(job_spec_id))
         request_id=job_spec_id.split('_')[1] 

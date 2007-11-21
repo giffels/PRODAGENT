@@ -45,13 +45,13 @@ def get(jobID=[]):
    if len(jobID)==0:
        return
    if len(jobID)==1:
-       sqlStr="""SELECT allocation_id,cache_dir,events_processed,id,job_spec_file,job_type,
+       sqlStr="""SELECT allocation_id,cache_dir,events_allocated,events_processed,id,job_spec_file,job_type,
        max_retries,max_racers,retries,racers,status,Time,workflow_id, owner FROM we_Job WHERE id="%s" """ %(str(jobID[0]))
    else:
-       sqlStr="""SELECT allocation_id,cache_dir,events_processed,id,job_spec_file,job_type,
+       sqlStr="""SELECT allocation_id,cache_dir,events_allocated,events_processed,id,job_spec_file,job_type,
        max_retries,max_racers,retries,racers,status,Time,workflow_id, owner FROM we_Job WHERE id IN %s """ %(str(tuple(jobID)))
    Session.execute(sqlStr)
-   description=['allocation_id','cache_dir','events_processed','id','job_spec_file','job_type','max_retries','max_racers','retries','racers','status','time_stamp','workflow_id', 'owner']
+   description=['allocation_id','cache_dir','events_allocated','events_processed','id','job_spec_file','job_type','max_retries','max_racers','retries','racers','status','time_stamp','workflow_id', 'owner']
    result=Session.convert(description,Session.fetchall())
    if len(result)==0:
       return None
@@ -65,13 +65,13 @@ def getByState(states = ['register','released','create','submit','inProgress','f
    if len(states) == 0:
        return
    if len(states)==1:
-       sqlStr="""SELECT allocation_id,cache_dir,events_processed,id,job_spec_file,job_type,
+       sqlStr="""SELECT allocation_id,cache_dir,events_allocated,events_processed,id,job_spec_file,job_type,
        max_retries,max_racers,retries,racers,status,Time,workflow_id, owner FROM we_Job WHERE status="%s" """ %(str(states[0]))
    else:
-       sqlStr="""SELECT allocation_id,cache_dir,events_processed,id,job_spec_file,job_type,
+       sqlStr="""SELECT allocation_id,cache_dir,events_allocated,events_processed,id,job_spec_file,job_type,
        max_retries,max_racers,retries,racers,status,Time,workflow_id, owner FROM we_Job WHERE status IN %s """ %(str(tuple(states)))
    Session.execute(sqlStr)
-   description=['allocation_id','cache_dir','events_processed','id','job_spec_file','job_type','max_retries','max_racers','retries','racers','status','time_stamp','workflow_id', 'owner']
+   description=['allocation_id','cache_dir','events_allocated','events_processed','id','job_spec_file','job_type','max_retries','max_racers','retries','racers','status','time_stamp','workflow_id', 'owner']
    result=Session.convert(description,Session.fetchall())
    if len(result)==0:
       return None
@@ -87,11 +87,11 @@ def getRange(start=0,nr=0):
 
    returns job information for a particular range
    """
-   sqlStr="""SELECT allocation_id,cache_dir,events_processed,id,job_spec_file,job_type,
+   sqlStr="""SELECT allocation_id,cache_dir,events_allocated,events_processed,id,job_spec_file,job_type,
    max_retries,max_racers,retries,racers,status,Time,workflow_id, owner FROM we_Job LIMIT %s,%s
    """ %(start,nr) 
    Session.execute(sqlStr)
-   description=['allocation_id','cache_dir','events_processed','id','job_spec_file','job_type','max_retries','max_racers','retries','racers','status','time_stamp','workflow_id','owner']
+   description=['allocation_id','cache_dir','events_allocated','events_processed','id','job_spec_file','job_type','max_retries','max_racers','retries','racers','status','time_stamp','workflow_id','owner']
    return Session.convert(description,Session.fetchall())
 
 def register(workflowID=None,allocationID=None,job={}):
@@ -108,7 +108,7 @@ def register(workflowID=None,allocationID=None,job={}):
    """
    descriptionMap={'id':'id','spec':'job_spec_file',\
        'job_type':'job_type','max_retries':'max_retries',\
-       'max_racers':'max_racers','owner':'owner'}
+       'max_racers':'max_racers','owner':'owner','events':'events_allocated'}
    # check if there is any input
    if not job:
       return
@@ -355,15 +355,15 @@ def setState(jobID,state,parameters={}):
        if sqlSetStr!='':
             sqlStr+=sqlSetStr
        if len(jobID) == 1:
-            sqlStr+="""WHERE id='%s' AND status='inProgress' """ %(str(jobID[0]))
+            sqlStr+="""WHERE id='%s' AND (status='inProgress' or status='finished') """ %(str(jobID[0]))
        else:
-           sqlStr+=""" WHERE id in %s AND status="inProgress" """ %(str(tuple(jobID)))
+           sqlStr+=""" WHERE id in %s AND (status='inProgress' or status='finished')""" %(str(tuple(jobID)))
        rowsModified=Session.execute(sqlStr)
-       if rowsModified!=len(jobID):
-            job=get(jobID)
-            if not job:
-                raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
-            raise ProdException(exceptions[3010]+':'+str(jobID),3010)
+#       if rowsModified!=len(jobID):
+#            job=get(jobID)
+#            if not job:
+#                raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
+#            raise ProdException(exceptions[3010]+':'+str(jobID),3010)
        return
    elif state=="failed": 
        sqlStr="""UPDATE we_Job SET status='finished' """

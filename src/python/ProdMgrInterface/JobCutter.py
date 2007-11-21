@@ -8,8 +8,8 @@ returned from the ProdMgr.
 
 """
 
-__revision__ = "$Id: JobCutter.py,v 1.14 2007/08/13 19:17:08 afanfani Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: JobCutter.py,v 1.15 2007/09/13 20:27:01 fvlingen Exp $"
+__version__ = "$Revision: 1.15 $"
 __author__ = "fvlingen@caltech.edu"
 
 
@@ -43,7 +43,7 @@ except StandardError, ex:
     msg += str(ex)
     logging.info("WARNING: "+msg)
 
-def cut(job_id,jobCutSize):
+def cut(job_id,jobCutSize, allocation = None):
     """
     __cut__
 
@@ -53,7 +53,10 @@ def cut(job_id,jobCutSize):
     """
     global jobSpecDir,maxRetries
     # generate the jobspec
-    jobDetails=Allocation.get(job_id)['details']
+    if allocation != None:
+        jobDetails = allocation['details']
+    else:
+        jobDetails=Allocation.get(job_id)['details']
     workflowspec=Workflow.get(job_id.split('_')[1])['workflow_spec_file']
     first_event=int(jobDetails['start_event'])
     event_count=int(jobDetails['end_event'])-int(jobDetails['start_event'])+1
@@ -104,7 +107,7 @@ def cut(job_id,jobCutSize):
         if maxRetries:
            listOfSpecs[i]['max_retries']=maxRetries
     logging.debug("Registering job cuts")
-    Job.register(None,job_id,listOfSpecs)
+    Job.register(job_id.split('_')[1],job_id,listOfSpecs)
     Session.commit()
     logging.debug("Jobs registered")
     return {'specs' : listOfSpecs, 'workflow' : WorkflowSpecId, \

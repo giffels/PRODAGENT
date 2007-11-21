@@ -7,7 +7,6 @@ import time
 from ProdCommon.Database import Session
 
 from ProdAgentCore.Codes import errors
-from ProdAgentCore.ProdAgentException import ProdAgentException
 
 from ProdMgrInterface import State
 from ProdMgrInterface.JobCutter import cut
@@ -31,11 +30,25 @@ class JobSubmission(StateInterface):
            logging.debug("WARNING: "+str(ex)+". Directory probably already exists")
            pass
 
+       self.jobCutAccounting(stateParameters)
+
+       stateParameters['jobIndex']+=1
+       componentState="AcquireRequest"
+       State.setState("ProdMgrInterface",componentState)
+       State.setParameters("ProdMgrInterface",stateParameters)
+       # NOTE this commit needs to be done under the ProdMgrInterface session
+       # NOTE: not the default session. If the messesage service uses the session
+       # NOTE: object the self.ms.commit() statement will be obsolete as it will
+       # NOTE: be encapsulated in the Session.commit() statement.
+       Session.commit()
+       return componentState
+
+   def jobCutAccounting(self,stateParameters, allocation = None):
        # START JOBCUTTING HERE
        logging.debug("Starting job cutting")
        if stateParameters['RequestType']=='event':
            logging.debug('Start event cut for '+str(stateParameters['jobSpecId']))
-           jobcuts=cut(stateParameters['jobSpecId'],int(stateParameters['jobCutSize']))
+           jobcuts=cut(stateParameters['jobSpecId'],int(stateParameters['jobCutSize']), allocation = None)
        else:
            logging.debug('Start file cut')
            jobcuts=cutFile(stateParameters['jobSpecId'],stateParameters['jobCutSize'],stateParameters['maxJobs'])
@@ -62,17 +75,7 @@ class JobSubmission(StateInterface):
             self.args['JobQueue'].loadSiteMatchData()
             self.args['JobQueue'].insertJobSpecsForSites(sites, *jobSpecs)
        # END JOBCUTTING HERE
-
-       stateParameters['jobIndex']+=1
-       componentState="AcquireRequest"
-       State.setState("ProdMgrInterface",componentState)
-       State.setParameters("ProdMgrInterface",stateParameters)
-       # NOTE this commit needs to be done under the ProdMgrInterface session
-       # NOTE: not the default session. If the messesage service uses the session
-       # NOTE: object the self.ms.commit() statement will be obsolete as it will
-       # NOTE: be encapsulated in the Session.commit() statement.
-       Session.commit()
-       return componentState
+       return jobcuts
 
 registerHandler(JobSubmission(),"JobSubmission")
 
