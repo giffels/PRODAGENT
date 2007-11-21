@@ -7,8 +7,8 @@ and in general with OS and scheduler features
 
 """
 
-__revision__ = "$Revision: 1.14.2.5 $"
-__version__ = "$Id: BOSSCommands.py,v 1.14.2.5 2007/10/23 16:46:10 gcodispo Exp $"
+__revision__ = "$Revision: 1.14.2.6 $"
+__version__ = "$Id: BOSSCommands.py,v 1.14.2.6 2007/10/26 15:56:55 gcodispo Exp $"
 
 import time
 from popen2 import Popen4
@@ -228,7 +228,7 @@ def checkCrabSuccess(jobId, bossCfgDir ):
         
     except StandardError :
         return success
-    success = (exeCode == "0" and jobCode == "0")
+    success = (exeCode == "0" or exeCode == "" or exeCode == None or exeCode == 'NULL') and (jobCode == "0")
     return success
 
 def resubmit(jobId, bossCfgDir):
@@ -702,8 +702,12 @@ def executeCommand( command, timeout = 600, userProxy = "" ):
     timeout = max(1, timeout/10 )
 #    f.write("timeout=%s"%timeout)
     timedOut = True
+    outch = None
     while 1:
-        (r, w, e) = select.select([outfno], [], [], timeout)
+        try :
+            (r, w, e) = select.select([outfno], [], [], timeout)
+        except :
+            break
         if len(r) > 0:
             outch = outfd.read()
             if outch == '':
@@ -1144,6 +1148,17 @@ def archive(jobId, bossCfgDir):
         logging.error("Boss4 JobId splitting error: " + jobId)
         return ""
 
+#     # set BOSS path
+#     BOSS.setBossCfgDir(bossCfgDir)
+
+#     # get BOSS task
+#     bossSession = BOSS.getBossSession()
+#     bossTask = bossSession.makeBossTask( taskid )
+
+#     # archive
+#     job = bossTask.Job( chainid )
+#     job.archive()
+
     outfile = executeCommand(
         "boss archive -taskid " + taskid + " -jobid " + chainid \
         + " -c " + bossCfgDir
@@ -1181,6 +1196,11 @@ def Delete(jobId, bossCfgDir):
         + " -c " + bossCfgDir
         )
 
+#    out = executeCommand(
+#        "boss archive -taskid " + taskid + " -jobid " + chainid \
+#        + " -force -c " + bossCfgDir
+#        )
+    
     return out
 
 
