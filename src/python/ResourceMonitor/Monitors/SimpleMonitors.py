@@ -112,11 +112,11 @@ class PABOSSPoll(PollInterface):
 
         sqlStr1 = \
         """
-        select count(JOB.ID) from CHAIN,JOB where JOB.CHAIN_ID=CHAIN.ID and JOB.TASK_ID=CHAIN.TASK_ID and CHAIN.NAME not like '%merge%' and JOB.STATUS not in ('W','SA');
+        select count(JOB.ID) from CHAIN,JOB where JOB.CHAIN_ID=CHAIN.ID and JOB.TASK_ID=CHAIN.TASK_ID and CHAIN.NAME not like '%merge%' and JOB.STATUS not in ('W','SA','SD');
         """
         sqlStr2 = \
         """
-        select count(JOB.ID) from CHAIN,JOB where JOB.CHAIN_ID=CHAIN.ID and JOB.TASK_ID=CHAIN.TASK_ID and CHAIN.NAME like '%merge%' and JOB.STATUS not in ('W','SA');
+        select count(JOB.ID) from CHAIN,JOB where JOB.CHAIN_ID=CHAIN.ID and JOB.TASK_ID=CHAIN.TASK_ID and CHAIN.NAME like '%merge%' and JOB.STATUS not in ('W','SA','SD');
         """
         processingout=commands.getoutput("bossAdmin SQL -query \"%s\" -c %s"%(sqlStr1,bossCfgDir))
         numProcessing=long(processingout.strip().split('\n')[1])
