@@ -19,6 +19,10 @@ class QueuedMessages(StateInterface):
    def execute(self):
        logging.debug("Executing state: QueuedMessages")
        ignoreUrl={}
+       if not HandleJobSuccess.ms:
+           HandleJobSuccess.ms=self.ms
+           HandleJobSuccess.trigger = self.trigger
+
 
        for report_type in ['ReportJobSuccess']:
            start=0
