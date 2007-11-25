@@ -11,7 +11,6 @@ import os
 import pickle
 from FwkJobRep.TaskState import TaskState, getTaskState
 from ProdCommon.MCPayloads.JobSpec import JobSpec
-from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from RunRes.RunResComponent import RunResComponent
 
 class NodeFinder:
@@ -40,18 +39,13 @@ class JobSpecExpander:
         self.jobSpec.load(jobSpecFile)
         self.taskState = TaskState(os.getcwd())
         self.taskState.loadRunResDB()
-        self.workflowSpec = WorkflowSpec()
-        self.workflowSpec.load(os.environ["PRODAGENT_WORKFLOW_SPEC"])
+        
         
         self.config = self.taskState.configurationDict()
 
         finder = NodeFinder(self.taskState.taskName())
         self.jobSpec.payload.operate(finder)
         self.jobSpecNode = finder.result
-
-        wffinder = NodeFinder(self.taskState.taskName())
-        self.workflowSpec.payload.operate(wffinder)
-        self.workflowNode = wffinder.result
         
         self.setJobDetails()
 
@@ -146,8 +140,7 @@ class JobSpecExpander:
         cfgFile = self.config['Configuration'].get("CfgFile", "PSet.py")[0]
         cfgFile = str(cfgFile)
         self.jobSpecNode.loadConfiguration()
-        self.jobSpecNode.cfgInterface.rawCfg = self.workflowNode.cfgInterface.rawCfg
-        
+
         for inpLink in self.jobSpecNode._InputLinks:
             #  //
             # // We have in-job input links to be resolved
@@ -301,12 +294,7 @@ if __name__ == '__main__':
         msg = "Unable to find JobSpec from PRODAGENT_JOBSPEC variable\n"
         msg += "Unable to proceed\n"
         raise RuntimeError, msg
-    workflowSpec = os.environ.get("PRODAGENT_WORKFLOW_SPEC", None)
-    if workflowSpec == None:
-        msg = "Unable to find WorkflowSpec from PRODAGENT_WORKFLOW_SPEC variable\n"
-        msg += "Unable to proceed\n"
-        raise RuntimeError, msg
-    
+
     if not os.path.exists(jobSpec):
         msg = "Cannot find JobSpec file:\n %s\n" % jobSpec
         msg += "Unable to proceed\n"

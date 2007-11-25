@@ -6,11 +6,10 @@ Tier 0 LSF Creator
 
 """
 
-import os
-
 from JobCreator.Registry import registerCreator
 from JobCreator.Creators.CreatorInterface import CreatorInterface
 from JobCreator.JCException import JCException
+
 from JobCreator.ScramSetupTools import setupScramEnvironment
 from JobCreator.ScramSetupTools import scramProjectCommand
 from JobCreator.ScramSetupTools import scramRuntimeCommand
@@ -25,7 +24,7 @@ class T0LSFCreator(CreatorInterface):
     """
     def __init__(self):
         CreatorInterface.__init__(self)
-         
+
 
     def checkPluginConfig(self):
         """
@@ -38,12 +37,12 @@ class T0LSFCreator(CreatorInterface):
         just easier to code them in this module
 
         """
-        
+
         if self.pluginConfig == None:
             msg = "Creator Plugin Config could not be loaded for:\n"
             msg += self.__class__.__name__
             raise JCException(msg, ClassInstance = self)
-           
+
         if not self.pluginConfig.has_key('StageOut'):
             self.pluginConfig.newBlock('StageOut')
 
@@ -56,10 +55,6 @@ class T0LSFCreator(CreatorInterface):
         if not self.pluginConfig['StageOut'].has_key('SEName'):
             self.pluginConfig['StageOut']['SEName'] = "srm.cern.ch"
 
-        if not self.pluginConfig['StageOut'].has_key('Option'):
-            self.pluginConfig['StageOut']['Option'] = "None"
-
-
 	if not self.pluginConfig.has_key('SoftwareSetup'):
             self.pluginConfig.newBlock('SoftwareSetup')
 
@@ -67,13 +62,8 @@ class T0LSFCreator(CreatorInterface):
             self.pluginConfig['SoftwareSetup']['ScramCommand'] = "scramv1"
 
         if not self.pluginConfig['SoftwareSetup'].has_key('ScramArch'):
-            self.pluginConfig['SoftwareSetup']['ScramArch'] = "slc4_ia32_gcc345"
-
-
-        if not self.pluginConfig.has_key('OverrideUserSandbox'):
-            self.pluginConfig.newBlock('OverrideUserSandbox')
-
-
+            self.pluginConfig['SoftwareSetup']['ScramArch'] = "slc3_ia32_gcc323"
+            
         return
 
     
@@ -162,7 +152,15 @@ class T0LSFCreator(CreatorInterface):
                  HardKillDelay = timeoutCfg['HardKillDelay'])
             shreekConfig.addMonitorCfg(jobtimeout)
 
-
+        #  // 
+        # // Performance monitoring
+        #//
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.PerfMonitor")
+        perfMonitor =  shreekConfig.newMonitorCfg()
+        perfMonitor.setMonitorName("perfmonitor-1")
+        perfMonitor.setMonitorType("perf-monitor")
+        shreekConfig.addMonitorCfg(perfMonitor)
+        return
 
 
     def handleCMSSWTaskObject(self, taskObject):
@@ -203,16 +201,6 @@ class T0LSFCreator(CreatorInterface):
           scramRuntimeCommand(taskObject['CMSProjectVersion'],self.pluginConfig['SoftwareSetup']['ScramCommand'],True)
         )
 
-        if self.pluginConfig['OverrideUserSandbox'].has_key(taskObject['CMSProjectVersion']):
-
-            taskObject.attachFile(self.pluginConfig['OverrideUserSandbox'][taskObject['CMSProjectVersion']])
-
-            runres = taskObject['RunResDB']
-
-            runres.addData("/%s/UserSandbox" % taskObject['Name'],
-                           os.path.basename(self.pluginConfig['OverrideUserSandbox'][taskObject['CMSProjectVersion']]))
-
-
         return
 
 
@@ -223,28 +211,22 @@ class T0LSFCreator(CreatorInterface):
         Handle a StageOut task object.
         
         """
-        
         taskObject['PreStageOutCommands'].append(
             ". $VO_CMS_SW_DIR/cmsset_default.sh"
             )
 
-        if ( self.pluginConfig['StageOut']['Command'] != "None" and \
-             self.pluginConfig['StageOut']['LFNPrefix'] != "None" and \
-             self.pluginConfig['StageOut']['SEName'] != "None" ):
+        #if ( self.pluginConfig['StageOut']['Command'] != "None" and
+        #     self.pluginConfig['StageOut']['LFNPrefix'] != "None" and
+        #     self.pluginConfig['StageOut']['SEName'] != "None" ):
 
-            option = self.pluginConfig['StageOut']['Option']
-            if ( option == "None" ):
-                option = ""
+        #    runres = taskObject['RunResDB']
 
-            runres = taskObject['RunResDB']
-          
-            overrideBase = "/%s/StageOutParameters/Override" % 'stageOut1'
-
-            runres.addPath(overrideBase)
-            runres.addData("/%s/command" % overrideBase, self.pluginConfig['StageOut']['Command'])
-            runres.addData("/%s/option" % overrideBase, option)
-            runres.addData("/%s/se-name" % overrideBase, self.pluginConfig['StageOut']['SEName'])
-            runres.addData("/%s/lfn-prefix" % overrideBase, self.pluginConfig['StageOut']['LFNPrefix'])
+        #    overrideBase = "/%s/StageOutParameters/Override" % 'stageOut1'
+        #    runres.addPath(overrideBase)
+        #    runres.addData("/%s/command" % overrideBase, self.pluginConfig['StageOut']['Command'])
+        #    #runres.addData("/%s/option" % overrideBase, option)
+        #    runres.addData("/%s/se-name" % overrideBase, self.pluginConfig['StageOut']['SEName'])
+        #    runres.addData("/%s/lfn-prefix" % overrideBase, self.pluginConfig['StageOut']['LFNPrefix'])
         
         return
     
