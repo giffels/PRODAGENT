@@ -87,6 +87,10 @@ def sendMessage(url,parameters):
            logging.debug('For some reason this allocation was already registered')
            logging.debug('Ignoring what just happened')
            return {'result':0,'url':'fine'}
+       if(ex.faultCode == 2002):
+           logging.debug('No request with id supplied for this call')
+           logging.debug('Taking appropriate action on my side')
+           return {'result':1,'url':'fine'}
    except ProdAgentException, ex:
        logging.debug("Problem connecting to server: "+url+" "+str(ex))
        message={}
