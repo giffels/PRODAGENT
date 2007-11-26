@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.51 2007/10/05 15:45:27 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.52 2007/10/12 20:27:13 afanfani Exp $"
 
 import traceback
 import time
@@ -45,7 +45,7 @@ from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 from ProdAgentBOSS import BOSSCommands
 import  ProdAgentCore.LoggingUtils as LoggingUtils
 from ProdAgentCore.ProdAgentException import ProdAgentException
-
+from ProdCommon.Core.ProdException import ProdException
 
 
 class TrackingComponent:
@@ -663,7 +663,7 @@ class TrackingComponent:
 
           JobState.finished(jobId)
           Session.commit_all()
-        except Exception, ex:
+        except (ProdException, Exception) , ex:
                 msg = "Error setting job state to finished for job: %s\n" % jobId
                 msg += str(ex)
                 logging.error(msg)
