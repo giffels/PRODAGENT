@@ -13,6 +13,8 @@ from FwkJobRep.SiteLocalConfig import loadSiteLocalConfig
 
 from StageOut.StageOutError import StageOutFailure
 from StageOut.StageOutError import StageOutInitError
+from StageOut.Registry import retrieveStageOutImpl
+
 
 class StageOutSuccess(Exception):
     """
@@ -162,7 +164,7 @@ class StageOutMgr:
 
         """
             
-        
+      
         try:
             print "==>Working on file: %s" % fileToStage['LFN']
             if fileToStage['GUID'] != None:
@@ -290,6 +292,8 @@ class StageOutMgr:
         except Exception, ex:
             msg = "Failure for local stage out:\n"
             msg += str(ex)
+            import traceback
+            msg += traceback.format_exc()
             raise StageOutFailure(msg, Command = command, Protocol = protocol,
                                   LFN = lfn, InputPFN = localPfn,
                                   TargetPFN = pfn)
@@ -348,3 +352,18 @@ class StageOutMgr:
         msg = "LFN to PFN match made:\n"
         msg += "LFN: %s\nPFN: %s\n" % (lfn, pfn)
         print msg
+        return pfn
+
+
+
+if __name__ == '__main__':
+    import StageOut.Impl
+    mgr = StageOutMgr()
+    pfn = "/home/evansde/work/PRODAGENT/work/JobCreator/RelValMinBias-170pre12/Processing/RelValMinBias-170pre12-Processing.tar.gz"
+    lfn = "/store/unmerged/DCCP-FNAL-TEST.dat"
+
+    mgr.searchTFC(lfn)
+    mgr(LFN = lfn, PFN = pfn, GUID=None)
+    
+    
+    
