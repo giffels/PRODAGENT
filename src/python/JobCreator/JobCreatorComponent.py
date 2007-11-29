@@ -53,6 +53,7 @@ class JobCreatorComponent:
         self.args['HashDirs'] = True
         self.args['LogArchStageOut'] = False
         self.args['FrontierDiagnostic'] = False
+        
         self.args.update(args)
         self.prodAgent = prodAgentName()
         self.job_state = self.args['JobState']
@@ -69,6 +70,8 @@ class JobCreatorComponent:
             self.args['FrontierDiagnostic'] = True
         else:
             self.args['FrontierDiagnostic'] = False
+
+      
 
 
         LoggingUtils.installLogHandler(self)
@@ -214,7 +217,7 @@ class JobCreatorComponent:
             logging.error("Unable to Create Job for: %s" % jobSpecFile)
             return
         
-        
+        logging.debug("Site Whitelist= %s" % primaryJobSpec.siteWhitelist)
         
         if not primaryJobSpec.isBulkSpec():
             #  //
@@ -274,13 +277,17 @@ class JobCreatorComponent:
         bulkTar = os.path.dirname(firstSpec)
         bulkTar += "/%s-%s-BulkSpecs.tar.gz" % (workflowName, int(time.time()))
         newBulkSpec.bulkSpecs.update(newSpecs)
+        newBulkSpec.parameters['BulkInputSpecSandbox'] = bulkTar
+        newBulkSpec.siteWhitelist.extend(primaryJobSpec.siteWhitelist)
+        newBulkSpec.siteBlacklist.extend(primaryJobSpec.siteBlacklist)
+
+        logging.debug("Bulk Spec Whitelist: %s" % newBulkSpec.siteWhitelist)
         
         
         #  //
         # // Generate job spec tarball and add to bulk job spec
         #//
         createBulkSpecTar(newBulkSpec, bulkTar)
-        newBulkSpec.parameters['BulkInputSpecSandbox'] = bulkTar
         newBulkSpec.save(newBulkSpecFile)
         
         #  //
@@ -312,20 +319,25 @@ class JobCreatorComponent:
         workflowName = jobSpec.payload.workflow
         wfCache = os.path.join(self.args['ComponentDir'],
                                workflowName)
-        
-        if self.args['HashDirs']:
-            runNum = jobSpec.parameters.get("RunNumber", None)
-            if runNum == None:
-                runNum = abs(hash(jobname))
-                runNum = "m%s" % runNum
-            jobCache = os.path.join(self.args['ComponentDir'],
-                                    workflowName,
-                                    str(runNum))
-        else:
-            jobCache = os.path.join(self.args['ComponentDir'],
-                                    workflowName,
-                                    jobname)
 
+        runNum = jobSpec.parameters.get("RunNumber", None)
+        runPadding = None
+        if runNum == None:
+            runNum = abs(hash(jobname))
+            runNum = "%s" % runNum
+            runPadding = "merges"
+        else:
+            runNum = int(runNum)
+            runPadding = str(runNum // 1000).zfill(4)
+            
+            
+            
+        jobCache = os.path.join(self.args['ComponentDir'],
+                                workflowName,
+                                "%s" % runPadding,
+                                str(runNum))
+                                
+        
             
         
         if not os.path.exists(jobCache):
