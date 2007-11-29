@@ -8,9 +8,13 @@ provides several helper utils
 """
 
 import os
+import logging
 
 from JobQueue.JobQueueAPI import bulkQueueJobs
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
+import ProdAgent.WorkflowEntities.Job as WEJob
+
 
 def hashList(listOfSites):
     """
@@ -115,10 +119,17 @@ class PluginInterface:
             #  //
             # // TODO: Register each workflow/job with WE
             #//  tables
+            for job in self.jobsToPublish[siteHash].values():
+                WEJob.register(job['WorkflowSpecId'], None, {
+                    'id' : job['JobSpecId'], 'owner' : 'WorkflowInjector',
+                    'job_type' : "Processing", "max_retries" : 3,
+                    "max_racers" : 1,
+                    })
+            
             
         return
 
-    def publishWorkflow(self, workflowPath):
+    def publishWorkflow(self, workflowPath, workflowId = None):
         """
         _publishWorkflow_
 
@@ -126,6 +137,18 @@ class PluginInterface:
         workflow provided
 
         """
+        if workflowId != None:
+            msg = "Registering Workflow Entity: %s" % workflowId
+            logging.debug(msg)
+            WEWorkflow.register(
+                workflowId,
+                {"owner" : "WorkflowInjector",
+                 "workflow_spec_file" : workflowPath,
+                 
+                 })
+            
+
+        
         self.msRef.publish("NewWorkflow", workflowPath)
         self.msRef.publish("NewDataset", workflowPath)
         self.msRef.commit()

@@ -38,8 +38,8 @@ class RequestFeeder(PluginInterface):
         self.initialRun = None
         self.sites = []
         self.loadPayload(payload)
-        self.publishWorkflow(payload)
-
+        self.publishWorkflow(payload, self.workflow.workflowName())
+        
 
         factory = RequestJobFactory(self.workflow,
                                     self.workingDir,
@@ -68,7 +68,6 @@ class RequestFeeder(PluginInterface):
 
         logging.info("RequestFeeder: Loading Workflow: %s\n" % payload)
         self.workflow = self.loadWorkflow(payload)
-
         self.totalEvents = self.workflow.parameters.get("TotalEvents", None)
         self.eventsPerJob = self.workflow.parameters.get('EventsPerJob', None)
         self.initialRun = self.workflow.parameters.get("InitialRun", 0)

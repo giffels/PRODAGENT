@@ -37,7 +37,7 @@ class DatasetFeeder(PluginInterface):
         self.workflow = None
         self.dbsUrl = None
         self.loadPayloads(payload)
-        
+        self.publishWorkflow(payload, self.workflow.workflowName())
         factory = DatasetJobFactory(self.workflow,
                                     self.workingDir,
                                     self.dbsUrl)

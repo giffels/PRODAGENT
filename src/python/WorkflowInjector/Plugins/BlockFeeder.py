@@ -154,7 +154,7 @@ class BlockFeeder(PluginInterface):
         # // New workflow?  If so, publish it
         #//
         if self.persistData.run == 1:
-            self.publishWorkflow(workflowFile)
+            self.publishWorkflow(workflowFile, self.workflow.workflowName())
             
         onlyBlocks = self.workflow.parameters.get("OnlyBlocks", None)
         if onlyBlocks != None:

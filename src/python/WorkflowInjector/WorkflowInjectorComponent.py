@@ -123,6 +123,8 @@ class WorkflowInjectorComponent:
             msg = "Error invoking Plugin: %s\n" % self.plugin
             msg += "On Input payload:\n%s\n" % payload
             msg += str(ex)
+            import traceback
+            msg +=  traceback.format_exc()
             logging.error(msg)
             return        
         
