@@ -6,7 +6,7 @@ _FileCrossCheck_
 Tools for cross checking file lists in merge sensor, DBS etc
 
 """
-
+import logging
 
 import ProdAgent.WorkflowEntities.Utilities as WEUtils
 import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
@@ -26,7 +26,7 @@ def listAllMergeDatasets():
 
     """
     mergeDB = MergeSensorDB()
-    datasets = getDatasetList()
+    datasets = mergeDB.getDatasetList()
     return datasets
 
 
