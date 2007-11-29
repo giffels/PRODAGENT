@@ -73,6 +73,25 @@ def thresholds(site = None):
       for x in sites ]
 
     return result
+
+def thresholdsByIndex(siteIndex):
+    """
+    _thresholdsByIndex_
+
+    Retrieve a map of site thresholds by index
+
+    """
+    try:
+        iSite = int(siteIndex)
+    except ValueError:
+        msg = "Site Index is not an integer!!\n"
+        msg += "Cannot retrieve thresholds for site index: %s" % siteIndex
+        raise RuntimeError, msg
+    Session.connect()
+    Session.start_transaction()
+    resourceControlDB = ResourceControlDB()
+    return resourceControlDB.siteThresholds(iSite)
+    
     
 def attributes(site = None):
     """
@@ -102,7 +121,24 @@ def attributes(site = None):
       for x in sites ]
     
     return result
-    
+
+def attributesByIndex(siteIndex):
+    """
+    _attributesByIndex_
+
+    Get site attributes for the site index provided
+    """
+    try:
+        iSite = int(siteIndex)
+    except ValueError:
+        msg = "Site Index is not an integer!!\n"
+        msg += "Cannot retrieve attributes for site index: %s" % siteIndex
+        raise RuntimeError, msg
+    Session.connect()
+    Session.start_transaction()
+    resourceControlDB = ResourceControlDB()
+    return resourceControlDB.siteAttributes(iSite)
+
         
 def createSiteNameMap(activeOnly = True):
     """
