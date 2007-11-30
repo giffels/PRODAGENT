@@ -243,6 +243,7 @@ class JobQueueComponent:
             bulkSpec.load(firstSpec)
             for item in bulkSpecs:
                 specID = os.path.basename(item).replace("-JobSpec.xml", "")
+                specID = os.path.basename(specID).replace(".xml", "")
                 bulkSpec.bulkSpecs.addJobSpec(specID, item)
             if siteOverride != None:
                 bulkSpec.siteWhitelist = []
