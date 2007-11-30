@@ -147,7 +147,7 @@ class JobQueueComponent:
         
         logging.debug(
             "Constraint Created for ResourcesAvailable: %s" % constraint)
-
+        
         timestamp = constraint.get('ts', None)
         if timestamp != None:
             timenow = int(time.time())
@@ -198,6 +198,8 @@ class JobQueueComponent:
         Sort and publish CreateJob events, making bulk specs if required
         
         """
+        logging.info("siteOverride=%s" % siteOverride)
+        
         if self.args['BulkMode'] == False:
             #  //
             # // publish specs individually
@@ -225,9 +227,11 @@ class JobQueueComponent:
             JobQueueAPI.releaseJobs(indSpec)
             
 
-        for bulkSpecList in sorter.bulkSpecs.values(): 
-            bulkSpecs = [ x['JobSpecFile'] for x in bulkSpecList ]
-            firstSpec = bulkSpecs[0]
+        for bulkSpecList in sorter.bulkSpecs.values():
+            bulkSpecs = {}
+            [ bulkSpecs.__setitem__(x['JobSpecFile'], x['JobSpecId'])
+              for x in bulkSpecList ]
+            firstSpec = bulkSpecs.keys()[0]
             logging.debug("firstSpec=%s" % firstSpec)
             bulkSpecName = "%s.BULK" % firstSpec
             bulkSpecName = bulkSpecName.replace("file:///", "/")
@@ -241,10 +245,8 @@ class JobQueueComponent:
                 logging.error(msg)
                 continue
             bulkSpec.load(firstSpec)
-            for item in bulkSpecs:
-                specID = os.path.basename(item).replace("-JobSpec.xml", "")
-                specID = os.path.basename(specID).replace(".xml", "")
-                bulkSpec.bulkSpecs.addJobSpec(specID, item)
+            for specFile, specId in bulkSpecs.items():
+                bulkSpec.bulkSpecs.addJobSpec(specId, specFile)
             if siteOverride != None:
                 bulkSpec.siteWhitelist = []
                 bulkSpec.siteWhitelist.append(siteOverride)
