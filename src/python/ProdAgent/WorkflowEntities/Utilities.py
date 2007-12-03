@@ -8,6 +8,10 @@ for job management purposes
 """
 
 from ProdCommon.Database import Session
+from ProdAgentDB.Config import defaultConfig as dbConfig
+
+Session.set_database(dbConfig)
+
 
 
 import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
@@ -64,6 +68,29 @@ def jobsForWorkflow(workflow, jobtype = None, status = None):
         jobData = [ x for x in jobData if x['status'] == status ]
 
     result = [ x['id'] for x in jobData ]
+    
+    return result
+    
+def getJobCache(*jobSpecIds):
+    """
+    _getJobCache_
+
+    retrieve the job cache directory from the WE.Job information
+    for a list of job spec IDs and return a map of id: cache
+    """
+    
+    jobData = WEJob.get(list(jobSpecIds))
+    if type(jobData) != type([]):
+        jobData = [jobData]
+    result = {}
+    #  //
+    # // make sure all job ids have an entry
+    #//
+    [ result.__setitem__(k, None) for k in jobSpecIds]
+    #  //
+    # // update result with actual data
+    #//
+    [ result.__setitem__(k['id'], k.get('cache_dir', None)) for k in jobData ]
     
     return result
     
