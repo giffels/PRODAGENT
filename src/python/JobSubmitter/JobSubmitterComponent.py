@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.17 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.17 2007/07/23 16:42:41 afanfani Exp $"
+__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.18 2007/08/23 13:21:52 afanfani Exp $"
 
 import os
 import logging
@@ -79,8 +79,12 @@ class JobSubmitterComponent:
                 self.submitJob(payload)
                 return
             except StandardError, ex:
-                logging.error("Failed to Submit Job: %s" % payload)
-                logging.error("Details: %s" % str(ex))
+                msg = "Failed to Submit Job: %s" % payload
+                msg += "Details: %s" % str(ex)
+                import traceback, sys
+                for x in traceback.format_tb(sys.exc_info()[2]):
+                    msg += str(x)
+                logging.error(msg)
                 return
             
      
@@ -127,6 +131,8 @@ class JobSubmitterComponent:
         try:
             jobSpecInstance = JobSpec()
             jobSpecInstance.load(jobSpecFile)
+            logging.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            logging.debug("whitelist=%s" % jobSpecInstance.siteWhitelist)
             #TEST ErrorHandler Comment Above, Uncomment below:
             #jobSpecInstance.load(jobSpecFile+"generate_error")
         except StandardError, ex:
@@ -139,7 +145,7 @@ class JobSubmitterComponent:
             return
         
         # get submission counter
-        submissionCount = jobSpecInstance.parameters['SubmissionCount']
+        submissionCount = jobSpecInstance.parameters.get('SubmissionCount', 0)
 
         if not jobSpecInstance.isBulkSpec():
             logging.debug("Non Bulk Submission")
