@@ -243,7 +243,7 @@ class BlockFeeder(PluginInterface):
         #//
         localDBS = getLocalDBSURL()
         dbsWriter = DBSWriter(localDBS)
-        globalDBS = getGlobalDBSURL()
+        globalDBS = self.dbsUrl
 
         try:
             dbsWriter.importDataset(
