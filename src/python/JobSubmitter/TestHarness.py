@@ -31,7 +31,7 @@ if __name__ == '__main__':
     usage = "Usage: TestHarness.py --dir=<job dir>\n"
     usage += "                      --jobname=<name of job>\n"
     usage += "                      --submitter=<submitter name>\n"
-    valid = ['dir=', 'jobname=', "submitter="]
+    valid = ['dir=', 'jobname=', "submitter=", "job-spec-file="]
     try:
         opts, args = getopt.getopt(sys.argv[1:], "", valid)
     except getopt.GetoptError, ex:
@@ -42,6 +42,7 @@ if __name__ == '__main__':
     workingDir = None
     jobname = None
     submitter = "NoSubmit"
+    jobSpecFile = None
     for opt, arg in opts:
         if opt == "--dir":
             workingDir = arg
@@ -49,7 +50,8 @@ if __name__ == '__main__':
            jobname = arg
         if opt == "--submitter":
             submitter = arg
-        
+        if opt == "--job-spec-file":
+            jobSpecFile = arg
     if workingDir == None:
         print "No Working dir specified: --dir option is required"
         sys.exit(1)
@@ -73,8 +75,9 @@ if __name__ == '__main__':
     
     
     jobToSubmit = os.path.join(workingDir, jobname)
-    jobSpecFile = os.path.join(workingDir, "%s-JobSpec.xml" % jobname)
-    
+    if jobSpecFile == None:
+        jobSpecFile = os.path.join(workingDir, "%s-JobSpec.xml" % jobname)
+    cacheMap = { jobname : workingDir }
     logging.debug("TestHarness:Jobname=%s" % jobname)
     logging.debug("TestHarness:WorkingDir=%s" % workingDir)
     logging.debug("TestHarness:JobToSubmit=%s" % jobToSubmit)
@@ -98,7 +101,8 @@ if __name__ == '__main__':
     submitterInstance(
         workingDir,
         jobToSubmit, jobname,
-        JobSpecInstance = jobSpecInstance
+        JobSpecInstance = jobSpecInstance,
+        CacheMap = cacheMap
         )
 
     
