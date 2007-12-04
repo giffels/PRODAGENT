@@ -166,6 +166,8 @@ class JobCreatorComponent:
         if not os.path.exists(wfCache):
             os.makedirs(wfCache)
 
+        wfBackup = os.path.join(wfCache, "%s-Workflow.xml" % wfname)
+        spec.save(wfBackup)
         
         gen = retrieveGenerator(self.args['GeneratorName'])
         creator = retrieveCreator(self.args['CreatorName'])
@@ -319,7 +321,10 @@ class JobCreatorComponent:
         workflowName = jobSpec.payload.workflow
         wfCache = os.path.join(self.args['ComponentDir'],
                                workflowName)
-
+        wfBackup = os.path.join(
+            wfCache,
+            "%s-Workflow.xml" % workflowName)
+        
         runNum = jobSpec.parameters.get("RunNumber", None)
         runPadding = None
         if runNum == None:
@@ -357,6 +362,7 @@ class JobCreatorComponent:
             creator = retrieveCreator(self.args['CreatorName'])
             gen.creator = creator
             gen.componentConfig = self.args
+            gen.workflowFile = wfBackup
             gen.workflowCache = wfCache
             gen.jobCache = jobCache
             newJobSpec = gen.actOnJobSpec(jobSpec, jobCache)
