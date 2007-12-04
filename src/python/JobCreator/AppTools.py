@@ -144,9 +144,12 @@ class InsertAppDetails:
         taskObject['PreAppCommands'] = []
         taskObject['PostAppCommands'] = []
 
-        if taskObject['CMSExecutable'] == "EdmFastMerge":  
-            installFastMerge(taskObject)
-
+        if taskObject['JobType'] == "Merge":
+            if taskObject['CMSExecutable'] == "EdmFastMerge":  
+                installFastMerge(taskObject)
+            else:
+                taskObject['CMSCommandLineArgs'] += " -j FrameworkJobReport.xml "
+                
         #  //
         # // Insert End Control Point check on exit status
         #//
@@ -202,6 +205,10 @@ class InsertBulkAppDetails:
         else:
           taskObject['CMSCommandLineArgs'] = " PSet.py "
 
+        if taskObject['JobType'] == "Merge":
+            taskObject['CMSCommandLineArgs'] += " -j FrameworkJobReport.xml "
+            
+  
             
             
         #  //
