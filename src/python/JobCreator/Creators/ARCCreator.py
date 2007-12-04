@@ -17,6 +17,7 @@ from JobCreator.ScramSetupTools import setupScramEnvironment
 from JobCreator.ScramSetupTools import scramProjectCommand
 from JobCreator.ScramSetupTools import scramRuntimeCommand
 
+
 class ARCCreator(CreatorInterface):
     """
     _ARCCreator
@@ -24,12 +25,9 @@ class ARCCreator(CreatorInterface):
     Process a TaskObject Tree and add in setup details appropriate to
     the ARC Middleware environment.
 
-    
-
     """
     def __init__(self):
         CreatorInterface.__init__(self)
-        self.swSetupCommand = None
 
 
     def checkPluginConfig(self):
@@ -44,16 +42,15 @@ class ARCCreator(CreatorInterface):
         You can use this method to check what is in there
 
         """
-
         if self.pluginConfig == None:
             msg = "Creator Plugin Config could not be loaded for:\n"
             msg += self.__class__.__name__
             raise JCException(msg, ClassInstance = self)
             
-	if not self.pluginConfig.has_key("SoftwareSetup"):
+        if not self.pluginConfig.has_key("SoftwareSetup"):
             swsetup = self.pluginConfig.newBlock("SoftwareSetup")
             swsetup['ScramCommand'] = "scramv1"
-            swsetup['ScramArch'] = "slc3_ia32_gcc323"
+            swsetup['ScramArch'] = "slc4_ia32_gcc345"
 
         #  //
         # // Make sure the standard environment setup is set to
@@ -108,10 +105,6 @@ class ARCCreator(CreatorInterface):
 
         """
         return
-
-
-   
-
 
 
     def handleCMSSWTaskObject(self, taskObject):
@@ -172,7 +165,6 @@ class ARCCreator(CreatorInterface):
         # // Assuming stage out tools have same setup as rest of CMS
         #//  environment
         taskObject['PreStageOutCommands'].append(self.swSetupCommand)
-        
         
         return
     

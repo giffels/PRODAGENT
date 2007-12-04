@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 """
-_T0LSFSubmitter_
+_ARCSubmitter_
 
-Submitter for T0 LSF submissions that is capable of handling both
-Bulk and single LSF submissions
+Submitter for ARC submissions
 
 
 """
@@ -13,7 +12,6 @@ import logging
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
 from JobSubmitter.JSException import JSException
-
 
 bulkUnpackerScriptMain = \
 """
@@ -48,7 +46,6 @@ if [ $PROCEED_WITH_SPEC != 1 ]; then
    exit 60998
 fi
 
-
 """
 
 
@@ -75,18 +72,17 @@ def bulkUnpackerScript(bulkSpecTarName):
     return lines
 
 
-class T0LSFSubmitter(BulkSubmitterInterface):
+class ARCSubmitter(BulkSubmitterInterface):
     """
-    _T0LSFSubmitter_
+    _ARCSubmitter_
 
-    Submitter Plugin to submit jobs to the Tier-0 LSF system.
-
-    Can generate bulk or single type submissions.
+    Submitter Plugin to submit jobs to sites running NorduGrid/ARC.
 
     """
 
     def __init__(self):
         BulkSubmitterInterface.__init__(self)
+
 
     def checkPluginConfig(self):
         """
@@ -100,12 +96,12 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             msg += self.__class__.__name__
             raise JSException(msg, ClassInstance = self)
 
-        if not self.pluginConfig.has_key("LSF"):
-            lsfsetup = self.pluginConfig.newBlock("LSF")
-            lsfsetup['Queue'] = "8nh"
-            lsfsetup['LsfLogDir'] = "None"
-            lsfsetup['CmsRunLogDir'] = "None"
-            lsfsetup['NodeType'] = "None"
+        if not self.pluginConfig.has_key("ARC"):
+            setup = self.pluginConfig.newBlock("ARC")
+            setup['Queue'] = "8nh"
+            setup['LsfLogDir'] = "None"
+            setup['CmsRunLogDir'] = "None"
+            setup['NodeType'] = "None"
 
         return
 
@@ -121,12 +117,13 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         details contained therein
 
         """
-        logging.debug("<<<<<<<<<<<<T0LSFSubmitter>>>>>>>>>>")
+        logging.debug("<<<<<<<<<<<<ARCSubmitter>>>>>>>>>>")
 
         self.workflowName = self.primarySpecInstance.payload.workflow
         self.mainJobSpecName = self.primarySpecInstance.parameters['JobName']
         self.mainSandbox = \
-                   self.primarySpecInstance.parameters.get('BulkInputSandbox',None)
+                   self.primarySpecInstance.parameters.get('BulkInputSandbox',
+                                                            None)
         self.mainSandboxName = os.path.basename(self.mainSandbox)
         self.specSandboxName = None
         self.singleSpecName = None
@@ -171,52 +168,72 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         for jobSpec, cacheDir in self.toSubmit.items():
             logging.debug("Submit: %s from %s" % (jobSpec, cacheDir) )
             logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
-            self.makeWrapperScript(os.path.join(cacheDir,"lsfsubmit.sh"),jobSpec,cacheDir)
+            self.makeWrapperScript(os.path.join(cacheDir,"submit.sh"),
+                                   jobSpec,cacheDir)
 
         #  //
-        # // Submit LSF job
+        # // Submit ARC job
         #//
-        if ( self.pluginConfig['LSF']['NodeType'] != "None" ):
-            lsfSubmitCommand = 'bsub -R "type=%s"' % self.pluginConfig['LSF']['NodeType']
+        submitCommand = "ngsub -e '%s'" % \
+                               self.xrslCode(os.path.join(cacheDir,"submit.sh"),
+                                             jobSpec, cacheDir)
 
-        lsfSubmitCommand += ' -q %s' % self.pluginConfig['LSF']['Queue']
-        lsfSubmitCommand += ' -g /groups/tier0/reconstruction'
-        lsfSubmitCommand += ' -J %s' % jobSpec
-
-        if ( self.pluginConfig['LSF']['LsfLogDir'] == "None" ):
-            lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
-        else:
-            lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (self.pluginConfig['LSF']['LsfLogDir'],jobSpec)
-
-        #lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
-        #lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
-
-        lsfSubmitCommand += ' < %s' % os.path.join(cacheDir,"lsfsubmit.sh")
-
-        logging.debug("T0LSFSubmitter.doSubmit: %s" % lsfSubmitCommand)
-        output = self.executeCommand(lsfSubmitCommand)
-        logging.info("T0LSFSubmitter.doSubmit: %s " % output)
+        logging.info("ARCSubmitter.doSubmit: %s" % submitCommand)
+        output = self.executeCommand(submitCommand)
+        logging.debug("ARCSubmitter.doSubmit: %s " % output)
         
+
+    def xrslCode(self, wrapperscript, jobName, cacheDir):
+        """
+        _xrslCode_
+
+        Produce the Xrsl code needed to submit the job to ARC
+
+        """
+        code = "&(executable=%s)" % os.path.basename(wrapperscript)
+
+        code += "(inputFiles="
+        code += "(%s %s)" % (os.path.basename(wrapperscript), wrapperscript)
+        for fname in self.jobInputFiles:
+            code += "(%s %s)" % (os.path.basename(fname), fname)
+        code += ")"
+
+        #  //
+        # //  Output files; leave everything at the CE until explicitely
+        #//   retrieved/removed
+        code += "(outputFiles="
+        code += "(%s/ \"\")" % self.workflowName
+        #if ( self.pluginConfig['ARC']['CmsRunLogDir'] != "None" ):
+        #    outputlogfile = jobName
+        #    outputlogfile += '.`date +%Y%m%d.%k.%M.%S`.log'
+        #    code += "(%s/run.log \"\")" % self.workflowName
+        code += ")"
+
+        code += "(runTimeEnvironment=APPS/HEP/CMSSW-PA)"
+        code += "(jobName=%s)" % jobName
+        code += "(stdout=output)(stderr=errors)(gmlog=gridlog)"
+        return code
+
 
     def makeWrapperScript(self, filename, jobName, cacheDir):
         """
         _makeWrapperScript_
 
-        Make the main executable script for LSF to execute the
+        Make the main executable script for ARC to execute the
         job
         
         """
-        
         #  //
         # // Generate main executable script for job
         #//
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
+        script.append("python -V 2>&1\n")
+        script.append("echo PYTHONPATH = $PYTHONPATH\n")
+        script.append("ulimit -a\n")
 
-        for fname  in self.jobInputFiles:
-            script.append("rfcp lxgate39.cern.ch:%s . \n" % fname)
+        script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
         if self.isBulk:
             script.extend(bulkUnpackerScript(self.specSandboxName))
@@ -224,16 +241,10 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
                           self.singleSpecName)   
             
-        script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName)
+        script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % 
+                                                           self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
         script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1 \n")
-        script.append("rfcp ./FrameworkJobReport.xml lxgate39.cern.ch:%s/FrameworkJobReport.xml \n" % cacheDir)
-
-        outputlogfile = jobName
-        outputlogfile += '.`date +%Y%m%d.%k.%M.%S`.log'
-
-        if ( self.pluginConfig['LSF']['CmsRunLogDir'] != "None" ):
-            script.append("rfcp ./run.log %s/%s\n" % (self.pluginConfig['LSF']['CmsRunLogDir'],outputlogfile))
 
         #script.extend(missingJobReportCheck(jobName))
 
@@ -243,36 +254,4 @@ class T0LSFSubmitter(BulkSubmitterInterface):
 
         return
     
-
-#  //
-# // BRAINSTORMING:
-#//
-#
-#  For bulk submission, we compile a list of run numbers
-#  These can be used as the Job Array for bulk submission
-#   -J "WorkflowSpecID-[minRun-maxRun]"
-#
-#  In the exe script we generate and submit, the job spec
-#  ID & file can be constructed using the $LSB_JOBINDEX which
-#  will be the run number. The JobSpec file to use will then
-#  be WorkflowSpecID-$LSB_JOBINDEX which means we can find the
-#  file in the spec tarball.
-#
-#  We need to use a group to make tracking easy:       
-#  -g /groups/tier0/reconstruction
-#        
-#        
-#  The Job needs to run and drop off the FrameworkJobReport somewhere  
-#  ultimately this needs to be the JobCreator cache dir for the JobSpecID
-#  but an intermediate drop box and migration by the tracking component would
-#  work.
-#
-#  Logfiles probably should be redirected to the Job Cache area as well
-#
-#  We need to turn off the bloody emails.
-#
-#
-#
-#
-
-registerSubmitter(T0LSFSubmitter, T0LSFSubmitter.__name__)
+registerSubmitter(ARCSubmitter, ARCSubmitter.__name__)
