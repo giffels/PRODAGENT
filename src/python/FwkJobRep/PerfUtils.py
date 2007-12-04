@@ -11,19 +11,19 @@ def readCPUInfo():
     """
     _readCPUInfo_
 
-    Read CPUInfo file if exists and return a dictionary
+    Read CPUInfo file if exists and return a list
     of the cpus on the node
 
     """
     if not os.path.exists("/proc/cpuinfo"):
-        return {}
+        return []
 
     try:
         handle = open("/proc/cpuinfo", "r")
         content = handle.readlines()
         handle.close()
     except Exception,ex:
-        return {}
+        return []
     result = []
     currentCPU = None
     for line in content:
@@ -42,7 +42,8 @@ def readCPUInfo():
         if line.startswith("model name"):
             model = line.split(":",1)[1].strip()
             currentCPU['Model'] = model
-
+    result.append(currentCPU)
+    
     return result
 
 
