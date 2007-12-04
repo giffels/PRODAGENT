@@ -619,7 +619,20 @@ class JobQueueDB:
         """ % timeInterval
         Session.execute(sqlStr)
         return
-        
+
+
+    def removeWorkflow(self, workflowSpecId):
+        """
+        _removeWorkflow_
+
+        Remove all jobs queued and released for the workflow spec id
+        provided
+
+        """
+        sqlStr = "delete from jq_queue where workflow_id=\"%s\";" % (
+            workflowSpecId,)
+        Session.execute(sqlStr)
+        return
         
     def retrieveJobsAtSitesNotWorkflow(self, count = 1, jobType = None,
                                        notWFL = None, *sites):
