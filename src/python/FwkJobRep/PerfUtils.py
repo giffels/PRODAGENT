@@ -42,7 +42,9 @@ def readCPUInfo():
         if line.startswith("model name"):
             model = line.split(":",1)[1].strip()
             currentCPU['Model'] = model
-    result.append(currentCPU)
+    
+    if currentCPU != None:
+        result.append(currentCPU)
     
     return result
 
