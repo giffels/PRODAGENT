@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.8 2007/10/26 10:08:34 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.8 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.9 2007/10/26 13:13:51 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.9 $"
 
 import time
 import os
@@ -715,8 +715,12 @@ class TrackingComponent:
 #                             time.gmtime(float(schedulerI['LAST_T'])))
 
         # create/update info file
-        logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-        dashboardInfo.write( dashboardInfoFile )
+        try :
+            dashboardInfo.write( dashboardInfoFile )
+            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
+        except :
+            logging.error("Error Creating dashboardInfoFile " \
+                          + dashboardInfoFile )
         
         # publish it
         try:
