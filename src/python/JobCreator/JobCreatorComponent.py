@@ -167,7 +167,7 @@ class JobCreatorComponent:
             os.makedirs(wfCache)
 
         wfBackup = os.path.join(wfCache, "%s-%s-Workflow.xml" % (
-            wfname, spec.payload.jobType)
+            wfname, spec.parameters['WorkflowType'])
                                 )
         spec.save(wfBackup)
         
