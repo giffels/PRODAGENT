@@ -118,10 +118,12 @@ class CMSSWRunResDB:
                            os.path.join("$PRODAGENT_JOB_DIR",
                                         taskObject['RuntimeDirectory'],
                                         "FrameworkJobReport.xml"))
-        runresComp.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
-                             self.doSizeMerge)
-        runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
-                             self.mergeThresh)
+
+        if taskObject['JobType'] == "Processing":
+            runresComp.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
+                               self.doSizeMerge)
+            runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
+                               self.mergeThresh)
         #  //
         # // Datasets
         #//
@@ -251,10 +253,12 @@ class BulkCMSSWRunResDB:
                            os.path.join("$PRODAGENT_JOB_DIR",
                                         taskObject['RuntimeDirectory'],
                                         "FrameworkJobReport.xml"))
-        runresComp.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
-                           self.doSizeMerge)
-        runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
-                           self.mergeThresh)
+
+        if taskObject['JobType'] == "Processing":
+            runresComp.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
+                               self.doSizeMerge)
+            runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
+                               self.mergeThresh)
         #  //
         # // Datasets
         #//
