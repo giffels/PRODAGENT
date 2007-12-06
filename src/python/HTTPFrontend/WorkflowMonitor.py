@@ -26,7 +26,7 @@ class WorkflowMonitor:
             html += "<h4>Workflow Owner: %s</h4>\n<ul>\n" % owner
             
             for workflow in workflowList:
-                html += "<li>%s</li>/n" % workflow
+                html += "<li>%s</li>\n" % workflow
             html += "</ul>\n"
             
         
@@ -37,5 +37,6 @@ class WorkflowMonitor:
 
         return html
     index.exposed = True
+
 
 

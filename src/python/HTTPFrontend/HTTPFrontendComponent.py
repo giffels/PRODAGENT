@@ -20,7 +20,9 @@ import ProdAgentCore.LoggingUtils as LoggingUtils
 
 from HTTPFrontend.WorkflowMonitor import WorkflowMonitor
 from HTTPFrontend.JobQueueMonitor import JobQueueMonitor
-from HTTPFrontend.MergeMonitor import MergeDatasetMonitor, MergeMonitor
+from HTTPFrontend.MergeMonitor import MergeDatasetMonitor, MergeMonitor, MergeGraph
+
+
 
 class Root:
     """
@@ -63,6 +65,16 @@ class Downloader:
     index.exposed = True
 
 
+class ImageServer:
+
+    def __init__(self, rootDir):
+        self.rootDir = rootDir
+
+    def index(self, filepath):
+        pathInCache = os.path.join(self.rootDir, filepath)
+        logging.debug("ImageServer serving file: %s" % pathInCache)
+        return serve_file(pathInCache, content_type="image/png")
+    index.exposed = True
 
 class HTTPFrontendComponent:
 
@@ -80,7 +92,9 @@ class HTTPFrontendComponent:
         [ self.args.__setitem__(x, int(self.args[x])) for x in [
             'Port', 'ThreadPool'] ]
 
-        
+        self.staticDir = os.path.join(self.args['ComponentDir'], "static")
+        if not os.path.exists(self.staticDir):
+            os.makedirs(self.staticDir)
         
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
@@ -118,15 +132,27 @@ class HTTPFrontendComponent:
         "server.thread_pool" :  self.args['ThreadPool'],
         }})
         
+        
+        
         root = Root()
         root.download = Downloader(self.args['JobCreatorCache'])
+        root.images = ImageServer(self.staticDir)
         root.workflows = WorkflowMonitor()
         root.jobqueue = JobQueueMonitor()
         root.mergedataset = MergeMonitor()
+        root.mergedgraph = MergeGraph(
+            "http://%s:%s/images" % (
+            self.args['Host'], self.args['Port']),
+            self.staticDir)
         root.merges = MergeDatasetMonitor(
             "http://%s:%s/mergedataset" % (
+            self.args['Host'], self.args['Port']),
+            "http://%s:%s/mergedgraph" % (
             self.args['Host'], self.args['Port'])
+            
+
             )
-        cherrypy.quickstart(root)
+
         
+        cherrypy.quickstart(root)
         
