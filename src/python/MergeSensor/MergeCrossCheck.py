@@ -73,7 +73,14 @@ class MergeSensorCrossCheck:
 
         """
         filelist = self.mergeDB.getUnmergedFileList(self.datasetId)
-        return [ x['name'] for x in filelist]
+        result = []
+        for block in filelist:
+            for filedata in block[1]:
+                result.append(filedata['name'])
+                
+                
+        
+        return result
         
     def getFileMap(self):
         """
