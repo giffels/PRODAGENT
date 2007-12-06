@@ -70,6 +70,7 @@ for d in mergeDatasets:
         mergeDB.removeDataset(d.name()) 
     except Exception, ex:
         print "Skipping %s: %s" % (d, ex)
+mergeDB.commit()
 
 Session.commit_all()
 Session.close_all()
