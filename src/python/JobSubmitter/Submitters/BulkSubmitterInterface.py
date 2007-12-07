@@ -166,6 +166,7 @@ class BulkSubmitterInterface:
         outdata = errdata = ''
         outeof = erreof = 0
         stdoutBuffer = ""
+        stderrBuffer = ""
         while 1:
             ready = select.select([outfd,errfd],[],[]) # wait for input
             if outfd in ready[0]:
@@ -176,6 +177,7 @@ class BulkSubmitterInterface:
             if errfd in ready[0]:
                 errchunk = errfile.read()
                 if errchunk == '': erreof = 1
+                stderrBuffer += errchunk
                 sys.stderr.write(errchunk)
             if outeof and erreof: break
             select.select([],[],[],.1) # give a little time for buffers to fill
@@ -184,17 +186,19 @@ class BulkSubmitterInterface:
             exitCode = child.poll()
         except Exception, ex:
             msg = "Error retrieving child exit code: %s\n" % ex
-            msg = "while executing command:\n"
+            msg += "while executing command:\n"
             msg += command
+            msg += "\n"
             logging.error("BulkSubmitterInterface:Failed to Execute Command")
             logging.error(msg)
             raise RuntimeError, msg
-        
         if exitCode:
             msg = "Error executing command:\n"
             msg += command
+            msg += "\n"
             msg += "Exited with code: %s\n" % exitCode
-            logging.error("SubmitterInterface:Failed to Execute Command")
+            msg += "Returned stderr: %s\n" % stderrBuffer
+            logging.error("BulkSubmitterInterface:Failed to Execute Command")
             logging.error(msg)
             raise RuntimeError, msg
         return  stdoutBuffer
