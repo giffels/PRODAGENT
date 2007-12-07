@@ -178,7 +178,7 @@ class JobSpecExpander:
         self.jobSpecNode.loadConfiguration()
         cfgInt = self.jobSpecNode.cfgInterface
 
-        from FWCore.ParameterSet.Config import Process
+        from FWCore.ParameterSet.Config import Process, EndPath
         from FWCore.ParameterSet.Modules import OutputModule, Source
         import FWCore.ParameterSet.Types as CfgTypes
 
@@ -199,7 +199,7 @@ class JobSpecExpander:
 
         process.Merged.catalog = CfgTypes.untracked(CfgTypes.string(
             outMod['catalog']))
-
+        process.outputPath = EndPath(process.Merged)
         cfgDump = open("CfgFileDump.log", 'w')
         cfgDump.write(process.dumpConfig())
         cfgDump.close()
