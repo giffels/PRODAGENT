@@ -105,6 +105,42 @@ class NoFileBlock(exceptions.Exception):
    """ Return exception error. """
    return "%s" % (self.args)
                                                                                               
+# ##############
+def getFastMergeConfig():
+        """
+        Extract the FastMerge information from the prod agent config
+        """
+        fastMerge = None 
+        try:
+            config = loadProdAgentConfiguration()
+        except StandardError, ex:
+            msg = "Error reading configuration:\n"
+            msg += str(ex)
+            logging.error(msg)
+            raise RuntimeError, msg
+
+        if not config.has_key("MergeSensor"):
+            msg = "Configuration block MergeSensor is missing from $PRODAGENT_CONFIG"
+            logging.error(msg)
+        try:
+             fastMergeConfig = config.getConfig("MergeSensor")['FastMerge']
+        except StandardError, ex:
+            msg = "Error reading FastMerge configuration for MergeSensor:\n"
+            msg += str(ex)
+            logging.error(msg)
+
+        if fastMergeConfig == None or \
+           fastMergeConfig == "NO" or \
+           fastMergeConfig == "no" or \
+           fastMergeConfig == "No" or \
+           fastMergeConfig == "" or \
+           fastMergeConfig == "False" or \
+           fastMergeConfig == 'false':
+            fastMerge = False
+        else:
+            fastMerge = True
+
+        return fastMerge
 
 # ##############
 def getGlobalDBSDLSConfig():
@@ -489,7 +525,7 @@ class DBSComponent:
         # //  Create Merged Datasets for that workflow as well
         #//
         logging.info(">>>>> create Merged Dataset ")
-        dbswriter.createMergeDatasets(workflowSpec)
+        dbswriter.createMergeDatasets(workflowSpec,getFastMergeConfig())
         return
 
 
