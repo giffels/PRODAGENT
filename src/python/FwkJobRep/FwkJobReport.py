@@ -42,6 +42,7 @@ class FwkJobReport:
         self.generatorInfo = {}
         self.dashboardId = None
         self.performance = PerformanceReport()
+        self.removedFiles = {}
 
     def wasSuccess(self):
         """
@@ -127,6 +128,18 @@ class FwkJobReport:
         return newError
     
 
+    def addRemovedFile(self, lfn, seName):
+        """
+        _addRemovedFile_
+
+        Add a record of a removed file, providing the LFN
+        and the SEName where the file was removed
+
+        """
+        self.removedFiles[lfn] = seName
+        return
+    
+
     def save(self):
         """
         _save_
@@ -195,6 +208,13 @@ class FwkJobReport:
             result.addNode(IMProvNode("SkippedFile", None,
                                       Pfn = skipped['Pfn'],
                                       Lfn = skipped['Lfn']))
+
+        #  //
+        # // Save Removed Files
+        #//
+        for remLfn, remSE in self.removedFiles.items():
+            result.addNode(IMProvNode("RemovedFile", remLfn, SEName=remSE))
+        
         
         #  //
         # // Save Errors
@@ -310,6 +330,13 @@ class FwkJobReport:
         
         [ self.addSkippedFile(skipF.attrs['Pfn'], skipF.attrs['Lfn']) 
           for skipF in skipFileQ(improvNode) ]
+
+        #  //
+        # // removed files
+        #//
+        remFileQ = IMProvQuery("/FrameworkJobReport/RemovedFile")
+        [ self.addRemovedFile(str(remF.chardata), remF.attrs['SEName'])
+          for remF in remFileQ(improvNode) ]
         
         #  //
         # // Timing, Storage and generator info
@@ -344,4 +371,6 @@ class FwkJobReport:
         return
 
         
+
+
 
