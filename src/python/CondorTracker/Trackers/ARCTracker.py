@@ -154,11 +154,14 @@ class ARCTracker(TrackerPlugin):
             jobs = self.getAllJobIDs()
             ids = ""
             for id in jobs.keys():
-                ids += " " + id.strip()
+                ids += id.strip() + " "
+
         else:
             ids = jobSpecId
 
-        logging.debug("getJobStatus: Id:s to check: '%s'" % ids)
+        msg = "getJobStatus: Id:s to check:\n -> " + ids.strip().replace(" ", "\n -> ")
+        logging.debug(msg)
+
         if len(ids.strip()) > 0:
             output = executeCommand("ngstat " + ids)
         else:
@@ -170,7 +173,7 @@ class ARCTracker(TrackerPlugin):
 
             if fields[0].strip() == "Job information not found":
                 # There are basically two reasons why we can get a "Job
-                # information not found" response; either the job was
+                # information not found" response: either the job was
                 # submitted so recently that the middleware hasn't had time
                 # to register it, or something has gone terribly wrong at
                 # the CE (in which case the job is likely to be lost).
@@ -183,19 +186,17 @@ class ARCTracker(TrackerPlugin):
                     status[id] = StatusCodes["ACCEPTING"]
                 else:
                     status[id] = StatusCodes["FAILED"]
-                logging.debug("Information for job %s was not found; it's assumed to be in state %s" % (id, status[id]))
+
+                msg = "Information for job %s was not found;\n" % id
+                msg += " -> it's assumed to be in state %s" % status[id]
+                logging.debug(msg)
 
             elif fields[0].strip() == "Job Name":
                 id = fields[1].strip()
             elif fields[0].strip() == "Status":
-                #s = fields[1].strip()
-                # In case the status has a ':', e.g. INLRMS:Q, we need to
-                # (re)-join them:
-                #for w in fields[2:]:
-                #    s += ":" + w.strip()
                 s = ":".join(fields[1:]).strip()
-
-                status[id] = StatusCodes[s]
+                if s in StatusCodes.keys(): 
+                    status[id] = StatusCodes[s]
                 logging.debug("Status for job %s is %s" % (id, s))
 
         return status
@@ -204,6 +205,10 @@ class ARCTracker(TrackerPlugin):
     def getAllJobIDs(self):
         """
         Return a {jobSpecId: arcId} dictionary containing all our jobs
+
+        Note that it's is possible that there are several jobs of the same
+        name (jobSpecId:s). In that case, only the last (i.e. newest) one
+        will be used.
 
         """
         home = os.environ.get("HOME")
@@ -221,7 +226,7 @@ class ARCTracker(TrackerPlugin):
 
 
 
-    def getJobReport(self,dir,jobSpecId):
+    def getJobReport(self,localDir,jobSpecId):
         """
         Get the FrameworkJobReport.xml file for job 'jobSpecId' by ngcp and put
         it in firectory 'dir'.  Return the path to the local copy of the file,
@@ -231,22 +236,23 @@ class ARCTracker(TrackerPlugin):
 
         jobs = self.getAllJobIDs()
         if jobSpecId not in jobs.keys():
-            logging.debug("getReportFromARC: Couldn't find job " + jobSpecId)
+            logging.debug("getJobReport: Couldn't find job " + jobSpecId)
             return None
 
+        # Let's assume that 'jobSpecId' has the form '<subdirectory>-<number>'
+        subDir = jobSpecId[0:jobSpecId.rindex("-")]
         arcId = jobs[jobSpecId]
-        s = sys.system("ngcp %s/%s/FrameworkJobReport.xml %s/" % \
-                        (arcId,jobSpecId,dir))
+        ngcp = "ngcp %s/%s/FrameworkJobReport.xml %s/" % (arcId,subDir,localDir)
+        logging.debug("getJobReport: " + ngcp)
+        s = os.system(ngcp)
         if s != 0:
-            logging.info("getReportFromARC: Report File Not Found for " \
-                         + jobSpecId)
+            logging.warning("getJobReport: Report File Not Found for " \
+                            + jobSpecId)
             return None
 
-        logging.info("getReportFromARC: Report file for %s copied to %s" % \
-                      (jobSpecId, dir))
-        return dir + "/FrameworkJobReport.xml"
-
-
+        logging.debug("getJobReport: Report file for %s copied to %s" % \
+                      (jobSpecId, localDir))
+        return localDir + "/FrameworkJobReport.xml"
 
 
     def updateSubmitted(self, *submitted):
@@ -364,7 +370,8 @@ class ARCTracker(TrackerPlugin):
 
         summary = "Jobs Completed:\n"
         for compId in complete:
-            summary += " -> %s\n" % compId
+            report = self.findJobReport(compId)
+            summary += " -> %s\n --> report: %s\n" % (compId, report)
         logging.info(summary)
         return
 
@@ -382,7 +389,8 @@ class ARCTracker(TrackerPlugin):
         summary = "Jobs Failed:\n"
         for compId in failed:
             summary += " -> %s\n" % compId
-        logging.info(summary)
+            os.system("ngclean " + compId)
+        logging.debug(summary)
         return
 
         
@@ -390,9 +398,9 @@ class ARCTracker(TrackerPlugin):
         """
         _findJobReport_
         
-        Given a job spec Id, find the location of the job report file if it exists.
-        Return the path of the file.  If not found, return None
-        
+        Given a job spec Id, find the location of the job report file if it
+        exists.  Return the path of the file.  If not found, return None
+
         """
         cache = self.getJobCache(jobSpecId)
         logging.debug("findJobReport, cache: " + str(cache))
