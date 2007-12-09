@@ -8,9 +8,12 @@ Runtime binary file for CleanUp type nodes
 import sys
 import os
 from FwkJobRep.TaskState import TaskState, getTaskState
-
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 import StageOut.Impl
 from StageOut.Registry import retrieveStageOutImpl
+from FwkJobRep.FwkJobReport import FwkJobReport
+from FwkJobRep.MergeReports import mergeReports
+
 
 class CleanUpSuccess(Exception):
     """
@@ -100,9 +103,25 @@ class CleanUpManager:
         List of LFNs is provided in the RunResDB for this node
 
         """
+
+        #Retriving list of lfn's from Jobspec
+ 
+        jobSpecFile = os.environ.get("PRODAGENT_JOBSPEC",None)
+        
+        jobSpecInstance = JobSpec()
+        jobSpecInstance.load(jobSpecFile)
+        
+
+        print jobSpecInstance.payload.configuration
+        
+        lfnList = jobSpecInstance.payload.configuration.split()
+              
+ 
+          
         msg = "Cleaning up list of files:\n"
 
-        lfnList = self.config.get("RemoveLFN", [])
+        #lfnList = self.config.get("RemoveLFN", [])
+          
         if len(lfnList) == 0:
             msg += "No Files Found in Configuration!!!"
 
@@ -164,6 +183,7 @@ class CleanUpManager:
             raise RuntimeError, msg
         msg = "Stage Out Implementation to be used for cleanup is:"
         msg += "%s" % self.implName
+        print msg
         
         
 
@@ -239,6 +259,9 @@ class CleanUpManager:
         # //  Invoke StageOut Impl removeFile method
         #//
         try:
+            print ("====PFN======================================================")
+            print pfn
+            return
             implInstance.removeFile(pfn)
         except Exception, ex:
             msg = "Error performing Cleanup command for impl "
@@ -261,11 +284,18 @@ def cleanUp():
     Main program
 
     """
+   
+    #jobSpecFile = os.environ.get("PRODAGENT_JOBSPEC",None)      
+    #print jobSpecFile
     
     state = TaskState(os.getcwd())
     state.loadRunResDB()
+    state.loadJobSpecNode()
+
     try:
+        
         config = state._RunResDB.toDictionary()[state.taskAttrs['Name']]
+         
     except StandardError, ex:
         msg = "Unable to load details from task directory:\n"
         msg += "Error reading RunResDB XML file:\n"
@@ -281,20 +311,70 @@ def cleanUp():
     #  //
     # // find inputs by locating the task for which we are staging out
     #//  and loading its TaskState
-    inputTask = config['CleanUpParameters']['CleanUpFor'][0]
-    inputState = getTaskState(inputTask)
-    
+    cleanUpParam = config.get('CleanUpParameters',{})
+    cleanUpFor = cleanUpParam.get('CleanUpFor',None)
+    inputState = None
+    if cleanUpFor != None:
+      inputTask = config['CleanUpParameters']['CleanUpFor'][0]
+      inputState = getTaskState(inputTask)        
     
     manager = CleanUpManager(state, inputState)
     exitCode = manager()
+    #processCleanUpJobReport(state)  
+
     return exitCode
+
+
+
+
+
+
+def processCleanUpJobReport():
+  """
+  _processCleanUpJobReport_
+
+  Arguments:
+       None
+  Return:
+       None
+
+  """
+    
+  # // Retrieving TaskState and then loading RunResDB and JobSpec Node 
+  state = TaskState(os.getcwd())
+  state.loadRunResDB()
+  state.loadJobSpecNode()
+
+  #  //
+  # //  Generate a report
+  #//
+  report = FwkJobReport()
+  report.name = "cleanUp"
+  report.status = "Success"
+  report.exitCode = state.getExitStatus()
+  report.jobSpecId = state.jobSpecNode.jobName
+  report.jobType = state.jobSpecNode.jobType
+  report.workflowSpecId = state.jobSpecNode.workflow
+
+  report.write("./FrameworkJobReport.xml")
+
+  #  //
+  # // Ensure this report gets added to the job-wide report
+  #//
+  toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],"FrameworkJobReport.xml")
+  newReport = os.path.join(os.getcwd(), "FrameworkJobReport.xml")
+  mergeReports(toplevelReport, newReport)
+
+
 
 
 if __name__ == '__main__':
     print "RuntimeCleanUp invoked..."
     exitCode = cleanUp()
+    
     f = open("exit.status", 'w')
     f.write(str(exitCode))
     f.close()
+    processCleanUpJobReport()
     sys.exit(exitCode)
-    
+     
