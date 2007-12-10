@@ -88,21 +88,27 @@ class T0LSFMonitor(MonitorInterface):
                 # NOTE: might not work for ProdMgr jobs (not used for Tier0, so no problem)
                 jobInfo = Job.get(jobId)
 
-                jobType = jobInfo['job_type']
-                workflowId = jobInfo['workflow_id']
+                if jobInfo != None:
 
-                logging.debug("Found job %s from workflow %s" % (jobId,workflowId))
+                    jobType = jobInfo['job_type']
+                    workflowId = jobInfo['workflow_id']
 
-                if ( jobType == 'Processing' ):
-                    if self.allSites.has_key(defaultSiteName):
-                        jobCountOverall[0] += 1
-                    elif jobCountByWorkflow.has_key(workflowId):
-                        jobCountByWorkflow[workflowId][0] += 1
-                elif ( jobType == 'Merge' ):
-                    if self.allSites.has_key(defaultSiteName):
-                        jobCountOverall[1] += 1
-                    elif jobCountByWorkflow.has_key(workflowId):
-                        jobCountByWorkflow[workflowId][1] += 1
+                    logging.debug("Found job %s from workflow %s" % (jobId,workflowId))
+
+                    if ( jobType == 'Processing' ):
+                        if self.allSites.has_key(defaultSiteName):
+                            jobCountOverall[0] += 1
+                        elif jobCountByWorkflow.has_key(workflowId):
+                            jobCountByWorkflow[workflowId][0] += 1
+                        elif ( jobType == 'Merge' ):
+                            if self.allSites.has_key(defaultSiteName):
+                                jobCountOverall[1] += 1
+                            elif jobCountByWorkflow.has_key(workflowId):
+                                jobCountByWorkflow[workflowId][1] += 1
+
+                else:
+                    logging.debug("No job %s found in WE table" % jobId)
+
 
         if self.allSites.has_key(defaultSiteName):
             logging.info("Number of processing jobs is %d" % jobCountOverall[0])
