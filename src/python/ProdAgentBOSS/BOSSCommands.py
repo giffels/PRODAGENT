@@ -7,8 +7,8 @@ and in general with OS and scheduler features
 
 """
 
-__revision__ = "$Revision: 1.14.2.6 $"
-__version__ = "$Id: BOSSCommands.py,v 1.14.2.6 2007/10/26 15:56:55 gcodispo Exp $"
+__revision__ = "$Revision: 1.14.2.7 $"
+__version__ = "$Id: BOSSCommands.py,v 1.14.2.7 2007/11/21 13:24:47 gcodispo Exp $"
 
 import time
 from popen2 import Popen4
@@ -1159,10 +1159,13 @@ def archive(jobId, bossCfgDir):
 #     job = bossTask.Job( chainid )
 #     job.archive()
 
-    outfile = executeCommand(
-        "boss archive -taskid " + taskid + " -jobid " + chainid \
-        + " -c " + bossCfgDir
-        )
+    try :
+        outfile = executeCommand(
+            "boss archive -taskid " + taskid + " -jobid " + chainid \
+            + " -c " + bossCfgDir
+            )
+    except :
+        outfile = 'Error'
 
     return outfile
 
@@ -1191,11 +1194,14 @@ def Delete(jobId, bossCfgDir):
     # execute query
     (adminSession, out) = BOSS.performBossQuery(adminSession, query)
 
-    out = executeCommand(
-        "boss archive -taskid " + taskid + " -jobid " + chainid \
-        + " -c " + bossCfgDir
-        )
-
+    try :
+        out = executeCommand(
+            "boss archive -taskid " + taskid + " -jobid " + chainid \
+            + " -c " + bossCfgDir
+            )
+    except:
+        out = 'Error'
+        
 #    out = executeCommand(
 #        "boss archive -taskid " + taskid + " -jobid " + chainid \
 #        + " -force -c " + bossCfgDir
@@ -1258,6 +1264,9 @@ def guessDashboardInfo(jobId, jobSpecId, bossCfgDir):
                           dashboardInfoFile + " failed (jobId=" \
                           + str(jobId) + ")\n" + str(msg))
             return dashboardInfo, ''
+        except:
+            return dashboardInfo, ''
+
     else :
         # if this is a crab job read from mlCommonInfo
         tmpdict = {}
