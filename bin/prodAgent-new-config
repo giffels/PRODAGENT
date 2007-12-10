@@ -186,6 +186,7 @@ componentFields = {
     "BOSSPATH" : None,
     "BOSSVERSION" : None,
     "PollInterval" : 10,
+    "QueryInterval" : 300,
     "jobsToPoll" : 100,
     "PoolThreadsSize" : 5,
     "RssFeed": "no",
