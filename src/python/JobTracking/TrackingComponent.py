@@ -17,31 +17,29 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.9 2007/10/26 13:13:51 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.9 $"
+__revision__ = "$Id$"
+__version__ = "$Revision$"
 
 import time
 import os
-from shutil import copy
-from shutil import rmtree
 import logging
 from copy import deepcopy
 
 # PA configuration
 from MessageService.MessageService import MessageService
 from ProdCommon.Database import Session
-from ProdAgent.WorkflowEntities import JobState
-from ProdAgent.WorkflowEntities import Job as WEJob
 from ProdAgentDB.Config import defaultConfig as dbConfig
-from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 from ProdAgentBOSS import BOSSCommands
 from ProdAgentBOSS.BOSSCommands import BOSS
 import ProdAgentCore.LoggingUtils as LoggingUtils
+from GetOutput.TrackingDB import TrackingDB
+from ProdCommon.Database.MysqlInstance import MysqlInstance
+from ProdCommon.Database.SafeSession import SafeSession
+from GetOutput.JobOutput import JobOutput
+from JobTracking.JobHandling import JobHandling
 
 # Framework Job Report handling
-from FwkJobRep.ReportState import checkSuccess
 from FwkJobRep.FwkJobReport import FwkJobReport
-from FwkJobRep.ReportParser import readJobReport
 
 # Threads pool
 from JobTracking.PoolScheduler import PoolScheduler
@@ -72,6 +70,7 @@ class TrackingComponent:
         self.args.setdefault("configDir", None)
         self.args.setdefault("ProdAgentWorkDir", None)
         self.args.setdefault("PoolThreadsSize", 5)
+        self.args.setdefault("GetOutputPoolThreadsSize", 5)
         self.args.setdefault("Logfile", None)
         self.args.setdefault("verbose", 0)
         self.args.setdefault("JobCreatorComponentDir", None)
@@ -86,6 +85,7 @@ class TrackingComponent:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'], \
                                                 "ComponentLog")
         LoggingUtils.installLogHandler(self)
+        logging.getLogger().setLevel(logging.DEBUG)
 
         logging.info("JobTracking Component Initializing...")
 
@@ -105,6 +105,7 @@ class TrackingComponent:
         # get configuration information
         workingDir = self.args['ProdAgentWorkDir'] 
         workingDir = os.path.expandvars(workingDir)
+        self.componentDir = self.args['ComponentDir']
 
         # get BOSS configuration, set directory and verbose mode
         self.bossCfgDir = self.args['configDir'] 
@@ -117,6 +118,9 @@ class TrackingComponent:
 
         # set BOSS path
         BOSS.setBossCfgDir(self.bossCfgDir)
+
+        # initialize job handling
+        self.jobHandling = None
 
         # compute delay for get output operations
         sleepTime = int(self.args['QueryInterval'])
@@ -143,9 +147,19 @@ class TrackingComponent:
         self.database = dbConfig
         self.bossDatabase = deepcopy(dbConfig)
         self.bossDatabase['dbName'] += "_BOSS"
+        self.bossDatabase['dbType'] = 'mysql'
+        self.activeJobs = self.bossDatabase['dbName'] + ".jt_activejobs"
+        self.dbInstance = MysqlInstance(self.bossDatabase)
 
         # initialize Session
         Session.set_database(dbConfig)
+        Session.connect()
+
+        # set parameters for getoutput operations
+        params = {}
+        params['bossCfgDir'] = self.bossCfgDir
+        params['dbInstance'] = self.dbInstance
+        JobOutput.setParameters(params)
 
         # build submitted jobs structure
         self.submittedJobs = self.loadDict()
@@ -195,9 +209,13 @@ class TrackingComponent:
 
         # build query 
         query = """
-        select TASK_ID,CHAIN_ID,ID,STATUS from JOB
-        WHERE STATUS in ('OR', 'SD')
-        order by TASK_ID,CHAIN_ID
+        select JOB.TASK_ID, JOB.CHAIN_ID, JOB.ID, JOB.STATUS
+          from JOB LEFT JOIN jt_activejobs
+                         on jt_activejobs.job_id=
+                            concat(JOB.TASK_ID, '.', JOB.CHAIN_ID, '.', JOB.ID)
+         where JOB.STATUS in ('OR', 'SD')
+               and (jt_activejobs.status="output_not_requested"
+                    or jt_activejobs.status is NULL)
         """
 
         return self.pollBossDB( query )
@@ -245,7 +263,7 @@ class TrackingComponent:
         # build query 
         query = """
         select TASK_ID,CHAIN_ID,ID,STATUS from JOB
-        WHERE STATUS not in ('A', 'SA', 'K', 'SK', 'OR', 'SD')
+        WHERE (STATUS not in ('A', 'SA', 'K', 'SK', 'OR', 'SD'))
         order by TASK_ID,CHAIN_ID
         """
         jobs = self.pollBossDB( query )
@@ -266,9 +284,12 @@ class TrackingComponent:
                    and status not in [ 'S', 'W', 'SU', 'SW' ] :
 
                 # no, publish information to dashboard
-                self.dashboardPublish(
-                    jid, BOSSCommands.jobSpecId(jid, self.bossCfgDir)
-                    )
+                try:
+                    self.dashboardPublish(
+                        jid, BOSSCommands.jobSpecId(jid, self.bossCfgDir)
+                        )
+                except Exception, msg:
+                    logging.error("Cannot publish to dashboard:%s" % msg)
 
             # include job in current structure
             submittedJobs[jid] = 0
@@ -366,8 +387,10 @@ class TrackingComponent:
         # get finished and failed jobs and handle them
         # finishedJobs, failedJobs = self.pollBossDb()
         finishedJobs = self.pollFinished()
+        logging.debug("FINISHED JOBS: %s" % str(finishedJobs))
         self.handleFinished(finishedJobs)
         failedJobs = self.pollFailed()
+        logging.debug("FAILED JOBS: %s" % str(failedJobs))
         self.handleFailed(failedJobs)
         self.pollNewJobs()
 
@@ -407,7 +430,11 @@ class TrackingComponent:
                                                          self.directory)
 
             # publish information to the dashboard
-            self.dashboardPublish(jobId[0], jobSpecId)
+            try:
+                self.dashboardPublish(jobId[0], jobSpecId)
+            except Exception, msg:
+                logging.error("Cannot publish to dashboard:%s" % msg)
+
 
             # create directory
             directory = os.path.dirname(reportfilename)
@@ -440,7 +467,7 @@ class TrackingComponent:
             BOSSCommands.archive(jobId[0], self.bossCfgDir)
 
             # generate a failure message
-            self.jobFailed(jobId, reportfilename)
+            self.jobHandling.publishJobFailed(jobId, reportfilename)
 
     def handleFinished(self, finishedJobs):
         """
@@ -469,173 +496,24 @@ class TrackingComponent:
                 continue
 
             # publish information to the dashboard
-            self.dashboardPublish(jobId[0], jobSpecId)
+            try:
+                self.dashboardPublish(jobId[0], jobSpecId)
+            except Exception, msg:
+                logging.error("Cannot publish to dashboard:%s" % msg)
+
 
             # perform the get output operation
-            jobInfo = {'jobId' : jobId,
+            jobInfo = {'jobId' : jobId[0],
                        'jobSpecId' : jobSpecId,
                        'directory' : self.directory,
-                       'configDir' : self.bossCfgDir }
+                       'bossStatus' : jobId[1],
+                       'output' : None}
 
-            jobInfo['output'] = self.getOutput(jobInfo)
+            # enqueue the get output operation
+            logging.debug("Enqueing getoutput request for %s" % str(jobId))
 
-            # process the output
-            self.processOutput(jobInfo)
+            JobOutput.requestOutput(jobInfo)
                 
-        return
-
-    def getOutput(self, jobInfo):
-        """
-        _getOutput_
-
-        perform the real get output operation
-
-        """
-
-        # get job information
-        jobId = jobInfo['jobId']
-        directory = jobInfo['directory']
-        configDir = jobInfo['configDir']
-
-        #  get output, trying at most maxGetOutputAttempts
-        retry = 0
-        while retry < self.maxGetOutputAttempts:
-
-            # perform get output operation
-            try:
-                outp = BOSSCommands.getoutput( jobId[0], directory, configDir )
-                break
-
-            # error
-            except StandardError, msg:
-                logging.error(str(msg))
-                outp = "error"
-                retry += 1
-
-        logging.debug("BOSS Getoutput: " + outp)
-
-        # build return value:
-        return outp
-
-
-    def processOutput(self, jobInfo):
-        """
-        _processOutput_
-
-        process the output of a job and notify execution failure or success
-
-        """
-
-        # get job information
-        jobId = jobInfo['jobId']
-        jobSpecId = jobInfo['jobSpecId']
-        outp = jobInfo['output']
-
-        # successful output retrieval?
-        if outp.find("-force") < 0 and \
-           outp.find("error") < 0 and \
-           outp.find("already been retrieved") < 0:
-
-            # yes, get report file name
-            reportfilename = BOSSCommands.reportfilename(jobId[0], \
-                                                         self.directory)
-            logging.debug("report file name %s exists: %s" % \
-                (reportfilename, os.path.exists(reportfilename)))
-
-            # job status
-            success = False
-
-            # is the FwkJobReport there?
-            if os.path.exists(reportfilename):
-
-                # check success
-                success = checkSuccess(reportfilename)
-                logging.debug("check Job Success: %s" % str(success))
-
-            # FwkJobReport not there: create one based on BOSS DB
-            else:
-
-                # check success
-                success = BOSSCommands.checkSuccess(jobId[0], \
-                                                    self.bossCfgDir)
-                logging.debug("check Job Success: %s" % str(success))
-
-                # create BOSS based Framework Job Report
-                fwjr = FwkJobReport()
-                fwjr.jobSpecId = jobSpecId
-                reportfilename = BOSSCommands.reportfilename(jobId[0], \
-                                                         self.directory)
-
-                # job successful even if job report is not there
-                if success:
-
-                    # set success status
-                    logging.info("Created successful report for %s" % \
-                                    jobId.__str__())
-                    fwjr.status = "Success"
-                    fwjr.exitCode = 0
-
-                # job failed
-                else:
-
-                    # set failed status
-                    fwjr.status = "Failed"
-                    fwjr.exitCode = -1
-
-                try:
-                    os.makedirs( os.path.dirname(reportfilename) )
-                except OSError:
-                    pass
-
-                # store job report
-                fwjr.write(reportfilename)
-                
-            # in both cases: is the job successful?
-            if success:
-
-                # yes, generate a job successful message and change status
-                self.jobSuccess(jobId, reportfilename)
-                self.notifyJobState(jobSpecId)
-
-            else:
-
-                # no, generate a job failure message
-                self.jobFailed(jobId, reportfilename)
-
-        # else if output retrieval failed
-        elif outp.find("Unable to find output sandbox file:") >= 0 \
-                 or outp.find("Error retrieving Output") >= 0 \
-                 or outp.find("Error extracting files ") >= 0 :
-
-            logging.debug("Job " + jobId.__str__() + \
-                          " has no FrameworkReport : creating a dummy one")
-
-            # create job report
-            fwjr = FwkJobReport()
-            fwjr.jobSpecId = jobSpecId
-            reportfilename = BOSSCommands.reportfilename(jobId[0], \
-                                                            self.directory)
-            fwjr.exitCode = -1
-            fwjr.status = "Failed"
-
-            try:
-                os.makedirs( os.path.dirname(reportfilename) )
-            except OSError:
-                pass
-
-            # store job report
-            fwjr.write(reportfilename)
-
-            # archive job, forcing a deleted status in the BOSS DB
-            BOSSCommands.Delete(jobId[0], self.bossCfgDir)
-
-            # generate a failure message
-            self.jobFailed(jobId, reportfilename)
-            
-        # other problem... just display error                            
-        else:
-            logging.error(outp)
-
         return
 
     def dashboardPublish(self, jobId, jobSpecId):
@@ -715,12 +593,8 @@ class TrackingComponent:
 #                             time.gmtime(float(schedulerI['LAST_T'])))
 
         # create/update info file
-        try :
-            dashboardInfo.write( dashboardInfoFile )
-            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-        except :
-            logging.error("Error Creating dashboardInfoFile " \
-                          + dashboardInfoFile )
+        logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
+        dashboardInfo.write( dashboardInfoFile )
         
         # publish it
         try:
@@ -733,293 +607,6 @@ class TrackingComponent:
                           dashboardInfo.__str__() + "\n" + str(msg))
 
         return
-
-
-    def notifyJobState(self, jobId):
-        """
-        _notifyJobState_
-
-        Notify the JobState DB of finished jobs
-        """
-
-        # set finished job state
-        try:
-            JobState.finished(jobId)
-            Session.commit()
-
-        # error
-        except StandardError, ex:
-            msg = "Error setting job state to finished for job: %s\n" \
-                  % jobId 
-            msg += str(ex)
-            logging.error(msg)
-
-        return
-
-    def jobSuccess(self, jobId, reportfilename):
-        """
-        _jobSuccess_
-        
-        Set success status for the job on BOSS DB and publish a JobSuccess
-        event to the prodAgent
-        """
-
-        # set success job status
-        reportfilename = self.archiveJob("Success", jobId, reportfilename)
-
-        # publish success event
-        self.ms.publish("JobSuccess", reportfilename)
-        self.ms.commit()
-        
-        logging.info("Published JobSuccess with payload :%s" % \
-                     reportfilename)
-        return
-
-    def jobFailed(self, jobId, reportfilename):
-        """
-        _jobFailed_
-        
-        Set failure status for the job on BOSS DB and publish a JobFailed
-        event to the prodAgent
-        """
-        
-        # archive the job in BOSS DB
-        reportfilename = self.archiveJob("Failed", jobId, reportfilename)
-
-        # publish job failed event
-        self.ms.publish("JobFailed", reportfilename)
-        self.ms.commit()
-
-        logging.info("published JobFailed with payload: %s" % \
-                     reportfilename)
-           
-        return
-
-
-    def archiveJob(self, success, jobId, reportfilename):
-        """
-        _archiveJob_
-
-        Moves output file to archdir
-        """
-
-        # get resubmission count
-        try:
-            resub = jobId[0].split('.')[2]
-
-        except StandardError, msg:
-            logging.error("archiveJob for job %s failed: " % \
-                          (jobId[0], str(msg)))
-            return reportfilename
-        
-        # get directory information
-        lastdir = os.path.dirname(reportfilename).split('/').pop()
-        baseDir = os.path.dirname(reportfilename) + "/"
-
-        # get job report
-        fjr = readJobReport(reportfilename)
-
-        # fallback directory in JobTracking.
-        fallbackCacheDir = self.args['ComponentDir'] + "/%s" % fjr[0].jobSpecId
-
-        # try to get cache from JobState
-        try:
-            jobCacheDir = \
-                        JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
-
-        # error, cannot get cache location
-        except StandardError, ex:
-            msg = "Cannot get JobCache from JobState.general for %s\n" % \
-                  fjr[0].jobSpecId
-            msg += str(ex)
-            logging.warning(msg)
-
-            # try to get cache from WEJob
-            try: 
-                WEjobState = WEJob.get(fjr[0].jobSpecId)
-                jobCacheDir = WEjobState['cache_dir']
-
-            # error, cannot get cache location
-            except StandardError, ex:
-                msg = "Cant get JobCache from Job.get['cache_dir'] for %s" % \
-                      fjr[0].jobSpecId
-                msg += str(ex)
-                logging.warning(msg)
-
-                # try guessing the JobCache area based on jobspecId name
-                try:
-
-                    # split the jobspecid=workflow-run into workflow/run
-                    spec = fjr[0].jobSpecId
-                    end = spec.rfind('-')
-                    workflow = spec[:end]
-                    run = spec[end+1:]
-
-                    # additional split for PM jobspecid that are in the form
-                    # jobcut-workflow-run
-                    pmspec = workflow.find('jobcut-')
-                    if pmspec > 0:
-                        workflow = workflow[pmspec+7:]
-
-                    # build cache directory on JobCreator area
-                    jobCacheDir = "%s/%s/%s" % \
-                                  (self.jobCreatorDir, workflow, run)
-
-                    # if it does not exist, use fallback
-                    if not os.path.exists(jobCacheDir):
-                        jobCacheDir = fallbackCacheDir
-
-                # error, cannot get cache location
-                except StandardError, ex:
-
-                    # use fallback
-                    msg = "Cant guess JobCache in JobCreator dir" 
-                    msg += str(ex)
-                    logging.warning(msg)
-                    jobCacheDir = fallbackCacheDir
-
-        logging.debug("jobCacheDir = %s" % jobCacheDir)
-
-        # build path and report file name
-        newPath = jobCacheDir + "/JobTracking/" + success + "/" + lastdir + "/"
-
-        # create directory if not there
-        try:
-            os.makedirs(newPath)
-
-        except StandardError, msg:
-            logging.debug("cannot create directory %s: %s" % \
-                          (newPath, str(msg)))
-
-        # move report file
-        try:
-            copy(reportfilename, newPath)
-            os.unlink(reportfilename)
-
-        except StandardError, msg:
-            logging.error("failed to move %s to %s: %s" % \
-                          (reportfilename, newPath, str(msg)))
-
-        # using new report path
-        reportfilename = newPath + os.path.basename(reportfilename)
-        
-        # get other files
-        files = os.listdir(baseDir)
-        
-        # move all them
-        for f in files:
-
-            # get extension
-            try:
-                ext = os.path.splitext(f)[1]
-                ext = ext.split('.')[1]
- 
-            except StandardError:
-                ext = ""
-
-            # create directory
-            try:
-                os.makedirs(newPath + ext)
-
-            except StandardError, msg:
-                pass
-#                logging.error("failed to create directory %s: %s" % \
-#                              (newPath + ext, str(msg)))
-
-            # move file
-            try:
-                copy(baseDir+f, newPath+ext)
-                os.unlink(baseDir+f)
-
-            except StandardError, msg:
-                logging.error("failed to move %s to %s: %s" % \
-                              (baseDir + f, newPath + ext, str(msg)))
-
-        # remove original files
-        try:
-            os.rmdir(baseDir)
-            logging.debug("removing baseDir %s" % baseDir)
-
-        except StandardError, msg:
-            logging.error("error removing baseDir %s: %s" % \
-                          (baseDir, str(msg)))
-            
-        try:
-            chainDir = baseDir.split('/')
-            chainDir.pop()
-            chainDir.pop()
-            chainDir = "/".join(chainDir)
-            logging.debug("removing chainDir %s" % chainDir)
-            os.rmdir(chainDir)
-
-        except StandardError, msg:
-            logging.error("error removing chainDir %s: %s" % \
-                          (chainDir, str(msg)))
-
-        # get max retries from JobState
-        try:
-            jobMaxRetries = JobState.general(fjr[0].jobSpecId)['MaxRetries']
-
-        # does not work, try from Workflow entities
-        except StandardError:
-
-            try: 
-                jobMaxRetries = WEjobState['max_retries']
-
-            # assume a default value
-            except StandardError:
-                jobMaxRetries = 10
-
-        logging.debug("maxretries = %s and resub = %s\n" % \
-                      (jobMaxRetries,resub))
-
-        # remove directory tree for finished jobs or when there will not
-        # be resubmitted
-        if success == "Success" or int(jobMaxRetries) <= int(resub):
-
-            # get submission path
-            try:
-                subPath = BOSSCommands.subdir(jobId[0], self.bossCfgDir)
-
-            except StandardError:
-                subPath = ""
-
-            logging.debug("SubmissionPath: %s" % subPath)
-
-            # set status to ended
-            if BOSSCommands.taskEnded(jobId[0], self.bossCfgDir):
-
-                # remove directory tree
-                try:
-                    rmtree(subPath)
- 
-                # error, cannot remove files
-                except StandardError, msg:
-                    logging.error("Failed to remove files for job %s: %s" % \
-                                  (jobId, str(msg)))
-
-                    # remove ..id file,
-                    # so that re-declaration is possible if needed
-                try:
-                    os.remove(
-                        "%s/%sid" % (jobCacheDir,fjr[0].jobSpecId)
-                        )
-                except: 
-                    logging.info( "not removed file %s/%sid" \
-                                  % (jobCacheDir,fjr[0].jobSpecId)
-                                  )
-                    pass
-
-                # archive job
-                try:
-                    BOSSCommands.archive(jobId[0], self.bossCfgDir)
-
-                # error, cannot archive job
-                except StandardError, msg:
-                    logging.error("Failed to archive job %s: %s" % \
-                                  (jobId, str(msg)))
-
-        return reportfilename
 
     def updateDict(self, old, new):
         """
@@ -1037,54 +624,32 @@ class TrackingComponent:
         newJobs = set(new.keys())
         oldJobs = set(old.keys())
 
-        # get submitted jobs and lost jobs
+        # get newly submitted jobs 
         submittedJobs = newJobs.difference(oldJobs)
-        lostJobs = oldJobs.difference(newJobs)
-
-        # only update if there are changes
-        if len(submittedJobs) == 0 and len(lostJobs) == 0:
-            return oldJobs
-
-        # open database
-        Session.connect("bossdb")
-        Session.start_transaction("bossdb")
-
-        Session.execute("use " + self.bossDatabase['dbName'], "bossdb")
-
-        # remove lost jobs
-        numberOfJobs = len(lostJobs)
-
-        if numberOfJobs != 0:
-
-            # update DB
-            jobs = ",".join(["'" + str(x) + "'" for x in lostJobs])
-            query = "delete from jt_activejobs where job_id in (" + jobs + ")" 
-
-            rowsModified = Session.execute(query, "bossdb")
-
-            if rowsModified != numberOfJobs:
-                logging.warning("Only %s of %s jobs removed from activejobs" % \
-                                (rowsModified, numberOfJobs))
-
-        # add new jobs
         numberOfJobs = len(submittedJobs)
 
-        if numberOfJobs != 0:
+        # no new jos, nothing to do
+        if numberOfJobs == 0:
+            return
 
-            # update DB
-            jobs = ",".join(["('" + str(x) + "')" for x in submittedJobs])
-            query = "replace into jt_activejobs(job_id) values " + jobs
+        # build list
+        jobs = [x for x in submittedJobs]
 
-            rowsModified = Session.execute(query, "bossdb")
+        # create a session
+        
+        session = SafeSession(dbInstance = self.dbInstance)
+        db = TrackingDB(session)
 
-            if rowsModified != numberOfJobs:
-                logging.warning("Only %s of %s jobs updated activejobs" % \
-                                (rowsModified, numberOfJobs))
+        # add jobs
+        added = db.addJobs(jobs)
 
-        # commit changes and set back default DB
+        # commit changes
+        session.commit()
+        session.close()
 
-        Session.commit("bossdb")
-        Session.close("bossdb")
+        if added != numberOfJobs:
+            logging.warning("Only %s of %s jobs added" % \
+                                (added, numberOfJobs))
 
         return new
 
@@ -1092,25 +657,23 @@ class TrackingComponent:
         """
         _loadDict_
 
-        load information about active jobs from database
+        load information about jobs from database
         """
 
-        # build dictionary
-        activeJobs = {}
+        # create a session
+        session = SafeSession(dbInstance = self.dbInstance)
+        db = TrackingDB(session)
 
         # query database for active jobs information
-        Session.connect("bossdb")
+        jobs = db.getJobs("output_not_requested")
 
-        Session.execute("use " + self.bossDatabase['dbName'], "bossdb")
-        Session.execute("select job_id from jt_activejobs", "bossdb")
-        results = Session.fetchall("bossdb")
-        Session.execute("use " + self.database['dbName'], "bossdb")
-
-        Session.close("bossdb")
-
+        # close session
+        session.close()
+ 
         # add jobs to dictionary
-        for jobId in results:
-            activeJobs[jobId[0]] = 0
+        activeJobs = {}
+        for jobId in jobs:
+            activeJobs[jobId] = 0
 
         return activeJobs
 
@@ -1138,12 +701,17 @@ class TrackingComponent:
         self.ms.publish("TrackingComponent:pollDB", "")
         self.ms.commit()
 
+        # initialize job handling object
+        params = {}
+        params['bossCfgDir'] = self.bossCfgDir
+        params['baseDir'] = self.componentDir
+        params['jobCreatorDir'] = self.jobCreatorDir
+        params['usingDashboard'] = self.usingDashboard
+        params['messageServiceInstance'] = self.ms
+        self.jobHandling = JobHandling(params)
+
         # wait for messages
         while True:
-
-            # create session
-            Session.connect("messages")
-            Session.start_transaction("messages")
 
             # get a message
             type, payload = self.ms.get()
@@ -1152,9 +720,5 @@ class TrackingComponent:
 
             # process it
             self.__call__(type, payload)
-
-            # close session
-            Session.commit("messages")
-            Session.close("messages")
 
 
