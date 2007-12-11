@@ -937,25 +937,4 @@ CREATE TABLE prodmon_Job_timing (
         ON DELETE CASCADE
 )TYPE=InnoDB;
 
-CREATE TABLE jt_activejobs (
-  job_id varchar(255) NOT NULL,
-  status enum('output_not_requested','output_requested','in_progress',
-       'output_retrieved','output_processed') default 'output_not_requested',
-  directory text,
-  output text,
-  boss_status varchar(10) default '',
-  job_spec_id varchar(255) default NULL,
-  UNIQUE KEY job_id (job_id)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-
-CREATE TABLE jt_group (
-  id int(11) NOT NULL auto_increment,
-  group_id int(11) default NULL,
-  task_id int(11) NOT NULL,
-  job_id int(11) NOT NULL,
-  PRIMARY KEY  (id),
-  UNIQUE KEY task_id (task_id,job_id),
-  KEY job_id (job_id)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1
-
 
