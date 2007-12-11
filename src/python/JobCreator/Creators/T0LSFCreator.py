@@ -138,6 +138,19 @@ class T0LSFCreator(CreatorInterface):
         # // Insert list of plugin modules to be used
         #//
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.PerfMonitor")
+
+        #  //
+        # // Perf Monitor
+        #//
+        perfConfig = self.pluginConfig.get("PerformanceMonitor", {})
+        usingPerfMon = dashboardCfg.get("UsePerformanceMonitor", "False")
+        if usingPerfMon.lower() == "true":
+            perfMonitor =  shreekConfig.newMonitorCfg()
+            perfMonitor.setMonitorName("perfmonitor-1")
+            perfMonitor.setMonitorType("perf-monitor")
+            shreekConfig.addMonitorCfg(perfMonitor)
+            
 
         #  //
         # // JobTimeout Setup
