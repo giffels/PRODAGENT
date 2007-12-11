@@ -302,7 +302,12 @@ componentFields = {
     "RssFeed" : "no",
     },
 
-
+    "GetOutput" : {
+    "ComponentDir" : None,
+    "PollInterval" : 60,
+    "GetOutputPoolThreadsSize" : 5,
+    "RssFeed" : "no",
+    }
 
     }# end componentFields
 
