@@ -167,10 +167,10 @@ class BlockFeeder(PluginInterface):
             self.dbsUrl = value
 
         if self.dbsUrl == None:
-            msg = "Error: No DBSURL available for dataset:\n"
-            msg += "Cant get local DBSURL and one not provided with workflow"
-            logging.error(msg)
-            raise RuntimeError, msg
+            self.dbsUrl = getGlobalDBSURL()
+            msg = "No DBSURL in workflow: Switching to global DBS\n"
+            logging.info(msg)
+            
 
 
 
