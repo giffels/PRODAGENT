@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.19 2007/07/05 18:26:27 afanfani Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.19.2.1 2007/09/28 16:00:22 gcodispo Exp $"
 
 import getpass
 import os
@@ -411,23 +411,28 @@ adminSession = BossAdministratorSession(bossDbConfig['configDir'])
 createStream = \
 """
 CREATE TABLE jt_group (
-  id INT NOT NULL auto_increment,
-  group_id INT,
-  task_id INT NOT NULL,
-  job_id INT NOT NULL,
-  PRIMARY KEY(id),
-  UNIQUE(task_id, job_id),
-  FOREIGN KEY (task_id) REFERENCES TASK(ID),
-  FOREIGN KEY (job_id) REFERENCES CHAIN(ID)
-);
+  id int(11) NOT NULL auto_increment,
+  group_id int(11) default NULL,
+  task_id int(11) NOT NULL,
+  job_id int(11) NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY task_id (task_id,job_id),
+  KEY job_id (job_id)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 """
 
 createStream2 = \
 """
 CREATE TABLE jt_activejobs (
   job_id varchar(255) NOT NULL,
-  UNIQUE(job_id)
-  );
+  status enum('output_not_requested','output_requested','in_progress',
+       'output_retrieved','output_processed') default 'output_not_requested',
+  directory text,
+  output text,
+  boss_status varchar(10) default '',
+  job_spec_id varchar(255) default NULL,
+  UNIQUE KEY job_id (job_id)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 """
 
 try:
