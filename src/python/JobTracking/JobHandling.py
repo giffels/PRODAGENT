@@ -107,6 +107,8 @@ class JobHandling:
                     # set failed status
                     fwjr.status = "Failed"
                     fwjr.exitCode = -1
+                    #fwjr.addError(exeCode, "CmsRun")
+                    #fwjr.addError(jobCode, "Wrapper")
 
                 try:
                     os.makedirs(os.path.dirname(reportfilename))
@@ -324,52 +326,84 @@ class JobHandling:
         except StandardError, ex:
             msg = "Cannot get JobCache from JobState.general for %s\n" % \
                   fjr[0].jobSpecId
+            msg += "Retrying with a rebuild session object\n"
             msg += str(ex)
             logging.warning(msg)
 
-            # try to get cache from WEJob
+            # retrying
             try:
-                WEjobState = WEJob.get(fjr[0].jobSpecId)
-                jobCacheDir = WEjobState['cache_dir']
+                # force a re connect operation
+                self.recreateSession()
+
+                jobCacheDir = \
+                        JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
+                logging.working("Retry OK!")
 
             # error, cannot get cache location
             except StandardError, ex:
-                msg = "Cant get JobCache from Job.get['cache_dir'] for %s" % \
-                      fjr[0].jobSpecId
+                msg = "No, retry does not work"
                 msg += str(ex)
                 logging.warning(msg)
 
-                # try guessing the JobCache area based on jobspecId name
+                # try to get cache from WEJob
                 try:
-
-                    # split the jobspecid=workflow-run into workflow/run
-                    spec = fjr[0].jobSpecId
-                    end = spec.rfind('-')
-                    workflow = spec[:end]
-                    run = spec[end+1:]
-
-                    # additional split for PM jobspecid that are in the form
-                    # jobcut-workflow-run
-                    pmspec = workflow.find('jobcut-')
-                    if pmspec > 0:
-                        workflow = workflow[pmspec+7:]
-
-                    # build cache directory on JobCreator area
-                    jobCacheDir = "%s/%s/%s" % \
-                                  (self.jobCreatorDir, workflow, run)
-
-                    # if it does not exist, use fallback
-                    if not os.path.exists(jobCacheDir):
-                        jobCacheDir = fallbackCacheDir
+                    WEjobState = WEJob.get(fjr[0].jobSpecId)
+                    jobCacheDir = WEjobState['cache_dir']
 
                 # error, cannot get cache location
                 except StandardError, ex:
-
-                    # use fallback
-                    msg = "Cant guess JobCache in JobCreator dir"
+                    msg = "Cant get JobCache from Job.get['cache_dir'] for %s" % \
+                          fjr[0].jobSpecId
+                    msg += 'Retrying with a rebuild session object\n'
                     msg += str(ex)
                     logging.warning(msg)
-                    jobCacheDir = fallbackCacheDir
+
+                    try:
+                        # force a re connect operation
+                        self.recreateSession()
+
+                        WEjobState = WEJob.get(fjr[0].jobSpecId)
+                        jobCacheDir = WEjobState['cache_dir']
+
+                    # error, cannot get cache location
+                    except StandardError, ex:
+                        msg = "Cant get JobCache from Job.get['cache_dir'] for %s" % \
+                              fjr[0].jobSpecId
+                        msg += 'No, retry does not work\n'
+                        msg += str(ex)
+                        logging.warning(msg)
+
+                        # try guessing the JobCache area based on jobspecId name
+                        try:
+
+                            # split the jobspecid=workflow-run into workflow/run
+                            spec = fjr[0].jobSpecId
+                            end = spec.rfind('-')
+                            workflow = spec[:end]
+                            run = spec[end+1:]
+
+                            # additional split for PM jobspecid that are in the form
+                            # jobcut-workflow-run
+                            pmspec = workflow.find('jobcut-')
+                            if pmspec > 0:
+                                workflow = workflow[pmspec+7:]
+
+                            # build cache directory on JobCreator area
+                            jobCacheDir = "%s/%s/%s" % \
+                                          (self.jobCreatorDir, workflow, run)
+
+                            # if it does not exist, use fallback
+                            if not os.path.exists(jobCacheDir):
+                                jobCacheDir = fallbackCacheDir
+ 
+                        # error, cannot get cache location
+                        except StandardError, ex:
+
+                            # use fallback
+                            msg = "Cant guess JobCache in JobCreator dir"
+                            msg += str(ex)
+                            logging.warning(msg)
+                            jobCacheDir = fallbackCacheDir
 
         logging.debug("jobCacheDir = %s" % jobCacheDir)
 
@@ -535,4 +569,17 @@ class JobHandling:
             logging.error(msg)
 
         return
+
+    def recreateSession(self):
+        """
+        fix to recreate standard default session object
+        """
+
+        # force a re connect operation
+        try:
+            Session.session['default']['connection'].close()
+        except:
+            pass
+        Session.session = {}
+        Session.connect()
 
