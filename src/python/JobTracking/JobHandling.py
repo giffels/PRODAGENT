@@ -23,8 +23,8 @@ from FwkJobRep.ReportState import checkSuccess
 from FwkJobRep.FwkJobReport import FwkJobReport
 from FwkJobRep.ReportParser import readJobReport
 
-__version__ = "$Id$"
-__revision__ = "$Revision$"
+__version__ = "$Id: JobHandling.py,v 1.1.2.2 2007/12/11 16:01:41 ckavka Exp $"
+__revision__ = "$Revision: 1.1.2.2 $"
 
 class JobHandling:
     """
@@ -80,12 +80,9 @@ class JobHandling:
             else:
 
                 # check success
-                # Marco. Trying to get also error code from Boss.
-                # success = BOSSCommands.checkSuccess(jobId, \
-                (success, exeCode, jobCode) = BOSSCommands.checkSuccess(jobId, \
-                                                    self.bossCfgDir)
+                success = BOSSCommands.checkSuccess(jobId, \
+                                                     self.bossCfgDir)
                 logging.debug("check Job Success: %s" % str(success))
-                logging.info("check Job Success: %s %s %s" %(str(success),str(exeCode), str(jobCode)))
 
                 # create BOSS based Framework Job Report
                 fwjr = FwkJobReport()
@@ -107,8 +104,6 @@ class JobHandling:
                     # set failed status
                     fwjr.status = "Failed"
                     fwjr.exitCode = -1
-                    #fwjr.addError(exeCode, "CmsRun")
-                    #fwjr.addError(jobCode, "Wrapper")
 
                 try:
                     os.makedirs(os.path.dirname(reportfilename))
