@@ -293,7 +293,7 @@ class OSGBulkCreator(CreatorInterface):
         # // Perf Monitor
         #//
         perfConfig = self.pluginConfig.get("PerformanceMonitor", {})
-        usingPerfMon = dashboardCfg.get("UsePerformanceMonitor", "False")
+        usingPerfMon = perfCfg.get("UsePerformanceMonitor", "False")
         if usingPerfMon.lower() == "true":
             perfMonitor =  shreekConfig.newMonitorCfg()
             perfMonitor.setMonitorName("perfmonitor-1")
