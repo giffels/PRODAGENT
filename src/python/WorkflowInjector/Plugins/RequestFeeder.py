@@ -20,6 +20,26 @@ from WorkflowInjector.Registry import registerPlugin
 from JobQueue.JobQueueAPI import bulkQueueJobs
 
 from ProdCommon.JobFactory.RequestJobFactory import RequestJobFactory
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+
+def getGlobalDBSURL():
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+                                                                                                                                 
+    try:
+        dbsConfig = config.getConfig("GlobalDBSDLS")
+    except StandardError, ex:
+        msg = "Error reading configuration for GlobalDBSDLS:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+                                                                                                                                 
+    return dbsConfig.get("DBSURL", None)
 
 class RequestFeeder(PluginInterface):
     """
@@ -89,6 +109,14 @@ class RequestFeeder(PluginInterface):
         self.totalEvents = int(self.totalEvents)
         self.eventsPerJob = int(self.eventsPerJob)
         self.initialRun = int(self.initialRun)
+
+        #  //
+        # // in case of PU
+        #//
+        dbsUrl = self.workflow.parameters.get("DBSURL", None)
+        if dbsUrl == None:
+            dbsUrl = getGlobalDBSURL()
+            self.workflow.parameters['DBSURL'] = dbsUrl
 
 
 registerPlugin(RequestFeeder, RequestFeeder.__name__)

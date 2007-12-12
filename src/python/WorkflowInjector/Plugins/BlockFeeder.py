@@ -168,6 +168,7 @@ class BlockFeeder(PluginInterface):
 
         if self.dbsUrl == None:
             self.dbsUrl = getGlobalDBSURL()
+            self.workflow.parameters['DBSURL'] = self.dbsUrl
             msg = "No DBSURL in workflow: Switching to global DBS\n"
             logging.info(msg)
             
