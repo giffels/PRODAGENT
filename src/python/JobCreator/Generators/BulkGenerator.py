@@ -144,6 +144,7 @@ class BulkGenerator(GeneratorInterface):
         taskObject(NewPopulateStageOut())
         
         logging.debug("JobGenerator:Creating Physical Job")
+        logging.debug("directory=%s" % directory)
         taskObject(FlatTaskDirBuilder(directory))
         taskObject(BulkCMSSWRunResDB(**self.componentConfig))
         taskObject(InsertDirInRunRes())
@@ -309,7 +310,8 @@ class BulkGenerator(GeneratorInterface):
         #  //
         # // Return the new job directory so that 
         #//  it can be populated with tasks
-        return taskObj['Directory']['AbsName']
+        thisPath = os.path.join(jobCache, taskObj['Directory'].name)
+        return thisPath
         
 
 def createTarball(dirName, tarballName):

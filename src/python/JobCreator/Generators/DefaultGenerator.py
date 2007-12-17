@@ -27,9 +27,8 @@ from JobCreator.AppTools import InsertPythonPSet, InsertJobReportTools
 from JobCreator.RunResTools import InstallRunResComponent
 from JobCreator.RunResTools import AccumulateRunResDB
 from JobCreator.RunResTools import CMSSWRunResDB, InsertDirInRunRes
-from JobCreator.StageOutTools import InsertStageOut, NewInsertStageOut
-from JobCreator.StageOutTools import PopulateStageOut, NewPopulateStageOut
-from JobCreator.StageOutTools import StoreStageOutTemplates
+from JobCreator.StageOutTools import NewInsertStageOut
+from JobCreator.StageOutTools import  NewPopulateStageOut
 from JobCreator.DashboardTools import installDashboardInfo, writeDashboardInfo
 from JobCreator.SVSuiteTools import InsertSVSuiteDetails, PopulateSVSuite
 from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
@@ -94,7 +93,9 @@ class DefaultGenerator(GeneratorInterface):
         """
         Nothing to do in this case
         """
-        pass
+        workflowSpec.save(os.path.join(workflowCache, "WorkflowSpec.xml"))
+        return
+    
 
     def actOnJobSpec(self, jobSpec, jobCache):
         """
@@ -280,7 +281,8 @@ class DefaultGenerator(GeneratorInterface):
         #  //
         # // Return the new job directory so that 
         #//  it can be populated with tasks
-        return taskObj['Directory']['AbsName']
+        newCache = os.path.join(jobCache, taskObj['Directory'].name)
+        return newCache
         
         
 
