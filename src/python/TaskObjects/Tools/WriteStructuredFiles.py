@@ -5,7 +5,7 @@ _WriteStructuredFiles_
 
 """
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: WriteStructuredFiles.py,v 1.1 2005/12/30 18:46:36 evansde Exp $"
+__revision__ = "$Id: WriteStructuredFiles.py,v 1.1 2006/04/10 17:40:38 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
@@ -17,20 +17,19 @@ class WriteStructuredFiles:
     _WriteStructuredFiles_
 
     """
-    
-
+  
 
     def __call__(self, taskObject):
         """
-
+        
 
         """
         if taskObject.get('Directory', None) == None:
             return
         
         
-        workingDir = taskObject['Directory']['AbsName']
-       
+        workingDir =  taskObject['Directory'].physicalPath
+        
 
         if not os.path.exists(workingDir):
             msg =  "ERROR: Cannot create IMProvDocs in dir:\n"

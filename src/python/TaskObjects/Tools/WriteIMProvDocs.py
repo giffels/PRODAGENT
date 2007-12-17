@@ -9,8 +9,8 @@ written into XML files in the (pre-existing) directory associated with
 that task object.
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: WriteIMProvDocs.py,v 1.2 2006/02/15 20:55:05 evansde Exp $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: WriteIMProvDocs.py,v 1.1 2006/04/10 17:40:38 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
@@ -42,7 +42,7 @@ class WriteIMProvDocs:
             return
         
         
-        workingDir = taskObject['Directory']['AbsName']
+        workingDir = taskObject['Directory'].physicalPath
        
 
         if not os.path.exists(workingDir):

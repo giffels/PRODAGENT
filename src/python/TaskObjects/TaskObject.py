@@ -11,8 +11,7 @@ in execution order
 import os
 from TaskObjects.Environment import Environment
 from TaskObjects.StructuredFile import StructuredFile
-from MB.DirMetaBroker import DirMetaBroker
-from MB.FileMetaBroker import FileMetaBroker
+from TaskObjects.Directory import Directory
 from IMProv.IMProvDoc import IMProvDoc
 from IMProv.IMProvNode import IMProvNode
 from ShREEK.ShREEKTask import ShREEKTask
@@ -50,7 +49,7 @@ class TaskObject(dict):
         self.parent = None
         self.setdefault("Name", taskObjectName)
         self.setdefault("Environment", Environment())
-        self.setdefault("Directory" , DirMetaBroker(BaseName = self['Name']))
+        self.setdefault("Directory" , Directory(taskObjectName))
         self.setdefault("IMProvDocs", [])
         self.setdefault("ShREEKTask", ShREEKTask(taskObjectName) )
         self.setdefault("StructuredFiles", [])
@@ -167,22 +166,17 @@ class TaskObject(dict):
         return newDoc
         
         
-    def attachFile(self, filename):
+    def attachFile(self, filename, targetName = None):
         """
         _attachFile_
 
         Attach an existing file to this TaskObject so that it can
         be added to the Task directory when concretized.
         
-        For files that arent on a local file system, one can
-        create an FMB instance and add it to the Directory DMB by hand.
+        
         
         """
-        fmb = FileMetaBroker(SourceAbsName = filename,
-                             TransportMethod = "cp",
-                             BaseName = os.path.basename(filename),
-                             CpOptions = "-rf" )
-        self['Directory'].addFile(fmb)
+        newFile = self['Directory'].addFile(filename, targetName)
         return
     
     
