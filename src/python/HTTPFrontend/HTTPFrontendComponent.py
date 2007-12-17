@@ -16,12 +16,35 @@ import os
 import cherrypy
 from cherrypy.lib.static import serve_file
 from ProdAgentCore.Configuration import prodAgentName
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
-from HTTPFrontend.WorkflowMonitor import WorkflowMonitor
+from HTTPFrontend.WorkflowMonitor import WorkflowMonitor,WorkflowGraph
 from HTTPFrontend.JobQueueMonitor import JobQueueMonitor
 from HTTPFrontend.MergeMonitor import MergeDatasetMonitor, MergeMonitor, MergeGraph
+from HTTPFrontend.DatasetsMonitor import DatasetMonitor
+from HTTPFrontend.ResourceMonitors import ResourceDetails,ResourceStatus
 
+
+def getLocalDBSURL():
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    try:
+        dbsConfig = config.getConfig("LocalDBS")
+    except StandardError, ex:
+        msg = "Error reading configuration for LocalDBS:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    return dbsConfig.get("DBSURL", None)
 
 
 class Root:
@@ -32,11 +55,32 @@ class Root:
     of the toplevel address
 
     """
+    def __init__(self, myUrl):
+        self.myUrl = myUrl
+        
     def index(self):
-        html = """<html><body><h2>ProdAgent Instance: %s </h2> """ % (
+        html = """<html><body><h2>ProdAgent Instance: %s </h2>\n """ % (
             
             prodAgentName(), )
-        html += """</body></html>"""
+
+        html += "<table>\n"
+        html += "<tr><th>Service</th><th>Description</th></tr>\n"
+        html += "<tr><td><a href=\"%s/workflows\">Workflows</a></td>\n" % (
+            self.myUrl,)
+        html += "<td>Workflow Entities data in this ProdAgent</td></td>\n"
+
+        html += "<tr><td><a href=\"%s/merges\">Merges</a></td>\n" % (
+            self.myUrl,)
+        html += "<td>Merge Subsystem data in this ProdAgent</td></td>\n"
+        html += "<tr><td><a href=\"%s/jobqueue\">JobQueue</a></td>\n" % (
+            self.myUrl,)
+        html += "<td>Job Queue state in this ProdAgent</td></td>\n"
+        html += "<tr><td><a href=\"%s/resources\">ResourceMonitor</a></td>\n" % (
+            self.myUrl,)
+        html += "<td>Resource information for this ProdAgent</td></td>\n"
+        
+        
+        html += """</table></body></html>"""
         return html
     index.exposed = True
 
@@ -132,25 +176,34 @@ class HTTPFrontendComponent:
         "server.thread_pool" :  self.args['ThreadPool'],
         }})
         
+        baseUrl = "http://%s:%s" % (
+            self.args['Host'], self.args['Port'])
         
         
-        root = Root()
+        root = Root(baseUrl)
         root.download = Downloader(self.args['JobCreatorCache'])
         root.images = ImageServer(self.staticDir)
-        root.workflows = WorkflowMonitor()
+        root.workflowgraph = WorkflowGraph(
+            "%s/images" % baseUrl,
+            self.staticDir)
+        
+            
+        root.workflows = WorkflowMonitor(
+            "%s/workflowgraph" % baseUrl
+            )
         root.jobqueue = JobQueueMonitor()
+        root.datasets = DatasetMonitor(getLocalDBSURL())
+
+        root.resources = ResourceDetails()
+        root.resourcestate = ResourceStatus()
         root.mergedataset = MergeMonitor()
         root.mergedgraph = MergeGraph(
-            "http://%s:%s/images" % (
-            self.args['Host'], self.args['Port']),
+            "%s/images" % baseUrl,
             self.staticDir)
         root.merges = MergeDatasetMonitor(
-            "http://%s:%s/mergedataset" % (
-            self.args['Host'], self.args['Port']),
-            "http://%s:%s/mergedgraph" % (
-            self.args['Host'], self.args['Port'])
-            
-
+            "%s/mergedataset" % baseUrl,
+            "%s/mergedgraph" % baseUrl,
+            "%s/datasets" % baseUrl
             )
 
         

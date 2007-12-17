@@ -19,17 +19,19 @@ class MergeDatasetMonitor:
     MergeMonitor for that dataset
 
     """
-    def __init__(self, mergeMonitorUrl = None, graphMonUrl = None):
+    def __init__(self, mergeMonitorUrl = None, graphMonUrl = None, datasetUrl = None):
         self.mergeMon = mergeMonitorUrl
         self.graphmon = graphMonUrl
+        self.datasetmon = datasetUrl
     
     def index(self):
         html = """<html><body><h2>MergeSensor Datasets</h2>\n """
         html += "<table>\n"
-        html += "<tr><th>Dataset Name</th><th>File list</th><th> Graphs</th></tr>\n"
+        html += "<tr><th>Dataset Name</th><th>File list</th><th> Graphs</th><th>Local DBS</th></tr>\n"
         for dataset in listAllMergeDatasets():
-            html += "<tr><td>%s</td><td><a href=\"%s/?dataset=%s\">Files</a></td><td><a href=\"%s?dataset=%s\">Graph</a></td></tr>\n" % (
-                dataset, self.mergeMon, dataset, self.graphmon, dataset)
+            html += "<tr><td>%s</td><td><a href=\"%s/?dataset=%s\">Files</a></td><td><a href=\"%s?dataset=%s\">Graph</a></td><td><a href=\"%s?dataset=%s\">DBS</td></tr>\n" % (
+                dataset, self.mergeMon, dataset, self.graphmon, dataset,
+                self.datasetmon, dataset)
         html += "</table>\n"
         html += """</body></html>"""
         return html
