@@ -144,7 +144,7 @@ class T0LSFCreator(CreatorInterface):
         # // Perf Monitor
         #//
         perfConfig = self.pluginConfig.get("PerformanceMonitor", {})
-        usingPerfMon = perfCfg.get("UsePerformanceMonitor", "False")
+        usingPerfMon = perfConfig.get("UsePerformanceMonitor", "False")
         if usingPerfMon.lower() == "true":
             perfMonitor =  shreekConfig.newMonitorCfg()
             perfMonitor.setMonitorName("perfmonitor-1")
