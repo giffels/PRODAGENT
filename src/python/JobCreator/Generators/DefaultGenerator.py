@@ -30,7 +30,6 @@ from JobCreator.RunResTools import CMSSWRunResDB, InsertDirInRunRes
 from JobCreator.StageOutTools import NewInsertStageOut
 from JobCreator.StageOutTools import  NewPopulateStageOut
 from JobCreator.DashboardTools import installDashboardInfo, writeDashboardInfo
-from JobCreator.SVSuiteTools import InsertSVSuiteDetails, PopulateSVSuite
 from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
 from JobCreator.CmsGenTools import InsertCmsGenStructure, PopulateCmsGenScript
 from JobCreator.LogArchTools import InstallLogArch, PopulateLogArch
@@ -48,11 +47,11 @@ import ProdCommon.Core
 import RunRes
 import FwkJobRep
 import StageOut
-import SVSuite
+
 
 _StandardPackages = [ShREEK, IMProv, StageOut, ProdCommon.MCPayloads,
                      ProdCommon.Core,
-                     ProdCommon.CMSConfigTools, RunRes, FwkJobRep, SVSuite]
+                     ProdCommon.CMSConfigTools, RunRes, FwkJobRep ]
 
 
 class TaskObjectMaker:
@@ -135,7 +134,7 @@ class DefaultGenerator(GeneratorInterface):
         taskObject(InsertAppDetails())
         taskObject(InsertCmsGenStructure("JobSpecNode"))
         taskObject(InstallRunResComponent())
-        taskObject(InsertSVSuiteDetails())
+
         taskObject(InsertJobReportTools())
         taskObject(InsertCleanUp())
         taskObject(InstallLogArch())
@@ -157,7 +156,6 @@ class DefaultGenerator(GeneratorInterface):
         taskObject(InsertPythonPSet())
         taskObject(PopulateMainScript())
         taskObject(PopulateCmsGenScript("JobSpecNode"))
-        taskObject(PopulateSVSuite())
         taskObject(PopulateCleanUp())
         taskObject(PopulateLogArch(self.componentConfig.get("LogArchStageOut", False)))
         taskObject(NewPopulateStageOut())
