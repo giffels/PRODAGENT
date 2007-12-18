@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.46 2007/09/21 14:36:45 evansde Exp $"
+__revision__ = "$Id: setup.py,v 1.47 2007/12/17 22:43:32 evansde Exp $"
 
 from distutils.core import setup
 
@@ -66,7 +66,6 @@ packages = [
     'ResourceMonitor.Monitors',
     'RunRes',
     'RssFeeder',
-    'SeedGen',
     'ShREEK',
     'ShREEK.ControlPoints',
     'ShREEK.ControlPoints.ActionImpl',
@@ -76,10 +75,8 @@ packages = [
     'ShREEK.CMSPlugins.ApMon',
     'ShREEK.CMSPlugins.ApMonLite',
     'ShREEK.CMSPlugins.JobMon',
-    'StatTracker',
     'StageOut',
     'StageOut.Impl',
-    'SVSuite',
     'TaskObjects',
     'TaskObjects.Tools',
     'Trigger',
