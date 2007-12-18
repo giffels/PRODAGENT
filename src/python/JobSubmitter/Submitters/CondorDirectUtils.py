@@ -13,7 +13,7 @@ def outOfSpaceReport():
     
     scriptBase = \
     """
-      echo '<FrameworkJobReport JobSpecID=\"$JOB_SPEC_NAME\" Name=\"cmsRun1\" WorkflowSpedID=\"$WORKFLOW_SPEC_NAME\" Status=\"Failed\">' > FrameworkJobReport.xml
+      echo "<FrameworkJobReport JobSpecID=\"$JOB_SPEC_NAME\" Name=\"cmsRun1\" WorkflowSpedID=\"$WORKFLOW_SPEC_NAME\" Status=\"Failed\">" > FrameworkJobReport.xml
       echo '<ExitCode Value=\"60999\"/>' >> FrameworkJobReport.xml
       echo '<FrameworkError ExitStatus=\"60999\" Type=\"NoSpaceOnDevice\">' >> FrameworkJobReport.xml
       echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
@@ -373,7 +373,7 @@ if [ -e $PRODAGENT_JOB_INITIALDIR/FrameworkJobReport.xml ]; then
 else 
    echo "ERROR: No FrameworkJobReport produced by job!!!"
    echo "Generating failure report..."
-   echo '<FrameworkJobReport JobSpecID=\"$JOB_SPEC_NAME\"   WorkflowSpecID=\"$WORKFLOW_SPEC_NAME\" Status=\"Failed\">' > FrameworkJobReport.xml
+   echo "<FrameworkJobReport JobSpecID=\"$JOB_SPEC_NAME\"   WorkflowSpecID=\"$WORKFLOW_SPEC_NAME\" Status=\"Failed\">" > FrameworkJobReport.xml
    echo '<ExitCode Value=\"60997\"/>' >> FrameworkJobReport.xml
    echo '<FrameworkError ExitStatus=\"60997\" Type=\"JobReportMissing\">' >> FrameworkJobReport.xml
    echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
