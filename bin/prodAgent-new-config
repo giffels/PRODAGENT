@@ -236,10 +236,6 @@ componentFields = {
     "RssFeed": "no",
     },
 
-    "StatTracker" : {
-    "ComponentDir" : None,
-    "RssFeed": "no",
-    },
 
     "ProdMgrInterface" : {
     "ComponentDir" : None,
