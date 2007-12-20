@@ -324,7 +324,6 @@ CREATE TABLE merge_inputfile
     instance int NOT NULL default '0',
 
     PRIMARY KEY(id),
-    UNIQUE(dataset, name),
     FOREIGN KEY(dataset) references merge_dataset(id) ON DELETE CASCADE,
     FOREIGN KEY(mergedfile) references merge_outputfile(id) ON DELETE CASCADE,
     FOREIGN KEY(block) references merge_fileblock(id) ON DELETE CASCADE
