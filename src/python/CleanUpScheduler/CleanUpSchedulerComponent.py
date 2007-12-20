@@ -169,14 +169,25 @@ class CleanUpSchedulerComponent:
         Do a single update
 
         """
-        #Connect to DBS
+        # //
+        # // Check LFN Threshold set by user
+        # //
+        if self.lfnLimit<=0:
+               logging.info("No Job Generated, LFNLimit set less than or equal to 0")
+               return
+
+        # //
+        # //Connect to DBS
+        # //
         self.connectToDBS()
         
         blockTasks = CleanUpTasks()
             
                
         try:
-           #Retrive list of Datasets currently being watched by MergeSensor
+           # //
+           # // Retrive list of Datasets currently being watched by MergeSensor
+           # //
            listAllMergeDataset = listAllMergeDatasets()
         except Exception, ex:
            logging.error("DBSReader Error: LIST DATASET failed, Exception: %s " % ex) 
@@ -238,9 +249,9 @@ class CleanUpSchedulerComponent:
         siteTasks = CleanUpTasks()
         for block in blockTasks.keys():
             sites = self.dbsReader.listFileBlockLocation(block)
-            logging.debug("sites *********************************************")
-            #logging.debug(sites)
-            #logging.debug(block) 
+            logging.debug("sites")
+            logging.debug(sites)
+             
             if len(sites) == 0:
                 # unknown location
                 continue
@@ -256,28 +267,31 @@ class CleanUpSchedulerComponent:
         # // the list of files to be cleaned, then publish the
         #//  cleanup workflow, job spec etc
         
-        #generate cleanup workflow spec
+        # //
+        # //generate cleanup workflow spec
+        # //
         cleanUpWFs = CleanUpTools.createCleanupWorkflowSpec()    
     
         wfspec=os.path.join(self.args['CleanupJobSpecs'],cleanUpWFs.payload.workflow + '-workflow.xml' )
         cleanUpWFs.save(wfspec)
 
-        #Publishing newworkflow event
+        # //
+        # //Publishing newworkflow event
+        # //
         self.ms.publish("NewWorkflow", wfspec)
         self.ms.commit() 
 
-        #Generating cleanup jobspecs with list of lfns to be deleted
+        # //
+        # //Generating cleanup jobspecs with list of lfns to be deleted
+        # //
 
         cleanUpJobSpec = [] 
 
-        #generate cleanup jobspec having inputfiles lfns
-        for x in siteTasks.keys():
-        
-            
-            if self.lfnLimit<=0:
-               logging.info("No Job Generated, LFNLimit set less than or equal to 0")         
-               return
-            else:
+        # //
+        # //generate cleanup jobspec having inputfiles lfns
+        # //
+        for x in siteTasks.keys():        
+
                njobs = len(siteTasks[x])/self.lfnLimit
                 
                if (len(siteTasks[x])%self.lfnLimit) > 0 :               
@@ -300,7 +314,9 @@ class CleanUpSchedulerComponent:
           cleanUpJobSpec[i].save(jobspec)
           logging.debug('JobSpec Saved')
 
-          #publishing jobspec
+          # //
+          # //publishing jobspec
+          # //
           self.publishCreateJob(jobspec)
          
                
@@ -337,11 +353,15 @@ class CleanUpSchedulerComponent:
         Start up the component
 
         """
-
-        # create directory if necessary
+        # //
+        # //create directory if necessary
+        # //
         if not os.path.exists(self.args["CleanupJobSpecs"]):
           os.makedirs(self.args["CleanupJobSpecs"])
-        # create message service
+
+        # //
+        # //create message service
+        # //
         self.ms  = MessageService()
         # register
         self.ms.registerAs("CleanUpScheduler")
