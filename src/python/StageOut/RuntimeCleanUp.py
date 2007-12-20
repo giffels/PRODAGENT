@@ -8,7 +8,6 @@ Runtime binary file for CleanUp type nodes
 import sys
 import os
 from FwkJobRep.TaskState import TaskState, getTaskState
-from ProdCommon.MCPayloads.JobSpec import JobSpec
 import StageOut.Impl
 from StageOut.Registry import retrieveStageOutImpl
 from FwkJobRep.FwkJobReport import FwkJobReport
@@ -103,25 +102,19 @@ class CleanUpManager:
         List of LFNs is provided in the RunResDB for this node
 
         """
+        lfnList = self.config.get("RemoveLFN", [])
 
-        #Retriving list of lfn's from Jobspec
- 
-        jobSpecFile = os.environ.get("PRODAGENT_JOBSPEC",None)
-        
-        jobSpecInstance = JobSpec()
-        jobSpecInstance.load(jobSpecFile)
-        
-
-        print jobSpecInstance.payload.configuration
-        
-        lfnList = jobSpecInstance.payload.configuration.split()
-              
- 
+        if len(lfnList) == 0:
+          
+          # //
+          # // Retriving list of lfn's from Jobspec
+          # //	  
+          self.state.loadJobSpecNode()                   
+          lfnList = self.state.jobSpecNode.configuration.split() 
           
         msg = "Cleaning up list of files:\n"
 
-        #lfnList = self.config.get("RemoveLFN", [])
-          
+                  
         if len(lfnList) == 0:
             msg += "No Files Found in Configuration!!!"
 
@@ -152,7 +145,7 @@ class CleanUpManager:
         #//
         self.tfc = None
         siteCfg = self.state.getSiteConfig()
-        
+        self.seName =  siteCfg.localStageOutSEName() 
             
         if siteCfg == None:
             msg = "No Site Config Available:\n"
@@ -219,6 +212,13 @@ class CleanUpManager:
 
         msg += "Exit Status for this task is: %s\n" % status
         print msg
+        
+	# //
+	# // Writing framework Jobreport for cleanup jobs
+	# //
+	
+        self.processCleanUpJobReport(status)
+	
         return status
 
         
@@ -234,6 +234,7 @@ class CleanUpManager:
         # // Load Impl
         #//
         try:
+            
             implInstance = retrieveStageOutImpl(self.implName)
         except Exception, ex:
             msg = "Error retrieving Stage Out Impl for name: "
@@ -259,21 +260,71 @@ class CleanUpManager:
         # //  Invoke StageOut Impl removeFile method
         #//
         try:
-            print ("====PFN======================================================")
-            print pfn
-            return
+                      
             implInstance.removeFile(pfn)
         except Exception, ex:
             msg = "Error performing Cleanup command for impl "
             msg += "%s\n" % self.implName
             msg += "On PFN: %s\n" % pfn
             msg += str(ex)
-            raise CleanUpFailure(lfn, TFC = str(self.tfc),
-                                 ImplName = self.implName,
-                                 PFN = pfn,
-                                 Message = msg,
-                                 TFCProtocol = self.tfc.preferredProtocol)
+               
+            # //
+            # // Will uncomment it after invalidating deleted lfn from mergesensordb
+            # //
+
+            #raise CleanUpFailure(lfn, TFC = str(self.tfc),
+             #                    ImplName = self.implName,
+              #                   PFN = pfn,
+               #                  Message = msg,
+                #                 TFCProtocol = self.tfc.preferredProtocol)
         
+
+
+
+
+
+    def processCleanUpJobReport(self,statusCode):
+        """
+        _processCleanUpJobReport_
+
+        Arguments:
+             None
+        Return:
+             None
+
+        """
+
+
+       
+        
+        
+        #  //
+        # //  Generate a report
+        #  //
+        report = FwkJobReport()
+        report.name = "cleanUp"
+	report.status = "Failed" 
+	
+	if statusCode == 0 :
+          report.status = "Success"
+          for lfnRemovedFile in self.success:
+            report.addRemovedFile(lfnRemovedFile, self.seName)    
+	 
+        report.exitCode = statusCode
+        report.jobSpecId = self.state.jobSpecNode.jobName
+        report.jobType = self.state.jobSpecNode.jobType
+        report.workflowSpecId = self.state.jobSpecNode.workflow
+        
+        report.write("./FrameworkJobReport.xml")
+
+        #  //
+        # // Ensure this report gets added to the job-wide report
+        #//
+        toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],"FrameworkJobReport.xml")
+        newReport = os.path.join(os.getcwd(), "FrameworkJobReport.xml")
+        mergeReports(toplevelReport, newReport)
+    
+    
         
 
 
@@ -284,14 +335,10 @@ def cleanUp():
     Main program
 
     """
-   
-    #jobSpecFile = os.environ.get("PRODAGENT_JOBSPEC",None)      
-    #print jobSpecFile
-    
+       
     state = TaskState(os.getcwd())
     state.loadRunResDB()
-    state.loadJobSpecNode()
-
+        
     try:
         
         config = state._RunResDB.toDictionary()[state.taskAttrs['Name']]
@@ -320,7 +367,7 @@ def cleanUp():
     
     manager = CleanUpManager(state, inputState)
     exitCode = manager()
-    #processCleanUpJobReport(state)  
+     
 
     return exitCode
 
@@ -329,41 +376,6 @@ def cleanUp():
 
 
 
-def processCleanUpJobReport():
-  """
-  _processCleanUpJobReport_
-
-  Arguments:
-       None
-  Return:
-       None
-
-  """
-    
-  # // Retrieving TaskState and then loading RunResDB and JobSpec Node 
-  state = TaskState(os.getcwd())
-  state.loadRunResDB()
-  state.loadJobSpecNode()
-
-  #  //
-  # //  Generate a report
-  #//
-  report = FwkJobReport()
-  report.name = "cleanUp"
-  report.status = "Success"
-  report.exitCode = state.getExitStatus()
-  report.jobSpecId = state.jobSpecNode.jobName
-  report.jobType = state.jobSpecNode.jobType
-  report.workflowSpecId = state.jobSpecNode.workflow
-
-  report.write("./FrameworkJobReport.xml")
-
-  #  //
-  # // Ensure this report gets added to the job-wide report
-  #//
-  toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],"FrameworkJobReport.xml")
-  newReport = os.path.join(os.getcwd(), "FrameworkJobReport.xml")
-  mergeReports(toplevelReport, newReport)
 
 
 
@@ -375,6 +387,6 @@ if __name__ == '__main__':
     f = open("exit.status", 'w')
     f.write(str(exitCode))
     f.close()
-    processCleanUpJobReport()
+   
     sys.exit(exitCode)
      
