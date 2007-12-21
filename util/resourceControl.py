@@ -18,7 +18,9 @@ valid = [
     'set-attribute=',            # edit attribute
     'activate', 'deactivate',
     
-    'processing-threshold=', 'merge-threshold=', # standard thresholds
+    'processing-threshold=',                     # standard thresholds
+    'merge-threshold=',                          # standard thresholds
+    'cleanup-threshold=',                        # standard thresholds
     'min-submit=', 'max-submit='                 # for new site mode 
     
     ]
@@ -38,6 +40,7 @@ setThisValue = None
 
 procThreshold = 100
 mergeThreshold = 10
+cleanThreshold = 10
 minSubmit = 1
 maxSubmit = 500
 
@@ -54,6 +57,7 @@ resourceControl.py --<MODE>     # Mode is one of: new, edit, drop, list
                                 
             --processing-threshold=<INT> (new, edit)
             --merge-threshold=<INT>      (new, edit)
+            --cleanup-threshold=<INT>    (new, edit)
                                 # Thresholds for triggering new submission
                                 # for merge or processing jobs respectively
             --min-submit=<INT>  # Minimum number of processing jobs to submit
@@ -106,6 +110,9 @@ for opt, arg in opts:
         
     if opt == "--merge-threshold":
         mergeThreshold = int(arg)
+
+    if opt == "--cleanup-threshold":
+        cleanThreshold = int(arg)
         
     if opt == "--min-submit":
         minSubmit = int(arg)
@@ -182,15 +189,17 @@ def newMode():
     
     resCon.updateThresholds(siteIndex, processingThreshold = procThreshold,
                             mergeThreshold = mergeThreshold,
+                            cleanupThreshold = cleanThreshold,
                             minimumSubmission = minSubmit,
                             maximumSubmission = maxSubmit)
 
     msg += " Initial Thresholds for site set to:\n"
     msg += " Processing Threshold: %s\n" % procThreshold
     msg += " Merge Threshold: %s\n" % mergeThreshold
+    msg += " Cleanup Threshold: %s\n" % cleanThreshold
     msg += " Minimum Submission: %s\n" % minSubmit
     msg += " Maximum Submission: %s\n" % maxSubmit
-    
+
     Session.commit_all()
     Session.close_all()
 

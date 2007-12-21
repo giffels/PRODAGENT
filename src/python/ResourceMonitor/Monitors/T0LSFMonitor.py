@@ -63,20 +63,20 @@ class T0LSFMonitor(MonitorInterface):
         #
         # keep track of total number of jobs as list, first
         # element is processing jobs count, second element
-        # is merge job count
+        # is merge job count, third element is cleanup jobs 
         #
-        jobCountOverall = [0,0]
+        jobCountOverall = [0,0,0]
 
         #
         # the jobCount dictionary contains workflows as keys and
         # the corresponding values are a list, with the first
-        # element the processing job count and the second
-        # the merge job count
+        # element the processing job count, second the merge
+        # job count and third the cleanup job count
         #
         jobCountByWorkflow = {}
         if not self.allSites.has_key(defaultSiteName):
             for workflowId in self.allSites.iterkeys():
-                jobCountByWorkflow[workflowId] = [0,0]
+                jobCountByWorkflow[workflowId] = [0,0,0]
 
         #
         # loop over output of bjobs
@@ -100,23 +100,29 @@ class T0LSFMonitor(MonitorInterface):
                             jobCountOverall[0] += 1
                         elif jobCountByWorkflow.has_key(workflowId):
                             jobCountByWorkflow[workflowId][0] += 1
-                        elif ( jobType == 'Merge' ):
-                            if self.allSites.has_key(defaultSiteName):
-                                jobCountOverall[1] += 1
-                            elif jobCountByWorkflow.has_key(workflowId):
-                                jobCountByWorkflow[workflowId][1] += 1
+                    elif ( jobType == 'Merge' ):
+                        if self.allSites.has_key(defaultSiteName):
+                            jobCountOverall[1] += 1
+                        elif jobCountByWorkflow.has_key(workflowId):
+                            jobCountByWorkflow[workflowId][1] += 1
+                    elif ( jobType == 'CleanUp' ):
+                        if self.allSites.has_key(defaultSiteName):
+                            jobCountOverall[2] += 1
+                        elif jobCountByWorkflow.has_key(workflowId):
+                            jobCountByWorkflow[workflowId][2] += 1
 
                 else:
                     logging.debug("No job %s found in WE table" % jobId)
 
-
         if self.allSites.has_key(defaultSiteName):
             logging.info("Number of processing jobs is %d" % jobCountOverall[0])
             logging.info("Number of merge jobs is %d" % jobCountOverall[1])
+            logging.info("Number of cleanup jobs is %d" % jobCountOverall[2])
         else:
             for workflowId in self.allSites.iterkeys():
                 logging.info("Number of processing jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][0]))
                 logging.info("Number of merge jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][1]))
+                logging.info("Number of cleanup jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][1]))
 
         result = []
 
@@ -138,9 +144,11 @@ class T0LSFMonitor(MonitorInterface):
 
         processingThreshold = siteThresholds.get("processingThreshold")
         mergeThreshold = siteThresholds.get("mergeThreshold")
-        
+        cleanupThreshold = siteThresholds.get("cleanupThreshold")
+
         missingProcessingJobs = processingThreshold - jobCount[0]
         missingMergeJobs = mergeThreshold - jobCount[1]
+        missingCleanupJobs = cleanupThreshold - jobCount[2]
 
         minSubmit = siteThresholds.get("minimumSubmission")
         maxSubmit = siteThresholds.get("maximumSubmission")
@@ -190,6 +198,30 @@ class T0LSFMonitor(MonitorInterface):
                 logging.info("Releasing %d Merge jobs for workflow %s" % (constraint['count'],siteName))
             else:
                 logging.info("Releasing %d Merge jobs" % constraint['count'])
+
+            result.append(constraint)
+
+        # check if we should release cleanup jobs 
+        if ( missingCleanupJobs >= minSubmit ):
+
+            constraint = self.newConstraint()
+
+            # determine number of jobs
+            if ( missingCleanupJobs > maxSubmit ):
+                constraint['count'] = maxSubmit
+            else:
+                constraint['count'] = missingCleanupJobs
+
+            # some more constraints
+            constraint['type'] = "CleanUp"
+            #constraint['site'] = self.allSites[siteName]['SiteIndex']
+
+            # contraint for workflow
+            if ( constrainWorkflow ):
+                constraint['workflow'] = siteName
+                logging.info("Releasing %d Cleanup jobs for workflow %s" % (constraint['count'],siteName))
+            else:
+                logging.info("Releasing %d Cleanup jobs" % constraint['count'])
 
             result.append(constraint)
 
