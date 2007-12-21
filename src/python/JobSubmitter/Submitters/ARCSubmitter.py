@@ -178,7 +178,7 @@ class ARCSubmitter(BulkSubmitterInterface):
                                self.xrslCode(os.path.join(cacheDir,"submit.sh"),
                                              jobSpec, cacheDir)
 
-        logging.info("ARCSubmitter.doSubmit: %s" % submitCommand)
+        logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
         output = self.executeCommand(submitCommand)
         logging.debug("ARCSubmitter.doSubmit: %s " % output)
         
@@ -192,6 +192,9 @@ class ARCSubmitter(BulkSubmitterInterface):
         """
         code = "&(executable=%s)" % os.path.basename(wrapperscript)
 
+        #  //
+        # // Input files to submit with the job
+        #//
         code += "(inputFiles="
         code += "(%s %s)" % (os.path.basename(wrapperscript), wrapperscript)
         for fname in self.jobInputFiles:
@@ -200,13 +203,10 @@ class ARCSubmitter(BulkSubmitterInterface):
 
         #  //
         # //  Output files; leave everything at the CE until explicitely
-        #//   retrieved/removed
+        #//   retrieved/removed by ngget/ngclean. (Needed mainly for
+        #  // debugging.)
         code += "(outputFiles="
         code += "(%s/ \"\")" % self.workflowName
-        #if ( self.pluginConfig['ARC']['CmsRunLogDir'] != "None" ):
-        #    outputlogfile = jobName
-        #    outputlogfile += '.`date +%Y%m%d.%k.%M.%S`.log'
-        #    code += "(%s/run.log \"\")" % self.workflowName
         code += ")"
 
         code += "(runTimeEnvironment=APPS/HEP/CMSSW-PA)"
@@ -229,9 +229,15 @@ class ARCSubmitter(BulkSubmitterInterface):
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        script.append("python -V 2>&1\n")
-        script.append("echo PYTHONPATH = $PYTHONPATH\n")
+        #  // 
+        # // Some code useful for debugging
+        #//
         script.append("ulimit -a\n")
+        script.append("echo pwd: `pwd`\n")
+        script.append("ls -la\n")
+        script.append("export\n")
+        script.append("python -V 2>&1\n")
+        script.append("echo PYTHONPATH: $PYTHONPATH\n")
 
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 

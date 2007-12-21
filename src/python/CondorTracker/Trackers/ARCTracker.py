@@ -239,7 +239,11 @@ class ARCTracker(TrackerPlugin):
             logging.debug("getJobReport: Couldn't find job " + jobSpecId)
             return None
 
-        # Let's assume that 'jobSpecId' has the form '<subdirectory>-<number>'
+        # Get the FrameworkJobReport.xml file, supposed to reside in
+        # arcId/<subdirectory>/FrameworkJobReport.xml.  
+        #
+        # Let's assume that 'jobSpecId' has the form
+        # '<subdirectory>-<integer>'
         subDir = jobSpecId[0:jobSpecId.rindex("-")]
         arcId = jobs[jobSpecId]
         ngcp = "ngcp %s/%s/FrameworkJobReport.xml %s/" % (arcId,subDir,localDir)
@@ -252,6 +256,13 @@ class ARCTracker(TrackerPlugin):
 
         logging.debug("getJobReport: Report file for %s copied to %s" % \
                       (jobSpecId, localDir))
+
+        # Let's get a few additional files as well; they can be useful for
+        # tracking down errors. 
+        s = os.system("ngcp %s/%s/run.log %s/" % (arcId,subDir,localDir))
+        s = os.system("ngcp %s/output %s/" % (arcId,localDir))
+        s = os.system("ngcp %s/errors %s/" % (arcId,localDir))
+
         return localDir + "/FrameworkJobReport.xml"
 
 
@@ -317,42 +328,43 @@ class ARCTracker(TrackerPlugin):
 
         """
         logging.info("ARC: Running Count: %s" % len(running))
-        for runId in running:
+        for id in running:
 
-            status = self.jobs.get(runId, None)
+            status = self.jobs.get(id, None)
   
             #  // 
             # //  Job not in getJobStatus output, check job report
             #//
             if status == None:
-                msg = "No Status entry for %s, checking job report" % runId
+                msg = "No Status entry for %s, checking job report" % id
                 logging.debug(msg)
-                status = self.jobReportStatus(runId)
+                status = self.jobReportStatus(id)
                 
             #  //
             # // If status still None, declare job lost/failed
             #//
             if status == None:
-                self.TrackerDB.jobFailed(runId)
-                logging.debug("Job %s has been lost" % (runId))
+                self.TrackerDB.jobFailed(id)
+                logging.debug("Job %s has been lost" % (id))
                 continue
             
             if status == "RUN":
                 #  //
                 # // Is running
                 #//
-                logging.debug("Job %s is still running" % (runId))
+                logging.debug("Job %s is still running" % (id))
                 continue
             if status == "DONE":
                 #  //
                 # // Is Complete 
                 #//
-                self.TrackerDB.jobComplete(runId)
-                logging.debug("Job %s complete" % (runId))
+                self.TrackerDB.jobComplete(id)
+                report = self.findJobReport(id, True)
+                logging.debug("Job %s complete with report %s" % (id,report))
                 continue
             if status == "EXIT":
-                logging.debug("Job %s is held..." % (runId))
-                self.TrackerDB.jobFailed(runId)
+                logging.debug("Job %s is held..." % (id))
+                self.TrackerDB.jobFailed(id)
 
             
     def updateComplete(self, *complete):
@@ -365,13 +377,14 @@ class ARCTracker(TrackerPlugin):
         is handled by the component itself
 
         """
+        logging.debug("ARCTracker.updateComplete %i" % len(complete))
         if len(complete) == 0:
             return
 
         summary = "Jobs Completed:\n"
         for compId in complete:
-            report = self.findJobReport(compId)
-            summary += " -> %s\n --> report: %s\n" % (compId, report)
+            os.system("ngclean " + compId)
+            summary += " -> %s\n" % compId
         logging.info(summary)
         return
 
@@ -383,18 +396,18 @@ class ARCTracker(TrackerPlugin):
         Take any required action for failed jobs on completion
 
         """
+        logging.debug("ARCTracker.updateFailed %i" % len(failed))
         if len(failed) == 0:
             return
 
         summary = "Jobs Failed:\n"
-        for compId in failed:
-            summary += " -> %s\n" % compId
-            os.system("ngclean " + compId)
+        for id in failed:
+            summary += " -> %s\n" % id
         logging.debug(summary)
         return
 
         
-    def findJobReport(self, jobSpecId):
+    def findJobReport(self, jobSpecId, allwaysCopy = False):
         """
         _findJobReport_
         
@@ -409,7 +422,7 @@ class ARCTracker(TrackerPlugin):
             return None
 
         reportFile = "%s/FrameworkJobReport.xml" % cache
-        if not os.path.exists(reportFile):
+        if allwaysCopy or (not os.path.exists(reportFile)):
             reportFile = self.getJobReport(cache,jobSpecId)
 
         return reportFile
@@ -432,6 +445,6 @@ class ARCTracker(TrackerPlugin):
         if ReportState.checkSuccess(report):
             return StatusCodes["FINISHED"]
         return StatusCodes["FAILED"]
-    
+
 
 registerTracker(ARCTracker, ARCTracker.__name__)
