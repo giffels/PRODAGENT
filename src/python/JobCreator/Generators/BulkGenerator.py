@@ -190,7 +190,7 @@ class BulkGenerator(GeneratorInterface):
         
         
         # Propagate dashboard info to job cache
-        dashboardInfoMaster = os.path.join(self.workflowCache, "Processing",
+        dashboardInfoMaster = os.path.join(self.workflowCache, jobType,
                                            "DashboardInfo.xml")
         
         if os.path.exists(dashboardInfoMaster):
