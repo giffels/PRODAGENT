@@ -386,8 +386,9 @@ class JobCreatorComponent:
                     JobState.register(jobname, 'Merge',\
                                         int(self.args['mergeMaxRetries']),\
                                         1, workflowName)
+                    
                 else:
-                    JobState.register(jobname, 'Processing',\
+                    JobState.register(jobname, jobType,\
                                         int(self.args['maxRetries']),\
                                         1, workflowName)
             logging.debug("job state has been  registered")                    
