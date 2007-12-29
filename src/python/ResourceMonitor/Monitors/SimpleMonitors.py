@@ -279,6 +279,9 @@ class PABOSSMonitor(MonitorInterface):
             msg = "No mergeThreshold found for site entry: %s\n" % (
                 siteName,)
             raise RuntimeError, msg
+
+        # Maximum number of processing jobs to submit in a single attempt for bulk ops.
+        maxSubmit = siteThresholds.get("maximumSubmission", None)
                                                                                                                            
         #  //
         # // Poll the BOSSDB
@@ -290,13 +293,36 @@ class PABOSSMonitor(MonitorInterface):
         # // check the counts against the thresholds and make
         #//  resource constraints as needed
         if poller['Processing'] != None:
-            logging.info(" Processing jobs are: %s Threshold: %s"%(poller['Processing'],procThresh))
+            logging.info(" Processing jobs are: %s Threshold: %s "%(poller['Processing'],procThresh))
             test = poller['Processing'] - procThresh
             if test < 0:
-                constraint = self.newConstraint()
-                constraint['count'] = abs(test)
-                constraint['type'] = "Processing"
-                result.append(constraint)
+                #// do not exceed the maximum number of bulk jobs : use bunch of maxSubmit jobs
+                abstest=abs(test)
+                if abstest > maxSubmit:
+                    logging.info(" Max Submissions in bulk is: %s jobs. Do not allow bunch of jobs exceeding it:"%maxSubmit)
+                    #// as many bunches as test/maxSubmit with maxSubmit jobs each
+                    for i in range(1, int(abstest/maxSubmit)+1):
+                        constraint = self.newConstraint()
+                        constraint['count'] = abs(maxSubmit)
+                        logging.info("  - bunch of %s jobs"%maxSubmit) 
+                        constraint['type'] = "Processing"
+                        result.append(constraint)
+                    #// plus a bunch with the remaining mod jobs
+                    jobsleft=int(abstest%maxSubmit)
+                    if jobsleft:
+                        constraint = self.newConstraint()
+                        constraint['count'] = jobsleft
+                        logging.info("  - bunch of %s jobs"%jobsleft)
+                        constraint['type'] = "Processing"
+                        result.append(constraint)
+                else:   
+                   constraint = self.newConstraint()
+                   constraint['count'] = abs(test)
+                   logging.info("  - bunch of %s jobs"%abs(test))
+                   constraint['type'] = "Processing"
+                   result.append(constraint)
+
+
         if poller['Merge'] != None:
             logging.info(" Merge jobs are: %s Threshold: %s"%(poller['Merge'],mergeThresh))
             test = poller['Merge'] - mergeThresh
@@ -320,8 +346,6 @@ class PABOSSMonitor(MonitorInterface):
 
 
 
-        return result  
-        
 
     
 
