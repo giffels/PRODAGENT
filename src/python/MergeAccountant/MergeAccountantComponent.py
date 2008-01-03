@@ -7,19 +7,20 @@ input and output file accounting.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MergeAccountantComponent.py,v 1.9 2007/09/27 08:26:51 ckavka Exp $"
+__version__ = "$Revision: 1.9 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
 
 from MergeSensor.MergeSensorDB import MergeSensorDB
+from MergeSensor.InsertReport import ReportHandler
 
 # Message service import
 from MessageService.MessageService import MessageService
 
 # Job report
-from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 # logging
 import logging
@@ -162,10 +163,14 @@ class MergeAccountantComponent:
         if event == "JobSuccess":
             try:
                 self.jobSuccess(payload)
-            except Exception, msg:
-                logging.error("Unexpected error when handling a " + \
-                              "JobSuccess event: " + str(msg))
-            return
+            except Exception, ex:
+                import traceback
+                msg = "Unexpected error when handling a "
+                msg += "JobSuccess event: " + str(ex)
+                msg += traceback.format_exc()
+                logging.error(msg)
+                              
+                return
 
         # a job has failed
         if event == "GeneralJobFailure":
@@ -257,8 +262,18 @@ class MergeAccountantComponent:
 
         # ignore non merge jobs
         if jobName.find('mergejob') == -1:
-            logging.info("Ignoring job %s, since it is not a merge job" \
-                          % jobName)
+            logging.info("Handling processing job: %s"
+                         % jobName)
+            
+            try:
+                handler = ReportHandler(jobReport)
+                handler()
+                logging.info(handler.summarise())
+            except Exception, ex:
+                msg = "Failed to handle job report from processing job:\n"
+                msg += "%s\n" % jobReport
+                msg += str(ex)
+                logging.error(msg)
             return
 
         # files can be cleaned up now
