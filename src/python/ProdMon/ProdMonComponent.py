@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.6 2007/07/27 14:20:16 swakef Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.7 2007/10/22 18:56:25 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -23,7 +23,7 @@ from logging.handlers import RotatingFileHandler
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from MessageService.MessageService import MessageService
 from ProdMon.JobStatistics import jobReportToJobStats
-from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 #from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 from ProdCommon.Database import Session
 from ProdAgentDB.Config import defaultConfig as dbConfig
