@@ -312,6 +312,7 @@ CREATE TABLE merge_inputfile
   (
     id int NOT NULL auto_increment,
     name text NOT NULL default '',
+    guid VARCHAR(100) NOT NULL,
     eventcount int NOT NULL default '0',
     block int NOT NULL default '0',
     status enum("unmerged", "undermerge", "merged", "invalid")
@@ -322,8 +323,8 @@ CREATE TABLE merge_inputfile
     run text,
     failures int NOT NULL default '0',
     instance int NOT NULL default '0',
-
     PRIMARY KEY(id),
+    UNIQUE(guid, dataset),
     FOREIGN KEY(dataset) references merge_dataset(id) ON DELETE CASCADE,
     FOREIGN KEY(mergedfile) references merge_outputfile(id) ON DELETE CASCADE,
     FOREIGN KEY(block) references merge_fileblock(id) ON DELETE CASCADE
