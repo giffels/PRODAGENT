@@ -19,7 +19,7 @@ be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.52 2007/10/12 20:27:13 afanfani Exp $"
+__revision__ = "$Id: TrackingComponent.py,v 1.53 2007/11/26 01:01:07 afanfani Exp $"
 
 import traceback
 import time
@@ -32,9 +32,9 @@ from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from MessageService.MessageService import MessageService
 # fjr handling
-from FwkJobRep.ReportState import checkSuccess
-from FwkJobRep.FwkJobReport import FwkJobReport
-from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.FwkJobRep.ReportState import checkSuccess
+from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 from ProdCommon.Database import Session
 from ProdAgent.WorkflowEntities import JobState

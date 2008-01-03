@@ -31,7 +31,7 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from DBSAPI.dbsApiException import DbsException
 
 import os,base64,time,exceptions
-from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from MessageService.MessageService import MessageService
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdAgent.Trigger.Trigger import Trigger

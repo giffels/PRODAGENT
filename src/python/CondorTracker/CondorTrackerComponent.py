@@ -9,14 +9,16 @@ completed sucessfully, or failed
 import os
 import time
 import logging
+import traceback
+
 from logging.handlers import RotatingFileHandler
 
 from ProdCommon.Database import Session
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 
-from FwkJobRep.ReportState import checkSuccess
-from FwkJobRep.FwkJobReport import FwkJobReport
-from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.FwkJobRep.ReportState import checkSuccess
+from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from MessageService.MessageService import MessageService
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.LoggingUtils import installLogHandler
@@ -171,6 +173,8 @@ class CondorTrackerComponent:
                 self.args['TrackerPlugin'],
                 )
             msg += str(ex)
+            msg += "\n"
+            msg += traceback.format_exc()
             logging.error(msg)
             return
 
