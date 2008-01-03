@@ -6,16 +6,18 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.25 2007/09/27 20:12:41 evansde Exp $"
-__version__ = "$Revision: 1.25 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.26 2007/11/07 19:49:32 evansde Exp $"
+__version__ = "$Revision: 1.26 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
+import os
 import MySQLdb
 
 from ProdAgentDB.Connect import connect
 from MergeSensor.Dataset import Dataset
 from MergeSensor.MergeSensorError import MergeSensorDBError, \
-                                         DatasetNotInDatabase
+                                         DatasetNotInDatabase, \
+                                         DuplicateLFNError
 
 ##############################################################################
 # MergeSensorDB class
@@ -1269,11 +1271,13 @@ class MergeSensorDB:
         # get parameters
         fileSize = data['FileSize']
         events = data['NumberOfEvents']
-
+        
         # get run numbers
         listOfRuns = data['RunsList']
         run = str([x['RunNumber'] for x in listOfRuns])
- 
+        guid = "\"%s\"" % os.path.basename(fileName)
+    
+        
         # get cursor
         try:
             cursor = self.conn.cursor()
@@ -1367,21 +1371,26 @@ class MergeSensorDB:
         sqlCommand = """
                      INSERT
                        INTO merge_inputfile
-                            (name, block, dataset, filesize, eventcount""" + \
+                            (name, guid, block, dataset, filesize, eventcount""" + \
                              runField + """)
-                     VALUES ('""" + fileName + """', 
+                     VALUES ('""" + fileName + """',
+                             """ + str(guid) + """,
                              """ + str(blockId) + """,
                              '""" + str(datasetId) + """',
                              '""" + str(fileSize) + """',
                              '""" + str(events) + """'
                              """ + str(runValue) + """)
                      """
-        
         # execute command
         try:
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
 
+        except MySQLdb.IntegrityError, ex:
+            self.transaction.append(sqlCommand)
+            msg = "Duplicate LFN: %s" % str(ex)
+            raise DuplicateLFNError, msg
+            
         except MySQLdb.Error:
 
             # if it does not work, we lost connection to database.

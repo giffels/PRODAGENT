@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.67 2007/08/22 21:05:13 afanfani Exp $"
-__version__ = "$Revision: 1.67 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.68 2007/10/10 10:48:06 ckavka Exp $"
+__version__ = "$Revision: 1.68 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1046,26 +1046,26 @@ class MergeSensorComponent:
             logging.info("Forced merge on dataset %s" % datasetPath)
  
         # get file list in dataset
-        fileList = self.getFileListFromDBS(datasetPath)
+        ###fileList = self.getFileListFromDBS(datasetPath)
 
         # ignore empty sets
-        if fileList == {}:
+        ###if fileList == {}:
 
-            # reset force merge status if set
-            if (forceMerge):
+        ###    # reset force merge status if set
+        ###    if (forceMerge):
 
-                logging.info( \
-                  "Forced merge does not apply to dataset %s due to %s" \
-                             % (datasetPath, "empty file condition"))
+        ###        logging.info( \
+        ###          "Forced merge does not apply to dataset %s due to %s" \
+        ###                     % (datasetPath, "empty file condition"))
 
-                # remove dataset from forced merged datasets
-                self.forceMergeList.remove(datasetPath)
+        ###        # remove dataset from forced merged datasets
+        ###        self.forceMergeList.remove(datasetPath)
 
-            # just return
-            return
-       
+        ###    # just return
+        ###    return
+        
         # update file information
-        self.datasets.updateFiles(datasetPath, fileList)
+        #self.datasets.updateFiles(datasetPath, fileList)
         
         # verify if it can be merged
         (mergeable,
@@ -1077,24 +1077,24 @@ class MergeSensorComponent:
         while (mergeable):
        
             # get SE list
-            seList = None
-            while True:
-                try:
-                    seList = self.dbsReader.listFileBlockLocation(fileBlockId)
-                    break
+            seList = [fileBlockId]
+            ##while True:
+##                try:
+##                    seList = self.dbsReader.listFileBlockLocation(fileBlockId)
+##                    break
 
-                # errors with the file block (?)
-                except DBSReaderError, ex:
-                    logging.error("DBS error: " +  str(ex) + \
-                              "\nCannot get block location for file block: " \
-                              + fileBlockId)
-                    break
+##                # errors with the file block (?)
+##                except DBSReaderError, ex:
+##                    logging.error("DBS error: " +  str(ex) + \
+##                              "\nCannot get block location for file block: " \
+##                              + fileBlockId)
+##                    break
 
-                # connection error, retry
-                except DbsConnectionError, ex:
-                    logging.error("DBS connection lost, retrying: " + \
-                                  str(ex))
-                    self.connectToDBS()
+##                # connection error, retry
+##                except DbsConnectionError, ex:
+##                    logging.error("DBS connection lost, retrying: " + \
+##                                  str(ex))
+##                    self.connectToDBS()
 
             # problems getting SE list, then suspend job generation
             if seList is None:
