@@ -45,13 +45,13 @@ import ProdCommon.CMSConfigTools
 import ProdCommon.MCPayloads
 import ProdCommon.Core
 import RunRes
-import FwkJobRep
+import ProdCommon.FwkJobRep
 import StageOut
 
 
 _StandardPackages = [ShREEK, IMProv, StageOut, ProdCommon.MCPayloads,
                      ProdCommon.Core,
-                     ProdCommon.CMSConfigTools, RunRes, FwkJobRep ]
+                     ProdCommon.CMSConfigTools, RunRes, ProdCommon.FwkJobRep ]
 
 
 class TaskObjectMaker:

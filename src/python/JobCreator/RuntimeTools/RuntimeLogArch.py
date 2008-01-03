@@ -14,7 +14,7 @@ import sys
 import os
 import re
 
-from FwkJobRep.TaskState import TaskState
+from ProdCommon.FwkJobRep.TaskState import TaskState
 from StageOut.StageOutMgr import StageOutMgr
 
 class LogArchMgr:

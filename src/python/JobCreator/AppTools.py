@@ -365,7 +365,7 @@ class InsertJobReportTools:
         processing script that runs after the executable.
 
         """
-        if taskObject['Type'] not in ("CMSSW", "SVSuite"):
+        if taskObject['Type'] not in ("CMSSW", ):
             return
         
         srcfile = inspect.getsourcefile(RuntimeFwkJobRep)

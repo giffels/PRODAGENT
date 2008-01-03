@@ -11,7 +11,7 @@ from the contents of the JobSpec file
 
 import sys
 import os
-from FwkJobRep.TaskState import TaskState
+from ProdCommon.FwkJobRep.TaskState import TaskState
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from RunRes.RunResComponent import RunResComponent
 

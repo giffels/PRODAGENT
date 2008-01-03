@@ -13,10 +13,10 @@ import socket
 import time
 import popen2
 
-from FwkJobRep.TaskState import TaskState
-from FwkJobRep.MergeReports import mergeReports
-from FwkJobRep.FwkJobReport import FwkJobReport
-import FwkJobRep.PerfLogParser as PerfReps
+from ProdCommon.FwkJobRep.TaskState import TaskState
+from ProdCommon.FwkJobRep.MergeReports import mergeReports
+from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+import ProdCommon.FwkJobRep.PerfLogParser as PerfReps
 
 def getSyncCE():
     """
@@ -132,7 +132,11 @@ def processFrameworkJobReport():
         taskName = state.taskAttrs['Name']
         report.name = taskName
         
-
+        
+    #  //
+    # // filter zero event output files
+    #//  TODO: Make this configurable via ProdAgent config switch
+    #[ report.files.remove(x) for x in report.files if x['TotalEvents'] == 0 ]
     #  //
     # // generate sizes and checksums
     #//

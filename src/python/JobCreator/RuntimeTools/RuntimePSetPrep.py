@@ -16,7 +16,7 @@ import pickle
 
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-from FwkJobRep.TaskState import TaskState, getTaskState
+from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
 
 
 class NodeFinder:

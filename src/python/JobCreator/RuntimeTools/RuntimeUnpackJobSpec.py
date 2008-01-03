@@ -9,7 +9,7 @@ into this job
 import sys
 import os
 import pickle
-from FwkJobRep.TaskState import TaskState, getTaskState
+from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from RunRes.RunResComponent import RunResComponent
@@ -153,9 +153,11 @@ class JobSpecExpander:
             # // We have in-job input links to be resolved
             #//
             self.handleInputLink(self.jobSpecNode.cfgInterface, inpLink)
-        
+
+    
         cmsProcess = self.jobSpecNode.cfgInterface.makeConfiguration()
 
+     
         cfgDump = open("CfgFileDump.log", 'w')
         cfgDump.write(cmsProcess.dumpConfig())
         cfgDump.close()

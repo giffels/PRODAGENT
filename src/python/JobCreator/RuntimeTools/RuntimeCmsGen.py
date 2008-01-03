@@ -11,7 +11,7 @@ the command line arguments for a cmsGen job.
 
 import os
 from ProdCommon.MCPayloads.JobSpec import JobSpec
-from FwkJobRep.TaskState import TaskState
+from ProdCommon.FwkJobRep.TaskState import TaskState
 
 
 class NodeFinder:
