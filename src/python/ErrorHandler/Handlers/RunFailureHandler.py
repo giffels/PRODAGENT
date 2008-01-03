@@ -11,7 +11,7 @@ from ProdCommon.Core.GlobalRegistry import registerHandler
 from ProdCommon.Core.ProdException import ProdException
 
 from ProdAgent.WorkflowEntities import JobState
-from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 from ErrorHandler.DirSize import dirSize
 from ErrorHandler.DirSize import convertSize

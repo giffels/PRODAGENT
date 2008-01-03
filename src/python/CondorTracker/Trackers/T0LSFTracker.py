@@ -15,7 +15,7 @@ import fcntl, select, sys, os
 from CondorTracker.TrackerPlugin import TrackerPlugin
 from CondorTracker.Registry import registerTracker
 
-import FwkJobRep.ReportState as ReportState
+import ProdCommon.FwkJobRep.ReportState as ReportState
 
 from ProdAgent.Resources.LSF import LSFInterface
 from ProdAgent.Resources.LSF import LSFStatus

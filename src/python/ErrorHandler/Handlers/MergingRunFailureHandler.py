@@ -3,7 +3,7 @@
 import logging 
 
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
-from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Core.GlobalRegistry import registerHandler
 
 

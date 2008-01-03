@@ -16,10 +16,10 @@ from ShREEK.CMSPlugins.ApMon.DashboardAPI import DashboardAPI
 import ShREEK.CMSPlugins.TraceUtils as TraceUtils
 
 
-from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
-from FwkJobRep.TaskState import TaskState, getTaskState
-from FwkJobRep.MergeReports import updateReport
+from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
+from ProdCommon.FwkJobRep.MergeReports import updateReport
 
 import os
 import time

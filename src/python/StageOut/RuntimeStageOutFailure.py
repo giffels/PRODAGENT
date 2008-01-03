@@ -13,8 +13,8 @@ import sys
 import time
 
 
-from FwkJobRep.TaskState import TaskState, getTaskState
-from FwkJobRep.MergeReports import updateReport
+from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
+from ProdCommon.FwkJobRep.MergeReports import updateReport
 
 
 if __name__ == '__main__':

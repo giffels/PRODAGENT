@@ -29,8 +29,8 @@ from StageOut.StageOutError import StageOutInitError
 
 from StageOut.Registry import retrieveStageOutImpl
 
-from FwkJobRep.TaskState import TaskState, getTaskState
-from FwkJobRep.MergeReports import updateReport
+from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
+from ProdCommon.FwkJobRep.MergeReports import updateReport
 
 
 

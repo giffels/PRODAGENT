@@ -3,7 +3,7 @@
 import logging 
 import os
 
-from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdAgentCore.Codes import errors
 from ProdCommon.Database import Session
 from ProdMgrInterface import MessageQueue

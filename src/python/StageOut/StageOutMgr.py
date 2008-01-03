@@ -9,7 +9,7 @@ use this class as a basic API
 
 """
 
-from FwkJobRep.SiteLocalConfig import loadSiteLocalConfig
+from ProdCommon.FwkJobRep.SiteLocalConfig import loadSiteLocalConfig
 
 from StageOut.StageOutError import StageOutFailure
 from StageOut.StageOutError import StageOutInitError
@@ -356,14 +356,14 @@ class StageOutMgr:
 
 
 
-if __name__ == '__main__':
-    import StageOut.Impl
-    mgr = StageOutMgr()
-    pfn = "/home/evansde/work/PRODAGENT/work/JobCreator/RelValMinBias-170pre12/Processing/RelValMinBias-170pre12-Processing.tar.gz"
-    lfn = "/store/unmerged/DCCP-FNAL-TEST.dat"
+##if __name__ == '__main__':
+##    import StageOut.Impl
+##    mgr = StageOutMgr()
+##    pfn = "/home/evansde/work/PRODAGENT/work/JobCreator/RelValMinBias-170pre12/Processing/RelValMinBias-170pre12-Processing.tar.gz"
+##    lfn = "/store/unmerged/mc/2007/11/13/RelVal-RelValMinBias-1194987281/GEN-SIM-DIGI-RECO/0201/DCCP-FNAL-TEST.dat"
 
-    mgr.searchTFC(lfn)
-    mgr(LFN = lfn, PFN = pfn, GUID=None)
+##    mgr.searchTFC(lfn)
+##    mgr(LFN = lfn, PFN = pfn, GUID=None)
     
     
     
