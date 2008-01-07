@@ -65,19 +65,33 @@ class CleanUpSchedulerComponent:
         self.args['Logfile'] = None
                 
         self.args.update(args)
+        
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
         LoggingUtils.installLogHandler(self)
+
+        # //
+        # // check default parameters
+        # // 
+        self.checkConfig()
+
         msg = "CleanUpScheduler Started:\n"
         logging.info(msg)
+        
+        
+     
         #cleanup specs directory
         self.args.setdefault("CleanupJobSpecs",os.path.join(self.args['ComponentDir'],'cleanup-specs'))
         
         self.queueMode = False
+        self.pollActive = True
         
         if str(self.args['QueueJobMode']).lower() == "true":
             self.queueMode = True  
+            
+        if str(self.args['PollActive']).lower() == "false":
+            self.pollActive = False 
 
         cycleDelay = int(self.args['CleanUpInterval'])
         
@@ -93,7 +107,7 @@ class CleanUpSchedulerComponent:
         
         #dbs reader parameters
         self.dbsReader = None
-        self.dbsDelay = 100
+        self.delayDBS = 100
          
 
     def __call__(self, event, payload):
@@ -120,6 +134,29 @@ class CleanUpSchedulerComponent:
         elif event == "CleanUpScheduler:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
             return
+
+
+    def checkConfig(self):
+        """
+        _checkConfig_
+        Checks whether the default configuration found in ProdAgentConfig. If not then it assigns the default values
+        
+        """
+        
+        if not self.args.has_key('PollActive'):
+           self.args['PollActive'] = False
+        if not self.args.has_key('QueueJobMode'):
+           self.args['QueueJobMode'] = True
+        if not self.args.has_key('CleanUpInterval'): 
+           self.args['CleanUpInterval'] = 360000
+        if not self.args.has_key('LFNLimit'):
+           self.args['LFNLimit'] = 10
+  
+        
+
+        return
+
+
 
     def cycle(self):
         """
@@ -249,14 +286,11 @@ class CleanUpSchedulerComponent:
         siteTasks = CleanUpTasks()
         for block in blockTasks.keys():
             sites = self.dbsReader.listFileBlockLocation(block)
-            logging.debug("sites")
-            logging.debug(sites)
-             
+                         
             if len(sites) == 0:
                 # unknown location
                 continue
-            logging.debug('length')
-            logging.debug(len(sites))
+            
             site = sites[-1]            
                         
             siteTasks.addFiles(site, *blockTasks[block])       
@@ -378,11 +412,14 @@ class CleanUpSchedulerComponent:
         self.ms.publish("JobSubmitter:StartDebug","none")
         self.ms.commit()
   
-
-        # generate first cleanup cycle
-        self.ms.remove("CleanUp:Cycle")
-        self.ms.publish("CleanUp:Cycle", "")
-        self.ms.commit()
+        # //
+        # // generate first cleanup cycle
+        # //
+        
+        if self.pollActive:
+          self.ms.remove("CleanUp:Cycle")
+          self.ms.publish("CleanUp:Cycle", "")
+          self.ms.commit()
 
  
         # wait for messages
