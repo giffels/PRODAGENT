@@ -10,8 +10,13 @@ import os
 from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
 import StageOut.Impl
 from StageOut.Registry import retrieveStageOutImpl
+<<<<<<< RuntimeCleanUp.py
+from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+from FwkJobRep.MergeReports import mergeReports
+=======
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.MergeReports import mergeReports
+>>>>>>> 1.5
 
 
 class CleanUpSuccess(Exception):
