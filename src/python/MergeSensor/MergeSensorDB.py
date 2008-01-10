@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.26 2007/11/07 19:49:32 evansde Exp $"
-__version__ = "$Revision: 1.26 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.27 2008/01/03 17:21:41 evansde Exp $"
+__version__ = "$Revision: 1.27 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -761,7 +761,7 @@ class MergeSensorDB:
         SELECT MI.name, MO.lfn FROM merge_inputfile MI
           JOIN merge_outputfile MO  ON MI.mergedfile = MO.id
             JOIN  merge_dataset DS  ON DS.id = MO.dataset
-              WHERE DS.id = %s;
+              WHERE DS.id = %s AND MI.status NOT IN ('removing', 'removed');
         """  % datasetId
         
         
@@ -874,7 +874,135 @@ class MergeSensorDB:
         
         # return it
         return result
-    
+
+
+    def removalInfo(self, datasetId):
+        """
+        _removalInfo_
+
+        Return a map of LFN: removal status
+
+        """
+
+
+        sqlStr = """ SELECT name, status FROM merge_inputfile
+           WHERE dataset=%s AND status in ('removed', 'removing');""" % (
+            datasetId,)
+
+        
+        # get cursor
+        try:
+            cursor = self.conn.cursor()
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+
+        # execute command
+        try:
+            cursor.execute(sqlStr)
+            
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlStr)
+
+        result = {}
+        for entry in cursor.fetchall():
+            result[entry[0]] = entry[1]
+
+        return result
+
+    def removingState(self, *files):
+        """
+        _removingState_
+
+        Flag the files listed as removing
+
+        """
+
+        sqlStr = """ UPDATE merge_inputfile set status='removing'
+          WHERE name IN ("""
+
+        for fname in files:
+            sqlStr += "\'%s\'\n," % fname
+        sqlStr = sqlStr.rstrip(',')
+        sqlStr += ");"
+        # get cursor
+        try:
+            cursor = self.conn.cursor()
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+
+        # execute command
+        try:
+            cursor.execute(sqlStr)
+            
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlStr)
+        return
+
+    def removedState(self, *files):
+        """
+        _removedState_
+
+        Flag the files listed as removed
+
+        """
+        sqlStr = """ UPDATE merge_inputfile set status='removed'
+          WHERE name IN ("""
+
+        for fname in files:
+            sqlStr += "\'%s\'\n," % fname
+        sqlStr = sqlStr.rstrip(',')
+        sqlStr += ");"
+
+        
+        # get cursor
+        try:
+            cursor = self.conn.cursor()
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+
+        # execute command
+        try:
+            cursor.execute(sqlStr)
+            
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlStr)
+        return
     ##########################################################################
     # get list of mergejobs of a dataset
     ##########################################################################

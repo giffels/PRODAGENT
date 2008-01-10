@@ -6,16 +6,13 @@ _FileCrossCheck_
 Tools for cross checking file lists in merge sensor, DBS etc
 
 """
+__version__ = "$Revision$"
+__revision__ = "$id$"
+
 import logging
 
-import ProdAgent.WorkflowEntities.Utilities as WEUtils
-import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
 
 from MergeSensor.MergeSensorDB import MergeSensorDB
-from MergeSensor.MergeSensorError import MergeSensorError, \
-                                        InvalidDataTier, \
-                                        InvalidDataset, \
-                                        DatasetNotInDatabase
 
 
 def listAllMergeDatasets():
@@ -100,5 +97,47 @@ class MergeSensorCrossCheck:
         """
         return self.mergeDB.getFileBlocks(self.datasetId)
         
+
+    def removedFiles(self):
+        """
+        _removedFiles_
+
+        Files flagged as removed
+
+        """
+        return [ x for x, v in self.mergeDB.removalInfo(self.datasetId).items()
+                 if v == "removed" ]
+        
+    def removingFiles(self):
+        """
+        _removingFiles_
+
+        Files flagged as removing state (IE removal should be in progress
+
+        """
+        return [ x for x, v in self.mergeDB.removalInfo(self.datasetId).items()
+                 if v == "removing" ]
+
+    def removalFiles(self):
+        """
+        _removalFiles_
+
+        All files in process of being removed or that have been removed
+
+        """
+        return self.mergeDB.removalInfo(self.datasetId).keys()
+
+
+    def flagRemoving(self, *files):
+        """
+        _flagRemoving_
+
+        Flag the list of LFNs as removing status
+
+        """
+        self.mergeDB.removingState(*files)
+        self.mergeDB.commit()
+
         
 
+        

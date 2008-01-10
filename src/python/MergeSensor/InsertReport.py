@@ -1,13 +1,17 @@
 #!/usr/bin/env python
+"""
+_InsertReport_
 
+Utilities to insert data from a Job Report
+back into the MergeSensor DB
+
+"""
+__revision__ = "$Id"
+__version__ = "$Revision$"
 
 import logging
 from MergeSensor.MergeSensorDB import MergeSensorDB
-from MergeSensor.MergeSensorError import MergeSensorError, \
-                                        InvalidDataTier, \
-                                        InvalidDataset, \
-                                        DatasetNotInDatabase, \
-                                        DuplicateLFNError
+from MergeSensor.MergeSensorError import DuplicateLFNError
 
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
@@ -16,7 +20,13 @@ from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
 class ReportHandler:
+    """
+    _ReportHandler_
 
+    Helper class to insert data from a physical job report file
+    into the MergeSensor DB
+    
+    """
     def __init__(self, repFile):
         self.mergeDB = MergeSensorDB()
         self.reportFile = repFile
@@ -27,6 +37,7 @@ class ReportHandler:
         self.insertedLFNs = []
         self.duplicateLFNs = []
         self.unknownDatasets = []
+        self.removedLFNs = []
         
     def __call__(self):
         """
@@ -57,6 +68,11 @@ class ReportHandler:
         for lfn in self.insertedLFNs:
             msg += "=> %s\n" % lfn
 
+        if len(self.removedLFNs) > 0:
+            msg += "Removed LFNs:\n"
+            for lfn in self.removedLFNs:
+                msg += "=> %s\n" % lfn
+
         return msg
                 
 
@@ -66,6 +82,14 @@ class ReportHandler:
         
         
         """
+        removedFiles = report.removedFiles.keys()
+        if len(removedFiles) > 0:
+            self.mergeDB.removedState(*removedFiles)
+            self.mergeDB.commit()
+            self.removedLFNs.extend(removedFiles)
+            
+            
+        
         for ofile in report.files:
             datasets = set([ x.name() for x in ofile.dataset ])
             for dataset in datasets:
@@ -97,23 +121,7 @@ class ReportHandler:
 
                 
                 
+                
 
-
-
-if __name__ == '__main__':
-
-    reps = [
-        "/home/evansde/work/PRODAGENT/work/JobCreator/RelValMinBias-170pre12/1012/FrameworkJobReport.xml",
-        "/home/evansde/work/PRODAGENT/work/JobCreator/RelValMinBias-170pre12/5079/FrameworkJobReport.xml",
-        
-        
-        ]
-
-    for rep in reps:
-        handler = ReportHandler(rep)
-        handler()
-        
-
-        
 
 
