@@ -315,8 +315,8 @@ CREATE TABLE merge_inputfile
     guid VARCHAR(100) NOT NULL,
     eventcount int NOT NULL default '0',
     block int NOT NULL default '0',
-    status enum("unmerged", "undermerge", "merged", "invalid")
-           default "unmerged",
+    status enum("unmerged", "undermerge", "merged", "invalid", 
+	"removing", "removed") default "unmerged",
     dataset int NOT NULL default '0',
     mergedfile int default NULL,
     filesize int NOT NULL default '0',
