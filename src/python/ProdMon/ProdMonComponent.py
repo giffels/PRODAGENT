@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.7 2007/10/22 18:56:25 swakef Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.8 2008/01/03 17:22:53 evansde Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -210,13 +210,16 @@ class ProdMonComponent:
                     
                 except StandardError, ex:
                     # If error on insert save for later retry
-                    if not os.path.isdir(self.args["FailedDir"]):
-                        os.mkdir(self.args["FailedDir"])
-                    report.write(os.path.join(self.args["FailedDir"], report.jobSpecId))
-                    msg = "Error inserting Stats into DB for report: %s\n" % report.jobSpecId
-                    msg += "report saved to %s\n" % str(self.args["FailedDir"])
-                    msg += str(ex)
-                    logging.error(msg)
+                    try:
+                        if not os.path.isdir(self.args["FailedDir"]):
+                            os.mkdir(self.args["FailedDir"])
+                        report.write(os.path.join(self.args["FailedDir"], report.jobSpecId))
+                        msg = "Error inserting Stats into DB for report: %s\n" % report.jobSpecId
+                        msg += "report saved to %s\n" % str(self.args["FailedDir"])
+                        msg += str(ex)
+                        logging.error(msg)
+                    except Exception, ex:
+                        logging.error("Unable to save job report to failure area: %s" % str(ex))
 
             finally:
                 #   //
