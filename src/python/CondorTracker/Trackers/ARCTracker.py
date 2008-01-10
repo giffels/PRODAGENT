@@ -116,7 +116,14 @@ StatusCodes = {"ACCEPTING": "PEND",  # Job has reaced the CE
                "KILLED":    "EXIT",  # Job canceled on user request
                "DELETED":   "EXIT",  # Job removed due to expiration time
                "FAILED":    "EXIT",  # Job finished with non-zero exit code
-               "FINISHED":  "DONE"}  # Job finished with zero exit code.
+               "FINISHED":  "DONE",  # Job finished with zero exit code.
+
+               # A few status codes of our own, used in uncertain cases
+               # ("Job information not found" and similar)
+               "ASSUMED_NEW":   "PEND",  # Too new to be known by ARC.
+               "ASSUMED_ALIVE": "RUN",   # Appears to be lost, but we still 
+                                         # have hope
+               "ASSUMED_LOST":  "EXIT"}  # We've lost hope.
 
 
 
@@ -172,31 +179,45 @@ class ARCTracker(TrackerPlugin):
             fields = line.split(":")
 
             if fields[0].strip() == "Job information not found":
-                # There are basically two reasons why we can get a "Job
-                # information not found" response: either the job was
-                # submitted so recently that the middleware hasn't had time
-                # to register it, or something has gone terribly wrong at
-                # the CE (in which case the job is likely to be lost).
-
                 words = line.split()
                 arcId = words[4][0:-1]
                 id = findKey(jobs, arcId) 
 
                 if line.find("This job was only very recently submitted") >= 0:
-                    status[id] = StatusCodes["ACCEPTING"]
+                    s = "ASSUMED_NEW"
                 else:
-                    status[id] = StatusCodes["FAILED"]
+                    # Assume the server is just too busy to respond, and
+                    # that the job is happily running, unless we've gotten
+                    # many "Job information not found" in a row, in which
+                    # case we assume something bad has happened.
+                    if noInfo.get(id, 0) < 10:
+                        s = "ASSUMED_ALIVE"
+                        noInfo[id] = noInfo.get(id, 0) + 1
+                    else:
+                        s = "ASSUMED_LOST"
 
+                status[id] = StatusCodes[s]
                 msg = "Information for job %s was not found;\n" % id
-                msg += " -> it's assumed to be in state %s" % status[id]
+                msg += " -> it's assigned the state " + s
+                logging.debug(msg)
+
+            elif fields[0].strip() == "Malformed URL":
+                # "Malformed URL" is something we might get for
+                # non-existent (e.g. lost) jobs.
+                id = fields[1].strip()
+                status[id] = StatusCodes["ASSUMED_LOST"] 
+                msg = "Malformed URL: "
+                msg += "Status for job %s is ASSUMED_LOST" % id
                 logging.debug(msg)
 
             elif fields[0].strip() == "Job Name":
                 id = fields[1].strip()
+
             elif fields[0].strip() == "Status":
                 s = ":".join(fields[1:]).strip()
                 if s in StatusCodes.keys(): 
                     status[id] = StatusCodes[s]
+                    if noInfo.has_key(id): del noInfo[id]
                 logging.debug("Status for job %s is %s" % (id, s))
 
         return status
@@ -382,9 +403,10 @@ class ARCTracker(TrackerPlugin):
             return
 
         summary = "Jobs Completed:\n"
-        for compId in complete:
-            os.system("ngclean " + compId)
-            summary += " -> %s\n" % compId
+        for id in complete:
+            os.system("ngclean " + id)
+            summary += " -> %s\n" % id
+            if noInfo.has_key(id): del noInfo[id]
         logging.info(summary)
         return
 
@@ -403,6 +425,7 @@ class ARCTracker(TrackerPlugin):
         summary = "Jobs Failed:\n"
         for id in failed:
             summary += " -> %s\n" % id
+            if noInfo.has_key(id): del noInfo[id]
         logging.debug(summary)
         return
 
@@ -448,3 +471,5 @@ class ARCTracker(TrackerPlugin):
 
 
 registerTracker(ARCTracker, ARCTracker.__name__)
+
+noInfo = {}
