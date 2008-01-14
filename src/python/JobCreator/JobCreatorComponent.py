@@ -409,7 +409,7 @@ class JobCreatorComponent:
             cleanFlags = self.mss.isSubscribedTo("SetJobCleanupFlag") 
             logging.debug("Found following components for cleanup flags " + \
                 str(cleanFlags))
-            if jobType == "Merge":
+            if jobType in  ("Merge", "Processing"):
                 cleanFlags += \
                 self.mss.isSubscribedTo("MergeAccountant:SetJobCleanupFlag")
                 logging.debug("Merge job: Adding MergeAccountant " +\
