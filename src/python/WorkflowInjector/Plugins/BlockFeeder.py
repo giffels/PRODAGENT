@@ -102,7 +102,33 @@ class BlockFeeder(PluginInterface):
         self.dbsUrl = None
         self.blocks = []
         self.loadPayloads(payload)
-        self.importDataset()        
+
+        logging.debug("Now making DBS query & constructing jobs") 
+        msg = """however feel free to sing along:
+
+        
+                 The sun'll come out 
+                      Tomorrow
+                Bet your bottom dollar 
+                   That tomorrow 
+                  There'll be sun!
+                  
+                       Stop!
+                    Millertime!
+
+        ...humming SuperFreak bass line...
+        """
+        logging.debug(msg)
+
+        self.importDataset()  
+        logging.debug("Dataset imported -- calling makeBlockList...")      
+        msg = """
+
+              ...She's a very kinky girl
+       The kind you don't take home to mother...
+
+        """ 
+        logging.debug(msg)
         self.makeBlockList()
 
 
@@ -110,7 +136,15 @@ class BlockFeeder(PluginInterface):
                                     self.workingDir,
                                     self.dbsUrl,
                                     InitialRun = self.persistData.run)
-        
+
+
+        msg = """
+
+             ...She's super-freaky, yow
+             Super freak, super freak...
+
+        """
+        logging.debug(msg)
         jobs = factory()
         for job in jobs:
             self.queueJob(job['JobSpecId'], job['JobSpecFile'],
@@ -119,7 +153,6 @@ class BlockFeeder(PluginInterface):
                           job['WorkflowPriority'],
                           *job['Sites'])
             
-
         self.persistData.run += len(jobs)
         handle = open(self.persistFile, 'w')
         pickle.dump(self.persistData, handle)
