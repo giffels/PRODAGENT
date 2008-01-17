@@ -7,8 +7,8 @@ input and output file accounting.
 
 """
 
-__revision__ = "$Id: MergeAccountantComponent.py,v 1.9 2007/09/27 08:26:51 ckavka Exp $"
-__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: MergeAccountantComponent.py,v 1.10 2008/01/03 17:16:08 evansde Exp $"
+__version__ = "$Revision: 1.10 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -274,6 +274,12 @@ class MergeAccountantComponent:
                 msg += "%s\n" % jobReport
                 msg += str(ex)
                 logging.error(msg)
+            # Add cleanup flag for non merge jobs too
+            logging.info("trigger cleanup for: %s" % jobName)
+            try:
+                self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
+            except (ProdAgentException, ProdException):
+                logging.error("trying to continue processing success event") 
             return
 
         # files can be cleaned up now
@@ -403,6 +409,12 @@ class MergeAccountantComponent:
         if jobName.find('mergejob') == -1:
             logging.info("Ignoring job %s, since it is not a merge job" \
                           % jobName)
+            # Add cleanup flag for non merge jobs too
+            logging.info("trigger cleanup for: %s" % jobName)
+            try:
+                self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
+            except (ProdAgentException, ProdException):
+                logging.error("trying to continue processing failure event")
             return
 
         # files can be cleaned up now
