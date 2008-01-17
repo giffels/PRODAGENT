@@ -19,7 +19,6 @@ class GeneratorInterface:
     def __init__(self):
         self.creator = None
         self.workflowCache = None
-        self.workflowFile = None
         self.jobCache = None
         self.componentConfig = {}
 

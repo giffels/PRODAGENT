@@ -242,6 +242,21 @@ class LCGBulkCreator(CreatorInterface):
         shreekConfig.addMonitorCfg(boss)
 
         #  //
+        # // (Optional) JobTimeout
+        #//
+        timeoutCfg = self.pluginConfig.get('JobTimeout', {})
+        usingJobTimeout = timeoutCfg.get("UseJobTimeout", "False")
+        if usingJobTimeout.lower() == "true":
+           shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
+           jobtimeout= shreekConfig.newMonitorCfg()
+           jobtimeout.setMonitorName("bulktimeout-1")
+           jobtimeout.setMonitorType("timeout")
+           jobtimeout.addKeywordArg(
+              Timeout = timeoutCfg['Timeout'],
+              HardKillDelay = timeoutCfg['HardKillDelay'])
+           shreekConfig.addMonitorCfg(jobtimeout)
+
+        #  //
         # // Dashboard Monitoring
         #//
         dashboardCfg = self.pluginConfig.get('Dashboard', {})
