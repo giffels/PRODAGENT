@@ -6,7 +6,7 @@ Globus Universe Condor Submitter implementation.
 
 """
 
-__revision__ = "$Id: OSGGlideIn.py,v 1.1 2007/03/19 20:03:59 evansde Exp $"
+__revision__ = "$Id: OSGGlideIn.py,v 1.2 2007/03/22 15:54:28 evansde Exp $"
 
 import os
 import logging
@@ -20,6 +20,7 @@ from JobSubmitter.Submitters.OSGUtils import standardScriptHeader
 from JobSubmitter.Submitters.OSGUtils import bulkUnpackerScript
 from JobSubmitter.Submitters.OSGUtils import missingJobReportCheck
 
+import ProdAgent.ResourceControl.ResourceControlAPI as ResConAPI
 
 class OSGGlideIn(BulkSubmitterInterface):
     """
@@ -46,13 +47,41 @@ class OSGGlideIn(BulkSubmitterInterface):
         self.mainSandbox = \
                    self.primarySpecInstance.parameters['BulkInputSandbox']
         self.mainSandboxName = os.path.basename(self.mainSandbox)
+
+        self.mainSandboxDir = os.path.dirname(self.mainSandbox)
+        self.mainSandboxLink = os.path.join(self.mainSandboxDir,"SandBoxLink.tar.gz")   
+        # this is a workaround to avoid submission failures for pathnames
+        # greater than 256 characters.  
+        if not os.path.exists(self.mainSandboxLink):
+           linkcommand = "ln -s %s %s" % (self.mainSandbox,self.mainSandboxLink)
+           logging.debug("making link to sandbox: %s"%linkcommand)
+           os.system(linkcommand)
+        # then check if the link exists already, if not, make it and 
+        # instead insert that...
+        # do same with jobspecs...
+        
+        
+        logging.debug("mainSandbox: %s" % self.mainSandbox)
+        logging.debug("mainSandboxLink: %s" % self.mainSandboxLink)
+        
         self.specSandboxName = None
         self.singleSpecName = None
         #  //
         # // Build a list of input files for every job
         #//
         self.jobInputFiles = []
-        self.jobInputFiles.append(self.mainSandbox)
+        self.jobInputFiles.append(self.mainSandboxLink)
+        #  //
+        # // Site details from ResCon
+        #//
+        #  // glideinsites is the list of site names matching
+        # //  the whitelist for the jobs being submitted
+        #//   
+        self.glideinsites = None
+        self.accountingGroup = None
+        self.lookupSite()
+        
+
         
         #  //
         # // For multiple bulk jobs there will be a tar of specs
@@ -61,13 +90,28 @@ class OSGGlideIn(BulkSubmitterInterface):
             self.specSandboxName = os.path.basename(
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox']
                 )
-            self.jobInputFiles.append(
-                self.primarySpecInstance.parameters['BulkInputSpecSandbox'])
+            self.specSandboxDir = os.path.dirname(
+                self.primarySpecInstance.parameters['BulkInputSpecSandbox']
+                )
+            self.specSandboxLink = os.path.join(self.specSandboxDir,"JobSpecLink.tar.gz")
+            logging.debug("specSandboxLink: %s"% self.specSandboxLink)   
+            linkcommand="ln -s %s %s" % (self.primarySpecInstance.parameters['BulkInputSpecSandbox'],self.specSandboxLink)
+            logging.debug("making link to jobspec: %s"%linkcommand)
+            os.system(linkcommand)
+            self.jobInputFiles.append(self.specSandboxLink)
+            logging.debug("InputSpecSandbox: %s" % self.specSandboxLink) 
         #  //
         # // For single jobs there will be just one job spec
         #//
         if not self.isBulk:
-            self.jobInputFiles.append(self.specFiles[self.mainJobSpecName])
+            self.specSandboxDir = os.path.dirname(self.specFiles[self.mainJobSpecName])
+            self.specSandboxLink = os.path.join(self.specSandboxDir,"JobSpecLink.xml")
+            logging.debug("specSandboxLink: %s"% self.specSandboxLink)
+            linkcommand="ln -s %s %s" % (self.specFiles[self.mainJobSpecName],self.specSandboxLink)
+            logging.debug("making link to jobspec: %s"%linkcommand)
+            os.system(linkcommand)
+            self.jobInputFiles.append(self.specSandboxLink)
+
             self.singleSpecName = os.path.basename(
                 self.specFiles[self.mainJobSpecName])
             
@@ -115,15 +159,6 @@ class OSGGlideIn(BulkSubmitterInterface):
 
         Make common JDL header
         """
-        glideInSites = self.lookupGlideInSite()
-        sitesString = str(glideInSites)
-        sitesString = sitesString.replace("[", "")
-        sitesString = sitesString.replace("]", "")
-        sitesString = sitesString.replace("\'","")
-        sitesString = sitesString.replace(" ", "")
-        sitesString = sitesString.strip()
-
-        logging.debug("Site Reqs: %s" % sitesString)
             
 
         inpFiles = []
@@ -143,7 +178,9 @@ class OSGGlideIn(BulkSubmitterInterface):
         jdl.append("log_xml = True\n" )
         jdl.append("notification = NEVER\n")
         jdl.append("+ProdAgent_ID = \"%s\"\n" % self.primarySpecInstance.parameters['ProdAgentName'])
-        jdl.append("+DESIRED_Sites=\"%s\"\n" % sitesString)
+        jdl.append("+DESIRED_Sites=\"%s\"\n" % self.glideinsites)
+        if self.accountingGroup != None:
+            jdl.append("+AccountingGroup = \"%s\"\n" % self.accountingGroup)
         jdl.append("+DESIRED_Archs=\"INTEL,X86_64\"\n")
         jdl.append("Requirements = stringListMember(GLIDEIN_Site,DESIRED_Sites)&& stringListMember(Arch, DESIRED_Archs) \n" )
 
@@ -171,16 +208,16 @@ class OSGGlideIn(BulkSubmitterInterface):
 
         """
 
-        scriptFile = "%s/%s-submit.sh" % (cache, jobID)
+        scriptFile = "%s/submit.sh" % cache
         self.makeWrapperScript(scriptFile, jobID)
         logging.debug("Submit Script: %s" % scriptFile)
         
         jdl = []
         jdl.append("Executable = %s\n" % scriptFile)
         jdl.append("initialdir = %s\n" % cache)
-        jdl.append("Output = %s-condor.out\n" % jobID)
-        jdl.append("Error = %s-condor.err\n" %  jobID)
-        jdl.append("Log = %s-condor.log\n" % jobID)
+        jdl.append("Output = condor.out\n")
+        jdl.append("Error = condor.err\n")
+        jdl.append("Log = condor.log\n")
         
         #  //
         # // Add in parameters that indicate prodagent job types etc
@@ -225,13 +262,15 @@ class OSGGlideIn(BulkSubmitterInterface):
         
 
         if self.isBulk:
-            script.extend(bulkUnpackerScript(self.specSandboxName))
+            #script.extend(bulkUnpackerScript(self.specSandboxLink))
+            script.extend(bulkUnpackerScript(os.path.basename(self.specSandboxLink)))
         else:
             script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
-                          self.singleSpecName)   
+                          "JobSpecLink.xml")   
             
         script.append(
-            "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName 
+#            "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName
+            "tar -zxf $PRODAGENT_JOB_INITIALDIR/SandBoxLink.tar.gz\n" 
             )
         script.append("cd %s\n" % self.workflowName)
         
@@ -264,89 +303,103 @@ class OSGGlideIn(BulkSubmitterInterface):
 
         # expect globus scheduler in OSG block
         # self.pluginConfig['OSG']['GlobusScheduler']
-        if not self.pluginConfig.has_key("OSG"):
-            msg = "Plugin Config for: %s \n" % self.__class__.__name__
-            msg += "Does not contain an OSG config block"
-            raise JSException( msg , ClassInstance = self,
-                               PluginConfig = self.pluginConfig)
+        #if not self.pluginConfig.has_key("OSG"):
+        #    msg = "Plugin Config for: %s \n" % self.__class__.__name__
+        #    msg += "Does not contain an OSG config block"
+        #    raise JSException( msg , ClassInstance = self,
+        #                       PluginConfig = self.pluginConfig)
 
         #  //
         # // Validate the value of the GlobusScheduler is present
         #//  and sane
-        sched = self.pluginConfig['OSG'].get("GlideInSite", None)
-        if sched in (None, "None", "none", ""):
-            msg = "Invalid value for OSG GlideInSite in Submitter "
-            msg += "plugin configuration: %s\n" % sched
-            msg += "You must provide a valid default glidein site"
-            raise JSException( msg , ClassInstance = self,
-                               PluginConfig = self.pluginConfig)
+        #sched = self.pluginConfig['OSG'].get("GlideInSite", None)
+        #if sched in (None, "None", "none", ""):
+        #    msg = "Invalid value for OSG GlideInSite in Submitter "
+        #    msg += "plugin configuration: %s\n" % sched
+        #    msg += "You must provide a valid default glidein site"
+        #    raise JSException( msg , ClassInstance = self,
+        #                       PluginConfig = self.pluginConfig)
         
-        #  //
-        # // Extract the mapping of SEName to Jobmanager from the
-        #//  plugin config
-        siteMapping = self.pluginConfig.get('SENameToSiteName', None)
-        if siteMapping == None:
-            msg = "SENameToSiteName not provided in Submitter "
-            msg += "pluging configuration\n"
-            msg += "This is required for mapping merge jobs to the appropriate"
-            msg += "Site based on storage element name"
-            raise JSException(msg, 
-                              ClassInstance = self,
-                              PluginConfig = self.pluginConfig)
+        
         
 
 
 
-    def lookupGlideInSite(self):
+    def lookupSite(self):
         """
-        _lookupGlideInSite_
+        _lookupSite_
 
         If a whitelist is supplied in the job spec instance,
         match it to a glidein site name.
 
-        If no whitelist is present, the standard OSG GlideInSite is used,
+        If no whitelist is present, panic
 
         If a whitelist is present and no match can be made, an exception
         is thrown
 
         """
-        logging.debug("lookupGlideInSite:")
+        logging.debug("lookupSite:")
         if len(self.whitelist) == 0:
             #  //
-            # //  No Preference, use default
-            #//
-            logging.debug("lookupGlideInSite:No Whitelist")
-            return [ self.pluginConfig['OSG']['GlideInSite'] ]
-      
-        #  //
-        # // We have a list, get the first one that matches
-        #//  NOTE: Need some better selection process if more that one site
-        #  //   Can we make condor match from a list??
-        # //
-        #//
-        seMap = self.pluginConfig['SENameToSiteName']
+            # //  No Preference, throw
+            #//   What to do if there is no site pref?? leave blank??
+            logging.error("lookupSite:No Whitelist")
+            raise RuntimeError, msg
 
+
+        ceMap = ResConAPI.createCEMap()
+        siteIndexMap = ResConAPI.createSiteIndexMap()
         matchedJobMgrs = set()
-        for sitePref in  self.whitelist:
-            if sitePref not in seMap.keys():
-                logging.debug("lookupGlideInSite: No match: %s" % sitePref)
+        for sitePref in self.whitelist:
+            try:
+                intSitePref = int(sitePref)
+                sitePref = intSitePref
+            except ValueError:
+                sitePref = siteIndexMap.get(sitePref, None)
+
+            if sitePref == None:
+                msg = "Unable to translate site preference %s\n"
+                msg += "into a known site index\n"
+                msg += "Known site identifiers: %s\n" % siteIndexMap.keys()
+                logging.debug(msg)
                 continue
-            matchedJobMgrs.add(seMap[sitePref])
-            logging.debug("lookupGlideInSite: Matched: %s => %s" % (
-                sitePref, seMap[sitePref]  )
+            
+            if sitePref not in ceMap.keys():
+                logging.debug("lookupSite: No match: %s" % sitePref)
+                continue
+            matchedJobMgrs.add(ceMap[sitePref])
+            logging.debug("lookupSite: Matched: %s => %s" % (
+                sitePref, ceMap[sitePref]  )
                           )
-            
-            
+            if self.accountingGroup == None:
+                siteAttrs = ResConAPI.attributesByIndex(sitePref)
+                self.accountingGroup = siteAttrs.get("accounting-group", None)
+                
+
+        
+        
         if len(matchedJobMgrs) == 0:
             msg = "Unable to match site preferences: "
             msg += "\n%s\n" % self.whitelist
-            msg += "To any JobManager"
+            msg += "To any Glidein sites"
             raise JSException(msg, 
                               ClassInstance = self,
-                              SENameToSiteName = seMap,
+                              CEMap = ceMap,
                               Whitelist = self.whitelist)
-        return list(matchedJobMgrs)
-                
+
+        sitesString = ""
+        for site in matchedJobMgrs:
+            sitesString += "%s," % site
+        sitesString = sitesString[:-1]
+        logging.debug("Site Reqs: %s" % sitesString)
+
+        
+        
+        self.glideinsites = "FNAL"
+        return 
+
+
+      
     
 
 registerSubmitter(OSGGlideIn, OSGGlideIn.__name__)
