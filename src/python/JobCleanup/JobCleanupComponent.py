@@ -48,6 +48,7 @@ class JobCleanupComponent:
          self.args['Logfile'] = None
          self.args['FailureArchive'] = None
 #         self.args['SuccessArchive'] = None
+         self.args['KeepLogsInSuccessArchive'] = False
          self.args.update(args)
  
 
@@ -121,10 +122,16 @@ class JobCleanupComponent:
              handler.publishEvent=self.publishEvent
              handler.failureArchive=self.args['FailureArchive']
              handler.successArchive=self.args['SuccessArchive']
+             handler.keepLogsInSuccessArchive=self.args['KeepLogsInSuccessArchive']
                  
          # main body using persistent based message server
          logging.info("JobCleanup persistent based message service Starting...")
-         
+         msg="Success Archive: %s" % handler.successArchive
+         logging.info(msg)
+         msg="Failure Archive: %s" % handler.failureArchive
+         logging.info(msg)
+         if handler.keepLogsInSuccessArchive:
+           logging.info("Set to keep logfiles in successful job archive")         
          # create message service
          self.ms = MessageService()
          

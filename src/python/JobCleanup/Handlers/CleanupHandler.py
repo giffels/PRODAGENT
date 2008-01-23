@@ -56,6 +56,8 @@ class CleanupHandler(HandlerInterface):
                              short_root=cacheDirLocation.split('/')[-1]
                              #NOTE: should be done with regular expressions.
                              extensions=['.xml','.tar.gz']
+                             if self.keepLogsInSuccessArchive:
+                                 extensions+=['.err','.log','.out']
                              for extension in extensions:
                                  pos1=name.rfind(extension)
                                  pos2=len(name)-len(extension)
