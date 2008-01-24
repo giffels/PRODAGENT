@@ -3,6 +3,9 @@ __all__ = []
 
 
 import CondorKiller
-import BOSSKiller
+try:
+    import BOSSKiller
+except ImportError:
+    pass 
 
 
