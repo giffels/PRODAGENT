@@ -5,8 +5,8 @@ Provides LumiData from LumiServer and populates JobSpec's config file with lumi 
 
 """
 
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: LumiServerLink.py,v 1.7 2007/08/06 14:14:01 hufnagel Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: LumiServerLink.py,v 1.8 2007/08/20 20:14:46 hufnagel Exp $"
 __author__ = "kss"
 
 
@@ -42,6 +42,10 @@ class LumiServerLink:
     def setLumiData(self,job_spec_file,job_spec,lumiList):
 
         lumi_info=self.getLumiInfo(lumiList)
+
+        logging.info('Calling setLumiData with')
+        logging.info('%s' % lumi_info)
+
         #print "LUMIINFO",lumi_info
         self._int_setLumiData(job_spec_file,job_spec,lumi_info)
 
@@ -80,6 +84,9 @@ class LumiServerLink:
         old_bunch=0
         for b in lumi_et_det:
             bunch=int(b['bunch_number'])
+            # allow to start with bunch 0 or 1
+            if ( bunch == 0 ):
+                old_bunch = -1
             if(bunch-old_bunch!=1):
                 msg="Error in ET bunch sequence: %d %d"%(old_bunch,bunch)
                 raise DBSReaderError(msg)
@@ -95,6 +102,9 @@ class LumiServerLink:
         old_bunch=0
         for b in lumi_occ_det:
             bunch=int(b['bunch_number'])
+            # allow to start with bunch 0 or 1
+            if ( bunch == 0 ):
+                old_bunch = -1
             if(bunch-old_bunch!=1):
                 msg="Error in OCC bunch sequence: %d %d"%(old_bunch,bunch)
                 raise DBSReaderError(msg)
@@ -125,7 +135,13 @@ class LumiServerLink:
             return ret
         except LumiException, ex:
             msg="Caught LUMIServer Exception: %s: %s "  % (ex.msg, ex.code )
-            print msg
+            logging.info(msg)
+            #raise DBSReaderError(msg)
+            # XXX MUST SET DATA QUALITY FLAG
+            return {}
+        except IndexError, ex1:
+            msg="Caught IndexException: %s:" % ex1
+            logging.info(msg)
             #raise DBSReaderError(msg)
             # XXX MUST SET DATA QUALITY FLAG
             return {}
@@ -145,7 +161,7 @@ class LumiServerLink:
             return ret
         except LumiException, ex:
             msg="Caught LUMIServer Exception: %s: %s "  % (ex.msg, ex.code )
-            print msg
+            logging.info(msg)
             #raise DBSReaderError(msg)
             # XXX MUST SET DATA QUALITY FLAG
             return {}
@@ -162,6 +178,9 @@ class LumiServerLink:
         #print "PRODUCERS:",cfgInstance.producers_()
         # Get producers list (lumi module is EDProducer)
         producers_list=cfgInstance.producers_()
+
+        logging.info('Producers list : %s' % producers_list)
+
         mod_lumi=producers_list['lumiProducer']
         #print "LumiModule",mod_lumi.parameterNames_(),dir(mod_lumi)
         #Get template pset for the lumi module
@@ -194,6 +213,8 @@ class LumiServerLink:
         
         # bla-bla
         #print "DUMP:",cfgInstance.dumpConfig()
+
+        job_spec.payload.cfgInterface.rawCfg = pickle.dumps(cfgInstance)
 
         # save spec after update
         job_spec.save(job_spec_file)
