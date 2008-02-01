@@ -115,6 +115,7 @@ class BulkGenerator(GeneratorInterface):
         
         directory = self.newJobArea(workflowSpec.workflowName(), jobTemplate)
         taskObject = workflowSpec.payload.taskObject
+        taskObject['Activity'] = workflowSpec.parameters.get("Activity", None)
         generateShREEKConfig(taskObject)
         installBulkDashboardInfo(taskObject)
         taskObject(GenerateMainScript())

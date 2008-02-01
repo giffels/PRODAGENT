@@ -94,6 +94,19 @@ def installPADetails(dashboardInfo):
     return
                                   
 
+def getActivity(jobSpecNode):
+    """
+    _getActivity_
+
+    See if the jobspec has an Activity parameter, and return
+    that or None if not present
+
+    """
+    activities = jobSpecNode.getParameter("Activity")
+    if len(activities) == 0:
+        return None
+    return activities[-1]
+
 
 def installDashboardInfo(taskObject):
     """
@@ -109,6 +122,9 @@ def installDashboardInfo(taskObject):
     dashboardInfo['User'] = os.environ.get('USER', 'ProdAgent')
     dashboardInfo['Workflow'] = taskObject['RequestName']
     dashboardInfo['JobType'] = taskObject['JobType']
+    activity = getActivity(taskObject['JobSpecNode'])
+    if activity != None:
+        dashboardInfo['TaskType'] = activity
     installPADetails(dashboardInfo)
     taskObject['DashboardInfoInstance'] =  dashboardInfo
     taskObject['DashboardInfo'] =  IMProvDoc("DashboardMonitoring")
@@ -135,6 +151,9 @@ def installBulkDashboardInfo(taskObject):
     dashboardInfo['User'] = os.environ.get('USER', 'ProdAgent')
     dashboardInfo['Workflow'] = taskObject['RequestName']
     dashboardInfo['JobType'] = taskObject['JobType']
+    if taskObject['Activity'] != None:
+        dashboardInfo['TaskType'] = taskObject['Activity']
+    
     installPADetails(dashboardInfo)
     taskObject['DashboardInfoInstance'] =  dashboardInfo
     taskObject['DashboardInfo'] =  IMProvDoc("DashboardMonitoring")
