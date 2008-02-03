@@ -7,13 +7,18 @@ Tier 0 LSF Creator
 """
 
 import os
+import logging
 
 from JobCreator.Registry import registerCreator
 from JobCreator.Creators.CreatorInterface import CreatorInterface
 from JobCreator.JCException import JCException
+
 from JobCreator.ScramSetupTools import setupScramEnvironment
 from JobCreator.ScramSetupTools import scramProjectCommand
 from JobCreator.ScramSetupTools import scramRuntimeCommand
+
+from IMProv.IMProvNode import IMProvNode
+
 
 class T0LSFCreator(CreatorInterface):
     """
@@ -137,6 +142,8 @@ class T0LSFCreator(CreatorInterface):
         #  //
         # // Insert list of plugin modules to be used
         #//
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.BulkDashboardMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.BulkEventMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.PerfMonitor")
 
@@ -150,20 +157,34 @@ class T0LSFCreator(CreatorInterface):
             perfMonitor.setMonitorName("perfmonitor-1")
             perfMonitor.setMonitorType("perf-monitor")
             shreekConfig.addMonitorCfg(perfMonitor)
-            
+
+        #  //
+        # // Dashboard Monitoring
+        #//
+        dashboardCfg = self.pluginConfig.get('Dashboard', {})
+        usingDashboard = dashboardCfg.get("UseDashboard", "False")
+        if usingDashboard.lower() == "true":
+            dashboard = shreekConfig.newMonitorCfg()
+            dashboard.setMonitorName("cmsdashboard-1")
+            dashboard.setMonitorType("bulk-dashboard")
+            dashboard.addKeywordArg(
+                ServerHost = dashboardCfg['DestinationHost'],
+                ServerPort = dashboardCfg['DestinationPort'],
+                DashboardInfo = taskObject['DashboardInfoLocation'])
+            #  //
+            # // Use realtime event monitoring?
+            #//
+            evHost = dashboardCfg.get("EventDestinationHost", None)
+            evPort = dashboardCfg.get("EventDestinationPort", None)
+            if evPort and evHost:
+                dashboard.addNode(IMProvNode("EventDestination", None,
+                                             Host = evHost, Port = evPort))    
+            shreekConfig.addMonitorCfg(dashboard)
+
 
         #  //
         # // JobTimeout Setup
-        #//  Looks in CreatorPluginConfig.xml
-        #  //
-        # // 	<ConfigBlock Name="JobTimeout">
- 	#  //		<Parameter Name="UseJobMon" Value="False"/>
-	# //		<Parameter Name="Timeout" Value="360"/>   <<<<< Soft time out (SIGUSR2) in minutes
-        #//             <Parameter Name="HardKillDelay" Value="60"/>    <<<<< Hard time out (SIGKILL) in minutes
-	#  //	</ConfigBlock>
-        # //  After Timeout minutes, the process is sent a SIGUSR2 to try a gentle exit
-        #//   After Timeout + HardKillDelay minute, the process is terminated & the job fails with traceback info generated
-
+        #//
         timeoutCfg = self.pluginConfig.get('JobTimeout', {})
         usingJobTimeout = timeoutCfg.get("UseJobTimeout", "False")
         if usingJobTimeout.lower() == "true":
@@ -175,7 +196,25 @@ class T0LSFCreator(CreatorInterface):
                  HardKillDelay = timeoutCfg['HardKillDelay'])
             shreekConfig.addMonitorCfg(jobtimeout)
 
+        #  //
+        # // Run & Event monitoring via MonALISA
+        #//
+        evLog = self.pluginConfig.get("EventLogger", {})
+        evLogDest = self.pluginConfig.get("EventLoggerDestinations", {})
+        usingEvLog = evLog.get("UseEventLogger", "False")
+        if usingEvLog.lower() == "true":
+            evlogger = shreekConfig.newMonitorCfg()
+            evlogger.setMonitorName("cmseventlogger-1")
+            evlogger.setMonitorType("bulk-event")
+            evlogger.addKeywordArg(
+                EventFile = "EventLogger.log"
+                )
+            for dest, port in evLogDest.items():
+                evlogger.addNode(IMProvNode("Destination", None,
+                                            Host = dest, Port = port))
+            shreekConfig.addMonitorCfg(evlogger)
 
+        return
 
 
     def handleCMSSWTaskObject(self, taskObject):
