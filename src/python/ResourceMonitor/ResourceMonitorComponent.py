@@ -182,7 +182,7 @@ class ResourceMonitorComponent:
        
         # generate first polling cycle
         self.ms.remove("ResourceMonitor:Poll")
-        self.ms.publish("ResourceMonitor:Poll", "")
+        self.ms.publishUnique("ResourceMonitor:Poll", "")
         self.ms.commit()
  
         # wait for messages
@@ -231,7 +231,7 @@ class ResourceMonitorComponent:
                     self.publishResources(resourceConstraints)
         finally:
             # generate new polling cycle
-            self.ms.publish('ResourceMonitor:Poll', '', self.pollDelay)
+            self.ms.publishUnique('ResourceMonitor:Poll', '', self.pollDelay)
             self.ms.commit()
        
         return returnValue

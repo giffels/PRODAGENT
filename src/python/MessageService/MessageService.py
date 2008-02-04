@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: MessageService.py,v 1.10 2007/03/05 12:10:02 ckavka Exp $"
+__version__ = "$Revision: 1.10 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -272,7 +272,7 @@ class MessageService:
     # publish method 
     ##########################################################################
 
-    def publish(self, name, payload, delay="00:00:00"):
+    def publish(self, name, payload, delay="00:00:00", cursor=None):
         """
         _publish_
         
@@ -295,31 +295,8 @@ class MessageService:
                        FROM ms_type
                        WHERE name = '""" + name + """'
                      """
-        try:
-            # get cursor
-            cursor = self.conn.cursor()
-
-            # execute command
-            cursor.execute(sqlCommand)
-        except:
-
-            # logging
-            logging.warning("MS: connection to database lost")
-
-            # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
-
-            # logging
-            logging.warning("MS: connection to database recovered")
-                                                                                
-            # redo operations in interrupted transaction
-            self.redo()
-            
-            # get cursor
-            cursor = self.conn.cursor()
-
-            # retry
-            cursor.execute(sqlCommand)
+                     
+        cursor = self.executeSQLwithRetry(sqlCommand, cursor)
 
         rows = cursor.rowcount
 
@@ -391,7 +368,56 @@ class MessageService:
         # return
         cursor.close()
         return destCount
+    
+    
+    def publishUnique(self, name, payload, delay="00:00:00", cursor=None):
+        """
+            publish method that only publishes if no
+            messages of the same type type exist
+        """
         
+        # logging
+        logging.debug("MS: publishUnique requested")
+
+        # check if message type is in database
+        sqlCommand = """
+                     SELECT typeid
+                       FROM ms_type
+                       WHERE name = '""" + name + """'
+                     """
+        cursor = self.executeSQLwithRetry(sqlCommand, cursor)
+
+        rows = cursor.rowcount
+
+        if rows == 0:
+            # not registered before, so cant have any instances
+            return self.publish(name, payload, delay, cursor)
+        
+        # message type was registered before, get id
+        row = cursor.fetchone()
+        typeid = row[0]
+                        
+        # message known - how many in queue?
+        sqlCommand = """
+                     SELECT COUNT(*)
+                       FROM ms_message
+                       WHERE type = '""" + str(typeid) + """'
+                     """
+    
+        cursor.execute(sqlCommand)
+        
+        num = cursor.fetchone()[0]
+        
+        if num == 0:
+            # no messages - so publish
+            return self.publish(name, payload, delay, cursor)
+        
+        # message exists - do not publish another
+        cursor.close()
+        return 0
+    
+
+
     ##########################################################################
     # get method 
     ##########################################################################
@@ -810,3 +836,43 @@ class MessageService:
         except:
             pass
  
+ 
+    #############################################################################
+    # execute given sql, reconnect to db if neccesary
+    #############################################################################
+ 
+    def executeSQLwithRetry(self, sqlCommand, cursor = None):
+        """
+            Helper function that:
+                creates cursor (Optionally)
+                execute SQL with error handling
+                return cursor
+        """
+        
+        try:
+            if cursor is None:
+                cursor = self.conn.cursor()
+                
+            cursor.execute(sqlCommand)
+            
+        except:
+            
+            # logging
+            logging.warning("MS: connection to database lost")
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect(invalidate = True)
+
+            # logging
+            logging.warning("MS: connection to database recovered")
+                                                                                
+            # redo operations in interrupted transaction
+            self.redo()
+            
+            # get cursor
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlCommand)
+        
+        return cursor
