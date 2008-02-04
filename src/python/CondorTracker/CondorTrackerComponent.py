@@ -199,7 +199,7 @@ class CondorTrackerComponent:
             TrackerDB.removeJob(jobspec)
             logging.info("--> Stop Watching: %s" % jobspec)
             
-        self.ms.publish("CondorTracker:Update", "", self.args['PollInterval'])
+        self.ms.publishUnique("CondorTracker:Update", "", self.args['PollInterval'])
         self.ms.commit()
         return
 
@@ -324,8 +324,9 @@ class CondorTrackerComponent:
         self.ms.subscribeTo("CondorTracker:SetTracker")
         self.ms.subscribeTo(self.args['TrackOnEvent'])
         self.ms.subscribeTo("SubmissionFailed")
-        
-        self.ms.publish("CondorTracker:Update", "", self.args['PollInterval'])
+
+        self.ms.remove("CondorTracker:Update")
+        self.ms.publishUnique("CondorTracker:Update", "", self.args['PollInterval'])
         self.ms.commit()
         # wait for messages
         while True:
