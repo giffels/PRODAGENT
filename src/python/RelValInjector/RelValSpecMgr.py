@@ -321,14 +321,14 @@ x
                               'RelVal')
         
         maker.setCMSSWVersion(testInstance['CMSSWVersion'])
-        maker.setPhysicsGroup("dataOps")
+        maker.setPhysicsGroup("RelVal")
         maker.setConfiguration(cfgWrapper, Type = "instance")
         maker.setOriginalCfg(cfgAsString)
         psetHash = "NO_PSET_HASH"
         if cfgWrapper.configMetadata.has_key('PSetHash'):
             psetHash =  cfgWrapper.configMetadata['PSetHash']
         maker.setPSetHash(psetHash)
-        maker.changeCategory("mc")
+        maker.changeCategory("relval")
         if testInstance['SelectionEfficiency']  != None:
             selEff = float(testInstance['SelectionEfficiency'] )
             maker.addSelectionEfficiency(selEff)
