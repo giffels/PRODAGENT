@@ -118,4 +118,4 @@ class SRMImpl(StageOutImpl):
         self.executeCommand(command)
 
 
-registerStageOutImpl("srm", SRMImpl)
+registerStageOutImpl("srm-fnal", SRMImpl)
