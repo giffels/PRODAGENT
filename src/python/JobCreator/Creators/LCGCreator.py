@@ -251,6 +251,23 @@ class LCGCreator(CreatorInterface):
         #//
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.DashboardMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.BOSSMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.PerfMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
+
+
+        #  //
+        # // Perf Monitor
+        #//
+        perfConfig = self.pluginConfig.get("PerformanceMonitor", {})
+        usingPerfMon = perfConfig.get("UsePerformanceMonitor", "False")
+        if usingPerfMon.lower() == "true":
+            perfMonitor =  shreekConfig.newMonitorCfg()
+            perfMonitor.setMonitorName("perfmonitor-1")
+            perfMonitor.setMonitorType("perf-monitor")
+            shreekConfig.addMonitorCfg(perfMonitor)
+
+
+
 
         #  //
         # // (Optional) JobTimeout

@@ -234,12 +234,28 @@ class LCGBulkCreator(CreatorInterface):
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.BOSSMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.BulkDashboardMonitor")
         shreekConfig.addPluginModule("ShREEK.CMSPlugins.BulkEventMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.PerfMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
 
+        
         
         boss = shreekConfig.newMonitorCfg()
         boss.setMonitorName("boss-1") # name of this instance (make it up)
         boss.setMonitorType("boss")   # type of this instance (as registered)
         shreekConfig.addMonitorCfg(boss)
+        
+        #  //
+        # // Perf Monitor
+        #//
+        perfConfig = self.pluginConfig.get("PerformanceMonitor", {})
+        usingPerfMon = perfConfig.get("UsePerformanceMonitor", "False")
+        if usingPerfMon.lower() == "true":
+            perfMonitor =  shreekConfig.newMonitorCfg()
+            perfMonitor.setMonitorName("perfmonitor-1")
+            perfMonitor.setMonitorType("perf-monitor")
+            shreekConfig.addMonitorCfg(perfMonitor)
+
+
 
         #  //
         # // (Optional) JobTimeout
