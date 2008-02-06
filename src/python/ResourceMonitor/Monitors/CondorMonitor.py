@@ -10,7 +10,7 @@ from ResourceMonitor.Monitors.MonitorInterface import MonitorInterface
 from ResourceMonitor.Registry import registerMonitor
 
 
-from ResourceMonitor.Monitors.CondorQ import processingJobs, mergeJobs
+from ResourceMonitor.Monitors.CondorQ import processingJobs, mergeJobs, cleanupJobs
 
 
 class CondorMonitor(MonitorInterface):
@@ -48,6 +48,7 @@ class CondorMonitor(MonitorInterface):
         #//  jobs
         mergeInfo = mergeJobs(*activeGatekeepers)
         processingInfo = processingJobs(*activeGatekeepers)
+        cleanupInfo = cleanupJobs(*activeGatekeepers)
 
         #  //
         # // Calculate available merge slots
@@ -69,6 +70,32 @@ class CondorMonitor(MonitorInterface):
                 constraint = self.newConstraint()
                 constraint['count'] = abs(test)
                 constraint['type'] = "Merge"
+                constraint['site'] = self.allSites[site]['SiteIndex']
+                print str(constraint)
+                result.append(constraint)
+
+                        #  //
+        # // Calculate available CleanUp slots
+        # || Basically cloning the merge stuff here -- doesn't seem to make sense that this be a bulk thing
+        # || Would expect in steady state for the jobs to just sort of dribble out behind successful merges
+        #//
+        for gatekeeper, jobcounts in cleanupInfo.items():
+            idle = jobcounts["Idle"]
+            msg="cleanupInfo: %s"%str(cleanupInfo)
+            logging.debug(msg)
+            msg="gatekeeper: %s"%gatekeeper
+            logging.debug(msg)
+            if ceToSite.get(gatekeeper):
+              site = ceToSite[gatekeeper]
+              cleanupThresh = self.siteThresholds[site]["cleanupThreshold"]
+              test = idle - cleanupThresh
+              msg="CondorMonitor CleanUp: Site=%s, Idle=%s, Thresh=%s, Test=%s"%(site,idle,cleanupThresh,test)
+              logging.debug(msg)
+
+              if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "CleanUp"
                 constraint['site'] = self.allSites[site]['SiteIndex']
                 print str(constraint)
                 result.append(constraint)

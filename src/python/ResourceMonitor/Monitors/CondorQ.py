@@ -179,7 +179,10 @@ def processingJobs(*defaultGatekeepers):
         attributes[default] = {"Idle": 0, "Running": 0}
 
     for item in processingJobs:
-        gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
+        try :
+            gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
+        except:
+            gatekeeper = 'cmsosgce.fnal.gov/jobmanager-condor'
         gatekeeper = gatekeeper.strip()
         item['Gatekeeper'] = gatekeeper
 
@@ -213,7 +216,10 @@ def mergeJobs(*defaultGatekeepers):
         attributes[default] = {"Idle": 0, "Running": 0}
 
     for item in mergeJobs:
-        gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
+        try :
+            gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
+        except:
+            gatekeeper = 'cmsosgce.fnal.gov/jobmanager-condor'
         gatekeeper = gatekeeper.strip()
         item['Gatekeeper'] = gatekeeper
 
@@ -229,6 +235,44 @@ def mergeJobs(*defaultGatekeepers):
     return attributes
 
 
+def cleanupJobs(*defaultGatekeepers):
+    """
+    _processingJobs_
+
+    Return a dictionary of gatekeeper: number of cleanup jobs for
+    each gatekeeper found in the condor_q output
+
+    Default gatekeepers is a list of gatekeepers that you want to
+    make sure appear in the output, since if there are no jobs, it
+    wont be included. If there are no jobs at a default gatekeeper,
+    then it will be returned as having 0 jobs
+    """
+    cleanupJobs = condorQ("ProdAgent_JobType==\\\"CleanUp\\\"")
+    attributes = {}
+    for default in defaultGatekeepers:
+        attributes[default] = {"Idle": 0, "Running": 0}
+
+    for item in cleanupJobs:
+        try :
+            gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
+        except:
+            gatekeeper = 'cmsosgce.fnal.gov/jobmanager-condor'
+        gatekeeper = gatekeeper.strip()
+        item['Gatekeeper'] = gatekeeper
+
+        if not attributes.has_key(gatekeeper):
+            attributes[gatekeeper] = {"Idle": 0, "Running": 0}
+
+        if item['JobStatus'] == 1:
+            attributes[gatekeeper]['Idle'] += 1
+        if item['JobStatus'] == 2:
+            attributes[gatekeeper]['Running'] += 1
+
+    return attributes
+
+
+
+
 if __name__ == '__main__':
 
 
@@ -236,7 +280,8 @@ if __name__ == '__main__':
                          "red.unl.edu/jobmanager-pbs")
     print mergeJobs("cmsosgce.fnal.gov/jobmanager-condor-opt",
                     "red.unl.edu/jobmanager-pbs")
-    
+    print cleanupJobs("cmsosgce.fnal.gov/jobmanager-condor-opt",
+                    "red.unl.edu/jobmanager-pbs")
     
 
     
