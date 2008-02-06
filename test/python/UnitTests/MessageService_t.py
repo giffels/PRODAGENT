@@ -167,12 +167,42 @@ class MessageServiceUnitTests(unittest.TestCase):
         # purge messages for next test
         self.messageService[0].purgeMessages()
       
+      
+    def testPublishUnique(self):
+        """
+        Test the publishUnique function
+        """
+        
+        ms1 = MessageService()
+        ms1.registerAs("uniqueComponent1")
+        ms2 = MessageService()
+        ms2.registerAs("uniqueComponent2")
+        ms2.subscribeTo("uniqueMessage")
+        
+        ms1.publishUnique("uniqueMessage","1")
+        ms1.publishUnique("uniqueMessage","2")
+        ms1.commit()
+        
+        #first message sent should be only one retrieved
+        type, payload = ms2.get(wait = False)
+        self.assertEqual(type, "uniqueMessage")
+        self.assertEqual(payload, "1")
+        type, payload = ms2.get(wait = False)
+        self.assertEqual(type, None)
+        self.assertEqual(payload, None)
+        ms2.commit()
+        
+        ms1.purgeMessages()
+        ms2.purgeMessages()
+      
     def runTest(self):
         self.testA()
         self.testB()
         self.testC()
         self.testD()
         self.testE()
+        self.testPublishUnique()
+        
             
 if __name__ == '__main__':
     unittest.main()
