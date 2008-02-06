@@ -158,6 +158,7 @@ def instancesToXML(document, parent, instances):
         resource_node.setAttribute("site_name", str(instanceInfo["site_name"]))
         resource_node.setAttribute("ce_name", str(instanceInfo["ce_hostname"]))
         resource_node.setAttribute("se_name", str(instanceInfo["se_hostname"]))
+        resource_node.setAttribute("worker_node", str(instanceInfo["host_name"]))
         instance_node.appendChild(resource_node)
         
         addTextNode(document, instance_node, "events_written", instanceInfo["evts_written"])
