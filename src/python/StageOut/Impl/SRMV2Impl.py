@@ -68,7 +68,7 @@ class SRMV2Impl(StageOutImpl):
         result += "echo \"Local File Size is: $FILE_SIZE\"\n"
         
         targetPath = None
-        SFN = 'SFN?='
+        SFN = '?SFN='
         sfn_idx = targetPFN.find(SFN)
         if sfn_idx >= 0:
             targetPath = targetPFN[sfn_idx+5:]
