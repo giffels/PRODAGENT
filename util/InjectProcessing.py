@@ -13,7 +13,7 @@ import sys,os,getopt,time
 usage="\n Usage: python InjectProcessing.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow \n --njobs=<NumberofJobs> \t\t number of jobs  --plugin=<Submission type> \t type of creation/submission plugin\n"
 
 valid = ['workflow=','njobs=','nevts=','plugin=']
-admitted_vals = ['LCG','GliteBulk','T0LSF']
+admitted_vals = ['LCGAdvanced', 'LCG','GliteBulk','T0LSF']
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)

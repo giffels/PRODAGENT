@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGAdvanced.py,v 1.32 2007/07/05 18:51:19 evansde Exp $"
+__revision__ = "$Id: LCGAdvanced.py,v 1.1 2007/10/25 19:57:50 evansde Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -33,7 +33,7 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentBOSS import BOSSCommands
 
 import JobSubmitter.JobSubmitterComponent
-from  ProdAgent.ResourceControl.ResourceControlAPI import createSEMap
+from  ProdAgent.ResourceControl.ResourceControlAPI import createSEMap, createCEMap
 
 
 
@@ -252,9 +252,7 @@ class LCGAdvanced(SubmitterInterface):
           return
         #logging.info("Scheduler id from LCGAdvanced=%s"%jobGridId)
         dashboardInfo['ApplicationVersion'] = self.listToString(self.parameters['AppVersions'])
-        JobSubmitter.JobSubmitterComponent.SubmitterLock.acquire()
         semap=createSEMap()
-        JobSubmitter.JobSubmitterComponent.SubmitterLock.release()
         targetce=[]
         for i in self.parameters['Whitelist']:
         	try:
@@ -351,22 +349,22 @@ class LCGAdvanced(SubmitterInterface):
             logging.error(msg) 
             raise InvalidFile(msg)
         anyMatchrequirements=""
-        JobSubmitter.JobSubmitterComponent.SubmitterLock.acquire()
-        semap=createSEMap()
-        JobSubmitter.JobSubmitterComponent.SubmitterLock.release()
+
+        #ask for all ce's, its upto jobQueue to throttle on active not the submitter
+        cemap=createCEMap(activeOnly=False)
         if self.parameters['Whitelist']!=[]:
-          anyMatchrequirements=" && anyMatch(other.storage.CloseSEs , ("
-          sitelist=""
+          sitelist=" && ("
           for i in self.parameters['Whitelist']:
             try:
-              tmp=int(i)
-              sename=semap[tmp]
-            except:
-              sename=i
-            logging.debug("Whitelist element %s" % sename)
-            sitelist+="target.GlueSEUniqueID==\"%s\""% sename +" || " 
+              name=cemap[int(i)]
+              sitelist+="other.GlueCEUniqueID==\"%s\" || " % name
+              logging.debug("Whitelist element %s" % name)
+            except Exception, ex:
+              #should we revert to general LCG submitter if site lookup fails?
+              raise RuntimeException("Error mapping site id %s to ce: %s" % (str(i), str(ex)))
+
           sitelist=sitelist[:len(sitelist)-4]
-          anyMatchrequirements+=sitelist+"))"
+          anyMatchrequirements+=sitelist+")"
         
         if swarch:
           archrequirement=" && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch

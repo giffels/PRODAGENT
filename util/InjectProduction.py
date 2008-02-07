@@ -12,7 +12,7 @@ import sys,os,getopt,time
 usage="\n Usage: python InjectTest.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow file \n --nevts=<NumberofEvent> \t\t number of events per job \n --njobs=<NumberofEvent> \t\t number of jobs \n --plugin=<Submission type> \t type of creation/submission plugin \n --site-pref=<StorageElement name>  storage element name \n [ --run=<firstRun> \t\t\t first run number effective only for New Workflow]\n\n *Note* that the run number option is effective only when a New workflow is created and it overwrites the FirstRun default in $PRODAGENT_CONFIG if set"
 
 valid = ['workflow=', 'run=', 'nevts=' , 'njobs=', 'site-pref=','plugin=']
-admitted_vals = ['LCG','GliteBulk','T0LSF','GLITE']
+admitted_vals = ['LCGAdvanced', 'LCG','GliteBulk','T0LSF','GLITE']
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)

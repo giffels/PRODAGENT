@@ -298,7 +298,12 @@ componentFields = {
     "RssFeed" : "no",
     },
 
-
+	"ResourceMonitor" : {
+	"ComponentDir" : None,
+	"MonitorPluginConfig" : os.path.join(os.path.dirname(configFile),"MonitorPluginConfig.xml"),
+	"MonitorName" : None,
+	"PollInterval" : "01:00:00",
+	},
 
     }# end componentFields
 

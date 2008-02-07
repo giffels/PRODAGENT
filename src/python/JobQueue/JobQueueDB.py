@@ -29,6 +29,8 @@ from ProdAgent.ResourceControl.ResourceControlDB import ResourceControlDB
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgent.WorkflowEntities.Workflow import associateSiteToWorkflow
 
+from ProdAgent.ResourceControl import ResourceControlAPI
+
 class JobQueueDBError(ProdException):
     """
     _JobQueueDBError_
@@ -90,42 +92,56 @@ class JobQueueDB:
         self.siteIndexByName = {}
         self.siteIndexBySE = {}
 
+
     def loadSiteMatchData(self):
         """
         _loadSiteMatchData_
+        
+        Deprecated -to be removed in a later release
 
         Import details of all sites known by the PA to match
         site index values by site name and se
 
         """
-        resConDB = ResourceControlDB()
-        self.siteMatchData = resConDB.siteMatchData()
-
-        [ self.siteIndexByName.__setitem__(x['SiteName'], x['SiteIndex'])
-          for x in self.siteMatchData ]
-
-        [ self.siteIndexBySE.__setitem__(x['SEName'], x['SiteIndex'])
-          for x in self.siteMatchData ]
-        
-        return
+        logging.error("""JobQueueDB::loadSiteMatchData called - this function is deprecated
+        Please remove this function call""")
+#        resConDB = ResourceControlDB()
+#        self.siteMatchData = resConDB.siteMatchData()
+#
+#        [ self.siteIndexByName.__setitem__(x['SiteName'], x['SiteIndex'])
+#          for x in self.siteMatchData ]
+#
+#        [ self.siteIndexBySE.__setitem__(x['SEName'], x['SiteIndex'])
+#          for x in self.siteMatchData ]
+#        
+#        return
 
     def getSiteIndex(self, siteId):
         """
         _getSiteIndex_
 
-        Get the site index for the site id provided, first, site names
-        are checked, then se names and the first matching index is returned.
+        Get the site indices for the site id provided, first, site names
+        are checked, then se names and all matching indices are returned.
 
-        In the event of no match, None is returned
+        In the event of no match, [] is returned
 
         """
-        siteVal = self.siteIndexByName.get(siteId, None)
-        if siteVal != None:
-            return siteVal
-        seVal = self.siteIndexBySE.get(siteId, None)
-        if seVal != None:
-            return seVal
-        return None
+        sites = []
+        allSites = ResourceControlAPI.allSiteData()
+
+        # first search by name
+        for site in allSites:
+         if site["SiteName"] == siteId:
+           sites.append(site["SiteIndex"])
+
+        # if not found try SE
+        if len(sites) == 0:
+          for site in allSites:
+            if site["SEName"] == siteId:    
+              sites.append(site["SiteIndex"])
+
+        return sites
+        
 
     def validateJobSpecDict(self, dictInstance):
         """
@@ -163,7 +179,7 @@ class JobQueueDB:
                 newSites.add("NULL")
             else:
                 siteMatch = self.getSiteIndex(siteId)
-                if siteMatch == None:
+                if len(siteMatch) == 0:
                     msg = "Unable to match site name for job spec with sites:\n"
                     msg += "%s\n" % siteId
                     raise JobQueueDBError(
@@ -173,7 +189,7 @@ class JobQueueDB:
                         self.siteIndexBySE.keys()
                         )
                 else:
-                    newSites.add(siteMatch)
+                    newSites.update(siteMatch)
         newSiteList = list(newSites)
         dictInstance['SiteList'] = newSiteList
         
@@ -252,7 +268,15 @@ class JobQueueDB:
 
         """
         jobSpecDicts = list(jobSpecDicts)
-        sitesList = [ self.getSiteIndex(x) for x in listOfSites]
+        sites = set()
+        for siteId in listOfSites:
+             if siteId == "NULL":
+                sites.add("NULL")
+             else:
+                 siteMatch = self.getSiteIndex(siteId)
+                 logging.debug("siteMatch = %s" % siteMatch)
+                 [sites.add(x) for x in siteMatch]
+        sitesList = list(sites)
         
         _INSERTLIMIT = 2000
 
@@ -749,24 +773,26 @@ class JobQueueDB:
             logging.info("This won't work with constraints without site restriction")
             return
 
-        logging.info("Sites: %s" %siteStr)
+        logging.debug("Sites: %s" %siteStr)
 
         """
         all site indices that this siteStr can handle (because they share the same SE)
         """
+        #TODO: replace this with appropriate api call
         sqlStr = \
                """
                SELECT site_index FROM rc_site
                WHERE se_name IN
                  (SELECT se_name FROM rc_site WHERE site_index IN (%s))
+                AND is_active = "true" 
                ;
                """ % siteStr
 
         Session.execute(sqlStr)
         result = Session.fetchall()
         site_group = [ str(x[0]) for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("All site_index that this site can process: %s" %site_group)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("All site_index that this site can process: %s" %site_group)
         site_group_txt=','.join(site_group)
                                                         
         """
@@ -806,8 +832,8 @@ class JobQueueDB:
         Session.execute(sqlStr)
         result = Session.fetchall()
         wf_not_in_group = [ x[0] for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("WFs not in any of this sites group: %s" %wf_not_in_group)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("WFs not in any of this sites group: %s" %wf_not_in_group)
         wf_not_in_group_txt='\''+'\',\''.join(wf_not_in_group)+'\''
 
 
@@ -824,34 +850,34 @@ class JobQueueDB:
         Session.execute(sqlStr)
         result = Session.fetchall()
         drain_modes = [ x[0] for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("drain modes for this siteStr: %s" %drain_modes)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("drain modes for this siteStr: %s" %drain_modes)
         drainSql=''
         if 'merge' in drain_modes:
-            drainSql += """ AND jobQ.job_type = 'Merge' """
+            drainSql += """ AND jobQ.job_type != 'Merge' """
         if 'processing' in drain_modes:
-            drainSql += """ AND jobQ.job_type = 'Processing' """ 
+            drainSql += """ AND jobQ.job_type != 'Processing' """ 
         
         sqlStr= "SELECT DISTINCT workflow_id FROM jq_queue;"
         Session.execute(sqlStr)
         result = Session.fetchall()
         all_wfs = [ x[0] for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("all WFs in jq_queue: %s" %all_wfs)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("all WFs in jq_queue: %s" %all_wfs)
         
         sqlStr= "SELECT DISTINCT id FROM we_Workflow;"
         Session.execute(sqlStr)
         result = Session.fetchall()
         all_we_wfs = [ x[0] for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("all WFs in we_Workflow: %s" %all_we_wfs)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("all WFs in we_Workflow: %s" %all_we_wfs)
 
         ## workflows not known to we_Workflows
         all_rest=[]
         for wf in all_wfs:
             if wf not in all_we_wfs:
                 all_rest.append(wf)
-        logging.info("all WFs not known to we_Workflow: %s" %all_rest)
+        logging.debug("all WFs not known to we_Workflow: %s" %all_rest)
 
         """
         PN: (Processing New jobs) new jobs of workflows that are already in processing (ie have jobs in state 'released')
@@ -863,14 +889,14 @@ class JobQueueDB:
         Session.execute(sqlStr)
         result = Session.fetchall()
         wf_has_released = [ x[0] for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("all WFs with a job in state released: %s" %wf_has_released)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("all WFs with a job in state released: %s" %wf_has_released)
 
         wf_in_we_Workflow_has_released=[]
         for wf in wf_has_released:
             if wf in all_we_wfs:
                 wf_in_we_Workflow_has_released.append(wf)
-        logging.info("all WFs in we_Workflow with a job in state released: %s" %wf_in_we_Workflow_has_released)
+        logging.debug("all WFs in we_Workflow with a job in state released: %s" %wf_in_we_Workflow_has_released)
 
         ## workflows with an assigned site_index ALWAYS have jobs in state released!!
         ## hmmm, doesn't work in dummy mode. lets implement it just to make sure
@@ -878,22 +904,22 @@ class JobQueueDB:
         Session.execute(sqlStr)
         result = Session.fetchall()
         wf_with_site_aso = [ x[0] for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("all WFs in we_workflow_site_assoc: %s" %wf_with_site_aso)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("all WFs in we_workflow_site_assoc: %s" %wf_with_site_aso)
 
         sqlStr= "SELECT DISTINCT workflow_id FROM we_workflow_site_assoc WHERE site_index IN (%s) AND site_index IS NOT NULL;" % siteStr
         Session.execute(sqlStr)
         result = Session.fetchall()
         wf_sites_max_on_site = [ x[0] for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("all WFs in we_workflow_site_assoc with sites_max already on this site: %s" %wf_sites_max_on_site)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("all WFs in we_workflow_site_assoc with sites_max already on this site: %s" %wf_sites_max_on_site)
 
         sqlStr= "SELECT DISTINCT id FROM we_Workflow WHERE max_sites IS NULL;"
         Session.execute(sqlStr)
         result = Session.fetchall()
         wf_sites_max_is_NULL = [ x[0] for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("all WFs in we_Workflow without max_sites: %s" %wf_sites_max_is_NULL)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("all WFs in we_Workflow without max_sites: %s" %wf_sites_max_is_NULL)
 
         pn_wfs=[]
         for wf in wf_has_released+wf_with_site_aso:
@@ -901,7 +927,7 @@ class JobQueueDB:
             if wf not in pn_wfs:
                 pn_wfs.append(wf)
      
-        logging.info("all WFs in PN: %s" %pn_wfs)
+        logging.debug("all WFs in PN: %s" %pn_wfs)
         pn_wfs_txt='\''+'\',\''.join(pn_wfs)+'\''
 
         """
@@ -932,14 +958,14 @@ class JobQueueDB:
         Session.execute(sqlStr)
         result = Session.fetchall()
         xnb_wfs = [ x[0] for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("all WFs in XNb: %s" %xnb_wfs)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("all WFs in XNb: %s" %xnb_wfs)
 
         xn_wfs = []
         for wf in xnb_wfs:
             if wf not in pn_wfs:
                 xn_wfs.append(wf)
-        logging.info("all WFs in XN: %s" %xn_wfs)
+        logging.debug("all WFs in XN: %s" %xn_wfs)
         xn_wfs_txt='\''+'\',\''.join(xn_wfs)+'\''
 
         ## list of workflows that fullfill a valid sites_max constraint for this siteStr
@@ -956,8 +982,8 @@ class JobQueueDB:
         Session.execute(sqlStr)
         result = Session.fetchall()
         wf_has_new = [ x[0] for x in result ]
-        logging.info("sqlStr: %s" % sqlStr.replace('\n',''))
-        logging.info("all WFs in jq_queue with new jobs: %s" %wf_has_new)
+        logging.debug("sqlStr: %s" % sqlStr.replace('\n',''))
+        logging.debug("all WFs in jq_queue with new jobs: %s" %wf_has_new)
         
         fn_wfs=[]
         for wf in wf_has_new:
@@ -975,7 +1001,7 @@ class JobQueueDB:
         for wf in wf_has_new:
             if wf not in fn_wfs+xn_wfs+pn_wfs:
                 rn_wfs.append(wf)
-        logging.info("all WFs in RN: %s" %rn_wfs)
+        logging.debug("all WFs in RN: %s" %rn_wfs)
         rn_wfs_txt='\''+'\',\''.join(rn_wfs)+'\''
 
 
@@ -1045,12 +1071,12 @@ class JobQueueDB:
                ;
                """ %(site_group_txt,count)
 
-        logging.info("SQL used: %s" % sqlStr.replace('\n',''))
+        logging.debug("SQL used: %s" % sqlStr.replace('\n',''))
 
         Session.execute(sqlStr)
         result = Session.fetchall()
 
-        logging.info("Number of jobs found %s" %len(result))
+        logging.debug("Number of jobs found %s" %len(result))
 
         jobs_to_be_released=[]
         add_new_site=[]

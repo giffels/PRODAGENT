@@ -131,7 +131,8 @@ def getWorkflow2CMSSW():
     """
     workmap=getCMSSoftFromWE(workmap)
 
-    workmap=getCMSSoftFromRequestInjector(workmap)
+    #RequestInjector not mandatory
+    #workmap=getCMSSoftFromRequestInjector(workmap)
 
 
 
@@ -171,7 +172,7 @@ def workmapWFName2ID(workmap):
         w2i[str(i[0])]=str(i[1])
 
 
-    logging.info("workmapWFName2ID "+str(w2i))
+    logging.debug("workmapWFName2ID "+str(w2i))
 
     workmap2={}
     for wf,cmssw in workmap.items():
@@ -229,7 +230,7 @@ def gtkToNotWorkflows(infosite,short=False):
 
     #workmap=getWorkflow2CMSSW()
     workmap=workmapWFName2ID(getWorkflow2CMSSW())
-    logging.info("gtkToNotWorkflows: workflow/software "+str(workmap))
+    logging.debug("gtkToNotWorkflows: workflow/software "+str(workmap))
 
     all_gtk={}
     for gtk in infosite.keys():

@@ -35,7 +35,7 @@ class LCGAdvanced(PrioritiserInterface):
         and stores the list in self.matchedJobs
 
         """
-        logging.info("LCGAdvanced findMatchedJobs started.")
+        logging.debug("LCGAdvanced findMatchedJobs started.")
         Session.set_database(dbConfig)
         Session.connect()
         Session.start_transaction()
@@ -100,8 +100,8 @@ class LCGAdvanced(PrioritiserInterface):
                 len(jobIndices2_proc),
                 jobIndices2_merge,
                 jobIndices2_proc)
-            logging.info(msg)
-            logging.info("Old style: %s"%jobIndices3)
+            logging.debug(msg)
+            logging.debug("Old style: %s"%jobIndices3)
 
             jobIndices=[]
             jobs = jobQ.retrieveJobDetails(*jobIndices2)

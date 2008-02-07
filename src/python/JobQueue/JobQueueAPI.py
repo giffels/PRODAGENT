@@ -47,7 +47,7 @@ def queueJob(jobSpecFile, priorityMap):
         Session.connect()
         Session.start_transaction()
         jobQ = JobQueueDB()
-        jobQ.loadSiteMatchData()
+        #jobQ.loadSiteMatchData()
         jobQ.insertJobSpec(jobSpecId, jobSpecFile, jobType, workflow,
                            priority, sitesList)
         logging.info("Job %s Queued with priority %s" % (jobSpecId, priority))
@@ -86,7 +86,7 @@ def bulkQueueJobs(listOfSites, *jobSpecDicts):
         Session.connect()
         Session.start_transaction()
         jobQ = JobQueueDB()
-        jobQ.loadSiteMatchData()
+        #jobQ.loadSiteMatchData()
         jobQ.insertJobSpecsForSites(listOfSites, *jobSpecDicts)
         logging.info("Job List Queued for sites: %s" % listOfSites)
         Session.commit_all()

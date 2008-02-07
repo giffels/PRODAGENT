@@ -35,7 +35,7 @@ class LCGAdvanced(MonitorInterface):
         if self.plugConf:
             if self.plugConf.has_key("processingFractionDefault"):
                 defaultfraction=float(self.plugConf["processingFractionDefault"])
-        logging.info("LCGAdvanced: procThresh defaultfraction "+str(defaultfraction))
+        logging.debug("LCGAdvanced: procThresh defaultfraction "+str(defaultfraction))
 
 
         cpus=int(self.siteinfo[gtk]['max_slots'])
@@ -62,7 +62,7 @@ class LCGAdvanced(MonitorInterface):
                 thres=thres_max
             pass
 
-        logging.info("LCGAdvanced: procThresh site "+site+" value "+str(thres))
+        logging.debug("LCGAdvanced: procThresh site "+site+" value "+str(thres))
         return thres	
 
     def mergeTresh(self,gtk):
@@ -70,7 +70,7 @@ class LCGAdvanced(MonitorInterface):
         if self.plugConf:
             if self.plugConf.has_key("mergeFractionDefault"):
                 defaultfraction=float(self.plugConf["mergeFractionDefault"])
-        logging.info("LCGAdvanced: mergeThresh defaultfraction "+str(defaultfraction))
+        logging.debug("LCGAdvanced: mergeThresh defaultfraction "+str(defaultfraction))
 
         site=self.gtkToSite[gtk]
         st=self.siteThresholds[site]
@@ -91,7 +91,7 @@ class LCGAdvanced(MonitorInterface):
             thres=int(defaultfraction*self.procThresh(gtk))
             pass
 
-        logging.info("LCGAdvanced: mergeThresh site "+site+" value "+str(thres))
+        logging.debug("LCGAdvanced: mergeThresh site "+site+" value "+str(thres))
         return thres
 
     def minSubmit(self,gtk):
@@ -115,7 +115,7 @@ class LCGAdvanced(MonitorInterface):
             ## default is fraction of procTresh
             mini = int(defaultfraction*self.procThresh(gtk))
 
-        logging.info("LCGAdvanced: minSubmit site "+site+" value "+str(mini))
+        logging.debug("LCGAdvanced: minSubmit site "+site+" value "+str(mini))
         return mini
 
     def maxSubmit(self,gtk):
@@ -123,7 +123,7 @@ class LCGAdvanced(MonitorInterface):
         if self.plugConf:
             if self.plugConf.has_key("maximumSubmissionFractionDefault"):
                 defaultfraction=float(self.plugConf["maximumSubmissionFractionDefault"])
-        logging.info("LCGAdvanced: maxSubmit defaultfraction "+str(defaultfraction))
+        logging.debug("LCGAdvanced: maxSubmit defaultfraction "+str(defaultfraction))
 
         ## delete from rc_site_threshold where threshold_name = 'maximumSubmission';
         site=self.gtkToSite[gtk]
@@ -143,7 +143,7 @@ class LCGAdvanced(MonitorInterface):
             ## using procTresh is stupid
             maxi = int(int(self.siteinfo[gtk]['max_slots'])*float(defaultfraction))
 
-        logging.info("LCGAdvanced: maxSubmit site "+site+" value "+str(maxi))
+        logging.debug("LCGAdvanced: maxSubmit site "+site+" value "+str(maxi))
         if maxi < 1:
             logging.info("LCGAdvanced: maxSubmit site "+site+" value "+str(maxi)+" lower than 1. Resetting.")
             maxi=1
@@ -159,6 +159,22 @@ class LCGAdvanced(MonitorInterface):
 
         if self.plugConf:
             logging.info("LCGAdvanced: Plugin config file found for LCGAdvanced")
+            
+        
+        if self.plugConf.has_key("UseSAM") and self.plugConf["UseSAM"].lower() in ("true", "yes"):
+            self.plugConf["UseSAM"] = True
+        else:
+            self.plugConf["UseSAM"] = False
+            logging.info("ignoring SAM state")
+
+        self.plugConf["SAMurl"] = self.plugConf.get("SAMurl", "http://lxarda16.cern.ch/dashboard/request.py/latestresultssmry")    
+        if self.plugConf.has_key("UseFCR") and self.plugConf["UseFCR"].lower() in ("true", "yes"):
+            self.plugConf["UseFCR"] = True
+        else:
+            self.plugConf["UseFCR"] = False
+            logging.info("ignoring fcr state")
+
+        self.plugConf["FCRurls"] = self.plugConf.get("FCRurls", 'http://lcg-fcr.cern.ch:8083/fcr-data/exclude.ldif')
 
     # Reverse lookup table for ce -> site name
     ## CE == gatekeeper !!
@@ -167,7 +183,7 @@ class LCGAdvanced(MonitorInterface):
                 self.allSites[x]['CEName'],
                 self.allSites[x]['SiteName']) for x in self.activeSites ]  
 
-        logging.info("LCGAdvanced: Found active gatekeepers/site "+str(self.gtkToSite))
+        logging.debug("LCGAdvanced: Found active gatekeepers/site "+str(self.gtkToSite))
 
         ## check for ill-formed entries
         gtk_reg=re.compile(r"(?P<ce>.*?)(:(?P<port>\d+))/(?P<queue>.*)$")
@@ -183,15 +199,15 @@ class LCGAdvanced(MonitorInterface):
             if not name_in_bdii in site_names:
                 site_names.append(name_in_bdii)
 
-        fcr_urls=['http://lcg-fcr.cern.ch:8083/fcr-data/exclude.ldif']
-        if self.plugConf.has_key("FCRurls"):
-            fcr_urls=self.plugConf["FCRurls"].split(',')
-
-        use_fcr=True
-        if self.plugConf.has_key("UseFCR"):
-            use_fcr=self.plugConf["UseFCR"]
-        if not use_fcr:
-            logging.info("Ignoring FCR state")
+        fcr_urls = self.plugConf["FCRurls"].split(',')
+        if self.plugConf["UseFCR"]:
+             fcr_urls = self.plugConf["FCRurls"].split(',')
+        else:
+             fcr_urls = None      
+ 
+        samURL = None
+        if self.plugConf["UseSAM"]:
+             samURL = self.plugConf["SAMurl"]
 
         ## no need to use phedex, give a dummy value as DBParam
         dbparam='TEST'
@@ -204,13 +220,13 @@ class LCGAdvanced(MonitorInterface):
             if os.environ.has_key('LCG_GFAL_INFOSYS'):
                 bdii=os.environ['LCG_GFAL_INFOSYS']
             else:
-                logging.info("LCGAdvanced: No bdii defined and no value for LCG_GFAL_INFOSYS found.")
+                logging.error("LCGAdvanced: No bdii defined and no value for LCG_GFAL_INFOSYS found.")
                 return  result
         try:
-            logging.info("Calling getSiteInfoFromBase with site_names "+str(site_names)+" fcr_urls "+str(fcr_urls)+" bdii "+str(bdii)+" dbparam "+str(dbparam))
-            self.siteinfo=getSiteInfoFromBase(site_names,fcr_urls,bdii,dbparam)
-            logging.info("getSiteInfoFromBase finished")
-        except:
+            logging.debug("Calling getSiteInfoFromBase with site_names "+str(site_names)+" fcr_urls "+str(fcr_urls)+" bdii "+str(bdii)+" dbparam "+str(dbparam)+" sam " + str(samURL))
+            self.siteinfo=getSiteInfoFromBase(site_names,fcr_urls,bdii,dbparam,samURL)
+        except Exception, ex:
+            logging.error("error during poll: %s" % str(ex))
             return result
 
         ## clean out self.siteinfo with unused entries
@@ -242,6 +258,9 @@ class LCGAdvanced(MonitorInterface):
             if val['in_fcr'] and use_fcr:
                 logging.info("LCGAdvanced: Removing ce/site \""+ceuid+"/"+val['site_name']+"\" combo from available resources. Site is in FCR.")
                 to_del[ceuid] = True
+            if val['SAMfail']:
+                logging.info("LCGAdvanced: Removing ce/site \""+ceuid+"/"+val['site_name']+"\" combo from available resources. CE is failing SAM tests")
+                to_del[ceuid] = True
 
         for ceuid,val in to_del.items():
             if val:
@@ -249,12 +268,12 @@ class LCGAdvanced(MonitorInterface):
 
         ## gtkToNotWorklfow map
         gtkToWorkflow=gtkToNotWorkflows(self.siteinfo)
-        logging.info("LCGAdvanced: gtkToNotWorkflow "+str(gtkToWorkflow))
+        logging.debug("LCGAdvanced: gtkToNotWorkflow "+str(gtkToWorkflow))
 
         # get totals per active gatekeeper for any jobs
         ## returns a dictionary with {'Idle':\d+,'Running':\d+}
         anySiteInfo = anySiteJobs(self.gtkToSite.keys())
-        logging.info("LCGAdvanced: anySiteInfo "+str(anySiteInfo))
+        logging.debug("LCGAdvanced: anySiteInfo "+str(anySiteInfo))
 
         for gtk, jobcounts in anySiteInfo.items():
             if not self.siteinfo.has_key(gtk):
@@ -266,7 +285,7 @@ class LCGAdvanced(MonitorInterface):
             minSub = self.minSubmit(gtk)
             maxSub = self.maxSubmit(gtk)
 
-            logging.info("LCGAdvanced: idle "+str(idle)+" running "+str(jobcounts['Running'])+" site "+site+" test "+str(test)+" minSub "+str(minSub))
+            logging.debug("LCGAdvanced: idle "+str(idle)+" running "+str(jobcounts['Running'])+" site "+site+" test "+str(test)+" minSub "+str(minSub))
 
             if test < 0:
                 if abs(test) < minSub:
@@ -275,7 +294,7 @@ class LCGAdvanced(MonitorInterface):
                 constraint = self.newConstraint()
                 cou = abs(test)
                 if cou > maxSub:
-                    logging.info("LCGAdvanced: number of possible jobs to be released "+str(cou)+" is larger than maximum allowed "+str(maxSub))
+                    logging.debug("LCGAdvanced: number of possible jobs to be released "+str(cou)+" is larger than maximum allowed "+str(maxSub))
                     cou = maxSub
 
                 constraint['count'] = cou
@@ -284,7 +303,7 @@ class LCGAdvanced(MonitorInterface):
                 ## workflow constraint, default is None
                 if len(gtkToWorkflow[gtk])>0:
                     constraint['workflow'] = ','.join(gtkToWorkflow[gtk])
-                logging.info("LCGAdvanced: Constraint for site "+site+" :"+str(constraint))
+                #logging.info("LCGAdvanced: Constraint for site "+site+" :"+str(constraint))
                 result.append(constraint)
                 #logging.info("LCGAdvanced: All constraints:"+str(result))
 

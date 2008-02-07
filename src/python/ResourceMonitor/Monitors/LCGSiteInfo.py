@@ -21,7 +21,10 @@ What is expected in the RCDB:
 import re, os
 from subprocess import Popen,PIPE
 from urllib import urlopen
-
+from xml.dom.minidom import parse                                                            
+import urllib2
+import logging
+  
 """
 Collect site info
 """
@@ -49,6 +52,91 @@ def getFcr(urls):
 
     return in_fcr_cms
 
+
+def samCheck(sites, url):
+    """
+    check status of last sam tests for sites
+        Returns list of ce's with failures
+    """
+    ces_failed = set() 
+
+    if url == None:
+      return ces_failed
+
+    # dashboard url takes test id's not names
+    #TODO: move to config file at some point
+    # 6 = CE-cms-mc
+    # 133 = CE-cms-basic
+    tests = ["133", "6"]
+
+    #only return info for failed ce's
+    query_url = url + "?services=CE&exitStatus=error"
+    query_url += "&sites=" + "&sites=".join(sites)
+    query_url += "&tests=" + "&tests=".join(tests)    
+
+    logging.debug("sam query using url: %s" % query_url)
+
+    try:
+        logging.debug("Starting sam check")
+
+        request = urllib2.Request(query_url)
+        #request xml data
+        request.add_header('Accept', 'text/xml')
+        opener = urllib2.build_opener()
+        results = parse(opener.open(request))
+
+        # each site under item tag (under data)
+        data = results.getElementsByTagName('data')[0].getElementsByTagName('item')
+        for sitedata in data:
+
+            # check if any sites names - if not skip
+            if (len(sitedata.getElementsByTagName('SamName')) == 0):
+                continue
+
+            site = sitedata.getElementsByTagName('SamName')[0].firstChild.nodeValue
+            logging.debug("checking site %s" % site)
+
+            # now loop over ce's
+            ces = sitedata.getElementsByTagName('ServiceNames')
+            for ce in ces:
+                try:
+
+                    if ce.getElementsByTagName('ServiceName') == None:
+                        continue;
+
+                    cename = ce.getElementsByTagName('ServiceName')[0].firstChild.nodeValue
+                    logging.error("ce = %s" % cename)
+
+                    #go through tests
+                    tests = ce.getElementsByTagName('Tests')[0]
+
+                    # each test is a seperate item tag
+                    items = tests.getElementsByTagName('item')
+                    for test in items:
+
+                        # now ignore age - this is staus of last test so 
+                        # on error put in failure mode
+                        # --- old --- only trust if got last result
+                        #if test.getElementsByTagName("Age")[0].firstChild == None or \
+                        #       test.getElementsByTagName("Age")[0].firstChild.nodeValue != "0":
+                        #    continue
+
+                        statusNode = test.getElementsByTagName("Status")[0].firstChild
+                        #statusNode not filled for non-error
+                        #TODO: Change to fail only on error - look up syntax
+                        if statusNode and statusNode.nodeValue != "ok":
+                            ces_failed.add(cename)
+                except Exception, ex:
+                    logging.error("prob with sam query of %s: %s" % (site, str(ex)))
+                    # on errror just ignore ce
+
+
+    except Exception, ex:
+        logging.error("Error on sam query: %s" % str(ex))
+
+    return list(ces_failed)
+
+
 """
 LDAP parsing using ldapsearch. Assumes ldapsearch is available
 """
@@ -58,8 +146,8 @@ def getLdap(base,attrs,ldaphost,ret_dn=False):
 
     cmd_base='ldapsearch -LLL -x -H ldap://'+ldaphost
 
-    #command=cmd_base+' -b "'+base+'" \'(GlueCEAccessControlBaseRule=VO:cms)\''+' '.join(attrs)
-    command=cmd_base+' -b "'+base+'" '+' '.join(attrs)
+    command=cmd_base+' -b "'+base+'" \'(GlueCEAccessControlBaseRule=VO:cms)\''+' '.join(attrs)
+    #command=cmd_base+' -b "'+base+'" '+' '.join(attrs)
 
     FNULL = open('/dev/null', 'w')
     try:
@@ -116,58 +204,61 @@ def getBdii(names,ldaphost):
     reg_mdsvoname=re.compile(r"mds-vo-name=(?P<site>.*)")
 
     for site in names:
-        site_base='mds-vo-name='+site+',mds-vo-name=local,o=grid'
-        [clusters]=getLdap(site_base,['GlueClusterUniqueID'],ldaphost,True)
-        for source,[cluster] in clusters:
-            ## to fix GRIF, we need to redefine the site base
-            tmparr=source.split(',')
-            tmparr.pop(0)
-            site_base=','.join(tmparr)
-            ## look for additional sitename
-            if reg_mdsvoname.search(tmparr[0]):
-                tmp_sitename=reg_mdsvoname.search(tmparr[0]).group('site')
-                if tmp_sitename == site:
-                    tmp_sitename=''
-                else:
-                    ## use a whitespace character. it forbidden in BDII names. 
-                    ## split(' ')[0] should give the original name 
-                    tmp_sitename=' '+tmp_sitename
+        try:
+            site_base='mds-vo-name='+site+',mds-vo-name=local,o=grid'
+            [clusters]=getLdap(site_base,['GlueClusterUniqueID'],ldaphost,True)
+            for source,[cluster] in clusters:
+                ## to fix GRIF, we need to redefine the site base
+                tmparr=source.split(',')
+                tmparr.pop(0)
+                site_base=','.join(tmparr)
+                ## look for additional sitename
+                tmp_sitename=''
+                if reg_mdsvoname.search(tmparr[0]):
+                    tmp_sitename=reg_mdsvoname.search(tmparr[0]).group('site')
+                    if tmp_sitename == site:
+                        tmp_sitename=''
+                    else:
+                        ## use a whitespace character. it forbidden in BDII names. 
+                        ## split(' ')[0] should give the original name 
+                        tmp_sitename=' '+tmp_sitename
 
-            cluster_base='GlueClusterUniqueID='+cluster+','+site_base
-            subclusters,ceUIDs=getLdap(cluster_base,['GlueSubClusterUniqueID','GlueClusterService'],ldaphost)
+                cluster_base='GlueClusterUniqueID='+cluster+','+site_base
+                subclusters,ceUIDs=getLdap(cluster_base,['GlueSubClusterUniqueID','GlueClusterService'],ldaphost)
 
-            cmssoft=[]
-            for subcluster in subclusters:
-                subcluster_base='GlueSubClusterUniqueID='+subcluster+','+cluster_base
-                [softs]=getLdap(subcluster_base,['GlueHostApplicationSoftwareRunTimeEnvironment'],ldaphost)
-                for soft in softs:
-                    if reg_cmssoft.search(soft):
-                        cmssw=reg_cmssoft.search(soft).group(1)
-                        if not cmssw in cmssoft:
-                            cmssoft.append(cmssw)
+                cmssoft=[]
+                for subcluster in subclusters:
+                    subcluster_base='GlueSubClusterUniqueID='+subcluster+','+cluster_base
+                    [softs]=getLdap(subcluster_base,['GlueHostApplicationSoftwareRunTimeEnvironment'],ldaphost)
+                    for soft in softs:
+                        if reg_cmssoft.search(soft):
+                            cmssw=reg_cmssoft.search(soft).group(1)
+                            if not cmssw in cmssoft:
+                                cmssoft.append(cmssw)
 
-            for ceuid in ceUIDs:
-                ceuid_base='GlueCEUniqueID='+ceuid+','+site_base
-                info=['GlueCEInfoTotalCPUs','GlueCEStateFreeCPUs','GlueCEStateStatus','GlueCEPolicyMaxCPUTime','GlueCEAccessControlBaseRule']
-                max_slots,free,state,maxct,ACBRs=getLdap(ceuid_base,info,ldaphost)
+                for ceuid in ceUIDs:
+                    ceuid_base='GlueCEUniqueID='+ceuid+','+site_base
+                    info=['GlueCEInfoTotalCPUs','GlueCEStateFreeCPUs','GlueCEStateStatus','GlueCEPolicyMaxCPUTime','GlueCEAccessControlBaseRule']
+                    max_slots,free,state,maxct,ACBRs=getLdap(ceuid_base,info,ldaphost)
 
-                ## ACBR: VO:cms
-                support_cms=False
-                for acbr in ACBRs:
-                    if reg_acbr_cms.search(acbr):
-                        support_cms=True
+                    ## ACBR: VO:cms
+                    support_cms=False
+                    for acbr in ACBRs:
+                        if reg_acbr_cms.search(acbr):
+                            support_cms=True
 
-                        ## some more info
-                        localvo_ceuid_base='GlueVOViewLocalID=cms,'+ceuid_base
-                        info=['GlueCEStateEstimatedResponseTime','GlueCEStateRunningJobs','GlueCEStateTotalJobs','GlueCEStateWaitingJobs']
-                        estRT,runn,tot,wait=getLdap(localvo_ceuid_base,info,ldaphost)
-                if support_cms:
-                    #print ceuid
-                    ceseuid_base='GlueCESEBindGroupCEUniqueID='+ceuid+','+site_base
-                    [ses]=getLdap(ceseuid_base,['GlueCESEBindGroupSEUniqueID'],ldaphost)
-                    #print ses
+                            ## some more info
+                            localvo_ceuid_base='GlueVOViewLocalID=cms,'+ceuid_base
+                            #TODO: restrict this to only cmsprod jobs (what about other cmsprod users?)\
+                            info=['GlueCEStateEstimatedResponseTime','GlueCEStateRunningJobs','GlueCEStateTotalJobs','GlueCEStateWaitingJobs']
+                            estRT,runn,tot,wait=getLdap(localvo_ceuid_base,info,ldaphost)
+                            if support_cms:
+                                #print ceuid
+                                ceseuid_base='GlueCESEBindGroupCEUniqueID='+ceuid+','+site_base
+                                [ses]=getLdap(ceseuid_base,['GlueCESEBindGroupSEUniqueID'],ldaphost)
+                                #print ses
 
-                    the_list[ceuid]={'site_name':site+tmp_sitename,
+                                the_list[ceuid]={'site_name':site+tmp_sitename,
                                                     'SEs':ses,
                                                     'estimated_response_time':estRT[0],
                                                     'free_slots':free[0],
@@ -178,8 +269,11 @@ def getBdii(names,ldaphost):
                                                     'state':state[0],
                                                     'max_cpu_time':maxct[0],
                                                     'in_fcr':False,
-                                                    'software':cmssoft
+                                                    'software':cmssoft,
+                                                    'SAMfail' : False
                                                     }
+        except Exception, e:
+            logging.error("Error with site %s bdii query:\t%s" % (site, str(e)))
 
 
     return the_list
@@ -255,7 +349,7 @@ def getPhedexSEmap(paramfile,section):
     #print ma
     return ma
 
-def getSiteInfoFromBase(names,urls,ldaphost,dbp=None):
+def getSiteInfoFromBase(names,urls,ldaphost,dbp=None, samUrl=None):
     """
     Collect all site info starting from LCG BDII Site names. Returns dictionary.
     """
@@ -276,13 +370,22 @@ def getSiteInfoFromBase(names,urls,ldaphost,dbp=None):
     except:
         print "Something went wrong with the Phedex config. Not using TMDB."
         use_phed=False
-
-    tmp_list=getBdii(names,ldaphost)
-
+    
+    #strip of text after "#", and remove site duplicates 
+    bdiiNames = list(set([ x.split("#")[0] for x in names]))
+    tmp_list=getBdii(bdiiNames,ldaphost)
+    
+    #fcr info
     ceuids_in_fcr=getFcr(urls)
     for ceuid in tmp_list.keys():
         if ceuid in ceuids_in_fcr:
             tmp_list[ceuid]['in_fcr']=True
+
+    #sam test info
+    sam_fail_ces = samCheck(bdiiNames, samUrl)
+    for ceuid in tmp_list.keys():
+        if ceuid.split(":")[0] in sam_fail_ces:
+            tmp_list[ceuid]['SAMfail'] = True
 
     if use_phed:
         Phmap=getPhedexSEmap(DBParamFile,Section)

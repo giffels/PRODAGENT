@@ -231,3 +231,44 @@ if pluginFile:
 
     submitterPluginConfig.writeToFile(pluginFile)
     
+ 
+ 
+ #  //
+# // ResourceMonitor plugin config
+#//
+
+resourceTemplate = {
+    
+    # LCGAdvanced parameters
+    "LCGAdvanced" : {
+    	"DumpState" : None,
+    	"UseFCR" : "True",
+    	"UseSAM" : "True"
+    }
+    
+    #other resource monitor params
+    #...
+}
+
+resourceCfg = config.get("ResourceMonitor", {})
+pluginFile = resourceCfg.get('MonitorPluginConfig', None)
+if pluginFile:
+    pluginFile = os.path.expandvars(pluginFile)
+    if os.path.exists(pluginFile):
+        print "Plugin Config File Already Exists: %s" % pluginFile
+        backup = "%s.BAK.%s" % (pluginFile, _Timestamp)
+        os.system("/bin/cp %s %s" % (pluginFile, backup))
+        print "Plugin Config File backed up to:"
+        print " ", backup
+
+    resourcePluginConfig = PluginConfiguration()
+    for key, value in resourceTemplate.items():
+        block = resourcePluginConfig.newBlock(key)
+        block.update(value)
+
+    resourcePluginConfig.writeToFile(pluginFile)
+    
+    
+   
+    
+   
