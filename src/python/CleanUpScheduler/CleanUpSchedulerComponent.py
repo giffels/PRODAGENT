@@ -218,7 +218,10 @@ class CleanUpSchedulerComponent:
         # //
         self.connectToDBS()
         
-        blockTasks = CleanUpTasks()
+        #  //
+        # // file block names in MergeSensor Db are actually the SENames
+        #//
+        siteTasks = CleanUpTasks()
             
                
         try:
@@ -231,12 +234,10 @@ class CleanUpSchedulerComponent:
            return  
         for unmergedDataset in listAllMergeDataset:
                            
-            mergedDataset = unmergedDataset.replace("-unmerged", "")
-                      
-            mergeXCheck = MergeSensorCrossCheck(unmergedDataset)
-            unmergedToMergeFiles = mergeXCheck.getFileMap()
-                     
-
+            mergedDataset = unmergedDataset.replace("-unmerged", "")                      
+            mergeXCheck = MergeSensorCrossCheck(unmergedDataset)            
+            unmergedToMergeFiles = mergeXCheck.getFileMap()                    
+            
             #  //
             # // List of all merged LFNs known to merge sensor
             #//
@@ -262,39 +263,16 @@ class CleanUpSchedulerComponent:
                 if merged in goodMerges:
                     doneUnmergedFiles.append(unmerged)
                     doneMergedFiles.append(merged)
-                    
-            
+                                           
+
             #  //
-            # // Get a list of block names for each LFN
+            # // Get a list of block/site names for each LFN
             #//
-            blockMap = mergeXCheck.getBlocksMap()
-            
-            i=0 
+            blockMap = mergeXCheck.getBlocksMap()           
+            i=0             
             for lfn in doneUnmergedFiles:
                 i=i+1
-                blockTasks.addFiles(blockMap[lfn], lfn)
-            
-        #  //
-        # // For each block name, find the site from DBS
-        #//  Assume: Since we are dealing with unmerged files
-        #  //Should be only one site per block.
-        # // May want to add logic to check that....
-        #//
-                  
-         
-   
-        siteTasks = CleanUpTasks()
-        for block in blockTasks.keys():
-            sites = self.dbsReader.listFileBlockLocation(block)
-                         
-            if len(sites) == 0:
-                # unknown location
-                continue
-            
-            site = sites[-1]            
-                        
-            siteTasks.addFiles(site, *blockTasks[block])       
-        
+                siteTasks.addFiles(blockMap[lfn], lfn)          
            
           
         #  //For each site in siteTasks, generate a cleanup job spec with 
