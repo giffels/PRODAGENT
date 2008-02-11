@@ -276,12 +276,13 @@ class PopulateMainScript:
 
         for item in taskObject['PreTaskCommands']:
             exeScript.append(item)
-            
+            exeScript.append(_StandardAbortCheck)
         
         
         exeScript.append("( # Start App Subshell")
         for item in taskObject['PreAppCommands']:
             exeScript.append(item)
+            exeScript.append(_StandardAbortCheck)
             
         exeScript.append(_StandardAbortCheck)
         exeComm = "%s %s &" % (taskObject['CMSExecutable'],
