@@ -146,8 +146,9 @@ def getLdap(base,attrs,ldaphost,ret_dn=False):
 
     cmd_base='ldapsearch -LLL -x -H ldap://'+ldaphost
 
-    command=cmd_base+' -b "'+base+'" \'(GlueCEAccessControlBaseRule=VO:cms)\''+' '.join(attrs)
-    #command=cmd_base+' -b "'+base+'" '+' '.join(attrs)
+    #TODO: Does not work with this - why?
+    #command=cmd_base+' -b "'+base+'" \'(GlueCEAccessControlBaseRule=VO:cms)\' '+' '.join(attrs)
+    command=cmd_base+' -b "'+base+'" '+' '.join(attrs)
 
     FNULL = open('/dev/null', 'w')
     try:
@@ -155,6 +156,7 @@ def getLdap(base,attrs,ldaphost,ret_dn=False):
     except:
         ## we don't really care
         data=''
+        logging.error("Error contacting ldap - got: %s" % data)
     FNULL.close()
 
     ## reparse the ldapsearch data: any '\n \S' sequence means actually '\S'
@@ -189,7 +191,6 @@ def getLdap(base,attrs,ldaphost,ret_dn=False):
 
         all_res.append(res)
 
-    #print all_res,command
     return all_res
 
 """
