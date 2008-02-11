@@ -72,7 +72,7 @@ class LCGAdvanced(PrioritiserInterface):
         if js_is_ok and (constraint['site'] != None):
             # site based job match
             site = int(constraint['site']) 
-            jobQ.loadSiteMatchData()
+            #jobQ.loadSiteMatchData()
             ct=int(constraint['count'])
             merge_ct=int(merge_frac*float(ct))
             jobIndices2_merge = jobQ.retrieveJobsAtSitesNotWorkflowSitesMax(

@@ -182,11 +182,12 @@ class JobQueueDB:
                 if len(siteMatch) == 0:
                     msg = "Unable to match site name for job spec with sites:\n"
                     msg += "%s\n" % siteId
+                    allSiteData = ResourceControlAPI.allSiteData()
                     raise JobQueueDBError(
                         msg,
                         UnknownSites = siteId,
-                        KnownSites = self.siteIndexByName.keys() + \
-                        self.siteIndexBySE.keys()
+                        KnownSites = [ x["SiteName"] for x in allSiteData] + \
+                        [ x["SEName"] for x in allSiteData]
                         )
                 else:
                     newSites.update(siteMatch)

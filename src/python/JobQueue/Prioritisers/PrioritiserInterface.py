@@ -45,7 +45,7 @@ class PrioritiserInterface:
             # // site based job match
             #//
             site = int(constraint['site']) 
-            jobQ.loadSiteMatchData()
+            #jobQ.loadSiteMatchData()
             jobIndices = jobQ.retrieveJobsAtSites(constraint['count'],
                                                   constraint["type"],
                                                   constraint['workflow'],
