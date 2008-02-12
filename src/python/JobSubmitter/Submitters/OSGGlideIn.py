@@ -6,10 +6,11 @@ Globus Universe Condor Submitter implementation.
 
 """
 
-__revision__ = "$Id: OSGGlideIn.py,v 1.2 2007/03/22 15:54:28 evansde Exp $"
+__revision__ = "$Id: OSGGlideIn.py,v 1.3 2008/01/23 12:53:43 dmason Exp $"
 
 import os
 import logging
+import time 
 
 
 from JobSubmitter.Registry import registerSubmitter
@@ -93,7 +94,8 @@ class OSGGlideIn(BulkSubmitterInterface):
             self.specSandboxDir = os.path.dirname(
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox']
                 )
-            self.specSandboxLink = os.path.join(self.specSandboxDir,"JobSpecLink.tar.gz")
+            self.jsLinkFileName="JobSpecLink.%s.tar.gz" % int(time.time())
+            self.specSandboxLink = os.path.join(self.specSandboxDir,self.jsLinkFileName)
             logging.debug("specSandboxLink: %s"% self.specSandboxLink)   
             linkcommand="ln -s %s %s" % (self.primarySpecInstance.parameters['BulkInputSpecSandbox'],self.specSandboxLink)
             logging.debug("making link to jobspec: %s"%linkcommand)
@@ -105,7 +107,8 @@ class OSGGlideIn(BulkSubmitterInterface):
         #//
         if not self.isBulk:
             self.specSandboxDir = os.path.dirname(self.specFiles[self.mainJobSpecName])
-            self.specSandboxLink = os.path.join(self.specSandboxDir,"JobSpecLink.xml")
+            self.jsLinkFileName="JobSpecLink.xml" 
+            self.specSandboxLink = os.path.join(self.specSandboxDir,self.jsLinkFileName)
             logging.debug("specSandboxLink: %s"% self.specSandboxLink)
             linkcommand="ln -s %s %s" % (self.specFiles[self.mainJobSpecName],self.specSandboxLink)
             logging.debug("making link to jobspec: %s"%linkcommand)
@@ -266,7 +269,8 @@ class OSGGlideIn(BulkSubmitterInterface):
             script.extend(bulkUnpackerScript(os.path.basename(self.specSandboxLink)))
         else:
             script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
-                          "JobSpecLink.xml")   
+                          self.jsLinkFileName)
+        
             
         script.append(
 #            "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName

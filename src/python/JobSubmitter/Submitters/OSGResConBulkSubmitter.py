@@ -10,7 +10,7 @@ XML file.
 
 """
 
-__revision__ = "$Id: OSGResConBulkSubmitter.py,v 1.2 2007/07/27 15:14:27 evansde Exp $"
+__revision__ = "$Id: OSGResConBulkSubmitter.py,v 1.3 2007/08/18 16:05:18 dmason Exp $"
 
 import os
 import logging
@@ -87,7 +87,8 @@ class OSGResConBulkSubmitter(BulkSubmitterInterface):
             self.specSandboxDir = os.path.dirname(
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox']
                 )
-            self.specSandboxLink = os.path.join(self.specSandboxDir,"JobSpecLink.xml")
+            self.jsLinkFileName="JobSpecLink.%s.tar.gz" % int(time.time())
+            self.specSandboxLink = os.path.join(self.specSandboxDir,self.jsLinkFileName)
             logging.debug("specSandboxLink: %s"% self.specSandboxLink)   
             linkcommand="ln -s %s %s" % (self.primarySpecInstance.parameters['BulkInputSpecSandbox'],self.specSandboxLink)
             logging.debug("making link to jobspec: %s"%linkcommand)
@@ -100,7 +101,8 @@ class OSGResConBulkSubmitter(BulkSubmitterInterface):
         if not self.isBulk:
 
             self.specSandboxDir = os.path.dirname(self.specFiles[self.mainJobSpecName])
-            self.specSandboxLink = os.path.join(self.specSandboxDir,"JobSpecLink.xml")
+            self.jsLinkFileName="JobSpecLink.xml" 
+            self.specSandboxLink = os.path.join(self.specSandboxDir,self.jsLinkFileName)
             logging.debug("specSandboxLink: %s"% self.specSandboxLink)
             linkcommand="ln -s %s %s" % (self.specFiles[self.mainJobSpecName],self.specSandboxLink)
             logging.debug("making link to jobspec: %s"%linkcommand)
@@ -228,7 +230,7 @@ class OSGResConBulkSubmitter(BulkSubmitterInterface):
             script.extend(bulkUnpackerScript(self.specSandboxLink))
         else:
             script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
-                          "JobSpecLink.xml")   
+                          self.jsLinkFileName)   
             
         script.append(
              "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % "SandBoxLink.tar.gz"
