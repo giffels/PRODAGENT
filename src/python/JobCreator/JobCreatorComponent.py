@@ -279,6 +279,12 @@ class JobCreatorComponent:
         workflowName = newBulkSpec.payload.workflow
         
         bulkTar = os.path.dirname(firstSpec)
+        #       We don't want this to go somewhere that'll eventually be cleaned up...
+        #       strip off last part of dir
+        bulkTar = os.path.dirname(bulkTar) 
+        bulkTar += "/BulkSpecs"
+        if not os.path.exists(bulkTar):
+             os.makedirs(bulkTar)
         bulkTar += "/%s-%s-BulkSpecs.tar.gz" % (workflowName, int(time.time()))
         newBulkSpec.bulkSpecs.update(newSpecs)
         newBulkSpec.parameters['BulkInputSpecSandbox'] = bulkTar
