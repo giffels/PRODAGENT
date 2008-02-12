@@ -18,8 +18,8 @@ Session.commit_all()
 Session.close_all()
 
 """
-__revision__ = "$Id: $"
-__version__ = "$Revision: $"
+__revision__ = "$Id: JobEmulatorDB.py,v 1.1 2008/02/12 21:55:11 sryu Exp $"
+__version__ = "$Revision: 1.1 $"
 
 from ProdCommon.Database import Session
 from ProdCommon.Core.ProdException import ProdException
@@ -191,8 +191,7 @@ class JobEmulatorDB:
         """
         _updateJobAlloction_
 
-        Change the status of a job with a particular job ID. Status
-        can be either new, finished or failed.
+        update the worker node information by given job id on job_emulator table
 
         """
     
@@ -209,12 +208,8 @@ class JobEmulatorDB:
     @staticmethod
     def deleteTable(tableName):
         """
-        _deleteWorkerNodeTable_
+        _deleteTable_
 
-        Add a job the the job emulator for processing given a unique ID
-        and a type (processing, merge or cleanup).  That status and
-        start time will be added automatically.
-                
         """
         sqlStr = " DELETE from %s" % tableName
         Session.execute(sqlStr)
@@ -224,7 +219,7 @@ class JobEmulatorDB:
     def insertWorkerNode(nodeName, jobCount=0):    
         """
         _insertWorkerNode_
-        
+        insert worker node info to jobEM_node_info table
         """
         sqlStr = \
         """
@@ -241,6 +236,7 @@ class JobEmulatorDB:
         """
         _increaseJobCount_
         
+        increase job count by 1 on given job id
         """
         sqlStr = \
         """
@@ -257,6 +253,7 @@ class JobEmulatorDB:
         """
         _increaseJobCountByNodeID_
         
+        increase job count by 1 on given node id
         """
         sqlStr = \
         """
@@ -272,6 +269,7 @@ class JobEmulatorDB:
         """
         _decreaseJobCount_
         
+        decrease job count by 1 on given job id
         """
         sqlStr = \
         """
@@ -286,8 +284,9 @@ class JobEmulatorDB:
     @staticmethod
     def decreaseJobCountByNodeID(nodeID):
         """
-        _increaseJobCountByNodeID_
+        _decreaseJobCountByNodeID_
         
+        decrease job count by 1 on given node id
         """
         sqlStr = \
         """
@@ -303,12 +302,8 @@ class JobEmulatorDB:
         """
         _selecOneNodeWithLeastJob_
 
-        Returns a list of jobs in the Job Emulator database that
-        have a particular job ID.  Each list item consists of the
-        following tuple:
-
-        (Job ID, Job Type (processing, merge or cleanup), Job Start Time,
-        Job Status (new, finished, failed))
+        Returns one node from jobEM_node_info table which contain the least number of running jobs
+        (HostID, HostName, number_jobs)
         
         """
     
@@ -327,14 +322,10 @@ class JobEmulatorDB:
     @staticmethod    
     def selecAllNodes():
         """
-        _selecOneNodeWithLeastJob_
+        _selecAllNodes_
 
-        Returns a list of jobs in the Job Emulator database that
-        have a particular job ID.  Each list item consists of the
-        following tuple:
-
-        (Job ID, Job Type (processing, merge or cleanup), Job Start Time,
-        Job Status (new, finished, failed))
+        Returns a list of all the nodes from jobEM_node_info table.
+        (HostID, HostName, number_jobs)
         
         """
     
@@ -354,9 +345,7 @@ class JobEmulatorDB:
         """
         _dropTable_
 
-        Add a job the the job emulator for processing given a unique ID
-        and a type (processing, merge or cleanup).  That status and
-        start time will be added automatically.
+        drop table from the database by given table name
                 
         """
         sqlStr = "drop table %s" % tableName 
@@ -367,6 +356,8 @@ class JobEmulatorDB:
     def createNodeTable():
         """
         _createNodeTable_
+        
+        create jobEM_node_info table which contains information about worker nodes
         """
         sqlStr = \
         """  
@@ -385,6 +376,8 @@ class JobEmulatorDB:
     def createEmulatorTable():
         """
         _createEmulatorTable_
+        
+        create job_emulator table which contains the jobs submitted to JobEmulator
         """
         sqlStr = \
         """  
