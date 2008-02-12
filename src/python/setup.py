@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.49 2008/01/03 19:15:58 evansde Exp $"
+__revision__ = "$Id: setup.py,v 1.50 2008/01/04 14:37:02 evansde Exp $"
 
 from distutils.core import setup
 
@@ -27,6 +27,10 @@ packages = [
     'JobCreator.Generators',
     'JobCreator.RuntimeTools',
     'JobCreator.Generators',
+    'JobEmulator',
+    'JobEmulator.JobAllocationPlugins',
+    'JobEmulator.JobCompletionPlugins',
+    'JobEmulator.JobReportPlugins',    
     'JobQueue',
     'JobQueue.Prioritisers',
     'JobKiller',
