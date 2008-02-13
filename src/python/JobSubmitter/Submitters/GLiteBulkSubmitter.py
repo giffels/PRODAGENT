@@ -6,8 +6,8 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.14 2007/10/12 20:23:33 afanfani Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.15 2007/10/15 12:43:53 afanfani Exp $"
+__version__ = "$Revision: 1.15 $"
 
 import os, time, string
 import logging
@@ -394,7 +394,7 @@ fi
         #//
         logging.debug ("GLITEBulkSubmitter.doSubmit: output %s output" % output)
         failurejobs = []
-        if output.find("error")>=0:
+        if output.find("error")>=0 or output.find("failed submission")>=0:
             if self.isBulk:
             # // cleaning if bulk submission failed for max retries
             #    BOSSCommands.FailedSubmission (
