@@ -126,6 +126,15 @@ def __setWorkflowId(Session, jobStatistics):
         Session.execute(sqlStr)
         jobStatistics["database_ids"]["workflow_id"] = removeTuple(Session.fetchone())
 
+    #TODO: Temp prodmgr hack
+    #see https://savannah.cern.ch/task/?6367
+    if jobStatistics['database_ids']["workflow_id"] == None:
+        sqlStr = """SELECT workflow_id FROM prodmon_Workflow WHERE 
+            workflow_name LIKE %s
+            """ % addQuotes(jobStatistics['workflow_spec_id'].replace('-','%'))
+    
+        Session.execute(sqlStr)
+        jobStatistics["database_ids"]["workflow_id"] = removeTuple(Session.fetchone())
 
     # if workflow not in db must have missed a NewWorkflow event
     if jobStatistics['database_ids']["workflow_id"] == None:
@@ -292,12 +301,12 @@ def __insertPerformanceReport(Session, jobStatistics):
     perf_report = jobStatistics.get("performance_report", None)
 
     if perf_report == None:
-        logging.warning("performance report not found - skipping")
+        logging.info("performance report not found - skipping")
         return
 
     #node properties
     if len(perf_report.cpus) == 0 or len(perf_report.memory) == 0:
-        logging.warning("performance report: cpu/memory info not found")
+        logging.info("performance report: cpu/memory info not found")
         return
 
     # assume that all cpu's have same number of cores and that all have same properties

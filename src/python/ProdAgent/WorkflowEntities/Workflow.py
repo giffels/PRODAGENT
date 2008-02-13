@@ -312,10 +312,17 @@ def associateSiteToWorkflow(workflowID, siteIndex):
     workflow has been
 
     """
-    sqlStr = """INSERT INTO we_workflow_site_assoc (workflow_id, site_index)
+    try:
+        sqlStr = """INSERT INTO we_workflow_site_assoc (workflow_id, site_index)
                   VALUES ("%s", %s) ON DUPLICATE KEY UPDATE site_index = VALUES(site_index) ;""" % (workflowID, siteIndex)
     
-    Session.execute(sqlStr)
+        Session.execute(sqlStr)
+    except:
+        #TODO: Temp prodmgr hack
+        #see https://savannah.cern.ch/task/?6367
+        sqlStr = """INSERT INTO we_workflow_site_assoc (workflow_id, site_index)
+                  VALUES ("%s", %s) ON DUPLICATE KEY UPDATE site_index = VALUES(site_index) ;""" % (workflowID.replace('_','-'), siteIndex)
+        Session.execute(sqlStr)    
     return
 
 def getAssociatedSites(workflowID):
