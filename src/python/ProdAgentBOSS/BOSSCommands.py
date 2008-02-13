@@ -911,18 +911,14 @@ def checkUserProxy():
     """
     Retrieve the user proxy for the task
     """
-
-    output = executeCommand( "voms-proxy-info" )
-
     try:
-        output = output.split("timeleft")[1].strip()
-        output = output.split(":")[1].strip()
+        output = executeCommand( "voms-proxy-info -timeleft" )
+        output = output.strip()
     except StandardError,ex:
         logging.error(output)
         logging.error("voms-proxy-init does not exist")
         raise ProdAgentException("Missing Proxy")
-    
-    if output == "0:00:00":
+    if output == "0":
         logging.error(output)
         logging.error("voms-proxy-init expired")
         raise ProdAgentException("Proxy Expired")
