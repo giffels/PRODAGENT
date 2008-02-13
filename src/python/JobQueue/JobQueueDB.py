@@ -971,7 +971,7 @@ class JobQueueDB:
 
         ## list of workflows that fullfill a valid sites_max constraint for this siteStr
         sites_max_wfs=wf_sites_max_is_NULL+wf_sites_max_on_site+xn_wfs
-        logging.info("all WFs that fullfill a sites_max constraint: %s" %sites_max_wfs)
+        logging.debug("all WFs that fullfill a sites_max constraint: %s" %sites_max_wfs)
         
         """
         FN: (Filler New jobs): new jobs that are no PN and with workflows
@@ -991,7 +991,7 @@ class JobQueueDB:
             if wf in pn_wfs: continue
             if wf in wf_sites_max_is_NULL+all_rest:
                 fn_wfs.append(wf)
-        logging.info("all WFs in FN: %s" %fn_wfs)
+        logging.debug("all WFs in FN: %s" %fn_wfs)
         fn_wfs_txt='\''+'\',\''.join(fn_wfs)+'\''
 
         """
@@ -1091,7 +1091,7 @@ class JobQueueDB:
         assign siteStr to sites_max
         """
         for wf in add_new_site:
-            logging.info("Adding new workflow %s to site %s for sites_max"%(wf,siteStr))
+            logging.debug("Adding new workflow %s to site %s for sites_max"%(wf,siteStr))
             for siteindex in sites:
                 associateSiteToWorkflow(wf,siteindex)
 
