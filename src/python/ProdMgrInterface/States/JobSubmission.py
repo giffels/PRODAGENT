@@ -48,7 +48,7 @@ class JobSubmission(StateInterface):
        logging.debug("Starting job cutting")
        if stateParameters['RequestType']=='event':
            logging.debug('Start event cut for '+str(stateParameters['jobSpecId']))
-           jobcuts=cut(stateParameters['jobSpecId'],int(stateParameters['jobCutSize']), allocation = None)
+           jobcuts=cut(stateParameters['jobSpecId'],int(stateParameters['jobCutSize']), allocation)
        else:
            logging.debug('Start file cut')
            jobcuts=cutFile(stateParameters['jobSpecId'],stateParameters['jobCutSize'],stateParameters['maxJobs'])

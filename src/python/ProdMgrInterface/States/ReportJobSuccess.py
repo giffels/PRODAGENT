@@ -87,7 +87,7 @@ class ReportJobSuccess(StateInterface):
             missingEvents = 0
         allocation = Allocation.get(we_job['allocation_id'])
         logging.debug("Updating allocation details")
-        logging.debug("Registering missed events to associated allocation")
+        logging.debug("Registering "+str(missingEvents)+" missed events to associated allocation")
         Allocation.setEventsMissedIncrement(we_job['allocation_id'], missingEvents)
         # remove the job spec file.
         logging.debug("removing job spec file from job: "+str(job_spec_id))

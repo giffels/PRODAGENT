@@ -8,8 +8,8 @@ returned from the ProdMgr.
 
 """
 
-__revision__ = "$Id: JobCutter.py,v 1.15 2007/09/13 20:27:01 fvlingen Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: JobCutter.py,v 1.16 2007/11/21 11:48:32 fvlingen Exp $"
+__version__ = "$Revision: 1.16 $"
 __author__ = "fvlingen@caltech.edu"
 
 
@@ -18,30 +18,41 @@ from ProdCommon.Database import Session
 from ProdCommon.MCPayloads.WorkflowSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.FactoriseJobSpec import factoriseJobSpec
+from ProdCommon.MCPayloads import EventJobSpec
 from ProdAgent.WorkflowEntities import Job as Job
 from ProdAgent.WorkflowEntities import Allocation
 from ProdAgent.WorkflowEntities import Workflow
 
-
-from ProdCommon.MCPayloads import EventJobSpec
+from ProdMgrInterface.RequestJobFactory import RequestJobFactory
 
 import logging
 import math
 import os
 
 jobSpecDir='/tmp'
-maxRetries=None
-try:
-    config = loadProdAgentConfiguration()
-    compCfg = config.getConfig("ProdMgrInterface")
-    jobSpecDir=compCfg['JobSpecDir']
-    jobStatesCfg = config.getConfig("JobStates")
-    if jobStatesCfg.has_key('maxRetries'):
-       maxRetries=jobStatesCfg['maxRetries']
-except StandardError, ex:
-    msg = "Error reading configuration:\n"
-    msg += str(ex)
-    logging.info("WARNING: "+msg)
+maxRetries = None
+requestJobFactory =  None
+
+def initialize():
+    global maxRetries, requestJobFactory, jobSpecDir
+    if not requestJobFactory:
+        try:
+            config = loadProdAgentConfiguration()
+            compCfg = config.getConfig("ProdMgrInterface")
+            jobSpecDir=compCfg['JobSpecDir']
+            jobStatesCfg = config.getConfig("JobStates")
+            if jobStatesCfg.has_key('maxRetries'):
+               maxRetries=jobStatesCfg['maxRetries']
+            logging.debug("Initializing RequestJobFactory")
+            requestJobFactory = RequestJobFactory(None,'',0)
+            requestJobFactory.workflowSpec = WorkflowSpec() 
+            requestJobFactory.workingDir = compCfg['JobSpecDir']
+            logging.debug("Writing job cut specs to: "+str(jobSpecDir))
+        except StandardError, ex:
+            msg = "Error reading configuration:\n"
+            msg += str(ex)
+            logging.info("WARNING: "+msg)
+
 
 def cut(job_id,jobCutSize, allocation = None):
     """
@@ -51,66 +62,53 @@ def cut(job_id,jobCutSize, allocation = None):
     by a prodmgr into a number of smaller jobs as specified 
     by the jobCutSize parameter in the prodagent config file.
     """
-    global jobSpecDir,maxRetries
-    # generate the jobspec
+    global maxRetries, requestJobFactory 
+
+    try:
+        initialize()
+    except:
+        raise
+
     if allocation != None:
         jobDetails = allocation['details']
     else:
         jobDetails=Allocation.get(job_id)['details']
-    workflowspec=Workflow.get(job_id.split('_')[1])['workflow_spec_file']
-    first_event=int(jobDetails['start_event'])
-    event_count=int(jobDetails['end_event'])-int(jobDetails['start_event'])+1
-    run_number=int(jobDetails['start_event'])
-    start_event=run_number
-    job_file=job_id+'.xml'
-    jobSpecFile=jobSpecDir+'/'+job_file
-    Allocation.setAllocationSpecFile(job_id,jobSpecFile)
-    logging.debug("start with local jobspec generation")
-    EventJobSpec.createJobSpec(job_id,workflowspec,jobSpecFile,run_number,event_count,start_event,False,False)
-    logging.debug("finished with local jobspec generation")
 
-    jobSpec= JobSpec()
-    jobSpec.load(jobSpecFile)
-    jobSpec.parameters['ProdMgr']='generated'
-
-    WorkflowSpecId = jobSpec.payload.workflow
+    workflowspecFile = Workflow.get(job_id.split('_')[1])['workflow_spec_file']
     WorkflowPriority = 1
     try:
-        WorkflowPriority = \
-            Workflow.get(workflowID = WorkflowSpecId)['priority']
+        id = job_id.split('_')[1]
+        logging.debug("Looking for priority of workflow: %s" \
+            % (id))
+        WorkflowPriority = Workflow.get(workflowID = id)['priority']
     except Exception, ex:
         logging.debug("Priority Not found for workflow: %s . Details: %s" \
-            %(WorkflowSpecId,str(ex)))
-        try:
-            pmworkflow = job_id.split('_')[1]
-            logging.debug("Looking for priority of workflow: %s" \
-                % (pmworkflow))
-            WorkflowPriority = Workflow.get(workflowID = pmworkflow)['priority']
-        except Exception, ex:
-            logging.debug("Priority Not found for workflow: %s . Details: %s" \
-                % (pmWorkflow, str(ex)))
+            % (id, str(ex)))
 
-    eventCount=int(jobSpec.parameters['EventCount'])
-    # find out how many jobs we want to cut.
-    jobs=int(math.ceil(float(eventCount)/float(jobCutSize)))
-    logging.debug("Retrieve "+str(jobs)+" run numbers")
-    job_run_numbers=Workflow.getNewRunNumber(job_id.split('_')[1],jobs)
-    logging.debug("Got: "+str(job_run_numbers))
-    logging.debug("Starting factorization")
-    logging.debug("Writing job cut specs to: "+str(jobSpecDir))
-    listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,job_run_numbers,jobSpec.parameters['EventCount'],\
-        RunNumber=jobSpec.parameters['RunNumber'],FirstEvent=jobSpec.parameters['FirstEvent'])
-    jobType = jobSpec.parameters['JobType']
+    # load the workflow spec to object from file
+    requestJobFactory.workflowSpec.load(workflowspecFile)
+    event_count = int(jobDetails['end_event'])-int(jobDetails['start_event'])+1
+    numberOfJobs = int(math.ceil(float(event_count)/float(jobCutSize)))
+    requestJobFactory.start_event =int(jobDetails['start_event'])
+    requestJobFactory.totalEvents= event_count
+    requestJobFactory.job_run_numbers = Workflow.getNewRunNumber(job_id.split('_')[1], \
+        numberOfJobs)
+    requestJobFactory.job_prefix = job_id
+    logging.debug("Starting factorization: Calling RequestJobFactory")
+    requestJobFactory.init()
+
+
+    listOfSpecs = requestJobFactory()
     for i in xrange(0,len(listOfSpecs)):
         listOfSpecs[i]['owner'] = 'prodmgr'
-        listOfSpecs[i]['job_type'] = jobType  
+        listOfSpecs[i]['job_type'] = 'Processing'
         if maxRetries:
            listOfSpecs[i]['max_retries']=maxRetries
     logging.debug("Registering job cuts")
     Job.register(job_id.split('_')[1],job_id,listOfSpecs)
     Session.commit()
     logging.debug("Jobs registered")
-    return {'specs' : listOfSpecs, 'workflow' : WorkflowSpecId, \
+    return {'specs' : listOfSpecs, 'workflow' : job_id.split('_')[1], \
         'priority' : WorkflowPriority} 
 
 def cutFile(job_ids,jobCutSize,maxJobs):

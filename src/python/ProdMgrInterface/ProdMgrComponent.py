@@ -511,9 +511,10 @@ Retrying later.
             self.ms.remove("ProdMgrInterface:CheckQueue")
             self.ms.publish("ProdMgrInterface:AcquireRequests", \
                  str(self.args['RandomCheck']['AcquireRequests']))
+            self.ms.publish("ProdMgrInterface:SetLocations",'')
+            self.ms.commit()
             self.ms.publish("ProdMgrInterface:CheckQueue", \
                  str(self.args['RandomCheck']['CheckQueue']))
-            self.ms.publish("ProdMgrInterface:SetLocations",'')
             self.ms.commit()
             logging.debug('Setting database access parameters')
             Session.set_database(dbConfig)
