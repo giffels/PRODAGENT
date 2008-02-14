@@ -6,8 +6,8 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.15 2007/10/15 12:43:53 afanfani Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.16 2008/02/13 18:27:39 afanfani Exp $"
+__version__ = "$Revision: 1.16 $"
 
 import os, time, string
 import logging
@@ -344,7 +344,7 @@ fi
         try:
             jobType=self.primarySpecInstance.parameters['JobType']
             userJDL=self.getUserJDL(jobType)
-            self.createJDL(schedulercladfile,userJDL)
+            self.createJDL(schedulercladfile,jobType,userJDL)
         except InvalidFile, ex:
 #           raise JSException("Failed to createJDL", mainJobSpecName = self.mainJobSpecName))
             pass
@@ -493,7 +493,7 @@ fi
         return UserJDLRequirementsFile
 
 
-    def createJDL(self, cladfilename,UserJDLRequirementsFile):
+    def createJDL(self, cladfilename,jobType,UserJDLRequirementsFile):
         """
         _createJDL_
     
@@ -562,13 +562,19 @@ fi
         #  //
         # // software version requirements
         #//
-        swClause = "("
-        for swVersion in self.applicationVersions:
-            swClause += "Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) " % swVersion
-            if swVersion != self.applicationVersions[-1]:
-                # Not last element, need logical AND
-                swClause += " && "
-        swClause += ")"
+        if jobType=="CleanUp":
+            swClause = ""
+        else:
+            if len(self.applicationVersions)>0:
+                swClause = "("
+                for swVersion in self.applicationVersions:
+                    swClause += "Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) " % swVersion
+                    if swVersion != self.applicationVersions[-1]:
+                    # Not last element, need logical AND
+                        swClause += " && "
+                swClause += ")"
+            else:
+                raise ProdAgentException("No CMSSW version found!")
 
 
         #  //
