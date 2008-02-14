@@ -338,7 +338,11 @@ class JobCreatorComponent:
         if runNum == None:
             runNum = abs(hash(jobname))
             runNum = "%s" % runNum
-            runPadding = "merges"
+
+            if (jobType == 'CleanUp'):
+               runPadding = "cleanups"
+            else:  
+               runPadding = "merges"
         else:
             runNum = int(runNum)
             runPadding = str(runNum // 1000).zfill(4)
