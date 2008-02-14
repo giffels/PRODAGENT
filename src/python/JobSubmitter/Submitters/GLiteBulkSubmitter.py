@@ -6,8 +6,8 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.16 2008/02/13 18:27:39 afanfani Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.17 2008/02/14 17:46:13 afanfani Exp $"
+__version__ = "$Revision: 1.17 $"
 
 import os, time, string
 import logging
@@ -523,7 +523,7 @@ fi
                 if inline.find('#') != 0 and len(inline) > 1 :
                    declareClad.write(inline)
             if UserReq != None :
-                    user_requirements=" %s && "%UserReq
+                    user_requirements=" %s "%UserReq
           else:
             msg="JDLRequirementsFile File Not Found: %s"%UserJDLRequirementsFile
             logging.error(msg)
@@ -555,9 +555,9 @@ fi
               swarch=creatorPluginConfig['SoftwareSetup']['ScramArch']
 
         if swarch:
-          archrequirement=" && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
+          archrequirement = " && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
         else:
-          archrequirement=""
+          archrequirement = ""
 
         #  //
         # // software version requirements
@@ -566,7 +566,7 @@ fi
             swClause = ""
         else:
             if len(self.applicationVersions)>0:
-                swClause = "("
+                swClause = " && ("
                 for swVersion in self.applicationVersions:
                     swClause += "Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) " % swVersion
                     if swVersion != self.applicationVersions[-1]:

@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.31 2007/07/05 14:09:24 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.32 2007/07/05 18:51:19 evansde Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -149,8 +149,10 @@ class LCGSubmitter(SubmitterInterface):
         #  //
         # // CMSSW version
         #//
-        if len(self.parameters['AppVersions'])> 0:
-          swversion=self.parameters['AppVersions'][0]  # only one sw version for now
+        if self.parameters['JobSpecInstance'].parameters['JobType'] == "CleanUp":
+            swversion=None
+        elif len(self.parameters['AppVersions'])> 0:
+            swversion=self.parameters['AppVersions'][0]  # only one sw version for now
         else:
           raise ProdAgentException("No CMSSW version found!")
 
@@ -335,7 +337,7 @@ class LCGSubmitter(SubmitterInterface):
                 if inline.find('#') != 0 and len(inline) > 1 :
                    declareClad.write(inline)
             if UserReq != None :
-              user_requirements=" %s && "%UserReq
+              user_requirements=" %s "%UserReq
           else:
             msg="JDLRequirementsFile File Not Found: %s"%UserJDLRequirementsFile
             logging.error(msg) 
@@ -351,11 +353,17 @@ class LCGSubmitter(SubmitterInterface):
           anyMatchrequirements+=sitelist+"))"
         
         if swarch:
-          archrequirement=" && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
+            archrequirement = " && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
         else:
-          archrequirement=""
+            archrequirement = ""
 
-        requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) %s %s;\n'%(user_requirements,swversion,archrequirement,anyMatchrequirements)
+        if swversion:
+            swClause = " && (Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment))"%swversion
+        else:
+            swClause = ""
+
+        requirements = 'Requirements = %s %s %s %s ;\n' \
+                       %(user_requirements,swClause,archrequirement,anyMatchrequirements)
         logging.debug('%s'%requirements)
         declareClad.write(requirements)
         declareClad.write("Environment = {\"PRODAGENT_DASHBOARD_ID=%s\"};\n"%self.parameters['DashboardID'])
