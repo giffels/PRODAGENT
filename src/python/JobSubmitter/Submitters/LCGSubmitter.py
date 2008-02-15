@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.33 2008/02/14 21:12:40 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.34 2008/02/15 12:28:12 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -344,7 +344,7 @@ class LCGSubmitter(SubmitterInterface):
             raise InvalidFile(msg)
         anyMatchrequirements=""
         if self.parameters['Whitelist']!=[]:
-          anyMatchrequirements=" && anyMatch(other.storage.CloseSEs , ("
+          anyMatchrequirements=" anyMatch(other.storage.CloseSEs , ("
           sitelist=""
           for i in self.parameters['Whitelist']:
             logging.debug("Whitelist element %s"%i)
@@ -353,17 +353,23 @@ class LCGSubmitter(SubmitterInterface):
           anyMatchrequirements+=sitelist+"))"
         
         if swarch:
-            archrequirement = " && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
+            archrequirement = " Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
         else:
             archrequirement = ""
 
         if swversion:
-            swClause = " && (Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment))"%swversion
+            swClause = " (Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment))"%swversion
         else:
             swClause = ""
 
-        requirements = 'Requirements = %s %s %s %s ;\n' \
-                       %(user_requirements,swClause,archrequirement,anyMatchrequirements)
+        requirements = 'Requirements = %s '%user_requirements
+        if swClause != "" :
+           requirements += " && %s "%swClause
+        if archrequirement != "" :
+           requirements += " && %s "%archrequirement
+        if anyMatchrequirements  != "" :
+           requirements += " && %s "%anyMatchrequirements
+        requirements += ";\n" 
         logging.debug('%s'%requirements)
         declareClad.write(requirements)
         declareClad.write("Environment = {\"PRODAGENT_DASHBOARD_ID=%s\"};\n"%self.parameters['DashboardID'])
