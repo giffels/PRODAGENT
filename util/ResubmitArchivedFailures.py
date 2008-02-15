@@ -138,7 +138,7 @@ def recreateJob(jobspecFile):
   # create job if not merge
   spec = JobSpec()
   spec.load(jobspecFile)
-  if spec.parameters['JobType']=="Processing" :
+  if spec.parameters['JobType']=="Processing" or spec.parameters['JobType']=="CleanUp" :
      # publish CreateJob
      print "- Resubmit Processing job"
      print "--> Publishing CreateJob for %s"%jobspecFile
@@ -146,7 +146,7 @@ def recreateJob(jobspecFile):
      ms.registerAs("Test")
      ms.publish("CreateJob", jobspecFile)
      ms.commit()
-  else:
+  elif spec.parameters['JobType']=="Merge" :
      try:
        jobname=spec.parameters['JobName']
      except Exception,ex:
@@ -166,6 +166,10 @@ def recreateJob(jobspecFile):
      ms.registerAs("Test")
      ms.publish("MergeSensor:ReSubmit", jobname)
      ms.commit()
+  else:
+     print "ERROR: Do not know how to handle jobType %s"%spec.parameters['JobType']
+  
+
 
 ################################################### 
 if __name__ == '__main__':
