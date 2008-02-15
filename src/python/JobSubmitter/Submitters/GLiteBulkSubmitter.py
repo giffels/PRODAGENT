@@ -6,8 +6,8 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.20 2008/02/15 15:15:11 afanfani Exp $"
-__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.21 2008/02/15 15:18:04 afanfani Exp $"
+__version__ = "$Revision: 1.21 $"
 
 import os, time, string
 import logging
@@ -588,7 +588,7 @@ fi
            requirements += " && %s " % archrequirement
         if anyMatchrequirements != "" :
            requirements += " && %s " %anyMatchrequirements
-        requirements += " ; "
+        requirements += " ;\n"
         logging.info('%s'%requirements)
         declareClad.write(requirements)
 #        declareClad.write("Environment = {\"PRODAGENT_DASHBOARD_ID=%s\"};\n"%self.parameters['DashboardID'])
