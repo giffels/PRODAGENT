@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.34 2008/02/15 12:28:12 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.35 2008/02/15 15:28:31 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -362,16 +362,24 @@ class LCGSubmitter(SubmitterInterface):
         else:
             swClause = ""
 
-        requirements = 'Requirements = %s '%user_requirements
-        if swClause != "" :
-           requirements += " && %s "%swClause
+        requirements = "%s"% user_requirements
+        if swClause != "":
+           if requirements != "":
+               requirements += " && "
+           requirements  += " %s " % swClause
         if archrequirement != "" :
-           requirements += " && %s "%archrequirement
-        if anyMatchrequirements  != "" :
-           requirements += " && %s "%anyMatchrequirements
-        requirements += ";\n" 
-        logging.debug('%s'%requirements)
-        declareClad.write(requirements)
+           if requirements != "":
+              requirements += " && "
+           requirements += " %s " % archrequirement
+        if anyMatchrequirements != "" :
+           if requirements != "":
+              requirements += " && "
+           requirements += " %s " %anyMatchrequirements
+        if requirements != "":
+            requirements = "Requirements = %s ;\n"%requirements
+            logging.debug('%s'%requirements)
+            declareClad.write(requirements)
+
         declareClad.write("Environment = {\"PRODAGENT_DASHBOARD_ID=%s\"};\n"%self.parameters['DashboardID'])
         declareClad.write("VirtualOrganisation = \"cms\";\n")
 
