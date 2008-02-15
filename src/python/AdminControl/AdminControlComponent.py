@@ -155,7 +155,8 @@ class AdminControlComponent:
                 continue
             self.bots[bot] = newBot
 
-        self.ms.publish("AdminControl:BotCycle", "", self.args['BotPeriod'])
+        self.ms.publishUnique("AdminControl:BotCycle", "",
+                              self.args['BotPeriod'])
         self.ms.commit()
         return
 

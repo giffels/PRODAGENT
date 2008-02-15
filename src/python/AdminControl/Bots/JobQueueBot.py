@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-_MessageBot_
+_JobQueueBot_
 
 Periodic tests and cleanup of the MessageService
 
@@ -11,13 +11,13 @@ import logging
 from AdminControl.Bots.BotInterface import BotInterface
 from AdminControl.Registry import registerBot
 
-from MessageService.MessageService import MessageService
+from JobQueue.JobQueueDB import JobQueueDB
+from ProdCommon.Database import Session
 
 
-
-class MessageBot(BotInterface):
+class JobQueueBot(BotInterface):
     """
-    _MessageBot_
+    _JobQueueBot_
 
     Check MessageService health, clean out old messages from history.
     Generate Alerts for large message queues for a component, or
@@ -36,18 +36,14 @@ class MessageBot(BotInterface):
         Invoke Bot
 
         """
-        logging.info("MessageBot Invoked")
-        msgSvc = MessageService()
-        msgSvc.registerAs("MessageBot")
+        logging.info(
+            "JobQueueBot Invoked: removing release jobs > 24:00:00 old")
+        jobQ = JobQueueDB()
+        jobQ.cleanOut("24:00:00")
+        Session.commit_all()
         
-
-        #  //
-        # // Clean Message History Older than 3 days
-        #//
-        msgSvc.cleanHistory("72:00:00")
-        msgSvc.commit()
 
         return
 
     
-registerBot(MessageBot, MessageBot.__name__)
+registerBot(JobQueueBot, JobQueueBot.__name__)
