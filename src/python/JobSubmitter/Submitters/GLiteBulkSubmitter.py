@@ -6,8 +6,8 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.21 2008/02/15 15:18:04 afanfani Exp $"
-__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.22 2008/02/15 15:23:06 afanfani Exp $"
+__version__ = "$Revision: 1.22 $"
 
 import os, time, string
 import logging
@@ -581,16 +581,24 @@ fi
         # // building jdl
         #//
 
-        requirements = "Requirements = %s " % user_requirements
+        requirements = "%s"% user_requirements
         if swClause != "":
-           requirements += " && %s " % swClause 
+           if requirements != "":
+               requirements += " && "
+           requirements  += " %s " % swClause
         if archrequirement != "" :
-           requirements += " && %s " % archrequirement
+           if requirements != "":
+              requirements += " && "
+           requirements += " %s " % archrequirement
         if anyMatchrequirements != "" :
-           requirements += " && %s " %anyMatchrequirements
-        requirements += " ;\n"
-        logging.info('%s'%requirements)
-        declareClad.write(requirements)
+           if requirements != "":
+              requirements += " && "
+           requirements += " %s " %anyMatchrequirements
+
+        if requirements != "":
+            requirements = "Requirements = %s ;\n"%requirements
+            logging.info('%s'%requirements)
+            declareClad.write(requirements)
 #        declareClad.write("Environment = {\"PRODAGENT_DASHBOARD_ID=%s\"};\n"%self.parameters['DashboardID'])
         declareClad.write("VirtualOrganisation = \"cms\";\n")
 
