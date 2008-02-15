@@ -6,8 +6,8 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.17 2008/02/14 17:46:13 afanfani Exp $"
-__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.18 2008/02/14 21:12:40 afanfani Exp $"
+__version__ = "$Revision: 1.18 $"
 
 import os, time, string
 import logging
@@ -479,7 +479,7 @@ fi
         #
         #  For Merge jobs use Merge JDLRequirementsFile if it's configured
         #
-        if jobType == "Merge":
+        if jobType == "Merge" or jobType == "CleanUp":
             if 'MergeJDLRequirementsFile' in self.pluginConfig['GLITE'].keys():
                 UserJDLRequirementsFile=self.pluginConfig['GLITE']['MergeJDLRequirementsFile']
                 return UserJDLRequirementsFile

@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.32 2007/07/05 18:51:19 evansde Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.33 2008/02/14 21:12:40 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -295,7 +295,7 @@ class LCGSubmitter(SubmitterInterface):
         #
         #  For Merge jobs use Merge JDLRequirementsFile if it's configured
         #
-        if jobType == "Merge":
+        if jobType == "Merge" or jobType == "CleanUp":
            if 'MergeJDLRequirementsFile' in self.pluginConfig['LCG'].keys():
               UserJDLRequirementsFile=self.pluginConfig['LCG']['MergeJDLRequirementsFile']
               return UserJDLRequirementsFile
