@@ -6,8 +6,8 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.18 2008/02/14 21:12:40 afanfani Exp $"
-__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.19 2008/02/15 12:28:13 afanfani Exp $"
+__version__ = "$Revision: 1.19 $"
 
 import os, time, string
 import logging
@@ -535,7 +535,7 @@ fi
         anyMatchrequirements = ""
         if len(self.whitelist)>0:
             Whitelist = self.whitelist
-            anyMatchrequirements = " && ("
+            anyMatchrequirements = " ("
             sitelist = ""
             for i in Whitelist:
                 logging.debug("Whitelist element %s"%i)
@@ -555,7 +555,7 @@ fi
               swarch=creatorPluginConfig['SoftwareSetup']['ScramArch']
 
         if swarch:
-          archrequirement = " && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
+          archrequirement = " Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
         else:
           archrequirement = ""
 
@@ -566,7 +566,7 @@ fi
             swClause = ""
         else:
             if len(self.applicationVersions)>0:
-                swClause = " && ("
+                swClause = " ("
                 for swVersion in self.applicationVersions:
                     swClause += "Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) " % swVersion
                     if swVersion != self.applicationVersions[-1]:
@@ -580,8 +580,14 @@ fi
         #  //
         # // building jdl
         #//
-        requirements = 'Requirements = %s %s %s %s ;\n' \
-                       %(user_requirements,swClause,archrequirement,anyMatchrequirements)
+
+        requirements = "Requirements = %s " % user_requirements
+        if swClause != "":
+           requirements += " && %s " % swClause 
+        if archrequirement != "" :
+           requirements += " && %s " % archrequirement
+        if anyMatchrequirements != "" :
+           requirements += " && %s " %anyMatchrequirements
         logging.info('%s'%requirements)
         declareClad.write(requirements)
 #        declareClad.write("Environment = {\"PRODAGENT_DASHBOARD_ID=%s\"};\n"%self.parameters['DashboardID'])
