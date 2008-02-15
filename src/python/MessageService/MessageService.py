@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.10 2007/03/05 12:10:02 ckavka Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: MessageService.py,v 1.11 2008/02/04 15:30:30 swakef Exp $"
+__version__ = "$Revision: 1.11 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -734,15 +734,22 @@ class MessageService:
         # get cursor
         cursor = self.conn.cursor()
 
+        timeval = "-%s:00:00" % hours
+
         # remove all messsages
         sqlCommand = """
                      DELETE 
                        FROM ms_history
                        WHERE
-                          time < TIMESTAMPADD(HOUR,""" + \
-                                                         str(-1 * hours) + \
-                                                    """,CURRENT_TIMESTAMP);
-                     """
+                          time < ADDTIME(CURRENT_TIMESTAMP,'-%s');
+                          
+                          """ % timeval
+
+        #"""
+        #TIMESTAMPADD(HOUR,""" + \
+        #str(-1 * hours) + \
+        #       """,CURRENT_TIMESTAMP);
+        #       """
         cursor.execute(sqlCommand)
 
         # drop transaction status, no recover possible
