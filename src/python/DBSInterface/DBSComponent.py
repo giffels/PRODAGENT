@@ -565,7 +565,19 @@ class DBSComponent:
         jobreports=self.readJobReportInfo(jobReportLocation)
         #loop over the fwk jobreports 
         for jobreport in jobreports:
-            #print jobreport.files
+         #  //
+         # //  Do nothing for CleanUp jobs
+         #//
+         if (jobreport.jobType == "CleanUp"):
+             logging.info("Do nothing for CleanUp job")
+             try:
+                 self.trigger.setFlag("cleanup", jobreport.jobSpecId,
+                                     "DBS2Interface")
+             except Exception, ex:
+                 msg = "Error setting cleanup flag for job: "
+                 msg += "%s\n" % jobreport.jobSpecId
+                 msg += str(ex)
+                 logging.error(msg)
          #  //
          # //  Contact DBS using the DBSWriter
          #//
