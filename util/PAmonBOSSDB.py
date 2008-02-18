@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.2
+#!/usr/bin/env python2.3
  
  
 import string, re
@@ -2246,14 +2246,13 @@ def SingleQuery( params, i):
 
  
    if merge == 'yes' :
-      
        q.AddRequirement(       c_chain_name.LIKE('%mergejob%') )
        q_ended.AddRequirement( c_chain_name.LIKE('%mergejob%') )
        
    elif merge == 'no' :
-      
-       q.AddRequirement(       c_chain_name.NOTLIKE('%mergejob%') )
-       q_ended.AddRequirement( c_chain_name.NOTLIKE('%mergejob%') )
+       req_type = Req_AND( c_chain_name.NOTLIKE( "%mergejob%" ), c_chain_name.NOTLIKE( "%CleanUp%" ) )
+       q.AddRequirement( req_type )     
+       q_ended.AddRequirement( req_type )
  
 
    # ------------------------------
@@ -2589,7 +2588,8 @@ def Workflows( params ) :
 
        chain_table = MySQL_Table( "CHAIN" )
        chain_name = chain_table.AddColumn( "NAME" )
-       query.AddRequirement( chain_name.NOTLIKE( "%mergejob%" ) )
+       req_type = Req_AND( chain_name.NOTLIKE( "%mergejob%" ), chain_name.NOTLIKE( "%CleanUp%" ) )
+       query.AddRequirement( req_type )
        
        query.AddTable( chain_table )
        query.Query()
