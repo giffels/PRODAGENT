@@ -19,12 +19,12 @@ from ProdCommon.Database import Session
 from ProdAgentBOSS import BOSSCommands
 
 # Framework Job Report handling
-from FwkJobRep.ReportState import checkSuccess
-from FwkJobRep.FwkJobReport import FwkJobReport
-from FwkJobRep.ReportParser import readJobReport
+from ProdCommon.FwkJobRep.ReportState import checkSuccess
+from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.2 2007/12/11 16:01:41 ckavka Exp $"
-__revision__ = "$Revision: 1.1.2.2 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.3 2007/12/11 19:44:44 ckavka Exp $"
+__revision__ = "$Revision: 1.1.2.3 $"
 
 class JobHandling:
     """

@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.11 2007/12/10 18:20:46 ckavka Exp $"
+__version__ = "$Revision: 1.47.2.11 $"
 
 import time
 import os
@@ -39,7 +39,7 @@ from GetOutput.JobOutput import JobOutput
 from JobTracking.JobHandling import JobHandling
 
 # Framework Job Report handling
-from FwkJobRep.FwkJobReport import FwkJobReport
+from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 
 # Threads pool
 from JobTracking.PoolScheduler import PoolScheduler
