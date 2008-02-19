@@ -13,6 +13,8 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
 from JobSubmitter.JSException import JSException
 
+import ProdAgent.ResourceControl.ResourceControlAPI as ResConAPI
+
 bulkUnpackerScriptMain = \
 """
 
@@ -178,10 +180,39 @@ class ARCSubmitter(BulkSubmitterInterface):
                                self.xrslCode(os.path.join(cacheDir,"submit.sh"),
                                              jobSpec, cacheDir)
 
+        submitCommand += self.preferredSite()
+
         logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
         output = self.executeCommand(submitCommand)
         logging.debug("ARCSubmitter.doSubmit: %s " % output)
-        
+        output = self.executeCommand("cp %s ~/tmp/foo" % os.path.join(cacheDir,"submit.sh"))
+        logging.debug("ARCSubmitter.doSubmit: %s " % output)
+        for fname in self.jobInputFiles:
+            output = self.executeCommand("cp %s ~/tmp/foo" % fname)
+            logging.debug("ARCSubmitter.doSubmit: %s " % output)
+
+
+    def preferredSite(self):
+        """
+        Generate command line option for ngsub for submitting to a
+        preferred site, if such exist.
+
+        """
+
+        if not self.parameters['JobSpecInstance'].siteWhitelist:
+           logging.debug("No preferred site")
+           return ""
+
+        prefSite = self.parameters['JobSpecInstance'].siteWhitelist[0]
+        ceMap = ResConAPI.createCEMap()
+
+        if prefSite in ceMap.keys():
+            logging.debug("Using preferred CE " + ceMap[prefSite])
+            return " -c " + ceMap[prefSite]
+        else:
+            logging.warning("Preferred site %s unknown!" % prefSite)
+            return ""
+
 
     def xrslCode(self, wrapperscript, jobName, cacheDir):
         """

@@ -14,6 +14,9 @@ import fcntl, select, sys, os
 
 from CondorTracker.TrackerPlugin import TrackerPlugin
 from CondorTracker.Registry import registerTracker
+import CondorTracker.CondorTrackerDB as TrackerDB
+
+from ProdAgent.WorkflowEntities import Job
 
 import ProdCommon.FwkJobRep.ReportState as ReportState
 
@@ -260,13 +263,12 @@ class ARCTracker(TrackerPlugin):
             logging.debug("getJobReport: Couldn't find job " + jobSpecId)
             return None
 
-        # Get the FrameworkJobReport.xml file, supposed to reside in
-        # arcId/<subdirectory>/FrameworkJobReport.xml.  
-        #
-        # Let's assume that 'jobSpecId' has the form
-        # '<subdirectory>-<integer>'
-        subDir = jobSpecId[0:jobSpecId.rindex("-")]
+        #  //
+        # // Get the FrameworkJobReport.xml file, supposed to reside in
+        #//  arcId/workflow_id/FrameworkJobReport.xml.  
+
         arcId = jobs[jobSpecId]
+        subDir = Job.get(jobSpecId)["workflow_id"]
         ngcp = "ngcp %s/%s/FrameworkJobReport.xml %s/" % (arcId,subDir,localDir)
         logging.debug("getJobReport: " + ngcp)
         s = os.system(ngcp)
@@ -283,6 +285,7 @@ class ARCTracker(TrackerPlugin):
         s = os.system("ngcp %s/%s/run.log %s/" % (arcId,subDir,localDir))
         s = os.system("ngcp %s/output %s/" % (arcId,localDir))
         s = os.system("ngcp %s/errors %s/" % (arcId,localDir))
+        #s = os.system("ngcp -r 5 %s/ %s/" % (arcId,localDir))
 
         return localDir + "/FrameworkJobReport.xml"
 
