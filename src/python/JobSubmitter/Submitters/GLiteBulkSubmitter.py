@@ -6,8 +6,8 @@ Glite Collection implementation.
 
 """
 
-__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.22 2008/02/15 15:23:06 afanfani Exp $"
-__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: GLiteBulkSubmitter.py,v 1.23 2008/02/15 16:31:32 afanfani Exp $"
+__version__ = "$Revision: 1.23 $"
 
 import os, time, string
 import logging
@@ -594,6 +594,8 @@ fi
            if requirements != "":
               requirements += " && "
            requirements += " %s " %anyMatchrequirements
+        # add requirement for CE in Production state
+        requirements += " && other.GlueCEStateStatus == \"Production\" " 
 
         if requirements != "":
             requirements = "Requirements = %s ;\n"%requirements
