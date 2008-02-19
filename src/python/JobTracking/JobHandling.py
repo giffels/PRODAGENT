@@ -310,7 +310,11 @@ class JobHandling:
         fjr = readJobReport(reportfilename)
 
         # fallback directory in JobTracking.
-        fallbackCacheDir = self.baseDir + "/%s" % fjr[0].jobSpecId
+        try:   
+            fallbackCacheDir = self.baseDir + "/%s" % fjr[0].jobSpecId
+        except Exception, e:
+            logging.error("Empty framework job report: %s"%jobId[0])
+            return reportfilename
 
         # try to get cache from JobState
         try:
