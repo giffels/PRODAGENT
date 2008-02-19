@@ -28,9 +28,9 @@ def insertStats(jobStatistics):
 
     """
     try:
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
+        #Session.set_database(dbConfig)
+        #Session.connect()
+        #Session.start_transaction()
                
         #connection = connect()
         #Session = connection.cursor()
@@ -56,12 +56,12 @@ def insertStats(jobStatistics):
         __insertTimings(Session, jobStatistics)
         __insertPerformanceReport(Session, jobStatistics)
         
-        Session.commit()
-        Session.close()
+        #Session.commit()
+        #Session.close()
     except StandardError, ex:
         # Close DB connection and re-throw
-        Session.rollback()
-        Session.close()
+        #Session.rollback()
+        #Session.close()
         msg = "Failed to insert JobStatistics: %s\n" % str(ex)
         raise RuntimeError, msg    
         
@@ -76,9 +76,9 @@ def insertNewWorkflow(workflowName, requestId, inputDatasets, outputDatasets, ap
     """
     
     try:
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
+        #Session.set_database(dbConfig)
+        #Session.connect()
+        #Session.start_transaction()
         
         input_ids = []
         for dataset in inputDatasets:
@@ -98,11 +98,11 @@ def insertNewWorkflow(workflowName, requestId, inputDatasets, outputDatasets, ap
         
         __linkWorkflowDatasets(Session, workflow_id, input_ids, output_ids)
         
-        Session.commit()
-        Session.close()
+        #Session.commit()
+        #Session.close()
     except StandardError, ex:
-        Session.rollback()
-        Session.close()
+        #Session.rollback()
+        #Session.close()
         msg = "Failed to insert workflow and/or datasets: %s\n" % str(ex)
         raise RuntimeError, msg 
     
@@ -427,11 +427,11 @@ def getMergeInputFiles(jobSpecId):
     sqlStr = """select merge_inputfile.name from merge_inputfile
       join merge_outputfile on merge_outputfile.id = merge_inputfile.mergedfile
         where merge_outputfile.mergejob="%s"; """ % jobSpecId
-    Session.set_database(dbConfig)
-    Session.connect()
+    #Session.set_database(dbConfig)
+    #Session.connect()
     Session.execute(sqlStr)
     rows = Session.fetchall()
-    Session.close()
+    #Session.close()
     result = []
     for row in rows:
         for f in row:
@@ -450,11 +450,11 @@ def getJobInstancesToExport(maxItems):
     sqlStr = """SELECT instance_id FROM 
         prodmon_Job_instance WHERE
         exported = FALSE ORDER by job_id LIMIT %s;""" % str(maxItems)
-    Session.set_database(dbConfig)
-    Session.connect()
+    #Session.set_database(dbConfig)
+    #Session.connect()
     Session.execute(sqlStr)
     rows = Session.fetchall()
-    Session.close()
+    #Session.close()
     rows = [removeTuple(row) for row in rows]
     return rows
 
@@ -470,8 +470,8 @@ def getJobInfo(job_id):
         WHERE prodmon_Job.job_id = %s AND prodmon_Job.workflow_id = 
         prodmon_Workflow.workflow_id;""" % addQuotes(job_id)
     
-    Session.set_database(dbConfig)
-    Session.connect()
+    #Session.set_database(dbConfig)
+    #Session.connect()
     Session.execute(sqlStr)
     job = {}
     job["job_id"], job["job_spec_id"], job["job_type"], job["request_id"], \
@@ -494,7 +494,7 @@ def getJobInfo(job_id):
                     prodmon_Datasets.dataset_id;""" % addQuotes(job["workflow_id"])
     Session.execute(outputDatasetSQL)
     job["output_datasets"] = [removeTuple(dataset) for dataset in Session.fetchall()]
-    Session.close()
+    #Session.close()
 
     return job
 
@@ -577,8 +577,8 @@ def getJobInstancesInfo(instance_ids):
         sqlStr += " instance_id = " + addQuotes(instance)
     sqlStr += ");"
 
-    Session.set_database(dbConfig)
-    Session.connect()
+    #Session.set_database(dbConfig)
+    #Session.connect()
     Session.execute(sqlStr)
     temp = Session.fetchall()
 
@@ -652,7 +652,7 @@ def getJobInstancesInfo(instance_ids):
         Session.execute(skippedSQL)
         instance["skipped_events"] = Session.fetchall()
       
-    Session.close()
+    #Session.close()
     return results
 
 
@@ -670,12 +670,32 @@ def markInstancesExported(instances):
             first = False
         sqlStr += "instance_id = " + addQuotes(instance)
     
-    Session.set_database(dbConfig)
-    Session.connect()
-    Session.start_transaction()
+    #Session.set_database(dbConfig)
+    #Session.connect()
+    #Session.start_transaction()
     Session.execute(sqlStr)
-    Session.commit()
-    Session.close()
+    #Session.commit()
+    #Session.close()
+    return
+
+
+def deleteOldJobs(interval, deleteUnexported=False):
+    """
+    delete jobs older than interval
+        (if !deleteUnexported only delete exported jobs)
+    """
+    
+    logging.debug("expiring jobs older than %s" % interval)
+    
+    sqlStr = """DELETE FROM prodmon_Job, prodmon_Job_instance 
+            USING prodmon_Job, prodmon_Job_instance
+            WHERE prodmon_Job.job_id = prodmon_Job_instance.job_id
+            AND insert_time < ADDTIME(NOW(), "-%s")""" % interval
+    
+    if not deleteUnexported:
+        sqlStr += " AND exported = true"
+
+    Session.execute(sqlStr)
     return
 
 

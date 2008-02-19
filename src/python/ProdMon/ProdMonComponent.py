@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.8 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.8 2008/01/03 17:22:53 evansde Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.9 2008/01/10 14:36:02 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -30,7 +30,7 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdAgent.Trigger.Trigger import Trigger
 from ProdMon.DashboardInterface import exportToDashboard
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-from ProdMon.ProdMonDB import insertNewWorkflow
+from ProdMon.ProdMonDB import insertNewWorkflow, deleteOldJobs
 
 class ProdMonComponent:
     """
@@ -52,15 +52,20 @@ class ProdMonComponent:
         self.args.setdefault("AgentName", "Unknown")
         self.args.setdefault("exportEnabled", False)
         self.args.setdefault("FailedDir", None)
+        self.args.setdefault("expireEnabled", False)
+        self.args.setdefault("expireInterval", "96:00:00")
+        self.args.setdefault("expireUnexported", False)
+        
         
         # override default with provided values and convert to correct types
         try:
             self.args.update(args)
             self.args["exportMaxBatchSize"] = int(self.args["exportMaxBatchSize"])
-            if str(self.args["exportEnabled"]).lower() in ("true", "yes"):
-                self.args["exportEnabled"] = True
-            else:
-                self.args["exportEnabled"] = False
+            for value in ("exportEnabled", "expireEnabled", "expireUnexported"):
+                if str(self.args[value]).lower() in ("true", "yes"):
+                    self.args[value] = True
+                else:
+                    self.args[value] = False
             if self.args["FailedDir"] == None:
                 self.args["FailedDir"] = os.path.join(self.args['ComponentDir'],
                                                 "FailedJobReports")
@@ -132,6 +137,8 @@ class ProdMonComponent:
             return
         elif event == "ProdMon:RetryFailures":
             self.retryFailures()
+        elif event == "ProdMon:ExpireRecords":
+            self.expireRecords()
         return
     
     
@@ -286,6 +293,24 @@ class ProdMonComponent:
         return
 
 
+    def expireRecords(self):
+        """
+        remove records for jobs older than self.args['expireInterval']
+        only remove exported jobs unless self.args['expireUnexported'] = True
+        """
+        
+        if not self.args["expireEnabled"]:
+            logging.error("Unable to expire job records, expire disabled")
+            return
+        
+        try:
+            deleteOldJobs(self.args['expireInterval'], self.args['expireUnexported'])
+        except Exception, ex:
+            logging.error("Error expiring jobs: %s" % str(ex))
+        
+        self.ms.publishUnique("ProdMon:ExpireRecords", "", self.args['expireInterval'])
+
+
     def startComponent(self):
         """
         _startComponent_
@@ -310,14 +335,16 @@ class ProdMonComponent:
         self.ms.subscribeTo("ProdMon:StartExport")
         self.ms.subscribeTo("NewWorkflow")
         self.ms.subscribeTo("ProdMon:RetryFailures")
+        self.ms.subscribeTo("ProdMon:ExpireRecords")
         # tell JobCreator to set ProdMon cleanup flag
         self.ms.subscribeTo("SetJobCleanupFlag")
         
         # restart publishing loop
-        # replace existing publish messages (if present)
-        self.ms.remove("ProdMon:Export")
         if self.args["exportEnabled"]:
-            self.ms.publish("ProdMon:Export", "", self.args['exportInterval'])
+            self.ms.publishUnique("ProdMon:Export", "", self.args['exportInterval'])
+        if self.args["expireEnabled"]:
+            self.ms.publishUnique("ProdMon:ExpireRecords", "", self.args['expireInterval'])
+        self.ms.commit()
         
         # wait for messages
         while True:
