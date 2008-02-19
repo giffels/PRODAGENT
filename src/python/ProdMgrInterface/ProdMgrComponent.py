@@ -412,7 +412,7 @@ Retrying later.
             return
         interval = self.args['QueueInterval']
         logging.debug("Get job queue length")
-        length = self.args['JobQueue'].queueLength()
+        length = self.args['JobQueue'].queueLength(jobType = "Processing")
         logging.debug("Queue length is: "+str(length))
 
         if  length < int(self.args['QueueLow']):
