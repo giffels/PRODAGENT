@@ -15,6 +15,7 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.Database import Session
 
 
+from MergeSensor.MergeSensorDB import MergeSensorDB
 from MergeSensor.MergeCrossCheck import MergeSensorCrossCheck
 from MergeSensor.MergeCrossCheck import listAllMergeDatasets 
 import ProdCommon.MCPayloads.CleanUpTools as CleanUpTools
@@ -108,6 +109,8 @@ class CleanUpSchedulerComponent:
         #dbs reader parameters
         self.dbsReader = None
         self.delayDBS = 100
+        
+        self.mergeDB = MergeSensorDB()
          
 
     def __call__(self, event, payload):
@@ -282,16 +285,20 @@ class CleanUpSchedulerComponent:
         # //
         # //generate cleanup workflow spec
         # //
+        
+         
         cleanUpWFs = CleanUpTools.createCleanupWorkflowSpec()    
-    
-        wfspec=os.path.join(self.args['CleanupJobSpecs'],cleanUpWFs.payload.workflow + '-workflow.xml' )
-        cleanUpWFs.save(wfspec)
+
+        if (len(siteTasks) != 0):
+ 
+            wfspec=os.path.join(self.args['CleanupJobSpecs'],cleanUpWFs.payload.workflow + '-workflow.xml' )
+            cleanUpWFs.save(wfspec)
 
         # //
         # //Publishing newworkflow event
         # //
-        self.ms.publish("NewWorkflow", wfspec)
-        self.ms.commit() 
+            self.ms.publish("NewWorkflow", wfspec)
+            self.ms.commit() 
 
         # //
         # //Generating cleanup jobspecs with list of lfns to be deleted
@@ -316,10 +323,13 @@ class CleanUpSchedulerComponent:
                     
                  logging.debug(siteTasks[x][ref:ref+self.lfnLimit]) 
                  cleanUpJobSpec.append(CleanUpTools.createCleanupJobSpec(cleanUpWFs,x,*siteTasks[x][ref:ref+self.lfnLimit]))
-                                        
+                 self.mergeDB.removingState(*siteTasks[x][ref:ref+self.lfnLimit])                                    
+                 self.mergeDB.commit()
+
                  ref=ref+self.lfnLimit 
                     
-         
+        
+          
         for i in range (0,len(cleanUpJobSpec)):
           
           jobspec=os.path.join(self.args['CleanupJobSpecs'],cleanUpJobSpec[i].parameters["JobName"] + ".xml") 
