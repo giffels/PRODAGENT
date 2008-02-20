@@ -72,7 +72,6 @@ class JobSubmission(StateInterface):
        if self.args['JobInjection'] != 'direct':
             sites=[]
             logging.info("Sites List: %s" % sites)
-            self.args['JobQueue'].loadSiteMatchData()
             self.args['JobQueue'].insertJobSpecsForSites(sites, *jobSpecs)
        # END JOBCUTTING HERE
        return jobcuts
