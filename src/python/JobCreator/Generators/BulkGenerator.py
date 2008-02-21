@@ -39,6 +39,7 @@ from JobCreator.FastMergeTools import InstallBulkFastMerge
 from JobCreator.DashboardTools import installBulkDashboardInfo, writeDashboardInfo
 from JobCreator.CmsGenTools import InsertCmsGenStructure, PopulateCmsGenScript
 from JobCreator.FrontierTools import InsertFrontierTools
+from JobCreator.ScriptControlTools import InstallScriptControls
 
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, generateDashboardID
 
@@ -128,6 +129,7 @@ class BulkGenerator(GeneratorInterface):
         taskObject(InstallLogArch())
         taskObject(InstallBulkFastMerge())
         taskObject(NewInsertStageOut())
+        taskObject(InstallScriptControls())
         taskObject(InstallUserSandbox())
         
         logging.debug(
