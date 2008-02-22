@@ -89,14 +89,16 @@ class AcquireJobs(StateInterface):
                if ex.faultCode==2002 or ex.faultCode==2032:
                    Session.rollback()
                    logging.debug("Request: "+str(request_id)+" does not exists or has finished")
-                   logging.debug("Removing request "+str(request_id))
-                   Workflow.remove(request_id)
+                   logging.debug("Checking if request has finished: "+str(request_id))
                    # emit request finished event (if that is needed)
                    Workflow.setFinished(request_id)
                    logging.debug("Checking if all jobs are finished for RequestFinished event")
                    if Workflow.isAllocationsFinished(request_id):
                        logging.debug("Emitting RequestFinished event")
                        self.ms.publish("RequestFinished",request_id)
+                       Workflow.remove(request_id)
+                   else:
+                       stateParameters['requestIndex']+=1
                    State.setParameters("ProdMgrInterface",stateParameters)
                    componentState="AcquireRequest"
                    State.setState("ProdMgrInterface",componentState)

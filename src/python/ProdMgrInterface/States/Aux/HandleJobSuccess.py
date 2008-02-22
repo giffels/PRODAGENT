@@ -114,7 +114,7 @@ def handleResult(parameters):
        if Workflow.isFinished(parameters['request_id']):
            logging.debug("Emitting RequestFinished event")
            ms.publish("RequestFinished",parameters['request_id'])
-       Workflow.remove(parameters['request_id'])
+           Workflow.remove(parameters['request_id'])
    elif finished==2:
        logging.debug("Request "+str(parameters['request_id'])+" is not completed but allocation is")
        logging.debug("Emitting AllocationFinished event")
@@ -133,7 +133,7 @@ def handleResult(parameters):
        if Workflow.isFinished(parameters['request_id']):
            ms.publish("RequestFinished",parameters['request_id'])
            logging.debug("Emitting RequestFinished event")
-       Workflow.remove(parameters['request_id'])
+           Workflow.remove(parameters['request_id'])
    return "start"
 
 
