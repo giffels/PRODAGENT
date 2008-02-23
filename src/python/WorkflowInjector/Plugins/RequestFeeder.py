@@ -59,7 +59,7 @@ class RequestFeeder(PluginInterface):
         self.sites = []
         self.loadPayload(payload)
         self.publishWorkflow(payload, self.workflow.workflowName())
-        
+        self.publishNewDataset(payload) 
 
         factory = RequestJobFactory(self.workflow,
                                     self.workingDir,

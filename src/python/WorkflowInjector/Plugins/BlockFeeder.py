@@ -101,7 +101,8 @@ class BlockFeeder(PluginInterface):
         self.workflow = None
         self.dbsUrl = None
         self.blocks = []
-        self.loadPayloads(payload)
+        self.workflowFile=payload
+        self.loadPayloads(self.workflowFile)
 
         logging.debug("Now making DBS query & constructing jobs") 
         msg = """however feel free to sing along:
@@ -129,6 +130,9 @@ class BlockFeeder(PluginInterface):
 
         """ 
         logging.debug(msg)
+
+        self.publishNewDataset(self.workflowFile)
+
         self.makeBlockList()
 
 

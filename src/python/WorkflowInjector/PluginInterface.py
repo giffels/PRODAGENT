@@ -133,7 +133,7 @@ class PluginInterface:
         """
         _publishWorkflow_
 
-        Publish NewWorkflow and NewDataset events for the
+        Register Workflow Entity & Publish NewWorkflow events for the
         workflow provided
 
         """
@@ -147,12 +147,33 @@ class PluginInterface:
                  
                  })
             
+        msg="Publishing NewWorkflow for: %s" % workflowPath
+        logging.debug(msg)
 
-        
         self.msRef.publish("NewWorkflow", workflowPath)
-        self.msRef.publish("NewDataset", workflowPath)
+        # this actually needs to happen later -- after any parents are imported
+        # self.msRef.publish("NewDataset", workflowPath)
         self.msRef.commit()
         return
+
+
+    def publishNewDataset(self, workflowPath):
+        """
+        _publishNewDataset_
+        
+        Publish the NewDataset event for the workflow provided -- has to 
+        be done after parents are imported, so this is now split off
+        from publishWorkflow
+
+        """
+
+        if workflowPath != None:
+            msg = "Publishing NewDataset Event for: %s" % workflowPath
+            logging.debug(msg)
+            self.msRef.publish("NewDataset", workflowPath)
+            self.msRef.commit()
+        return
+
 
     def handleInput(self, inputPayload):
         """
