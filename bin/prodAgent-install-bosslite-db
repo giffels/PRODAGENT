@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+"""
+_prodAgent-install-db_
+
+Installation and configuration script for prod agent database.
+
+"""
+
+__revision__ = "$Id: prodAgent-install-db,v 1.8 2007/01/17 19:00:19 fvlingen Exp $"
+
+import getpass
+import os
+import sys
+
+from ProdAgentCore.Configuration import ProdAgentConfiguration
+from ProdAgentDB.Install import adminLogin
+from ProdAgentDB.Install import installDB
+from ProdAgentDB.Install import grantUsers
+from ProdAgentDB.Install import preInstall
+
+from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
+
+# start the install db process:
+    
+valid = ['config=','help']
+
+# check the input
+config=preInstall(valid)
+# load config file
+cfgObject = ProdAgentConfiguration()
+cfgObject.loadFromFile(config)
+# extract the information
+prodAgentConfig = cfgObject.get("ProdAgent")
+dbConfig = cfgObject.get("ProdAgentDB") 
+dbName=dbConfig['dbName']
+# ask for password (optional)
+userName,passwd=adminLogin()
+
+users={dbConfig['user']:dbConfig['passwd']}
+
+## create BossLite DB
+dbLiteConfig=cfgObject.get("BOSS")
+BossLiteschemaLocation=dbLiteConfig['BossLiteschemaLocation']
+
+bossSession = BossLiteAPI( "MySQL", dbConfig)
+try:
+    bossSession.installDB(BossLiteschemaLocation)
+except:
+    msg= "Error with %s"%BossLiteschemaLocation
+    print msg
+    pass
+
+## how register schedulers?
+
+
+
