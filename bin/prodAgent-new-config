@@ -67,11 +67,6 @@ if  homeDir == None:
     sys.exit(1)
 
 
-BOSSDIR=os.environ.get("BOSSDIR")
-if  BOSSDIR == None:
-    print "WARNING: BOSSDIR variable not found"
-    BOSSDIR=""
-
 coreFields = {
     #  //
     # // Core pieces: ProdAgent, ProdAgentDB, MessageService, JobStates
@@ -98,25 +93,8 @@ coreFields = {
     },
 
     "BOSS": {
-    # BossConfig.clad
-    'tmpDir':'/tmp',
-    'minUpdInt':30,
-    'maxUpdInt':180,
-    'maxRetry':3,
-    'monaLisaUrl':'',
-    # MySQLConfig.clad
-    'domain':'localdomain',
-    'guestUser':'ProdAgentGuest',
-    'guestPasswd':'ProdAgentGuestPasswd',
-    'realtimeMonitor':'yes',
-    'configDir':'',
-    'clarensKey':'',
-    'clarensCert':'',
-    'clarensUrl':'',
-    'clarensProxy':'',
-    'rtHost':socket.gethostname(),
-    'rtDomain':socket.getfqdn(),
-    'rtPortNr':'3306'},
+    'BossLiteschemaLocation': "$PRODCOMMON_ROOT/lib/ProdCommon/BossLite/DbObjects/setupDatabase.sql"
+    },
     
     "MessageService" : {
     "pollInterval" : 5, 
@@ -182,9 +160,6 @@ componentFields = {
 
     "JobTracking" : {
     "ComponentDir" : None,
-    "BOSSDIR" : BOSSDIR,
-    "BOSSPATH" : None,
-    "BOSSVERSION" : None,
     "PollInterval" : 10,
     "QueryInterval" : 300,
     "jobsToPoll" : 100,
@@ -337,17 +312,7 @@ Beware usernames in mysql can be too long.
 """,
    "BOSS" : \
 """
-Please look over these parameters carefully.
-If you are not using the Clarens based web service for database
-communication you can leave the Clarens entries empty.
-The BOSS database names will be derived from the ProdAgent DB name
 
-If the mysqldb is not on the same machine, make sure to 
-add some things to the boss config:
-prodAgent-edit-config --component=BOSS --parameter=rtDomain 
---value=yourdomain
-prodAgent-edit-config --component=BOSS --parameter=rtHost --value=yourdbhost
-prodAgent-edit-config --component=BOSS --parameter=domain --value=yourdomain
 """,
    "JobSubmitter" : \
 """
@@ -474,11 +439,6 @@ for name, values in coreFields.items():
 
 
 prodAgentBlock = config.getConfig("ProdAgent")
-
-# NOTE: boss post processing
-# NOTE: needs to be done better (how, withouth designating BOSS a component?)
-cfgDict = config.getConfig("BOSS")
-cfgDict['configDir']=os.path.join(prodAgentBlock['ProdAgentWorkDir'],"BOSS/config")
 
 
 def processField(fieldName, fieldDict):
