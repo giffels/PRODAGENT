@@ -10,11 +10,11 @@ XML file.
 
 """
 
-__revision__ = "$Id: OSGResConBulkSubmitter.py,v 1.3 2007/08/18 16:05:18 dmason Exp $"
+__revision__ = "$Id: OSGResConBulkSubmitter.py,v 1.4 2008/02/12 20:05:46 dmason Exp $"
 
 import os
 import logging
-
+import time
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
