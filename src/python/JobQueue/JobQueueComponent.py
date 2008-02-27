@@ -126,13 +126,10 @@ class JobQueueComponent:
 
         try:
             JobQueueAPI.queueJob(jobSpecFile, priorities)
-            logging.info("----- Queueing Job: %s" % jobSpecFile)
         except Exception, ex:
             msg = "Queueing JobSpec Failed:\n%s\n" % jobSpecFile
             msg += str(ex)
             logging.error(msg)
-
-        logging.debug("queueingJob: %s" % jobSpecFile)
 
         return
         
