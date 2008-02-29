@@ -6,8 +6,8 @@ Job Emulator Bulk Submitter implementation.
 
 """
 
-__revision__ = "$Id: $"
-__version__ = "$Revision: $"
+__revision__ = "$Id: JobEmulatorBulkSubmitter.py,v 1.1 2008/02/12 21:32:01 sryu Exp $"
+__version__ = "$Revision: 1.1 $"
 
 import logging
 
@@ -37,8 +37,7 @@ class JobEmulatorBulkSubmitter(BulkSubmitterInterface):
 
         for jobSpec, cacheDir in self.toSubmit.items():
             logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
-            ms.publish("JobEmulatorComponent:EmulateJob",
-                       self.specFiles[jobSpec])
+            ms.publish("EmulateJob", self.specFiles[jobSpec])
             ms.commit()
         return
 
