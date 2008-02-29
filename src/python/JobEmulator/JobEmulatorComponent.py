@@ -8,8 +8,9 @@ and generating reports as they finish.
 
 """
 
-__revision__ = "$Id: "
-__version__ = "$Revision: "
+__revision__ = "$Id: $"
+__version__ = "$Revision: $"
+__author__ = "sfoulkes, sryu"
 
 import os
 import logging
@@ -99,7 +100,7 @@ class JobEmulatorComponent:
             self.plugin = payload           
         elif event == "JobEmulatorComponent:SetJobReportPlugin":
             self.fwkReportPlugin = payload          
-        elif event == "JobEmulatorComponent:EmulateJob":
+        elif event == "EmulateJob":
             self.emulateJob(payload)
         elif event == "JobEmulatorComponent:Update":
             self.ms.publish("JobEmulatorComponent:Update", "", "00:00:20")
@@ -152,7 +153,7 @@ class JobEmulatorComponent:
         """
         completionPlugin = self.loadPlugin(self.plugin)
         if completionPlugin == None:
-            logging.error("no job completion plugin")
+            logging.error("Error: no job completion plugin")
             return
         completionPlugin.avgCompletionTime = self.avgCompletionTime
         completionPlugin.avgCompletionPercentage = self.avgCompletionPercentage
@@ -160,54 +161,41 @@ class JobEmulatorComponent:
         reportPlugin = self.loadPlugin(self.fwkReportPlugin)
         
         if reportPlugin == None:
-            logging.error("no allocation plugin")
-            return
-        
-        allocationPlugin = self.loadPlugin(self.allocationPlugin)
-        if allocationPlugin == None:
-            logging.error("no allocation plugin")
+            logging.error("Error: no report plugin")
             return
         
         newJobs = queryJobsByStatus("new")
-
-        for newJob in newJobs:
-            
-            jobRunningLocation = allocationPlugin.allocateJob()
-            
-            # this will increase job count for give node
-            JobEmulator.JobEmulatorAPI.assignJobToNode(newJob[0], \
-                                            jobRunningLocation['HostID'])
-            logging.debug("------host id: %s add job" % jobRunningLocation['HostID'])
-            JobEmulator.JobEmulatorAPI.updateJobStatus(newJob[0], "assigned")
-            
-        assignedJobs = queryJobsByStatus("assigned")
         
-        for assignedJob in assignedJobs:
+        for newJob in newJobs:
             jobRunningLocation = \
-                    JobEmulator.JobEmulatorAPI.getWorkerNodeInfo(assignedJob[4])
-            newJobStatus = completionPlugin.processJob(assignedJob, jobRunningLocation)
+                    JobEmulator.JobEmulatorAPI.getWorkerNodeInfo(newJob[4])
+            newJobStatus = completionPlugin.processJob(newJob, jobRunningLocation)
 
-            if newJobStatus == "assigned":
+            if newJobStatus == "new":
                 continue
 
             jobSpec = JobSpec()
 
-            jobState = WEJob.get(assignedJob[0])
+            jobState = WEJob.get(newJob[0])
             jobSpecPath = "%s/%s-JobSpec.xml" % \
-                          (jobState["cache_dir"], assignedJob[0])
+                          (jobState["cache_dir"], newJob[0])
+                          
+            logging.debug("------ Job Spec Path ----\n%s\n" % jobSpecPath)
             jobSpec.load(jobSpecPath)
 
             if newJobStatus == "finished":
-                #logging.info("---------jobFinished")
+                logging.debug("---------jobFinished")
                 if reportPlugin != None:
                     reportPlugin.createSuccessReport(jobSpec, jobRunningLocation)
             elif newJobStatus == "failed":
-                #logging.info("--------jobFailed")
+                logging.debug("--------jobFailed")
                 if self.fwkReportPlugin != None:
                     reportPlugin.createFailureReport(jobSpec, jobRunningLocation)
-
-            JobEmulator.JobEmulatorAPI.updateJobStatus(assignedJob[0], newJobStatus)
-            JobEmulator.JobEmulatorAPI.decreaseJobCountAtNode(assignedJob[0])
+            
+            logging.debug("--------- updating job status %s - %s" % (newJobStatus, newJob[0]))
+            JobEmulator.JobEmulatorAPI.updateJobStatus(newJob[0], newJobStatus)
+            logging.debug(" *** Job Upadated ***")
+            JobEmulator.JobEmulatorAPI.decreaseJobCountAtNode(newJob[0])
     
     def emulateJob(self, payload):
         """
@@ -226,7 +214,19 @@ class JobEmulatorComponent:
             logging.error("Error loading JobSpec file: %s" % payload)
             logging.error(str(ex))
 
+        allocationPlugin = self.loadPlugin(self.allocationPlugin)
+        if allocationPlugin == None:
+            logging.error("Error: no allocation plugin")
+            return
+        
         addJob(jobSpec.parameters['JobName'], jobSpec.parameters['JobType'])
+        jobRunningLocation = allocationPlugin.allocateJob()
+            
+        # this will increase job count for give node
+        JobEmulator.JobEmulatorAPI.assignJobToNode(jobSpec.parameters['JobName'],
+                                                   jobRunningLocation['HostID'])
+        logging.debug("------host id: %s add job" % jobRunningLocation['HostID'])
+        
 
         return
 
@@ -246,7 +246,7 @@ class JobEmulatorComponent:
         self.ms.registerAs("JobEmulatorComponent")
         # subscribe to messages
         self.ms.subscribeTo("JobEmulatorComponent:Update")
-        self.ms.subscribeTo("JobEmulatorComponent:EmulateJob")
+        self.ms.subscribeTo("EmulateJob")
         self.ms.subscribeTo("JobEmualtorComponent:StartDebug")
         self.ms.subscribeTo("JobEmualtorComponent:EndDebug")
 
