@@ -18,8 +18,8 @@ Session.commit_all()
 Session.close_all()
 
 """
-__revision__ = "$Id: JobEmulatorDB.py,v 1.1 2008/02/12 21:55:11 sryu Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: JobEmulatorDB.py,v 1.2 2008/02/12 22:11:46 sryu Exp $"
+__version__ = "$Revision: 1.2 $"
 
 from ProdCommon.Database import Session
 from ProdCommon.Core.ProdException import ProdException
@@ -385,7 +385,7 @@ class JobEmulatorDB:
             job_id  VARCHAR(255) NOT NULL,
             job_type ENUM('Processing', 'Merge', 'CleanUp'),
             start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status ENUM('new', 'assigned', 'finished', 'failed'),
+            status ENUM('new', 'finished', 'failed'),
             worker_node_id INT,
             FOREIGN KEY (worker_node_id) REFERENCES jobEM_node_info (host_id),
             PRIMARY KEY (job_id)
