@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+"""
+A simple commandline utility to compare to config files
+with eachother. It list the missing configuaration blocks
+and parameters relative to the other configuration file.
+
+This is especially handy if you upgrade your prodagent and want
+to see what parameters you additionally need (or which one
+you can remove in your existing configuration file.
+
+This utility assumes that the parameters are in the xml format:
+
+<ConfigBlock Name="...>
+   <Parameter Name="... />
+....
+
+"""
+
+from xml.dom.minidom import parse
+
+import sys
+
+def usage():
+    """print usage info"""
+    strg = "Usage: prodAgent-compare-config <config1>\n"
+    strg += " <config2> "
+    print strg
+
+def dom2dictionary(configBlockElements):
+    """
+    converts the dom elements to dictionaries of strings
+    """
+    configBlocks = {}
+    for configBlockElement in configBlockElements:
+        name = configBlockElement.getAttribute("Name")
+        configBlocks[name] = {}
+        parameterElements = configBlockElement.getElementsByTagName("Parameter")
+        for parameterElement in parameterElements:
+            configBlocks[name][parameterElement.getAttribute("Name")] = \
+                parameterElement.getAttribute("Value")
+    return configBlocks
+
+def extractMissingParameters(configBlocks_1, configBlocks_2):
+    """
+    compares which blocks and parameters are missing
+    """
+    missingFromConfig2 = {}
+    for configBlockName in configBlocks_1.keys():
+        if not configBlocks_2.has_key(configBlockName):
+            missingFromConfig2[configBlockName] = {}
+        else:
+            for parameterName in configBlocks_1[configBlockName].keys():
+                if not configBlocks_2[configBlockName].has_key(parameterName):
+                    if not missingFromConfig2.has_key(configBlockName):
+                        missingFromConfig2[configBlockName] = {}
+                    missingFromConfig2[configBlockName][parameterName] = 'missing'
+    return missingFromConfig2
+
+def printMissingParameters(missingFromConfig):
+    """
+    prints the missing parameters and config blocks
+    """
+    for missingConfigBlock in missingFromConfig.keys():
+        if missingFromConfig[missingConfigBlock] == {}:
+            msg = """Missing block: %s """ %(missingConfigBlock)
+            print(msg)
+        else:
+            for missingParameter in missingFromConfig[missingConfigBlock]:
+                msg = """Missing from block: %s, parameter %s """ \
+                   %(missingConfigBlock, missingParameter)
+                print msg 
+
+
+if len(sys.argv[1:]) !=2:
+    usage()
+    sys.exit(1)
+
+msg = """ Using config files: %s and %s """ %(sys.argv[1], sys.argv[2])
+print msg
+
+dom1 = parse(sys.argv[1])
+dom2 = parse(sys.argv[2])
+
+configBlocks1 = dom2dictionary(dom1.getElementsByTagName("ConfigBlock"))
+configBlocks2 = dom2dictionary(dom2.getElementsByTagName("ConfigBlock"))
+missingFromConfig2 = extractMissingParameters(configBlocks1, configBlocks2)
+missingFromConfig1 = extractMissingParameters(configBlocks2, configBlocks1)
+
+
+print
+msg = """Parameters from %s missing in %s """ % (sys.argv[2], sys.argv[1])
+print msg
+print
+printMissingParameters(missingFromConfig1)
+print
+msg = """Parameters from %s missing in %s """ % (sys.argv[1], sys.argv[2])
+print msg
+print
+printMissingParameters(missingFromConfig2)
