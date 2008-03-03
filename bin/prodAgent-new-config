@@ -305,6 +305,15 @@ componentFields = {
 	"PollInterval" : "01:00:00",
 	},
 
+	"JobEmulator" : {
+	"ComponentDir" : None,
+	"JobAllocationPlugin" : "LoadBalanceAllocationPlugin",
+	"JobCompletionPlugin" : "RandomCompletionPlugin",
+	"JobReportPlugin" : "EmulatorReportPlugin",
+	"avgCompletionTime" : "01:00:00",
+	"avgCompletionPercentage" : "0.90",
+	},
+	
     }# end componentFields
 
 #  //
@@ -440,6 +449,22 @@ internal database.
    -DashboardURL: external monitoring export URL.
    -exportMaxBatchSize: Max number of jobs to export in each cycle.
    -exportInterval: Time between export cycles in seconds.
+   """,
+  "JobEmulator"              :\
+  """
+  To run job emulator, JobSumitter component's SubmitterName need to be set to JobEmulatorBulkSubmitter.
+  Also, CondorTracker component's TrackerPlugin has to be set to JobEmulatorTracker.
+  Followings are parameters for JobEmulator component.
+   -JobReportPlugin: Set Job report format for jobEmulator, currently support EmulatorReportPlugin 
+   which uses framework report.
+   -JobAllocationPlugin: production team name 
+   -JobCompletionPlugin: two options are Available RandomCompletionPlugin and BlakHoleNodePlugin.
+   RandomCompletion Plugin completes the job with a given average completion time (avgCompletionTime)
+   and a given average completion percentage (avgCompletionPercentage).
+   BlackHoleNodePlugin is the same as RandomeCompletionPlugin except jobs fail right away all the time
+   in one node.
+   -avgCompletionTime: average job completion time. Format: "00:02:00" - 2 minutes.
+   -avgCompletionPercentage: average job completion percentage. Format: "0.9" - 90 %
    """
     }
 
