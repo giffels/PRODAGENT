@@ -31,7 +31,11 @@ def dbExceptionHandler(dbfunc):
         try:
             Session.connect()
             Session.start_transaction()
-            return dbfunc(*args, **dictArgs)
+            reValue = dbfunc(*args, **dictArgs)
+            Session.commit_all()
+            Session.close_all()
+            return reValue 
+            
 
         except Exception, ex:
             msg = "Error: %s\n" % str(ex)
@@ -235,17 +239,16 @@ if __name__ == '__main__':
     #removeJob('101')
     #removeJob('102')
     
-    updateJobStatus('100', "finished")
+    #updateJobStatus('100', "finished")
     
     for jobId in ['100', '101', '102']:
-        a, b, c, d, e =  getRandomSiteAndNode()
-        assignJobToNode(jobId, b)
-        
-        print b
+        nodeInfo =  getRandomSiteAndNode()
+        assignJobToNode(jobId, nodeInfo['HostID'])
+        print nodeInfo
 
     for jobId in ['100', '101', '102']:
-        a, b, c, d, e =  getLessBusySiteAndNode()
-        print b
-        assignJobToNode(jobId, b)
+        nodeInfo =  getLessBusySiteAndNode()
+        print nodeInfo
+        assignJobToNode(jobId, nodeInfo['HostID'])
 
     decreaseJobCountAtNode('100')
