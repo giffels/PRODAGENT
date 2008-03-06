@@ -8,8 +8,8 @@ and generating reports as they finish.
 
 """
 
-__revision__ = "$Id: JobEmulatorComponent.py,v 1.2 2008/02/29 22:04:24 sryu Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: JobEmulatorComponent.py,v 1.3 2008/03/06 21:34:54 sryu Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "sfoulkes, sryu"
 
 import os
@@ -40,7 +40,7 @@ class JobEmulatorComponent:
 
     """
     def __init__(self, **args):
-        JobEmulator.JobEmulatorAPI.initializeJobEM_DB()
+        
         self.args = {}
         self.args['ComponentDir'] = None
         self.args['Logfile'] = None
@@ -53,8 +53,10 @@ class JobEmulatorComponent:
                 self.args['ComponentDir'],
                 "ComponentLog")
         LoggingUtils.installLogHandler(self)
+        # to make use of logging in JobEmulatorAPI class,
+        # call API after loggingUtil
+        JobEmulator.JobEmulatorAPI.initializeJobEM_DB()
         self.ms = None
-        logging.info("JobEmulator Component Started")
 
         if self.args.get("avgCompletionTime", None) != None:
             self.avgCompletionTime = self.args["avgCompletionTime"]
@@ -81,6 +83,8 @@ class JobEmulatorComponent:
             self.fwkReportPlugin = self.args["JobReportPlugin"]
         else:
             logging.info("No framwork report plugin registered.")
+        
+        logging.info("JobEmulator Component Started")
                         
     def __call__(self, event, payload):
         """
