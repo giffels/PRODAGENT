@@ -151,6 +151,9 @@ def initializeJobEM_DB():
     JobEmulatorDB.createNodeTable()
     rsControlDB = ResourceControlDB()
     siteNames = rsControlDB.siteNames()
+    if siteNames == None:
+        logging.error("need to have some entries in rc_site table")
+        
     for siteName in siteNames:
         for num in range(50):
             JobEmulatorDB.insertWorkerNode("fakeHost_%d.%s.FAKE" 
