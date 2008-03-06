@@ -68,7 +68,6 @@ Session.connect()
 Session.start_transaction()
 
 jobQueue = JobQueueDB()
-jobQueue.loadSiteMatchData()
 
 
 
