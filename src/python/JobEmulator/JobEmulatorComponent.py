@@ -8,8 +8,8 @@ and generating reports as they finish.
 
 """
 
-__revision__ = "$Id: $"
-__version__ = "$Revision: $"
+__revision__ = "$Id: JobEmulatorComponent.py,v 1.2 2008/02/29 22:04:24 sryu Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "sfoulkes, sryu"
 
 import os
@@ -247,8 +247,8 @@ class JobEmulatorComponent:
         # subscribe to messages
         self.ms.subscribeTo("JobEmulatorComponent:Update")
         self.ms.subscribeTo("EmulateJob")
-        self.ms.subscribeTo("JobEmualtorComponent:StartDebug")
-        self.ms.subscribeTo("JobEmualtorComponent:EndDebug")
+        self.ms.subscribeTo("JobEmulatorComponent:StartDebug")
+        self.ms.subscribeTo("JobEmulatorComponent:EndDebug")
 
         # subscribe to a plugin changes
         self.ms.subscribeTo("JobEmulatorComponent:SetJobAllocationPlugin")
