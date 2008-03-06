@@ -25,6 +25,8 @@ def register(jobID,fileIDs=[]):
    It will give a warning if it is not part of an allocation and moves on.
 
    """
+   if len(fileIDs) == 0:
+      return
    logging.debug("Registering files for job: "+str(jobID))
    sqlStr="""INSERT INTO we_File(id,events_processed,job_id) VALUES"""
    comma=False
@@ -46,6 +48,8 @@ def merged(fileIDs=[],failed=False):
    It will give a warning if it is not part of an allocation and moves on.
    """
    global ms
+   if len(fileIDs) == 0:
+      return
    logging.debug("Finding job ids associated to files: ")
    if type(fileIDs)!=list:
       fileIDs=[fileIDs]
