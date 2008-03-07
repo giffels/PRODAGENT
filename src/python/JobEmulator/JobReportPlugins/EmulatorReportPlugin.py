@@ -82,8 +82,14 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             theFile['GUID'] = guid
             theFile['ModuleLabel'] = outName
             theFile['Size'] = 500000 * randrange(5, 10)
-            theFile['TotalEvent'] = \
-                   jobSpecPayload.cfgInterface.maxEvents['output']
+            
+            #check if the maxEvents['output'] is set if not set totalEvent using maxEvents['input']
+            totalEvent = jobSpecPayload.cfgInterface.maxEvents['output']
+            if totalEvent == None:
+                tolalEvent = jobSpecPayload.cfgInterface.maxEvents['input']
+            theFile['TotalEvent'] = totalEvent
+            
+            theFile['']
             theFile['SEName'] = jobRunningLocation['se-name'] 
             theFile['CEname'] = jobRunningLocation['ce-name']
             theFile['Catalog'] = outMod['catalog']
@@ -144,8 +150,9 @@ class EmulatorReportPlugin(JobReportPluginInterface):
         try:
             jobSpecPayload = jobSpecLoaded.payload
             jobState = WEJob.get(jobSpecPayload.jobName)
-    
+            msg = "got state %s " % str(jobState)
             jobCache = jobState['cache_dir']
+            msg += "test\n %s" % jobCache
             jobReportLocation = "%s/FrameworkJobReport.xml" % jobCache
             newReport = FwkJobReport()
             newReport.jobSpecId = jobSpecPayload.jobName
@@ -160,11 +167,18 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             newReport.siteDetails['ce-name'] = jobRunningLocation['ce-name'] 
             return jobSpecPayload, jobReportLocation, newReport
                 
-        except ProdAgentException, ex:
-            msg = "Unable to Publish Report for %s\n" % jobSpecPayload.jobName
-            msg += "Since It is not known to the JobState System:\n"
+        except Exception, ex:
+            #msg = "Unable to Publish Report for %s\n" % jobSpecPayload.jobName
+            #msg += "Since It is not known to the JobState System:\n"
             msg += str(ex)
             logging.error(msg)
-            return
+            
+            raise RuntimeError, msg
+            
         
 registerPlugin(EmulatorReportPlugin, EmulatorReportPlugin.__name__)
+
+if __name__ == "__main__":
+    from ProdCommon.MCPayloads.JobSpec import JobSpec
+    jobSpec = JobSpec()
+    jobSpec.load("/home/sryu")
