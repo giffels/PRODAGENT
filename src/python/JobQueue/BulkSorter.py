@@ -44,9 +44,9 @@ class BulkSorter:
         # //  Sort jobs into potential bulk specs
         #//
         for job in jobs:
-            if job['JobType'] == 'Merge':
+            if job['JobType'] in ('Merge', 'CleanUp'):
                 #  //
-                # // all merges are individual
+                # // all merges and cleanups are individual
                 #//
                 self.individualSpecs.append(job)
                 continue
