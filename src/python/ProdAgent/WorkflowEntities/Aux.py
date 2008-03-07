@@ -2,6 +2,35 @@
 
 from ProdCommon.Database import Session
 
+separator = '@'
+old_separator = '_'
+
+def split(inputString):
+    """
+    auxilerary method to smootly transition
+    to new separators.
+    """
+    global separator
+    global old_separator
+
+    # check if the string contains the new separator
+    if inputString.find(separator) < 0:
+        return inputString.split(old_separator)
+    return inputString.split(separator)
+
+def getSeparator(inputString):
+    """
+    Auxilerary method to get the right separator.
+    """
+    global separator
+    global old_separator
+
+    # check if the string contains the new separator
+    if inputString.find(separator) < 0:
+        return old_separator
+    return separator
+
+
 def removeJob(jobIDs=[] , entityType = 'job'):
    """
    __remove__
