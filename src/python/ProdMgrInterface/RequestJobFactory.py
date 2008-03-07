@@ -5,6 +5,8 @@ from ProdCommon.JobFactory.RequestJobFactory import RequestJobFactory as BaseJob
 from ProdCommon.JobFactory.RequestJobFactory import GeneratorMaker
 from ProdCommon.MCPayloads.LFNAlgorithm import DefaultLFNMaker
 
+from ProdAgent.WorkflowEntities import Aux
+
 import logging
 import math
 import os
@@ -56,7 +58,7 @@ class RequestJobFactory(BaseJobFactory):
 
 
             jobSpecFile = self.createJobSpec()
-            result.append({'id':self.currentJob,'spec':jobSpecFile})
+            result.append({'id':self.currentJob,'spec':jobSpecFile,'events':self.eventsPerJob})
         return result
 
 
@@ -69,7 +71,8 @@ class RequestJobFactory(BaseJobFactory):
         """
 
         jobSpec = self.workflowSpec.createJobSpec()
-        jobName = self.job_prefix + '_jobcut-'+self.workflowSpec.workflowName()+'-'+str(self.count)
+        jobName = self.job_prefix + Aux.getSeparator(self.job_prefix)+'jobcut-' +\
+            self.workflowSpec.workflowName()+'-'+str(self.count)
         self.currentJob = jobName
         jobSpec.setJobName(jobName)
         jobSpec.setJobType("Processing")
