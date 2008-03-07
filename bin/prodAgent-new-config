@@ -83,7 +83,8 @@ coreFields = {
     "ProdAgentKey"  : "/home/fvlingen/.globus/clientkey.pem",
     "ProdAgentRunOffset": '10',
     },
-    
+        
+
     "ProdAgentDB": {
     'dbName':'ProdAgentDB',
     'host':'localhost',
@@ -167,6 +168,15 @@ componentFields = {
     "SubmitterPluginConfig" : os.path.join(os.path.dirname(configFile),"SubmitterPluginConfig.xml"),
     "RssFeed": "no",
     },
+
+    "CleanUpScheduler" : {
+    "ComponentDir" : None,
+    "QueueJobMode" : "True",
+    "PollActive"   : "True",
+    "LFNLimit"     : "10",
+    "CleanUpInterval" : "3600"
+    },
+
 
     "DBSInterface" : {
     "ComponentDir" : None,
@@ -361,6 +371,16 @@ prodAgent-edit-config --component=BOSS --parameter=domain --value=yourdomain
 """
 SubmitterName values you can use: condorg, condor, lcg, lsf, lxb1125, and noSubmit
 """,
+   "CleanUpScheduler" : \
+"""
+Configuration for cleanupscheduler component to initiate cleanup jobs
+-PollActive : If True then this component will be enabled otherwise it won't initiate any cleanup job
+-QueueJobMode :  If True then cleanup jobs will run through JobQueue component
+-cleanUpInterval : Number of seconds after which cleanup cycle be recalled
+-LFNLimit : Number of max lfn's in one cleanup jobspec      
+
+""",      
+
    "ErrorHandler" : \
 """
 -MaxCacheDirSizeMB : The maximum size a cache dir can have 
