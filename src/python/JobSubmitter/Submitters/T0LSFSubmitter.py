@@ -8,7 +8,9 @@ Bulk and single LSF submissions
 
 """
 import os
+import errno
 import socket
+import datetime
 import logging
 
 from JobSubmitter.Registry import registerSubmitter
@@ -165,6 +167,22 @@ class T0LSFSubmitter(BulkSubmitterInterface):
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox'])
 
         #  //
+        # // Check if directory for LSF log exists, create if it doesn't
+        #//
+        lsfLogDir = self.pluginConfig['LSF']['LsfLogDir']
+        if ( lsfLogDir != 'None' ):
+            now = datetime.datetime.today()
+            lsfLogDir += '/%s' % now.strftime("%Y%m%d%H")
+            try:
+                os.mkdir(lsfLogDir)
+                logging.debug("Created directory %s" % lsfLogDir)
+            except OSError, err:
+                # suppress LSF log unless it's about an already exisiting directory
+                if err.errno != errno.EEXIST or not os.path.isdir(lsfLogDir):
+                    logging.debug("Can't create directory %s, turning off LSF log" % lsfLogDir)
+                    lsfLogDir = 'None'
+
+        #  //
         # // For single jobs there will be just one job spec
         #//
         if not self.isBulk:
@@ -207,10 +225,10 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             lsfSubmitCommand += ' -g %s' % LSFConfiguration.getGroup()
             lsfSubmitCommand += ' -J %s' % jobSpec
 
-            if ( self.pluginConfig['LSF']['LsfLogDir'] == "None" ):
+            if ( lsfLogDir == "None" ):
                 lsfSubmitCommand += ' -oo /dev/null'
             else:
-                lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (self.pluginConfig['LSF']['LsfLogDir'],jobSpec)
+                lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (lsfLogDir,jobSpec)
 
             # lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
             # lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
