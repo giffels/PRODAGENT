@@ -7,9 +7,9 @@ that generate job reports for completed
 jobs.
 
 """
-__revision__ = "$Id: $"
-__version__ = "$Revision: $"
-
+__revision__ = "$Id: JobReportPluginInterface.py,v 1.1 2008/02/12 21:55:33 sryu Exp $"
+__version__ = "$Revision: 1.1 $"
+__author__ = "sfoulkes, sryu"
 
 class JobReportPluginInterface:
     """
@@ -41,3 +41,18 @@ class JobReportPluginInterface:
         """
         fname = "JobEmulator.FwkJobReportPluginInterface.createFailureReport"
         raise NotImplementedError, fname
+
+    def setDefaultForNoneValue(self, parameterName, parameter, default=None):
+        """
+        _lookupParameter_
+
+        Check to see if a parameter exists in the ProdAgent config.
+        If it does, return its value, otherwise return the default
+        value.
+        Usage: setDefaultForNoneValue(parmeterName="LFN Name", parameter=self.lfn, default="/store/fake")
+        """
+        if parameter == None:
+            logging.error("%s not set, reporter plugin is using default: %s" %
+                          (parameterName, default))
+            parameter = default
+        
