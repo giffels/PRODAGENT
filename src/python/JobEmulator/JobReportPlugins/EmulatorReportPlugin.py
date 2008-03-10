@@ -8,8 +8,9 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: "
-__version__ = "$Revision: "
+__revision__ = "$Id: $"
+__version__ = "$Revision: $"
+__author__ = "sfoukes, sryu"
 
 import logging
 from random import randrange
@@ -65,6 +66,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             
             if outModules.has_key(modName):
                 dataset['LFNBase'] = outModules[modName].get('LFNBase', None)
+                self.setDefaultForNoneValue('LFNBase', dataset['LFNBase'])
                 dataset['MergeedLFNBase'] = \
                                 outModules[modName].get('MergedLFNBase', None)
         
@@ -78,6 +80,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             theFile = newReport.newFile()
             guid = makeUUID()
             theFile['LFN'] = "%s/%s.root" % (outMod['LFNBase'], guid)
+            self.setDefaultForNoneValue('LFNBase', theFile['LFN'])
             theFile['PFN'] ="fakefile:%s" % theFile['LFN']
             theFile['GUID'] = guid
             theFile['ModuleLabel'] = outName
@@ -88,8 +91,8 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             if totalEvent == None:
                 tolalEvent = jobSpecPayload.cfgInterface.maxEvents['input']
             theFile['TotalEvent'] = totalEvent
+            self.setDefaultForNoneValue("maxEvent['input']", theFile['TotalEvent'])
             
-            theFile['']
             theFile['SEName'] = jobRunningLocation['se-name'] 
             theFile['CEname'] = jobRunningLocation['ce-name']
             theFile['Catalog'] = outMod['catalog']
