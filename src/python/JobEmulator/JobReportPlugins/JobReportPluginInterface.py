@@ -7,9 +7,11 @@ that generate job reports for completed
 jobs.
 
 """
-__revision__ = "$Id: JobReportPluginInterface.py,v 1.1 2008/02/12 21:55:33 sryu Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: JobReportPluginInterface.py,v 1.2 2008/03/10 15:07:22 sryu Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "sfoulkes, sryu"
+
+import logging
 
 class JobReportPluginInterface:
     """
