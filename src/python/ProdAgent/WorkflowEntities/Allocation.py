@@ -9,18 +9,20 @@ from ProdCommon.Database import Session
 from ProdAgent.WorkflowEntities import Aux
 from ProdAgent.WorkflowEntities import Workflow
 
+from ProdAgent.WorkflowEntities import Aux
+
 def convertJobID(jobID):
    """
    __converts the jobid to the associated allocation id
    """
-   cuts=jobID.split('_')
+   cuts=Aux.split(jobID)
    if len(cuts)<4:
        return None 
    allocationId=''
    for i in xrange(0,4):
        allocationId+=cuts[i]
        if i!=3:
-           allocationId+='_'
+           allocationId+=Aux.getSeparator(jobID)
    return allocationId
 
 
