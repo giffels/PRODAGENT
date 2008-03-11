@@ -96,7 +96,6 @@ def executeRestCall(serverUrl,rest_part,componentID="defaultComponent"):
        logCall(serverUrl,method_name,[],componentID,tag)
 
    #NOTE: rest calls are currently not properly logged!
-
    connection.disable_deserialize() 
    result=connection.execute_rest(rest_part)
    #logging.debug("Retrieved result: "+str(result))

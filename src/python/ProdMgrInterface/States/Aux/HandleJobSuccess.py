@@ -3,13 +3,15 @@
 import logging 
 import os
 
-from ProdCommon.Database import Session
 from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdMgrInterface import MessageQueue
+from ProdAgent.WorkflowEntities import Aux
 from ProdAgent.WorkflowEntities import Allocation
 from ProdAgent.WorkflowEntities import File
 from ProdAgent.WorkflowEntities import Job 
 from ProdAgent.WorkflowEntities import Workflow
+from ProdCommon.Database import Session
+from ProdMgrInterface import MessageQueue
+
 import ProdMgrInterface.Interface as ProdMgrAPI
 
 ms = None
@@ -61,7 +63,7 @@ def handleJob(job_spec_id):
        parameters={}
        parameters['jobSpecId']=str(jobId)
        parameters['events']=allocation['events_processed']
-       parameters['request_id']=request_id=jobId.split('_')[1] 
+       parameters['request_id']=request_id=Aux.split(jobId)[1] 
        result=sendMessage(allocation['prod_mgr_url'],parameters)
        parameters['result']=result['result']
        newState=handleResult(parameters)
@@ -76,7 +78,7 @@ def sendMessage(url,parameters):
        finished=ProdMgrAPI.releaseJob(url,str(parameters['jobSpecId']),\
            int(parameters['events']),"ProdMgrInterface")
        # check if the associated allocation needs to be released.
-       request_id=parameters['jobSpecId'].split('_')[1]
+       request_id=Aux.split(parameters['jobSpecId'])[1]
        return {'result':finished,'url':'fine'}
    except Exception, ex:
        if(ex.faultCode == 2001):

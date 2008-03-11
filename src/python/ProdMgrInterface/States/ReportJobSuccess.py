@@ -15,6 +15,8 @@ from ProdMgrInterface.Registry import registerHandler
 from ProdMgrInterface.Registry import retrieveHandler
 from ProdMgrInterface.States.Aux import HandleJobSuccess
 from ProdMgrInterface.States.StateInterface import StateInterface 
+from ProdAgent.WorkflowEntities import Aux
+
 import ProdMgrInterface.Interface as ProdMgrAPI
 
 class ReportJobSuccess(StateInterface):
@@ -91,7 +93,7 @@ class ReportJobSuccess(StateInterface):
         Allocation.setEventsMissedIncrement(we_job['allocation_id'], missingEvents)
         # remove the job spec file.
         logging.debug("removing job spec file from job: "+str(job_spec_id))
-        request_id=job_spec_id.split('_')[1] 
+        request_id=Aux.split(job_spec_id)[1] 
         logging.debug("request id : "+str(request_id))
         job_spec_location=we_job['job_spec_file']
         logging.debug("Retrieved (and removing) job spec file: "+str(job_spec_location))

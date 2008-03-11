@@ -8,20 +8,21 @@ returned from the ProdMgr.
 
 """
 
-__revision__ = "$Id: JobCutter.py,v 1.16 2007/11/21 11:48:32 fvlingen Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: JobCutter.py,v 1.17 2008/02/14 10:07:56 fvlingen Exp $"
+__version__ = "$Revision: 1.17 $"
 __author__ = "fvlingen@caltech.edu"
 
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdAgent.WorkflowEntities import Aux
+from ProdAgent.WorkflowEntities import Job
+from ProdAgent.WorkflowEntities import Allocation
+from ProdAgent.WorkflowEntities import Workflow
 from ProdCommon.Database import Session
 from ProdCommon.MCPayloads.WorkflowSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.FactoriseJobSpec import factoriseJobSpec
 from ProdCommon.MCPayloads import EventJobSpec
-from ProdAgent.WorkflowEntities import Job as Job
-from ProdAgent.WorkflowEntities import Allocation
-from ProdAgent.WorkflowEntities import Workflow
 
 from ProdMgrInterface.RequestJobFactory import RequestJobFactory
 
@@ -74,10 +75,10 @@ def cut(job_id,jobCutSize, allocation = None):
     else:
         jobDetails=Allocation.get(job_id)['details']
 
-    workflowspecFile = Workflow.get(job_id.split('_')[1])['workflow_spec_file']
+    workflowspecFile = Workflow.get(Aux.split(job_id)[1])['workflow_spec_file']
     WorkflowPriority = 1
     try:
-        id = job_id.split('_')[1]
+        id = Aux.split(job_id)[1]
         logging.debug("Looking for priority of workflow: %s" \
             % (id))
         WorkflowPriority = Workflow.get(workflowID = id)['priority']
@@ -91,7 +92,7 @@ def cut(job_id,jobCutSize, allocation = None):
     numberOfJobs = int(math.ceil(float(event_count)/float(jobCutSize)))
     requestJobFactory.start_event =int(jobDetails['start_event'])
     requestJobFactory.totalEvents= event_count
-    requestJobFactory.job_run_numbers = Workflow.getNewRunNumber(job_id.split('_')[1], \
+    requestJobFactory.job_run_numbers = Workflow.getNewRunNumber(Aux.split(job_id)[1], \
         numberOfJobs)
     requestJobFactory.job_prefix = job_id
     logging.debug("Starting factorization: Calling RequestJobFactory")
@@ -105,10 +106,10 @@ def cut(job_id,jobCutSize, allocation = None):
         if maxRetries:
            listOfSpecs[i]['max_retries']=maxRetries
     logging.debug("Registering job cuts")
-    Job.register(job_id.split('_')[1],job_id,listOfSpecs)
+    Job.register(Aux.split(job_id)[1],job_id,listOfSpecs)
     Session.commit()
     logging.debug("Jobs registered")
-    return {'specs' : listOfSpecs, 'workflow' : job_id.split('_')[1], \
+    return {'specs' : listOfSpecs, 'workflow' : Aux.split(job_id)[1], \
         'priority' : WorkflowPriority} 
 
 def cutFile(job_ids,jobCutSize,maxJobs):
@@ -120,7 +121,7 @@ def cutFile(job_ids,jobCutSize,maxJobs):
     for job_id in jobIDs[:-1]:
         jobDetails=Allocation.get(job_id)['details']
         logging.debug("Job details: "+str(jobDetails))
-        workflowspec=Workflow.get(job_id.split('_')[1])['workflow_spec_file']
+        workflowspec=Workflow.get(Aux.split(job_id)[1])['workflow_spec_file']
         job_file=job_id+'.xml'
         jobSpecFile=jobSpecDir+'/'+job_file
         Allocation.setAllocationSpecFile(job_id,jobSpecFile)
@@ -142,7 +143,7 @@ def cutFile(job_ids,jobCutSize,maxJobs):
         fileData['LFN']=jobDetails['lfn']
         jobSpec.addAssociatedFiles('fileList', fileData)
         jobSpec.save(jobSpecFile)
-        job_run_numbers=Workflow.getNewRunNumber(job_id.split('_')[1],jobs)
+        job_run_numbers=Workflow.getNewRunNumber(Aux.split(job_id)[1],jobs)
         logging.debug("Starting factorization")
         logging.debug("Writing job cut specs to: "+str(jobSpecDir))
         listOfSpecs=factoriseJobSpec(jobSpec,jobSpecDir,job_run_numbers,jobSpec.parameters['EventCount'],\
