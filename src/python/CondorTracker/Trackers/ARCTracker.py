@@ -264,12 +264,11 @@ class ARCTracker(TrackerPlugin):
             return None
 
         #  //
-        # // Get the FrameworkJobReport.xml file, supposed to reside in
-        #//  arcId/workflow_id/FrameworkJobReport.xml.  
+        # // Get the FrameworkJobReport.xml file, copied to
+        #//  arcId/FrameworkJobReport.xml by the wrapper script
 
         arcId = jobs[jobSpecId]
-        subDir = Job.get(jobSpecId)["workflow_id"]
-        ngcp = "ngcp %s/%s/FrameworkJobReport.xml %s/" % (arcId,subDir,localDir)
+        ngcp = "ngcp %s/FrameworkJobReport.xml %s/" % (arcId,localDir)
         logging.debug("getJobReport: " + ngcp)
         s = os.system(ngcp)
         if s != 0:
@@ -282,10 +281,9 @@ class ARCTracker(TrackerPlugin):
 
         # Let's get a few additional files as well; they can be useful for
         # tracking down errors. 
-        s = os.system("ngcp %s/%s/run.log %s/" % (arcId,subDir,localDir))
+        s = os.system("ngcp %s/run.log %s/" % (arcId,localDir))
         s = os.system("ngcp %s/output %s/" % (arcId,localDir))
         s = os.system("ngcp %s/errors %s/" % (arcId,localDir))
-        #s = os.system("ngcp -r 5 %s/ %s/" % (arcId,localDir))
 
         return localDir + "/FrameworkJobReport.xml"
 

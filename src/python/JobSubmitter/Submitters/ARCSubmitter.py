@@ -232,13 +232,10 @@ class ARCSubmitter(BulkSubmitterInterface):
             code += "(%s %s)" % (os.path.basename(fname), fname)
         code += ")"
 
-        #  //
-        # //  Output files; leave everything at the CE until explicitely
-        #//   retrieved/removed by ngget/ngclean. (Needed mainly for
-        #  // debugging.)
-        code += "(outputFiles="
-        code += "(%s/ \"\")" % self.workflowName
-        code += ")"
+        # Output files; leave everything at the CE until explicitely
+        # retrieved/removed by ngget/ngclean. (Needed mainly for
+        # debugging.)
+        code += "(outputFiles=(\"/\" \"\"))"
 
         code += "(runTimeEnvironment=APPS/HEP/CMSSW-PA)"
         code += "(jobName=%s)" % jobName
@@ -282,6 +279,20 @@ class ARCSubmitter(BulkSubmitterInterface):
                                                            self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
         script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1 \n")
+
+
+        # ARCTracker.py will retrieve FrameworkJobReport and run.log from
+        # $PRODAGENT_JOB_INITIALDIR.
+        script.append("cd $PRODAGENT_JOB_INITIALDIR\n")
+        script.append("cp %s/FrameworkJobReport.xml ./\n" % self.workflowName)
+        script.append("cp %s/run.log ./\n" % self.workflowName)
+
+        #  Gather all the files in a tar.bz2 file for easier retrieval --
+        #  something we may want to do if the job failed and we want to
+        #  find out why.
+        script.append("tar jcvf %s.tar.bz2 %s\n" % (self.workflowName,self.workflowName))
+        script.append("rm -rf %s\n" % self.workflowName)
+        script.append("rm -rf certificates\n")
 
         #script.extend(missingJobReportCheck(jobName))
 
