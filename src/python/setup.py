@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.51 2008/02/12 22:19:12 sryu Exp $"
+__revision__ = "$Id: setup.py,v 1.52 2008/02/22 17:59:49 dmason Exp $"
 
 from distutils.core import setup
 
@@ -47,7 +47,6 @@ packages = [
     'MergeSensor.MergePolicies',
     'MergeAccountant',
     'MessageService',
-    'Monitoring',
     'PileupTools',
     'ProdAgent',
     'ProdAgent.Core',
