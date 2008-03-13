@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGAdvanced.py,v 1.1 2007/10/25 19:57:50 evansde Exp $"
+__revision__ = "$Id: LCGAdvanced.py,v 1.2 2008/02/07 16:33:47 swakef Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -149,7 +149,9 @@ class LCGAdvanced(SubmitterInterface):
         #  //
         # // CMSSW version
         #//
-        if len(self.parameters['AppVersions'])> 0:
+        if self.parameters['JobSpecInstance'].parameters['JobType'] in ("CleanUp", "LogArchive"):
+            swversion=None
+        elif len(self.parameters['AppVersions'])> 0:
           swversion=self.parameters['AppVersions'][0]  # only one sw version for now
         else:
           raise ProdAgentException("No CMSSW version found!")
@@ -343,7 +345,7 @@ class LCGAdvanced(SubmitterInterface):
                 if inline.find('#') != 0 and len(inline) > 1 :
                    declareClad.write(inline)
             if UserReq != None :
-              user_requirements=" %s && "%UserReq
+              user_requirements = UserReq
           else:
             msg="JDLRequirementsFile File Not Found: %s"%UserJDLRequirementsFile
             logging.error(msg) 
@@ -353,7 +355,7 @@ class LCGAdvanced(SubmitterInterface):
         #ask for all ce's, its upto jobQueue to throttle on active not the submitter
         cemap=createCEMap(activeOnly=False)
         if self.parameters['Whitelist']!=[]:
-          sitelist=" && ("
+          sitelist = ""
           for i in self.parameters['Whitelist']:
             try:
               name=cemap[int(i)]
@@ -361,17 +363,26 @@ class LCGAdvanced(SubmitterInterface):
               logging.debug("Whitelist element %s" % name)
             except Exception, ex:
               #should we revert to general LCG submitter if site lookup fails?
-              raise RuntimeException("Error mapping site id %s to ce: %s" % (str(i), str(ex)))
+              raise RuntimeError("Error mapping site id %s to ce: %s" % (str(i), str(ex)))
 
           sitelist=sitelist[:len(sitelist)-4]
-          anyMatchrequirements+=sitelist+")"
+          anyMatchrequirements+="(" + sitelist + ")"
+        
+        if swversion:
+            swrequirement = ' && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) ' % swversion
+        else:
+            swrequirement = ''
         
         if swarch:
           archrequirement=" && Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) "%swarch
         else:
           archrequirement=""
-
-        requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) %s %s;\n'%(user_requirements,swversion,archrequirement,anyMatchrequirements)
+        
+        requirements = "Requirements = %s %s %s %s ;\n" % (anyMatchrequirements,user_requirements,swrequirement,archrequirement)
+#        if swversion is not None:
+#            requirments += ' Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment)' % swversion
+#        requirements += ';\n'
+        #requirements='Requirements = %s Member(\"VO-cms-%s\", other.GlueHostApplicationSoftwareRunTimeEnvironment) %s %s;\n'%(user_requirements,swversion,archrequirement,anyMatchrequirements)
         logging.debug('%s'%requirements)
         declareClad.write(requirements)
         declareClad.write("Environment = {\"PRODAGENT_DASHBOARD_ID=%s\"};\n"%self.parameters['DashboardID'])
