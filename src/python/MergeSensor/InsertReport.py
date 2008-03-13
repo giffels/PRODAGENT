@@ -7,7 +7,7 @@ back into the MergeSensor DB
 
 """
 __revision__ = "$Id"
-__version__ = "$Revision$"
+__version__ = "$Revision: 1.2 $"
 
 import logging
 from MergeSensor.MergeSensorDB import MergeSensorDB
@@ -38,7 +38,7 @@ class ReportHandler:
         self.duplicateLFNs = []
         self.unknownDatasets = []
         self.removedLFNs = []
-        
+        self.unremovedLFNs = []
     def __call__(self):
         """
         _operator()_
@@ -73,6 +73,12 @@ class ReportHandler:
             for lfn in self.removedLFNs:
                 msg += "=> %s\n" % lfn
 
+        if len(self.unremovedLFNs) > 0:
+            msg += "Unremoved LFNs:\n"
+            for lfn in self.unremovedLFNs:
+                msg += "=> %s\n" % lfn
+
+
         return msg
                 
 
@@ -87,6 +93,13 @@ class ReportHandler:
             self.mergeDB.removedState(*removedFiles)
             self.mergeDB.commit()
             self.removedLFNs.extend(removedFiles)
+
+        unremovedFiles = report.unremovedFiles.keys()
+        if len(unremovedFiles) > 0:
+            self.mergeDB.unremovedState(*unremovedFiles)
+            self.mergeDB.commit()
+            self.unremovedLFNs.extend(unremovedFiles)
+
             
             
         
