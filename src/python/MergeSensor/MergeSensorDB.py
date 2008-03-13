@@ -6,8 +6,8 @@ by the MergeSensor component.
 
 """
 
-__revision__ = "$Id: MergeSensorDB.py,v 1.27 2008/01/03 17:21:41 evansde Exp $"
-__version__ = "$Revision: 1.27 $"
+__revision__ = "$Id: MergeSensorDB.py,v 1.28 2008/01/10 21:35:34 evansde Exp $"
+__version__ = "$Revision: 1.28 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -761,7 +761,7 @@ class MergeSensorDB:
         SELECT MI.name, MO.lfn FROM merge_inputfile MI
           JOIN merge_outputfile MO  ON MI.mergedfile = MO.id
             JOIN  merge_dataset DS  ON DS.id = MO.dataset
-              WHERE DS.id = %s AND MI.status NOT IN ('removing', 'removed');
+              WHERE DS.id = %s AND MI.status NOT IN ('removing', 'removed', 'removefailed');
         """  % datasetId
         
         
@@ -886,7 +886,7 @@ class MergeSensorDB:
 
 
         sqlStr = """ SELECT name, status FROM merge_inputfile
-           WHERE dataset=%s AND status in ('removed', 'removing');""" % (
+           WHERE dataset=%s AND status in ('removed', 'removing', 'unremoved', removefailed');""" % (
             datasetId,)
 
         
@@ -1003,6 +1003,69 @@ class MergeSensorDB:
             # retry
             cursor.execute(sqlStr)
         return
+
+
+    def unremovedState(self, *files):
+        """
+        _unremovedState_
+
+        Flag the files listed as unremoved, or as removefailed if the
+        above a certain threshold.
+
+        That threshold is set to 3 as that seems to be a decent default
+        to get started
+
+        """
+
+        numberOfFailuresMax = 3
+        
+        fileList = "("
+        for fname in files:
+            fileList += "\'%s\'\n," % fname 
+        fileList = fileList.rstrip(',')
+        fileList += ")"
+        
+        sqlStr = """ update merge_inputfile set status='unremoved', remove_failures = remove_failures+1
+          WHERE name IN %s;""" % fileList
+        sqlStr += """update merge_inputfile set status="removefailed"
+                       where remove_failures >= %s
+                        and name in %s""" % (
+            numberOfFailuresMax, fileList)
+        
+        sqlStr = sqlStr.split(';')
+  
+        
+        # get cursor
+        try:
+            cursor = self.conn.cursor()
+
+        except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+
+        # execute command
+        for sql in sqlStr:
+         try:
+            
+            cursor.execute(sql)
+            
+         except MySQLdb.Error:
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+            self.redo()
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sql)
+        return
+
+
+
+
     ##########################################################################
     # get list of mergejobs of a dataset
     ##########################################################################
