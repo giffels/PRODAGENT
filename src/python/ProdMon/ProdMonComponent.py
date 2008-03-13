@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.9 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.9 2008/01/10 14:36:02 swakef Exp $"
+__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.10 2008/02/19 18:10:51 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -176,9 +176,9 @@ class ProdMonComponent:
             # TODO: Warning: find out if this is suitable or if a function
             #     should be created for ProdRequestID and app_version
             insertNewWorkflow(workflowSpec.workflowName(), 
-                              workflowSpec.parameters["ProdRequestID"],
+                              workflowSpec.parameters.get("ProdRequestID", None),
                               inputDatasets, outputDatasets, 
-                              workflowSpec.payload.application["Version"])
+                              workflowSpec.payload.application.get("Version", None))
         except Exception, ex:
             logging.error("Error inserting workflow : %s", ex)
             return
@@ -211,10 +211,13 @@ class ProdMonComponent:
             logging.debug("Inserting into db %s" % report.jobSpecId)
             try:
                 try:
-                    stats = jobReportToJobStats(report)
-                    stats.insertIntoDB()
-                    result = True
-                    
+                    if report.jobType not in ('LogArchive', 'CleanUp'):
+                        stats = jobReportToJobStats(report)
+                        stats.insertIntoDB()
+                        result = True
+                    else:
+                        # dont want to handle this job so skip it
+                        result = True
                 except StandardError, ex:
                     # If error on insert save for later retry
                     try:

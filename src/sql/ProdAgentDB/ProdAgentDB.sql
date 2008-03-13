@@ -711,7 +711,7 @@ CREATE TABLE tr_Action(
  */
  
 CREATE TABLE prodmon_Resource (
-       resource_id INT NOT NULL AUTO_INCREMENT, 
+       resource_id INT NOT NULL AUTO_INCREMENT,
        site_name VARCHAR(255) NOT NULL,
        ce_hostname VARCHAR(255),
        se_hostname VARCHAR(255),
@@ -721,8 +721,8 @@ CREATE TABLE prodmon_Resource (
 CREATE TABLE prodmon_Workflow (
        workflow_id INT NOT NULL AUTO_INCREMENT,
        workflow_name VARCHAR(255) NOT NULL,
-       request_id INTEGER NOT NULL,
-       app_version VARCHAR(255) NOT NULL,
+       request_id INTEGER,
+       app_version VARCHAR(255),
        PRIMARY KEY (workflow_id)
 )TYPE=InnoDB;
 

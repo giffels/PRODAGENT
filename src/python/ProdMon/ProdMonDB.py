@@ -14,11 +14,24 @@ import MySQLdb
 from ProdCommon.Database import Session
 from ProdAgentDB.Config import defaultConfig as dbConfig
 
-# function to escape and quote a value or replace None with "NULL"
-# may not be needed with new session class - check!
-addQuotes = lambda x: (x != None) and \
-            ("\'" + MySQLdb.escape_string(str(x)) + "\'") or "NULL" 
+# do we want to export this job to external monitoring
+# ignore logArchive and CleanUp jobs
+exportable = lambda x: x not in  ('CleanUp', 'LogArchive') and True or False
 
+
+def addQuotes(value):
+    """
+    function to quote mysql values properly)
+    """
+    if value is None:
+        return 'NULL'
+    elif value is True:
+        return 'true'
+    elif value is False:
+        return 'false'
+    else:
+        return "\'" + MySQLdb.escape_string(str(value)) + "\'"
+    
 
 def insertStats(jobStatistics):
     """
@@ -228,8 +241,10 @@ def __insertResource(Session, jobStatistics):
     
     Returns id of resource
     """
+    
     resource_id = __insertIfNotExist(Session, "prodmon_Resource", 
                             {"site_name" : jobStatistics["site_name"],
+                             "rc_site_id" : jobStatistics["rc_site_index"],
                              "ce_hostname" : jobStatistics["ce_name"],
                              "se_hostname" : jobStatistics["se_name"]},
                             "resource_id")
@@ -368,7 +383,7 @@ def __insertJobInstance(Session, jobStatistics):
                           "error_message" : jobStatistics["error_desc"],
                           "start_time" : jobStatistics["timing"]["AppStartTime"],
                           "end_time" : jobStatistics["timing"]["AppEndTime"],
-                          "exported" : False},
+                          "exported" : not exportable(jobStatistics['job_type'])},
                          "instance_id"
                           )
     jobStatistics["database_ids"]["instance_id"] = instance_id
@@ -974,5 +989,63 @@ def selectSiteDetails(site, interval=86400, workflow=None, type=None):
             performance["success"] += 1
         else:
             performance["failed"] += 1
+            
+    performance["quality"] = (performance["jobs"] > 0) and \
+                (float(performance["success"]) / performance["jobs"]) or 0.
+    
+    return performance
+
+
+def selectRcSitePerformance(site, interval=86400, workflow=None, type=None):
+    """
+    Return a dictionary detailing site performances since interval
+    """
+    
+    sqlStr = """SELECT prodmon_Job.type, exit_code FROM prodmon_Resource JOIN 
+            prodmon_Job, prodmon_Job_instance, prodmon_Workflow WHERE 
+            prodmon_Resource.resource_id = prodmon_Job_instance.resource_id 
+            AND prodmon_Job.job_id = prodmon_Job_instance.job_id AND 
+            prodmon_Job_instance.insert_time > ADDTIME(NOW(), SEC_TO_TIME(-%s))
+            """ % interval
+    if site != None:
+        sqlStr += " AND prodmon_Resource.rc_site_id = %s" % addQuotes(site)
+    if workflow != None:
+        sqlStr += " AND prodmon_Workflow.workflow_name = %s" % addQuotes(workflow)
+    if type != None:
+        sqlStr += " AND prodmon_Job.type = %s" % addQuotes(type)
+    
+    Session.set_database(dbConfig)
+    Session.connect()
+    Session.execute(sqlStr)
+    results = Session.fetchall() 
+    Session.close()
+    
+    performance = {}
+    performance["jobs"] = 0
+    performance["failed"] = 0
+    performance["success"] = 0
+    performance['types'] = {}
+    
+    for type, exit_code in results:
+        
+        performance['types'].setdefault(type, {}).setdefault('jobs', 0)
+        performance['types'][type].setdefault('failed', 0)
+        performance['types'][type].setdefault('success', 0)
+        
+        performance["jobs"] += 1
+        performance['types'][type]["jobs"] += 1
+        if exit_code == 0:
+            performance["success"] += 1
+            performance['types'][type]['success'] += 1
+        else:
+            performance["failed"] += 1
+            performance['types'][type]['failed'] += 1
+            
+    performance["quality"] = (performance["jobs"] > 0) and \
+                (float(performance["success"]) / performance["jobs"]) or None
+    
+    for type in performance['types'].values():
+        type["quality"] = (type["jobs"] > 0) and \
+                (float(type["success"]) / type["jobs"]) or None
     
     return performance
