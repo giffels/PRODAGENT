@@ -17,6 +17,8 @@ import re
 from ProdCommon.FwkJobRep.TaskState import TaskState
 from StageOut.StageOutMgr import StageOutMgr
 
+
+
 class LogArchMgr:
 
 
@@ -165,6 +167,6 @@ class LogArchMgr:
     
 
 if __name__ == "__main__":
-    
+    import StageOut.Impl
     mgr = LogArchMgr()
     mgr()
