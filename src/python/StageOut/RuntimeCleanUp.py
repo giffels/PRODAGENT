@@ -34,6 +34,7 @@ class CleanUpFailure(Exception):
     def __init__(self, lfn, **details):
         Exception.__init__(self, "CleanUpFailure")
         self.lfn = lfn
+        self.details = details
         msg = "================CleanUp Failure========================\n"
         msg += " Failed to clean up file:\n"
         msg += " %s\n" % lfn
@@ -60,6 +61,7 @@ class CleanUpManager:
     def __init__(self, cleanUpTaskState, inputTaskState = None ):
         self.state = cleanUpTaskState
         self.inputState = inputTaskState
+        self.jobFail = False 
         #  //
         # // load templates
         #//
@@ -195,7 +197,13 @@ class CleanUpManager:
                 self.invokeCleanUp(deleteFile)
                 self.success.append(deleteFile)
             except CleanUpFailure, ex:
-                self.failed.append(deleteFile)
+                
+                   self.failed.append(deleteFile)
+
+                   if not (ex.details.has_key('TFC')):
+
+                      self.jobFail = True
+               
 
 
                 
@@ -205,13 +213,11 @@ class CleanUpManager:
         for lfn in self.success:
             msg += "  %s\n" % lfn
         
-        if len(self.failed) > 0:
-            msg += "The following LFNs could not be removed:\n"
-            for lfn in self.failed:
-                msg += "  FAILED:%s\n" % lfn
+        if self.jobFail is True:
+            
             status = 60312
 
-        msg += "Exit Status for this task is: %s\n" % status
+        msg = "Exit Status for this task is: %s\n" % status
         print msg
         
 	# //
@@ -273,11 +279,11 @@ class CleanUpManager:
             # // Will uncomment it after invalidating deleted lfn from mergesensordb
             # //
 
-            #raise CleanUpFailure(lfn, TFC = str(self.tfc),
-             #                    ImplName = self.implName,
-              #                   PFN = pfn,
-               #                  Message = msg,
-                #                 TFCProtocol = self.tfc.preferredProtocol)
+            raise CleanUpFailure(lfn, TFC = str(self.tfc),
+                                 ImplName = self.implName,
+                                 PFN = pfn,
+                                 Message = msg,
+                                 TFCProtocol = self.tfc.preferredProtocol)
         
 
 
@@ -310,7 +316,12 @@ class CleanUpManager:
           report.status = "Success"
           for lfnRemovedFile in self.success:
             report.addRemovedFile(lfnRemovedFile, self.seName)    
-	 
+        
+        
+        for lfnUnremovedFile in self.failed:
+             report.addUnremovedFile(lfnUnremovedFile, self.seName)
+             	
+ 
         report.exitCode = statusCode
         report.jobSpecId = self.state.jobSpecNode.jobName
         report.jobType = self.state.jobSpecNode.jobType
