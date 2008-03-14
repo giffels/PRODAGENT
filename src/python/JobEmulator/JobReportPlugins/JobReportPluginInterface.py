@@ -7,9 +7,10 @@ that generate job reports for completed
 jobs.
 
 """
-__revision__ = "$Id: JobReportPluginInterface.py,v 1.2 2008/03/10 15:07:22 sryu Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: JobReportPluginInterface.py,v 1.3 2008/03/11 11:58:46 fvlingen Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "sfoulkes, sryu"
+import logging
 
 import logging
 
@@ -22,7 +23,9 @@ class JobReportPluginInterface:
     jobs.
     
     """
-    
+    def __init__(self):
+        self.avgEventProcessingRate = None
+        
     def createSuccessReport(self, jobSpec, jobRunningLocation):
         """
         _createSuccessReport_
@@ -56,5 +59,6 @@ class JobReportPluginInterface:
         if parameter == None:
             logging.error("%s not set, reporter plugin is using default: %s" %
                           (parameterName, default))
-            parameter = default
+            return default
         
+        return parameter

@@ -8,12 +8,14 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: $"
-__version__ = "$Revision: $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.3 2008/03/10 15:05:31 sryu Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "sfoukes, sryu"
 
 import logging
 from random import randrange
+from random import random
+from random import gauss
 
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.MCPayloads.DatasetTools import getOutputDatasetDetails
@@ -90,8 +92,29 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             totalEvent = jobSpecPayload.cfgInterface.maxEvents['output']
             if totalEvent == None:
                 tolalEvent = jobSpecPayload.cfgInterface.maxEvents['input']
+            
+            # if there is no input and output, print out error message and set default to 1000
+            totalEvent = self.setDefaultForNoneValue("maxEvent['input' and 'output']", totalEvent, 100)
+            
+            try:
+                totalEvent = int(totalEvent)
+            except ValueError, ex:
+                logging.error("totalEvent is not a number. \n%s" % ex)
+            
+            if (random() > self.avgEventProcessingRate):
+                # Gauss distribution of totalEvent.
+                meanEvent = int(totalEvent * 0.7)
+                stdDev = totalEvent * 0.15
+                tempTotalEvent = int(gauss(meanEvent,stdDev))
+                if tempTotalEvent <= 0 :
+                    totalEvent = 1
+                elif tempTotalEvent >= totalEvent:
+                    totalEvent = totalEvent - 1
+                else:
+                    totalEvent = tempTotalEvent
+            
+            #logging.debug("---------- Total Event ----------: %s \n" % totalEvent)        
             theFile['TotalEvent'] = totalEvent
-            self.setDefaultForNoneValue("maxEvent['input']", theFile['TotalEvent'])
             
             theFile['SEName'] = jobRunningLocation['se-name'] 
             theFile['CEname'] = jobRunningLocation['ce-name']

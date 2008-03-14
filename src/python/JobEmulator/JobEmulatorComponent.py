@@ -8,8 +8,8 @@ and generating reports as they finish.
 
 """
 
-__revision__ = "$Id: JobEmulatorComponent.py,v 1.3 2008/03/06 21:34:54 sryu Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: JobEmulatorComponent.py,v 1.4 2008/03/06 22:58:58 sryu Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "sfoulkes, sryu"
 
 import os
@@ -67,7 +67,18 @@ class JobEmulatorComponent:
             self.avgCompletionPercentage = self.args["avgCompletionPercentage"]
         else:
             self.avgCompletionPercentage = "0.90"        
-            
+        
+        # the rate indicates the rate of the number of jobs completing all the events
+        # among all the successful jobs. 
+        # The number of incomplete events among the jobs follows the gauss distribution 
+        # with maximun number (totalEvent -1, minimun 1)
+        # the mean value (70% of total event) and standard deviation (15% of the width of total event)
+        # is hard coded. If it is necessary they can be parameterized. 
+        if self.args.get("avgEventProcessingRate", None) != None:
+            self.avgEventProcessingRate = self.args["avgEventProcessingRate"]
+        else:
+            self.avgEventProcessingRate = "0.95"
+                
         if self.args.get("JobAllocationPlugin", None) != None:
             self.allocationPlugin = self.args["JobAllocationPlugin"] 
         else:
@@ -117,11 +128,10 @@ class JobEmulatorComponent:
         """
         _loadPlugin_
         
-        Create an instance of the Job Completion plugin that is
-        specified in the self.jobCompletionPlugin variable. That
+        Create an instance of the plugins for JobEmulator. That
         variable is set at startup when the ProdAgentConfig.xml
-        file is parsed, and can also be changed by the
-        JobEmulatorComponent:SetJobCompletionPlugin message.  If the
+        file is parsed, and can also be changed by publishing message.
+        (i.e.JobEmulatorComponent:SetJobCompletionPlugin message)  If the
         plugin can't be loaded or the plugin name has not been set
         this returns None.
 
@@ -133,8 +143,6 @@ class JobEmulatorComponent:
                                             
         try:
             pluginInstance = retrievePlugin(pluginName)
-            pluginInstance.avgCompletionTime = self.avgCompletionTime
-            pluginInstance.avgCompletionPercentage = self.avgCompletionPercentage
             logging.info("Using %s plugin." % pluginName)
         except RuntimeError, ex:
             msg = "Unable to plugin named %s\n" % pluginName
@@ -163,7 +171,12 @@ class JobEmulatorComponent:
         completionPlugin.avgCompletionPercentage = self.avgCompletionPercentage
         
         reportPlugin = self.loadPlugin(self.fwkReportPlugin)
-        
+        try:
+            reportPlugin.avgEventProcessingRate = float(self.avgEventProcessingRate)
+        except ValueError, ex:
+            msg = "avgEventProcessingRate format is not a number.\n Default value is set.\n%s" % str(ex)
+            logging.error(msg)
+            
         if reportPlugin == None:
             logging.error("Error: no report plugin")
             return
