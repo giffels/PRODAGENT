@@ -318,6 +318,7 @@ componentFields = {
 	"JobReportPlugin" : "EmulatorReportPlugin",
 	"avgCompletionTime" : "01:00:00",
 	"avgCompletionPercentage" : "0.90",
+	"avgEventProcessingRate" : "0.95",
 	},
 	
     }# end componentFields
@@ -481,6 +482,10 @@ internal database.
    in one node.
    -avgCompletionTime: average job completion time. Format: "00:02:00" - 2 minutes.
    -avgCompletionPercentage: average job completion percentage. Format: "0.9" - 90 %
+   -avgEventProcessingRate: the rate indicates the rate of the number of jobs completing all the events
+    among all the successful jobs. The number of incomplete events among the jobs follows the gauss distribution 
+    with maximun number (totalEvent -1, minimun 1) the mean value (70% of total event) and 
+    standard deviation (15% of the width of total event) is hard coded. If it is necessary they can be parameterized. 
    """
     }
 
