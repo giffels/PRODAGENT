@@ -17,7 +17,7 @@ import re
 from ProdCommon.FwkJobRep.TaskState import TaskState
 from StageOut.StageOutMgr import StageOutMgr
 
-
+from StageOut.StageOutError import StageOutInitError
 
 class LogArchMgr:
 
