@@ -40,7 +40,7 @@ class LogArchMgr:
         
 
         self.workflowSpecId = self.config['WorkflowSpecID'][0]
-        self.jobSpecId = self.config['WorkflowSpecID'][0]
+        self.jobSpecId = self.config['JobSpecID'][0]
         
         self.compRegexps = []
         for regexp in self.regexps:
