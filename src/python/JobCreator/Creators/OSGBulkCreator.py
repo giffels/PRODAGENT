@@ -94,6 +94,8 @@ class OSGBulkCreator(CreatorInterface):
             self.handleStageOut(taskObject)
         elif typeVal == "CleanUp":
             self.handleCleanUp(taskObject)
+        elif typeVal == "LogArchive":
+            self.handleLogArchive(taskObject)
         else:
             return
 
@@ -231,6 +233,30 @@ class OSGBulkCreator(CreatorInterface):
             )
         return
     
+
+    def handleLogArchive(self, taskObject):
+        """
+        _handleCleanup_
+
+        Handle a Logrch type task object.
+                                                                                                                          
+        """
+        stageOutSetup = self.pluginConfig['StageOut']['SetupCommand']
+        parentVersion = None
+        if taskObject.parent != None:
+            if taskObject.parent.has_key("CMSProjectVersion"):
+                parentVersion = taskObject.parent["CMSProjectVersion"]
+        if parentVersion != None:
+            stageOutSetup = stageOutSetup.replace("$CMSSWVERSION",
+                                                  parentVersion)
+
+        logging.debug("LogArchive Software Setup Command: %s" % stageOutSetup)
+        taskObject['PreLogArchCommands'].append(
+            stageOutSetup
+            )
+                                                                                                                          
+                                                                                                                          
+        return
 
     def installMonitor(self, taskObject):
         """
