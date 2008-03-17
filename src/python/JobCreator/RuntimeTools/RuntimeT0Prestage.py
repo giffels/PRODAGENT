@@ -18,8 +18,8 @@ import popen2
 import fcntl, select, sys
 import time
 
-from FwkJobRep.TaskState import TaskState
-from FwkJobRep.TrivialFileCatalog import tfcFilename, tfcProtocol, readTFC
+from ProdCommon.FwkJobRep.TaskState import TaskState
+from ProdCommon.FwkJobRep.TrivialFileCatalog import tfcFilename, tfcProtocol, readTFC
 
 def makeNonBlocking(fd):
     fl = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -40,7 +40,10 @@ class Prestager:
     
     def __init__(self):
         self.state = TaskState(os.getcwd())
+
         self.siteConf = self.state.getSiteConfig()
+           
+
         self.spec = JobSpec()
         self.numberOfRetries = 3
         self.retryInterval = 600 #seconds
@@ -151,13 +154,19 @@ class Prestager:
         Search the Trivial File Catalog for the lfns 
         map them to PFNs
 
-        """
+        """       
+
         tfcUrl = self.siteConf.eventData['catalog']
-        
+
         tfcFile = tfcFilename(tfcUrl)
-        tfcProto = tfcProtocol(tfcUrl)
+        #tfcProto = tfcProtocol(tfcUrl)
+        tfcProto = 'stageout'
+
         tfcInstance = readTFC(tfcFile)
         tfcInstance.preferredProtocol = tfcProto
+      
+
+
         for lfn in self.files:
             pfn = tfcInstance.matchLFN(tfcProto, lfn)
             if pfn == None:
@@ -183,6 +192,7 @@ class Prestager:
             os.makedirs(workingDir)
 
         for i in range(self.numberOfRetries):
+            
             for lfn, pfn in self.lfnToPfn.items():
                 localPfn = "%s/%s" % (workingDir, os.path.basename(lfn))
                 command = "rfcp %s %s" % (pfn, localPfn)
@@ -192,18 +202,25 @@ class Prestager:
                 print "Executing Stage In:"
                 print command
                 exitCode  = self.executeCommand(command)
-                if exitCode != 0:
-                    failures[lfn] = pfn
+             
+                if exitCode != 0:                    
                     continue
+
                 #  //
                 # // Existence check of staged in files
                 #//
                 if not os.path.exists(localPfn):
-                    failures[lfn] = pfn
-                    continue
-                self.localFiles[lfn] = localPfn
+                    continue              
+
+
+                self.localFiles[lfn] = localPfn                 
                 del self.lfnToPfn[lfn]
-            time.sleep(self.retryInterval)
+
+            if len(self.lfnToPfn) == 0:
+               break
+
+            else:
+               time.sleep(self.retryInterval)
 
         if len(self.lfnToPfn.keys()) > 0:
             msg = "Failed to stage in files:\n"
@@ -224,6 +241,9 @@ class Prestager:
         newFileList = [ "file:%s" % x for x in self.localFiles.values() ]
         self.spec.payload.cfgInterface.inputFiles = newFileList
         self.spec.save(self.specFile)
+        print 'JOB SPEC updated with local PFNs'
+        
+        
 
         
 
