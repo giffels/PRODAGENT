@@ -122,6 +122,7 @@ class RelValStatus:
             #//
             logging.info("Workflow %s complete" % self.workflow)
             WEWorkflow.setFinished(self.workflow)
+            WEWorkflow.remove(self.workflow)
             Session.commit_all()
 
             #  //
