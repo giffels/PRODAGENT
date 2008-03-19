@@ -52,6 +52,7 @@ class ReRecoFeeder(PluginInterface):
                                    self.dbsUrl)
                                     
         jobs = factory()
+
         for job in jobs:
             self.queueJob(job['JobSpecId'], job['JobSpecFile'],
                           job['JobType'],
