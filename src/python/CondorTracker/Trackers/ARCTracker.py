@@ -8,89 +8,21 @@ Tracker for Nordugrid ARC submissions
 """
 
 import logging
-import popen2
-import fcntl, select, sys, os
-
+import os
 
 from CondorTracker.TrackerPlugin import TrackerPlugin
 from CondorTracker.Registry import registerTracker
 import CondorTracker.CondorTrackerDB as TrackerDB
-
 from ProdAgent.WorkflowEntities import Job
-
 import ProdCommon.FwkJobRep.ReportState as ReportState
+from ProdAgent.Resources import ARC
 
-
-#
-# The Following two functions are taken almost verbatim from
-# BulkSubmitterInterface
-#
-def makeNonBlocking(fd):
-    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-    try:
-        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NDELAY)
-    except AttributeError:
-        fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
-
-
-def executeCommand(command):
-    """
-    _executeCommand_
-
-    Util it execute the command provided in a popen object
-
-    """
-    logging.debug("executeCommand: %s" % command)
-
-    child = popen2.Popen3(command, 1) # capture stdout and stderr from command
-    child.tochild.close()             # don't need to talk to child
-    outfile = child.fromchild
-    outfd = outfile.fileno()
-    errfile = child.childerr
-    errfd = errfile.fileno()
-    makeNonBlocking(outfd)            # don't deadlock!
-    makeNonBlocking(errfd)
-    outdata = errdata = ''
-    outeof = erreof = 0
-    stdoutBuffer = ""
-    while 1:
-        ready = select.select([outfd,errfd],[],[]) # wait for input
-        if outfd in ready[0]:
-            outchunk = outfile.read()
-            if outchunk == '': outeof = 1
-            stdoutBuffer += outchunk
-            sys.stdout.write(outchunk)
-        if errfd in ready[0]:
-            errchunk = errfile.read()
-            if errchunk == '': erreof = 1
-            sys.stderr.write(errchunk)
-        if outeof and erreof: break
-        select.select([],[],[],.1) # give a little time for buffers to fill
-
-    try:
-        exitCode = child.poll()
-    except Exception, ex:
-        msg = "Error retrieving child exit code: %s\n" % ex
-        msg = "while executing command:\n"
-        msg += command
-        logging.error("executeCommand: Failed to Execute Command")
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    if exitCode:
-        msg = "Error executing command:\n"
-        msg += command
-        msg += "Exited with code: %s\n" % exitCode
-        logging.error("executeCommand: Failed to Execute Command")
-        logging.error(msg)
-        raise RuntimeError, msg
-    return  stdoutBuffer
 
 
 def findKey(dict,value):
     """
-    Given a dictionary and a value, find the key of the value, or None, if
-    no such value is found.
+    Given a dictionary and a value, return the first key found with that
+    value, or None, if no such value is found.
 
     """
     for i in dict.items():
@@ -98,36 +30,6 @@ def findKey(dict,value):
             return i[0]
     return None
         
-
-
-#  //
-# //  Mapping between ARC status codes and ProdAgent status codes
-#//
-StatusCodes = {"ACCEPTING": "PEND",  # Job has reaced the CE
-               "ACCEPTED":  "PEND",  # Job submitted but not yet processed
-               "PREPARING": "PEND",  # Input files are being transferred
-               "PREPARED":  "PEND",  # Transferring input files done
-               "SUBMITTING":"PEND",  # Interaction with the LRMS at the CE ongoing
-               "INLRMS:Q":  "PEND",  # In the queue of the LRMS at the CE
-               "INLRMS:R":  "RUN",   # Running
-               "INLRMS:S":  "RUN",   # Suspended
-               "INLRMS:E":  "RUN",   # About to finish in the LRMS
-               "INLRMS:O":  "RUN",   # Other LRMS state
-               "EXECUTED":  "RUN",   # Job is completed in the LRMS
-               "FINISHING": "RUN",   # Output files are being transferred
-               "KILLING":   "EXIT",  # Job is being cancelled on user request
-               "KILLED":    "EXIT",  # Job canceled on user request
-               "DELETED":   "EXIT",  # Job removed due to expiration time
-               "FAILED":    "EXIT",  # Job finished with non-zero exit code
-               "FINISHED":  "DONE",  # Job finished with zero exit code.
-
-               # A few status codes of our own, used in uncertain cases
-               # ("Job information not found" and similar)
-               "ASSUMED_NEW":   "PEND",  # Too new to be known by ARC.
-               "ASSUMED_ALIVE": "RUN",   # Appears to be lost, but we still 
-                                         # have hope
-               "ASSUMED_LOST":  "EXIT"}  # We've lost hope.
-
 
 
 
@@ -144,12 +46,6 @@ class ARCTracker(TrackerPlugin):
 
 
     def initialise(self):
-        """
-        _initialise_
-
-        Retrieve data from bjobs command
-
-        """
         self.jobs = self.getJobStatus()
         logging.debug("initialise: Retrieved status for %i Jobs" % len(self.jobs))
 
@@ -160,93 +56,13 @@ class ARCTracker(TrackerPlugin):
         jobSpecId == None.
 
         """
-        if jobSpecId == None:
-            jobs = self.getAllJobIDs()
-            ids = ""
-            for id in jobs.keys():
-                ids += id.strip() + " "
-
-        else:
-            ids = jobSpecId
-
-        msg = "getJobStatus: Id:s to check:\n -> " + ids.strip().replace(" ", "\n -> ")
-        logging.debug(msg)
-
-        if len(ids.strip()) > 0:
-            output = executeCommand("ngstat " + ids)
-        else:
-            return {}
 
         status = {}
-        for line in output.split("\n"):
-            fields = line.split(":")
-
-            if fields[0].strip() == "Job information not found":
-                words = line.split()
-                arcId = words[4][0:-1]
-                id = findKey(jobs, arcId) 
-
-                if line.find("This job was only very recently submitted") >= 0:
-                    s = "ASSUMED_NEW"
-                else:
-                    # Assume the server is just too busy to respond, and
-                    # that the job is happily running, unless we've gotten
-                    # many "Job information not found" in a row, in which
-                    # case we assume something bad has happened.
-                    if noInfo.get(id, 0) < 10:
-                        s = "ASSUMED_ALIVE"
-                        noInfo[id] = noInfo.get(id, 0) + 1
-                    else:
-                        s = "ASSUMED_LOST"
-
-                status[id] = StatusCodes[s]
-                msg = "Information for job %s was not found;\n" % id
-                msg += " -> it's assigned the state " + s
-                logging.debug(msg)
-
-            elif fields[0].strip() == "Malformed URL":
-                # "Malformed URL" is something we might get for
-                # non-existent (e.g. lost) jobs.
-                id = fields[1].strip()
-                status[id] = StatusCodes["ASSUMED_LOST"] 
-                msg = "Malformed URL: "
-                msg += "Status for job %s is ASSUMED_LOST" % id
-                logging.debug(msg)
-
-            elif fields[0].strip() == "Job Name":
-                id = fields[1].strip()
-
-            elif fields[0].strip() == "Status":
-                s = ":".join(fields[1:]).strip()
-                if s in StatusCodes.keys(): 
-                    status[id] = StatusCodes[s]
-                    if noInfo.has_key(id): del noInfo[id]
-                logging.debug("Status for job %s is %s" % (id, s))
+        for job in ARC.getJobs():
+            if (jobSpecId == None) or (job.jobSpecId == jobSpecId):
+                status[job.jobSpecId] = job.status
 
         return status
-
-
-    def getAllJobIDs(self):
-        """
-        Return a {jobSpecId: arcId} dictionary containing all our jobs
-
-        Note that it's is possible that there are several jobs of the same
-        name (jobSpecId:s). In that case, only the last (i.e. newest) one
-        will be used.
-
-        """
-        home = os.environ.get("HOME")
-        fd = open(home + "/.ngjobs", "r")
-        file = fd.readlines()
-        fd.close()
-
-        jobs = {}
-        for line in file:
-             # TODO: Check that there's at least 2 fields in 'line'
-            arcId, jobSpecId = line.strip().split('#')[0:2]
-            jobs[jobSpecId] = arcId
-
-        return jobs
 
 
 
@@ -258,7 +74,7 @@ class ARCTracker(TrackerPlugin):
 
         """
 
-        jobs = self.getAllJobIDs()
+        jobs = ARC.jobIdMap()
         if jobSpecId not in jobs.keys():
             logging.debug("getJobReport: Couldn't find job " + jobSpecId)
             return None
@@ -407,7 +223,7 @@ class ARCTracker(TrackerPlugin):
         for id in complete:
             os.system("ngclean " + id)
             summary += " -> %s\n" % id
-            if noInfo.has_key(id): del noInfo[id]
+            ARC.clearNoInfo(id)
         logging.info(summary)
         return
 
@@ -426,7 +242,7 @@ class ARCTracker(TrackerPlugin):
         summary = "Jobs Failed:\n"
         for id in failed:
             summary += " -> %s\n" % id
-            if noInfo.has_key(id): del noInfo[id]
+            ARC.clearNoInfo(id)
         logging.debug(summary)
         return
 
@@ -467,10 +283,8 @@ class ARCTracker(TrackerPlugin):
             return None
         
         if ReportState.checkSuccess(report):
-            return StatusCodes["FINISHED"]
-        return StatusCodes["FAILED"]
+            return ARC.StatusCodes["FINISHED"]
+        return ARC.StatusCodes["FAILED"]
 
 
 registerTracker(ARCTracker, ARCTracker.__name__)
-
-noInfo = {}
