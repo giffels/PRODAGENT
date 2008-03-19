@@ -6,6 +6,20 @@ import fcntl, select, sys, os
 import re
 
 
+
+def findKey(dict,value):
+    """
+    Given a dictionary and a value, return the first key found with that
+    value, or None, if no such value is found.
+
+    """
+    for i in dict.items():
+        if i[1] == value:
+            return i[0]
+    return None
+        
+
+
 def makeNonBlocking(fd):
     fl = fcntl.fcntl(fd, fcntl.F_GETFL)
     try:
@@ -134,7 +148,6 @@ def getNoInfo(jobSpecId):
 
 class ARCJob:
 
-
     def __init__(self, arcId = None, jobSpecId = None, status = None, CEName = None,
                  jobType = None):
         """
@@ -168,12 +181,12 @@ class ARCJob:
         else:
             # FIXME: Are these assumptions on job naming conventions allways
             # true?
-            if self.jobSpecId.find("mergejob"):
-                self.type = "Merge"
-            elif self.jobSpecId.find("cleanup"):
-                self.type = "CleanUp"
+            if self.jobSpecId.find("mergejob") >= 0:
+                self.jobType = "Merge"
+            elif self.jobSpecId.find("cleanup") >= 0:
+                self.jobType = "CleanUp"
             else:
-                self.type = "Processing"
+                self.jobType = "Processing"
 
         if CEName:
             self.CEName = CEName

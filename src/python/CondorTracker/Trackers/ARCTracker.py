@@ -19,20 +19,6 @@ from ProdAgent.Resources import ARC
 
 
 
-def findKey(dict,value):
-    """
-    Given a dictionary and a value, return the first key found with that
-    value, or None, if no such value is found.
-
-    """
-    for i in dict.items():
-        if i[1] == value:
-            return i[0]
-    return None
-        
-
-
-
 class ARCTracker(TrackerPlugin):
     """
     _ARCTracker_

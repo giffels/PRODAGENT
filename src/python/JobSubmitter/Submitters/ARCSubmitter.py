@@ -8,6 +8,7 @@ Submitter for ARC submissions
 """
 import os
 import logging
+import string
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
@@ -204,13 +205,19 @@ class ARCSubmitter(BulkSubmitterInterface):
            return ""
 
         prefSite = self.parameters['JobSpecInstance'].siteWhitelist[0]
+        logging.debug("Site %s whitelisted" % prefSite)
         ceMap = ResConAPI.createCEMap()
 
         if prefSite in ceMap.keys():
             logging.debug("Using preferred CE " + ceMap[prefSite])
             return " -c " + ceMap[prefSite]
+        elif long(prefSite) in ceMap.keys():
+            logging.debug("Using preferred CE " + ceMap[long(prefSite)])
+            return " -c " + ceMap[long(prefSite)]
         else:
-            logging.warning("Preferred site %s unknown!" % prefSite)
+            logging.warning("WARNING: Preferred site %s unknown!" % prefSite)
+            for k in ceMap.keys():
+                logging.debug("ceMap[%s] = %s" % (k, ceMap[k]))
             return ""
 
 
