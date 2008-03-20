@@ -387,7 +387,7 @@ class JobQueueDB:
         else:
             sqlStr += " siteQ.site_index IS NULL "
         
-        sqlStr += " ORDER BY priority DESC, time DESC LIMIT %s;" % count
+        sqlStr += " ORDER BY priority DESC, time LIMIT %s;" % count
         
         Session.execute(sqlStr)
         result = Session.fetchall()
@@ -436,7 +436,7 @@ class JobQueueDB:
         if jobType != None:
             sqlStr +=  " AND job_type=\"%s\" " % jobType
             
-        sqlStr += " ORDER BY priority DESC, time DESC LIMIT %s;" % count
+        sqlStr += " ORDER BY priority DESC, time LIMIT %s;" % count
         Session.execute(sqlStr)
         result = Session.fetchall()
         result = [ x[0] for x in result ]
