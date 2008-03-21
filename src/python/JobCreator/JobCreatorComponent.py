@@ -53,6 +53,7 @@ class JobCreatorComponent:
         self.args['HashDirs'] = True
         self.args['LogArchStageOut'] = False
         self.args['FrontierDiagnostic'] = False
+        self.args['MultipleJobsPerRun'] = False
         
         self.args.update(args)
         self.prodAgent = prodAgentName()
@@ -70,6 +71,11 @@ class JobCreatorComponent:
             self.args['FrontierDiagnostic'] = True
         else:
             self.args['FrontierDiagnostic'] = False
+
+        if str(self.args['MultipleJobsPerRun']).lower() in ("true", "yes"):
+            self.args['MultipleJobsPerRun'] = True
+        else:
+            self.args['MultipleJobsPerRun'] = False
 
       
 
@@ -346,16 +352,26 @@ class JobCreatorComponent:
         else:
             runNum = int(runNum)
             runPadding = str(runNum // 1000).zfill(4)
-            
-            
-            
-        jobCache = os.path.join(self.args['ComponentDir'],
-                                workflowName,
-                                "%s" % runPadding,
-                                str(runNum))
-                                
-        
-            
+
+        # For T0, there will be multiple jobs occuring in a single run.  It is
+        # assumed that the workflow name will contain the run number and that
+        # the jobName for a particular run is unique.  The directory structure
+        # for the T0 job Cache is:
+        #   ComponentDir/workflowName/NNNN/jobName
+        #
+        # The default directory structure is:
+        #   ComponentDir/workflowName/NNNN/runNumber
+        if self.args["MultipleJobsPerRun"] == True:
+            jobSpecDirKey = str((abs(id(jobSpec)) % 1000)).zfill(4)        
+            jobCache = os.path.join(self.args['ComponentDir'],
+                                    workflowName,
+                                    jobSpecDirKey,
+                                    jobname)
+        else:
+            jobCache = os.path.join(self.args['ComponentDir'],
+                                    workflowName,
+                                    "%s" % runPadding,
+                                    str(runNum))
         
         if not os.path.exists(jobCache):
             os.makedirs(jobCache)
