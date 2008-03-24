@@ -483,8 +483,8 @@ x
                 'job_type' : "Processing", "max_retries" : 3,
                 "max_racers" : 1,
                 })
-        logging.info("<<<<<<<<<<<<<<bulkQueueJobs(sites, *jobs)>>>>>>>>>>>>>>>>"   )
-        ###bulkQueueJobs(sites, *jobs)
+            
+        bulkQueueJobs(sites, *jobs)
         
         
         
