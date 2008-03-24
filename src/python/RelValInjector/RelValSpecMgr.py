@@ -28,6 +28,12 @@ from ProdCommon.JobFactory.DatasetJobFactory import DatasetJobFactory
 #from RequestInjector.RequestIterator import RequestIterator
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
+import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
+import ProdAgent.WorkflowEntities.Job as WEJob
+import ProdAgent.WorkflowEntities.Utilities as WEUtils
+from JobQueue.JobQueueAPI import bulkQueueJobs
+
+
 def getGlobalDBSURL():
     try:
         config = loadProdAgentConfiguration()
@@ -132,6 +138,7 @@ class RelValSpecMgr:
         self.workingDirs = {}
         self.dbsUrl = getGlobalDBSURL()
         self.jobCounts = {}
+        self.ms = None
         
     def __call__(self):
         """
@@ -170,7 +177,7 @@ x
             
       
 
-        for test in self.tests:
+        
             try:
                 self.makeJobs(test)
             except Exception, ex:
@@ -180,8 +187,16 @@ x
                 logging.error(msg)
                 continue
             
-        self.tests = [ x for x in self.tests if x['BadTest'] == False ]
-        return self.tests
+            if test['BadTest'] == False:
+                self.submitTest(test)
+            else:
+                msg = "test is bad, cant submit....\n"
+                msg += "%s" % test['Name']
+                logging.debug(msg)
+            del test
+            
+                
+        return 
         
         
     def loadRelValSpec(self):
@@ -356,6 +371,24 @@ x
         msg = "Workflow created for test: %s" % testInstance['Name']
         logging.info(msg)
 
+
+        msg = "Registering Workflow Entity: %s" % maker.workflowName
+        logging.debug(msg)
+        WEWorkflow.register(
+            maker.workflowName,
+            {"owner" : "RelValInjector",
+             "workflow_spec_file" : specFile,
+             
+             })
+            
+        
+        msg = "Publishing NewWorkflow/NewDataset for \n"
+        msg += " %s\n "% specFile
+        logging.debug(msg)
+        self.ms.publish("NewWorkflow", specFile)
+        self.ms.publish("NewDataset", specFile)
+        self.ms.commit()
+        
         
         return
 
@@ -416,8 +449,58 @@ x
         
         return
 
+
+    def submitTest(self, test):
+        """
+        _submitTest_
+
+
+        Submit a test by dropping the JobSpecs into the JobQueue.
+        
+        """
+        #  //
+        # // Add jobs to the JobQueue via the JobQueue API
+        #//
+        logging.info("RelValSpecMgr.submitTest(%s, %s)" % (test['Name'],
+                                                           test['Site']))
+        
+        sites = [ test['Site'] ]
+        jobs = []
+        for jobSpec, jobSpecFile in test['JobSpecs'].items():
+            jobs.append(  {
+                "JobSpecId" : jobSpec,
+                "JobSpecFile" : jobSpecFile,
+                "JobType" : "Processing",
+                "WorkflowSpecId" : test['WorkflowSpecId'],
+                "WorkflowPriority" : 100,
+                
+                })
+            logging.debug("Registering Job Entity: %s.%s" % (
+                test['WorkflowSpecId'], jobSpec)
+                          )
+            WEJob.register(test['WorkflowSpecId'], None, {
+                'id' : jobSpec, 'owner' : 'RelValInjector',
+                'job_type' : "Processing", "max_retries" : 3,
+                "max_racers" : 1,
+                })
+        logging.info("<<<<<<<<<<<<<<bulkQueueJobs(sites, *jobs)>>>>>>>>>>>>>>>>"   )
+        ###bulkQueueJobs(sites, *jobs)
+        
+        
+        
+        return
+
     
 if __name__ == '__main__':
+
+
+    class FakeMessageService:
+
+        def publish(self, msg, payload):
+            msg = "MessageService.publish(%s, %s)" % (msg, payload)
+            logging.debug(msg)
+        def commit(self):
+            pass
 
     logging.getLogger().setLevel(logging.DEBUG)
 
@@ -431,9 +514,10 @@ if __name__ == '__main__':
         
         }
     sites = ['srm.cern.ch', 'cmssrm.fnal.gov']
-    specFile = "/home/evansde/work/CMSSW/CMSSW_1_7_0_pre5/src/Configuration/ReleaseValidation/data/relval_workflows.xml"
+    specFile = "/uscms/home/gutsche/work/software/People/DaveE/relval_workflows.xml"
     
 
     mgr = RelValSpecMgr(specFile, sites, **args)
+    mgr.ms = FakeMessageService()
     mgr()
     

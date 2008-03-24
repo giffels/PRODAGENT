@@ -10,7 +10,7 @@ import os
 import sys
 import getopt
 
-from RelValInjector.RelValInjectorComponent import ReqValInjectorComponent
+from RelValInjector.RelValInjectorComponent import RelValInjectorComponent
 
 def usage():
     usage = \
@@ -21,9 +21,11 @@ def usage():
     """
     print usage
 
-argsDict = {"ComponentDir" : os.getcwd()}
+argsDict = {"ComponentDir" : os.getcwd(),
+            "SitesList" : "cmssrm.fnal.gov,srm.cern.ch",
+            }
 
-valid = ['ComponentDir=']
+valid = ['ComponentDir=', 'SitesList=']
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)

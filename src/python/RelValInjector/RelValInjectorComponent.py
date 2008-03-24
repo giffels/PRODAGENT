@@ -18,7 +18,7 @@ from RelValInjector.RelValSpecMgr import RelValSpecMgr
 from RelValInjector.RelValStatus import RelValStatus
 from ProdCommon.Database import Session
 
-from JobQueue.JobQueueAPI import bulkQueueJobs
+#from JobQueue.JobQueueAPI import bulkQueueJobs
 
 import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
 import ProdAgent.WorkflowEntities.Job as WEJob
@@ -153,118 +153,6 @@ class RelValInjectorComponent:
         return
 
   
-
-
-
-    def inject(self, relValSpecFile):
-        """
-        _inject_
-
-        Given the relVal spec file provided, take that and generate
-        workflows and jobs for all sites
-
-        """
-        if not os.path.exists(relValSpecFile):
-            msg = "Cannot load RelVal Spec File:\n  %s\n" % relValSpecFile
-            msg += "File does not exist..."
-            logging.error(msg)
-            return
-
-        
-        
-        specMgr = RelValSpecMgr(relValSpecFile, self.sites, **self.args)
-
-        #try:
-        tests = specMgr()
-        #except Exception, ex:
-        #    msg = "Error invoking RelValSpecMgr for file\n"
-        #    msg += "%s\n" % relValSpecFile
-        #    msg += str(ex)
-        #    logging.error(msg)
-        #    return
-
-        workflowIds = {}
-        
-        [ workflowIds.__setitem__(x['WorkflowSpecId'], x['WorkflowSpecFile']) for x in tests ]
-        
-        for workflowId, workflowFile in workflowIds.items():
-            msg = "Registering Workflow Entity: %s" % workflowId
-            logging.debug(msg)
-            WEWorkflow.register(
-                workflowId,
-                {"owner" : "RelValInjector",
-                 "workflow_spec_file" : workflowFile,
-                 
-                 })
-            
-
-            msg = "Publishing NewWorkflow/NewDataset for \n"
-            msg += " %s\n "% workflowFile
-            logging.debug(msg)
-            self.ms.publish("NewWorkflow", workflowFile)
-            self.ms.publish("NewDataset", workflowFile)
-            self.ms.commit()
-            
-        
-
-            
-        self.allJobs = []
-        for test in tests:
-            self.submitTest(test)
-            
-            
-        msg = "Jobs Submitted:\n===============================\n"
-        for j in self.allJobs:
-            msg += "==> %s\n" % j
-        logging.debug(msg)
-        return
-    
-
-    
-    def submitTest(self, test):
-        """
-        _submitTest_
-
-
-        Submit a test by dropping the JobSpecs into the JobQueue.
-        
-        """
-        #  //
-        # // Add jobs to the JobQueue via the JobQueue API
-        #//
-        logging.info("RelValInjector.submitTest(%s, %s)" % (test['Name'],
-                                                            test['Site']))
-        
-        sites = [ test['Site'] ]
-        jobs = []
-        for jobSpec, jobSpecFile in test['JobSpecs'].items():
-            jobs.append(  {
-                "JobSpecId" : jobSpec,
-                "JobSpecFile" : jobSpecFile,
-                "JobType" : "Processing",
-                "WorkflowSpecId" : test['WorkflowSpecId'],
-                "WorkflowPriority" : 100,
-                
-                })
-            self.allJobs.append(jobSpec)
-            logging.debug("Registering Job Entity: %s.%s" % (
-                test['WorkflowSpecId'], jobSpec)
-                          )
-            WEJob.register(test['WorkflowSpecId'], None, {
-                'id' : jobSpec, 'owner' : 'RelValInjector',
-                'job_type' : "Processing", "max_retries" : 3,
-                "max_racers" : 1,
-                })
-            
-        bulkQueueJobs(sites, *jobs)
-        
-        
-        
-        return
-
-
-        
-
     def startComponent(self):
         """
         _startComponent_
@@ -300,3 +188,119 @@ class RelValInjectorComponent:
             self.__call__(type, payload)
             Session.commit_all()
             Session.close_all()
+
+
+
+    def inject(self, relValSpecFile):
+        """
+        _inject_
+
+        Given the relVal spec file provided, take that and generate
+        workflows and jobs for all sites
+
+        """
+        if not os.path.exists(relValSpecFile):
+            msg = "Cannot load RelVal Spec File:\n  %s\n" % relValSpecFile
+            msg += "File does not exist..."
+            logging.error(msg)
+            return
+
+        
+        
+        specMgr = RelValSpecMgr(relValSpecFile, self.sites, **self.args)
+        specMgr.ms = self.ms
+        
+        try:
+            tests = specMgr()
+        except Exception, ex:
+            msg = "Error invoking RelValSpecMgr for file\n"
+            msg += "%s\n" % relValSpecFile
+            msg += str(ex)
+            logging.error(msg)
+        return
+
+
+
+
+##workflowIds = {}
+        
+##        [ workflowIds.__setitem__(x['WorkflowSpecId'], x['WorkflowSpecFile']) for x in tests ]
+        
+##        for workflowId, workflowFile in workflowIds.items():
+##            msg = "Registering Workflow Entity: %s" % workflowId
+##            logging.debug(msg)
+##            WEWorkflow.register(
+##                workflowId,
+##                {"owner" : "RelValInjector",
+##                 "workflow_spec_file" : workflowFile,
+                 
+##                 })
+            
+
+##            msg = "Publishing NewWorkflow/NewDataset for \n"
+##            msg += " %s\n "% workflowFile
+##            logging.debug(msg)
+##            self.ms.publish("NewWorkflow", workflowFile)
+##            self.ms.publish("NewDataset", workflowFile)
+##            self.ms.commit()
+            
+        
+
+            
+        ##self.allJobs = []
+##        for test in tests:
+##            self.submitTest(test)
+            
+            
+##        msg = "Jobs Submitted:\n===============================\n"
+##        for j in self.allJobs:
+##            msg += "==> %s\n" % j
+##        logging.debug(msg)
+ ##       return
+    
+
+    
+##    def submitTest(self, test):
+##        """
+##        _submitTest_
+
+
+##        Submit a test by dropping the JobSpecs into the JobQueue.
+        
+##        """
+##        #  //
+##        # // Add jobs to the JobQueue via the JobQueue API
+##        #//
+##        logging.info("RelValInjector.submitTest(%s, %s)" % (test['Name'],
+##                                                            test['Site']))
+        
+##        sites = [ test['Site'] ]
+##        jobs = []
+##        for jobSpec, jobSpecFile in test['JobSpecs'].items():
+##            jobs.append(  {
+##                "JobSpecId" : jobSpec,
+##                "JobSpecFile" : jobSpecFile,
+##                "JobType" : "Processing",
+##                "WorkflowSpecId" : test['WorkflowSpecId'],
+##                "WorkflowPriority" : 100,
+                
+##                })
+##            self.allJobs.append(jobSpec)
+##            logging.debug("Registering Job Entity: %s.%s" % (
+##                test['WorkflowSpecId'], jobSpec)
+##                          )
+##            WEJob.register(test['WorkflowSpecId'], None, {
+##                'id' : jobSpec, 'owner' : 'RelValInjector',
+##                'job_type' : "Processing", "max_retries" : 3,
+##                "max_racers" : 1,
+##                })
+            
+##        bulkQueueJobs(sites, *jobs)
+        
+        
+        
+##        return
+
+
+        
+
