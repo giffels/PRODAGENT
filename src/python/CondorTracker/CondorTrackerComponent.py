@@ -245,7 +245,7 @@ class CondorTrackerComponent:
             try:
                 badReport.write(jobReport)
             except IOError:
-                logging.debug("jobCache directory is missing: %s" % jobCache)
+                logging.error("jobCache directory is missing: %s" % jobCache)
                 return
                 
             self.ms.publish("JobFailed" ,jobReport)
