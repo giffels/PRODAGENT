@@ -238,7 +238,16 @@ class CondorTrackerComponent:
             errDesc = "Framework Job Report was not returned "
             errDesc += "on completion of job"
             err['Description'] = errDesc
-            badReport.write(jobReport)
+
+            # The write will fail if the jobCache directory is missing.  In
+            # case just bail out.  Publishing a JobFailed message is useless
+            # because the JobReport doesn't exist.
+            try:
+                badReport.write(jobReport)
+            except IOError:
+                logging.debug("jobCache directory is missing: %s" % jobCache)
+                return
+                
             self.ms.publish("JobFailed" ,jobReport)
             self.ms.commit()
             #WEJob.registerFailure(jobSpecId, "run")
