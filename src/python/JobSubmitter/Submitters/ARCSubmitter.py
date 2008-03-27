@@ -186,11 +186,6 @@ class ARCSubmitter(BulkSubmitterInterface):
         logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
         output = self.executeCommand(submitCommand)
         logging.debug("ARCSubmitter.doSubmit: %s " % output)
-        output = self.executeCommand("cp %s ~/tmp/foo" % os.path.join(cacheDir,"submit.sh"))
-        logging.debug("ARCSubmitter.doSubmit: %s " % output)
-        for fname in self.jobInputFiles:
-            output = self.executeCommand("cp %s ~/tmp/foo" % fname)
-            logging.debug("ARCSubmitter.doSubmit: %s " % output)
 
 
     def preferredSite(self):
@@ -199,7 +194,6 @@ class ARCSubmitter(BulkSubmitterInterface):
         preferred site, if such exist.
 
         """
-
         if not self.parameters['JobSpecInstance'].siteWhitelist:
            logging.debug("No preferred site")
            return ""
@@ -209,11 +203,13 @@ class ARCSubmitter(BulkSubmitterInterface):
         ceMap = ResConAPI.createCEMap()
 
         if prefSite in ceMap.keys():
-            logging.debug("Using preferred CE " + ceMap[prefSite])
+            logging.info("Using preferred CE " + ceMap[prefSite])
             return " -c " + ceMap[prefSite]
+
         elif long(prefSite) in ceMap.keys():
-            logging.debug("Using preferred CE " + ceMap[long(prefSite)])
+            logging.info("Using preferred CE " + ceMap[long(prefSite)])
             return " -c " + ceMap[long(prefSite)]
+
         else:
             logging.warning("WARNING: Preferred site %s unknown!" % prefSite)
             for k in ceMap.keys():
