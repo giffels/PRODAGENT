@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.4 2008/03/14 21:08:04 sryu Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.5 2008/03/21 18:49:13 sfoulkes Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -56,6 +56,9 @@ class EmulatorReportPlugin(JobReportPluginInterface):
                 self.__fwkJobReportCommon(jobSpecLoaded, jobRunningLocation)
         newReport.exitCode = 0
         newReport.status = "Success"
+
+        if "jobId" in jobSpecLoaded.parameters.keys():
+            newReport.jobSpecId = jobSpecLoaded.parameters["jobId"]
         
         # Create a list of datasets from the JobSpec
         # then associate file to these later on
