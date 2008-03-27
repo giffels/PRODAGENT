@@ -206,12 +206,14 @@ class ARCSubmitter(BulkSubmitterInterface):
             logging.info("Using preferred CE " + ceMap[prefSite])
             return " -c " + ceMap[prefSite]
 
-        elif long(prefSite) in ceMap.keys():
+        # If prefSite wasn't in ceMap.keys(), it's possible that it's an
+        # index given as a string (should be long).
+        elif str(prefSite).isdigit() and long(prefSite) in ceMap.keys():
             logging.info("Using preferred CE " + ceMap[long(prefSite)])
             return " -c " + ceMap[long(prefSite)]
 
         else:
-            logging.warning("WARNING: Preferred site %s unknown!" % prefSite)
+            logging.warning("WARNING: Preferred site %s unknown!" % str(prefSite))
             for k in ceMap.keys():
                 logging.debug("ceMap[%s] = %s" % (k, ceMap[k]))
             return ""
