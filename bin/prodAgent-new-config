@@ -93,7 +93,7 @@ coreFields = {
     },
 
     "BOSS": {
-    'BossLiteschemaLocation': "$PRODCOMMON_ROOT/lib/ProdCommon/BossLite/DbObjects/setupDatabase.sql"
+    'BossLiteschemaLocation': "$PRODCOMMON_ROOT/share/setupDatabase.sql"
     },
     
     "MessageService" : {
