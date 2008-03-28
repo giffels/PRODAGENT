@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.19 2007/07/05 18:26:27 afanfani Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.20 2008/01/12 18:19:17 afanfani Exp $"
 
 import getpass
 import os
@@ -177,7 +177,9 @@ schedulers=['registerBBSScheduler', 'registerPBSScheduler', \
             'registerCONDOR_GScheduler', \
 #            'registerLSF-SharedFS-Scheduler', \
             'registerLSF-SharedFS-CERN-Scheduler', \
-            'registerEDGScheduler','registerGLITE-ui3.0-Scheduler', \
+##slc3            'registerEDGScheduler','registerGLITE-ui3.0-Scheduler', \
+## for slc4 use registerGLITEScheduler 
+            'registerEDGScheduler','registerGLITEScheduler', \
 #            'registerGliteCollectionScheduler', \
             'registerGliteAPICollectionScheduler', \
 #            'registerGliteParamScheduler', \
