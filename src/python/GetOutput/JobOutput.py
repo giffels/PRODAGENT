@@ -12,14 +12,19 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id$"
-__revision__ = "$Revision$"
+__version__ = "$Id: JobOutput.py,v 1.1.2.1 2007/12/10 18:24:50 ckavka Exp $"
+__revision__ = "$Revision: 1.1.2.1 $"
 
 import logging
-from ProdAgentBOSS import BOSSCommands
+##from ProdAgentBOSS import BOSSCommands
 from GetOutput.TrackingDB import TrackingDB
 from ProdCommon.Database.MysqlInstance import MysqlInstance
 from ProdCommon.Database.SafeSession import SafeSession
+
+# BossLite import
+from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 
 ###############################################################################
 # Class: JobOutput                                                            #
@@ -32,14 +37,15 @@ class JobOutput:
 
     # default parameters
     params = {'maxGetOutputAttempts' : 3,
-              'bossCfgDir' : '.',
+#              'bossCfgDir' : '.',  MATTY
               'dbInstance' : None}
 
     def __init__(self):
         """
         Attention: in principle, no instance of this static class is created!
         """
-        
+       
+        self.blDBsession = BossLiteAPI('MySQL', dbConfig)
         pass
 
     @classmethod
@@ -152,9 +158,18 @@ class JobOutput:
 
                 # perform get output operation
                 try:
-                    output = BOSSCommands.getoutput(jobId, \
-                                                    jobInfo['directory'], \
-                                                    cls.params['bossCfgDir'])
+                    ##output = BOSSCommands.getoutput(jobId, jobInfo['directory'], cls.params['bossCfgDir'])
+                    # Fix for BossLite # Fabio 
+                    jobObj = self.blDBsession.loadJobsByAttr( {'jobId' : jobId} )
+                    schedulerConfig = {'name' : jobObj['scheduler'],
+                          'user_proxy' : jobObj['user_proxy'] ,
+                          'service' : jobObj['service'] }
+                          # 'config' : '/etc/glite_wms.conf' }
+
+                    # laod the job by attribute on jobId
+                    blSchedSession = BossLiteAPISched(self.blDBsession, schedulerConfig)
+                    blSchedSession.getOutput( self, jobObj['taskId'], jobId, jobInfo['directory'])
+
                     break
 
                 # error, update retry counter

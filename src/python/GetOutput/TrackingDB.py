@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id$"
-__revision__ = "$Revision$"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.1 2007/12/10 18:24:51 ckavka Exp $"
+__revision__ = "$Revision: 1.1.2.1 $"
 
 class TrackingDB:
     """
@@ -163,9 +163,10 @@ class TrackingDB:
                       set """ + str(update) +  """
                     where job_id='""" + str(jobId) + "'"
 
-        # execute query
+        # execute query #Fabio
+        self.session.startTransaction()
         rows = self.session.execute(query)
-
+        self.session.commit()
         return rows
 
     def removeJobs(self, status):
@@ -179,7 +180,11 @@ class TrackingDB:
         query = """delete
                      from jt_activejobs
                     where status='""" + str(status) + "'"
+
+        # execute query #Fabio
+        self.session.startTransaction()
         rows = self.session.execute(query)
+        self.session.commit()
 
         return rows
 

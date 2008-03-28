@@ -6,7 +6,7 @@ Start the component, reading its configuration from
 the common configuration file, which is accessed by environment variable
 
 """
-__revision__ = "$Id: Startup.py,v 1.4.14.1 2007/09/28 15:01:10 ckavka Exp $"
+__revision__ = "$Id: Startup.py,v 1.4.14.2 2007/10/03 18:16:11 gcodispo Exp $"
 
 import os
 import sys
@@ -26,10 +26,10 @@ try:
     config = loadProdAgentConfiguration()
     compCfg = config.getConfig("JobTracking")
 
-    # BOSS configuration
-    bossConfig = config.get("BOSS")
-    if 'configDir' in bossConfig.keys():
-        compCfg['configDir'] = bossConfig['configDir']
+    # BOSS configuration # deprecated since BossLite
+    # bossConfig = config.get("BOSS")
+    # if 'configDir' in bossConfig.keys():
+    #    compCfg['configDir'] = bossConfig['configDir']
 
     # ProdAgent configuration
     paConfig = config.get("ProdAgent")

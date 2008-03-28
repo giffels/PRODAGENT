@@ -6,8 +6,8 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.1 2007/09/28 14:57:53 ckavka Exp $"
-__version__ = "$Revision: 1.1.2.1 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.2 2007/11/21 11:28:37 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.2 $"
 
 from threading import Thread
 from time import sleep
@@ -16,9 +16,15 @@ import logging
 from random import shuffle
 
 from JobTracking.JobStatus import JobStatus
-from ProdAgentBOSS.BOSSCommands import BOSS
-
+# from ProdAgentBOSS.BOSSCommands import BOSS
+from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.ThreadTools.WorkQueue import WorkQueue
+
+# Fixes for BossLite
+from ProdCommon.Database import Session
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.Database.MysqlInstance import MysqlInstance
+from ProdCommon.Database.SafeSession import SafeSession
 
 ###############################################################################
 # Class: PoolScheduler                                                        #
@@ -52,8 +58,15 @@ class PoolScheduler(Thread):
             self.maxJobs = 100
         self.groupsUnderProcessing = Set([])
 
+        # init BossLite session #Fabio
+        self.database = dbConfig
+        Session.set_database(dbConfig)
+        Session.connect()
+        self.blDBinstance = BossLiteAPI('MySQL', self.database)
+        self.BossLiteAdminSession = SafeSession( dbInstance = MysqlInstance(self.database) )
+ 
         # start scheduler thread
-        self.setDaemon(1)
+        # self.setDaemon(1)
         self.start()
 
     def run(self):
@@ -62,10 +75,8 @@ class PoolScheduler(Thread):
         """
 
         logging.info("Pool scheduler started")
-
         # do forever
         while True:
-
             # get job information about new jobs
             self.getNewJobs()
 
@@ -83,15 +94,15 @@ class PoolScheduler(Thread):
 
             # new threads to start?
             if len(groups) >= self.threadsWorking:
-
+ 
                 # yes, start threads
                 for grp in groups:
 
                     # but only for new groups
                     if grp not in self.groupsUnderProcessing:
-
                         # insert group ID into queue to trigger thread start
                         self.groupsUnderProcessing.add(grp)
+
                         self.pool.enqueue(grp, grp)
 
             # wait for a thread to finish
@@ -104,7 +115,6 @@ class PoolScheduler(Thread):
                 
             # remove its ID from groups
             self.groupsUnderProcessing.remove(group)
-                
             # remove all finished jobs from this group
             JobStatus.removeFinishedJobs(group)
 
@@ -122,7 +132,8 @@ class PoolScheduler(Thread):
         """
 
         # get a BOSS session
-        adminSession = BOSS.getBossAdminSession()
+        ## adminSession = BOSS.getBossAdminSession()
+        # already there in bossLite
 
         # set policy parameters
         groups = {}
@@ -131,55 +142,43 @@ class PoolScheduler(Thread):
         grlist = ",".join(["%s" % k for k in self.groupsUnderProcessing])
 
         # build query to get information about tasks associated to these
-        # groups
-        if grlist == '':
+        # groups # Modified, Fabio
 
-            # no groups under processing
-            query = """
-                    select task_id, count(job_id)
-                      from jt_group
-                     where group_id is not null
-                     group by task_id
-                     order by count(job_id) desc
-                     """
-        else:
-
-            # some groups with threads working on
-            query = """
-                    select task_id, count(job_id)
-                      from jt_group where group_id not in (""" + grlist + """)
-                     group by task_id
-                     order by count(job_id) desc
-                     """
+        query_addin = "where group_id is not null "
+        if grlist != '':
+            query_addin = "where group_id not in (%s) "%str(grlist)
+            
+        # some groups with threads working on
+        query = " select task_id, count(job_id) from jt_group %s"%query_addin
+        query += " group by task_id order by count(job_id) desc"
 
         # query BOSS for task information   
-        (adminSession, out) = BOSS.performBossQuery(adminSession, query)
-
-        # build structure
-        jobPerTask = {}
-        jobPerTask = out.split('\n')[1:]
+        # (adminSession, out) = BOSS.performBossQuery(adminSession, query)
+        jobPerTask = []
+        count = self.BossLiteAdminSession.execute(query) 
+        if (count > 0):
+            jobPerTask = self.BossLiteAdminSession.fetchall()
 
         # process all groups
         grid = 0
-
         while len(jobPerTask) !=0:
             grid = grid + 1
 
             # ignore groups under processing
             if grid in self.groupsUnderProcessing:
-                logging.debug( "skipping group " + str(grid))
+                logging.info( "skipping group " + str(grid))
                 continue
 
             # build group information
             groups[grid] = ''
             jobsReached = 0
 
-            logging.debug('filling group ' + str(grid) + ' with largest tasks')
+            logging.info('filling group ' + str(grid) + ' with largest tasks')
 
             # fill group with the largest tasks
             while len(jobPerTask) != 0:
                 try:
-                    tj = jobPerTask[0].split()
+                    tj = jobPerTask[0]#.split() 
                     task = tj[0]
                     jobs = int(tj[1])
 
@@ -189,22 +188,28 @@ class PoolScheduler(Thread):
                         break
 
                     # add task to group
-                    groups[grid] += task + ','
+                    groups[grid] += str(task) + ','
                     jobsReached += int(jobs)
-                    jobPerTask.pop(0)
+
+                    #MATTY's fix
+                    jobPerTask = jobPerTask[1:len(jobPerTask)]
+                    #jobPerTask.pop(0)
 
                 # go to next task
-                except IndexError:
-                    jobPerTask.pop(0)
+                except IndexError, ex:
+                    #MATTY's fix
+                    jobPerTask = jobPerTask[1:len(jobPerTask)]
+                    #jobPerTask.pop(0)
+                    logging.info("\n\n" + str(ex) + "\n\n")
                     continue
 
-            logging.debug('filling group ' + str(grid) + \
+            logging.info('filling group ' + str(grid) + \
                           ' with the smallest tasks')
 
             # fill group with the smallest tasks
             while len(jobPerTask) != 0:
                 try:
-                    tj = jobPerTask[-1].split()
+                    tj = jobPerTask[-1]#.split()
                     task = tj[0]
                     jobs = int(tj[1])
 
@@ -215,14 +220,19 @@ class PoolScheduler(Thread):
                     # add task to group
                     groups[grid] += task + ','
                     jobsReached += int(jobs)
-                    jobPerTask.pop()
+
+                    #MATTY's fix
+                    jobPerTask = jobPerTask[1:len(jobPerTask)]
+                    #jobPerTask.pop()
 
                 # go to next task
                 except IndexError:
-                    jobPerTask.pop()
+                    #MATTY's fix
+                    jobPerTask = jobPerTask[1:len(jobPerTask)]
+                    #jobPerTask.pop()
                     continue
 
-            logging.debug("group " + str(grid) + " filled with tasks " \
+            logging.info("group " + str(grid) + " filled with tasks " \
                           + groups[grid] + " and total jobs " \
                           + str(jobsReached))
         
@@ -240,8 +250,10 @@ class PoolScheduler(Thread):
                      where task_id in (""" + tasks[:-1]  + ")"
 
             # perform BOSS query
-            (adminSession, out) = \
-                           BOSS.performBossQuery(adminSession, query)
+            ##(adminSession, out) = BOSS.performBossQuery(adminSession, query)
+            self.BossLiteAdminSession.startTransaction() 
+            self.BossLiteAdminSession.execute(query)
+            self.BossLiteAdminSession.commit() 
 
             logging.debug("Adding tasks " + tasks[:-1] + ' to group ' + \
                           str(group))

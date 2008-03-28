@@ -6,7 +6,7 @@ Start the component, reading its configuration from
 the common configuration file, which is accessed by environment variable
 
 """
-__revision__ = "$Id$"
+__revision__ = "$Id: Startup.py,v 1.1.2.1 2007/12/10 18:24:50 ckavka Exp $"
 
 import os
 import sys
@@ -26,10 +26,10 @@ try:
     config = loadProdAgentConfiguration()
     compCfg = config.getConfig("GetOutput")
 
-    # BOSS configuration
-    bossConfig = config.get("BOSS")
-    if 'configDir' in bossConfig.keys():
-        compCfg['configDir'] = bossConfig['configDir']
+    # BOSS configuration # Removed for BossLite
+    #bossConfig = config.get("BOSS")
+    #if 'configDir' in bossConfig.keys():
+    #    compCfg['configDir'] = bossConfig['configDir']
 
     # ProdAgent configuration
     paConfig = config.get("ProdAgent")
@@ -49,7 +49,6 @@ try:
         compCfg['JobCreatorComponentDir'] = jobCreatorConfig['ComponentDir']
         
     try:
-
         # get dashboard information from submitter configuration plugin
         pluginConfig = loadPluginConfig("JobSubmitter", "Submitter")
         dashboardCfg = pluginConfig.get('Dashboard', {})

@@ -17,26 +17,33 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.11 2007/12/10 18:20:46 ckavka Exp $"
-__version__ = "$Revision: 1.47.2.11 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.12 2008/02/18 13:25:31 afanfani Exp $"
+__version__ = "$Revision: 1.47.2.12 $"
 
 import time
 import os
+import os.path
 import logging
 from copy import deepcopy
 
 # PA configuration
 from MessageService.MessageService import MessageService
+import ProdAgentCore.LoggingUtils as LoggingUtils
+
 from ProdCommon.Database import Session
 from ProdAgentDB.Config import defaultConfig as dbConfig
-from ProdAgentBOSS import BOSSCommands
-from ProdAgentBOSS.BOSSCommands import BOSS
-import ProdAgentCore.LoggingUtils as LoggingUtils
 from GetOutput.TrackingDB import TrackingDB
 from ProdCommon.Database.MysqlInstance import MysqlInstance
 from ProdCommon.Database.SafeSession import SafeSession
+
+##safe pool
+from ProdCommon.Database.SafePool import SafePool
+
 from GetOutput.JobOutput import JobOutput
 from JobTracking.JobHandling import JobHandling
+
+# BossLite support 
+from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 
 # Framework Job Report handling
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
@@ -103,21 +110,24 @@ class TrackingComponent:
                          seconds.zfill(2)
         
         # get configuration information
-        workingDir = self.args['ProdAgentWorkDir'] 
-        workingDir = os.path.expandvars(workingDir)
+#        workingDir = self.args['ProdAgentWorkDir'] 
+#        workingDir = os.path.expandvars(workingDir)
         self.componentDir = self.args['ComponentDir']
 
-        # get BOSS configuration, set directory and verbose mode
-        self.bossCfgDir = self.args['configDir'] 
-        logging.info("Using BOSS configuration from " + self.bossCfgDir)
+        ## get BOSS configuration, set directory and verbose mode
+        # NOTE : probably not needed for BossLite # Fabio
+        #self.bossCfgDir = self.args['configDir'] 
+        #logging.info("Using BOSS configuration from " + self.bossCfgDir)
 
         self.directory = self.args["ComponentDir"]
+        if self.args["JobCreatorComponentDir"] is None:
+            self.args["JobCreatorComponentDir"] = self.directory
         self.jobCreatorDir = \
                 os.path.expandvars(self.args["JobCreatorComponentDir"])
         self.verbose = (self.args["verbose"] == 1)
 
         # set BOSS path
-        BOSS.setBossCfgDir(self.bossCfgDir)
+        #BOSS.setBossCfgDir(self.bossCfgDir)
 
         # initialize job handling
         self.jobHandling = None
@@ -144,21 +154,30 @@ class TrackingComponent:
         # initialize members
         self.ms = None
         self.maxGetOutputAttempts = 3
-        self.database = dbConfig
-        self.bossDatabase = deepcopy(dbConfig)
-        self.bossDatabase['dbName'] += "_BOSS"
-        self.bossDatabase['dbType'] = 'mysql'
-        self.activeJobs = self.bossDatabase['dbName'] + ".jt_activejobs"
-        self.dbInstance = MysqlInstance(self.bossDatabase)
+        #self.database = dbConfig
+        #self.bossDatabase = deepcopy(dbConfig)
+        #self.bossDatabase['dbName'] += "_BOSS"
+        #self.bossDatabase['dbType'] = 'mysql'
+        #self.activeJobs = self.bossDatabase['dbName'] + ".jt_activejobs"
+        #self.dbInstance = MysqlInstance(self.bossDatabase)
+
+        self.database = deepcopy(dbConfig)
+        self.msqlDBInstance = MysqlInstance(self.database)
+        self.activeJobs = str(self.database['dbName']) + ".jt_activejobs"
 
         # initialize Session
-        Session.set_database(dbConfig)
+        Session.set_database(self.database)
         Session.connect()
+
+        # initialize BossLite API and the session to interact with bl Database
+        # TODO: Fix with the correct configurations for the DB
+        self.blDBinstance = BossLiteAPI('MySQL', self.database)
+        self.blAdminSession = SafeSession( dbInstance = self.msqlDBInstance )
 
         # set parameters for getoutput operations
         params = {}
-        params['bossCfgDir'] = self.bossCfgDir
-        params['dbInstance'] = self.dbInstance
+        #params['bossCfgDir'] = self.bossCfgDir
+        params['dbInstance'] = self.msqlDBInstance
         JobOutput.setParameters(params)
 
         # build submitted jobs structure
@@ -171,8 +190,6 @@ class TrackingComponent:
         # component running, display info
         logging.getLogger().setLevel(logging.DEBUG)
         logging.info("JobTracking Component Started...")
-        logging.info("BOSS_ROOT = %s" % os.environ["BOSS_ROOT"])
-        logging.info("BOSS_VERSION = v4\n")
 
     def __call__(self, event, payload):
         """
@@ -208,18 +225,28 @@ class TrackingComponent:
         """
 
         # build query 
+        #query = """
+        #"""
+        #select JOB.TASK_ID, JOB.CHAIN_ID, JOB.ID, JOB.STATUS
+        #  from JOB LEFT JOIN jt_activejobs
+        #                 on jt_activejobs.job_id=
+        #                    concat(JOB.TASK_ID, '.', JOB.CHAIN_ID, '.', JOB.ID)
+        # where JOB.STATUS in ('OR', 'SD')
+        #       and (jt_activejobs.status="output_not_requested"
+        #            or jt_activejobs.status is NULL)
+        #"""
+
+        # BossLite query
         query = """
-        select JOB.TASK_ID, JOB.CHAIN_ID, JOB.ID, JOB.STATUS
-          from JOB LEFT JOIN jt_activejobs
+        select bl_runningjob.task_id, bl_runningjob.job_id, bl_runningjob.id, bl_runningjob.status
+          from bl_runningjob LEFT JOIN jt_activejobs
                          on jt_activejobs.job_id=
-                            concat(JOB.TASK_ID, '.', JOB.CHAIN_ID, '.', JOB.ID)
-         where JOB.STATUS in ('OR', 'SD')
+                            concat(bl_runningjob.task_id, '.', bl_runningjob.job_id, '.', bl_runningjob.id)
+         where bl_runningjob.STATUS in ('OR', 'SD')
                and (jt_activejobs.status="output_not_requested"
                     or jt_activejobs.status is NULL)
         """
-
         return self.pollBossDB( query )
-
 
     def pollFailed(self):
         """
@@ -232,14 +259,19 @@ class TrackingComponent:
         """
 
         # build query 
+        #query = """
+        #select TASK_ID,CHAIN_ID,ID,STATUS from JOB
+        #WHERE STATUS in ('A', 'SA', 'K', 'SK')
+        #order by TASK_ID,CHAIN_ID
+        #"""
+        
+        # BossLite query   
         query = """
-        select TASK_ID,CHAIN_ID,ID,STATUS from JOB
-        WHERE STATUS in ('A', 'SA', 'K', 'SK')
-        order by TASK_ID,CHAIN_ID
+        select task_id,job_id,id,status from bl_runningjob
+        WHERE status in ('A', 'SA', 'K', 'SK')
+        order by task_id,job_id
         """
-
         return self.pollBossDB( query )
-
 
     def pollNewJobs(self):
         """
@@ -252,7 +284,7 @@ class TrackingComponent:
 
         # initialize counters for statistic
         counters = ['pending', 'submitted', 'waiting', 'ready', 'scheduled', \
-                    'running', 'cleared', 'other']
+                    'running', 'cleared', 'created', 'other']
         counter = {}
         for ctr in counters:
             counter[ctr] = 0
@@ -261,18 +293,21 @@ class TrackingComponent:
         submittedJobs = {}
 
         # build query 
+        #query = """
+        #select TASK_ID,CHAIN_ID,ID,STATUS from JOB
+        #WHERE (STATUS not in ('A', 'SA', 'K', 'SK', 'OR', 'SD'))
+        #order by TASK_ID,CHAIN_ID
+        #"""
+        
+        # BossLite query
         query = """
-        select TASK_ID,CHAIN_ID,ID,STATUS from JOB
-        WHERE (STATUS not in ('A', 'SA', 'K', 'SK', 'OR', 'SD'))
-        order by TASK_ID,CHAIN_ID
+        select task_id,job_id,id,status from bl_runningjob
+        WHERE (status not in ('A', 'SA', 'K', 'SK', 'OR', 'SD'))
+        order by task_id,job_id
         """
         jobs = self.pollBossDB( query )
-        
-        # for jobId in jobs:
-        #    jid = jobId[0]
-        #    status = jobId[1]
-        
         index = len ( jobs )
+
         while index > 0 :
             index -= 1
             jid    = jobs[ index ][0]
@@ -285,9 +320,11 @@ class TrackingComponent:
 
                 # no, publish information to dashboard
                 try:
-                    self.dashboardPublish(
-                        jid, BOSSCommands.jobSpecId(jid, self.bossCfgDir)
-                        )
+                    # TODO commented waiting for BossLite information 
+                    # self.dashboardPublish( jid, 
+                         # What counterpart in BLite? BOSSCommands.jobSpecId(jid, self.bossCfgDir)
+                    #    )
+                    pass
                 except Exception, msg:
                     logging.error("Cannot publish to dashboard:%s" % msg)
 
@@ -311,19 +348,18 @@ class TrackingComponent:
                 counter['submitted'] += 1
             elif status == 'SE':
                 counter['cleared'] += 1
+            elif status == 'C':
+                counter['created'] += 1
             else:
                 counter['other'] += 1
 
         # display counters
-        logging.info("--------------------")
         for ctr, value in counter.items():
             logging.info(ctr + " jobs : " + str(value))
-        logging.info("--------------------")
 
         # save submitted jobs and update dictionary
         self.updateDict(self.submittedJobs, submittedJobs)
         self.submittedJobs = submittedJobs
-
         return 
 
 
@@ -339,21 +375,19 @@ class TrackingComponent:
         # list of jobs
         jobs = []
 
-        # get a BOSS session
-        adminSession = BOSS.getBossAdminSession()
+        # fix for BossLite # Fabio
+        row = self.blAdminSession.execute(query) 
+        out = []
 
-        # execute query
-        (adminSession, out) = BOSS.performBossQuery(adminSession, query)
-        
-        lines = out.split('\n')
+        if (row > 0):
+            out = self.blAdminSession.fetchall()
 
-        # process all jobs
-        for j in lines[1:]:
-
-            # get job information
+        # process all jobs # with BossLite
+        for j in out:
+            # get job information 
+            # the selected fields are the same of the tuple, with the same order too for every query # Fabio
             try:
-                job = j.strip().split()
-                (taskId, chainId, ident, status) = job
+                (taskId, chainId, ident, status) = j
 
             # line does not contain job information, ignore
             except StandardError:
@@ -363,12 +397,10 @@ class TrackingComponent:
             if int(taskId) <= 0:
                 logging.error("Incorrect job information from BOSS DB: " + \
                               str(j))
-
                 continue
  
             # build job id 
-            jid = taskId + "." + chainId + "." + ident
-
+            jid = str(taskId) + "." + str(chainId) + "." + str(ident)
             jobs.append( [jid, status])
 
         # return finished and failed jobs
@@ -385,7 +417,8 @@ class TrackingComponent:
         """
 
         # get finished and failed jobs and handle them
-        # finishedJobs, failedJobs = self.pollBossDb()
+        # NOTE: modified to work with the new BossLite structures
+
         finishedJobs = self.pollFinished()
         logging.debug("FINISHED JOBS: %s" % str(finishedJobs))
         self.handleFinished(finishedJobs)
@@ -408,33 +441,39 @@ class TrackingComponent:
 
         """
 
-        logging.info("--------------------")
         logging.info("failed jobs : " + str( len(failedJobs) ) )
-        logging.info("--------------------")
 
         # process all jobs
-        for jobId in failedJobs:
-
+        for jobIdde in failedJobs:
+            jobId = jobIdde[0].split('.')[1]
+            jobObj = None
+             
             # get job specification id
             try:
-                jobSpecId = BOSSCommands.jobSpecId(jobId[0], self.bossCfgDir)
+                # load job data from BossLite #Fabio
+                jobObj = self.blDBinstance.loadJobsByAttr( {'id': jobId} )[0]
+                jobSpecId = jobObj['jobId'] # TODO check
+                # BOSSCommands.jobSpecId(jobId[0], self.bossCfgDir)
 
             # error
             except StandardError, msg:
                 logging.error("Failed job with wrong job id %s. Error:\n%s" \
-                              % (jobId.__str__(), str(msg)))
+                              % (jobId, str(msg)))
+                import traceback
+                logging.info (str(traceback.format_exc()))
                 continue
 
             # get framework jod report file name
-            reportfilename = BOSSCommands.reportfilename(jobId[0], \
-                                                         self.directory)
+            reportfilename = "" # TODO check
+                 # BOSSCommands.reportfilename(jobId[0], self.directory)
 
             # publish information to the dashboard
             try:
-                self.dashboardPublish(jobId[0], jobSpecId)
+                # TODO to be fixed with the BossLite information
+                # self.dashboardPublish(jobId, jobSpecId) # TODO check
+                pass 
             except Exception, msg:
                 logging.error("Cannot publish to dashboard:%s" % msg)
-
 
             # create directory
             directory = os.path.dirname(reportfilename)
@@ -444,7 +483,6 @@ class TrackingComponent:
                 os.makedirs(os.path.dirname(reportfilename))
 
             except StandardError, msg:
-
                 # cannot create directory, go to next job
                 logging.error("Cannot create directory : " + str(msg))
                 continue
@@ -461,10 +499,11 @@ class TrackingComponent:
 
             # get grid log file
             outdir = os.path.dirname(reportfilename)
-            BOSSCommands.loggingInfo( jobId[0], outdir, self.bossCfgDir )
+#            BOSSCommands.loggingInfo( jobId[0], outdir, self.bossCfgDir ) # TODO: BLite counterpart?
 
             # perform a BOSS archive operation
-            BOSSCommands.archive(jobId[0], self.bossCfgDir)
+            #BOSSCommands.archive(jobId[0], self.bossCfgDir)
+            self.blDBsession.archive(jobObj['taskId'], jobId) # TODO check 
 
             # generate a failure message
             self.jobHandling.publishJobFailed(jobId, reportfilename)
@@ -478,31 +517,35 @@ class TrackingComponent:
 
         """
 
-        logging.info("--------------------")
         logging.info("finished jobs : " + str( len(finishedJobs) ) )
-        logging.info("--------------------")
 
         # process all jobs
         for jobId in finishedJobs:
-
+  
+            jobObj = None
+  
             # get job specification id
             try:
-                jobSpecId = BOSSCommands.jobSpecId(jobId[0], self.bossCfgDir)
-
+                # load job data from BossLite #Fabio
+                jobObj = self.blDBinstance.loadJobsByAttr( {'id': jobId} )[0]
+                jobSpecId = jobObj['jobId'] # TODO check
+                #BOSSCommands.jobSpecId(jobId[0], self.bossCfgDir)
             # error
             except StandardError, msg:
                 logging.error("Finished job with wrong job id %s. Error:\n%s" \
-                              % (jobId.__str__(), str(msg)))
+                              % (job.__str__(), str(msg)))
                 continue
 
             # publish information to the dashboard
             try:
-                self.dashboardPublish(jobId[0], jobSpecId)
+                # TODO to be fixed with BossLite information
+                # self.dashboardPublish(jobId, jobSpecId) # TODO check
+                pass
             except Exception, msg:
                 logging.error("Cannot publish to dashboard:%s" % msg)
 
 
-            # perform the get output operation
+            # perform the get output operation 
             jobInfo = {'jobId' : jobId[0],
                        'jobSpecId' : jobSpecId,
                        'directory' : self.directory,
@@ -515,18 +558,20 @@ class TrackingComponent:
             JobOutput.requestOutput(jobInfo)
                 
         return
-
+    '''
     def dashboardPublish(self, jobId, jobSpecId):
+        #TODO BLite counterparts?
+
+        # many bossCommands here have not a BossLite couterpart. How could we get information on the
+        # the dashboard or on the scheduler infos so that the fields are filled? # Fabio  
         """
         _dashboardPublish_
         
         publishes dashboard info
         """
 
-        # dashboard information
-        ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
-            jobId, jobSpecId, self.bossCfgDir
-            )
+        # dashboard information #TODO check
+        ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo( jobId, jobSpecId, self.bossCfgDir )
         if dashboardInfo.task == '' or dashboardInfo.task == None :
             logging.error( "unable to retrieve DashboardId" )
             return
@@ -607,6 +652,7 @@ class TrackingComponent:
                           dashboardInfo.__str__() + "\n" + str(msg))
 
         return
+    '''
 
     def updateDict(self, old, new):
         """
@@ -637,7 +683,7 @@ class TrackingComponent:
 
         # create a session
         
-        session = SafeSession(dbInstance = self.dbInstance)
+        session = SafeSession(dbInstance = self.msqlDBInstance)
         db = TrackingDB(session)
 
         # add jobs
@@ -661,7 +707,7 @@ class TrackingComponent:
         """
 
         # create a session
-        session = SafeSession(dbInstance = self.dbInstance)
+        session = SafeSession(dbInstance = self.msqlDBInstance)
         db = TrackingDB(session)
 
         # query database for active jobs information
@@ -703,7 +749,7 @@ class TrackingComponent:
 
         # initialize job handling object
         params = {}
-        params['bossCfgDir'] = self.bossCfgDir
+#        params['bossCfgDir'] = self.bossCfgDir
         params['baseDir'] = self.componentDir
         params['jobCreatorDir'] = self.jobCreatorDir
         params['usingDashboard'] = self.usingDashboard

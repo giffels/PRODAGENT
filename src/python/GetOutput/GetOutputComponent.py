@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id$"
-__revision__ = "$Revision$"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.1 2007/12/10 18:24:49 ckavka Exp $"
+__revision__ = "$Revision: 1.1.2.1 $"
 
 import os
 import logging
@@ -20,7 +20,7 @@ from ProdCommon.Database.SafeSession import SafeSession
 from ProdCommon.Database.MysqlInstance import MysqlInstance
 
 # BOSS
-from ProdAgentBOSS.BOSSCommands import BOSS
+#from ProdAgentBOSS.BOSSCommands import BOSS
 
 # GetOutput
 from GetOutput.JobOutput import JobOutput
@@ -74,26 +74,25 @@ class GetOutputComponent:
                          seconds.zfill(2)
 
         # get configuration information
-        workingDir = self.args['ProdAgentWorkDir']
-        workingDir = os.path.expandvars(workingDir)
+        #workingDir = self.args['ProdAgentWorkDir']
+        #workingDir = os.path.expandvars(workingDir)
         self.jobTrackingDir = self.args['JobTrackingDir']
 
         # get BOSS configuration, set directores and verbose mode
-        self.bossCfgDir = self.args['configDir']
+        ##self.bossCfgDir = self.args['configDir'] # Fabio
         self.componentDir = self.args["ComponentDir"]
-        self.jobCreatorDir = \
-                os.path.expandvars(self.args["JobCreatorComponentDir"])
+        self.jobCreatorDir = self.componentDir # fix for boss lite
+                # os.path.expandvars(self.args["JobCreatorComponentDir"])
         self.verbose = (self.args["verbose"] == 1)
-        self.bossCfgDir = self.args['configDir']
-        BOSS.setBossCfgDir(self.bossCfgDir)
-        logging.info("Using BOSS configuration from " + self.bossCfgDir)
+        ##BOSS.setBossCfgDir(self.bossCfgDir) # Fabio
+        ##logging.info("Using BOSS configuration from " + self.bossCfgDir)
 
         # initialize members
         self.ms = None
         self.maxGetOutputAttempts = 3
         self.database = dbConfig
         self.bossDatabase = deepcopy(dbConfig)
-        self.bossDatabase['dbName'] += "_BOSS"
+        ##self.bossDatabase['dbName'] += "_BOSS" Fabio
         self.bossDatabase['dbType'] = 'mysql'
         self.activeJobs = self.bossDatabase['dbName'] + ".jt_activejobs"
         self.dbInstance = MysqlInstance(self.bossDatabase)
@@ -104,9 +103,10 @@ class GetOutputComponent:
         # create pool thread for get output operations
         params = {}
         params['bossDB'] = self.bossDatabase['dbName']
-        params['bossCfgDir'] = self.bossCfgDir
+#        params['bossCfgDir'] = self.bossCfgDir  MATTY
         params['maxGetOutputAttempts'] = 3
         params['dbInstance'] = self.dbInstance
+
         JobOutput.setParameters(params)
         self.pool = WorkQueue([JobOutput.doWork] * \
                               int(self.args["GetOutputPoolThreadsSize"]))
@@ -261,14 +261,16 @@ class GetOutputComponent:
 
         # initialize job handling object
         params = {}
-        params['bossCfgDir'] = self.bossCfgDir
+#        params['bossCfgDir'] = self.bossCfgDir  MATTY
         params['baseDir'] = self.jobTrackingDir
         params['jobCreatorDir'] = self.jobCreatorDir
         params['usingDashboard'] = None
         params['messageServiceInstance'] = self.ms
+        logging.info("handleeee")
         self.jobHandling = JobHandling(params)
 
         # wait for messages
+        logging.info("waiting for mexico" )
         while True:
 
             # get a message

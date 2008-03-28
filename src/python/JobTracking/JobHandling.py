@@ -15,16 +15,24 @@ from ProdAgent.WorkflowEntities import JobState
 from ProdAgent.WorkflowEntities import Job as WEJob
 from ProdCommon.Database import Session
 
+from ProdAgentCore.ProdAgentException import ProdAgentException
+
+## MATTY
+from ProdAgentDB.Config import defaultConfig as dbConfig
+# Blite API import
+from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
+from ProdCommon.BossLite.Common.Exceptions import TaskError
 # BOSS
-from ProdAgentBOSS import BOSSCommands
+#from ProdAgentBOSS import BOSSCommands
 
 # Framework Job Report handling
 from ProdCommon.FwkJobRep.ReportState import checkSuccess
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.3 2007/12/11 19:44:44 ckavka Exp $"
-__revision__ = "$Revision: 1.1.2.3 $"
+
+__version__ = "$Id: JobHandling.py,v 1.1.2.4 2008/02/18 13:25:31 afanfani Exp $"
+__revision__ = "$Revision: 1.1.2.4 $"
 
 class JobHandling:
     """
@@ -37,11 +45,12 @@ class JobHandling:
         """
 
         # store parameters and open a connection
-        self.bossCfgDir = params['bossCfgDir']
+        #self.bossCfgDir = params['bossCfgDir']
         self.baseDir = params['baseDir']
         self.jobCreatorDir = params['jobCreatorDir']
         self.usingDashboard = params['usingDashboard']
         self.ms = params['messageServiceInstance']
+        self.blDBsession = BossLiteAPI('MySQL', dbConfig)
 
     def performOutputProcessing(self, jobInfo):
         """
@@ -50,19 +59,35 @@ class JobHandling:
 
         # get job information
         jobId = jobInfo['jobId']
+        taskId = jobId.split(".")[0]
+        jobIdent = jobId.split(".")[1]
+        submTimeN = jobId.split(".")[2]
         jobSpecId = jobInfo['jobSpecId']
         outp = jobInfo['output']
         bossStatus = jobInfo['bossStatus']
         jobData = [jobId, bossStatus]
+        subPath = ""
+        try:
+            jobObj = self.blDBsessionloadJob(taskId, jobIdent)
+            self.blDBsession.getRunningInstance(jobObj)
+            subPath = jobbe.runningJob['submissionPath']
+        except TaskError, te:
+            raise ProdAgentException("Problem with task: "+str(taskId))
+
 
         # successful output retrieval?
         if outp.find("-force") < 0 and \
            outp.find("error") < 0 and \
            outp.find("already been retrieved") < 0:
 
+            ## MATTY
             # yes, get report file name
-            reportfilename = BOSSCommands.reportfilename(jobId, \
-                                                         self.bossCfgDir)
+            #reportfilename = BOSSCommands.reportfilename(jobId, \
+            #                                             self.bossCfgDir)
+            reportfilename = "%s/BossJob_%s_%s/Submission_%s/FrameworkJobReport.xml" \
+                              % (subPath, taskId, jobId, submTimeN)
+
+
             logging.debug("report file name %s exists: %s" % \
                 (reportfilename, os.path.exists(reportfilename)))
 
@@ -78,18 +103,33 @@ class JobHandling:
 
             # FwkJobReport not there: create one based on BOSS DB
             else:
-
+                ## MATTY
                 # check success
-                success = BOSSCommands.checkSuccess(jobId, \
-                                                     self.bossCfgDir)
+                #success = BOSSCommands.checkSuccess(jobId, \
+                #                                     self.bossCfgDir)
+                success = False
+                try:
+                    jobObj = self.blDBsession.loadJob(taskId, jobId)
+                    self.blDBsession.getRunningInstance(jobObj)
+                    exeCode = jobbe.runningJob['wrapperReturnCode']
+                    jobCode = jobbe.runningJob['applicationReturnCode']
+                    success = (exeCode == "0" or exeCode == "" or exeCode == None or exeCode == 'NULL') and (jobCode == "0")
+                except JobError, exc:
+                    ## what to do?
+                    pass
+
                 logging.debug("check Job Success: %s" % str(success))
 
                 # create BOSS based Framework Job Report
                 fwjr = FwkJobReport()
                 fwjr.jobSpecId = jobSpecId
-                reportfilename = BOSSCommands.reportfilename(jobId, \
-                                                       self.baseDir)
 
+                ## MATTY
+                #reportfilename = BOSSCommands.reportfilename(jobId, \
+                #                                       self.baseDir)
+                reportfilename = "%s/BossJob_%s_%s/Submission_%s/FrameworkJobReport.xml" \
+                                  % (subPath, taskId, jobId, submTimeN)
+                
                 # job successful even if job report is not there
                 if success:
 
@@ -136,8 +176,13 @@ class JobHandling:
             # create job report
             fwjr = FwkJobReport()
             fwjr.jobSpecId = jobSpecId
-            reportfilename = BOSSCommands.reportfilename(jobId, \
-                                                         self.baseDir)
+
+            ## MATTY
+            #reportfilename = BOSSCommands.reportfilename(jobId, \
+            #                                             self.baseDir)
+            reportfilename = "%s/BossJob_%s_%s/Submission_%s/FrameworkJobReport.xml" \
+                              % (subPath, taskId, jobId, submTimeN)
+
             fwjr.exitCode = -1
             fwjr.status = "Failed"
 
@@ -149,8 +194,17 @@ class JobHandling:
             # store job report
             fwjr.write(reportfilename)
 
+            ## MATTY
             # archive job, forcing a deleted status in the BOSS DB
-            BOSSCommands.Delete(jobId, self.bossCfgDir)
+            #BOSSCommands.Delete(jobId, self.bossCfgDir)
+            try:
+                jobIdent = jobId.split(".")[1]
+                taskId = jobId.split(".")[0]
+                taskObj = self.blDBsession.loadTask(taskId)
+                self.blDBsession.archive(taskObj, [jobIdent])
+            except TaskError, exc:
+                pass
+
 
             # generate a failure message
             self.publishJobFailed(jobData, reportfilename)
@@ -160,14 +214,13 @@ class JobHandling:
             logging.error(outp)
 
         return
-
+    '''
     def dashboardPublish(self, jobId, jobSpecId):
         """
         _dashboardPublish_
 
         publishes dashboard info
         """
-
         # dashboard information
         ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
             jobId, jobSpecId, self.bossCfgDir
@@ -253,6 +306,7 @@ class JobHandling:
                           dashboardInfo.__str__() + "\n" + str(msg))
 
         return
+    '''
 
     def publishJobSuccess(self, jobId, reportfilename):
         """
@@ -310,11 +364,7 @@ class JobHandling:
         fjr = readJobReport(reportfilename)
 
         # fallback directory in JobTracking.
-        try:   
-            fallbackCacheDir = self.baseDir + "/%s" % fjr[0].jobSpecId
-        except Exception, e:
-            logging.error("Empty framework job report: %s"%jobId[0])
-            return reportfilename
+        fallbackCacheDir = self.baseDir + "/%s" % fjr[0].jobSpecId
 
         # try to get cache from JobState
         try:
@@ -502,10 +552,19 @@ class JobHandling:
         # remove directory tree for finished jobs or when there will not
         # be resubmitted
         if success == "Success" or int(jobMaxRetries) <= int(resub):
-
+            subPath = ""
             # get submission path
             try:
-                subPath = BOSSCommands.subdir(jobId[0], self.bossCfgDir)
+                ## MATTY
+                #subPath = BOSSCommands.subdir(jobId[0], self.bossCfgDir)
+                try:
+                    taskId = jobId[0].split(".")[0]
+                    jobIdent = jobId[0].split(".")[1]
+                    jobObj = self.blDBsessionloadJob(taskId, jobIdent)
+                    self.blDBsession.getRunningInstance(jobObj)
+                    subPath = jobbe.runningJob['submissionPath']
+                except TaskError, te:
+                    raise ProdAgentException("Problem with task: "+str(taskId))
 
             except StandardError:
                 subPath = ""
@@ -513,8 +572,22 @@ class JobHandling:
             logging.debug("SubmissionPath: %s" % subPath)
 
             # set status to ended
-            if BOSSCommands.taskEnded(jobId[0], self.bossCfgDir):
 
+            ## MATTY
+            taskObj = None
+            tot = 0
+            ended = 0
+            try:
+                taskObj = self.blDBsession.loadTaskByName( taskName )
+                for jobbe in taskObj.jobs:
+                    self.blDBsession.getRunningInstance(jobbe)
+                    totJobs += 1
+                    if jobbe.runningJob['status'] in ["E","SA","SK","SE"]:
+                        endedJobs += 1
+            except TaskError, te:
+                taskObj = None
+            if endedJobs == totJobs:
+#            if BOSSCommands.taskEnded(jobId[0], self.bossCfgDir):
 
                 # remove directory tree
                 try:
@@ -539,7 +612,16 @@ class JobHandling:
 
                 # archive job
                 try:
-                    BOSSCommands.archive(jobId[0], self.bossCfgDir)
+                    ## MATTY
+                    try:
+                        jobIdent = jobId[0].split(".")[1]
+                        taskId = jobId[0].split(".")[0]
+                        taskObj = self.blDBsession.loadTask(taskId)
+                        self.blDBsession.archive(taskObj, [jobIdent])
+                    except TaskError, exc:
+                        pass
+
+                    #BOSSCommands.archive(jobId[0], self.bossCfgDir)
 
                 # error, cannot archive job
                 except StandardError, msg:
