@@ -7,8 +7,8 @@ and in general with OS and scheduler features
 
 """
 
-__revision__ = "$Revision: 1.14.2.7 $"
-__version__ = "$Id: BOSSCommands.py,v 1.14.2.7 2007/11/21 13:24:47 gcodispo Exp $"
+__revision__ = "$Revision: 1.14.2.8 $"
+__version__ = "$Id: BOSSCommands.py,v 1.14.2.8 2007/12/10 11:42:16 gcodispo Exp $"
 
 import time
 from popen2 import Popen4
@@ -24,7 +24,7 @@ import logging
 import shutil
 from ProdAgentCore.ProdAgentException import ProdAgentException
 
-from BossSession import BossSession, BossAdministratorSession, BossError
+#from BossSession import BossSession, BossAdministratorSession, BossError
 
 from time import sleep
 
