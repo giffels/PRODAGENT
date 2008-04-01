@@ -15,7 +15,7 @@ from ProdCommon.Database import Session
 
 Session.set_database(dbConfig)
 
-def queueJob(jobSpecFile, priorityMap):
+def queueJob(jobSpecFile, priorityMap, jobSpec=None):
     """
     _queueJob_
 
@@ -25,15 +25,18 @@ def queueJob(jobSpecFile, priorityMap):
     jobs.
     
     """
-    spec = JobSpec()
-    try:
-        spec.load(jobSpecFile)
-    except Exception, ex:
-        msg = "Unable to read JobSpec File:\n"
-        msg += "%s\n" % jobSpecFile
-        msg += "Error: %s\n" % str(ex)
-        logging.error(msg)
-        return
+    if jobSpec != None and jobSpecFile.__class__ is JobSpec:
+        spec = jobSpecFile
+    else:
+        spec = JobSpec()
+        try:
+            spec.load(jobSpecFile)
+        except Exception, ex:
+            msg = "Unable to read JobSpec File:\n"
+            msg += "%s\n" % jobSpecFile
+            msg += "Error: %s\n" % str(ex)
+            logging.error(msg)
+            return
     
     
     workflow = spec.payload.workflow
@@ -60,7 +63,6 @@ def queueJob(jobSpecFile, priorityMap):
         Session.rollback()
         Session.close_all()
     return
-
 
 def bulkQueueJobs(listOfSites, *jobSpecDicts):
     """
