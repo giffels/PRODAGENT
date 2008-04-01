@@ -237,7 +237,7 @@ def getJobs():
                 # that the job is happily running, unless we've gotten
                 # many "Job information not found" in a row, in which
                 # case we assume something bad has happened.
-                if getNoInfo.get(id) < 10:
+                if getNoInfo(id) < 10:
                     s = "ASSUMED_ALIVE"
                     incNoInfo(id)
                 else:
