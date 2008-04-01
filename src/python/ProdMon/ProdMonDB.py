@@ -1049,3 +1049,24 @@ def selectRcSitePerformance(site, interval=86400, workflow=None, type=None):
                 (float(type["success"]) / type["jobs"]) or None
     
     return performance
+
+
+def getOutputDatasets(workflow):
+    """
+    return the output datasets for this workflow
+    """
+    
+    sqlStr = """SELECT prodmon_Datasets.dataset_name
+                 FROM prodmon_Workflow 
+                 JOIN prodmon_output_datasets_map ON prodmon_Workflow.workflow_id = prodmon_output_datasets_map.workflow_id 
+                 JOIN prodmon_Datasets ON prodmon_Datasets.dataset_id = prodmon_output_datasets_map.dataset_id
+                 WHERE prodmon_Workflow.workflow_name = '%s'""" % workflow
+                 
+    Session.set_database(dbConfig)
+    Session.connect()
+    Session.execute(sqlStr)
+    rows = Session.fetchall() 
+    Session.close()
+    
+    results = [removeTuple(instance) for instance in rows]
+    return results
