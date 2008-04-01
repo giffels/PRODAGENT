@@ -23,10 +23,13 @@ def queueJob(jobSpecFile, priorityMap, jobSpec=None):
     priority map by job Type.
     This queues a single job and is potentially slow for large groups of
     jobs.
-    
+   
+    jobSpec is a JobSpec instance. If the jobSpec is available pass the jobSpec
+    as well as the jobSpecFile location for the performace.
+    jobSpecFile won't be loaded, but needed to update the database
     """
-    if jobSpec != None and jobSpecFile.__class__ is JobSpec:
-        spec = jobSpecFile
+    if jobSpec != None and jobSpec.__class__ is JobSpec:
+        spec = jobSpec
     else:
         spec = JobSpec()
         try:
