@@ -12,19 +12,17 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.1 2007/12/10 18:24:50 ckavka Exp $"
-__revision__ = "$Revision: 1.1.2.1 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.2 2008/03/28 15:36:51 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.2 $"
 
 import logging
-##from ProdAgentBOSS import BOSSCommands
-from GetOutput.TrackingDB import TrackingDB
-from ProdCommon.Database.MysqlInstance import MysqlInstance
-from ProdCommon.Database.SafeSession import SafeSession
+import os
 
 # BossLite import
-from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
+from ProdCommon.BossLite.Scheduler import Scheduler
 
 ###############################################################################
 # Class: JobOutput                                                            #
@@ -37,15 +35,13 @@ class JobOutput:
 
     # default parameters
     params = {'maxGetOutputAttempts' : 3,
-#              'bossCfgDir' : '.',  MATTY
-              'dbInstance' : None}
+              'componentDir' : None,
+              'dbConfig' : None}
 
     def __init__(self):
         """
         Attention: in principle, no instance of this static class is created!
         """
-       
-        self.blDBsession = BossLiteAPI('MySQL', dbConfig)
         pass
 
     @classmethod
@@ -57,59 +53,35 @@ class JobOutput:
         cls.params = params
 
     @classmethod
-    def requestOutput(cls, jobInfo):
+    def requestOutput(cls, job):
         """
         request output for job.
 
         """
 
-        # get job data
-        jobId = jobInfo['jobId']
-        jobSpecId = jobInfo['jobSpecId']
-        directory = jobInfo['directory']
-        bossStatus = jobInfo['bossStatus']
-
-        # open database
-        session = SafeSession(dbInstance = cls.params['dbInstance'])
-        db = TrackingDB(session)
-
-        # get job info
-        job = db.getJobInfo(jobId)
-
-        # add the job if it does not exist
-        if job == {}:
-            db.addJobs([jobId])
-            job = db.getJobInfo(jobId)
-
         # verify status
-        if job['status'] != 'output_not_requested':
-            logging.error("Job %s is in status %s, cannot request output" % \
-                          (jobId, job['status']))
-            session.close()
+
+
+        
+        if job.runningJob['processStatus'] != 'handled':
+            logging.error("Job %s.%s is in status %s, cannot request output" \
+                          % (job['taskId'], job['jobId'], job.runningJob['processStatus']))
             return
 
-        # set job info and modify status
-        modified = db.setJobInfo(jobId,
-                                 status = 'output_requested',
-                                 jobSpecId = jobSpecId,
-                                 directory = directory,
-                                 bossStatus = bossStatus)
-
-        # interrupted opearation, already enqueued
-        if modified == 0:
-
-            logging.error("Output for job %s cannot be requested" % jobId)
-            session.close()
-            return
+        job.runningJob['processStatus'] = 'output_requested'
 
         # commit and close session
-        session.commit()
-        session.close()
+        try :
+            bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+            bossLiteSession.updateDB( job.runningJob )
+        except :
+            logging.error("Output for job %s.%s cannot be requested" % \
+                          (job['taskId'], job['jobId'] ) )
 
-        logging.debug("getoutput request for %s successfully enqueued" % jobId)
+        logging.debug("getoutput request for %s successfully enqueued" % job['jobId'])
 
     @classmethod
-    def doWork(cls, jobId):
+    def doWork(cls, job):
         """
         get the output of the job specified.
 
@@ -119,38 +91,40 @@ class JobOutput:
 
         try:
 
-            logging.debug("Getting output for job" + str(jobId))
+            logging.debug("Getting output for job" + str(job))
 
             # open database
-            session = SafeSession(dbInstance = cls.params['dbInstance'])
-            db = TrackingDB(session)
-
-            # get job info
-            jobInfo = db.getJobInfo(jobId)
-
-            # verify the job exists
-            if jobInfo == {}:
-                logging.error("Cannot get output, job %s is not registered" % \
-                              jobId)
-                session.close()
-                return jobId
+            bossLiteSession = BossLiteAPI('MySQL', dbConfig)
 
             # verify the status 
-            status = jobInfo['status']
+            status = job.runningJob['processStatus']
+
+            # create directory
+            outdir = cls.params['componentDir'] + \
+                     '/BossJob_%s_%s/Submission_%s' % \
+                     (job['taskId'], job['jobId'], job['submissionNumber'])
+            try:
+                os.makedirs( outdir )
+            except OSError, err:
+                if  err.errno == 17:
+                    # existing dir
+                    pass
+                else :
+                    # cannot create directory, go to next job
+                    logging.error("Cannot create directory : " + str(err))
+                    return
 
             # output retrieved before, then recover interrupted operation
             if status == 'output_retrieved':
                 logging.warning("Enqueuing previous ouput for job %s" % \
-                              jobId)
-                session.close()
-                return jobId
+                              str(job) )
+                return job
 
             # non expected status, abandon processing for job
             if status != 'in_progress':
                 logging.error("Cannot get output for job %s, status is %s" % \
-                              (jobId, jobInfo['status']))
-                session.close()
-                return jobId
+                              (job['jobId'], status) )
+                return job
 
             #  get output, trying at most maxGetOutputAttempts
             retry = 0
@@ -158,59 +132,61 @@ class JobOutput:
 
                 # perform get output operation
                 try:
-                    ##output = BOSSCommands.getoutput(jobId, jobInfo['directory'], cls.params['bossCfgDir'])
-                    # Fix for BossLite # Fabio 
-                    jobObj = self.blDBsession.loadJobsByAttr( {'jobId' : jobId} )
-                    schedulerConfig = {'name' : jobObj['scheduler'],
-                          'user_proxy' : jobObj['user_proxy'] ,
-                          'service' : jobObj['service'] }
-                          # 'config' : '/etc/glite_wms.conf' }
-
-                    # laod the job by attribute on jobId
-                    blSchedSession = BossLiteAPISched(self.blDBsession, schedulerConfig)
-                    blSchedSession.getOutput( self, jobObj['taskId'], jobId, jobInfo['directory'])
-
+                    task = bossLiteSession.loadTask(job['taskId'])
+                    if task['user_proxy'] is None:
+                        task['user_proxy'] = ''
+                    schedulerConfig = {'name' : job.runningJob['scheduler'],
+                                       'user_proxy' : task['user_proxy'] ,
+                                       'service' : job.runningJob['service'] }
+                    scheduler = Scheduler.Scheduler( 
+                        job.runningJob['scheduler'], schedulerConfig
+                        )
+                    scheduler.getOutput( job, outdir)
                     break
 
                 # error, update retry counter
-                except Exception, msg:
+                except StandardError, msg:
                     logging.error(str(msg))
-                    output = "error"
+                    output = str(msg)
                     retry += 1
 
+            # FIXME: find a better way to report errors
+            job.runningJob['statusHistory'].append(output)
+            bossLiteSession.updateDB( job )
+
             # check for empty output
-            if output == '':
-                output = "error: no output retrived by BOSSGetoutput command"
+            # if output == '':
+            #    output = "error: no output retrived by BOSSGetoutput command"
 
             # update quotes in output
-            output = output.replace("'", '"')
+            #output = output.replace("'", '"')
 
             # update info in database
-            updateStatus = db.setJobInfo(jobId, status = 'output_retrieved', \
-                                         output = output)
-            if updateStatus != 1:
-                logging.warning("Output not updated for job %s: %s" % \
-                                (jobId,updateStatus))
-            else:
-                logging.debug("Output for job %s successfully enqueued" % \
-                              jobId)
+            #updateStatus = db.setJobInfo(jobId, status = 'output_retrieved', \
+            #                             output = output)
+            #if updateStatus != 1:
+            #    logging.warning("Output not updated for job %s: %s" % \
+            #                    (jobId,updateStatus))
+            #else:
+            #    logging.debug("Output for job %s successfully enqueued" % \
+            #                  jobId)
 
             # done, commit and finish
-            session.commit()
-            session.close()
+            #session.commit()
+            #session.close()
 
             # return job info
-            return jobId
+            return job
 
         # thread has failed
-        except Exception, msg:
+        except StandardError, msg:
 
             # show error message 
             msg = "GetOutputThread exception: %s" % str(msg)
             logging.error(msg)
 
             # return also the id
-            return jobId
+            return job
  
     @classmethod
     def recreateOutputOperations(cls, pool):
@@ -228,12 +204,14 @@ class JobOutput:
         logging.debug("Recreating interrupted operations")
 
         # open database
-        session = SafeSession(dbInstance = cls.params['dbInstance'])
-        db = TrackingDB(session)
+        bossLiteSession = BossLiteAPI('MySQL', dbConfig)
 
         # get interrupted operations
-        jobs = db.getJobs(status="in_progress") + \
-               db.getJobs(status="output_retrieved")
+        jobs = bossLiteSession.loadJobsByRunningAttr( 
+            { 'processStatus' : 'in_progress' } ) + \
+            bossLiteSession.loadJobsByRunningAttr(
+            { 'processStatus' : 'output_retrieved' } )
+
         numberOfJobs = len(jobs)
 
         logging.debug("Going to recreate %s get output requests" % \
@@ -243,12 +221,10 @@ class JobOutput:
         for job in jobs:
             pool.enqueue(job, job)
 
-        # close database
-        session.close()
         logging.debug("Recreated %s get output requests" % numberOfJobs)
 
     @classmethod
-    def setDoneStatus(cls, jobId):
+    def setDoneStatus(cls, job):
         """
         _setDoneStatus_
 
@@ -256,21 +232,14 @@ class JobOutput:
 
         """
 
-        logging.debug("set done status for: " + str(jobId))
+        logging.debug("set done status for: " + str(job))
 
-        session = SafeSession(dbInstance = cls.params['dbInstance'])
+        bossLiteSession = BossLiteAPI('MySQL', dbConfig)
 
         # update job status
-        query = """update """ + cls.params['bossDB'] + """.jt_activejobs
-                      set status='output_processed'
-                    where job_id='""" + jobId + """'
-                """
-        session.execute(query)
+        job['processStatus'] = 'output_processed'
+        bossLiteSession.updateDB( job )
 
-        # close database
-        session.commit()
-        session.close()
-
-        logging.debug("Output processing done for %s", jobId)
+        logging.debug("Output processing done for %s", str(job))
 
 

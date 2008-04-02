@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.1 2007/12/10 18:24:49 ckavka Exp $"
-__revision__ = "$Revision: 1.1.2.1 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.2 2008/03/28 15:36:51 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.2 $"
 
 import os
 import logging
@@ -16,16 +16,13 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from MessageService.MessageService import MessageService
 import ProdAgentCore.LoggingUtils as LoggingUtils
 from ProdCommon.Database import Session
-from ProdCommon.Database.SafeSession import SafeSession
-from ProdCommon.Database.MysqlInstance import MysqlInstance
-
-# BOSS
-#from ProdAgentBOSS.BOSSCommands import BOSS
 
 # GetOutput
 from GetOutput.JobOutput import JobOutput
-from GetOutput.TrackingDB import TrackingDB
 from JobTracking.JobHandling import JobHandling
+
+# BossLite support 
+from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 
 # Threads
 from ProdCommon.ThreadTools.WorkQueue import WorkQueue
@@ -79,33 +76,30 @@ class GetOutputComponent:
         self.jobTrackingDir = self.args['JobTrackingDir']
 
         # get BOSS configuration, set directores and verbose mode
-        ##self.bossCfgDir = self.args['configDir'] # Fabio
         self.componentDir = self.args["ComponentDir"]
         self.jobCreatorDir = self.componentDir # fix for boss lite
-                # os.path.expandvars(self.args["JobCreatorComponentDir"])
         self.verbose = (self.args["verbose"] == 1)
-        ##BOSS.setBossCfgDir(self.bossCfgDir) # Fabio
-        ##logging.info("Using BOSS configuration from " + self.bossCfgDir)
 
         # initialize members
         self.ms = None
         self.maxGetOutputAttempts = 3
         self.database = dbConfig
-        self.bossDatabase = deepcopy(dbConfig)
-        ##self.bossDatabase['dbName'] += "_BOSS" Fabio
-        self.bossDatabase['dbType'] = 'mysql'
-        self.activeJobs = self.bossDatabase['dbName'] + ".jt_activejobs"
-        self.dbInstance = MysqlInstance(self.bossDatabase)
+        self.database = deepcopy(dbConfig)
+        ##self.database['dbName'] += "_BOSS" Fabio
+        self.database['dbType'] = 'MySQL'
+        #self.activeJobs = self.database['dbName'] + ".jt_activejobs"
+        #self.dbInstance = MysqlInstance(self.database)
+        self.bossLiteSession = BossLiteAPI('MySQL', self.database)
 
         # initialize job handling
         self.jobHandling = None
 
         # create pool thread for get output operations
         params = {}
-        params['bossDB'] = self.bossDatabase['dbName']
-#        params['bossCfgDir'] = self.bossCfgDir  MATTY
+        params['componentDir'] = self.jobTrackingDir
+        params['dbConfig'] = self.database
         params['maxGetOutputAttempts'] = 3
-        params['dbInstance'] = self.dbInstance
+#        params['dbInstance'] = self.dbInstance
 
         JobOutput.setParameters(params)
         self.pool = WorkQueue([JobOutput.doWork] * \
@@ -156,30 +150,37 @@ class GetOutputComponent:
         logging.info("Starting poll cycle")
 
         # create database session
-        session = SafeSession(dbInstance = self.dbInstance)
-        db = TrackingDB(session)
+        # session = SafeSession(dbInstance = self.dbInstance)
+        # db = TrackingDB(session)
 
         # remove processed jobs
-        db.removeJobs(status="output_processed")
-        session.commit()
+        # db.removeJobs(status="output_processed")
+        # session.commit()
 
         # get jobs that require output
-        outputRequestedJobs = db.getJobs(status="output_requested")
+        # outputRequestedJobs = db.getJobs(status="output_requested")
+        outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
+            { 'processStatus' : 'output_requested' } )
         numberOfJobs = len(outputRequestedJobs)
 
         if numberOfJobs != 0:
             
-            # change status for jobs that require get output operations
-            modified = db.setJobs(outputRequestedJobs, status='in_progress')
-            if modified != numberOfJobs:
-                logging.warning("Only %s of %s jobs  to 'in_process'" % \
-                                (modified, numberOfJobs))
-
-            # commit changes to database before starting any thread!
-            session.commit()
-
-            # start request output thread for them
+            # # change status for jobs that require get output operations
+            # modified = db.setJobs(outputRequestedJobs, status='in_progress')
+            # if modified != numberOfJobs:
+            #     logging.warning("Only %s of %s jobs  to 'in_process'" % \
+            #                     (modified, numberOfJobs))
+            # 
+            # # commit changes to database before starting any thread!
+            # session.commit()
+            # 
+            # # start request output thread for them
+            # for job in outputRequestedJobs:
+            #     self.pool.enqueue(job, job)
+            ### here was good the compund update... to be reimplemented
             for job in outputRequestedJobs:
+                job.runningJob['processStatus'] = 'in_progress'
+                self.bossLiteSession.updateDB( job )
                 self.pool.enqueue(job, job)
 
         logging.debug("Start processing of outputs")
@@ -194,16 +195,13 @@ class GetOutputComponent:
                 continue
 
             # process output
-            self.processOutput(db, jobFinished[1])
-            session.commit()
+            self.processOutput(jobFinished[1])
 
             # get new work
             jobFinished = self.pool.dequeue()
 
         logging.debug("Finished processing of outputs")
 
-        # close database
-        session.close()
 
         # generate next polling cycle
         logging.info("Waiting %s for next get output polling cycle" % \
@@ -211,29 +209,21 @@ class GetOutputComponent:
         self.ms.publish("GetOutputComponent:pollDB", "", self.pollDelay)
         self.ms.commit()
 
-    def processOutput(self, db, jobId):
+    def processOutput(self, job):
         """
         _processOutput_
         """
 
-        logging.debug("Processing output for job: %s" % jobId)
-
-        # get job information
-        jobInfo = db.getJobInfo(jobId)
-        if jobInfo == {}:
-            logging.error("No information available for job %s" % jobId)
-            return
+        logging.debug("Processing output for job: %s" % job['jobId'])
 
         # perform processing
-        self.jobHandling.performOutputProcessing(jobInfo)
+        self.jobHandling.performOutputProcessing(job)
 
         # update status
-        modified = db.setJobInfo(jobId, status = 'output_processed')
-        if modified != 1:
-            logging.error("Cannot set processed status for job %s" % jobId)
-            return
+        job.runningJob['processStatus'] = 'output_processed'
+        self.bossLiteSession.updateDB( job )
 
-        logging.debug("Processing output for job %s finished" % jobId)
+        logging.debug("Processing output for job %s finished" % job)
 
     def startComponent(self):
         """
@@ -274,10 +264,10 @@ class GetOutputComponent:
         while True:
 
             # get a message
-            type, payload = self.ms.get()
+            mtype, payload = self.ms.get()
             self.ms.commit()
-            logging.debug("GetOutputComponent: %s, %s" % (type, payload))
+            logging.debug("GetOutputComponent: %s, %s" % (mtype, payload))
 
             # process it
-            self.__call__(type, payload)
+            self.__call__(mtype, payload)
 
