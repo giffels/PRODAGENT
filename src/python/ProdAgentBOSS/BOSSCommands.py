@@ -7,8 +7,8 @@ and in general with OS and scheduler features
 
 """
 
-__revision__ = "$Revision: 1.14.2.8 $"
-__version__ = "$Id: BOSSCommands.py,v 1.14.2.8 2007/12/10 11:42:16 gcodispo Exp $"
+__revision__ = "$Revision: 1.14.2.9 $"
+__version__ = "$Id: BOSSCommands.py,v 1.14.2.9 2008/03/28 15:38:45 gcodispo Exp $"
 
 import time
 from popen2 import Popen4
@@ -24,16 +24,26 @@ import logging
 import shutil
 from ProdAgentCore.ProdAgentException import ProdAgentException
 
-#from BossSession import BossSession, BossAdministratorSession, BossError
+# BossLite support 
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
+from ProdCommon.BossLite.Scheduler import Scheduler
+from ProdCommon.BossLite.DbObjects.Job import Job
+from ProdCommon.BossLite.DbObjects.Task import Task
+
+from ProdCommon.Database.MysqlInstance import MysqlInstance
+from ProdCommon.Database.SafeSession import SafeSession
+from ProdCommon.Database.SafePool import SafePool
+from ProdCommon.Database import Session
 
 from time import sleep
 
-class BOSS:
+class directDB:
 
     """
     A static instance of this class deals with job status operations
     """
-    bossCfgDir = ''
+
     def __init__(self):
         """
         Attention: in principle, only class variables should be initialized
@@ -43,99 +53,164 @@ class BOSS:
         pass
 
     @classmethod
-    def setBossCfgDir(cls, path):
+    def getDbSession(cls):
         """
-        Set the configuration directory for static class BOSS
+        gets a session.
         """
-        cls.bossCfgDir = path
+        dbInstance = MysqlInstance(dbConfig)
+        session = SafeSession(dbInstance = dbInstance)
+        return session
 
     @classmethod
-    def getBossCfgDir(cls):
+    def select(cls, dbSession, query):
         """
-        Get the BOSS configuration dir
+        execute a query.
         """
-        return cls.bossCfgDir
+
+        if (dbSession.execute(query) > 0):
+            out = dbSession.fetchall()
+        else :
+            out = None
+
+        # return query results
+        return out
 
     @classmethod
-    def getBossSession(cls):
+    def selectOne(cls, dbSession, query):
         """
-        gets a BOSS session.
-        """
-
-        bossSessionOk = False
-
-        while not bossSessionOk:
-            try:
-
-                # create session
-                bossSession = BossSession(cls.bossCfgDir)
-                bossSessionOk = True
-
-            # BOSS error
-            except BossError, e:
-                logging.info("BOSS Error : " + e.__str__())
-                logging.info("Waiting 30 seconds to try to get a session...")
-                sleep(30)
-
-        # return session
-        return bossSession
-
-    @classmethod
-    def getBossAdminSession(cls):
-        """
-        gets a BOSS session.
+        execute a query.with only one result expected
         """
 
-        bossSessionOk = False
+        if (dbSession.execute(query) > 0):
+            out = dbSession.fetchone()[0]
+        else :
+            out = None
 
-        while not bossSessionOk:
-            try:
-
-                # create session
-                adminSession = BossAdministratorSession(cls.bossCfgDir)
-                bossSessionOk = True
-
-            # BOSS error
-            except BossError, e:
-                logging.info("BOSS Error : " + e.__str__())
-                logging.info("Waiting 30 seconds to try to get a session...")
-                sleep(30)
-
-        # return session
-        return adminSession
+        # return query results
+        return out
 
 
     @classmethod
-    def performBossQuery(cls, adminSession, query):
+    def modify(cls, dbSession, query):
         """
-        execute a BOSS query.
+        execute a query which does not return such as insert/update/delete
         """
 
-        queryOk = False
+        # return query results
+        dbSession.execute( query )
+        dbSession.commit()
 
-        while not queryOk:
-            try:
-
-                # perform query
-                out = adminSession.SQL(query)
-                queryOk = True
-
-            # BOSS error, assume connection problems
-            except BossError, e:
-
-                logging.info("BOSS query error: " + e.__str__() + \
-                             ", trying to recreate session")
-                adminSession = cls.getBossSession()
-
-        # return session and query results
-        return (adminSession, out)
+    @classmethod
+    def close(cls, dbSession):
+        """
+        close session.
+        """
+        dbSession.close()
 
 
+def fullId( job ):
+    """
+    compose job primary keys in a string
+    """
+
+    return str( job['taskId'] ) + '.' \
+           + str( job['jobId'] ) + '.' \
+           + str( job['submissionNumber'] )
 
 
+def guessDashboardInfo(job, bossLiteSession):
+    """
+    guess dashboard info file
+    """
+
+    # dashboard information
+    from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
+    dashboardInfo = DashboardInfo()
+
+    jobSpecId = job['name']
+
+    # define dashboard file name
+    try :
+        jobCacheDir = JobState.general(jobSpecId)['CacheDirLocation']
+        logging.info("js cache_dir = " + jobCacheDir )
+    except StandardError:
+        logging.info("failed to get cache_dir from js, trying with we" )
+        try :
+            WEjobState = WEJob.get( jobSpecId )
+            jobCacheDir = WEjobState['cache_dir']
+            logging.info("we cache_dir = " + jobCacheDir )
+        except StandardError:
+            logging.info("failed to get cache_dir from we" )
+            logging.info("failed to get cache_dir for job " + jobSpecId)
+            return dashboardInfo, ''
+    dashboardInfoFile = os.path.join( jobCacheDir, "DashboardInfo.xml" )
+
+    # check it
+    if os.path.exists(dashboardInfoFile):
+
+        try:
+            # it exists, get dashboard information
+            dashboardInfo.read(dashboardInfoFile)
+
+            # get rid of old info, keep just the identifier
+#            dashboardInfo.clear()
+            
+            # it does not work, abandon
+        except StandardError, msg:
+            logging.error("Reading dashboardInfoFile " + \
+                          dashboardInfoFile + " failed (jobId=" \
+                          + fullId( job ) + ")\n" + str(msg))
+            return dashboardInfo, ''
+        except:
+            return dashboardInfo, ''
+
+    else :
+        # if this is a crab job read from mlCommonInfo
+        tmpdict = {}
+        try:
+            task = bossLiteSession.loadTask(job['taskId'])
+            mlInfoFile = task['startDirectory'].split('.boss_cache' )[0] + \
+                         '/mlCommonInfo'
+            logging.info( "guessing dashboardID from " + mlInfoFile )
+            fh = open( mlInfoFile, 'r' )
+            for line in fh.readlines() :
+                (tag, value) = line.split(':')
+                tmpdict[ tag ] = value.strip()
+        except IOError:
+            logging.error( "Missing " + mlInfoFile )
+            # guess job dashboardID
+
+        try :
+            dashboardInfo.task = tmpdict['taskId']
+            dashboardInfo.job = ''
+        except KeyError:
+            logging.error( "unable to get dashboardID for job : " + fullId( job ) )
+            return dashboardInfo, ''
+        try :
+            dashboardInfo['JSTool'] =  tmpdict['tool']
+        except KeyError:
+            pass
+        try :
+            dashboardInfo['User'] = tmpdict['user']
+        except KeyError:
+            pass
+        try :
+            dashboardInfo['JSToolUI'] = tmpdict['tool_ui']
+        except KeyError:
+            pass
+        try :
+            dashboardInfo['TaskType'] = tmpdict['taskType']
+        except KeyError:
+            pass
+
+    return dashboardInfo, dashboardInfoFile
 
 
-
+#####################################
+#
+# OLD STUFF
+#
+#####################################
 
 
 
@@ -604,6 +679,9 @@ def subdir(jobId, bossCfgDir):
     #logging.debug("BOSS4subdir outp '%s'"%outp)    
     return out
 
+#############################################################
+# begin of the new implementation
+#
 
 
 def schedulerInfo( bossCfgDir, jobId ):
@@ -1208,102 +1286,4 @@ def Delete(jobId, bossCfgDir):
 #        )
     
     return out
-
-
-def guessDashboardInfo(jobId, jobSpecId, bossCfgDir):
-    """
-    guess dashboard info file
-    """
-
-    # dashboard information
-    from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
-    dashboardInfo = DashboardInfo()
-
-    # get job information
-    taskid  = jobId.split('.')[0]
-
-    # set BOSS path
-    BOSS.setBossCfgDir(bossCfgDir)
-
-    # get BOSS task
-    bossSession = BOSS.getBossSession()
-    bossTask = bossSession.makeBossTask( taskid ).taskMap()
-
-    # define dashboard file name
-    try :
-        jobCacheDir = JobState.general(jobSpecId)['CacheDirLocation']
-        logging.info("js cache_dir = " + jobCacheDir )
-    except StandardError:
-        logging.info("failed to get cache_dir from js, trying with we" )
-        try :
-            WEjobState = WEJob.get( jobSpecId )
-            jobCacheDir = WEjobState['cache_dir']
-            logging.info("we cache_dir = " + jobCacheDir )
-        except StandardError:
-            logging.info("failed to get cache_dir from we" )
-            logging.info("failed to get cache_dir for job " + jobSpecId)
-            return dashboardInfo, ''
-    dashboardInfoFile = os.path.join( jobCacheDir, "DashboardInfo.xml" )
-
-#    dashboardInfoFile = bossTask['SUB_PATH'] + \
-#                        "/DashboardInfo%s_%s.xml" % (taskid, chainid)
-
-    # check it
-    if os.path.exists(dashboardInfoFile):
-
-        try:
-            # it exists, get dashboard information
-            dashboardInfo.read(dashboardInfoFile)
-
-            # get rid of old info, keep just the identifier
-#            dashboardInfo.clear()
-            
-            # it does not work, abandon
-        except StandardError, msg:
-            logging.error("Reading dashboardInfoFile " + \
-                          dashboardInfoFile + " failed (jobId=" \
-                          + str(jobId) + ")\n" + str(msg))
-            return dashboardInfo, ''
-        except:
-            return dashboardInfo, ''
-
-    else :
-        # if this is a crab job read from mlCommonInfo
-        tmpdict = {}
-        try:
-            mlInfoFile = bossTask['SUB_PATH'].split('.boss_cache' )[0] + \
-                         '/mlCommonInfo'
-            logging.info( "guessing dashboardID from " + mlInfoFile )
-            fh = open( mlInfoFile, 'r' )
-            for line in fh.readlines() :
-                (tag, value) = line.split(':')
-                tmpdict[ tag ] = value.strip()
-        except IOError:
-            logging.error( "Missing " + mlInfoFile )
-            # guess job dashboardID
-
-        try :
-            dashboardInfo.task = tmpdict['taskId']
-            dashboardInfo.job = ''
-        except KeyError:
-            logging.error( "unable to get dashboardID for job : " + jobId )
-            return dashboardInfo, ''
-        try :
-            dashboardInfo['JSTool'] =  tmpdict['tool']
-        except KeyError:
-            pass
-        try :
-            dashboardInfo['User'] = tmpdict['user']
-        except KeyError:
-            pass
-        try :
-            dashboardInfo['JSToolUI'] = tmpdict['tool_ui']
-        except KeyError:
-            pass
-        try :
-            dashboardInfo['TaskType'] = tmpdict['taskType']
-        except KeyError:
-            pass
-
-    return dashboardInfo, dashboardInfoFile
 
