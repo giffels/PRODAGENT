@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.2 2008/03/28 15:36:51 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.2 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.3 2008/04/02 15:28:27 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.3 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 
@@ -109,7 +109,7 @@ class TrackingDB:
 
         query = \
               'select g.task_id,g.job_id from bl_runningjob j' \
-              + 'right join jt_group g' \
+              + ' right join jt_group g' \
               + ' on (j.task_id=g.task_id and j.job_id=g.job_id) ' \
               + ' where j.job_id IS NULL ' \
               + " or j.status in ('SE','SD','SA')"
