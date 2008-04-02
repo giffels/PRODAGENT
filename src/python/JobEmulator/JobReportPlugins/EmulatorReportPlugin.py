@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.5 2008/03/21 18:49:13 sfoulkes Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.6 2008/03/27 18:04:39 sfoulkes Exp $"
+__version__ = "$Revision: 1.6 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -118,7 +118,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
                     totalEvent = tempTotalEvent
             
             #logging.debug("---------- Total Event ----------: %s \n" % totalEvent)        
-            theFile['TotalEvent'] = totalEvent
+            theFile['TotalEvents'] = totalEvent
             
             theFile['SEName'] = jobRunningLocation['se-name'] 
             theFile['CEname'] = jobRunningLocation['ce-name']
