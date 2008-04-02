@@ -6,8 +6,8 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.2 2007/11/21 11:28:37 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.2 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.3 2008/03/28 15:35:25 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.3 $"
 
 from threading import Thread
 from time import sleep
@@ -16,15 +16,9 @@ import logging
 from random import shuffle
 
 from JobTracking.JobStatus import JobStatus
-# from ProdAgentBOSS.BOSSCommands import BOSS
-from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
+from ProdAgentBOSS.BOSSCommands import directDB
 from ProdCommon.ThreadTools.WorkQueue import WorkQueue
-
-# Fixes for BossLite
-from ProdCommon.Database import Session
-from ProdAgentDB.Config import defaultConfig as dbConfig
-from ProdCommon.Database.MysqlInstance import MysqlInstance
-from ProdCommon.Database.SafeSession import SafeSession
+from GetOutput.TrackingDB import TrackingDB
 
 ###############################################################################
 # Class: PoolScheduler                                                        #
@@ -35,7 +29,7 @@ class PoolScheduler(Thread):
     An instance of this class performs a pool thread scheduler
     """
     
-    def __init__(self, pool, params = {}):
+    def __init__(self, pool, params = None):
         """
         initialize the pool instance and start the scheduler thread.
         """
@@ -58,15 +52,8 @@ class PoolScheduler(Thread):
             self.maxJobs = 100
         self.groupsUnderProcessing = Set([])
 
-        # init BossLite session #Fabio
-        self.database = dbConfig
-        Session.set_database(dbConfig)
-        Session.connect()
-        self.blDBinstance = BossLiteAPI('MySQL', self.database)
-        self.BossLiteAdminSession = SafeSession( dbInstance = MysqlInstance(self.database) )
- 
         # start scheduler thread
-        # self.setDaemon(1)
+        self.setDaemon(1)
         self.start()
 
     def run(self):
@@ -75,8 +62,10 @@ class PoolScheduler(Thread):
         """
 
         logging.info("Pool scheduler started")
+
         # do forever
         while True:
+
             # get job information about new jobs
             self.getNewJobs()
 
@@ -100,9 +89,9 @@ class PoolScheduler(Thread):
 
                     # but only for new groups
                     if grp not in self.groupsUnderProcessing:
+
                         # insert group ID into queue to trigger thread start
                         self.groupsUnderProcessing.add(grp)
-
                         self.pool.enqueue(grp, grp)
 
             # wait for a thread to finish
@@ -115,6 +104,7 @@ class PoolScheduler(Thread):
                 
             # remove its ID from groups
             self.groupsUnderProcessing.remove(group)
+
             # remove all finished jobs from this group
             JobStatus.removeFinishedJobs(group)
 
@@ -131,9 +121,9 @@ class PoolScheduler(Thread):
         apply policy.
         """
 
-        # get a BOSS session
-        ## adminSession = BOSS.getBossAdminSession()
-        # already there in bossLite
+        # get DB session
+        session = directDB.getDbSession()
+        db = TrackingDB( session )
 
         # set policy parameters
         groups = {}
@@ -141,23 +131,8 @@ class PoolScheduler(Thread):
         # get list of groups under processing 
         grlist = ",".join(["%s" % k for k in self.groupsUnderProcessing])
 
-        # build query to get information about tasks associated to these
-        # groups # Modified, Fabio
-
-        query_addin = "where group_id is not null "
-        if grlist != '':
-            query_addin = "where group_id not in (%s) "%str(grlist)
-            
-        # some groups with threads working on
-        query = " select task_id, count(job_id) from jt_group %s"%query_addin
-        query += " group by task_id order by count(job_id) desc"
-
-        # query BOSS for task information   
-        # (adminSession, out) = BOSS.performBossQuery(adminSession, query)
-        jobPerTask = []
-        count = self.BossLiteAdminSession.execute(query) 
-        if (count > 0):
-            jobPerTask = self.BossLiteAdminSession.fetchall()
+        # get information about tasks associated to these groups
+        jobPerTask = db.getUnprocessedJobs( grlist )
 
         # process all groups
         grid = 0
@@ -178,9 +153,7 @@ class PoolScheduler(Thread):
             # fill group with the largest tasks
             while len(jobPerTask) != 0:
                 try:
-                    tj = jobPerTask[0]#.split() 
-                    task = tj[0]
-                    jobs = int(tj[1])
+                    task, jobs = jobPerTask[0]
 
                     # stop when there are enough jobs
                     if jobsReached + int(jobs) > self.maxJobs \
@@ -209,9 +182,7 @@ class PoolScheduler(Thread):
             # fill group with the smallest tasks
             while len(jobPerTask) != 0:
                 try:
-                    tj = jobPerTask[-1]#.split()
-                    task = tj[0]
-                    jobs = int(tj[1])
+                    task, jobs = jobPerTask[0]
 
                     # stop when there are enough jobs
                     if jobsReached + int(jobs)  > self.maxJobs:
@@ -244,19 +215,12 @@ class PoolScheduler(Thread):
                 continue
 
             # update group
-            query = """
-                    update jt_group
-                       set group_id='""" + str(group) + """'
-                     where task_id in (""" + tasks[:-1]  + ")"
-
-            # perform BOSS query
-            ##(adminSession, out) = BOSS.performBossQuery(adminSession, query)
-            self.BossLiteAdminSession.startTransaction() 
-            self.BossLiteAdminSession.execute(query)
-            self.BossLiteAdminSession.commit() 
-
+            db.setTaskGroup( str(group), tasks[:-1] )
             logging.debug("Adding tasks " + tasks[:-1] + ' to group ' + \
                           str(group))
+
+        # close db session
+        session.close()
 
         # build list of groups 
         ret = groups.keys()

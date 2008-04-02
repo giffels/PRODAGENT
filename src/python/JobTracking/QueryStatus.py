@@ -24,10 +24,14 @@ try :
     taskRange = args[1]
     jobRange  = args[2]
     scheduler = sys.argv[3]
-    proxy = sys.argv[4]
 except :
     print "\nUsage:  QueryStatus <taskRange> <jobRange> <scheduler> <proxy>\n"
     sys.exit()
+try :
+    proxy = sys.argv[4]
+except :
+    proxy = ''
+    pass
 
 # BossLiteApi session
 bossSession = BossLiteAPI( "MySQL", dbConfig)
@@ -41,7 +45,9 @@ for taskId in parseRange( taskRange ) :
         print 'checking status of task ' + str(taskId) + ' ....'
         task = schedSession.query( taskId, jobRange )
         for job in task.jobs :
-            print job.runningJob['schedulerId'], job.runningJob['statusScheduler']
+            print job.runningJob['schedulerId'], \
+                  job.runningJob['statusScheduler'], \
+                  job.runningJob['statusReason']
     except :
         print "Error in ", taskId, " status query"
         print traceback.format_exc()

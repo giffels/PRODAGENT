@@ -5,7 +5,6 @@ _JobHandling_
 """
 
 import os
-import time
 import logging
 from shutil import copy
 from shutil import rmtree
@@ -14,16 +13,12 @@ from shutil import rmtree
 from ProdAgent.WorkflowEntities import JobState
 from ProdAgent.WorkflowEntities import Job as WEJob
 from ProdCommon.Database import Session
-
 from ProdAgentCore.ProdAgentException import ProdAgentException
 
-## MATTY
-from ProdAgentDB.Config import defaultConfig as dbConfig
 # Blite API import
+from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
 from ProdCommon.BossLite.Common.Exceptions import TaskError
-# BOSS
-#from ProdAgentBOSS import BOSSCommands
 
 # Framework Job Report handling
 from ProdCommon.FwkJobRep.ReportState import checkSuccess
@@ -31,8 +26,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.4 2008/02/18 13:25:31 afanfani Exp $"
-__revision__ = "$Revision: 1.1.2.4 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.6 2008/03/28 15:35:25 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.6 $"
 
 class JobHandling:
     """
@@ -45,35 +40,32 @@ class JobHandling:
         """
 
         # store parameters and open a connection
-        #self.bossCfgDir = params['bossCfgDir']
         self.baseDir = params['baseDir']
         self.jobCreatorDir = params['jobCreatorDir']
         self.usingDashboard = params['usingDashboard']
         self.ms = params['messageServiceInstance']
-        self.blDBsession = BossLiteAPI('MySQL', dbConfig)
+        self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
 
-    def performOutputProcessing(self, jobInfo):
+    def performOutputProcessing(self, job):
         """
         _performOutputProcessing_
         """
 
         # get job information
-        jobId = jobInfo['jobId']
-        taskId = jobId.split(".")[0]
-        jobIdent = jobId.split(".")[1]
-        submTimeN = jobId.split(".")[2]
-        jobSpecId = jobInfo['jobSpecId']
-        outp = jobInfo['output']
-        bossStatus = jobInfo['bossStatus']
+        jobId = job['name']
+        taskId = job['taskId']
+        jobIdent = job['jobId']
+        submTimeN = job['submissionNumber']
+        jobSpecId = job['name']
+        bossStatus = job.runningJob['status']
         jobData = [jobId, bossStatus]
-        subPath = ""
-        try:
-            jobObj = self.blDBsessionloadJob(taskId, jobIdent)
-            self.blDBsession.getRunningInstance(jobObj)
-            subPath = jobbe.runningJob['submissionPath']
-        except TaskError, te:
-            raise ProdAgentException("Problem with task: "+str(taskId))
-
+        subPath = job.runningJob['submissionPath']
+        try :
+            # FIXME: take the last action 
+            outp = job.runningJob['statusHistory'][-1]
+        except:
+            logging.info( "##### No output information... try to continue..." )
+            outp = ''
 
         # successful output retrieval?
         if outp.find("-force") < 0 and \
@@ -85,7 +77,7 @@ class JobHandling:
             #reportfilename = BOSSCommands.reportfilename(jobId, \
             #                                             self.bossCfgDir)
             reportfilename = "%s/BossJob_%s_%s/Submission_%s/FrameworkJobReport.xml" \
-                              % (subPath, taskId, jobId, submTimeN)
+                              % (self.baseDir, taskId, jobId, submTimeN)
 
 
             logging.debug("report file name %s exists: %s" % \
@@ -109,12 +101,12 @@ class JobHandling:
                 #                                     self.bossCfgDir)
                 success = False
                 try:
-                    jobObj = self.blDBsession.loadJob(taskId, jobId)
-                    self.blDBsession.getRunningInstance(jobObj)
-                    exeCode = jobbe.runningJob['wrapperReturnCode']
-                    jobCode = jobbe.runningJob['applicationReturnCode']
+                    jobObj = self.bossLiteSession.loadJob(taskId, jobId)
+                    self.bossLiteSession.getRunningInstance(jobObj)
+                    exeCode = job.runningJob['wrapperReturnCode']
+                    jobCode = job.runningJob['applicationReturnCode']
                     success = (exeCode == "0" or exeCode == "" or exeCode == None or exeCode == 'NULL') and (jobCode == "0")
-                except JobError, exc:
+                except Exception, exc:
                     ## what to do?
                     pass
 
@@ -200,8 +192,8 @@ class JobHandling:
             try:
                 jobIdent = jobId.split(".")[1]
                 taskId = jobId.split(".")[0]
-                taskObj = self.blDBsession.loadTask(taskId)
-                self.blDBsession.archive(taskObj, [jobIdent])
+                taskObj = self.bossLiteSession.loadTask(taskId)
+                self.bossLiteSession.archive(taskObj, [jobIdent])
             except TaskError, exc:
                 pass
 
@@ -214,107 +206,14 @@ class JobHandling:
             logging.error(outp)
 
         return
-    '''
-    def dashboardPublish(self, jobId, jobSpecId):
-        """
-        _dashboardPublish_
 
-        publishes dashboard info
-        """
-        # dashboard information
-        ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
-            jobId, jobSpecId, self.bossCfgDir
-            )
-        if dashboardInfo.task == '' or dashboardInfo.task == None :
-            logging.error( "unable to retrieve DashboardId for: (%s,%s)" % \
-                           (jobId,jobSpecId) )
-            return
-
-        # set dashboard destination
-        dashboardInfo.addDestination(
-            self.usingDashboard['address'], self.usingDashboard['port']
-            )
-
-        # get scheduler info
-        schedulerI = BOSSCommands.schedulerInfo(self.bossCfgDir, jobId)
-
-        if len( schedulerI ) == 0 or not schedulerI.has_key('SCHED_ID') :
-            logging.error("schedulerinfo: %s" % schedulerI.__str__())
-            return
-
-        logging.debug("schedulerinfo: %s" % schedulerI.__str__())
-
-        # if the dashboardInfo.job is not set,
-        # this is a crab job detected for the first time
-        # set it and write the info file
-        if dashboardInfo.job == '' or dashboardInfo.job == None :
-            dashboardInfo.job = jobId.split('.')[1] + '_' + \
-                                schedulerI['SCHED_ID']
-#            # create/update info file
-#            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-#            dashboardInfo.write( dashboardInfoFile )
-
-        # write dashboard information
-        dashboardInfo['GridJobID'] = schedulerI['SCHED_ID']
-
-
-        try :
-            dashboardInfo['StatusEnterTime'] = time.strftime( \
-                             '%Y-%m-%d %H:%M:%S', \
-                             time.gmtime(float(schedulerI['LB_TIMESTAMP'])))
-        except StandardError:
-            pass
-
-        try :
-            dashboardInfo['StatusValue'] = schedulerI['SCHED_STATUS']
-        except KeyError:
-            pass
-
-        try :
-            dashboardInfo['StatusValueReason'] = \
-                                   schedulerI['STATUS_REASON'].replace('-',' ')
-        except KeyError:
-            pass
-
-        try :
-            dashboardInfo['StatusDestination'] = schedulerI['DEST_CE'] + \
-                                                 "/" + schedulerI['DEST_QUEUE']
-        except KeyError:
-            pass
-
-        try :
-            dashboardInfo['RBname'] = schedulerI['RB']
-        except KeyError:
-            pass
-
-#        dashboardInfo['SubTimeStamp'] = time.strftime( \
-#                             '%Y-%m-%d %H:%M:%S', \
-#                             time.gmtime(float(schedulerI['LAST_T'])))
-
-        # create/update info file
-        logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-        dashboardInfo.write( dashboardInfoFile )
-
-        # publish it
-        try:
-            logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
-            dashboardInfo.publish(5)
-
-        # error, cannot publish it
-        except StandardError, msg:
-            logging.error("Cannot publish dashboard information: " + \
-                          dashboardInfo.__str__() + "\n" + str(msg))
-
-        return
-    '''
-
-    def publishJobSuccess(self, jobId, reportfilename):
+    def publishJobSuccess(self, job, reportfilename):
         """
         _jobSuccess_
         """
 
         # set success job status
-        reportfilename = self.archiveJob("Success", jobId, reportfilename)
+        reportfilename = self.archiveJob("Success", job, reportfilename)
 
         # publish success event
         self.ms.publish("JobSuccess", reportfilename)
@@ -324,13 +223,13 @@ class JobHandling:
                      reportfilename)
         return
 
-    def publishJobFailed(self, jobId, reportfilename):
+    def publishJobFailed(self, job, reportfilename):
         """
         _jobFailed_
         """
 
         # archive the job in BOSS DB
-        reportfilename = self.archiveJob("Failed", jobId, reportfilename)
+        reportfilename = self.archiveJob("Failed", job, reportfilename)
 
         # publish job failed event
         self.ms.publish("JobFailed", reportfilename)
@@ -341,7 +240,7 @@ class JobHandling:
 
         return
 
-    def archiveJob(self, success, jobId, reportfilename):
+    def archiveJob(self, success, job, reportfilename):
         """
         _archiveJob_
 
@@ -350,11 +249,11 @@ class JobHandling:
 
         # get resubmission count
         try:
-            resub = jobId[0].split('.')[2]
+            resub = job['submissionNumber']
 
         except StandardError, msg:
             logging.error("archiveJob for job %s failed: %s" % \
-                          (jobId[0], str(msg)))
+                          (job, str(msg)))
             return reportfilename
 
         # get directory information
@@ -386,7 +285,7 @@ class JobHandling:
 
                 jobCacheDir = \
                         JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
-                logging.working("Retry OK!")
+                logging.info("Retry OK!")
 
             # error, cannot get cache location
             except StandardError, ex:
@@ -552,42 +451,28 @@ class JobHandling:
         # remove directory tree for finished jobs or when there will not
         # be resubmitted
         if success == "Success" or int(jobMaxRetries) <= int(resub):
-            subPath = ""
-            # get submission path
-            try:
-                ## MATTY
-                #subPath = BOSSCommands.subdir(jobId[0], self.bossCfgDir)
-                try:
-                    taskId = jobId[0].split(".")[0]
-                    jobIdent = jobId[0].split(".")[1]
-                    jobObj = self.blDBsessionloadJob(taskId, jobIdent)
-                    self.blDBsession.getRunningInstance(jobObj)
-                    subPath = jobbe.runningJob['submissionPath']
-                except TaskError, te:
-                    raise ProdAgentException("Problem with task: "+str(taskId))
 
-            except StandardError:
+            subPath = job.runningJob['submissionPath']
+            if subPath is None :
                 subPath = ""
 
             logging.debug("SubmissionPath: %s" % subPath)
 
             # set status to ended
-
-            ## MATTY
-            taskObj = None
-            tot = 0
-            ended = 0
+            endedJobs = 0
+            totJobs = 0
             try:
-                taskObj = self.blDBsession.loadTaskByName( taskName )
-                for jobbe in taskObj.jobs:
-                    self.blDBsession.getRunningInstance(jobbe)
+                taskObj = self.bossLiteSession.loadTask( job['taskId'] )
+                for tjob in taskObj.jobs:
+                    self.bossLiteSession.getRunningInstance(tjob)
                     totJobs += 1
-                    if jobbe.runningJob['status'] in ["E","SA","SK","SE"]:
+                    if tjob.runningJob['status'] in ["E", "SA", "SK", "SE"] \
+                           and tjob['submissionNumber'] >= jobMaxRetries:
                         endedJobs += 1
             except TaskError, te:
                 taskObj = None
+
             if endedJobs == totJobs:
-#            if BOSSCommands.taskEnded(jobId[0], self.bossCfgDir):
 
                 # remove directory tree
                 try:
@@ -596,7 +481,7 @@ class JobHandling:
                 # error, cannot remove files
                 except StandardError, msg:
                     logging.error("Failed to remove files for job %s: %s" % \
-                                  (jobId, str(msg)))
+                                  (str(job), str(msg)))
 
                     # remove ..id file,
                     # so that re-declaration is possible if needed
@@ -614,23 +499,18 @@ class JobHandling:
                 try:
                     ## MATTY
                     try:
-                        jobIdent = jobId[0].split(".")[1]
-                        taskId = jobId[0].split(".")[0]
-                        taskObj = self.blDBsession.loadTask(taskId)
-                        self.blDBsession.archive(taskObj, [jobIdent])
+                        self.bossLiteSession.archive( job )
                     except TaskError, exc:
                         pass
-
-                    #BOSSCommands.archive(jobId[0], self.bossCfgDir)
 
                 # error, cannot archive job
                 except StandardError, msg:
                     logging.error("Failed to archive job %s: %s" % \
-                                  (jobId, str(msg)))
+                                  (job['jobId'], str(msg)))
 
         return reportfilename
 
-    def notifyJobState(self, jobId):
+    def notifyJobState(self, job):
         """
         _notifyJobState_
 
@@ -639,13 +519,12 @@ class JobHandling:
 
         # set finished job state
         try:
-            JobState.finished(jobId)
-            Session.commit()
+            JobState.finished(job)
 
         # error
         except Exception, ex:
             msg = "Error setting job state to finished for job: %s\n" \
-                  % jobId
+                  % job['jobId']
             msg += str(ex)
             logging.error(msg)
 
