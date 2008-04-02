@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.9 2008/03/28 15:35:25 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.9 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.10 2008/04/02 15:27:15 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.10 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
@@ -240,7 +240,8 @@ class JobStatus:
                 db.addForCheck( pair[0],  pair[1] )
                 logging.debug(
                     "Removing jobs for group " + str(group) \
-                    + " with BOSS id " +  pair[0] + '.' + pair[1]
+                    + " with BOSS id " +  str( pair[0] ) + '.' \
+                    + str( pair[1] )\
                     )
             session.close()
         except StandardError, ex:
