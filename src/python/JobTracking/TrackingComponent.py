@@ -17,10 +17,9 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.14 2008/04/02 15:27:15 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.14 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.15 2008/04/03 15:52:09 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.15 $"
 
-import time
 import os
 import os.path
 import logging
@@ -42,9 +41,6 @@ from GetOutput.TrackingDB import TrackingDB
 # BossLite support 
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.Scheduler import Scheduler
-
-# Framework Job Report handling
-from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 
 # Threads pool
 from JobTracking.PoolScheduler import PoolScheduler
@@ -205,15 +201,8 @@ class TrackingComponent:
             # publish information to dashboard
             try:
                 self.jobHandling.dashboardPublish( job )
-                pass
             except StandardError, msg:
-                logging.error("Cannot publish to dashboard:%s" % msg)    
-
-        # build query 
-        query = """
-        select status, count( status ) from bl_runningjob
-        where closed='N' group by  status
-        """
+                logging.error("Cannot publish to dashboard:%s" % msg)   
 
         # summary of the jobs in the DB
         # TODO : change with a BossLite call
@@ -301,7 +290,6 @@ class TrackingComponent:
             # publish information to the dashboard
             try:
                 self.jobHandling.dashboardPublish(job)
-                pass
             except StandardError, msg:
                 logging.error("Cannot publish to dashboard:%s" % msg)
 
@@ -326,7 +314,7 @@ class TrackingComponent:
                 job.runningJob['scheduler'], schedulerConfig )
 
             # perform postMortem operation such as logging-info
-            scheduler.postMortem( job, directory + '/loggingInfo.log' )
+            scheduler.postMortem( job, outdir + '/loggingInfo.log' )
 
             # perform a BOSS archive operation
             self.bossLiteSession.archive( job )
@@ -353,7 +341,6 @@ class TrackingComponent:
             # publish information to the dashboard
             try:
                 self.jobHandling.dashboardPublish(job)
-                pass
             except StandardError, msg:
                 logging.error("Cannot publish to dashboard:%s" % msg)
 

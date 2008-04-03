@@ -8,6 +8,7 @@ import os
 import logging
 from shutil import copy
 from shutil import rmtree
+import time
 
 # PA configuration
 from ProdAgent.WorkflowEntities import JobState
@@ -27,8 +28,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.8 2008/04/03 13:55:20 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.8 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.9 2008/04/03 15:52:09 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.9 $"
 
 class JobHandling:
     """
