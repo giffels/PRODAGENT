@@ -5,10 +5,10 @@ _JobHandling_
 """
 
 import os
+import time
 import logging
 from shutil import copy
-from shutil import rmtree
-import time
+#from shutil import rmtree
 
 # PA configuration
 from ProdAgent.WorkflowEntities import JobState
@@ -28,8 +28,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.9 2008/04/03 15:52:09 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.9 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.10 2008/04/03 16:02:14 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.10 $"
 
 class JobHandling:
     """
@@ -56,7 +56,6 @@ class JobHandling:
         # get job information
         taskId = job['taskId']
         jobId = job['jobId']
-        submTimeN = job['submissionNumber']
         jobSpecId = job['name']
 
         # get outdir and report file name
@@ -67,7 +66,7 @@ class JobHandling:
         try :
             # FIXME: take the last action 
             outp = job.runningJob['statusHistory'][-1]
-        except:
+        except IndexError:
             logging.info( "##### No output information... try to continue..." )
             outp = ''
 
@@ -86,8 +85,9 @@ class JobHandling:
             # archive job, forcing a deleted status in the BOSS DB
             try:
                 self.bossLiteSession.archive( job )
-            except TaskError, exc:
-                pass
+            except TaskError, msg:
+                logging.error("Failed to archive job %s: %s" % \
+                              (job['jobId'], str(msg)))
 
             # generate a failure message
             self.publishJobFailed(job, reportfilename)
@@ -128,7 +128,7 @@ class JobHandling:
                     exeCode = job.runningJob['wrapperReturnCode']
                     jobCode = job.runningJob['applicationReturnCode']
                     success = (exeCode == "0" or exeCode == "" or exeCode == None or exeCode == 'NULL') and (jobCode == "0")
-                except Exception, exc:
+                except :
                     ## FIXME what to do?
                     pass
 
@@ -244,21 +244,13 @@ class JobHandling:
 
         return
 
-    def archiveJob(self, success, job, reportfilename):
-        """
-        __archiveJob__
+    def resolveOutdir(self, job, fjr):
 
-        Moves output file to archdir
-        """
-
-        # get resubmission count
-        resub = job['submissionNumber']
-
-        # get directory information
-        lastdir = os.path.dirname(reportfilename).split('/').pop()
-        baseDir = os.path.dirname(reportfilename) + "/"
-        # get job report
-        fjr = readJobReport(reportfilename)
+        # try with boss db
+        task = self.bossLiteSession.loadTask(job['taskId'], {'name' : ''})
+        if task['outputDirectory'] is not None \
+               and task['outputDirectory'] != '' :
+            return task['outputDirectory']
 
         # fallback directory in JobTracking.
         fallbackCacheDir = self.baseDir + "/%s" % fjr[0].jobSpecId
@@ -353,7 +345,26 @@ class JobHandling:
 
         logging.debug("jobCacheDir = %s" % jobCacheDir)
 
-        # build path and report file name
+        return jobCacheDir
+
+
+    def archiveJob(self, success, job, reportfilename):
+        """
+        __archiveJob__
+
+        Moves output file to archdir
+        """
+
+        # get resubmission count
+        resub = job['submissionNumber']
+
+        # get job report
+        fjr = readJobReport(reportfilename)
+
+        # get directory information
+        jobCacheDir = self.resolveOutdir( job, reportfilename, fjr)
+        baseDir = os.path.dirname(reportfilename) + "/"
+        lastdir = os.path.dirname(reportfilename).split('/').pop()
         newPath = jobCacheDir + "/JobTracking/" + success + "/" + lastdir + "/"
 
         # create directory if not there
@@ -445,6 +456,9 @@ class JobHandling:
         except StandardError:
 
             try:
+                # force a re connect operation
+                self.recreateSession()
+                WEjobState = WEJob.get(fjr[0].jobSpecId)
                 jobMaxRetries = WEjobState['max_retries']
 
             # assume a default value
@@ -458,11 +472,11 @@ class JobHandling:
         # be resubmitted
         if success == "Success" or int(jobMaxRetries) <= int(resub):
 
-            subPath = job.runningJob['submissionPath']
-            if subPath is None :
-                subPath = ""
+            # subPath = job.runningJob['submissionPath']
+            # if subPath is None :
+            #     subPath = ""
 
-            logging.debug("SubmissionPath: %s" % subPath)
+            # logging.debug("SubmissionPath: %s" % subPath)
 
             # set status to ended
             endedJobs = 0
@@ -476,22 +490,23 @@ class JobHandling:
                     if tjob.runningJob['closed'] == 'Y' \
                            and tjob['submissionNumber'] >= jobMaxRetries:
                         endedJobs += 1
-            except TaskError, te:
-                taskObj = None
+            except TaskError, err:
+                logging.error( "Unable to retrieve task information: %s" \
+                               % str(err) )
 
-            if endedJobs == totJobs:
+            if totJobs != 0 and endedJobs == totJobs:
 
                 # remove directory tree
-                try:
-                    rmtree(subPath)
+                #try:
+                #    rmtree(subPath)
 
                 # error, cannot remove files
-                except StandardError, msg:
-                    logging.error("Failed to remove files for job %s: %s" % \
-                                  (str(job), str(msg)))
+                #except StandardError, msg:
+                #    logging.error("Failed to remove files for job %s: %s" % \
+                #                  (str(job), str(msg)))
 
-                    # remove ..id file,
-                    # so that re-declaration is possible if needed
+                # remove ..id file,
+                # so that re-declaration is possible if needed
                 try:
                     os.remove(
                         "%s/%sid" % (jobCacheDir,fjr[0].jobSpecId)
@@ -501,14 +516,14 @@ class JobHandling:
                                   % (jobCacheDir,fjr[0].jobSpecId)
                                   )
 
-                # archive job
-                try:
-                    self.bossLiteSession.archive( job )
+            # archive job
+            try:
+                self.bossLiteSession.archive( job )
 
-                # error, cannot archive job
-                except TaskError, msg:
-                    logging.error("Failed to archive job %s: %s" % \
-                                  (job['jobId'], str(msg)))
+            # error, cannot archive job
+            except TaskError, msg:
+                logging.error("Failed to archive job %s: %s" % \
+                              (job['jobId'], str(msg)))
 
         return reportfilename
 
