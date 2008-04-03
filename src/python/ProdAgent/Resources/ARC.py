@@ -7,7 +7,7 @@ import re
 
 
 
-def findKey(dict,value):
+def findKey(dict, value, ifNotFound = None):
     """
     Given a dictionary and a value, return the first key found with that
     value, or None, if no such value is found.
@@ -16,7 +16,7 @@ def findKey(dict,value):
     for i in dict.items():
         if i[1] == value:
             return i[0]
-    return None
+    return ifNotFound
         
 
 
@@ -130,6 +130,7 @@ def jobIdMap():
 
         arcId, jobSpecId = fields[0:2]
         jobs[jobSpecId] = arcId
+        logging.debug("jobIdMap: %s: %s" % (jobSpecId, arcId))
 
     return jobs
 
@@ -154,7 +155,7 @@ class ARCJob:
         Note that either arcId or jobSpecId has to be provided. If either
         is missing, we'll try to figure it out using the other.  
         
-        self.jobSpecId will allways end up being set (i.e. not 'None', but
+        self.jobSpecId should allways end up being set to a string (but
         could be an empty string!); self.arcId, however, might end up as
         None in the special case that no such ARC job actually exist (ought
         to be a rare condition, but is in principle possible).
@@ -173,6 +174,8 @@ class ARCJob:
         else:
             jobIds = jobIdMap()
             self.jobSpecId = findKey(jobIds, arcId)
+
+        assert self.jobSpecId
 
         self.status = status
 
@@ -244,10 +247,18 @@ def getJobs():
                     s = "ASSUMED_LOST"
             status = StatusCodes[s]
 
-            j = ARCJob(arcId = arcId, status = status)
+            try:
+                j = ARCJob(arcId = arcId, status = status)
+            except AssertionError:
+                # We could end up here e.g. if a job is removed between the
+                # jobIdMap() call in the beginning of this function, and the
+                # ARCJob() call above. In short, it _shouldn't_ happen.
+                logging.warning("Something is seriously wrong with arcId = %s! Job Removed manually?" % arcId)
+                continue
+
             jobs.append(j)
 
-            msg = "Information for job %s was not found;\n" % j.jobSpecId
+            msg = "Information for job %s/%s was not found;\n" % (str(j.jobSpecId), arcId)
             msg += " -> it's assigned the state " + s
             logging.debug(msg)
 
