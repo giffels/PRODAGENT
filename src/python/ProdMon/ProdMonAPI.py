@@ -15,6 +15,7 @@ from ProdMon.ProdMonDB import jobTypeFailures
 from ProdMon.ProdMonDB import listSites
 from ProdMon.ProdMonDB import selectSiteDetails
 from ProdMon.ProdMonDB import getOutputDatasets
+from ProdMon.ProdMonDB import getInputDatasets
 
 
 def successfulJobCount(workflowSpecId = None):
@@ -326,3 +327,10 @@ def outputDatasets(workflow):
     get output datasets for a workflow
     """
     return getOutputDatasets(workflow)
+
+
+def inputDatasets(workflow):
+    """
+    get output datasets for a workflow
+    """
+    return getInputDatasets(workflow)
