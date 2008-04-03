@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.10 2008/04/02 15:27:15 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.10 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.11 2008/04/02 18:52:29 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.11 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
@@ -73,7 +73,7 @@ class JobStatus:
         prevcert = ''
         i = 0
         while i < ntask:
-            logging.info('cycle: '+str(i)+' out of ' + str(ntask))
+            logging.info('cycle: '+str(i)+' out of ' + str(ntask - 1))
             task, cert = tasks[i]
             i += 1
 

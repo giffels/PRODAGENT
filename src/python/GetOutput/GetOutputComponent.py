@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.3 2008/04/02 15:28:27 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.3 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.4 2008/04/03 13:49:11 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.4 $"
 
 import os
 import logging
@@ -85,10 +85,7 @@ class GetOutputComponent:
         self.maxGetOutputAttempts = 3
         self.database = dbConfig
         self.database = deepcopy(dbConfig)
-        ##self.database['dbName'] += "_BOSS" Fabio
         self.database['dbType'] = 'MySQL'
-        #self.activeJobs = self.database['dbName'] + ".jt_activejobs"
-        #self.dbInstance = MysqlInstance(self.database)
         self.bossLiteSession = BossLiteAPI('MySQL', self.database)
 
         # initialize job handling
@@ -99,7 +96,6 @@ class GetOutputComponent:
         params['componentDir'] = self.jobTrackingDir
         params['dbConfig'] = self.database
         params['maxGetOutputAttempts'] = 3
-#        params['dbInstance'] = self.dbInstance
 
         JobOutput.setParameters(params)
         self.pool = WorkQueue([JobOutput.doWork] * \
@@ -118,7 +114,7 @@ class GetOutputComponent:
 
     def __call__(self, event, payload):
         """
-        _operator()_
+        __operator()__
 
         Respond to events to control debug level for this component
 
@@ -142,23 +138,14 @@ class GetOutputComponent:
 
     def checkJobs(self):
         """
-        _checkJobs_
+        __checkJobs__
 
         Poll the DB for jobs to get output from.
         """
 
         logging.info("Starting poll cycle")
 
-        # create database session
-        # session = SafeSession(dbInstance = self.dbInstance)
-        # db = TrackingDB(session)
-
-        # remove processed jobs
-        # db.removeJobs(status="output_processed")
-        # session.commit()
-
         # get jobs that require output
-        # outputRequestedJobs = db.getJobs(status="output_requested")
         outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
             { 'processStatus' : 'output_requested', 'closed' : 'N' } )
         numberOfJobs = len(outputRequestedJobs)
@@ -166,19 +153,8 @@ class GetOutputComponent:
 
         if numberOfJobs != 0:
             
-            # # change status for jobs that require get output operations
-            # modified = db.setJobs(outputRequestedJobs, status='in_progress')
-            # if modified != numberOfJobs:
-            #     logging.warning("Only %s of %s jobs  to 'in_process'" % \
-            #                     (modified, numberOfJobs))
-            # 
-            # # commit changes to database before starting any thread!
-            # session.commit()
-            # 
-            # # start request output thread for them
-            # for job in outputRequestedJobs:
-            #     self.pool.enqueue(job, job)
-            ### here was good the compund update... to be reimplemented
+            # change status for jobs that require get output operations
+            # TODO here was good the compund update... to be reimplemented
             for job in outputRequestedJobs:
                 job.runningJob['processStatus'] = 'in_progress'
                 self.bossLiteSession.updateDB( job )
@@ -212,7 +188,7 @@ class GetOutputComponent:
 
     def processOutput(self, job):
         """
-        _processOutput_
+        __processOutput__
         """
 
         logging.debug("Processing output for job: %s.%s" % \
@@ -231,7 +207,7 @@ class GetOutputComponent:
 
     def startComponent(self):
         """
-        _startComponent_
+        __startComponent__
 
         Start up this component
 
@@ -255,7 +231,6 @@ class GetOutputComponent:
 
         # initialize job handling object
         params = {}
-#        params['bossCfgDir'] = self.bossCfgDir  MATTY
         params['baseDir'] = self.jobTrackingDir
         params['jobCreatorDir'] = self.jobCreatorDir
         params['usingDashboard'] = None

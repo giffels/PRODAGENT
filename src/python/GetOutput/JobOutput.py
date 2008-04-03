@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.3 2008/04/02 15:28:27 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.3 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.4 2008/04/03 13:49:11 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.4 $"
 
 import logging
 import os
@@ -58,14 +58,13 @@ class JobOutput:
     @classmethod
     def requestOutput(cls, job):
         """
+        __requestOutput__
+        
         request output for job.
 
         """
 
         # verify status
-
-
-        
         if job.runningJob['processStatus'] != 'handled':
             logging.error("Job %s.%s is in status %s, cannot request output" \
                           % (job['taskId'], job['jobId'], job.runningJob['processStatus']))
@@ -86,6 +85,8 @@ class JobOutput:
     @classmethod
     def doWork(cls, job):
         """
+        __doWork__
+        
         get the output of the job specified.
 
         *** thread safe ***
@@ -197,27 +198,6 @@ class JobOutput:
             except TaskError, msg:
                 logging.error("job %s.%s retrieval failed: %d" % str(msg))
 
-            # check for empty output
-            # if output == '':
-            #    output = "error: no output retrived by BOSSGetoutput command"
-
-            # update quotes in output
-            #output = output.replace("'", '"')
-
-            # update info in database
-            #updateStatus = db.setJobInfo(jobId, status = 'output_retrieved', \
-            #                             output = output)
-            #if updateStatus != 1:
-            #    logging.warning("Output not updated for job %s: %s" % \
-            #                    (jobId,updateStatus))
-            #else:
-            #    logging.debug("Output for job %s successfully enqueued" % \
-            #                  jobId)
-
-            # done, commit and finish
-            #session.commit()
-            #session.close()
-
             # return job info
             return job
 
@@ -234,7 +214,7 @@ class JobOutput:
     @classmethod
     def recreateOutputOperations(cls, pool):
         """
-        _recreateOutputOperations_
+        __recreateOutputOperations__
 
         recreate interrupted get output operations. Two types of operations
         can be in interrupted states: 1) operations that have been
@@ -269,7 +249,7 @@ class JobOutput:
     @classmethod
     def setDoneStatus(cls, job):
         """
-        _setDoneStatus_
+        __setDoneStatus__
 
         signal finished status for get output operation
 

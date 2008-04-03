@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.3 2008/04/02 15:28:27 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.3 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.4 2008/04/02 15:42:22 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.4 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 
@@ -20,7 +20,6 @@ class TrackingDB:
         """
 
         self.session = session
-        
 
 
     def getJobsStatistic(self):
@@ -78,6 +77,11 @@ class TrackingDB:
 
 
     def getTaskSize(self, taskId ):
+        """
+        __getTaskSize__
+
+        how many jobs in the task
+        """
 
         query = "select max(job_id) from  jt_group where task_id=" \
                 + taskId
@@ -85,7 +89,13 @@ class TrackingDB:
         rows = directDB.selectOne(self.session, query)
         return rows
 
+
     def getUnassociatedJobs(self):
+        """
+        __getUnassociatedJobs__
+
+        select active jobs not yet associated to a status query group
+        """
 
         query = \
               'select j.task_id,j.job_id from bl_runningjob j' \
@@ -98,12 +108,11 @@ class TrackingDB:
         return rows
 
 
-
     def getAssociatedJobs(self):
         """
-        remove all finished jobs from a specific group.
+        __getAssociatedJobs__
 
-        jobs assigned: all jobs in the group
+        select active jobs associated to a status query group
 
         """
 
@@ -117,19 +126,29 @@ class TrackingDB:
         rows = directDB.select(self.session, query)
         return rows
 
-        
 
     def addForCheck(self, taskId, jobId ):
+        """
+        __addForCheck__
+
+        insert job in the query queue
+        """
+
         query = \
               "insert into jt_group(group_id, task_id, job_id)" + \
               " values(''," + str( taskId ) + ',' + str( jobId ) + \
               ') on duplicate key update group_id=group_id'
 
         directDB.modify(self.session, query)
- 
 
 
     def removeFromCheck(self, group, taskId, jobId ):
+        """
+        __removeFromCheck__
+
+        remove job from the query queue
+        """
+
         query = \
                 'delete from jt_group where group_id=' + str(group) \
                         + ' and task_id=' + str( taskId ) \
@@ -139,6 +158,11 @@ class TrackingDB:
 
 
     def setTaskGroup( self, group, taskList ) :
+        """
+        __setTaskGroup__
+
+        assign tasks to a given group
+        """
         
         query = \
               'update jt_group set group_id=' + str(group) + \

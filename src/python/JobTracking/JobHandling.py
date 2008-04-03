@@ -19,6 +19,7 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
 from ProdCommon.BossLite.Common.Exceptions import TaskError
+from ProdAgentBOSS import BOSSCommands
 
 # Framework Job Report handling
 from ProdCommon.FwkJobRep.ReportState import checkSuccess
@@ -26,8 +27,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.7 2008/04/02 15:27:15 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.7 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.8 2008/04/03 13:55:20 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.8 $"
 
 class JobHandling:
     """
@@ -57,21 +58,9 @@ class JobHandling:
         submTimeN = job['submissionNumber']
         jobSpecId = job['name']
 
-        # FIXME: get report file name and outdir
-        outdir = "%s/BossJob_%s_%s/Submission_%s/" \
-                              % (self.baseDir, taskId, jobId, submTimeN)
-        reportfilename = outdir + 'FrameworkJobReport.xml'
-
-        # make outdir
-        try:
-            os.makedirs( outdir )
-        except OSError, err:
-            if  err.errno == 17:
-                # existing dir
-                pass
-            else :
-                logging.error("Cannot create directory : " + str(err))
-                return
+        # get outdir and report file name
+        outdir = self.buildOutdir( job )
+        reportfilename = outdir + '/FrameworkJobReport.xml'
 
         # retrieve output message
         try :
@@ -170,13 +159,44 @@ class JobHandling:
 
         return
 
+    def buildOutdir( self, job ) :
+        """
+        __buildOutdir__
 
+        compose outdir name and make the directory
+        """
+
+        # FIXME: get report file name and outdir
+        outdir = "%s/BossJob_%s_%s/Submission_%s/" % (self.baseDir,  \
+                                                      job['taskId'], \
+                                                      job['jobId'],  \
+                                                      job['submissionNumber'] )
+
+        # make outdir
+        logging.debug("Creating directory: " + outdir)
+        try:
+            os.makedirs( outdir )
+        except OSError, err:
+            if  err.errno == 17:
+                # existing dir
+                pass
+            else :
+                logging.error("Cannot create directory : " + str(err))
+                raise
+
+        # return outdir
+        return outdir
+
+        
     def writeFwkJobReport( self, jobSpecId, exitCode, reportfilename ):
         """
-        _writeFwkJobReport_
+        __writeFwkJobReport__
+
+        write a fajke reportfilename based on the statu reported
         """
 
         # create job report
+        logging.debug("Creating report %s" % reportfilename)
         fwjr = FwkJobReport()
         fwjr.jobSpecId = jobSpecId
         if exitCode == 0 :
@@ -192,7 +212,7 @@ class JobHandling:
 
     def publishJobSuccess(self, job, reportfilename):
         """
-        _jobSuccess_
+        __publishJobSuccess__
         """
 
         # set success job status
@@ -208,7 +228,7 @@ class JobHandling:
 
     def publishJobFailed(self, job, reportfilename):
         """
-        _jobFailed_
+        __publishJobFailed__
         """
 
         # archive the job in BOSS DB
@@ -225,7 +245,7 @@ class JobHandling:
 
     def archiveJob(self, success, job, reportfilename):
         """
-        _archiveJob_
+        __archiveJob__
 
         Moves output file to archdir
         """
@@ -491,9 +511,91 @@ class JobHandling:
 
         return reportfilename
 
+
+    def dashboardPublish(self, job):
+        """
+        __dashboardPublish__
+        
+        publishes dashboard info
+        """
+
+        # dashboard information
+        ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
+            job['jobId'], self.bossLiteSession
+            )
+        if dashboardInfo.task == '' or dashboardInfo.task == None :
+            logging.error( "unable to retrieve DashboardId" )
+            return
+
+        # set dashboard destination
+        dashboardInfo.addDestination(
+            self.usingDashboard['address'], self.usingDashboard['port']
+            )
+        
+        # if the dashboardInfo.job is not set,
+        # this is a crab job detected for the first time
+        # set it and write the info file 
+        if dashboardInfo.job == '' or dashboardInfo.job == None :
+            dashboardInfo.job = job['jobId'] + '_' + \
+                                job.runningJob['schedulerId']
+#            # create/update info file
+#            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
+#            dashboardInfo.write( dashboardInfoFile )
+    
+        # write dashboard information
+        dashboardInfo['GridJobID'] = job.runningJob['schedulerId']
+        
+        try :
+            dashboardInfo['StatusEnterTime'] = time.strftime( \
+                             '%Y-%m-%d %H:%M:%S', \
+                             time.gmtime(float(job.runningJob['lbTimestamp'])))
+        except StandardError:
+            pass
+
+        try :
+            dashboardInfo['StatusValue'] = job.runningJob['statusScheduler']
+        except KeyError:
+            pass
+
+        try :
+            dashboardInfo['StatusValueReason'] = job.runningJob['statusReason']
+        except KeyError:
+            pass
+
+        try :
+            dashboardInfo['StatusDestination'] = job.runningJob['destination']
+        except KeyError:
+            pass
+        
+        try :
+            dashboardInfo['RBname'] = job.runningJob['service']
+        except KeyError:
+            pass
+
+#        dashboardInfo['SubTimeStamp'] = time.strftime( \
+#                             '%Y-%m-%d %H:%M:%S', \
+#                             time.gmtime(float(schedulerI['LAST_T'])))
+
+        # create/update info file
+        logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
+        dashboardInfo.write( dashboardInfoFile )
+        
+        # publish it
+        try:
+            logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
+            dashboardInfo.publish(5)
+
+        # error, cannot publish it
+        except StandardError, msg:
+            logging.error("Cannot publish dashboard information: " + \
+                          dashboardInfo.__str__() + "\n" + str(msg))
+
+        return
+
+
     def notifyJobState(self, job):
         """
-        _notifyJobState_
+        __notifyJobState__
 
         Notify the JobState DB of finished jobs
         """
@@ -513,6 +615,8 @@ class JobHandling:
 
     def recreateSession(self):
         """
+        __recreateSession__
+        
         fix to recreate standard default session object
         """
 
@@ -524,3 +628,14 @@ class JobHandling:
         Session.session = {}
         Session.connect()
 
+
+    def fullId( self, job ):
+        """
+        __fullId__
+        
+        compose job primary keys in a string
+        """
+
+        return str( job['taskId'] ) + '.' \
+               + str( job['jobId'] ) + '.' \
+               + str( job['submissionNumber'] )

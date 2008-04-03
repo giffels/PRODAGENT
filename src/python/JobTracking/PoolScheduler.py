@@ -6,8 +6,8 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.3 2008/03/28 15:35:25 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.3 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.4 2008/04/02 15:27:15 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.4 $"
 
 from threading import Thread
 from time import sleep
@@ -58,6 +58,8 @@ class PoolScheduler(Thread):
 
     def run(self):
         """
+        __run__
+        
         main body of the scheduler.
         """
 
@@ -110,6 +112,8 @@ class PoolScheduler(Thread):
 
     def getNewJobs(self):
         """
+        __getNewJobs__
+        
         get information about new jobs.
         """
 
@@ -118,6 +122,8 @@ class PoolScheduler(Thread):
 
     def applyPolicy(self):
         """
+        __applyPolicy__
+        
         apply policy.
         """
 

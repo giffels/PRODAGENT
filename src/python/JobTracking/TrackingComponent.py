@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.13 2008/03/28 15:35:25 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.13 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.14 2008/04/02 15:27:15 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.14 $"
 
 import time
 import os
@@ -34,8 +34,10 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 ## other dependencies
 from GetOutput.JobOutput import JobOutput
 from JobTracking.JobHandling import JobHandling
-from ProdAgentBOSS import BOSSCommands
+
+# to be substituted with a BossLite implementation
 from ProdAgentBOSS.BOSSCommands import directDB
+from GetOutput.TrackingDB import TrackingDB
 
 # BossLite support 
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
@@ -151,9 +153,6 @@ class TrackingComponent:
         params['dbConfig'] = self.database
         JobOutput.setParameters(params)
 
-        # build submitted jobs structure
-        # self.submittedJobs = self.loadDict()
-
         # check for dashboard usage
         self.usingDashboard = self.args['dashboardInfo']
         logging.debug("DashboardInfo = %s" % str(self.usingDashboard))
@@ -164,7 +163,7 @@ class TrackingComponent:
 
     def __call__(self, event, payload):
         """
-        _operator()_
+        __operator()__
 
         Respond to events to control debug level for this component
 
@@ -187,7 +186,7 @@ class TrackingComponent:
 
     def pollNewJobs(self):
         """
-        _pollNewJobsd_
+        __pollNewJobs__
 
         Poll the BOSS DB for new job ids and handle they registration
 
@@ -200,12 +199,12 @@ class TrackingComponent:
         logging.info("new jobs : " + str( len(newJobs) ) )
 
         for job in newJobs :
-            ### here was good the compund update... to be reimplemented
+            ### TODO here was good the compound update... to be reimplemented
             job.runningJob['processStatus'] = 'handled'
             self.bossLiteSession.updateDB( job )
             # publish information to dashboard
             try:
-                self.dashboardPublish( job )
+                self.jobHandling.dashboardPublish( job )
                 pass
             except StandardError, msg:
                 logging.error("Cannot publish to dashboard:%s" % msg)    
@@ -217,8 +216,10 @@ class TrackingComponent:
         """
 
         # summary of the jobs in the DB
+        # TODO : change with a BossLite call
         session = directDB.getDbSession()
-        result = directDB.select( session, query )
+        db = TrackingDB( session )
+        result = db.getJobsStatistic()
         directDB.close( session )
 
         if result is not None:
@@ -261,7 +262,7 @@ class TrackingComponent:
 
     def checkJobs(self):
         """
-        _checkJobs_
+        __checkJobs__
 
         Poll the DB and call the appropriate handler method for each
         jobId that is returned.
@@ -284,53 +285,34 @@ class TrackingComponent:
 
     def handleFailed( self ):
         """
-        _handleFailed_
+        __handleFailed__
 
         handle failed jobs
 
         """
 
+        # query failed jobs
         failedJobs = self.bossLiteSession.loadFailed()
         logging.info("failed jobs : " + str( len(failedJobs) ) )
 
         # process all jobs
         for job in failedJobs:
 
-            # get framework jod report file name
-            directory = self.componentDir + '/BossJob_%s_%s/Submission_%s' % \
-                        (job['taskId'], job['jobId'], job['submissionNumber'])
-            reportfilename = directory + "/FrameworkJobReport.xml"
-
             # publish information to the dashboard
             try:
-                self.dashboardPublish(job)
+                self.jobHandling.dashboardPublish(job)
                 pass
             except StandardError, msg:
                 logging.error("Cannot publish to dashboard:%s" % msg)
 
-            # create directory
-            logging.debug("Creating directory: " + directory)
 
-            try:
-                os.makedirs( directory )
-            except OSError, err:
-                if  err.errno == 17:
-                    # existing dir
-                    pass
-                else :
-                    # cannot create directory, go to next job
-                    logging.error("Cannot create directory : " + str(msg))
-                    continue
-
-            # create Framework Job Report
-            logging.debug("Creating report %s" % reportfilename)
+            # get framework jod report file name
+            outdir = self.jobHandling.buildOutdir( job )
+            reportfilename = outdir + '/FrameworkJobReport.xml'
 
             # create failure Framework Job Report
-            fwjr = FwkJobReport()
-            fwjr.jobSpecId = job['name']
-            fwjr.exitCode = -1
-            fwjr.status = "Failed"
-            fwjr.write(reportfilename)
+            self.jobHandling.writeFwkJobReport( job['name'], -1, \
+                                                reportfilename )
 
             # loggingInfo
             task = self.bossLiteSession.loadTask(job['taskId'])
@@ -343,6 +325,7 @@ class TrackingComponent:
             scheduler = Scheduler.Scheduler(
                 job.runningJob['scheduler'], schedulerConfig )
 
+            # perform postMortem operation such as logging-info
             scheduler.postMortem( job, directory + '/loggingInfo.log' )
 
             # perform a BOSS archive operation
@@ -353,13 +336,14 @@ class TrackingComponent:
 
     def handleFinished(self):
         """
-        _handleFinished_
+        __handleFinished__
 
         handle finished jobs: retrieve output and notify execution
         failure or success
 
         """
 
+        # query finished jobs
         finishedJobs = self.bossLiteSession.loadEnded()
         logging.info("finished jobs : " + str( len(finishedJobs) ) )
 
@@ -368,102 +352,23 @@ class TrackingComponent:
 
             # publish information to the dashboard
             try:
-                self.dashboardPublish(job)
+                self.jobHandling.dashboardPublish(job)
                 pass
             except StandardError, msg:
                 logging.error("Cannot publish to dashboard:%s" % msg)
 
             # enqueue the get output operation
             logging.debug("Enqueing getoutput request for %s" % \
-                          BOSSCommands.fullId(job))
+                          self.jobHandling.fullId(job))
 
             JobOutput.requestOutput(job)
                 
         return
 
-    def dashboardPublish(self, job):
-        """
-        _dashboardPublish_
-        
-        publishes dashboard info
-        """
-
-        # dashboard information
-        ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
-            job['jobId'], self.bossLiteSession
-            )
-        if dashboardInfo.task == '' or dashboardInfo.task == None :
-            logging.error( "unable to retrieve DashboardId" )
-            return
-
-        # set dashboard destination
-        dashboardInfo.addDestination(
-            self.usingDashboard['address'], self.usingDashboard['port']
-            )
-        
-        # if the dashboardInfo.job is not set,
-        # this is a crab job detected for the first time
-        # set it and write the info file 
-        if dashboardInfo.job == '' or dashboardInfo.job == None :
-            dashboardInfo.job = job['jobId'] + '_' + \
-                                job.runningJob['schedulerId']
-#            # create/update info file
-#            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-#            dashboardInfo.write( dashboardInfoFile )
-    
-        # write dashboard information
-        dashboardInfo['GridJobID'] = job.runningJob['schedulerId']
-        
-        try :
-            dashboardInfo['StatusEnterTime'] = time.strftime( \
-                             '%Y-%m-%d %H:%M:%S', \
-                             time.gmtime(float(job.runningJob['lbTimestamp'])))
-        except StandardError:
-            pass
-
-        try :
-            dashboardInfo['StatusValue'] = job.runningJob['statusScheduler']
-        except KeyError:
-            pass
-
-        try :
-            dashboardInfo['StatusValueReason'] = job.runningJob['statusReason']
-        except KeyError:
-            pass
-
-        try :
-            dashboardInfo['StatusDestination'] = job.runningJob['destination']
-        except KeyError:
-            pass
-        
-        try :
-            dashboardInfo['RBname'] = job.runningJob['service']
-        except KeyError:
-            pass
-
-#        dashboardInfo['SubTimeStamp'] = time.strftime( \
-#                             '%Y-%m-%d %H:%M:%S', \
-#                             time.gmtime(float(schedulerI['LAST_T'])))
-
-        # create/update info file
-        logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-        dashboardInfo.write( dashboardInfoFile )
-        
-        # publish it
-        try:
-            logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
-            dashboardInfo.publish(5)
-
-        # error, cannot publish it
-        except StandardError, msg:
-            logging.error("Cannot publish dashboard information: " + \
-                          dashboardInfo.__str__() + "\n" + str(msg))
-
-        return
 
     def startComponent(self):
         """
-        _startComponent_
+        __startComponent__
 
         Start up this component, 
 
@@ -487,7 +392,6 @@ class TrackingComponent:
 
         # initialize job handling object
         params = {}
-#        params['bossCfgDir'] = self.bossCfgDir
         params['baseDir'] = self.componentDir
         params['jobCreatorDir'] = self.jobCreatorDir
         params['usingDashboard'] = self.usingDashboard
