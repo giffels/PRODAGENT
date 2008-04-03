@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.6 2008/03/27 18:04:39 sfoulkes Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.7 2008/04/02 12:58:38 fvlingen Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -95,7 +95,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             #check if the maxEvents['output'] is set if not set totalEvent using maxEvents['input']
             totalEvent = jobSpecPayload.cfgInterface.maxEvents['output']
             if totalEvent == None:
-                tolalEvent = jobSpecPayload.cfgInterface.maxEvents['input']
+                totalEvent = jobSpecPayload.cfgInterface.maxEvents['input']
             
             # if there is no input and output, print out error message and set default to 1000
             totalEvent = self.setDefaultForNoneValue("maxEvent['input' and 'output']", totalEvent, 100)
