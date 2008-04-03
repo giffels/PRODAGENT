@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.4 2008/04/03 13:49:11 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.4 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.5 2008/04/03 15:52:08 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.5 $"
 
 import logging
 import os
@@ -25,7 +25,6 @@ from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 from ProdCommon.BossLite.Scheduler import Scheduler
 from ProdCommon.BossLite.Common.Exceptions import SchedulerError
 from ProdCommon.BossLite.Common.Exceptions import TaskError
-import os
 
 ###############################################################################
 # Class: JobOutput                                                            #
@@ -76,7 +75,7 @@ class JobOutput:
         try :
             bossLiteSession = BossLiteAPI('MySQL', dbConfig)
             bossLiteSession.updateDB( job.runningJob )
-        except :
+        except TaskError:
             logging.error("Output for job %s.%s cannot be requested" % \
                           (job['taskId'], job['jobId'] ) )
 

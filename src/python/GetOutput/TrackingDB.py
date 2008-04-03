@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.4 2008/04/02 15:42:22 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.4 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.5 2008/04/03 15:52:09 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.5 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 
@@ -47,12 +47,12 @@ class TrackingDB:
         select jobs not yet assigned to a status query group
         """
 
-        query_addin = "where group_id is not null "
+        queryAddin = "where group_id is not null "
         if grlist != '':
-            query_addin = "where group_id not in (%s) " % str(grlist)
+            queryAddin = "where group_id not in (%s) " % str(grlist)
             
         # some groups with threads working on
-        query = " select task_id, count(job_id) from jt_group %s" % query_addin
+        query = " select task_id, count(job_id) from jt_group %s" % queryAddin
         query += " group by task_id order by count(job_id) desc"
 
         rows = directDB.select(self.session, query)
