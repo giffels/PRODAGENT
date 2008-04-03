@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.5 2008/04/03 15:52:08 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.5 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.6 2008/04/03 16:10:39 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.6 $"
 
 import logging
 import os
@@ -155,13 +155,14 @@ class JobOutput:
                         userProxy = ''
                     os.environ["X509_USER_PROXY"] = task['user_proxy']
                     scheduler.getOutput( job, outdir)
+                    output = "output successfully retrieved"
                     os.environ["X509_USER_PROXY"] = userProxy
                     break
 
                 # error, update retry counter
                 except SchedulerError, msg:
                     output = str(msg)
-                    #job.runningJob['statusHistory'].append(output)
+                    job.runningJob['statusHistory'].append(output)
                     logging.error("job %s.%s retrieval failed: %s" % \
                                   (job['taskId'], job['jobId'], str(msg)) )
                     if str( msg ).find( "Proxy Expired" ) != -1 :
@@ -169,13 +170,13 @@ class JobOutput:
                     retry += 1
                 except TaskError, msg:
                     output = str(msg)
-                    #job.runningJob['statusHistory'].append(output)
+                    job.runningJob['statusHistory'].append(output)
                     logging.error("job %s.%s retrieval failed: %s" % \
                                   (job['taskId'], job['jobId'], str(msg)) )
                     retry += 1
                 except StandardError, msg:
                     output = str(msg)
-                    #job.runningJob['statusHistory'].append(output)
+                    job.runningJob['statusHistory'].append(output)
                     logging.error("job %s.%s retrieval failed: %s" % \
                                   (job['taskId'], job['jobId'], str(msg)))
                     retry += 1
@@ -183,7 +184,7 @@ class JobOutput:
                     import traceback
                     msg = traceback.format_exc()
                     output = str(msg)
-                    #job.runningJob['statusHistory'].append(output)
+                    job.runningJob['statusHistory'].append(output)
                     logging.error("job %s.%s retrieval failed: %s" % \
                                   (job['taskId'], job['jobId'], str(msg)) )
                     retry += 1
