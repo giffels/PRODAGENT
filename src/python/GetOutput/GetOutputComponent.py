@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.2 2008/03/28 15:36:51 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.2 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.3 2008/04/02 15:28:27 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.3 $"
 
 import os
 import logging
@@ -160,8 +160,9 @@ class GetOutputComponent:
         # get jobs that require output
         # outputRequestedJobs = db.getJobs(status="output_requested")
         outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
-            { 'processStatus' : 'output_requested' } )
+            { 'processStatus' : 'output_requested', 'closed' : 'N' } )
         numberOfJobs = len(outputRequestedJobs)
+        logging.info("Output requested for " + str( numberOfJobs ) + " jobs")
 
         if numberOfJobs != 0:
             
@@ -214,7 +215,8 @@ class GetOutputComponent:
         _processOutput_
         """
 
-        logging.debug("Processing output for job: %s" % job['jobId'])
+        logging.debug("Processing output for job: %s.%s" % \
+                      ( job['jobId'], job['taskId'] ) )
 
         # perform processing
         self.jobHandling.performOutputProcessing(job)
@@ -223,7 +225,9 @@ class GetOutputComponent:
         job.runningJob['processStatus'] = 'output_processed'
         self.bossLiteSession.updateDB( job )
 
-        logging.debug("Processing output for job %s finished" % job)
+        logging.debug("Processing output for job %s.%s finished" % \
+                      ( job['jobId'], job['taskId'] ) )
+
 
     def startComponent(self):
         """

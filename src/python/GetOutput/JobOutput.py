@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.2 2008/03/28 15:36:51 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.2 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.3 2008/04/02 15:28:27 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.3 $"
 
 import logging
 import os
@@ -23,6 +23,9 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 from ProdCommon.BossLite.Scheduler import Scheduler
+from ProdCommon.BossLite.Common.Exceptions import SchedulerError
+from ProdCommon.BossLite.Common.Exceptions import TaskError
+import os
 
 ###############################################################################
 # Class: JobOutput                                                            #
@@ -91,7 +94,8 @@ class JobOutput:
 
         try:
 
-            logging.debug("Getting output for job" + str(job))
+            logging.debug("Getting output for job %s.%s" % \
+                          (job['taskId'], job['jobId']))
 
             # open database
             bossLiteSession = BossLiteAPI('MySQL', dbConfig)
@@ -112,24 +116,27 @@ class JobOutput:
                 else :
                     # cannot create directory, go to next job
                     logging.error("Cannot create directory : " + str(err))
-                    return
+                    return job
 
             # output retrieved before, then recover interrupted operation
             if status == 'output_retrieved':
-                logging.warning("Enqueuing previous ouput for job %s" % \
-                              str(job) )
+                logging.warning("Enqueuing previous ouput for job %s.%s" % \
+                                (job['taskId'], job['jobId']))
                 return job
 
             # non expected status, abandon processing for job
             if status != 'in_progress':
-                logging.error("Cannot get output for job %s, status is %s" % \
-                              (job['jobId'], status) )
+                logging.error("Cannot get output for job %s.%s, status is %s" \
+                              % (job['taskId'], job['jobId'], status) )
                 return job
 
             #  get output, trying at most maxGetOutputAttempts
             retry = 0
+            output = "output successfully retrieved"
             while retry < cls.params['maxGetOutputAttempts']:
 
+                logging.info("job %s.%s retrieval attempt: %d" % \
+                             (job['taskId'], job['jobId'], retry))
                 # perform get output operation
                 try:
                     task = bossLiteSession.loadTask(job['taskId'])
@@ -141,18 +148,54 @@ class JobOutput:
                     scheduler = Scheduler.Scheduler( 
                         job.runningJob['scheduler'], schedulerConfig
                         )
+                    # Temporary workaround
+                    try:
+                        userProxy = os.environ["X509_USER_PROXY"]
+                    except KeyError:
+                        userProxy = ''
+                    os.environ["X509_USER_PROXY"] = task['user_proxy']
                     scheduler.getOutput( job, outdir)
+                    os.environ["X509_USER_PROXY"] = userProxy
                     break
 
                 # error, update retry counter
-                except StandardError, msg:
-                    logging.error(str(msg))
+                except SchedulerError, msg:
                     output = str(msg)
+                    #job.runningJob['statusHistory'].append(output)
+                    logging.error("job %s.%s retrieval failed: %s" % \
+                                  (job['taskId'], job['jobId'], str(msg)) )
+                    if str( msg ).find( "Proxy Expired" ) != -1 :
+                        break
+                    retry += 1
+                except TaskError, msg:
+                    output = str(msg)
+                    #job.runningJob['statusHistory'].append(output)
+                    logging.error("job %s.%s retrieval failed: %s" % \
+                                  (job['taskId'], job['jobId'], str(msg)) )
+                    retry += 1
+                except StandardError, msg:
+                    output = str(msg)
+                    #job.runningJob['statusHistory'].append(output)
+                    logging.error("job %s.%s retrieval failed: %s" % \
+                                  (job['taskId'], job['jobId'], str(msg)))
+                    retry += 1
+                except :
+                    import traceback
+                    msg = traceback.format_exc()
+                    output = str(msg)
+                    #job.runningJob['statusHistory'].append(output)
+                    logging.error("job %s.%s retrieval failed: %s" % \
+                                  (job['taskId'], job['jobId'], str(msg)) )
                     retry += 1
 
+            logging.info("job %s.%s retrieval status: %s" % \
+                          (job['taskId'], job['jobId'], output))
             # FIXME: find a better way to report errors
-            job.runningJob['statusHistory'].append(output)
-            bossLiteSession.updateDB( job )
+            try:
+                job.runningJob['statusHistory'].append(output)
+                bossLiteSession.updateDB( job )
+            except TaskError, msg:
+                logging.error("job %s.%s retrieval failed: %d" % str(msg))
 
             # check for empty output
             # if output == '':
@@ -232,7 +275,8 @@ class JobOutput:
 
         """
 
-        logging.debug("set done status for: " + str(job))
+        logging.debug("set done status for job %s.%s" % \
+                      (job['taskId'], job['jobId']))
 
         bossLiteSession = BossLiteAPI('MySQL', dbConfig)
 
@@ -240,6 +284,7 @@ class JobOutput:
         job['processStatus'] = 'output_processed'
         bossLiteSession.updateDB( job )
 
-        logging.debug("Output processing done for %s", str(job))
+        logging.debug("Output processing done for job %s.%s" % \
+                      (job['taskId'], job['jobId']))
 
 
