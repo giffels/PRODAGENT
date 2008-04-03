@@ -26,8 +26,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.6 2008/03/28 15:35:25 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.6 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.7 2008/04/02 15:27:15 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.7 $"
 
 class JobHandling:
     """
@@ -52,14 +52,28 @@ class JobHandling:
         """
 
         # get job information
-        jobId = job['name']
         taskId = job['taskId']
-        jobIdent = job['jobId']
+        jobId = job['jobId']
         submTimeN = job['submissionNumber']
         jobSpecId = job['name']
-        bossStatus = job.runningJob['status']
-        jobData = [jobId, bossStatus]
-        subPath = job.runningJob['submissionPath']
+
+        # FIXME: get report file name and outdir
+        outdir = "%s/BossJob_%s_%s/Submission_%s/" \
+                              % (self.baseDir, taskId, jobId, submTimeN)
+        reportfilename = outdir + 'FrameworkJobReport.xml'
+
+        # make outdir
+        try:
+            os.makedirs( outdir )
+        except OSError, err:
+            if  err.errno == 17:
+                # existing dir
+                pass
+            else :
+                logging.error("Cannot create directory : " + str(err))
+                return
+
+        # retrieve output message
         try :
             # FIXME: take the last action 
             outp = job.runningJob['statusHistory'][-1]
@@ -67,18 +81,42 @@ class JobHandling:
             logging.info( "##### No output information... try to continue..." )
             outp = ''
 
+        # process!
+        #  if output retrieval failed
+        if outp.find('it has been purged') != -1 :
+            logging.error( "Missing output file for job %s.%s: %s" % \
+                           (jobId, taskId, outp) )
+
+            logging.debug("Job " + jobSpecId + \
+                          " has no FrameworkReport : creating a dummy one")
+
+            # create job report
+            self.writeFwkJobReport( jobSpecId, -1, reportfilename )
+
+            # archive job, forcing a deleted status in the BOSS DB
+            try:
+                self.bossLiteSession.archive( job )
+            except TaskError, exc:
+                pass
+
+            # generate a failure message
+            self.publishJobFailed(job, reportfilename)
+            return
+
+        # proxy expire... nothing to do!
+        elif outp.find("Proxy Expired") != -1 :
+            logging.error( "Proxy expired for task %s: skipping" % taskId )
+            return
+
+        # FIXME: how to handle mismatching proxy?
+        elif outp.find('Error with credential') != -1 :
+            logging.error( "Proxy error for task %s: %s" % \
+                           (taskId, outp) )
+            return
+
         # successful output retrieval?
-        if outp.find("-force") < 0 and \
-           outp.find("error") < 0 and \
-           outp.find("already been retrieved") < 0:
-
-            ## MATTY
-            # yes, get report file name
-            #reportfilename = BOSSCommands.reportfilename(jobId, \
-            #                                             self.bossCfgDir)
-            reportfilename = "%s/BossJob_%s_%s/Submission_%s/FrameworkJobReport.xml" \
-                              % (self.baseDir, taskId, jobId, submTimeN)
-
+        elif outp.lower().find("error") < 0 and \
+           outp.find("already been retrieved") < 0 :
 
             logging.debug("report file name %s exists: %s" % \
                 (reportfilename, os.path.exists(reportfilename)))
@@ -95,117 +133,62 @@ class JobHandling:
 
             # FwkJobReport not there: create one based on BOSS DB
             else:
-                ## MATTY
-                # check success
-                #success = BOSSCommands.checkSuccess(jobId, \
-                #                                     self.bossCfgDir)
-                success = False
+
                 try:
-                    jobObj = self.bossLiteSession.loadJob(taskId, jobId)
-                    self.bossLiteSession.getRunningInstance(jobObj)
                     exeCode = job.runningJob['wrapperReturnCode']
                     jobCode = job.runningJob['applicationReturnCode']
                     success = (exeCode == "0" or exeCode == "" or exeCode == None or exeCode == 'NULL') and (jobCode == "0")
                 except Exception, exc:
-                    ## what to do?
+                    ## FIXME what to do?
                     pass
 
                 logging.debug("check Job Success: %s" % str(success))
 
-                # create BOSS based Framework Job Report
-                fwjr = FwkJobReport()
-                fwjr.jobSpecId = jobSpecId
-
-                ## MATTY
-                #reportfilename = BOSSCommands.reportfilename(jobId, \
-                #                                       self.baseDir)
-                reportfilename = "%s/BossJob_%s_%s/Submission_%s/FrameworkJobReport.xml" \
-                                  % (subPath, taskId, jobId, submTimeN)
-                
-                # job successful even if job report is not there
+                # create db based Framework Job Report
                 if success:
+                    exitCode = 0
+                else :
+                    exitCode = -1
 
-                    # set success status
-                    logging.info("Created successful report for %s" % \
-                                    jobId.__str__())
-                    fwjr.status = "Success"
-                    fwjr.exitCode = 0
-                # job failed
-                else:
-
-                    # set failed status
-                    fwjr.status = "Failed"
-                    fwjr.exitCode = -1
-
-                try:
-                    os.makedirs(os.path.dirname(reportfilename))
-                except OSError:
-                    pass
-
-                # store job report
-                fwjr.write(reportfilename)
+                self.writeFwkJobReport( jobSpecId, exitCode, reportfilename )
 
             # in both cases: is the job successful?
             if success:
 
                 # yes, generate a job successful message and change status
-                self.publishJobSuccess(jobData, reportfilename)
+                self.publishJobSuccess(job, reportfilename)
                 self.notifyJobState(jobSpecId)
 
             else:
 
                 # no, generate a job failure message
-                self.publishJobFailed(jobData, reportfilename)
-
-        # else if output retrieval failed
-        elif outp.find("Unable to find output sandbox file:") >= 0 \
-                 or outp.find("Error retrieving Output") >= 0 \
-                 or outp.find("Error extracting files ") >= 0 :
-
-            logging.debug("Job " + jobId.__str__() + \
-                          " has no FrameworkReport : creating a dummy one")
-
-            # create job report
-            fwjr = FwkJobReport()
-            fwjr.jobSpecId = jobSpecId
-
-            ## MATTY
-            #reportfilename = BOSSCommands.reportfilename(jobId, \
-            #                                             self.baseDir)
-            reportfilename = "%s/BossJob_%s_%s/Submission_%s/FrameworkJobReport.xml" \
-                              % (subPath, taskId, jobId, submTimeN)
-
-            fwjr.exitCode = -1
-            fwjr.status = "Failed"
-
-            try:
-                os.makedirs( os.path.dirname(reportfilename) )
-            except OSError:
-                pass
-
-            # store job report
-            fwjr.write(reportfilename)
-
-            ## MATTY
-            # archive job, forcing a deleted status in the BOSS DB
-            #BOSSCommands.Delete(jobId, self.bossCfgDir)
-            try:
-                jobIdent = jobId.split(".")[1]
-                taskId = jobId.split(".")[0]
-                taskObj = self.bossLiteSession.loadTask(taskId)
-                self.bossLiteSession.archive(taskObj, [jobIdent])
-            except TaskError, exc:
-                pass
-
-
-            # generate a failure message
-            self.publishJobFailed(jobData, reportfilename)
+                self.publishJobFailed(job, reportfilename)
 
         # other problem... just display error
         else:
             logging.error(outp)
 
         return
+
+
+    def writeFwkJobReport( self, jobSpecId, exitCode, reportfilename ):
+        """
+        _writeFwkJobReport_
+        """
+
+        # create job report
+        fwjr = FwkJobReport()
+        fwjr.jobSpecId = jobSpecId
+        if exitCode == 0 :
+            fwjr.status = "Success"
+            fwjr.exitCode = 0
+        else :
+            fwjr.exitCode = exitCode
+            fwjr.status = "Failed"
+
+        # store job report
+        fwjr.write(reportfilename)
+
 
     def publishJobSuccess(self, job, reportfilename):
         """
@@ -248,13 +231,7 @@ class JobHandling:
         """
 
         # get resubmission count
-        try:
-            resub = job['submissionNumber']
-
-        except StandardError, msg:
-            logging.error("archiveJob for job %s failed: %s" % \
-                          (job, str(msg)))
-            return reportfilename
+        resub = job['submissionNumber']
 
         # get directory information
         lastdir = os.path.dirname(reportfilename).split('/').pop()
@@ -361,10 +338,12 @@ class JobHandling:
         # create directory if not there
         try:
             os.makedirs(newPath)
-
-        except StandardError, msg:
-            logging.debug("cannot create directory %s: %s" % \
-                          (newPath, str(msg)))
+        except OSError, err:
+            if  err.errno == 17:
+                # existing dir
+                pass
+            else :
+                logging.error("Cannot create directory : " + str(err))
 
         # move report file
         try:
@@ -395,6 +374,12 @@ class JobHandling:
             # create directory
             try:
                 os.makedirs(newPath + ext)
+            except OSError, err:
+                if  err.errno == 17:
+                    # existing dir
+                    pass
+                else :
+                    logging.error("Cannot create directory : " + str(err))
 
             except StandardError, msg:
                 pass
@@ -466,7 +451,8 @@ class JobHandling:
                 for tjob in taskObj.jobs:
                     self.bossLiteSession.getRunningInstance(tjob)
                     totJobs += 1
-                    if tjob.runningJob['status'] in ["E", "SA", "SK", "SE"] \
+                    #if tjob.runningJob['status'] in ["E", "SA", "SK", "SE"] \
+                    if tjob.runningJob['closed'] == 'Y' \
                            and tjob['submissionNumber'] >= jobMaxRetries:
                         endedJobs += 1
             except TaskError, te:
@@ -493,18 +479,13 @@ class JobHandling:
                     logging.info( "not removed file %s/%sid" \
                                   % (jobCacheDir,fjr[0].jobSpecId)
                                   )
-                    pass
 
                 # archive job
                 try:
-                    ## MATTY
-                    try:
-                        self.bossLiteSession.archive( job )
-                    except TaskError, exc:
-                        pass
+                    self.bossLiteSession.archive( job )
 
                 # error, cannot archive job
-                except StandardError, msg:
+                except TaskError, msg:
                     logging.error("Failed to archive job %s: %s" % \
                                   (job['jobId'], str(msg)))
 
