@@ -12,6 +12,7 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
 from ProdCommon.BossLite.API.BossLiteAPI import  parseRange
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
+from ProdCommon.BossLite.Common.Exceptions import SchedulerError
 import sys
 import traceback
 
@@ -38,7 +39,13 @@ bossSession = BossLiteAPI( "MySQL", dbConfig)
 
 # Scheduler session
 schedulerConfig = { 'name' : scheduler, 'user_proxy' : proxy }
-schedSession = BossLiteAPISched( bossSession, schedulerConfig)
+
+try:
+    schedSession = BossLiteAPISched( bossSession, schedulerConfig)
+except SchedulerError, err:
+    print "Error in ", taskRange, " status query with proxy ", proxy
+    print str(err)
+    sys.exit( 1 )
 
 for taskId in parseRange( taskRange ) :
     try:
@@ -48,6 +55,9 @@ for taskId in parseRange( taskRange ) :
             print job.runningJob['schedulerId'], \
                   job.runningJob['statusScheduler'], \
                   job.runningJob['statusReason']
+    except SchedulerError, err:
+        print "Error in ", taskId, " status query"
+        print str(err)
     except :
         print "Error in ", taskId, " status query"
         print traceback.format_exc()
