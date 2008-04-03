@@ -28,8 +28,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.10 2008/04/03 16:02:14 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.10 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.11 2008/04/03 17:19:21 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.11 $"
 
 class JobHandling:
     """
@@ -362,7 +362,7 @@ class JobHandling:
         fjr = readJobReport(reportfilename)
 
         # get directory information
-        jobCacheDir = self.resolveOutdir( job, reportfilename, fjr)
+        jobCacheDir = self.resolveOutdir( job, fjr)
         baseDir = os.path.dirname(reportfilename) + "/"
         lastdir = os.path.dirname(reportfilename).split('/').pop()
         newPath = jobCacheDir + "/JobTracking/" + success + "/" + lastdir + "/"
