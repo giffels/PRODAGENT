@@ -102,6 +102,7 @@ class BlockFeeder(PluginInterface):
         self.dbsUrl = None
         self.blocks = []
         self.workflowFile=payload
+        self.onlyClosedBlocks = False
         self.loadPayloads(self.workflowFile)
 
         logging.debug("Now making DBS query & constructing jobs") 
@@ -133,7 +134,7 @@ class BlockFeeder(PluginInterface):
 
         self.publishNewDataset(self.workflowFile)
 
-        self.makeBlockList()
+        self.makeBlockList(onlyClosedBlocks = self.onlyClosedBlocks)
 
 
         factory = DatasetJobFactory(self.workflow,
@@ -199,6 +200,10 @@ class BlockFeeder(PluginInterface):
             msg += "Logic. You cannot use OnlyBlocks with this plugin"
             raise RuntimeError, msg
         
+        onlyClosedBlocks = self.workflow.parameters.get("OnlyClosedBlocks", False)
+        if onlyClosedBlocks and onlyClosedBlocks.lower() == "true":
+            self.onlyClosedBlocks = True
+        
         value = self.workflow.parameters.get("DBSURL", None)
         if value != None:
             self.dbsUrl = value
@@ -215,7 +220,7 @@ class BlockFeeder(PluginInterface):
         return
 
 
-    def makeBlockList(self):
+    def makeBlockList(self, onlyClosedBlocks = False):
         """
         _makeBlockList_
 
@@ -228,7 +233,7 @@ class BlockFeeder(PluginInterface):
         
         """
         reader = DBSReader( getLocalDBSURL())
-        dbsBlocks = reader.listFileBlocks(self.inputDataset())
+        dbsBlocks = reader.listFileBlocks(self.inputDataset(), onlyClosedBlocks)
         
         if self.persistData.blocks != []:
             remover = lambda x : x not in self.persistData.blocks
