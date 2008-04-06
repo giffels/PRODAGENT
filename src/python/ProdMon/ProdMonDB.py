@@ -244,7 +244,7 @@ def __insertResource(Session, jobStatistics):
     
     resource_id = __insertIfNotExist(Session, "prodmon_Resource", 
                             {"site_name" : jobStatistics["site_name"],
-                             "rc_site_id" : jobStatistics["rc_site_index"],
+                             #"rc_site_id" : jobStatistics["rc_site_index"],
                              "ce_hostname" : jobStatistics["ce_name"],
                              "se_hostname" : jobStatistics["se_name"]},
                             "resource_id")
