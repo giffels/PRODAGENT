@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.10 2008/02/19 18:10:51 swakef Exp $"
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.11 2008/03/13 18:34:38 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -220,6 +220,7 @@ class ProdMonComponent:
                         result = True
                 except StandardError, ex:
                     # If error on insert save for later retry
+                    logging.error("Failed to insert job stats into the db: %s" % str(ex))
                     try:
                         if not os.path.isdir(self.args["FailedDir"]):
                             os.mkdir(self.args["FailedDir"])
