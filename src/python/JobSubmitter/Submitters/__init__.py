@@ -6,8 +6,8 @@ Submission interfaces package
 
 """
 __all__ = []
-__version__ = "$Revision: 1.15 $"
-__revision__ = "$Id: __init__.py,v 1.15 2007/12/18 22:32:04 evansde Exp $"
+__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: __init__.py,v 1.16 2008/02/12 21:32:01 sryu Exp $"
 
 
 
@@ -34,3 +34,5 @@ import OSGGlideIn
 import CondorDirect
 import ARCSubmitter
 import JobEmulatorBulkSubmitter
+import GlideInWMS
+
