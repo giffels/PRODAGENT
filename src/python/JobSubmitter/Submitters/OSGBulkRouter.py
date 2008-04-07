@@ -4,9 +4,13 @@ _OSGBulkRouter_
 
 Globus Universe Condor Submitter implementation.
 
+Pulls site information from the ResourceControlDB instead of the
+XML file.
+
+
 """
 
-__revision__ = "$Id: OSGBulkRouter.py,v 1.4 2007/05/08 06:43:54 evansde Exp $"
+__revision__ = "$Id: OSGBulkRouter.py,v 1.1 2007/06/08 19:51:20 evansde Exp $"
 
 import os
 import logging
@@ -16,9 +20,13 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
 from JobSubmitter.JSException import JSException
 
-from JobSubmitter.Submitters.OSGUtils import standardScriptHeader
-from JobSubmitter.Submitters.OSGUtils import bulkUnpackerScript
-from JobSubmitter.Submitters.OSGUtils import missingJobReportCheck
+from JobSubmitter.Submitters.OSGRouterUtils import standardScriptHeader
+from JobSubmitter.Submitters.OSGRouterUtils import bulkUnpackerScript
+from JobSubmitter.Submitters.OSGRouterUtils import missingJobReportCheck
+
+
+
+from ProdAgent.ResourceControl.ResourceControlAPI import createCEMap
 
 
 class OSGBulkRouter(BulkSubmitterInterface):
@@ -38,9 +46,8 @@ class OSGBulkRouter(BulkSubmitterInterface):
         Perform bulk or single submission as needed based on the class data
         populated by the component that is invoking this plugin
         """
-        logging.debug("<<<<<<<<<<<<<<<<<OSGBulkRouter>>>>>>>>>>>>>>..")
+        logging.debug("<<<<<<<<<<<<<<<<<OSGBulkSubmitter>>>>>>>>>>>>>>..")
         logging.debug("%s" % self.primarySpecInstance.parameters)
-
         self.workflowName = self.primarySpecInstance.payload.workflow
         self.mainJobSpecName = self.primarySpecInstance.parameters['JobName']
         self.mainSandbox = \
@@ -107,7 +114,8 @@ class OSGBulkRouter(BulkSubmitterInterface):
         output = self.executeCommand(condorSubmit)
         logging.info("OSGSubmitter.doSubmit: %s " % output)
         return
-        
+
+
 
     def initJDL(self):
         """
@@ -125,36 +133,15 @@ class OSGBulkRouter(BulkSubmitterInterface):
         inpFileJDL = inpFileJDL[:-1]
 
         jdl = []
-
-        if globusScheduler != None:
-        
-            jdl.append("universe = globus\n")
-            jdl.append("globusscheduler = %s\n" % globusScheduler)
-            jdl.append("transfer_input_files = %s\n" % inpFileJDL)
-            jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
-            jdl.append("should_transfer_files = YES\n")
-            jdl.append("when_to_transfer_output = ON_EXIT\n")
-            jdl.append("log_xml = True\n" )
-            jdl.append("notification = NEVER\n")
-            jdl.append("+ProdAgent_ID = \"%s\"\n" % self.primarySpecInstance.parameters['ProdAgentName'])
-        else:
-            #  //
-            # // No scheduler => use vanilla schedd on the side
-            #//
-            logging.info("Dispatching job via Vanilla Condor")
-            jdl.append("universe = vanilla\n")
-            jdl.append("requirements = false\n")
-            jdl.append("+WantJobRouter = True\n")
-            jdl.append("X509UserProxy = $ENV(X509_USER_PROXY)\n")
-            jdl.append("transfer_input_files = %s\n" % inpFileJDL)
-            jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
-            jdl.append("should_transfer_files = YES\n")
-            jdl.append("notification = NEVER\n")
-            jdl.append("log_xml = True\n" )
-            jdl.append("+ProdAgent_ID = \"%s\"\n" % self.primarySpecInstance.parameters['ProdAgentName'])
-            
-            
-
+        jdl.append("universe = globus\n")
+        jdl.append("globusscheduler = %s\n" % globusScheduler)
+        jdl.append("transfer_input_files = %s\n" % inpFileJDL)
+        jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
+        jdl.append("should_transfer_files = YES\n")
+        jdl.append("when_to_transfer_output = ON_EXIT\n")
+        jdl.append("log_xml = True\n" )
+        jdl.append("notification = NEVER\n")
+        jdl.append("+ProdAgent_ID = \"%s\"\n" % self.primarySpecInstance.parameters['ProdAgentName'])
         return jdl
     
         
@@ -182,12 +169,6 @@ class OSGBulkRouter(BulkSubmitterInterface):
         #//
         jdl.append("+ProdAgent_JobID = \"%s\"\n" % jobID)
         jdl.append("+ProdAgent_JobType = \"%s\"\n" % self.primarySpecInstance.parameters['JobType'])
-
-        jdl.append("prod_agent_job_spec_id = %s\n" % jobID)
-        jdl.append("prod_agent_workflow_spec_id = %s\n" % (
-            self.primarySpecInstance.payload.workflow)
-                   )
-        
 
         jdl.append("Arguments = %s-JobSpec.xml \n" % jobID)
         jdl.append("Queue\n")
@@ -283,6 +264,8 @@ class OSGBulkRouter(BulkSubmitterInterface):
         
 
 
+
+
     def lookupGlobusScheduler(self):
         """
         _lookupGlobusScheduler_
@@ -304,20 +287,22 @@ class OSGBulkRouter(BulkSubmitterInterface):
             logging.debug("lookupGlobusScheduler:No Whitelist")
             return self.pluginConfig['OSG']['GlobusScheduler']
       
-        #  //
-        # // We have a list, get the first one that matches
-        #//  NOTE: Need some better selection process if more that one site
-        #  //   Can we make condor match from a list??
-        # //
-        #//
-        seMap = self.pluginConfig['SENameToJobmanager']
-
+  
+        
+            
+        ceMap = createCEMap()
+        
         matchedJobMgr = None
         for sitePref in  self.whitelist:
-            if sitePref not in seMap.keys():
+            try:
+                sitePref = int(sitePref)
+            except ValueError:
+                sitePref = sitePref
+                
+            if sitePref not in ceMap.keys():
                 logging.debug("lookupGlobusScheduler: No match: %s" % sitePref)
                 continue
-            matchedJobMgr = seMap[sitePref]
+            matchedJobMgr = ceMap[sitePref]
             logging.debug("lookupGlobusScheduler: Matched: %s => %s" % (
                 sitePref, matchedJobMgr  )
                           )
@@ -329,7 +314,7 @@ class OSGBulkRouter(BulkSubmitterInterface):
             msg += "To any JobManager"
             raise JSException(msg, 
                               ClassInstance = self,
-                              SENameToJobmanager = seMap,
+                              SENameToJobmanager = ceMap,
                               Whitelist = self.whitelist)
         return matchedJobMgr
                 
