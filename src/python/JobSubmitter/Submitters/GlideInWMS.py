@@ -15,11 +15,12 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.5 2008/02/27 13:52:36 fvlingen Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.1 2008/04/07 19:09:01 evansde Exp $"
 
 import os
 import logging
 import time
+import string
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
@@ -168,7 +169,9 @@ class GlideInWMS(BulkSubmitterInterface):
 
         Make common JDL header
         """
-        desiredSite = self.lookupDesiredSites()
+        desiredSites = self.lookupDesiredSites()
+        desiredSitesJDL = string.join(list(desiredSites),',')
+        
         inpFiles = []
 
         inpFiles.extend(self.jobInputFiles)
@@ -178,19 +181,25 @@ class GlideInWMS(BulkSubmitterInterface):
         inpFileJDL = inpFileJDL[:-1]
 
         jdl = []
+        jdl.append("universe = vanilla\n")
+        # Specify where are the jobs to run
+        jdl.append('+DESIRED_Archs="INTEL,X86_64"\n')
+        jdl.append('+DESIRED_Sites = "%s"\n' % desiredSitesJDL)
+        jdl.append("Requirements = stringListMember(GLIDEIN_Site,DESIRED_Sites)&& stringListMember(Arch, DESIRED_Archs)
 
-        #  //
-        # // TODO: Add GlideIn JDL common to all jobs 
-        #//
-        
+        # log which glidein ran the job
+        jdl.append('+JOB_Site = "$$(GLIDEIN_Site:Unknown)"\n')
+        jdl.append('+JOB_GLIDEIN_Factory = "$$(GLIDEIN_Factory:Unknown)"\n')
+        jdl.append('+JOB_GLIDEIN_Name = "$$(GLIDEIN_Name:Unknown)"\n')
+        jdl.append('+JOB_GLIDEIN_Schedd = "$$(GLIDEIN_Schedd:Unknown)"\n')
+        jdl.append('+JOB_GLIDEIN_ClusterId = "$$(GLIDEIN_ClusterId:Unknown)"\n')
+        jdl.append('+JOB_GLIDEIN_ProcId = "$$(GLIDEIN_ProcId:Unknown)"\n')
+        jdl.append('+JOB_GLIDEIN_Frontend = "$$(GLIDEIN_Client:Unknown)"\n')
+        jdl.append('+JOB_Slot = "$$(Name:Unknown)"\n')
 
-        #jdl.append("universe = globus\n")
-        #jdl.append("globusscheduler = %s\n" % globusScheduler)
-
-        #  //
-        # // TODO: Change this to actual JDL
-        #//
-        jdl.append("Desired_Sites = %s\n" % desiredSites)
+        # log glidein benchmark numbers
+        jdl.append('+JOB_Machine_KFlops = "$$(KFlops:Unknown)"\n')
+        jdl.append('+JOB_Machine_Mips = "$$(Mips:Unknown)"\n')
 
         jdl.append("transfer_input_files = %s\n" % inpFileJDL)
         jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
@@ -220,9 +229,6 @@ class GlideInWMS(BulkSubmitterInterface):
         logging.debug("Submit Script: %s" % scriptFile)
         
         jdl = []
-        #  //
-        # // TODO: Add per job GlideIn details
-        #//
         jdl.append("Executable = %s\n" % scriptFile)
         jdl.append("initialdir = %s\n" % cache)
         jdl.append("Output = condor.out\n")
