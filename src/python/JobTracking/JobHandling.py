@@ -4,7 +4,11 @@ _JobHandling_
 
 """
 
+__revision__ = "$Id"
+__version__ = "$Revision"
+
 import os
+import re
 import time
 import logging
 from shutil import copy
@@ -30,8 +34,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.12 2008/04/03 17:28:35 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.12 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.13 2008/04/08 15:00:33 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.13 $"
 
 class JobHandling:
     """
