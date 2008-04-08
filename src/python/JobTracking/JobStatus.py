@@ -12,11 +12,12 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.11 2008/04/02 18:52:29 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.11 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.12 2008/04/03 15:52:09 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.12 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
+from ProdCommon.BossLite.API.BossLiteAPI import parseRange
 from ProdAgentCore.ProdAgentException import ProdAgentException
 
 import traceback
@@ -169,20 +170,30 @@ class JobStatus:
             logging.debug( 'LB query jobs ' + jobRange \
                            +  ' of task ' + tasklist )
             # query group of tasks
-            try :
-                command = 'python $PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' \
-                          + tasklist + ' ' + jobRange + ' ' \
-                          + 'SchedulerGLiteAPI' + ' ' + cert
-                logging.info('EXECUTING: ' + str(command))
-                pin, pout = popen4( command )
-                msg = pout.read()
-                logging.info( "SUBPROCESS MESSAGE : " + msg )
-                logging.info("LB status retrieved for jobs " + jobRange \
-                             + ' of task ' + tasklist )
-            except StandardError, e:
-                logging.error("Failed to retrieve status for jobs " \
-                             + e.__str__() + ' of task ' + tasklist )
-                logging.error( traceback.format_exc() )
+            for taskId in parseRange( tasklist ) :
+                try :
+                    scheduler = db.getTaskScheduler( taskId )[0]
+                    command = \
+                            'python ' + \
+                            '$PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' \
+                            + str(taskId) + ' ' + jobRange + ' ' \
+                            + scheduler + ' ' + cert
+                    logging.info('EXECUTING: ' + str(command))
+                    pin, pout = popen4( command )
+                    msg = pout.read()
+                    logging.info( "SUBPROCESS MESSAGE : " + msg )
+                    logging.info("LB status retrieved for jobs " + jobRange \
+                                 + ' of task ' + str(taskId) )
+                except TypeError, e:
+                    logging.error("Failed to retrieve status for jobs " \
+                                  + jobRange + ' of task ' + str(taskId) \
+                                  + ' : ' + str( e ) )
+                except StandardError, e:
+                    logging.error("Failed to retrieve status for jobs " \
+                                  + jobRange + ' of task ' + str(taskId) \
+                                  + ' : ' + str( e ) )
+                    logging.error( traceback.format_exc() )
+
 
 
     @classmethod
