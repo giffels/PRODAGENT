@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.6 2008/04/03 16:10:39 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.6 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.7 2008/04/03 17:18:27 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.7 $"
 
 import logging
 import os
@@ -102,26 +102,50 @@ class JobOutput:
 
             # verify the status 
             status = job.runningJob['processStatus']
+            outdir = job.runningJob['outputDirectory']
 
-            # create directory
-            outdir = cls.params['componentDir'] + \
-                     '/BossJob_%s_%s/Submission_%s' % \
-                     (job['taskId'], job['jobId'], job['submissionNumber'])
-            try:
-                os.makedirs( outdir )
-            except OSError, err:
-                if  err.errno == 17:
-                    # existing dir
-                    pass
-                else :
-                    # cannot create directory, go to next job
-                    logging.error("Cannot create directory : " + str(err))
-                    return job
+            # job failed: perform postMortem operations and notify the failure
+            if status == 'failed':
+                # loggingInfo
+                task = bossLiteSession.loadTask(job['taskId'])
+                if task['user_proxy'] is None:
+                    task['user_proxy'] = ''
+                    
+                schedulerConfig = {'name' : job.runningJob['scheduler'],
+                                   'user_proxy' : task['user_proxy'] ,
+                                   'service' : job.runningJob['service'] }
+                try:
+                    scheduler = Scheduler.Scheduler(
+                        job.runningJob['scheduler'], schedulerConfig )
+                    # perform postMortem operation such as logging-info
+                    scheduler.postMortem( job, outdir + '/loggingInfo.log' )
+                    job.runningJob['statusHistory'].append( \
+                        'retrieved loggin-info')
+                except SchedulerError, err:
+                    logging.info('Can not get logging.info for job %s.%s' % \
+                                 (job['taskId'], job['jobId'] ))
+                    logging.info( '[%s]'%str(err) )
+                    job.runningJob['statusHistory'].append( \
+                        'failed to retrieve loggin-info')
+
+                # perform a BOSS archive operation
+                job.runningJob['processStatus'] = 'failure_handled'
+                bossLiteSession.archive( job )
+
+                return job
 
             # output retrieved before, then recover interrupted operation
             if status == 'output_retrieved':
                 logging.warning("Enqueuing previous ouput for job %s.%s" % \
                                 (job['taskId'], job['jobId']))
+                return job
+
+            # inconsistent status
+            if status == 'in_progress' and job.runningJob['closed'] == 'Y':
+                logging.warning("Enqueuing previous ouput for job %s.%s" % \
+                                (job['taskId'], job['jobId']))
+                job.runningJob['processStatus'] = 'output_retrieved'
+                bossLiteSession.updateDB( job )
                 return job
 
             # non expected status, abandon processing for job
@@ -261,7 +285,7 @@ class JobOutput:
         bossLiteSession = BossLiteAPI('MySQL', dbConfig)
 
         # update job status
-        job['processStatus'] = 'output_processed'
+        job['processStatus'] = 'processed'
         bossLiteSession.updateDB( job )
 
         logging.debug("Output processing done for job %s.%s" % \

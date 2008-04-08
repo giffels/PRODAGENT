@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.4 2008/04/03 13:49:11 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.4 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.5 2008/04/03 15:52:08 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.5 $"
 
 import os
 import logging
@@ -147,7 +147,7 @@ class GetOutputComponent:
 
         # get jobs that require output
         outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
-            { 'processStatus' : 'output_requested', 'closed' : 'N' } )
+            { 'processStatus' : 'output_requested' } )
         numberOfJobs = len(outputRequestedJobs)
         logging.info("Output requested for " + str( numberOfJobs ) + " jobs")
 
@@ -157,6 +157,26 @@ class GetOutputComponent:
             # TODO here was good the compund update... to be reimplemented
             for job in outputRequestedJobs:
                 job.runningJob['processStatus'] = 'in_progress'
+                job.runningJob['outputDirectory'] = \
+                                            self.jobHandling.buildOutdir( job )
+                self.bossLiteSession.updateDB( job )
+                self.pool.enqueue(job, job)
+
+        logging.debug("Start processing of outputs")
+
+        # get jobs failed that require post-mortem operations
+        outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
+            { 'processStatus' : 'failed' } )
+        numberOfJobs = len(outputRequestedJobs)
+        logging.info("Notify failure for " + str( numberOfJobs ) + " jobs")
+
+        if numberOfJobs != 0:
+            
+            # change status for jobs that require get output operations
+            # TODO here was good the compund update... to be reimplemented
+            for job in outputRequestedJobs:
+                job.runningJob['outputDirectory'] = \
+                                            self.jobHandling.buildOutdir( job )
                 self.bossLiteSession.updateDB( job )
                 self.pool.enqueue(job, job)
 
@@ -198,7 +218,7 @@ class GetOutputComponent:
         self.jobHandling.performOutputProcessing(job)
 
         # update status
-        job.runningJob['processStatus'] = 'output_processed'
+        job.runningJob['processStatus'] = 'processed'
         self.bossLiteSession.updateDB( job )
 
         logging.debug("Processing output for job %s.%s finished" % \

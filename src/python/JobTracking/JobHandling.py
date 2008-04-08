@@ -19,7 +19,9 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
 # Blite API import
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
+from ProdCommon.BossLite.Scheduler import Scheduler
 from ProdCommon.BossLite.Common.Exceptions import TaskError
+from ProdCommon.BossLite.Common.Exceptions import SchedulerError
 from ProdAgentBOSS import BOSSCommands
 
 # Framework Job Report handling
@@ -28,8 +30,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.11 2008/04/03 17:19:21 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.11 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.12 2008/04/03 17:28:35 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.12 $"
 
 class JobHandling:
     """
@@ -47,10 +49,18 @@ class JobHandling:
         self.usingDashboard = params['usingDashboard']
         self.ms = params['messageServiceInstance']
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+        self.ft = re.compile( 'gsiftp://[\w.]+:\d+/*' )
+        try:
+            from ProdAgentCore.Configuration import loadProdAgentConfiguration
+            config = loadProdAgentConfiguration()
+            compCfg = config.getConfig("CrabServerConfigurations")
+            self.tasksDir = compCfg["dropBoxPath"]
+        except StandardError, ex:
+            self.tasksDir = ''
 
     def performOutputProcessing(self, job):
         """
-        _performOutputProcessing_
+        __performOutputProcessing__
         """
 
         # get job information
@@ -59,8 +69,19 @@ class JobHandling:
         jobSpecId = job['name']
 
         # get outdir and report file name
-        outdir = self.buildOutdir( job )
+        outdir = job.runningJob['outputDirectory']
+        if outdir is None :
+            outdir = self.buildOutdir( job )
         reportfilename = outdir + '/FrameworkJobReport.xml'
+        
+        # FIXME: temporary to emulate SE
+        task = self.bossLiteSession.loadTask(job['taskId'], {'name' : ''})
+        if task['outputDirectory'] is None \
+               or self.ft.match( task['outputDirectory'] ) is not None or \
+               not os.access( task['outputDirectory'], os.W_OK):
+            toWrite = False
+        else:
+            toWrite = True
 
         # retrieve output message
         try :
@@ -90,7 +111,7 @@ class JobHandling:
                               (job['jobId'], str(msg)))
 
             # generate a failure message
-            self.publishJobFailed(job, reportfilename)
+            self.publishJobFailed(job, reportfilename, toWrite)
             return
 
         # proxy expire... nothing to do!
@@ -124,13 +145,14 @@ class JobHandling:
             # FwkJobReport not there: create one based on BOSS DB
             else:
 
-                try:
-                    exeCode = job.runningJob['wrapperReturnCode']
-                    jobCode = job.runningJob['applicationReturnCode']
-                    success = (exeCode == "0" or exeCode == "" or exeCode == None or exeCode == 'NULL') and (jobCode == "0")
-                except :
+                if job.runningJob['processStatus'] != 'failed' :
+                    try:
+                        exeCode = job.runningJob['wrapperReturnCode']
+                        jobCode = job.runningJob['applicationReturnCode']
+                        success = (exeCode == "0" or exeCode == "" or exeCode == None or exeCode == 'NULL') and (jobCode == "0")
+                    except :
                     ## FIXME what to do?
-                    pass
+                        pass
 
                 logging.debug("check Job Success: %s" % str(success))
 
@@ -146,13 +168,13 @@ class JobHandling:
             if success:
 
                 # yes, generate a job successful message and change status
-                self.publishJobSuccess(job, reportfilename)
+                self.publishJobSuccess(job, reportfilename, toWrite)
                 self.notifyJobState(jobSpecId)
 
             else:
 
                 # no, generate a job failure message
-                self.publishJobFailed(job, reportfilename)
+                self.publishJobFailed(job, reportfilename, toWrite)
 
         # other problem... just display error
         else:
@@ -167,14 +189,27 @@ class JobHandling:
         compose outdir name and make the directory
         """
 
-        # FIXME: get report file name and outdir
-        outdir = "%s/BossJob_%s_%s/Submission_%s/" % (self.baseDir,  \
-                                                      job['taskId'], \
-                                                      job['jobId'],  \
-                                                      job['submissionNumber'] )
+        # try with boss db
+        task = self.bossLiteSession.loadTask(job['taskId'], {'name' : ''})
+        if task['outputDirectory'] is not None \
+               and task['outputDirectory'] != '' :
+            outdir = task['outputDirectory']
+        else :
+            outdir = self.baseDir
+
+        # FIXME: temporary to emulate SE
+        # SE? 
+        stdir = self.ft.match( outdir )
+        if stdir is not None or not os.access( outdir, os.W_OK):
+            # outdir = outdir[stdir.end()-1:]
+            outdir = self.tasksDir + '/' + task['name'] + '_spec'
+
+        # FIXME: get outdir
+        outdir = "%s/BossJob_%s_%s/Submission_%s/" % \
+                 (outdir, job['taskId'], job['jobId'], job['submissionNumber'])
 
         # make outdir
-        logging.debug("Creating directory: " + outdir)
+        logging.info("Creating directory: " + outdir)
         try:
             os.makedirs( outdir )
         except OSError, err:
@@ -211,13 +246,17 @@ class JobHandling:
         fwjr.write(reportfilename)
 
 
-    def publishJobSuccess(self, job, reportfilename):
+    def publishJobSuccess(self, job, reportfilename, local=True):
         """
         __publishJobSuccess__
         """
 
         # set success job status
-        reportfilename = self.archiveJob("Success", job, reportfilename)
+        if local :
+            reportfilename = self.archiveJob("Success", job, reportfilename)
+        else :
+            # archive job
+            self.bossLiteSession.archive( job )
 
         # publish success event
         self.ms.publish("JobSuccess", reportfilename)
@@ -227,13 +266,18 @@ class JobHandling:
                      reportfilename)
         return
 
-    def publishJobFailed(self, job, reportfilename):
+
+    def publishJobFailed(self, job, reportfilename, local=True):
         """
         __publishJobFailed__
         """
 
-        # archive the job in BOSS DB
-        reportfilename = self.archiveJob("Failed", job, reportfilename)
+        # set failed job status
+        if local :
+            reportfilename = self.archiveJob("Failed", job, reportfilename)
+        else :
+            # archive job
+            self.bossLiteSession.archive( job )
 
         # publish job failed event
         self.ms.publish("JobFailed", reportfilename)
@@ -244,13 +288,11 @@ class JobHandling:
 
         return
 
-    def resolveOutdir(self, job, fjr):
 
-        # try with boss db
-        task = self.bossLiteSession.loadTask(job['taskId'], {'name' : ''})
-        if task['outputDirectory'] is not None \
-               and task['outputDirectory'] != '' :
-            return task['outputDirectory']
+    def resolveOutdir(self, job, fjr):
+        """
+        __resolveOutdir__
+        """
 
         # fallback directory in JobTracking.
         fallbackCacheDir = self.baseDir + "/%s" % fjr[0].jobSpecId
@@ -537,7 +579,7 @@ class JobHandling:
 
         # dashboard information
         ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
-            job['jobId'], self.bossLiteSession
+            job, self.bossLiteSession
             )
         if dashboardInfo.task == '' or dashboardInfo.task == None :
             logging.error( "unable to retrieve DashboardId" )

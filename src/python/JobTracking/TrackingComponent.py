@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.15 2008/04/03 15:52:09 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.15 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.16 2008/04/03 16:02:14 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.16 $"
 
 import os
 import os.path
@@ -40,7 +40,6 @@ from GetOutput.TrackingDB import TrackingDB
 
 # BossLite support 
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
-from ProdCommon.BossLite.Scheduler import Scheduler
 
 # Threads pool
 from JobTracking.PoolScheduler import PoolScheduler
@@ -294,33 +293,13 @@ class TrackingComponent:
                 logging.error("Cannot publish to dashboard:%s" % msg)
 
 
-            # get framework jod report file name
-            outdir = self.jobHandling.buildOutdir( job )
-            reportfilename = outdir + '/FrameworkJobReport.xml'
+            # enqueue the get output operation
+            logging.debug("Enqueing failure handling request for %s" % \
+                          self.jobHandling.fullId(job))
 
-            # create failure Framework Job Report
-            self.jobHandling.writeFwkJobReport( job['name'], -1, \
-                                                reportfilename )
+            job.runningJob['processStatus'] = 'failed'
+            self.bossLiteSession.updateDB( job.runningJob )
 
-            # loggingInfo
-            task = self.bossLiteSession.loadTask(job['taskId'])
-            if task['user_proxy'] is None:
-                task['user_proxy'] = ''
-
-            schedulerConfig = {'name' : job.runningJob['scheduler'],
-                               'user_proxy' : task['user_proxy'] ,
-                               'service' : job.runningJob['service'] }
-            scheduler = Scheduler.Scheduler(
-                job.runningJob['scheduler'], schedulerConfig )
-
-            # perform postMortem operation such as logging-info
-            scheduler.postMortem( job, outdir + '/loggingInfo.log' )
-
-            # perform a BOSS archive operation
-            self.bossLiteSession.archive( job )
-
-            # generate a failure message
-            self.jobHandling.publishJobFailed(job, reportfilename)
 
     def handleFinished(self):
         """

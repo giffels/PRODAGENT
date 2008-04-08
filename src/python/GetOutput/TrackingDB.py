@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.5 2008/04/03 15:52:09 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.5 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.6 2008/04/03 16:10:39 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.6 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 
@@ -36,6 +36,25 @@ class TrackingDB:
         """
 
         rows = directDB.select(self.session, query)
+
+        return rows
+
+
+    def getTaskScheduler(self, taskId):
+        """
+        __getTaskScheduler__
+
+        retrieve scheduler used by task
+        """
+
+        # build query 
+        query = """
+        select distinct( scheduler ) from bl_runningjob
+        where task_id=%s and closed='N' and scheduler is not NULL
+        and scheduler_id is not NULL
+        """ % str( taskId )
+
+        rows = directDB.select(self.session, query)[0]
 
         return rows
 
@@ -102,7 +121,8 @@ class TrackingDB:
               + ' left join jt_group g' \
               + ' on (j.task_id=g.task_id and j.job_id=g.job_id) ' \
               + ' where g.job_id IS NULL and j.job_id IS NOT NULL' \
-              + " and j.closed='N' order by j.task_id"
+              + " and j.closed='N' and j.scheduler_id IS NOT NULL" \
+              + " order by j.task_id"
 
         rows = directDB.select(self.session, query)
         return rows
