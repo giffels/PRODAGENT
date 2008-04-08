@@ -23,9 +23,7 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
 # Blite API import
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
-from ProdCommon.BossLite.Scheduler import Scheduler
 from ProdCommon.BossLite.Common.Exceptions import TaskError
-from ProdCommon.BossLite.Common.Exceptions import SchedulerError
 from ProdAgentBOSS import BOSSCommands
 
 # Framework Job Report handling
@@ -34,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.13 2008/04/08 15:00:33 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.13 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.14 2008/04/08 15:05:44 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.14 $"
 
 class JobHandling:
     """
@@ -71,12 +69,14 @@ class JobHandling:
         taskId = job['taskId']
         jobId = job['jobId']
         jobSpecId = job['name']
+                   
+        # job status
+        exitCode = -1
 
         # get outdir and report file name
         outdir = job.runningJob['outputDirectory']
         if outdir is None :
             outdir = self.buildOutdir( job )
-        reportfilename = outdir + '/FrameworkJobReport.xml'
         
         # FIXME: temporary to emulate SE
         task = self.bossLiteSession.loadTask(job['taskId'], {'name' : ''})
@@ -87,104 +87,94 @@ class JobHandling:
         else:
             toWrite = True
 
-        # retrieve output message
-        try :
-            # FIXME: take the last action 
-            outp = job.runningJob['statusHistory'][-1]
-        except IndexError:
-            logging.info( "##### No output information... try to continue..." )
-            outp = ''
-
-        # process!
-        #  if output retrieval failed
-        if outp.find('it has been purged') != -1 :
-            logging.error( "Missing output file for job %s.%s: %s" % \
-                           (jobId, taskId, outp) )
-
-            logging.debug("Job " + jobSpecId + \
-                          " has no FrameworkReport : creating a dummy one")
-
-            # create job report
-            self.writeFwkJobReport( jobSpecId, -1, reportfilename )
-
-            # archive job, forcing a deleted status in the BOSS DB
-            try:
-                self.bossLiteSession.archive( job )
-            except TaskError, msg:
-                logging.error("Failed to archive job %s: %s" % \
-                              (job['jobId'], str(msg)))
-
-            # generate a failure message
-            self.publishJobFailed(job, reportfilename, toWrite)
-            return
-
-        # proxy expire... nothing to do!
-        elif outp.find("Proxy Expired") != -1 :
-            logging.error( "Proxy expired for task %s: skipping" % taskId )
-            return
-
-        # FIXME: how to handle mismatching proxy?
-        elif outp.find('Error with credential') != -1 :
-            logging.error( "Proxy error for task %s: %s" % \
-                           (taskId, outp) )
-            return
-
-        # successful output retrieval?
-        elif outp.lower().find("error") < 0 and \
-           outp.find("already been retrieved") < 0 :
-
-            logging.debug("report file name %s exists: %s" % \
-                (reportfilename, os.path.exists(reportfilename)))
-
-            # job status
-            success = False
-
-            # is the FwkJobReport there?
+        # is the FwkJobReport there?
+        reportfilename = outdir + '/FrameworkJobReport.xml'
+        fwjrExists = os.path.exists(reportfilename)
+        if not fwjrExists:
+            tmp = outdir + '/crab_fjr_' + str(jobId) + '.xml'
+            fwjrExists = os.path.exists(tmp)
             if os.path.exists(reportfilename):
+                reportfilename = tmp
+        logging.debug("report file name %s exists: %s" % \
+                      (reportfilename, str(fwjrExists)) )
 
-                # check success
-                success = checkSuccess(reportfilename)
+        ## # TODO : handle known failures?
+        ## # retrieve output message
+        ## try :
+        ##     # FIXME: take the last action 
+        ##     outp = job.runningJob['statusHistory'][-1]
+        ## except IndexError:
+        ##     logging.info( "##### No output information... try to continue..." )
+        ##     outp = ''
+        ## #  if output retrieval failed
+        ## if outp.find('it has been purged') != -1 :
+        ##     logging.error( "Missing output file for job %s.%s: %s" % \
+        ##                    (jobId, taskId, outp) )
+        ## 
+        ##     logging.debug("Job " + jobSpecId + \
+        ##                   " has no FrameworkReport : creating a dummy one")
+        ## 
+        ##     # create job report
+        ##     exitCode = -1
+        ## 
+        ## # proxy expire... nothing to do!
+        ## elif outp.find("Proxy Expired") != -1 :
+        ##     logging.error( "Proxy expired for task %s: skipping" % taskId )
+        ##     return
+        ## 
+        ## # FIXME: how to handle mismatching proxy?
+        ## elif outp.find('Error with credential') != -1 :
+        ##     logging.error( "Proxy error for task %s: %s" % \
+        ##                    (taskId, outp) )
+        ##     return
+        ## 
+        ## # successful output retrieval?
+        ## if outp.lower().find("logging-info") >= 0  \
+        ##    outp.find("already been retrieved") < 0 :
+
+        # is the FwkJobReport there?
+        if fwjrExists:
+
+            # check success
+            if checkSuccess(reportfilename) :
+                exitCode = 0
                 logging.debug("check Job Success: %s" % str(success))
 
-            # FwkJobReport not there: create one based on BOSS DB
-            else:
-
-                if job.runningJob['processStatus'] != 'failed' :
-                    try:
-                        exeCode = job.runningJob['wrapperReturnCode']
-                        jobCode = job.runningJob['applicationReturnCode']
-                        success = (exeCode == "0" or exeCode == "" or exeCode == None or exeCode == 'NULL') and (jobCode == "0")
-                    except :
-                    ## FIXME what to do?
-                        pass
-
-                logging.debug("check Job Success: %s" % str(success))
-
-                # create db based Framework Job Report
-                if success:
-                    exitCode = 0
-                else :
-                    exitCode = -1
-
-                self.writeFwkJobReport( jobSpecId, exitCode, reportfilename )
-
-            # in both cases: is the job successful?
-            if success:
-
-                # yes, generate a job successful message and change status
-                self.publishJobSuccess(job, reportfilename, toWrite)
-                self.notifyJobState(jobSpecId)
-
-            else:
-
-                # no, generate a job failure message
-                self.publishJobFailed(job, reportfilename, toWrite)
-
-        # other problem... just display error
+        # FwkJobReport not there: create one based on db or assume failed
         else:
-            logging.error(outp)
+            # FIXME : try to guess from db ???
+            if job.runningJob['processStatus'] != 'failed' :
+                try:
+                    exeCode = job.runningJob['wrapperReturnCode']
+                    jobCode = job.runningJob['applicationReturnCode']
+                    success = (exeCode == "0" or exeCode == "" or \
+                               exeCode == None or exeCode == 'NULL') \
+                               and (jobCode == "0")
+                    if success :
+                            exitCode = 0
+                except :
+                    ## FIXME what to do?
+                    pass
+
+            logging.debug("check Job Success: %s" % str(success))
+
+            self.writeFwkJobReport( jobSpecId, exitCode, reportfilename )
+
+
+        # in both cases: is the job successful?
+        if exitCode == 0:
+
+            # yes, generate a job successful message and change status
+            self.publishJobSuccess(job, reportfilename, toWrite)
+            self.notifyJobState(jobSpecId)
+
+        else:
+
+            # no, generate a job failure message
+            self.publishJobFailed(job, reportfilename, toWrite)
 
         return
+
 
     def buildOutdir( self, job ) :
         """
