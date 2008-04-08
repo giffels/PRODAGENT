@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.7 2008/04/03 17:18:27 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.7 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.8 2008/04/08 15:00:33 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.8 $"
 
 import logging
 import os
@@ -120,13 +120,13 @@ class JobOutput:
                     # perform postMortem operation such as logging-info
                     scheduler.postMortem( job, outdir + '/loggingInfo.log' )
                     job.runningJob['statusHistory'].append( \
-                        'retrieved loggin-info')
+                        'retrieved logging-info')
                 except SchedulerError, err:
                     logging.info('Can not get logging.info for job %s.%s' % \
                                  (job['taskId'], job['jobId'] ))
                     logging.info( '[%s]'%str(err) )
                     job.runningJob['statusHistory'].append( \
-                        'failed to retrieve loggin-info')
+                        'failed to retrieve logging-info')
 
                 # perform a BOSS archive operation
                 job.runningJob['processStatus'] = 'failure_handled'
