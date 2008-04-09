@@ -25,6 +25,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'only-closed-blocks',
          'dbs-url=', 
          'pileup-dataset=', 'pileup-files-per-job=',
+         'activity='
          
          ]
 
@@ -44,6 +45,7 @@ usage += "                                --only-blocks=<List of fileblocks>\n"
 usage += "                                --only-sites=<List of sites>\n"
 usage += "                                --dbs-url=<DBSUrl>\n"
 usage += "                                  --override-channel=<Phys Channel/Primary Dataset>\n"
+usage += "                                  --activity=<activity>\n"
 
 
 
@@ -84,6 +86,8 @@ options = \
 
   --dbs-url=DBS Url, The URL of the DBS Service containing the input dataset
     
+  --activity=<activity>, The activiy represented but this workflow
+    i.e. Reprocessing, Skimming etc.
 """
 
 
@@ -120,7 +124,7 @@ onlyClosedBlocks = False
 pileupDataset = None
 pileupFilesPerJob = 1
 
-
+activty = "Reprocessing"
 
 
 
@@ -167,6 +171,8 @@ for opt, arg in opts:
         pileupDataset = arg
     if opt == '--pileup-files-per-job':
         pileupFilesPerJob = arg
+    if opt == '--activity':
+        activity = arg
         
 if cfgFile == None:
     msg = "--cfg or --py-cfg option not provided: This is required"
@@ -276,6 +282,8 @@ if dbsUrl != None:
 
 
 spec = maker.makeWorkflow()
+spec.setActivity(activity)
+
 spec.save("%s-Workflow.xml" % maker.workflowName)
 
 

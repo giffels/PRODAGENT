@@ -20,7 +20,8 @@ import sys
 import time
 
 valid = ['cmsRunCfg=', 'cmsGenCfg=', 'version=', 'category=', "label=",
-         'channel=', 'group=', 'request-id=', 'selection-efficiency=', 'help'
+         'channel=', 'group=', 'request-id=', 'selection-efficiency=', 'help',
+         'activity=',
          ]
 
 usage =  "Usage: createProductionCmsGenWorkflow.py --cmsRunCfg=<cmsRunCfg>\n"
@@ -31,6 +32,8 @@ usage += "                        		 --label=<Production Label>\n"
 usage += "                        		 --channel=<Phys Channel/Primary Dataset>\n"
 usage += "                        		 --group=<Physics Group>\n"
 usage += "                        		 --request-id=<Request ID>\n"
+usage += "                               --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
+
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
@@ -49,6 +52,7 @@ physicsGroup = "Individual"
 requestId    = "%s-%s" % (os.environ['USER'], int(time.time()))
 cfgType      = "cfg"
 selectionEfficiency = None
+activity = None
 
 for opt, arg in opts:
     if opt == "--help":
@@ -72,6 +76,8 @@ for opt, arg in opts:
         requestId = arg
     if opt == "--selection-efficiency":
         selectionEfficiency = arg
+    if opt == "--activity":
+        activity = arg
 
 if cmsRunCfg == None:
     msg = "--cmsRunCfg option not provided: This is required"
@@ -146,6 +152,8 @@ if selectionEfficiency != None:
 #                          )
 
 wfspec = maker.makeWorkflow()
+if activity is not None:
+    wfspec.setActivity(activity)
 wfspec.save("%s-Workflow.xml" % maker.workflowName)
 
 print "Created: %s-Workflow.xml" % maker.workflowName

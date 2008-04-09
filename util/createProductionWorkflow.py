@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.9 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.9 2007/05/19 10:47:04 afanfani Exp $"
+__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.10 2007/05/28 12:32:27 afanfani Exp $"
 
 
 import os
@@ -26,7 +26,7 @@ from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=',
          'pileup-dataset=', 'pileup-files-per-job=',
-         'selection-efficiency=',
+         'selection-efficiency=', 'activity='
          ]
 
 usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
@@ -36,6 +36,7 @@ usage += "                                  --group=<Physics Group>\n"
 usage += "                                  --request-id=<Request ID>\n"
 usage += "                                  --label=<Production Label>\n"
 usage += "                                  --category=<Production category>\n"
+usage += "                                  --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -60,6 +61,7 @@ version = None
 category = "mc"
 channel = None
 cfgType = "cfg"
+activity = None
 
 pileupDS = None
 pileupFilesPerJob = 1
@@ -92,7 +94,9 @@ for opt, arg in opts:
     if opt == '--pileup-dataset':
         pileupDS = arg
     if opt == '--pileup-files-per-job':
-        pileupFilesPerJob = arg   
+        pileupFilesPerJob = arg
+    if opt == '--activity':
+        activity = arg
    
     
 if cfgFile == None:
@@ -160,6 +164,8 @@ if pileupDS != None:
     
   
 spec = maker.makeWorkflow()
+if activity is not None:
+    spec.setActivity(activity)
 spec.save("%s-Workflow.xml" % maker.workflowName)
 
 

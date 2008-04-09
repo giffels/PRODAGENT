@@ -24,7 +24,7 @@ valid = ['cfg=', 'version=', 'category=', 'name=', 'dataset=',
          'split-type=', 'split-size=',
          'only-blocks=', 'only-sites=',
          'dbs-address=', 'dbs-url=', 'dls-type=', 'dls-address=',
-         'same-primary-dataset', "fake-hash",
+         'same-primary-dataset', "fake-hash", 'activity=',
          ]
 
 
@@ -43,6 +43,7 @@ usage += "                                --dbs-address=<DBSAddress>\n"
 usage += "                                --dbs-url=<DBSUrl>\n"
 usage += "                                --dls-address=<DLSAddress>\n"
 usage += "                                --dls-type=<DLSType>\n"
+usage += "                                --activity=<activity>\n"
 
 
 options = \
@@ -75,6 +76,9 @@ options = \
     added to the same primary dataset as the input dataset if provided.
     If not provided, then a completely new Primary dataset will be created
     using the --name value.
+    
+  --activity=<activity>, The activiy represented but this workflow
+    i.e. Reprocessing, Skimming etc.
     
 
   Specifying a DBS/DLS containing the dataset. Usually data is looked up
@@ -121,6 +125,8 @@ primaryDataset = None
 dataTier = None
 processedDataset = None
 
+activity = 'Skimming'
+
 for opt, arg in opts:
     if opt == "--cfg":
         cfgFile = arg
@@ -152,6 +158,8 @@ for opt, arg in opts:
         dlsAddress = arg
     if opt == '--fake-hash':
         fakeHash = True
+    if opt == '--activity':
+        activity = arg
 
 if cfgFile == None:
     msg = "--cfg option not provided: This is required"
@@ -259,6 +267,8 @@ spec = WorkflowSpec()
 spec.setWorkflowName(prodName)
 spec.setRequestCategory(category)
 spec.setRequestTimestamp(timestamp)
+spec.setWorkflowType("Skimming")
+spec.setActivity(activity)
 
 spec.parameters['SplitType'] = splitType
 spec.parameters['SplitSize'] = splitSize

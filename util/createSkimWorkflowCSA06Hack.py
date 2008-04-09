@@ -25,7 +25,7 @@ valid = ['cfg=', 'version=', 'category=', 'name=', 'dataset=',
          'split-type=', 'split-size=',
          'only-blocks=', 'only-sites=',
          'dbs-address=', 'dbs-url=', 'dls-type=', 'dls-address=',
-         'same-primary-dataset', 'fake-hash',
+         'same-primary-dataset', 'fake-hash', 'activity',
          ]
 
 
@@ -45,7 +45,7 @@ usage += "                                --dbs-address=<DBSAddress>\n"
 usage += "                                --dbs-url=<DBSUrl>\n"
 usage += "                                --dls-address=<DLSAddress>\n"
 usage += "                                --dls-type=<DLSType>\n"
-
+usage += "                                --activity=<activity>\n"
 
 options = \
 """
@@ -90,6 +90,9 @@ options = \
    --dbs-url=DBS Url, The URL of the DBS Service
    --dls-address=DLSInstance, the DLS address
    --dls-type=DLSType, the Type of DLS you are using.
+   
+  --activity=<activity>, The activity represented but this workflow
+    i.e. Reprocessing, Skimming etc.
     
 """
 
@@ -125,6 +128,8 @@ primaryDataset = None
 dataTier = None
 processedDataset = None
 
+activity = 'Skimming'
+
 for opt, arg in opts:
     if opt == "--cfg":
         cfgFile = arg
@@ -156,6 +161,8 @@ for opt, arg in opts:
         dlsType = arg
     if opt == '--dls-address':
         dlsAddress = arg
+    if opt == '--activity':
+        activity = arg
 
 if cfgFile == None:
     msg = "--cfg option not provided: This is required"
@@ -271,6 +278,8 @@ spec = WorkflowSpec()
 spec.setWorkflowName(prodName)
 spec.setRequestCategory(category)
 spec.setRequestTimestamp(timestamp)
+spec.setWorkflowType("Skimming")
+spec.setActivity(activity)
 
 spec.parameters['SplitType'] = splitType
 spec.parameters['SplitSize'] = splitSize
