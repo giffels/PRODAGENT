@@ -15,7 +15,7 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.2 2008/04/08 20:27:36 sfiligoi Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.3 2008/04/09 19:20:39 sfiligoi Exp $"
 
 import os
 import logging
@@ -336,9 +336,9 @@ class GlideInWMS(BulkSubmitterInterface):
   
         
         #  //
-        # // Map to CE Name (desired sites attr) in ResCon DB
+        # // Map to Site Name (desired sites attr) in ResCon DB
         #//
-        ceMap = createCEMap()
+        siteMap = createSiteNameMap()
 
         #  //
         # // Match a list of desired sites
@@ -351,10 +351,10 @@ class GlideInWMS(BulkSubmitterInterface):
             except ValueError:
                 pass
                 
-            if sitePref not in ceMap.keys():
+            if sitePref not in siteMap.keys():
                 logging.debug("lockupDesiredSites: No match: %s" % sitePref)
                 continue
-            matchedSites.add(ceMap[sitePref])
+            matchedSites.add(siteMap[sitePref])
             logging.debug("lockupDesiredSites: Matched: %s => %s" % (
                 sitePref, matchedSites  )
                           )
