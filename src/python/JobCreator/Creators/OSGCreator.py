@@ -132,6 +132,8 @@ class OSGCreator(CreatorInterface):
             self.handleCleanUp(taskObject)
         elif typeVal == "SVSuite":
             self.handleSVSuite(taskObject)
+        elif typeVal == "LogCollect":
+            self.handleLogCollect(taskObject)
         else:
             return
 
@@ -265,6 +267,30 @@ class OSGCreator(CreatorInterface):
             
         logging.debug("CleanUp Software Setup Command: %s" % stageOutSetup)
         taskObject['PreCleanUpCommands'].append(
+            stageOutSetup
+            )
+        return
+    
+    
+    def handleLogCollect(self, taskObject):
+        """
+        _handleCleanUp_
+
+        Handle a CleanUp task object
+
+        """
+        
+        stageOutSetup = self.pluginConfig['StageOut']['SetupCommand']
+        parentVersion = None
+        if taskObject.parent != None:
+            if taskObject.parent.has_key("CMSProjectVersion"):
+                parentVersion = taskObject.parent["CMSProjectVersion"]
+        if parentVersion != None:
+            stageOutSetup = stageOutSetup.replace("$CMSSWVERSION",
+                                                  parentVersion)
+            
+        logging.debug("LogCollect Software Setup Command: %s" % stageOutSetup)
+        taskObject['PreLogCollectCommands'].append(
             stageOutSetup
             )
         return

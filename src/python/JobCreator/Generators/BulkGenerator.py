@@ -40,6 +40,7 @@ from JobCreator.DashboardTools import installBulkDashboardInfo, writeDashboardIn
 from JobCreator.CmsGenTools import InsertCmsGenStructure, PopulateCmsGenScript
 from JobCreator.FrontierTools import InsertFrontierTools
 from JobCreator.ScriptControlTools import InstallScriptControls
+from JobCreator.LogCollectTools import InsertLogCollect, PopulateLogCollect 
 
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, generateDashboardID
 
@@ -131,6 +132,7 @@ class BulkGenerator(GeneratorInterface):
         taskObject(NewInsertStageOut())
         taskObject(InstallScriptControls())
         taskObject(InstallUserSandbox())
+        taskObject(InsertLogCollect())
         
         logging.debug(
             "JobGenerator: Calling Creator:")
@@ -145,6 +147,7 @@ class BulkGenerator(GeneratorInterface):
         taskObject(PopulateCleanUp())
         taskObject(PopulateLogArch(self.componentConfig.get("LogArchStageOut", False)))
         taskObject(NewPopulateStageOut())
+        taskObject(PopulateLogCollect())
         
         logging.debug("JobGenerator:Creating Physical Job")
         logging.debug("directory=%s" % directory)

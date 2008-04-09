@@ -567,9 +567,9 @@ class DBSComponent:
         for jobreport in jobreports:
 
          #  //
-         # //  Do nothing for CleanUp jobs
+         # //  Do nothing for jobs that should have dbs output registered
          #//
-         if (jobreport.jobType == "CleanUp"):
+         if jobreport.jobType in ("CleanUp", "LogCollect"):
              logging.info("Do nothing for CleanUp job")
              try:
                  self.trigger.setFlag("cleanup", jobreport.jobSpecId,

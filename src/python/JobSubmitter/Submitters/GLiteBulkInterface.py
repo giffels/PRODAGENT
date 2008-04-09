@@ -478,7 +478,7 @@ fi
         #
         #  For Merge jobs use Merge JDLRequirementsFile if it's configured
         #
-        if jobType in ("Merge", "CleanUp", "LogArchive"):
+        if jobType in ("Merge", "CleanUp", "LogCollect"):
             if 'MergeJDLRequirementsFile' in self.pluginConfig['GLITE'].keys():
                 UserJDLRequirementsFile=self.pluginConfig['GLITE']['MergeJDLRequirementsFile']
                 return UserJDLRequirementsFile
@@ -548,7 +548,7 @@ fi
         #  //
         # // software version requirements
         #//
-        if jobType in ("CleanUp", "LogArchive"):
+        if jobType in ("CleanUp", "LogCollect"):
             swClause = ""
         else:
             if len(self.applicationVersions)>0:

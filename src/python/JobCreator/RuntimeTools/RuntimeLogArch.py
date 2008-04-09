@@ -13,22 +13,52 @@ for the job.
 import sys
 import os
 import re
+import time
 
-from ProdCommon.FwkJobRep.TaskState import TaskState
+from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
 from StageOut.StageOutMgr import StageOutMgr
 
 from StageOut.StageOutError import StageOutInitError
+
+from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+from ProdCommon.FwkJobRep.MergeReports import mergeReports
+from ProdCommon.FwkJobRep.MergeReports import updateReport
 
 class LogArchMgr:
 
 
     def __init__(self):
         self.state = TaskState(os.getcwd())
-        self.state.loadRunResDB()        
+        self.state.loadRunResDB()
+        self.state.loadJobSpecNode()  
 
         self.config = self.state.configurationDict()
         
         self.inputTasks = self.config.get("InputTasks", [])
+#        #TODO: not really sure this is correct, i would think i should
+#        # take report from stageOut but that is missing if cmsRun fails
+#        # what if cmsRun one is missing - do i want to generate an empty one?
+#        self.inputReport = getTaskState(self.inputTasks[0]).getJobReport()
+        
+        # iterate over input tasks (in reverse order)
+        # find first one with a fjr
+        self.inputTask, self.inputReport = None, None
+        for taskName in self.inputTasks[::-1]:
+            task = getTaskState(taskName)
+            report = task.getJobReport()
+            if report is None:
+                continue
+            self.inputTask = task
+            self.inputReport = report
+            break
+        
+        # if got no valid fjr from previous tasks -
+        # something must have gone wrong earlier - make our own
+        # may need more things set here to make reports mergeable
+        if self.inputReport is None:
+            self.inputTask = self.state
+            self.inputReport = FwkJobReport()
+        
         self.regexps = self.config.get("LogMatchRegexp", [])
 
         self.doStageOut = True
@@ -40,7 +70,8 @@ class LogArchMgr:
         
 
         self.workflowSpecId = self.config['WorkflowSpecID'][0]
-        self.jobSpecId = self.config['JobSpecID'][0]
+        self.jobSpecId = self.state.jobSpecNode.jobName
+        
         
         self.compRegexps = []
         for regexp in self.regexps:
@@ -80,14 +111,13 @@ class LogArchMgr:
         """
         _operator()_
 
-        Invoke the tar up and xfer of logfiles
-
+        tar up and xfer logfiles
 
         """
         #  //
         # // Create the tarfile
         #//
-        tarName = "%s-LogArch.tgz" % self.jobSpecId
+        tarName = "%s-%s-LogArch.tgz" % (self.jobSpecId, int(time.time()))
         self.tarfile = os.path.join(os.getcwd(), self.jobSpecId)
         if not os.path.exists(self.tarfile):
             os.makedirs(self.tarfile)
@@ -116,22 +146,36 @@ class LogArchMgr:
             return
 
         fileInfo = {
-            'LFN' : "/store/unmerged/logs/%s/%s/%s" % (self.workflowSpecId,
+            'LFN' : "/store/unmerged/logs/prod/%s/%s/%s" % (self.workflowSpecId,
                                                        self.jobSpecId,
                                                        tarName),
             'PFN' : os.path.join(os.getcwd(), tarName),
             'SEName' : None,
             'GUID' : None,
             }
+        
         try:
-            stager(**fileInfo)
+            fileInfo = stager(**fileInfo)
+            exitCode = 0
         except Exception, ex:
             msg = "Unable to stage out log archive:\n"
             msg += str(ex)
             print msg
-            return
-        
+            exitCode = 60312
             
+        # exit if stageOut failed - dont propagate error to fjr
+        if exitCode != 0:
+            return
+    
+        self.inputReport.addLogFile(fileInfo['LFN'], fileInfo['SEName'])
+        self.inputTask.saveJobReport()
+        
+        #  //
+        # // Ensure this report gets added to the job-wide report
+        #//
+        toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],"FrameworkJobReport.xml")
+        updateReport(toplevelReport, self.inputReport)
+        
         
 
     def processTask(self, task):
@@ -159,10 +203,8 @@ class LogArchMgr:
             #self.tarfile.add(src, "%s/%s/%s" % (self.jobSpecId, task, item))
             
         return
-        
-        
-        
-        
+
+
         
     
 

@@ -25,7 +25,7 @@ from HTTPFrontend.JobQueueMonitor import JobQueueMonitor
 from HTTPFrontend.MergeMonitor import MergeDatasetMonitor, MergeMonitor, MergeGraph
 from HTTPFrontend.DatasetsMonitor import DatasetMonitor
 from HTTPFrontend.ResourceMonitors import ResourceDetails,ResourceStatus
-
+from HTTPFrontend.LogViewer import LogViewer
 
 def getLocalDBSURL():
     try:
@@ -79,6 +79,9 @@ class Root:
             self.myUrl,)
         html += "<td>Resource information for this ProdAgent</td></td>\n"
         
+        html += "<tr><td><a href=\"%s/logs\">Logs</a></td>\n" % (
+            self.myUrl,)
+        html += "<td>Production logs</td></td>\n"
         
         html += """</table></body></html>"""
         return html
@@ -205,7 +208,8 @@ class HTTPFrontendComponent:
             "%s/mergedgraph" % baseUrl,
             "%s/datasets" % baseUrl
             )
-
+        
+        root.logs = LogViewer()
         
         cherrypy.quickstart(root)
         

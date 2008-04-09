@@ -33,6 +33,7 @@ from JobCreator.DashboardTools import installDashboardInfo, writeDashboardInfo
 from JobCreator.CleanUpTools import InsertCleanUp, PopulateCleanUp
 from JobCreator.CmsGenTools import InsertCmsGenStructure, PopulateCmsGenScript
 from JobCreator.LogArchTools import InstallLogArch, PopulateLogArch
+from JobCreator.LogCollectTools import InsertLogCollect, PopulateLogCollect 
 
 import inspect
 import os
@@ -139,6 +140,7 @@ class DefaultGenerator(GeneratorInterface):
         taskObject(InsertCleanUp())
         taskObject(InstallLogArch())
         taskObject(NewInsertStageOut())
+        taskObject(InsertLogCollect())
 
         #  //
         # // Invoke the creator plugin on the TaskObject
@@ -159,6 +161,8 @@ class DefaultGenerator(GeneratorInterface):
         taskObject(PopulateCleanUp())
         taskObject(PopulateLogArch(self.componentConfig.get("LogArchStageOut", False)))
         taskObject(NewPopulateStageOut())
+        taskObject(PopulateLogCollect())
+        
         #  //
         # // Physical Job Creation starts here
         #//

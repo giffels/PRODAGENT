@@ -112,6 +112,9 @@ class T0LSFCreator(CreatorInterface):
         elif typeVal == "CleanUp":
             self.handleCleanUp(taskObject)
             return
+        elif typeVal == "LogCollect":
+            self.handleLogCollect(taskObject)
+            return
         else:
             return
 
@@ -309,6 +312,20 @@ class T0LSFCreator(CreatorInterface):
 
         """
         taskObject['PreCleanUpCommands'].append(
+            ". $VO_CMS_SW_DIR/cmsset_default.sh"
+            )
+        
+        return
+
+    
+    def handleLogCollect(self, taskObject):
+        """
+        _handleCleanUp_
+
+        Handle a LogCollect task object
+
+        """
+        taskObject['PreLogCollectCommands'].append(
             ". $VO_CMS_SW_DIR/cmsset_default.sh"
             )
         

@@ -346,7 +346,9 @@ class JobCreatorComponent:
             runNum = "%s" % runNum
 
             if (jobType == 'CleanUp'):
-               runPadding = "cleanups"
+                runPadding = "cleanups"
+            elif (jobType == 'LogCollect'):
+                runPadding = "logcollects"
             else:  
                runPadding = "merges"
         else:

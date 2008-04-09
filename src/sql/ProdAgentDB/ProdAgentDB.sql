@@ -532,19 +532,22 @@ CREATE TABLE jq_queue(
    workflow_priority INT DEFAULT 0,
    status ENUM ("new", "released") DEFAULT "new",
    time TIMESTAMP NOT NULL default NOW(),
-   
+   released_site INT DEFAULT NULL,
    UNIQUE(job_spec_id),
-   PRIMARY KEY(job_index)
-
+   PRIMARY KEY(job_index),
+   FOREIGN KEY (released_site) REFERENCES rc_site(site_index)
+     ON DELETE CASCADE
 ) TYPE=InnoDB;
 
 
 CREATE TABLE jq_site(
    job_index INT NOT NULL,
    site_index INT,
+   released_to INT DEFAULT NULL,
    FOREIGN KEY (job_index) REFERENCES jq_queue(job_index)
      ON DELETE CASCADE,
-   FOREIGN KEY (site_index) REFERENCES rc_site(site_index)
+   FOREIGN KEY (site_index) REFERENCES rc_site(site_index),
+   FOREIGN KEY (released_to) REFERENCES rc_site(site_index)
 ) TYPE=InnoDB;
 
 
@@ -712,10 +715,13 @@ CREATE TABLE tr_Action(
  
 CREATE TABLE prodmon_Resource (
        resource_id INT NOT NULL AUTO_INCREMENT,
+       rc_site_id INT DEFAULT NULL,
        site_name VARCHAR(255) NOT NULL,
        ce_hostname VARCHAR(255),
        se_hostname VARCHAR(255),
-       PRIMARY KEY (resource_id)
+       PRIMARY KEY (resource_id),
+       FOREIGN KEY (rc_site_id) REFERENCES rc_site(site_index)
+       	ON DELETE CASCADE
 ) TYPE = InnoDB;
 
 CREATE TABLE prodmon_Workflow (
@@ -890,4 +896,15 @@ CREATE TABLE prodmon_performance_modules (
        INDEX (instance_id, module_name, metric_class, metric_name),
        FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
          ON DELETE CASCADE
+)TYPE=InnoDB;
+
+
+CREATE TABLE log_input (
+       id INT NOT NULL AUTO_INCREMENT,
+       lfn VARCHAR(255) NOT NULL,
+       workflow VARCHAR(255) NOT NULL,
+       se_name VARCHAR(255) NOT NULL,
+       status enum("new", "inprogress", "done", "failed") default "new",
+       insert_time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP,
+       INDEX (id, status)
 )TYPE=InnoDB;

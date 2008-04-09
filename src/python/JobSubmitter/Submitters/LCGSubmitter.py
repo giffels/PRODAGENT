@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.35 2008/02/15 15:28:31 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.36 2008/02/15 16:54:37 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -149,7 +149,7 @@ class LCGSubmitter(SubmitterInterface):
         #  //
         # // CMSSW version
         #//
-        if self.parameters['JobSpecInstance'].parameters['JobType'] == "CleanUp":
+        if self.parameters['JobSpecInstance'].parameters['JobType'] in ("CleanUp", "LogCollect"):
             swversion=None
         elif len(self.parameters['AppVersions'])> 0:
             swversion=self.parameters['AppVersions'][0]  # only one sw version for now

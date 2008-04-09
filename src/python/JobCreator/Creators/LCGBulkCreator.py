@@ -84,6 +84,8 @@ class LCGBulkCreator(CreatorInterface):
             self.handleCleanUp(taskObject)
         elif typeVal == "LogArchive":
             self.handleLogArchive(taskObject)
+        elif typeVal == "LogCollect":
+            self.handleLogCollect(taskObject)
         else:
             return
 
@@ -216,7 +218,23 @@ class LCGBulkCreator(CreatorInterface):
         return
     
     
+    def handleLogCollect(self, taskObject):
+        """
+        _handleCleanup_
 
+        Handle a LogCollect type task object.
+                                                                                                                          
+        """
+        taskObject['Environment'].addVariable(
+            "SCRAM_ARCH",
+            self.pluginConfig['SoftwareSetup']['ScramArch'])
+
+        taskObject['PreLogCollectCommands'].append(
+            self.swSetupCommand
+            )
+                                                                                                                          
+                                                                                                                          
+        return
     
 
     def installMonitor(self, taskObject):
