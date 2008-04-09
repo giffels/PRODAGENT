@@ -7,7 +7,7 @@ _CondorQ_
 """
 
 import os
-
+import string
 
 from xml.sax.handler import ContentHandler
 from xml.sax import make_parser
@@ -218,6 +218,41 @@ class CondorQClass:
                     if filter_function(job):
                         new_obj.jobs.append(job.copy())
             
+        return new_obj
+
+class CondorPAJobs(CondorQClass):
+    """
+    _CondorPAJobs_
+
+    Retrieve only a subset of jobs based on ClassAd ID.
+    The jobs can be further filtered in memory.
+    """
+    def __init__(self,jobID='ProdAgent_JobType',jobTypes=set(["Processing","Merge","CleanUp"]),load_on_create=True):
+        self.jobID=jobID
+        self.jobTypes=jobTypes.copy()
+        CondorQClass.__init__(self,constraint="stringListMember(%s,\\\"%s\\\")"%(jobID,string.join(self.jobTypes,',')),
+                              load_on_create=load_on_create)
+        return
+
+    def copy(self,jobTypes=None):
+        """
+        _copy_
+
+        Make a copy of the object, possibly filtering the jobs in the process.
+        """
+         if jobTypes==None:
+            new_obj=CondorPAJobs(self.jobID,self.jobTypes,load_on_create=False)
+            if self.jobs!=None:
+                new_obj.jobs=self.jobs.copy()
+        else:
+            jobTypes=jobTypes.intersection(self.jobTypes) # if a user specifies new elements, discard them
+            new_obj=CondorPAJobs(self.jobID,jobTypes,load_on_create=False)
+            if self.jobs!=None:
+                new_obj.jobs=[]
+                for job in self.jobs:
+                    if job[self.jobID] in jobTypes:
+                        new_obj.jobs.append(job.copy())
+
         return new_obj
 
 def countJobs(jobs,id_function,default_ids=[],default_value="",statuses=[[1,'Idle'],[2,'Running']]):
