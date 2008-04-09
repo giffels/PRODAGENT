@@ -30,7 +30,23 @@ class SRMV2Impl(StageOutImpl):
         SRM uses file:/// urls
 
         """
-        return "file:///%s" % pfn
+        if pfn.startswith('/'):
+            return "file:///%s" % pfn
+        else:
+            return pfn
+
+    
+    def createRemoveFileCommand(self, pfn):
+        """
+        handle both srm and file pfn types
+        """
+        if pfn.startswith("srm://"):
+            return "srmrm %s" % pfn
+        elif pfn.startswith("file:"):
+            return "/bin/rm -f %s" % pfn.replace("file://", "", 1)
+        else:
+            return StageOutImpl.createRemoveFileCommand(self, pfn)
+        
 
     def createStageOutCommand(self, sourcePFN, targetPFN, options = None):
         """
@@ -47,7 +63,8 @@ class SRMV2Impl(StageOutImpl):
             result += " %s " % options
         result += " %s " % sourcePFN
         result += " %s \n" % targetPFN
-
+        
+        
         if _CheckExitCodeOption:
             result += """
             EXIT_STATUS=`cat $REPORT_FILE | cut -f3 -d" "`
@@ -55,31 +72,35 @@ class SRMV2Impl(StageOutImpl):
             if [[ $EXIT_STATUS != 0 ]]; then
                echo "Non-zero srmcp Exit status!!!"
                echo "Cleaning up failed file:"
-               srmrm %s 
+                %s 
                exit 60311
             fi
         
-            """ % targetPFN
+            """ % self.createRemoveFileCommand(targetPFN)
         
+        for filePath in (sourcePFN, targetPFN):
+            if filePath.startswith("file://"):
+                localPFN = filePath.replace("file://", "")
+            elif filePath.startswith("srm://"):
+                remotePFN = filePath
+                targetPFN = filePath
+                targetPath = None
+                SFN = '?SFN='
+                sfn_idx = filePath.find(SFN)
+                if sfn_idx >= 0:
+                    targetPath = filePath[sfn_idx+5:]
+                r = re.compile('srm://([A-Za-z\-\.0-9]*)(:[0-9]*)?(/.*)')
+                m = r.match(filePath)
+                if not m:
+                    raise StageOutError("Unable to determine path from PFN for " \
+                                "target %s." % filePath)
+                if targetPath == None:
+                    targetPath = m.groups()[2]
+                targetHost = m.groups()[0]
         
-        fileAbsPath = sourcePFN.replace("file://", "")
-        result += "FILE_SIZE=`stat -c %s "
-        result += " %s`\n" % fileAbsPath
+        result += "FILE_SIZE=`stat -c %s"
+        result += " %s `\n" % localPFN
         result += "echo \"Local File Size is: $FILE_SIZE\"\n"
-        
-        targetPath = None
-        SFN = '?SFN='
-        sfn_idx = targetPFN.find(SFN)
-        if sfn_idx >= 0:
-            targetPath = targetPFN[sfn_idx+5:]
-        r = re.compile('srm://([A-Za-z\-\.0-9]*)(:[0-9]*)?(/.*)')
-        m = r.match(targetPFN)
-        if not m:
-            raise StageOutError("Unable to determine path from PFN for " \
-                                "target %s." % targetPFN)
-        if targetPath == None:
-            targetPath = m.groups()[2]
-        targetHost = m.groups()[0]
         
         metadataCheck = \
         """
@@ -93,7 +114,7 @@ class SRMV2Impl(StageOutImpl):
               else
                  echo "Error: Size Mismatch between local and SE"
                  echo "Cleaning up failed file:"
-                 srmrm %s 
+                 %s 
                  exit 60311
               fi 
            else
@@ -101,10 +122,10 @@ class SRMV2Impl(StageOutImpl):
            fi
         done
         echo "Cleaning up failed file:"
-        srmrm %s 
+        %s 
         exit 60311
 
-        """ % ( targetPFN, targetPath, targetHost, targetPFN, targetPFN)
+        """ % (remotePFN, targetPath, targetHost, self.createRemoveFileCommand(targetPFN), self.createRemoveFileCommand(targetPFN))
         result += metadataCheck
         
         return result

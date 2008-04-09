@@ -29,7 +29,10 @@ class SRMImpl(StageOutImpl):
         SRM uses file:/// urls
 
         """
-        return "file:///%s" % pfn
+        if pfn.startswith('/'):
+            return "file:///%s" % pfn
+        else:
+            return pfn
 
     def createPnfsPath(self,pfn) :
         """
@@ -40,6 +43,18 @@ class SRMImpl(StageOutImpl):
         """
         return '/pnfs/cms/WAX' + pfn.split('=')[1]
 
+    def createRemoveFileCommand(self, pfn):
+        """
+        handle both srm and file pfn types
+        """
+        if pfn.startswith("srm://"):
+            return "/bin/rm -f %s" % self.createPnfsPath(pfn)
+        elif pfn.startswith("file:"):
+            return "/bin/rm -f %s" % pfn.replace("file://", "", 1)
+        else:
+            return StageOutImpl.createRemoveFileCommand(self, pfn)
+
+
     def createStageOutCommand(self, sourcePFN, targetPFN, options = None):
         """
         _createStageOutCommand_
@@ -48,9 +63,6 @@ class SRMImpl(StageOutImpl):
 
         """
 
-        # generate target pnfs path
-        targetPnfsPath = self.createPnfsPath(targetPFN)
-        
         result = "#!/bin/sh\n"
         result += "REPORT_FILE=`pwd`/srm.report.$$\n"
         result += "srmcp -report=$REPORT_FILE -retry_num=0 "
@@ -60,6 +72,25 @@ class SRMImpl(StageOutImpl):
         result += " %s " % sourcePFN
         result += " %s \n" % targetPFN
 
+#        # generate target pnfs path
+#        # remap source and dest depending on which is local and which remote
+#        for path in (sourcePFN, targetPFN):
+#            if path.startswith('srm://'):
+#                #targetPFN = path
+#                targetPnfsPath = self.createPnfsPath(path)
+#            else:
+#                #sourcePFN = path
+#                pass
+
+        for filePath in (sourcePFN, targetPFN):
+            if filePath.startswith("srm://"):
+                remotePFN = filePath
+                targetPnfsPath = self.createPnfsPath(filePath)
+                localPFN = filePath.replace("file://", "", 1)
+            else:
+                # assume this is the local file
+                localPFN = filePath.replace("file://", "", 1)
+
         if _CheckExitCodeOption:
             result += """
             EXIT_STATUS=`cat $REPORT_FILE | cut -f3 -d" "`
@@ -68,18 +99,14 @@ class SRMImpl(StageOutImpl):
             if [[ $EXIT_STATUS != 0 ]]; then
                echo "Non-zero srmcp Exit status!!!"
                echo "Cleaning up failed file:"
-               path=`echo %s | awk -F'=' '{print $2}'`
-               path=`echo /pnfs/cms/WAX$path`
-               /bin/rm -f $path
+               %s
                exit 60311
             fi
         
-            """ % targetPFN
+            """ % self.createRemoveFileCommand(targetPnfsPath)
         
-        
-        fileAbsPath = sourcePFN.replace("file://", "")
-        result += "FILE_SIZE=`stat -c %s "
-        result += " %s`\n" % fileAbsPath
+        result += "FILE_SIZE=`stat -c %s"
+        result += " %s `\n" % localPFN
         result += "echo \"Local File Size is: $FILE_SIZE\"\n"
         metadataCheck = \
         """

@@ -37,6 +37,12 @@ class RFCP2Impl(StageOutImpl):
 
         create dir with group permission
         """
+        
+        #only create dir for remote storage
+        # hack coming up - it seems rfio isnt always present
+        if not targetPFN.startswith('rfio:') and not targetPFN.startswith('/castor/'):
+            return
+        
         targetdir= os.path.dirname(targetPFN)
 
         checkdircmd="rfstat %s > /dev/null " % targetdir
@@ -74,14 +80,22 @@ class RFCP2Impl(StageOutImpl):
         Build an rfcp command
 
         """
-        original_size = os.stat(sourcePFN)[6]
-        print "Local File Size is: %s" % original_size
         result = "rfcp "
         if options != None:
             result += " %s " % options
         result += " %s " % sourcePFN
         result += " %s " % targetPFN
-        result += "; DEST_SIZE=`rfstat %s | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ '%s' == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (targetPFN,original_size)
+        
+        for path in (sourcePFN, targetPFN):
+            # hack coming up - it seems rfio isnt always present
+            if path.startswith('rfio:') or path.startswith('/castor/'):
+                remotePFN = path
+            else:
+                localPFN = path
+        
+        result += "\nFILE_SIZE=`stat -c %s"
+        result += " %s `;\n" % localPFN
+        result += " echo \"Local File Size is: $FILE_SIZE\"; DEST_SIZE=`rfstat %s | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ $FILE_SIZE == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (remotePFN)
         return result
 
     

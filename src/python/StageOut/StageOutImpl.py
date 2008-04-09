@@ -7,6 +7,7 @@ inherit this object and implement the methods accordingly
 
 """
 import time
+import os
 from StageOut.Execute import execute
 from StageOut.StageOutError import StageOutError
 
@@ -78,6 +79,16 @@ class StageOutImpl:
         raise NotImplementedError, "StageOutImpl.removeFile"
 
 
+    def createRemoveFileCommand(self, pfn):
+        """
+        return the command to delete a file after a failed copy
+        """
+        if pfn.startswith("/"):
+            return "/bin/rm -f %s" % pfn
+        else:
+            return ""
+
+
     def __call__(self, protocol, inputPFN, targetPFN, options = None):
         """
         _Operator()_
@@ -91,6 +102,11 @@ class StageOutImpl:
         # // Generate the source PFN from the plain PFN if needed
         #//
         sourcePFN = self.createSourceName(protocol, inputPFN)
+
+        # destination may also need PFN changed
+        # i.e. if we are staging in a file from an SE
+        targetPFN = self.createSourceName(protocol, targetPFN)
+
 
         #  //
         # // Create the output directory if implemented

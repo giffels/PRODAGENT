@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 """
-_StageOutMgr_
+DeleteMgr
 
-Util class to provide stage out functionality as an interface object.
+Util class to provide delete functionality as an interface object.
 
-Based of RuntimeStageOut.StageOutManager, that should probably eventually
-use this class as a basic API
+Based on StageOutMgr class
 
 """
 
@@ -13,27 +12,27 @@ import os
 
 from ProdCommon.FwkJobRep.SiteLocalConfig import loadSiteLocalConfig
 
+#do we want seperate exceptions - for the moment no
 from StageOut.StageOutError import StageOutFailure
 from StageOut.StageOutError import StageOutInitError
 from StageOut.Registry import retrieveStageOutImpl
 
 
-
-class StageOutSuccess(Exception):
+class DeleteSuccess(Exception):
     """
-    _StageOutSuccess_
+    _DeleteSuccess_
 
-    Exception used to escape stage out loop when stage out is successful
+    Exception used to escape stage out loop when deletion is successful
     """
     pass
 
 
 
-class StageOutMgr:
+class DeleteMgr:
     """
-    _StageOutMgr_
+    _DeleteMgr_
 
-    Object that can be used to stage out a set of files
+    Object that can be used to delete a set of files
     using TFC or an override.
 
     """
@@ -42,8 +41,6 @@ class StageOutMgr:
         self.overrideConf = overrideParams
         if overrideParams != {}:
             self.override = True
-            
-        self.fallbacks = []
         
         #  //
         # // Try an get the TFC for the site
@@ -65,9 +62,7 @@ class StageOutMgr:
         if self.override:
             self.initialiseOverride()
         else:
-            self.initialiseSiteConf()
-        
-        self.failed = {}
+            self.initialiseSiteConf()         
             
 
     def initialiseSiteConf(self):
@@ -112,12 +107,6 @@ class StageOutMgr:
             msg += str(ex)
             raise StageOutInitError( msg )
         
-        self.fallbacks = self.siteCfg.fallbackStageOut
-
-        msg += "There are %s fallback stage out definitions.\n" % len(self.fallbacks)
-        for item in self.fallbacks:
-            msg += "Fallback to : %s using: %s \n" % (item['se-name'], item['command'])
-
         print msg
         return
         
@@ -143,7 +132,7 @@ class StageOutMgr:
             overrideParams['lfn-prefix'] = overrideConf['lfn-prefix']
         except StandardError, ex:
             msg = "Unable to extract Override parameters from config:\n"
-            msg += str(ex)
+            msg += str(overrideConf)
             raise StageOutInitError(msg)
         if overrideConf.has_key('option'):
             if len(overrideConf['option']) > 0:
@@ -151,7 +140,7 @@ class StageOutMgr:
             else:
                 overrideParams['option'] = ""
         
-        msg = "=======StageOut Override Initialised:================\n"
+        msg = "=======StageIn Override Initialised:================\n"
         for key, val in overrideParams.items():
             msg += " %s : %s\n" % (key, val)
         msg += "=====================================================\n"
@@ -161,130 +150,94 @@ class StageOutMgr:
         return 
         
         
-    def __call__(self, **fileToStage):
+    def __call__(self, **fileToDelete):
         """
         _operator()_
 
-        Use call to invoke transfers
+        Use call to delete a file
 
         """
             
       
         try:
-            print "==>Working on file: %s" % fileToStage['LFN']
-            if fileToStage['GUID'] != None:
-                fileToStage['LFN'] = os.path.join(
-                    os.path.dirname(fileToStage['LFN']),
-                    "%s.root" % fileToStage['GUID']
-                    )
-                print "==> GUID inserted into LFN: %s" % fileToStage['LFN']
-            lfn = fileToStage['LFN']
+            print "==>Working on file: %s" % fileToDelete['LFN']
+            
+            lfn = fileToDelete['LFN']
             
             #  //
             # // No override => use local-stage-out from site conf
             #//  invoke for all files and check failures/successes
             if not self.override:
-                print "===> Attempting Local Stage Out."
+                print "===> Attempting To Delete."
                 try:
-                    pfn = self.localStageOut(lfn, fileToStage['PFN'])
-                    fileToStage['PFN'] = pfn
-                    fileToStage['SEName'] = self.siteCfg.localStageOut['se-name']
-                    raise StageOutSuccess
+                    fileToDelete['PFN'] = self.deleteLFN(lfn)
+                    raise DeleteSuccess
                 except StageOutFailure, ex:
                     msg = "===> Local Stage Out Failure for file:\n"
-                    msg += "======>  %s\n" % fileToStage['LFN']
+                    msg += "======>  %s\n" % fileToDelete['LFN']
                     msg += str(ex)
-                    # go to fallback
-                    pass
+                    
             #  //
-            # // Still here => failure, start using the fallback stage outs
+            # // Still here => override start using the fallback stage outs
             #//  If override is set, then that will be the only fallback available
-            print "===> Attempting %s Fallback Stage Outs" % len(self.fallbacks)
+            print "===> Attempting To Delete with Override."
             for fallback in self.fallbacks:
                 try:
-                    pfn = self.fallbackStageOut(lfn, fileToStage['PFN'],
-                                                fallback)
-                    fileToStage['PFN'] = pfn
-                    fileToStage['SEName'] = fallback['se-name']
-                    if self.failed.has_key(lfn):
-                        del self.failed[lfn]
-                    raise StageOutSuccess
+                    fileToDelete['PFN'] = self.deleteLFN(lfn, fallback) 
+#                    if self.failed.has_key(lfn):
+#                        del self.failed[lfn]
+                    raise DeleteSuccess
                 except StageOutFailure, ex:
                     continue
                 
-        except StageOutSuccess:
-            msg = "===> Stage Out Successful:\n"
-            msg += "====> LFN: %s\n" % fileToStage['LFN']
-            msg += "====> PFN: %s\n" % fileToStage['PFN']
-            msg += "====> SE:  %s\n" % fileToStage['SEName']
+        except DeleteSuccess:
+            msg = "===> Delete Successful:\n"
+            msg += "====> LFN: %s\n" % fileToDelete['LFN']
+            msg += "====> PFN: %s\n" % fileToDelete['PFN']
+            msg += "====> SE:  %s\n" % fileToDelete['SEName']
             print msg
-            return fileToStage
-        msg = "Unable to stage out file:\n"
-        msg += fileToStage['LFN']
-        raise StageOutFailure(msg, **fileToStage)
+            return fileToDelete
+        msg = "Unable to delete file:\n"
+        msg += fileToDelete['LFN']
+        raise StageOutFailure(msg, **fileToDelete)
+
         
-    
-        
-    def fallbackStageOut(self, lfn, localPfn, fbParams):
+    def deleteLFN(self, lfn, override = None):
         """
-        _fallbackStageOut_
+        deleteLFN
 
-        Given the lfn and parameters for a fallback stage out, invoke it
-
-        parameters should contain:
-
+        Given the lfn and local stage out params, invoke the delete
+        
+        if override is used the follwoing params should be defined:
         command - the stage out impl plugin name to be used
         option - the option values to be passed to that command (None is allowed)
         lfn-prefix - the LFN prefix to generate the PFN
         se-name - the Name of the SE to which the file is being xferred
         
-        """
-        pfn = "%s%s" % (fbParams['lfn-prefix'], lfn)
-        
-        try:
-            impl = retrieveStageOutImpl(fbParams['command'])
-        except Exception, ex:
-            msg = "Unable to retrieve impl for fallback stage out:\n"
-            msg += "Error retrieving StageOutImpl for command named: "
-            msg += "%s\n" % fbParams['command']
-            raise StageOutFailure(msg, Command = fbParams['command'],
-                                  LFN = lfn, ExceptionDetail = str(ex))
 
-        impl.numRetries = self.numberOfRetries
-        impl.retryPause = self.retryPauseTime
+        """
         
-        try:
-            impl(fbParams['command'], localPfn, pfn, fbParams['option'])
-        except Exception, ex:
-            msg = "Failure for fallback stage out:\n"
-            msg += str(ex)
-            raise StageOutFailure(msg, Command = fbParams['command'],
-                                  LFN = lfn, InputPFN = localPfn,
-                                  TargetPFN = pfn)
+        if override:
+            seName = override['se-name']
+            command = override['command']
+            options = override['option']
+            pfn = "%s%s" % (override['lfn-prefix'], lfn)
+            protocol = command
+        else:
+            seName = self.siteCfg.localStageOut['se-name']
+            command = self.siteCfg.localStageOut['command']
+            options = self.siteCfg.localStageOut.get('option', None)
+            pfn = self.searchTFC(lfn)
+            protocol = self.tfc.preferredProtocol
             
-        return pfn
-        
-    def localStageOut(self, lfn, localPfn):
-        """
-        _localStageOut_
-
-        Given the lfn and local stage out params, invoke the local stage out
-
-        """
-        seName = self.siteCfg.localStageOut['se-name']
-        command = self.siteCfg.localStageOut['command']
-        options = self.siteCfg.localStageOut.get('option', None)
-        pfn = self.searchTFC(lfn)
-        protocol = self.tfc.preferredProtocol
         if pfn == None:
             msg = "Unable to match lfn to pfn: \n  %s" % lfn
             raise StageOutFailure(msg, LFN = lfn, TFC = str(self.tfc))
-
         
         try:
             impl = retrieveStageOutImpl(command)
         except Exception, ex:
-            msg = "Unable to retrieve impl for local stage out:\n"
+            msg = "Unable to retrieve impl for file deletion in:\n"
             msg += "Error retrieving StageOutImpl for command named: %s\n" % (
                 command,)
             raise StageOutFailure(msg, Command = command,
@@ -293,9 +246,9 @@ class StageOutMgr:
         impl.retryPause = self.retryPauseTime
         
         try:
-            impl(protocol, localPfn, pfn, options)
+            impl.removeFile(pfn)
         except Exception, ex:
-            msg = "Failure for local stage out:\n"
+            msg = "Failure for file deletion in:\n"
             msg += str(ex)
             try:
                 import traceback
@@ -303,31 +256,29 @@ class StageOutMgr:
             except AttributeError, ex:
                 msg += "Traceback unavailable\n"
             raise StageOutFailure(msg, Command = command, Protocol = protocol,
-                                  LFN = lfn, InputPFN = localPfn,
-                                  TargetPFN = pfn)
+                                  LFN = lfn, TargetPFN = pfn)
         
         return pfn
 
 
     
-    def reportStageOutFailure(self, stageOutExcep):
-        """
-        _reportStageOutFailure_
-
-        When a stage out failure occurs, report it to the input
-        framework job report.
-
-        - *stageOutExcep* : Instance of on of the StageOutError derived classes
-        
-        """
-        errStatus = stageOutExcep.data["ErrorCode"]
-        errType = stageOutExcep.data["ErrorType"]
-        desc = stageOutExcep.message
-
-        #TODO: fix this: where does errReport come from?
-        #errReport = self.inputReport.addError(errStatus, errType)
-        #errReport['Description'] = desc
-        return
+#    def reportStageOutFailure(self, stageOutExcep):
+#        """
+#        _reportStageOutFailure_
+#
+#        When a stage out failure occurs, report it to the input
+#        framework job report.
+#
+#        - *stageOutExcep* : Instance of on of the StageOutError derived classes
+#        
+#        """
+#        errStatus = stageOutExcep.data["ErrorCode"]
+#        errType = stageOutExcep.data["ErrorType"]
+#        desc = stageOutExcep.message
+#
+#        errReport = self.inputReport.addError(errStatus, errType)
+#        errReport['Description'] = desc
+#        return
 
 
         
@@ -365,15 +316,14 @@ class StageOutMgr:
 
 
 
-if __name__ == '__main__':
-    import time
-    import StageOut.Impl
+##if __name__ == '__main__':
+##    import StageOut.Impl
+##    mgr = StageOutMgr()
+##    pfn = "/home/evansde/work/PRODAGENT/work/JobCreator/RelValMinBias-170pre12/Processing/RelValMinBias-170pre12-Processing.tar.gz"
+##    lfn = "/store/unmerged/mc/2007/11/13/RelVal-RelValMinBias-1194987281/GEN-SIM-DIGI-RECO/0201/DCCP-FNAL-TEST.dat"
 
-    mgr = StageOutMgr()
-    pfn = "/etc/hosts"
-    lfn = "/store/test/stageOutTest-%s" % int(time.time())
-
-    mgr(LFN = lfn, PFN = pfn, GUID=None)
+##    mgr.searchTFC(lfn)
+##    mgr(LFN = lfn, PFN = pfn, GUID=None)
     
     
     

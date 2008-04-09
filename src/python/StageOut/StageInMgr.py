@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 """
-_StageOutMgr_
+_StageInMgr_
 
-Util class to provide stage out functionality as an interface object.
+Util class to provide stage in functionality as an interface object.
 
-Based of RuntimeStageOut.StageOutManager, that should probably eventually
-use this class as a basic API
+Based on StageOutMgr class
 
 """
 
@@ -13,13 +12,13 @@ import os
 
 from ProdCommon.FwkJobRep.SiteLocalConfig import loadSiteLocalConfig
 
+#do we want seperate exceptions - for the moment no
 from StageOut.StageOutError import StageOutFailure
 from StageOut.StageOutError import StageOutInitError
 from StageOut.Registry import retrieveStageOutImpl
 
 
-
-class StageOutSuccess(Exception):
+class StageInSuccess(Exception):
     """
     _StageOutSuccess_
 
@@ -29,9 +28,9 @@ class StageOutSuccess(Exception):
 
 
 
-class StageOutMgr:
+class StageInMgr:
     """
-    _StageOutMgr_
+    _StageInMgr_
 
     Object that can be used to stage out a set of files
     using TFC or an override.
@@ -42,9 +41,8 @@ class StageOutMgr:
         self.overrideConf = overrideParams
         if overrideParams != {}:
             self.override = True
-            
-        self.fallbacks = []
         
+        self.fallbacks = []
         #  //
         # // Try an get the TFC for the site
         #//
@@ -65,9 +63,7 @@ class StageOutMgr:
         if self.override:
             self.initialiseOverride()
         else:
-            self.initialiseSiteConf()
-        
-        self.failed = {}
+            self.initialiseSiteConf()         
             
 
     def initialiseSiteConf(self):
@@ -112,12 +108,6 @@ class StageOutMgr:
             msg += str(ex)
             raise StageOutInitError( msg )
         
-        self.fallbacks = self.siteCfg.fallbackStageOut
-
-        msg += "There are %s fallback stage out definitions.\n" % len(self.fallbacks)
-        for item in self.fallbacks:
-            msg += "Fallback to : %s using: %s \n" % (item['se-name'], item['command'])
-
         print msg
         return
         
@@ -143,7 +133,7 @@ class StageOutMgr:
             overrideParams['lfn-prefix'] = overrideConf['lfn-prefix']
         except StandardError, ex:
             msg = "Unable to extract Override parameters from config:\n"
-            msg += str(ex)
+            msg += str(overrideConf)
             raise StageOutInitError(msg)
         if overrideConf.has_key('option'):
             if len(overrideConf['option']) > 0:
@@ -151,7 +141,7 @@ class StageOutMgr:
             else:
                 overrideParams['option'] = ""
         
-        msg = "=======StageOut Override Initialised:================\n"
+        msg = "=======StageIn Override Initialised:================\n"
         for key, val in overrideParams.items():
             msg += " %s : %s\n" % (key, val)
         msg += "=====================================================\n"
@@ -172,119 +162,84 @@ class StageOutMgr:
       
         try:
             print "==>Working on file: %s" % fileToStage['LFN']
-            if fileToStage['GUID'] != None:
-                fileToStage['LFN'] = os.path.join(
-                    os.path.dirname(fileToStage['LFN']),
-                    "%s.root" % fileToStage['GUID']
-                    )
-                print "==> GUID inserted into LFN: %s" % fileToStage['LFN']
+            
             lfn = fileToStage['LFN']
             
             #  //
             # // No override => use local-stage-out from site conf
             #//  invoke for all files and check failures/successes
             if not self.override:
-                print "===> Attempting Local Stage Out."
+                print "===> Attempting Local Stage In."
                 try:
-                    pfn = self.localStageOut(lfn, fileToStage['PFN'])
+                    pfn = self.localStageIn(lfn)
                     fileToStage['PFN'] = pfn
-                    fileToStage['SEName'] = self.siteCfg.localStageOut['se-name']
-                    raise StageOutSuccess
+                    raise StageInSuccess
                 except StageOutFailure, ex:
                     msg = "===> Local Stage Out Failure for file:\n"
                     msg += "======>  %s\n" % fileToStage['LFN']
                     msg += str(ex)
-                    # go to fallback
-                    pass
+                    
             #  //
-            # // Still here => failure, start using the fallback stage outs
+            # // Still here => override start using the fallback stage outs
             #//  If override is set, then that will be the only fallback available
-            print "===> Attempting %s Fallback Stage Outs" % len(self.fallbacks)
+            print "===> Attempting %s Override Stage Outs" % len(self.fallbacks)
             for fallback in self.fallbacks:
                 try:
-                    pfn = self.fallbackStageOut(lfn, fileToStage['PFN'],
-                                                fallback)
+                    pfn = self.localStageIn(lfn, fallback) 
                     fileToStage['PFN'] = pfn
-                    fileToStage['SEName'] = fallback['se-name']
-                    if self.failed.has_key(lfn):
-                        del self.failed[lfn]
-                    raise StageOutSuccess
+                    raise StageInSuccess
                 except StageOutFailure, ex:
                     continue
                 
-        except StageOutSuccess:
-            msg = "===> Stage Out Successful:\n"
+        except StageInSuccess:
+            msg = "===> Stage In Successful:\n"
             msg += "====> LFN: %s\n" % fileToStage['LFN']
             msg += "====> PFN: %s\n" % fileToStage['PFN']
-            msg += "====> SE:  %s\n" % fileToStage['SEName']
             print msg
             return fileToStage
         msg = "Unable to stage out file:\n"
         msg += fileToStage['LFN']
         raise StageOutFailure(msg, **fileToStage)
+
         
-    
-        
-    def fallbackStageOut(self, lfn, localPfn, fbParams):
+    def localStageIn(self, lfn, override = None):
         """
-        _fallbackStageOut_
+        _localStageOut_
 
-        Given the lfn and parameters for a fallback stage out, invoke it
-
-        parameters should contain:
-
+        Given the lfn and local stage out params, invoke the local stage in
+        i.e. stage in lfn to pfn
+        
+        if override is used the follwoing params should be defined:
         command - the stage out impl plugin name to be used
         option - the option values to be passed to that command (None is allowed)
         lfn-prefix - the LFN prefix to generate the PFN
         se-name - the Name of the SE to which the file is being xferred
         
-        """
-        pfn = "%s%s" % (fbParams['lfn-prefix'], lfn)
-        
-        try:
-            impl = retrieveStageOutImpl(fbParams['command'])
-        except Exception, ex:
-            msg = "Unable to retrieve impl for fallback stage out:\n"
-            msg += "Error retrieving StageOutImpl for command named: "
-            msg += "%s\n" % fbParams['command']
-            raise StageOutFailure(msg, Command = fbParams['command'],
-                                  LFN = lfn, ExceptionDetail = str(ex))
 
-        impl.numRetries = self.numberOfRetries
-        impl.retryPause = self.retryPauseTime
+        """
+        localPfn = os.path.join(os.getcwd(), os.path.basename(lfn))
         
-        try:
-            impl(fbParams['command'], localPfn, pfn, fbParams['option'])
-        except Exception, ex:
-            msg = "Failure for fallback stage out:\n"
-            msg += str(ex)
-            raise StageOutFailure(msg, Command = fbParams['command'],
-                                  LFN = lfn, InputPFN = localPfn,
-                                  TargetPFN = pfn)
+        if override:
+            seName = override['se-name']
+            command = override['command']
+            options = override['option']
+            pfn = "%s%s" % (override['lfn-prefix'], lfn)
+            protocol = command
+        else:
+            seName = self.siteCfg.localStageOut['se-name']
+            command = self.siteCfg.localStageOut['command']
+            options = self.siteCfg.localStageOut.get('option', None)
+            pfn = self.searchTFC(lfn)
+            protocol = self.tfc.preferredProtocol
             
-        return pfn
-        
-    def localStageOut(self, lfn, localPfn):
-        """
-        _localStageOut_
-
-        Given the lfn and local stage out params, invoke the local stage out
-
-        """
-        seName = self.siteCfg.localStageOut['se-name']
-        command = self.siteCfg.localStageOut['command']
-        options = self.siteCfg.localStageOut.get('option', None)
-        pfn = self.searchTFC(lfn)
-        protocol = self.tfc.preferredProtocol
         if pfn == None:
             msg = "Unable to match lfn to pfn: \n  %s" % lfn
             raise StageOutFailure(msg, LFN = lfn, TFC = str(self.tfc))
-
         
         try:
             impl = retrieveStageOutImpl(command)
         except Exception, ex:
-            msg = "Unable to retrieve impl for local stage out:\n"
+            msg = "Unable to retrieve impl for local stage in:\n"
             msg += "Error retrieving StageOutImpl for command named: %s\n" % (
                 command,)
             raise StageOutFailure(msg, Command = command,
@@ -293,9 +248,9 @@ class StageOutMgr:
         impl.retryPause = self.retryPauseTime
         
         try:
-            impl(protocol, localPfn, pfn, options)
+            impl(protocol, pfn, localPfn, options)
         except Exception, ex:
-            msg = "Failure for local stage out:\n"
+            msg = "Failure for local stage in:\n"
             msg += str(ex)
             try:
                 import traceback
@@ -306,28 +261,27 @@ class StageOutMgr:
                                   LFN = lfn, InputPFN = localPfn,
                                   TargetPFN = pfn)
         
-        return pfn
+        return localPfn
 
 
     
-    def reportStageOutFailure(self, stageOutExcep):
-        """
-        _reportStageOutFailure_
-
-        When a stage out failure occurs, report it to the input
-        framework job report.
-
-        - *stageOutExcep* : Instance of on of the StageOutError derived classes
-        
-        """
-        errStatus = stageOutExcep.data["ErrorCode"]
-        errType = stageOutExcep.data["ErrorType"]
-        desc = stageOutExcep.message
-
-        #TODO: fix this: where does errReport come from?
-        #errReport = self.inputReport.addError(errStatus, errType)
-        #errReport['Description'] = desc
-        return
+#    def reportStageOutFailure(self, stageOutExcep):
+#        """
+#        _reportStageOutFailure_
+#
+#        When a stage out failure occurs, report it to the input
+#        framework job report.
+#
+#        - *stageOutExcep* : Instance of on of the StageOutError derived classes
+#        
+#        """
+#        errStatus = stageOutExcep.data["ErrorCode"]
+#        errType = stageOutExcep.data["ErrorType"]
+#        desc = stageOutExcep.message
+#
+#        errReport = self.inputReport.addError(errStatus, errType)
+#        errReport['Description'] = desc
+#        return
 
 
         
@@ -366,14 +320,20 @@ class StageOutMgr:
 
 
 if __name__ == '__main__':
-    import time
     import StageOut.Impl
+    
+    overrideParams = {
+            "command" : 'srm',
+            "option" : '-streams_num=1',
+            "se-name" : None,
+            "lfn-prefix" : 'srm://gfe02.hep.ph.ic.ac.uk:8443/srm/managerv1?SFN=/pnfs/hep.ph.ic.ac.uk/data/cms',
+            }
+    
+    #mgr = StageInMgr()
+    mgr = StageInMgr(**overrideParams)
+    lfn = "/store/mc/2008/1/28/JobRobot-QCD_Pt_80_120-1201523639/0034/E8C4470A-C8CD-DC11-BA7C-001617E30D4C.root"
 
-    mgr = StageOutMgr()
-    pfn = "/etc/hosts"
-    lfn = "/store/test/stageOutTest-%s" % int(time.time())
-
-    mgr(LFN = lfn, PFN = pfn, GUID=None)
+    mgr(LFN = lfn, PFN = None, GUID = None)
     
     
     

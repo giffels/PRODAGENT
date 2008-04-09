@@ -35,6 +35,10 @@ class DCCPFNALImpl(StageOutImpl):
         will be seen from the worker node
         
         """
+        # only create dir on remote storage
+        if not targetPFN.find('/pnfs/'):
+            return
+        
         pfnSplit = targetPFN.split("WAX/11/store/", 1)[1]
         filePath = "/pnfs/cms/WAX/11/store/%s" % pfnSplit
         directory = os.path.dirname(filePath)

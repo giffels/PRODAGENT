@@ -29,7 +29,22 @@ class SRMImpl(StageOutImpl):
         SRM uses file:/// urls
 
         """
-        return "file:///%s" % pfn
+        if pfn.startswith('/'):
+            return "file:///%s" % pfn
+        else:
+            return pfn
+
+    def createRemoveFileCommand(self, pfn):
+        """
+        handle both srm and file pfn types
+        """
+        if pfn.startswith("srm://"):
+            return "srm-advisory-delete %s" % pfn
+        elif pfn.startswith("file:"):
+            return "/bin/rm -f %s" % pfn.replace("file://", "", 1)
+        else:
+            return StageOutImpl.createRemoveFileCommand(self, pfn)
+        
 
     def createStageOutCommand(self, sourcePFN, targetPFN, options = None):
         """
@@ -46,7 +61,8 @@ class SRMImpl(StageOutImpl):
             result += " %s " % options
         result += " %s " % sourcePFN
         result += " %s \n" % targetPFN
-
+            
+        
         if _CheckExitCodeOption:
             result += """
             EXIT_STATUS=`cat $REPORT_FILE | cut -f3 -d" "`
@@ -54,16 +70,21 @@ class SRMImpl(StageOutImpl):
             if [[ $EXIT_STATUS != 0 ]]; then
                echo "Non-zero srmcp Exit status!!!"
                echo "Cleaning up failed file:"
-               srm-advisory-delete %s 
+               %s
                exit 60311
             fi
         
-            """ % targetPFN
-        
-        
-        fileAbsPath = sourcePFN.replace("file://", "")
-        result += "FILE_SIZE=`stat -c %s "
-        result += " %s`\n" % fileAbsPath
+            """ % self.createRemoveFileCommand(targetPFN)
+
+        for filePath in (sourcePFN, targetPFN):
+            if filePath.startswith("file://"):
+                localPFN = filePath.replace("file://", "", 1)
+            else:
+                # assume this is the remote file
+                remotePFN = filePath
+
+        result += "FILE_SIZE=`stat -c %s"
+        result += " %s `\n" % localPFN
         result += "echo \"Local File Size is: $FILE_SIZE\"\n"
         metadataCheck = \
         """
@@ -77,7 +98,7 @@ class SRMImpl(StageOutImpl):
               else
                  echo "Error: Size Mismatch between local and SE"
                  echo "Cleaning up failed file:"
-                 srm-advisory-delete %s 
+                 %s 
                  exit 60311
               fi 
            else
@@ -85,10 +106,10 @@ class SRMImpl(StageOutImpl):
            fi
         done
         echo "Cleaning up failed file:"
-        srm-advisory-delete %s 
+        %s 
         exit 60311
 
-        """ % ( targetPFN, targetPFN, targetPFN)
+        """ % (remotePFN, self.createRemoveFileCommand(targetPFN), self.createRemoveFileCommand(targetPFN))
         result += metadataCheck
         
         return result
