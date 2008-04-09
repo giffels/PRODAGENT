@@ -10,7 +10,30 @@ from ResourceMonitor.Monitors.MonitorInterface import MonitorInterface
 from ResourceMonitor.Registry import registerMonitor
 
 
-from ResourceMonitor.Monitors.CondorQ import processingJobs, mergeJobs, cleanupJobs
+from ResourceMonitor.Monitors.CondorQ import CondorPAJobs,countJobs
+
+# getJobs helper function
+def extractGatekeeper(item):
+    gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
+    gatekeeper = gatekeeper.strip()
+    return gatekeeper
+
+def getJobs(paJobs,jobType,*defaultGatekeepers):
+    """
+    _getJobs_
+
+    Return a dictionary of gatekeeper: number of jobs for
+    each gatekeeper found in the cached jobs for the job type.
+
+    Default gatekeepers is a list of gatekeepers that you want to
+    make sure appear in the output, since if there are no jobs, it
+    wont be included. If there are no jobs at a default gatekeeper,
+    then it will be returned as having 0 jobs
+    """
+    return countJobs(jobs=paJobs.copy(jobTypes=set([jobType])).jobs,
+                     default_ids=defaultGatekeepers,
+                     id_function=extractGatekeeper,
+                     default_value='cmsosgce.fnal.gov/jobmanager-condor')
 
 
 class CondorMonitor(MonitorInterface):
@@ -46,9 +69,10 @@ class CondorMonitor(MonitorInterface):
         #  //
         # // get totals per active gatekeeper for merge and processing
         #//  jobs
-        mergeInfo = mergeJobs(*activeGatekeepers)
-        processingInfo = processingJobs(*activeGatekeepers)
-        cleanupInfo = cleanupJobs(*activeGatekeepers)
+        paJobs=CondorPAJobs(jobTypes=set(["Processing","Merge","CleanUp"]),load_on_create=True)
+        mergeInfo = getJobs(paJobs,'Merge',*activeGatekeepers)
+        processingInfo = getJobs(paJobs,'Processing',*activeGatekeepers)
+        cleanupInfo = getJobs(paJobs,'Cleanup',*activeGatekeepers)
 
         #  //
         # // Calculate available merge slots
