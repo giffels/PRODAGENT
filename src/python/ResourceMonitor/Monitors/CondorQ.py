@@ -160,6 +160,117 @@ def condorQ(constraints):
     return handler.classads
     
 
+class CondorQClass:
+    """
+    _CondorQClass_
+
+    A class that hold ste result of condorQ
+    """
+    def __init__(self,constraints,load_on_create=True):
+        self.constraints=constraints[0:]
+        # self.jobs will hold the result of condor_q
+        self.jobs=None
+
+        if load_on_create:
+            self.load()
+        return
+
+    def change_constraints(self,constraints,load_on_create=True):
+        """
+        _change_constraints_
+
+
+        Change constraints.
+        Reset or reload the jobs with condorQ.
+        """
+        self.constraints=constraints[0:]
+        self.jobs=None
+
+        if load_on_create:
+            self.load()
+        return
+        
+
+    def load(self):
+        """
+        _load_
+
+        (Re)load the jobs with condorQ.
+        """
+        self.jobs=condorQ(self.constraints)
+        return
+
+    def copy(self,filter_function=None):
+        """
+        _copy_
+
+        Make a copy of the object, possibly filtering the jobs in the process.
+        filter_function will be called on each job in the cache; the job will be
+        copied only if the function returns True
+        """
+        new_obj=CondorQClass(constreaints=self.constraints,load_on_create=False)
+        if self.jobs!=None:
+            if filter_function==None:
+                new_obj.jobs=self.jobs.copy()
+            else:
+                new_obj.jobs=[]
+                for job in self.jobs:
+                    if filter_function(job):
+                        new_obj.jobs.append(job.copy())
+            
+        return new_obj
+
+def countJobs(jobs,id_function,default_ids=[],default_value="",statuses=[[1,'Idle'],[2,'Running']]):
+    """
+    _countJobs_
+
+    Inputs:
+     jobs          - result of condorQ
+     id_function   - a function that given a job returns a string
+     default_ids   - see below
+     default_value - string to use if id_function throws an exception
+     statuses      - which JobStatus-es are of interest
+        
+    Return a dictionary of ids: number of jobs for
+    each id found in the jobs list
+    
+    
+    Default ids is a list of ids that you want to
+    make sure appear in the output, since if there are no jobs, it
+    wont be included. If there are no jobs at a default ids,
+    then it will be returned as having 0 jobs
+    """
+
+    def_attribute={}
+    for status in statuses:
+        AttrStatus=status[1]
+        def_attribute[AttrStatus]=0
+        
+    attributes = {}
+    for default in default_ids:
+        attributes[default] = def_attribute.copy()
+
+    for item in jobs:
+        try:
+            id_str  = id_function(item)
+        except:
+            id_str = default_value.copy()
+
+        if not attributes.has_key(id_str):
+            attributes[id_str] = def_attribute.copy()
+
+        for status in statuses:
+            JobStatus,AttrStatus=status
+            if item['JobStatus'] == JobStatus:
+                attributes[id_str][AttrStatus] += 1
+
+    return attributes
+
+# getJobs helper function
+def extractGatekeeper(item):
+    gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
+    gatekeeper = gatekeeper.strip()
+    return gatekeeper
 
 def getJobs(jobType,*defaultGatekeepers):
     """
@@ -174,27 +285,8 @@ def getJobs(jobType,*defaultGatekeepers):
     then it will be returned as having 0 jobs
     """
     theJobs = condorQ("ProdAgent_JobType==\\\"%s\\\""%jobType)
-    attributes = {}
-    for default in defaultGatekeepers:
-        attributes[default] = {"Idle": 0, "Running": 0}
-
-    for item in theJobs:
-        try :
-            gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
-        except:
-            gatekeeper = 'cmsosgce.fnal.gov/jobmanager-condor'
-        gatekeeper = gatekeeper.strip()
-        item['Gatekeeper'] = gatekeeper
-
-        if not attributes.has_key(gatekeeper):
-            attributes[gatekeeper] = {"Idle": 0, "Running": 0}
-
-        if item['JobStatus'] == 1:
-            attributes[gatekeeper]['Idle'] += 1
-        if item['JobStatus'] == 2:
-            attributes[gatekeeper]['Running'] += 1
-
-    return attributes
+    return countJobs(jobs=theJobs,default_ids=defaultGatekeepers,
+                     id_function=extractGatekeeper,default_value='cmsosgce.fnal.gov/jobmanager-condor')
 
 def processingJobs(*defaultGatekeepers):
     """
