@@ -161,11 +161,11 @@ def condorQ(constraints):
     
 
 
-def processingJobs(*defaultGatekeepers):
+def getJobs(jobType,*defaultGatekeepers):
     """
-    _processingJobs_
+    _getJobs_
 
-    Return a dictionary of gatekeeper: number of processing jobs for
+    Return a dictionary of gatekeeper: number of jobs for
     each gatekeeper found in the condor_q output
 
     Default gatekeepers is a list of gatekeepers that you want to
@@ -173,12 +173,12 @@ def processingJobs(*defaultGatekeepers):
     wont be included. If there are no jobs at a default gatekeeper,
     then it will be returned as having 0 jobs
     """
-    processingJobs = condorQ("ProdAgent_JobType==\\\"Processing\\\"")
+    theJobs = condorQ("ProdAgent_JobType==\\\"%s\\\""%jobType)
     attributes = {}
     for default in defaultGatekeepers:
         attributes[default] = {"Idle": 0, "Running": 0}
 
-    for item in processingJobs:
+    for item in theJobs:
         try :
             gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
         except:
@@ -196,6 +196,20 @@ def processingJobs(*defaultGatekeepers):
 
     return attributes
 
+def processingJobs(*defaultGatekeepers):
+    """
+    _processingJobs_
+
+    Return a dictionary of gatekeeper: number of processing jobs for
+    each gatekeeper found in the condor_q output
+
+    Default gatekeepers is a list of gatekeepers that you want to
+    make sure appear in the output, since if there are no jobs, it
+    wont be included. If there are no jobs at a default gatekeeper,
+    then it will be returned as having 0 jobs
+    """
+
+    return getJobs("Processing",*defaultGatekeepers)
 
 def mergeJobs(*defaultGatekeepers):
     """
@@ -210,30 +224,8 @@ def mergeJobs(*defaultGatekeepers):
     then it will be returned as having 0 jobs
     
     """
-    mergeJobs = condorQ("ProdAgent_JobType==\\\"Merge\\\"")
-    attributes = {}
-    for default in defaultGatekeepers:
-        attributes[default] = {"Idle": 0, "Running": 0}
 
-    for item in mergeJobs:
-        try :
-            gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
-        except:
-            gatekeeper = 'cmsosgce.fnal.gov/jobmanager-condor'
-        gatekeeper = gatekeeper.strip()
-        item['Gatekeeper'] = gatekeeper
-
-        if not attributes.has_key(gatekeeper):
-            attributes[gatekeeper] = {"Idle": 0, "Running": 0}
-
-        if item['JobStatus'] == 1:
-            attributes[gatekeeper]['Idle'] += 1
-        if item['JobStatus'] == 2:
-            attributes[gatekeeper]['Running'] += 1
-
-
-    return attributes
-
+    return getJobs("Merge",*defaultGatekeepers)
 
 def cleanupJobs(*defaultGatekeepers):
     """
@@ -247,31 +239,8 @@ def cleanupJobs(*defaultGatekeepers):
     wont be included. If there are no jobs at a default gatekeeper,
     then it will be returned as having 0 jobs
     """
-    cleanupJobs = condorQ("ProdAgent_JobType==\\\"CleanUp\\\"")
-    attributes = {}
-    for default in defaultGatekeepers:
-        attributes[default] = {"Idle": 0, "Running": 0}
 
-    for item in cleanupJobs:
-        try :
-            gatekeeper = item['GridResource'].replace(item['JobGridType'], '')
-        except:
-            gatekeeper = 'cmsosgce.fnal.gov/jobmanager-condor'
-        gatekeeper = gatekeeper.strip()
-        item['Gatekeeper'] = gatekeeper
-
-        if not attributes.has_key(gatekeeper):
-            attributes[gatekeeper] = {"Idle": 0, "Running": 0}
-
-        if item['JobStatus'] == 1:
-            attributes[gatekeeper]['Idle'] += 1
-        if item['JobStatus'] == 2:
-            attributes[gatekeeper]['Running'] += 1
-
-    return attributes
-
-
-
+    return getJobs("CleanUp",*defaultGatekeepers)
 
 if __name__ == '__main__':
 
