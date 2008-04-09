@@ -15,7 +15,7 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.1 2008/04/07 19:09:01 evansde Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.2 2008/04/08 20:27:36 sfiligoi Exp $"
 
 import os
 import logging
@@ -170,7 +170,6 @@ class GlideInWMS(BulkSubmitterInterface):
         Make common JDL header
         """
         desiredSites = self.lookupDesiredSites()
-        desiredSitesJDL = string.join(list(desiredSites),',')
         
         inpFiles = []
 
@@ -184,9 +183,13 @@ class GlideInWMS(BulkSubmitterInterface):
         jdl.append("universe = vanilla\n")
         # Specify where are the jobs to run
         jdl.append('+DESIRED_Archs="INTEL,X86_64"\n')
-        jdl.append('+DESIRED_Sites = "%s"\n' % desiredSitesJDL)
-        jdl.append("Requirements = stringListMember(GLIDEIN_Site,DESIRED_Sites)&& stringListMember(Arch, DESIRED_Archs)
-
+        if desiredSites!=None:
+            desiredSitesJDL = string.join(list(desiredSites),',')
+            jdl.append('+DESIRED_Sites = "%s"\n' % desiredSitesJDL)
+            jdl.append("Requirements = stringListMember(GLIDEIN_Site,DESIRED_Sites)&& stringListMember(Arch, DESIRED_Archs)\n")
+        else:
+            jdl.append("Requirements = stringListMember(Arch, DESIRED_Archs)\n")
+            
         # log which glidein ran the job
         jdl.append('+JOB_Site = "$$(GLIDEIN_Site:Unknown)"\n')
         jdl.append('+JOB_GLIDEIN_Factory = "$$(GLIDEIN_Factory:Unknown)"\n')
