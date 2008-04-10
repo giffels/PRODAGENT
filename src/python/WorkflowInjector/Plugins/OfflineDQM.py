@@ -35,6 +35,8 @@ class OfflineDQM(PluginInterface):
     def handleInput(self, payload):
         logging.info("OfflineDQM: Handling %s" % payload)
 
+        self.splitType = "file"
+        self.splitSize = 10000000 # quick and nasty
         
         self.workflow = None
         self.dbsUrl = None
@@ -46,8 +48,6 @@ class OfflineDQM(PluginInterface):
                                     self.workingDir,
                                     self.dbsUrl)
         
-        self.splitType = "file"
-        self.splitSize = 1000000 # quick and nasty
         
         jobs = factory()
         for job in jobs:
@@ -69,7 +69,7 @@ class OfflineDQM(PluginInterface):
         
         
         
-        self.workflow = self.loadWorkflow(workflowFile)
+        self.workflow = self.loadWorkflow(payloadFile)
         
         
         value = self.workflow.parameters.get("DBSURL", None)
@@ -82,6 +82,11 @@ class OfflineDQM(PluginInterface):
             logging.error(msg)
             raise RuntimeError, msg
 
+        self.workflow.parameters['SplitType'] = self.splitType
+        self.workflow.parameters['SplitSize'] = self.splitSize
+
+        runtimeScript = "JobCreator.RuntimeTools.RuntimeOfflineDQM"
+        self.workflow.payload.scriptControls['PostTask'].append(runtimeScript)
         
         return
         
