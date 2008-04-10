@@ -45,13 +45,13 @@ def get(jobID=[]):
    if len(jobID)==0:
        return
    if len(jobID)==1:
-       sqlStr="""SELECT allocation_id,cache_dir,events_allocated,events_processed,id,job_spec_file,job_type,
+       sqlStr="""SELECT allocation_id,bulk_id,cache_dir,events_allocated,events_processed,id,job_spec_file,job_type,
        max_retries,max_racers,retries,racers,status,Time,workflow_id, owner FROM we_Job WHERE id="%s" """ %(str(jobID[0]))
    else:
-       sqlStr="""SELECT allocation_id,cache_dir,events_allocated,events_processed,id,job_spec_file,job_type,
+       sqlStr="""SELECT allocation_id,bulk_id,cache_dir,events_allocated,events_processed,id,job_spec_file,job_type,
        max_retries,max_racers,retries,racers,status,Time,workflow_id, owner FROM we_Job WHERE id IN %s """ %(str(tuple(jobID)))
    Session.execute(sqlStr)
-   description=['allocation_id','cache_dir','events_allocated','events_processed','id','job_spec_file','job_type','max_retries','max_racers','retries','racers','status','time_stamp','workflow_id', 'owner']
+   description=['allocation_id','bulk_id','cache_dir','events_allocated','events_processed','id','job_spec_file','job_type','max_retries','max_racers','retries','racers','status','time_stamp','workflow_id', 'owner']
    result=Session.convert(description,Session.fetchall())
    if len(result)==0:
       return None
@@ -214,6 +214,24 @@ def registerFailure(jobID,failureState,parameters={}):
        if int(jobDetails['racers'])==0:
            raise ProdException(exceptions[3016]+str(jobDetails['status']),3016)
        raise ProdException(exceptions[3017]+str(generalState['max_retries']),3017)
+
+def setBulkId(jobIDs, bulk_id):
+   """
+   Sets the bulk id that can be used to 
+   recreate the location of the bulk spec file
+   """
+   if(type(jobIDs)!=list):
+       jobIDs=[str(jobIDs)]
+   if len(jobIDs)==0:
+       return
+   if len(jobIDs)==1:
+       sqlStr="""UPDATE we_Job SET bulk_id="%s" WHERE
+       id="%s" """ %(str(bulk_id),str(jobIDs[0]))
+   else:
+       sqlStr="""UPDATE we_Job SET bulk_id="%s" WHERE
+       id IN %s """ %(str(bulk_id),str(tuple(jobIDs)))
+   Session.execute(sqlStr)
+   
 
 def setCacheDir(jobID,cacheDir):
    """

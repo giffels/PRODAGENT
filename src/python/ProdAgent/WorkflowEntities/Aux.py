@@ -1,9 +1,12 @@
 #/usr/bin/env python
 
+import logging
+
 from ProdCommon.Database import Session
 
 separator = '@'
 old_separator = '_'
+
 
 def split(inputString):
     """
@@ -42,6 +45,7 @@ def removeJob(jobIDs=[] , entityType = 'job'):
    if len(jobIDs)==0:
        return
 
+   
    id = 'id'
    if entityType == 'allocation':
        id = 'allocation_id'
@@ -61,9 +65,8 @@ def removeJob(jobIDs=[] , entityType = 'job'):
        sqlStr3="""DELETE FROM tr_Action WHERE
        JobSpecID IN %s""" %(str(tuple(jobIDs)))
    Session.execute(sqlStr1)
-   #Session.execute(sqlStr2)
+   Session.execute(sqlStr2)
    Session.execute(sqlStr3)
-
 
 def removeAllocation(allocationID=[]):
    """ 
