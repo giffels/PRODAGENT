@@ -594,6 +594,7 @@ CREATE TABLE ct_job_attr(
 
 CREATE TABLE we_Job(
    allocation_id        varchar(255),
+   bulk_id              varchar(255),
    cache_dir            varchar(255),
    events_processed     int             default 0,
    events_allocated     int             default 0,
@@ -689,10 +690,6 @@ CREATE TABLE tr_Trigger(
    FlagID VARCHAR(255) NOT NULL,
    FlagValue ENUM("null","start","finished") NOT NULL,
    Time timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
-   /* Not every MySQL version supports cascade or foreign keys */
-   CONSTRAINT `0_2` FOREIGN KEY(JobSpecID) 
-       REFERENCES we_Job(id) 
-       ON DELETE CASCADE,
    UNIQUE(JobSpecID,TriggerID,FlagID),
    INDEX(TriggerID)
    ) TYPE=InnoDB;
