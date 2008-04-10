@@ -66,23 +66,24 @@ class ProdMgrComponent:
             #//  file hits 1MB size, 3 most recent files are kept
             logHandler = RotatingFileHandler(self.args['Logfile'],
                                              "a", 1000000, 3)
-            #  //
-            # // Set up formatting for the logger and set the
-            #//  logging level to info level
-            if (self.args['QueueHigh'] < self.args['QueueLow']) or \
-                (self.args['QueueLow'] < 0) :
-                logging.debug("QueueHigh smaller than QueueLow")
-                logging.debug("or QueueLow is negative, using default settings")
-                self.args['QueueLow'] = 10
-                self.args['QueueHigh'] = 30
             logFormatter = logging.Formatter("%(asctime)s:%(module)s:%(message)s")
             logHandler.setFormatter(logFormatter)
             logging.getLogger().addHandler(logHandler)
             logging.getLogger().setLevel(logging.DEBUG)
+            #  //
+            # // Set up formatting for the logger and set the
+            #//  logging level to info level
+            if (int(self.args['QueueHigh']) < int(self.args['QueueLow'])) or \
+                (int(self.args['QueueLow']) < 0) :
+                logging.info("QueueHigh smaller than QueueLow")
+                logging.info("or QueueLow is negative, using default settings")
+                self.args['QueueLow'] = 10
+                self.args['QueueHigh'] = 30
             logging.info("ProdMgrComponent Started...")
             logging.info("I am going to sleep for 30 seconds to give other components the")
             logging.info("chance to start up and subscribe to my messages, otherwise I might")
             logging.info("send messages before components have subscribed to them")
+            logging.info("Start parameters: "+str(self.args))
             time.sleep(30)     
        except Exception,ex:
             logging.debug("ERROR: "+str(ex))     
