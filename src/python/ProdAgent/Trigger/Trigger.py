@@ -27,8 +27,9 @@ class Trigger:
         GlobalRegistry.registries['ProdAgent.Triggers'].keys():
             action = GlobalRegistry.registries['ProdAgent.Triggers'][actionName]
             action.messageService = self.messageService
+            action.trigger = self
 
-    def setFlag(self, triggerId, jobSpecId, flagId):
+    def setFlag(self, triggerId, jobSpecId, flagId, payload = {}):
         """
         _setFlag_
      
@@ -58,32 +59,39 @@ Setting triggerID/jobID/flagID %s / %s / %s
         """ % (triggerId, jobSpecId)
         Session.execute(sqlStr)
         #update flags
-        sqlStr = """UPDATE tr_Trigger SET FlagValue="finished" WHERE
+        sqlStr = """DELETE FROM tr_Trigger WHERE
         TriggerID="%s" AND JobSpecID="%s" 
         AND FlagID="%s" ; """ % (triggerId, jobSpecId, flagId)
         rowsModified = Session.execute(sqlStr)
         if rowsModified == 0:
-            raise ProdException(exceptions[3003]+':'+str(triggerId)+\
-            ','+str(jobSpecId)+','+str(flagId),3003)
+            logging.debug(exceptions[3003]+':'+str(triggerId)+\
+            ','+str(jobSpecId)+','+str(flagId))
+            return
+        sqlStr = """
+SELECT COUNT(*) FROM tr_Trigger WHERE
+TriggerID="%s" AND JobSpecID="%s" """ % (triggerId, jobSpecId)
         #check if all flags are set:
-        sqlStr = """SELECT COUNT(*) FROM (SELECT COUNT(*) as 
-        total_count FROM tr_Trigger WHERE TriggerID="%s" AND JobSpecID="%s") 
-        as total_count, (SELECT COUNT(*) as total_count FROM tr_Trigger 
-        WHERE FlagValue="finished" AND TriggerID="%s" AND JobSpecID="%s") 
-        as finished_count WHERE 
-        total_count.total_count=finished_count.total_count; 
-        """ % (triggerId, jobSpecId, triggerId, jobSpecId)
+#        sqlStr = """SELECT COUNT(*) FROM (SELECT COUNT(*) as 
+#        total_count FROM tr_Trigger WHERE TriggerID="%s" AND JobSpecID="%s") 
+#        as total_count, (SELECT COUNT(*) as total_count FROM tr_Trigger 
+#        WHERE FlagValue="finished" AND TriggerID="%s" AND JobSpecID="%s") 
+#        as finished_count WHERE 
+#        total_count.total_count=finished_count.total_count; 
+#        """ % (triggerId, jobSpecId, triggerId, jobSpecId)
         Session.execute(sqlStr)
         rows = Session.fetchall()
         # if flags are set invoke action
-        if rows[0][0] == 1:
+        if rows[0][0] == 0:
             sqlStr = """SELECT ActionName FROM tr_Action WHERE TriggerID="%s" 
             AND JobSpecID="%s" ; """ % (triggerId, jobSpecId)
             Session.execute(sqlStr)
             rows = Session.fetchall()
             if len(rows) == 1:
                 action = retrieveHandler(rows[0][0],'ProdAgent.Triggers')
-            action.invoke(jobSpecId)
+            if payload != {}:
+                action.invoke(jobSpecId, payload)
+            else:
+                action.invoke(jobSpecId)
 
    
     def resetFlag(self, triggerId, jobSpecId, flagId):
@@ -160,7 +168,7 @@ Setting triggerID/jobID/flagID %s / %s / %s
             return True
         return False
      
-    def addFlag(self, triggerId, jobSpecId, flagId):
+    def addFlag(self, triggerId, jobSpecId , flagId):
         """
         _addFlag_
         
@@ -178,9 +186,20 @@ Setting triggerID/jobID/flagID %s / %s / %s
      
         """
         try:
-            sqlStr = """INSERT INTO 
-            tr_Trigger(JobSpecID,TriggerID,FlagID,FlagValue)
-            VALUES("%s","%s","%s","start") ;""" % (jobSpecId, triggerId, flagId)
+            if type(flagId) != list: 
+                sqlStr = """
+INSERT INTO tr_Trigger(JobSpecID,TriggerID,FlagID,FlagValue)
+VALUES("%s","%s","%s","start") ;""" % (jobSpecId, triggerId, flagId)
+            else:
+                sqlStr = """
+INSERT INTO tr_Trigger(JobSpecID,TriggerID,FlagID,FlagValue)
+VALUES """
+                comma = False
+                for flag in flagId:
+                    if comma:
+                        sqlStr+= ','
+                    sqlStr += """("%s","%s","%s","start") """  % (jobSpecId, triggerId, flag)
+                    comma = True
             Session.execute(sqlStr)
         except:
             raise ProdException(exceptions[3003], 3003)
