@@ -18,6 +18,7 @@ import socket
 
 from MessageService.MessageService import MessageService
 from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdAgent.Trigger.Trigger import Trigger
 from ProdCommon.Database import Session
 from ProdCommon.Core.GlobalRegistry import retrieveHandler
 from ProdCommon.Core.GlobalRegistry import GlobalRegistry
@@ -116,6 +117,9 @@ class JobCleanupComponent:
          Start up the component
  
          """
+         # create message service
+         self.ms = MessageService()
+         self.trigger=Trigger(self.ms)
          # prepare handlers:
          for handlerName in GlobalRegistry.registries["JobCleanup"].keys():
              handler=GlobalRegistry.registries["JobCleanup"][handlerName]
@@ -123,6 +127,7 @@ class JobCleanupComponent:
              handler.failureArchive=self.args['FailureArchive']
              handler.successArchive=self.args['SuccessArchive']
              handler.keepLogsInSuccessArchive=self.args['KeepLogsInSuccessArchive']
+             handler.trigger = self.trigger
                  
          # main body using persistent based message server
          logging.info("JobCleanup persistent based message service Starting...")
@@ -132,8 +137,7 @@ class JobCleanupComponent:
          logging.info(msg)
          if handler.keepLogsInSuccessArchive:
            logging.info("Set to keep logfiles in successful job archive")         
-         # create message service
-         self.ms = MessageService()
+
          
          # register
          self.ms.registerAs("JobCleanup")

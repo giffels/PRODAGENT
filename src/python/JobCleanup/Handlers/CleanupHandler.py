@@ -71,7 +71,10 @@ class CleanupHandler(HandlerInterface):
                  tar.close()
              except Exception,ex:
                  logging.debug(">CleanupHandler< WARNING job cleanup: "+str(ex))
-             JobState.cleanout(str(payload))
+             logging.debug("trying to get bulkpath")
+             job = Job.get(payload)
+             logging.debug("trying to set flag for bulk clean (if possible)")
+             self.trigger.setFlag("bulkClean",job['bulk_id'],payload, job['cache_dir'])
              Job.remove(str(payload))
          except Exception,ex:
              logging.debug(">CleanupHandler< ERROR job cleanup: "+str(ex))
