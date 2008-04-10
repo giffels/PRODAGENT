@@ -1,10 +1,24 @@
 #!/usr/bin/env python
+"""
+_RuntimeOfflineDQM_
 
+Harvester script for DQM Histograms.
 
+Will do one/both of the following:
+1. Copy the DQM Histogram file to the local SE, generating an LFN name for it
+2. Post the DQM Histogram file to a Siteconf discovered DQM Server URL
+
+"""
 import os
 import sys
 from ProdCommon.FwkJobRep.TaskState import TaskState
+from ProdCommon.MCPayloads.UUID import makeUUID
 
+from StageOut.StageOutMgr import StageOutMgr
+from StageOut.StageOutError import StageOutInitError
+import StageOut.Impl
+
+_DoHTTPPost = False
 
 class OfflineDQMHarvester:
     """
@@ -16,8 +30,11 @@ class OfflineDQMHarvester:
     """
     def __init__(self):
         self.state = TaskState(os.getcwd())
-        self.state.loadRunResDB()        
-
+        self.state.loadRunResDB()
+        self.config = self.state.configurationDict()
+        self.workflowSpecId = self.config['WorkflowSpecID'][0]
+        self.jobSpecId = self.config['JobSpecID'][0]
+        
         try:
             self.state.loadJobReport()
         except Exception, ex:
@@ -44,19 +61,55 @@ class OfflineDQMHarvester:
 
         for aFile in jobRep.analysisFiles:
             print "Found Analysis File: %s" % aFile
-            self.copyOut(aFile)
+            self.stageOut(aFile['FileName'])
+            if _DoHTTPPost:
+                self.httpPost(aFile['FileName'])
 
         return 0
 
     
-    def copyOut(self, filename):
+    def stageOut(self, filename):
         """
-        _copyOut_
+        _stageOut_
 
-        Copy the given DQM file out to some DQM Server.
+        stage out the DQM Histogram to local storage
 
         """
-        pass
+        try:
+            stager = StageOutMgr()
+        except Exception, ex:
+            msg = "Unable to stage out log archive:\n"
+            msg += str(ex)
+            print msg
+            return
+
+        fileInfo = {
+            'LFN' : "/store/unmerged/dqm/%s/%s/%s" % (self.workflowSpecId,
+                                                      self.jobSpecId,
+                                                      filename),
+            'PFN' : os.path.join(os.getcwd(), filename),
+            'SEName' : None,
+            'GUID' : makeUUID(),
+            }
+        try:
+            stager(**fileInfo)
+        except Exception, ex:
+            msg = "Unable to stage out DQM File:\n"
+            msg += str(ex)
+            print msg
+            return
+        
+            
+
+
+    def httpPost(self, filename):
+        """
+        _httpPost_
+
+        perform an HTTP POST operation to a webserver
+
+        """
+        print "HTTP Post: %s\n Not yet implemented" % filename
 
 if __name__ == '__main__':
 
