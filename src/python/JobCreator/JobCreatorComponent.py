@@ -275,7 +275,6 @@ class JobCreatorComponent:
             if firstSpec == None:
                 firstSpec = newSpecFile
 
-
         #  //
         # // Now update and save the bulk spec with the new spec 
         #//  file locations and then publish it for submission
@@ -288,14 +287,21 @@ class JobCreatorComponent:
         #       We don't want this to go somewhere that'll eventually be cleaned up...
         #       strip off last part of dir
         bulkTar = os.path.dirname(bulkTar) 
+        bulkNNNN = os.path.split(bulkTar)[1]
         bulkTar += "/BulkSpecs"
         if not os.path.exists(bulkTar):
              os.makedirs(bulkTar)
-        bulkTar += "/%s-%s-BulkSpecs.tar.gz" % (workflowName, int(time.time()))
+        bulkName = "/%s-%s-BulkSpecs.tar.gz" % (workflowName, int(time.time()))
+        bulkTar += bulkName
         newBulkSpec.bulkSpecs.update(newSpecs)
         newBulkSpec.parameters['BulkInputSpecSandbox'] = bulkTar
         newBulkSpec.siteWhitelist.extend(primaryJobSpec.siteWhitelist)
         newBulkSpec.siteBlacklist.extend(primaryJobSpec.siteBlacklist)
+
+        logging.debug("Setting bulk flags for trigger")
+        WEJob.setBulkId(newSpecs.keys(), bulkNNNN+'::'+bulkName) 
+        self.trigger.addFlag("bulkClean",bulkNNNN+'::'+bulkName,newSpecs.keys())
+        self.trigger.setAction(bulkNNNN+"::"+bulkName,"bulkClean","bulkCleanAction")
 
         logging.debug("Bulk Spec Whitelist: %s" % newBulkSpec.siteWhitelist)
         
