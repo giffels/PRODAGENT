@@ -321,6 +321,17 @@ componentFields = {
 	"avgEventProcessingRate" : "0.95",
 	},
 	
+	"LogCollector" : {
+	"ComponentDir" : None,
+	"Enabled" : False,
+	"QueueJobMode" : False,
+	"pollInterval" : "96:00:00",
+	"logLifetime" : "24:00:00",
+	"maxErrors" : 3,
+	"maxLogs" : 200,
+	},
+	
+	
     }# end componentFields
 
 #  //
@@ -486,7 +497,17 @@ internal database.
     among all the successful jobs. The number of incomplete events among the jobs follows the gauss distribution 
     with maximun number (totalEvent -1, minimun 1) the mean value (70% of total event) and 
     standard deviation (15% of the width of total event) is hard coded. If it is necessary they can be parameterized. 
+   """,
+   "LogCollector"			:\
    """
+   Will periodically poll for logs that can be collected at sites for the active workflows
+    -Enabled: Whether or not to poll ofr logs to collect
+    -QueueJobMode: Set to True to use the JobQueue
+    -pollInterval: How often to poll for logs
+    -logLifetime: The period of time for which a log will be left at a site
+    -maxErrors: The number of jobs which will attmept to collect a log before it is considered lost
+    -maxLogs: How many logs to collect in one job
+   """,
     }
 
 if componentList == []:

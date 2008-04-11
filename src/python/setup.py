@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.52 2008/02/22 17:59:49 dmason Exp $"
+__revision__ = "$Id: setup.py,v 1.53 2008/03/13 18:50:26 swakef Exp $"
 
 from distutils.core import setup
 
@@ -43,6 +43,7 @@ packages = [
     'JobState.JobStateAPI',
     'JobState.Database',
     'JobState.Database.Api',
+    'LogCollector',
     'MergeSensor',
     'MergeSensor.MergePolicies',
     'MergeAccountant',
