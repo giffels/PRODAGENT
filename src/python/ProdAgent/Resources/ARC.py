@@ -6,6 +6,12 @@ import fcntl, select, sys, os
 import re
 
 
+class CommandExecutionError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+    def __str__(self):
+        return str(self.msg)
+
 
 def findKey(dict, value, ifNotFound = None):
     """
@@ -28,8 +34,16 @@ def makeNonBlocking(fd):
         fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
 
 
-def executeCommand(command):
-    logging.debug("executeCommand: %s" % command)
+def executeNgCommand(command, proxyRetry = True):
+    """
+    Execute shell command 'command'. If proxyRetry = True and 'command' fails with an error
+    message like 'Could not determine location of a proxy certificate' or
+    'The proxy has expired', (re-)initialise a proxy and retry.  (Primarily
+    meant for ng* commands, but should work for any shell commands.)
+
+    """
+
+    logging.debug("executeNgCommand: %s" % command)
 
     child = popen2.Popen3(command, 1) # capture stdout and stderr from command
     child.tochild.close()             # don't need to talk to child
@@ -59,21 +73,26 @@ def executeCommand(command):
     try:
         exitCode = child.poll()
     except Exception, ex:
-        msg = "Error retrieving child exit code: %s\n" % ex
+        msg = "Error retrieving child exit code: %s\n" % str(ex)
         msg = "while executing command:\n"
         msg += command
-        logging.error("executeCommand: Failed to Execute Command")
+        logging.error("executeNgCommand: Failed to Execute Command")
         logging.error(msg)
-        raise RuntimeError, msg
+        raise CommandExecutionError(msg)
 
     if exitCode:
+        if proxyRetry and (stdoutBuffer.find("Could not determine location of a proxy certificate") >= 0 \
+                           or stdoutBuffer.find("The proxy has expired") >= 0):
+            executeNgCommand("grid-proxy-init")
+            return executeNgCommand(command, False)
         msg = "Error executing command:\n"
         msg += command
         msg += "Exited with code: %s\n" % exitCode
-        logging.error("executeCommand: Failed to Execute Command")
+        logging.error("executeNgCommand: Failed to Execute Command")
         logging.error(msg)
-        raise RuntimeError, msg
+        raise CommandExecutionError(msg)
     return  stdoutBuffer
+
 
 # 
 # Mapping between ARC status codes and ProdAgent status codes
@@ -221,7 +240,7 @@ def getJobs():
     logging.debug(msg)
 
     if ids.strip():
-        output = executeCommand("ngstat " + ids)
+        output = executeNgCommand("ngstat " + ids)
     else:
         return []
 

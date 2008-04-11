@@ -13,6 +13,7 @@ import string
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
 from JobSubmitter.JSException import JSException
+from ProdAgent.Resources import ARC
 
 import ProdAgent.ResourceControl.ResourceControlAPI as ResConAPI
 
@@ -184,7 +185,13 @@ class ARCSubmitter(BulkSubmitterInterface):
         submitCommand += self.preferredSite()
 
         logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
-        output = self.executeCommand(submitCommand)
+        try:
+            output = ARC.executeNgCommand(submitCommand)
+        except CommandExecutionError, emsg:
+            msg = "Submitting with command\n"
+            msg += "    '%s'\n" % submitCommand
+            msg += "failed: " + str(emsg)
+            logging.warning(msg)
         logging.debug("ARCSubmitter.doSubmit: %s " % output)
 
 

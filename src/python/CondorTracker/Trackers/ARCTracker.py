@@ -65,17 +65,16 @@ class ARCTracker(TrackerPlugin):
             logging.debug("getJobReport: Couldn't find job " + jobSpecId)
             return None
 
-        #  //
-        # // Get the FrameworkJobReport.xml file, copied to
-        #//  arcId/FrameworkJobReport.xml by the wrapper script
+        # Get the FrameworkJobReport.xml file, copied to
+        # arcId/FrameworkJobReport.xml by the wrapper script
 
         arcId = jobs[jobSpecId]
         ngcp = "ngcp %s/FrameworkJobReport.xml %s/" % (arcId,localDir)
         logging.debug("getJobReport: " + ngcp)
-        s = os.system(ngcp)
-        if s != 0:
-            logging.warning("getJobReport: Report File Not Found for " \
-                            + jobSpecId)
+        try:
+            ARC.executeNgCommand(ngcp)
+        except CommandExecutionError:
+            logging.warning("getJobReport: Report File Not Found for " + jobSpecId)
             return None
 
         logging.debug("getJobReport: Report file for %s copied to %s" % \
@@ -83,9 +82,12 @@ class ARCTracker(TrackerPlugin):
 
         # Let's get a few additional files as well; they can be useful for
         # tracking down errors. 
-        s = os.system("ngcp %s/run.log %s/" % (arcId,localDir))
-        s = os.system("ngcp %s/output %s/" % (arcId,localDir))
-        s = os.system("ngcp %s/errors %s/" % (arcId,localDir))
+        try:
+            ARC.executeNgCommand("ngcp %s/run.log %s/" % (arcId,localDir))
+            ARC.executeNgCommand("ngcp %s/output %s/" % (arcId,localDir))
+            ARC.executeNgCommand("ngcp %s/errors %s/" % (arcId,localDir))
+        except CommandExecutionError:
+            logging.warning("getJobReport: Copying of additional output files failed for " + jobSpecId)
 
         return localDir + "/FrameworkJobReport.xml"
 
@@ -207,7 +209,10 @@ class ARCTracker(TrackerPlugin):
 
         summary = "Jobs Completed:\n"
         for id in complete:
-            os.system("ngclean " + id)
+            try:
+                ARC.executeNgCommand("ngclean " + id)
+            except CommandExecutionError, msg:
+                logging.warning("Cleaning up of job %s failed (%s)" % (id, msg))
             summary += " -> %s\n" % id
             ARC.clearNoInfo(id)
         logging.info(summary)

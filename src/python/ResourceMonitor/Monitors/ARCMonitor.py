@@ -89,36 +89,33 @@ class ARCMonitor(MonitorInterface):
         for s in sites:
             cmd += " -c " + s["CEName"]
 
-        logging.debug("Executing command '%s'" % cmd)
-        p = Popen4(cmd)
-        x = p.wait()
-
-        if x != 0: 
-            logging.info("WARNING: ARC: Command '%s' failed" % cmd)
+        try:
+            output = ARC.executeNgCommand(cmd)
+        except CommandExecutionError, msg:
+            logging.warning("Didn't get information on ARC resources: " + msg)
             return []
 
         asites = []
-        for cluster in self.parseNgstatq(p):
+        for cluster in self.parseNgstatq(output.split('\n')):
             if cluster["Active"]: asites.append(cluster["CEName"])
 
         return asites
             
 
 
-    def parseNgstatq(self, p):
+    def parseNgstatq(self, output):
         """
-        Parse the output of 'ngstat -q' (read from p.fromchild) into a list of 
+        Parse the output (list of lines) of 'ngstat -q' into a list of 
         {"CEName":str, "Alias":str, "Queue":str, "Active":bool}
 
         """
 
         r = []
-
-        output = p.fromchild.readlines()
         i = 0
         while i < len(output):
             words = output[i].split()
-            if words[0] == 'Cluster':
+
+            if len(words) > 0 and words[0] == 'Cluster':
                 CEName = words[1]
 
                 alias, queue, active = "", "", False
