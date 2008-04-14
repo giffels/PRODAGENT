@@ -209,7 +209,7 @@ componentFields = {
     "MinMergeFileSize" : 1500000000,
     "MergeSiteWhitelist" : None,
     "MergeSiteBlacklist" : None,
-    "FastMerge" : "yes",
+    "FastMerge" : "no",
     "CleanUp" : "no",
     "MaxInputAccessFailures" : 1,
     "QueueJobMode": "True",
