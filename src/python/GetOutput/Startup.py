@@ -6,7 +6,7 @@ Start the component, reading its configuration from
 the common configuration file, which is accessed by environment variable
 
 """
-__revision__ = "$Id: Startup.py,v 1.1.2.1 2007/12/10 18:24:50 ckavka Exp $"
+__revision__ = "$Id: Startup.py,v 1.1.2.2 2008/03/28 15:36:51 gcodispo Exp $"
 
 import os
 import sys
@@ -66,6 +66,13 @@ try:
 
         # problems, accept the default one
         pass
+
+    ## TODO temporary for OSB rebounce # Fabio
+    try:
+        compCfg.update( config.get("CrabServerConfigurations") )
+    except Exception, e:
+        pass
+    ## 
 
 except StandardError, ex:
     msg = "Error reading configuration:\n"
