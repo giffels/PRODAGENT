@@ -210,7 +210,9 @@ class JobQueueComponent:
                 logging.info("publishing CreateJob %s" % job['JobSpecFile'])
                 self.ms.publish("CreateJob", job['JobSpecFile'])
                 self.ms.commit()
-            JobQueueAPI.releaseJobs(*jobspecs)
+            
+            JobQueueAPI.releaseJobs(siteOverride, *jobspecs)
+            
             return
         #  //
         # // sort into bulk specs based on same workflow, site and job type
@@ -224,7 +226,8 @@ class JobQueueComponent:
             logging.info("publishing  CreateJob %s" % indSpec['JobSpecFile'])
             self.ms.publish("CreateJob", indSpec['JobSpecFile'])
             self.ms.commit()
-            JobQueueAPI.releaseJobs(indSpec)
+
+            JobQueueAPI.releaseJobs(siteOverride, indSpec)
             
 
         for bulkSpecList in sorter.bulkSpecs.values():
@@ -256,7 +259,7 @@ class JobQueueComponent:
             self.ms.publish("CreateJob", bulkSpecName)
             self.ms.commit()
             
-            JobQueueAPI.releaseJobs(*bulkSpecList)
+            JobQueueAPI.releaseJobs(siteOverride, *bulkSpecList)
             
         
         return

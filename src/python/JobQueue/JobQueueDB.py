@@ -70,10 +70,6 @@ def verifySites():
     if str(verify).lower() in ("true", "yes"):
         result = True
     return result
-    
-
-
-
 
 
 
@@ -605,27 +601,50 @@ class JobQueueDB:
         
         
         
-    def flagAsReleased(self, *indices):
-        """
-        _flagAsReleased_
+#    def flagAsReleased(self, *indices):
+#        """
+#        _flagAsReleased_
+#
+#        For the job indices in the list provided, flag the jobs as
+#        released status
+#        """
+#        sqlStr = \
+#        """
+#        UPDATE  jq_queue SET status = 'released', time = NOW() WHERE job_index
+#          IN 
+#        """
+#        
+#        sqlStr += " ( "
+#        sqlStr += str(reduce(reduceList, indices))
+#        sqlStr += " );"
+#        Session.execute(sqlStr)
+#        return
 
-        For the job indices in the list provided, flag the jobs as
-        released status
+
+    def flagAsReleased(self, siteIndex = None, *indices):
         """
-        sqlStr = \
-        """
-        UPDATE  jq_queue SET status = 'released', time = NOW() WHERE job_index
-          IN 
+        flag jobs as released at a site
         """
         if len(indices) == 0:
             return
-        sqlStr += " ( "
-        sqlStr += str(reduce(reduceList, indices))
-        sqlStr += " );"
+        
+        sqlStr = """UPDATE jq_queue SET status = 'released', time = NOW()"""
+        
+        if siteIndex is not None:
+            sqlStr = """%s, released_site = %s""" % (sqlStr, siteIndex)
+        
+        sqlStr = """%s WHERE job_index IN ( %s )""" % \
+                        (sqlStr, str(reduce(reduceList, indices)))
+        
         Session.execute(sqlStr)
+        
+#        if siteIndex is not None:
+#            sqlStr = """UPDATE jq_queue SET released_to = %s WHERE job_index
+#             IN ( %s )""" % (siteIndex, str(reduce(reduceList, indices)))
+#            Session.execute(sqlStr)
+        
         return
 
-    
 
     def cleanOut(self, timeInterval):
         """
@@ -1099,3 +1118,76 @@ class JobQueueDB:
         the end
         """
         return jobs_to_be_released
+
+
+    def getSiteForReleasedJob(self, job_spec_id):
+        """
+        get resourceControl site id for given released jobspec
+        """
+        
+#        sqlStr = """SELECT jq_site.site_index FROM jq_queue, jq_site
+#                    WHERE jq_queue.job_index = jq_site.job_index
+#                    AND jq_queue.status = 'released'
+#                    AND jq_queue.job_spec_id = '%s'""" % job_spec_id
+
+        sqlStr = """SELECT released_site FROM jq_queue
+                    WHERE job_spec_id = '%s'""" % job_spec_id
+        
+        Session.execute(sqlStr)
+        # by definition job can only be released for one site
+        return Session.fetchone()[0]
+        
+        
+    def countQueuedActiveJobs(self, sites=None, jobTypes=None):
+        """
+        get number of queued jobs at sites and 
+        """
+        
+        if sites is None:
+            sites = ()
+        if jobTypes is None:
+            jobTypes = ()
+        
+        sqlStr = \
+        """
+        SELECT COUNT(jobQ.job_index), we_Job.job_type, siteQ.released_to
+        FROM jq_queue jobQ
+        LEFT OUTER JOIN jq_site siteQ ON jobQ.job_index = siteQ.job_index
+        LEFT OUTER JOIN we_Job ON jobQ.job_spec_id = we_Job.id 
+        WHERE jobQ.status = 'released'
+        AND we_Job.status IN ('released', 'create', 'submit', 'inProgress')
+        """
+
+        if len(sites) > 0:
+            siteStr = ""
+            for s in sites:
+                siteStr += "%s," % s
+            siteStr = siteStr[:-1]
+            
+            sqlStr += " AND siteQ.site_index IN (%s) " % siteStr
+            #sqlStr += " OR siteQ.site_index IS NULL ) "
+        #else:
+        #    sqlStr += " siteQ.site_index IS NULL "
+        
+        if len(jobTypes) > 0:
+            typeStr = ""
+            for t in jobTypes:
+                typeStr += "%s," % s
+            typeStr = typeStr[:-1]
+            
+            sqlStr += " AND job_type IN (%s) " % siteStr
+        
+        sqlStr += " GROUP BY we_Job.job_type, siteQ.site_index"
+        
+        Session.execute(sqlStr)
+        temp = Session.fetchall()
+        result = {}
+        [ result.setdefault(site, {}).__setitem__(type, int(jobs)) for \
+                                                 jobs, type, site in temp ]
+        
+        for site in result.keys():
+            result[site]['Total'] = sum(result[site].values())
+        
+        return result
+
+        

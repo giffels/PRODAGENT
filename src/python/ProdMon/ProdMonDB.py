@@ -244,7 +244,7 @@ def __insertResource(Session, jobStatistics):
     
     resource_id = __insertIfNotExist(Session, "prodmon_Resource", 
                             {"site_name" : jobStatistics["site_name"],
-                             #"rc_site_id" : jobStatistics["rc_site_index"],
+                             "rc_site_id" : jobStatistics["rc_site_index"],
                              "ce_hostname" : jobStatistics["ce_name"],
                              "se_hostname" : jobStatistics["se_name"]},
                             "resource_id")
@@ -608,8 +608,9 @@ def getJobInstancesInfo(instance_ids):
     for instance in results:
         instance_id = instance["instance_id"]
         
-        # convert error_message array ot string
-        arrToString(instance)
+        # convert error_message array to string
+        # not needed in newer mysql releases
+        #arrToString(instance)
         
         # add error type
         if instance["exit_code"] != 0:

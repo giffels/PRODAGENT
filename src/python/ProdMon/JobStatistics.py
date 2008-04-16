@@ -12,6 +12,8 @@ tables for the stat information
 from ProdMon.ProdMonDB import insertStats, getMergeInputFiles
 from ProdAgent.WorkflowEntities import Job
 from ShREEK.CMSPlugins.DashboardInfo import extractDashboardID
+from JobQueue.JobQueueAPI import getSiteForReleasedJob
+
 import os
 
 class JobStatistics(dict):
@@ -41,6 +43,7 @@ class JobStatistics(dict):
         self.setdefault("input_datasets", [])
         self.setdefault("input_files", [])
         self.setdefault("request_id", None)
+        self.setdefault("rc_site_index", None)
         
         # for successful jobs
         self.setdefault("events_read", 0)
@@ -55,7 +58,7 @@ class JobStatistics(dict):
         self.setdefault("error_code", None)
         self.setdefault("error_desc", None)
 
-        #perfornace records
+        #performance records
         self.setdefault("performance_report", None)
         
         # holds database_ids - used during insertions
@@ -245,6 +248,15 @@ class JobStatistics(dict):
         return
 
 
+    def recordSiteIndex(self, jobRepInst):
+        """
+        get jobQ site index
+        """
+        
+        self['rc_site_index'] = getSiteForReleasedJob(jobRepInst.jobSpecId)
+        return
+        
+
 def jobReportToJobStats(jobRepInstance):
     """
     _jobReportToJobStats_
@@ -261,6 +273,7 @@ def jobReportToJobStats(jobRepInstance):
     result.recordInputs(jobRepInstance)
     result.recordOutputs(jobRepInstance)
     result.recordTiming(jobRepInstance)
+    result.recordSiteIndex(jobRepInstance)
     
     # record failure conditions
     if not jobRepInstance.wasSuccess():

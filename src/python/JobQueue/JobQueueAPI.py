@@ -105,26 +105,49 @@ def bulkQueueJobs(listOfSites, *jobSpecDicts):
     return
 
 
-def releaseJobs( *jobDefs):
+#def releaseJobs( *jobDefs):
+#    """
+#    _releaseJobs_
+#
+#    Flag jobs as released so that they can be removed from the queue
+#
+#    """
+#    logging.debug("releasing jobDefs: %s" % str(jobDefs))
+#    indices = [ x['JobIndex'] for x in jobDefs ]
+#    logging.debug("releasing indices: %s" % indices)
+#    Session.connect()
+#    Session.start_transaction()
+#    
+#    jobQ = JobQueueDB()
+#    jobQ.flagAsReleased(*indices)
+#    
+#    
+#    Session.commit_all()
+#    Session.close_all()
+#    return
+
+
+def releaseJobs(siteIndex = None, *jobDefs):
     """
     _releaseJobs_
 
     Flag jobs as released so that they can be removed from the queue
 
     """
-    logging.debug("releasing jobDefs: %s" % str(jobDefs))
+    logging.debug("releasing jobDefs: %s for site %s" % (str(jobDefs),
+                                                                  siteIndex))
     indices = [ x['JobIndex'] for x in jobDefs ]
     logging.debug("releasing indices: %s" % indices)
     Session.connect()
     Session.start_transaction()
     
     jobQ = JobQueueDB()
-    jobQ.flagAsReleased(*indices)
-    
+    jobQ.flagAsReleased(siteIndex, *indices)
     
     Session.commit_all()
     Session.close_all()
     return
+
 
 def queueLength(jobType = None):
     """
@@ -143,3 +166,21 @@ def queueLength(jobType = None):
     Session.commit_all()
     Session.close_all()
     return length
+
+def getSiteForReleasedJob(job_spec_id):
+    """
+    get site index for given job
+    """
+    Session.connect()
+    Session.start_transaction()
+    
+    jobQ = JobQueueDB()
+    result = jobQ.getSiteForReleasedJob(job_spec_id)
+    
+    Session.commit_all()
+    Session.close_all()
+    
+    return result
+    
+    
+    
