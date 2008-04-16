@@ -6,6 +6,7 @@ _CondorQ_
 
 """
 
+import logging
 import os
 import string
 
@@ -145,8 +146,10 @@ def condorQ(constraints):
 
     """
     command = "condor_q -xml -constraint %s  " % constraints
+    logging.debug("condorQ command: '%s'"%command)
     si, sout = os.popen2(command)
     content = sout.read()
+    #logging.debug("condorQ content: '%s'"%content)
     content = content.split("<!DOCTYPE classads SYSTEM \"classads.dtd\">")[1]
     handler = CondorQHandler()
     parser = make_parser()
@@ -230,7 +233,7 @@ class CondorPAJobs(CondorQClass):
     def __init__(self,jobID='ProdAgent_JobType',jobTypes=set(["Processing","Merge","CleanUp"]),load_on_create=True):
         self.jobID=jobID
         self.jobTypes=jobTypes.copy()
-        CondorQClass.__init__(self,constraint="stringListMember(%s,\\\"%s\\\")"%(jobID,string.join(self.jobTypes,',')),
+        CondorQClass.__init__(self,constraints="'stringListMember(%s,\"%s\")'"%(jobID,string.join(self.jobTypes,',')),
                               load_on_create=load_on_create)
         return
 
@@ -240,7 +243,7 @@ class CondorPAJobs(CondorQClass):
 
         Make a copy of the object, possibly filtering the jobs in the process.
         """
-         if jobTypes==None:
+        if jobTypes==None:
             new_obj=CondorPAJobs(self.jobID,self.jobTypes,load_on_create=False)
             if self.jobs!=None:
                 new_obj.jobs=self.jobs.copy()

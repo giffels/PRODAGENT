@@ -15,7 +15,7 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.3 2008/04/09 19:20:39 sfiligoi Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.4 2008/04/09 21:43:20 sfiligoi Exp $"
 
 import os
 import logging
@@ -32,7 +32,7 @@ from JobSubmitter.Submitters.OSGUtils import missingJobReportCheck
 
 
 
-from ProdAgent.ResourceControl.ResourceControlAPI import createCEMap
+from ProdAgent.ResourceControl.ResourceControlAPI import createSiteNameMap
 
 
 class GlideInWMS(BulkSubmitterInterface):
@@ -311,9 +311,9 @@ class GlideInWMS(BulkSubmitterInterface):
 
 
 
-    def lookupDesiredSite(self):
+    def lookupDesiredSites(self):
         """
-        _lookupDesiredSite_
+        _lookupDesiredSites_
 
         If a whitelist is supplied in the job spec instance,
         match it to a desired site value (ce name) in the rescon DB
