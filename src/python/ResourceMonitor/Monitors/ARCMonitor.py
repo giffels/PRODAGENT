@@ -16,6 +16,9 @@ from ProdAgent.Resources import ARC
 from popen2 import Popen4
 
 
+#
+# Mapping between job types and threshold types
+#
 jobTypeMap = {"Processing":"processingThreshold",
               "Merge":"mergeThreshold",
               "CleanUp":"cleanupThreshold" }
@@ -37,28 +40,28 @@ class ARCMonitor(MonitorInterface):
         totCount = 0
         siteMap = ResConAPI.createSiteIndexMap()
 
-        # Find out what existing processes of each type we have per CE
-        procs = {}
+        # Find out how many existing jobs of each type we have per CE
+        jobs = {}
         for ce in siteMap.keys():
-            procs[ce] = {}
-            for t in jobTypeMap.keys():
-                procs[ce][t] = 0
-        for p in ARC.getJobs():
-            procs[p.CEName][p.jobType] = procs[p.CEName][p.jobType] + 1
+            jobs[ce] = {}
+            for jobType in jobTypeMap.keys():
+                jobs[ce][jobType] = 0
+        for j in ARC.getJobs():
+            jobs[j.CEName][j.jobType] = jobs[j.CEName][j.jobType] + 1
 
-        # Subtract the number of existing processes of each type per CE
+        # Subtract the number of existing jobs of each type per CE
         # from the allowed ones to get the constraints
         for ce in self.availableCEs():
             try:
                 site = siteMap[ce]
             except:
-                logging.info("Warning: CE %s not found in site list" % ce)
+                logging.warning("CE %s not found in site list" % ce)
                 continue
-            thresh = ResConAPI.thresholdsByIndex(site)
-            for type in jobTypeMap.keys():
+            threshold = ResConAPI.thresholdsByIndex(site)
+            for (jobType, threshType) in jobTypeMap.items():
                 con = ResourceConstraint()
-                con["count"] = thresh[jobTypeMap[type]] - procs[ce][type]
-                con["type"] = type
+                con["count"] = max(threshold[threshType] - jobs[ce][jobType], 0)
+                con["type"] = jobType
                 con["site"] = site
                 logging.debug("%i counts for type %s at %s" % (con["count"], con["type"], con["site"]))
 
@@ -69,7 +72,6 @@ class ARCMonitor(MonitorInterface):
                       (len(constraints), totCount))
 
         return constraints
-
 
 
     def availableCEs(self):
