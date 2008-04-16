@@ -10,8 +10,8 @@ from ResourceMonitor.Monitors.MonitorInterface import MonitorInterface
 from ResourceMonitor.Registry import registerMonitor
 
 from ResourceMonitor.Monitors.LCGSiteInfo import getSiteInfoFromBase
-from ResourceMonitor.Monitors.WorkflowConstraints import gtkToNotWorkflows
-from ResourceMonitor.Monitors.BOSSInfo import anySiteJobs
+from ResourceMonitor.Monitors.WorkflowConstraints import siteToNotWorkflows
+from JobQueue.JobQueueDB import JobQueueDB
 
 import logging
 
@@ -24,322 +24,286 @@ class LCGAdvanced(MonitorInterface):
 
     Poll resources on the local machine and get details of all the ProdAgent
     jobs in there split by processing and merge type.
-
+    
     Generate a per site constraint for each distinct site being used
 
     """
 
+    SAMurl = "http://lxarda16.cern.ch/dashboard/request.py/latestresultssmry"
+    FCRurl = "http://lcg-fcr.cern.ch:8083/fcr-data/exclude.ldif"
+    
+    jobTypes = []
+    jobTypes.append({"type" : "Processing", "defaultFrac" : 1.0})
+    jobTypes.append({"type" : "Merge", "defaultFrac" : 0.3})
+    jobTypes.append({"type" : "CleanUp", "defaultFrac" : 0.3})
+    jobTypes.append({"type" : "LogCollect", "defaultFrac" : 0.3})
 
-    def procThresh(self,gtk):
-        defaultfraction=0.3
-        if self.plugConf:
-            if self.plugConf.has_key("processingFractionDefault"):
-                defaultfraction=float(self.plugConf["processingFractionDefault"])
-        logging.debug("LCGAdvanced: procThresh defaultfraction "+str(defaultfraction))
 
+    def __call__(self):
+        self.loadPluginConfig()
 
-        cpus=int(self.siteinfo[gtk]['max_slots'])
+        ## check for ill-formed entries
+        good_sites = self.validateCENames(self.activeSites)
 
-        site=self.gtkToSite[gtk]
-        st=self.siteThresholds[site]
-        ## delete from rc_site_threshold where threshold_name = 'processingThreshold';
-        if st.has_key("processingThreshold"):
-            ## absolute value
-            thres=int(st["processingThreshold"])
-            pass
-        elif st.has_key("processingFractionTotal"):
-            ## a fraction of total available cpus as seen by BDII/lcg-infosites
-            thres=int(cpus*float(st["processingFractionTotal"]))
-            pass
+        ## no need to use phedex, give a dummy value as DBParam
+        dbparam = 'TEST'
+       
+        self.siteinfo = getSiteInfoFromBase(good_sites,
+                                            self.plugConf["FCRurls"],
+                                            self.plugConf["BDII"],
+                                            dbparam, self.plugConf["SAMurl"])
+        
+        good_sites = self.sitesPassingTests(good_sites)
+      
+        # if requested write site status file
+        self.writeSiteStatusFile()
+        
+        # check sites have required cmssw versions for active workflows
+        siteWorkflowIncompatibilities = siteToNotWorkflows(good_sites,
+                                          self.allSites, self.siteinfo)
+        logging.debug("Site/Workflow incompatibilities: %s" % \
+                                          str(siteWorkflowIncompatibilities))
+
+        # get active jobs released at a site
+        jq = JobQueueDB()
+        self.sitejobs = jq.countQueuedActiveJobs()
+        logging.debug("Released jobs at sites: %s" % str(self.sitejobs))
+        
+        # get constraints for sites and jobtypes
+        result = self.getConstraints(good_sites, siteWorkflowIncompatibilities)
+        
+        # reorder constraints - sites with most successful jobs first
+        result = self.reOrderConstraints(result)        
+
+        for constraint in result:
+            logging.info("LCGAdvanced: Constraint :" + str(constraint))
+
+        return result
+            
+            
+    def loadPluginConfig(self):
+        """
+        load the relevant plugin config options
+        """
+        self.plugConf = self.pluginConfiguration.get("LCGAdvanced", None)
+
+        if not self.plugConf:
+            logging.info("LCGAdvanced: No plugin config file found for LCGAdvanced")
+            self.plugConf = {}
+            
+        if self.plugConf.get("UseSAM", "false").lower() in ("true", "yes"):
+            self.plugConf["UseSAM"] = True
+            self.plugConf["SAMurl"] = self.plugConf.get("SAMurl", self.SAMurl)
         else:
-            ## a deafault fraction of total available cpus as seen by BDII/lcg-infosites
-            thres=int(cpus*defaultfraction)
-            ## apply a maximum
-            ## eg number of jobs that can be released in one poll cycle
-            thres_max=300
-            if thres > thres_max:
-                logging.info("LCGAdvanced: procThresh "+str(thres)+" larger than thres_max "+str(thres_max))
-                thres=thres_max
-            pass
-
-        logging.debug("LCGAdvanced: procThresh site "+site+" value "+str(thres))
-        return thres	
-
-    def mergeTresh(self,gtk):
-        defaultfraction=1
-        if self.plugConf:
-            if self.plugConf.has_key("mergeFractionDefault"):
-                defaultfraction=float(self.plugConf["mergeFractionDefault"])
-        logging.debug("LCGAdvanced: mergeThresh defaultfraction "+str(defaultfraction))
-
-        site=self.gtkToSite[gtk]
-        st=self.siteThresholds[site]
-        if st.has_key("mergeThreshold"):
-            ## absolute value
-            thres=int(st["mergeThreshold"])
-            pass
-        elif st.has_key("mergeFractionProc"):
-            ## a fraction of total processingJobs
-            thres=int(self.procTresh(gtk)*float(st["mergeFractionProc"]))
-            pass
-        elif st.has_key("mergeFractionTotal"):
-            ## a fraction of total available cpus as seen by BDII/lcg-infosites
-            thres=int(int(self.siteinfo[gtk]['max_slots'])*float(st["mergeFractionTotal"]))
-            pass
+            self.plugConf["UseSAM"] = False
+            self.plugConf["SAMurl"] = None
+            logging.info("ignoring SAM state")
+        
+        if self.plugConf.get("UseFCR", "false").lower() in ("true", "yes"):
+            self.plugConf["UseFCR"] = True
+            self.plugConf["FCRurls"] = self.plugConf.get("FCRurls", self.FCRurl)
         else:
-            ## default is identical as processingJobs
-            thres=int(defaultfraction*self.procThresh(gtk))
-            pass
+            self.plugConf["UseFCR"] = False
+            self.plugConf["FCRurls"] = None
+            logging.info("Ignoring fcr state")
 
-        logging.debug("LCGAdvanced: mergeThresh site "+site+" value "+str(thres))
-        return thres
+        if not self.plugConf.has_key("BDII"):
+            self.plugConf["BDII"] = os.environ.get("LCG_GFAL_INFOSYS", None)
+            if not self.plugConf["BDII"]:
+                logging.error("LCGAdvanced: No bdii defined and no value for LCG_GFAL_INFOSYS found.")
+                raise Exception("BDII not set in config file and env variable LCG_GFAL_INFOSYS not defined")
+    
+        self.plugConf["SiteQualityCutOff"] = float(self.plugConf.get("SiteQualityCutOff", 0.5))
+    
+    
+    def setThresholds(self, siteData):
+        """
+        set thresholds for site
+        """
+        
+        site = siteData['SiteName']
+        gtk = siteData['CEName']
+        st = self.siteThresholds[site]
+        
+        for jobtype in self.jobTypes:
+            
+            # if defined for site take that
+            if st.has_key("%sThreshold" % jobtype["type"].lower()):
+                thres = int(st["%sThreshold" % jobtype["type"].lower()])
+            
+            # see if fraction of bdii job slots set
+            elif st.has_key("%sFractionTotal" % jobtype["type"].lower()):
+                cpus = int(self.siteinfo[gtk]['max_slots'])
+                thres = max(int(cpus*float(st["%sTotal" % jobtype["type"].lower()])), 1)
 
-    def minSubmit(self,gtk):
-        defaultfraction=0.5
-        if self.plugConf:
-            if self.plugConf.has_key("minimumSubmissionFractionDefault"):
-                defaultfraction=float(self.plugConf["minimumSubmissionFractionDefault"])
-        logging.info("LCGAdvanced: minSubmit defaultfraction "+str(defaultfraction))
+            # take default value of processing slots
+            else:
+                thres = max(int( int(st['processingThreshold']) * \
+                                                float(jobtype["defaultFrac"])), 1)
 
-        site=self.gtkToSite[gtk]
-        st=self.siteThresholds[site]
-        if st.has_key("minimumSubmission"):
-            mini = int(self.siteThresholds[site]["minimumSubmission"])
-        elif st.has_key("minimumSubmissionFractionProc"):
-            ## a certain fraction of procThreshold
-            mini = int(self.procThresh(gtk)*st["minimumSubmissionFractionProc"])
-        elif st.has_key("minimumSubmissionFractionTotal"):
-            ## a certain fraction of total availble CPUs 
-            mini = int(int(self.siteinfo[gtk]['max_slots'])*float(st["minimumSubmissionFractionTotal"]))
-        else:
-            ## default is fraction of procTresh
-            mini = int(defaultfraction*self.procThresh(gtk))
+            st["%sThreshold" % jobtype["type"].lower()] = thres
+            logging.info("LCGAdvanced: %s threshold = %s for site %s" % \
+                                        (jobtype["type"], str(thres), site))
+        return
+    
 
+    def minSubmit(self, siteData):
+        """
+        get minimum amount of resources to publish for site
+        """
+        site = siteData['SiteName']
+        
+        mini = int(self.siteThresholds[site].get("minimumSubmission", 1))
         logging.debug("LCGAdvanced: minSubmit site "+site+" value "+str(mini))
         return mini
 
-    def maxSubmit(self,gtk):
-        defaultfraction=0.2
-        if self.plugConf:
-            if self.plugConf.has_key("maximumSubmissionFractionDefault"):
-                defaultfraction=float(self.plugConf["maximumSubmissionFractionDefault"])
-        logging.debug("LCGAdvanced: maxSubmit defaultfraction "+str(defaultfraction))
 
-        ## delete from rc_site_threshold where threshold_name = 'maximumSubmission';
-        site=self.gtkToSite[gtk]
-        st=self.siteThresholds[site]
-        if st.has_key("maximumSubmission"):
-            maxi = int(self.siteThresholds[site]["maximumSubmission"])
-        elif st.has_key("maximumSubmissionFractionProc"):
-            ## a certain fraction of procThreshold
-            maxi = int(self.procThresh(gtk)*st["maximumSubmissionFractionProc"])
-        elif st.has_key("maximumSubmissionFractionTotal"):
-            ## a certain fraction of total availble CPUs 
-            maxi = int(int(self.siteinfo[gtk]['max_slots'])*float(st["maximumSubmissionFractionTotal"]))
-        else:
-            ## default is fraction of procTresh
-            ## maxi = int(defaultfraction*self.procThresh(gtk))
-
-            ## using procTresh is stupid
-            maxi = int(int(self.siteinfo[gtk]['max_slots'])*float(defaultfraction))
-
-        logging.debug("LCGAdvanced: maxSubmit site "+site+" value "+str(maxi))
-        if maxi < 1:
-            logging.info("LCGAdvanced: maxSubmit site "+site+" value "+str(maxi)+" lower than 1. Resetting.")
-            maxi=1
-
-        return maxi
-
-    def __call__(self):
-        result = []
-
-        self.plugConf=None
-        if self.pluginConfiguration.has_key("LCGAdvanced"):
-            self.plugConf=self.pluginConfiguration["LCGAdvanced"]
-
-        if self.plugConf:
-            logging.info("LCGAdvanced: Plugin config file found for LCGAdvanced")
-            
+    def maxSubmit(self, siteData):
+        """
+        get maximum amount of resources to publish for site
+        """
+    
+        site = siteData['SiteName']
         
-        if self.plugConf.has_key("UseSAM") and self.plugConf["UseSAM"].lower() in ("true", "yes"):
-            self.plugConf["UseSAM"] = True
-        else:
-            self.plugConf["UseSAM"] = False
-            logging.info("ignoring SAM state")
-
-        self.plugConf["SAMurl"] = self.plugConf.get("SAMurl", "http://lxarda16.cern.ch/dashboard/request.py/latestresultssmry")    
-        if self.plugConf.has_key("UseFCR") and self.plugConf["UseFCR"].lower() in ("true", "yes"):
-            self.plugConf["UseFCR"] = True
-        else:
-            self.plugConf["UseFCR"] = False
-            logging.info("ignoring fcr state")
-
-        self.plugConf["FCRurls"] = self.plugConf.get("FCRurls", 'http://lcg-fcr.cern.ch:8083/fcr-data/exclude.ldif')
-
-    # Reverse lookup table for ce -> site name
-    ## CE == gatekeeper !!
-        self.gtkToSite={}
-        [ self.gtkToSite.__setitem__(
-                self.allSites[x]['CEName'],
-                self.allSites[x]['SiteName']) for x in self.activeSites ]  
-
-        logging.debug("LCGAdvanced: Found active gatekeepers/site "+str(self.gtkToSite))
-
-        ## check for ill-formed entries
-        gtk_reg=re.compile(r"(?P<ce>.*?)(:(?P<port>\d+))/(?P<queue>.*)$")
-        for gtk in self.gtkToSite.keys():
-            if not gtk_reg.search(gtk): 
-                logging.info("LCGAdvanced: Configured gatekeeper "+gtk+" does not match regexp. Removing from resources to be checked.")
-                del self.gtkToSite[gtk]
-
-        ## get the resources for all sites
-        site_names=[]
-        for site in self.gtkToSite.values():
-            name_in_bdii=site.split(' ')[0]
-            if not name_in_bdii in site_names:
-                site_names.append(name_in_bdii)
-
-        fcr_urls = self.plugConf["FCRurls"].split(',')
-        if self.plugConf["UseFCR"]:
-             fcr_urls = self.plugConf["FCRurls"].split(',')
-        else:
-             fcr_urls = None      
- 
-        samURL = None
-        if self.plugConf["UseSAM"]:
-             samURL = self.plugConf["SAMurl"]
-
-        ## no need to use phedex, give a dummy value as DBParam
-        dbparam='TEST'
-
-        ## BDII to use		
-        bdii=None
-        if self.plugConf.has_key("BDII"):
-            bdii=self.plugConf["BDII"]
-        if not bdii:
-            if os.environ.has_key('LCG_GFAL_INFOSYS'):
-                bdii=os.environ['LCG_GFAL_INFOSYS']
-            else:
-                logging.error("LCGAdvanced: No bdii defined and no value for LCG_GFAL_INFOSYS found.")
-                return  result
-        try:
-            logging.debug("Calling getSiteInfoFromBase with site_names "+str(site_names)+" fcr_urls "+str(fcr_urls)+" bdii "+str(bdii)+" dbparam "+str(dbparam)+" sam " + str(samURL))
-            self.siteinfo=getSiteInfoFromBase(site_names,fcr_urls,bdii,dbparam,samURL)
-        except Exception, ex:
-            logging.error("error during poll: %s" % str(ex))
-            return result
-
-        ## clean out self.siteinfo with unused entries
-        to_del=[]
-        for ceuid in self.siteinfo.keys():
-            if not self.gtkToSite.has_key(ceuid):
-                logging.info("LCGAdvanced: found ceuid "+ceuid+" but not in RCDB. Ignoring.")
-                to_del.append(ceuid)
-        for ceuid in to_del:
-            del self.siteinfo[ceuid]
-
-        ## dump current state of resources
+        maxi = int(self.siteThresholds[site].get("maximumSubmission", 100))
+        logging.debug("LCGAdvanced: maxSubmit site "+site+" value "+str(maxi))
+        return maxi
+    
+    
+    def writeSiteStatusFile(self):
+        """
+        write to file of current site status
+        """
         if self.plugConf.has_key("DumpState"):
-            place=self.plugConf["DumpState"]
+            place = self.plugConf["DumpState"]
             if not os.path.isfile(place):
-                f=file(place,'w')
+                f = file(place,'w')
                 f.write('## BEGIN\n\n')
                 f.close()
-            f=file(place,'a')
-            f.write(str([time.localtime(),self.siteinfo])+'\n')
+            f = file(place,'a')
+            f.write(str([time.localtime(), self.siteinfo])+'\n')
             f.close()
-
-        ## remove sites
-        to_del={}
-        for ceuid,val in self.siteinfo.items():
-            if not val['state'] == 'Production':
-                logging.info("LCGAdvanced: Removing ce/site \""+ceuid+"/"+val['site_name']+"\" combo from available resources. Site state is "+val['state']+", not Production")
-                to_del[ceuid] = True
-            if val['in_fcr'] and use_fcr:
-                logging.info("LCGAdvanced: Removing ce/site \""+ceuid+"/"+val['site_name']+"\" combo from available resources. Site is in FCR.")
-                to_del[ceuid] = True
-            if val['SAMfail']:
-                logging.info("LCGAdvanced: Removing ce/site \""+ceuid+"/"+val['site_name']+"\" combo from available resources. CE is failing SAM tests")
-                to_del[ceuid] = True
-
-        for ceuid,val in to_del.items():
-            if val:
-                del self.gtkToSite[ceuid]
-
-        ## gtkToNotWorklfow map
-        gtkToWorkflow=gtkToNotWorkflows(self.siteinfo)
-        logging.debug("LCGAdvanced: gtkToNotWorkflow "+str(gtkToWorkflow))
-
-        # get totals per active gatekeeper for any jobs
-        ## returns a dictionary with {'Idle':\d+,'Running':\d+}
-        anySiteInfo = anySiteJobs(self.gtkToSite.keys())
-        logging.debug("LCGAdvanced: anySiteInfo "+str(anySiteInfo))
-
-        for gtk, jobcounts in anySiteInfo.items():
-            if not self.siteinfo.has_key(gtk):
-                logging.info("LCGAdvanced: gtk "+gtk+" in self.gtkToSite but not in self.siteinfo. Skipping.")
+        return
+            
+            
+    def sitesPassingTests(self, sites):
+        """
+        get list of sites passing tests and with good job quality
+        """
+        result = []
+        
+        for site in sites:
+            siteData = self.allSites[site]
+            
+            if siteData['CEName'] not in self.siteinfo.keys():
+                logging.info("LCGAdvanced: "+site+" not in information system. Skipping.")
                 continue
-            idle = jobcounts['Idle']
-            site=self.gtkToSite[gtk]
-            test = idle - self.procThresh(gtk)
-            minSub = self.minSubmit(gtk)
-            maxSub = self.maxSubmit(gtk)
+            
+            val = self.siteinfo[siteData['CEName']]
+            
+            if not val['state'] == 'Production':
+                logging.info("LCGAdvanced: Removing site %s from available resources. Site state is %s, not Production" \
+                                                                     % (site, val['state']))
+                continue
+            elif val['in_fcr'] and self.plugConf["UseFCR"]:
+                logging.info("LCGAdvanced: Removing site %s from available resources. Site is in FCR" \
+                                                                     % (site))
+                continue
+            elif val['SAMfail'] and self.plugConf["UseSAM"]:
+                logging.info("LCGAdvanced: Removing site %s from available resources. CE is failing SAM tests" \
+                                                                     % (site))
+                continue
+            
+            quality = self.sitePerformance[site]['quality']
+            if quality and quality < self.plugConf["SiteQualityCutOff"]:
+                logging.info("LCGAdvanced: Removing site %s from available resources. Job quality is poor - %s" \
+                                                                     % (site, str(quality)))
+                continue
 
-            logging.debug("LCGAdvanced: idle "+str(idle)+" running "+str(jobcounts['Running'])+" site "+site+" test "+str(test)+" minSub "+str(minSub))
+            result.append(site)
+        return result
+    
+    
+    def validateCENames(self, sites):
+        """
+        delete malformed CE's 
+        """
+        result = []
+        gtk_reg = re.compile(r"(?P<ce>.*?)(:(?P<port>\d+))/(?P<queue>.*)$")
+        for site in sites:
+            ce = self.allSites[site]['CEName']
+            if not gtk_reg.search(ce): 
+                logging.warning("LCGAdvanced: Configured gatekeeper "+ce+" does not match regexp. Removing from resources to be checked.")
+                continue
+            result.append(site)
+        return result
+    
+    
+    def reOrderConstraints(self, constraints):
+        """
+        reorder constraints in terms of throughput
+        """
+        result = []
 
-            if test < 0:
-                if abs(test) < minSub:
-                    # below threshold, but not enough for a bulk submission
-                    continue
-                constraint = self.newConstraint()
-                cou = abs(test)
-                if cou > maxSub:
-                    logging.debug("LCGAdvanced: number of possible jobs to be released "+str(cou)+" is larger than maximum allowed "+str(maxSub))
-                    cou = maxSub
-
-                constraint['count'] = cou
-                constraint['type'] = None
-                constraint['site'] = self.allSites[site]['SiteIndex']
-                ## workflow constraint, default is None
-                if len(gtkToWorkflow[gtk])>0:
-                    constraint['workflow'] = ','.join(gtkToWorkflow[gtk])
-                #logging.info("LCGAdvanced: Constraint for site "+site+" :"+str(constraint))
-                result.append(constraint)
-                #logging.info("LCGAdvanced: All constraints:"+str(result))
-
-
-        tmp={}
-        import random
-
-        for r in result:
-            cou=int(r['count'])
-            if not tmp.has_key(cou):
-                tmp[cou]=[]
-            tmp[cou].append(r)
-            ## randomise site order for sites with equal amount of count
-            random.shuffle(tmp[cou])
-
-        t_k=tmp.keys()
-
-        ## reoder the results. send smallest 'count' first (should favour small sites)
-        ## favours small sites too much.
-        #t_k.sort()
-
-        ## randomise the list. doesn't favour anything
-        random.shuffle(t_k)
-
-        result=[]
-        for k in t_k:
-            for res in tmp[k]:
-                result.append(res)
-
-        logging.info("LCGAdvanced: reordered constraints")
-        for constraint in result:
-            logging.info("LCGAdvanced: Constraint :"+str(constraint))
-
+        # first sort performance list
+        sitesOrdered = self.sitePerformance.items()
+        sitesOrdered.sort(lambda x, y: x[1]['success'] - y[1]['success'])
+        sitesOrdered.reverse()
+        
+        # then sort constraints
+        for site in sitesOrdered:
+            siteindex = self.allSites[site[0]]['SiteIndex']
+            for constraint in constraints:
+                if constraint['site'] == siteindex:
+                    result.append(constraint)
         return result
 
 
+    def getConstraints(self, sites, siteWorkflowIncompatibilities):
+        """
+        get the constriants for given sites
+        """
+        result = []
+        for sitename in sites:
+            site = self.allSites[sitename]
+            
+            self.setThresholds(site)
+            thresholds = self.siteThresholds[sitename]
+            minSub = self.minSubmit(site)
+            maxSub = self.maxSubmit(site)
 
+            workflowContraints = siteWorkflowIncompatibilities.get(sitename, [])
+
+            # loop over job types and publish resource availability
+            for type in self.jobTypes:
+                jobtype = type['type']
+                limit = thresholds['%sThreshold' % jobtype.lower() ]
+                
+                currentjobs = self.sitejobs.get(sitename, {}).get(jobtype, 0)
+                available = limit - currentjobs
+                
+                # is there resources available
+                if available > 0:
+                    
+                    #check min/max submit value for processing
+                    # others dont obey min/max rules
+                    if jobtype in ('Processing'):
+                        if available < minSub:
+                            # wait till minSub slots available
+                            continue
+                        elif available > maxSub:
+                            available = maxSub
+                
+                    constraint = self.newConstraint()
+                    constraint['count'] = available
+                    constraint['type'] = jobtype
+                    constraint['site'] = site['SiteIndex']
+                    ## workflow constraint, default is None
+                    if len(workflowContraints) > 0:
+                        constraint['workflow'] = ','.join(workflowContraints)
+                    result.append(constraint)
+        
+        return result
+            
             
 registerMonitor(LCGAdvanced, LCGAdvanced.__name__)

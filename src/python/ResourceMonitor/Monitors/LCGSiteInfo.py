@@ -354,7 +354,7 @@ def getSiteInfoFromBase(names,urls,ldaphost,dbp=None, samUrl=None):
     """
     Collect all site info starting from LCG BDII Site names. Returns dictionary.
     """
-
+    
     use_phed=True
     try:
         if not dbp:
@@ -366,7 +366,7 @@ def getSiteInfoFromBase(names,urls,ldaphost,dbp=None, samUrl=None):
             dbp = PhedCfg['DBPARAM']
         DBParamFile,Section = dbp.split(':')
         if not os.path.isfile(DBParamFile):
-            print "Configured DBParamFile %s not found" % DBParamFile
+            logging.error("Configured DBParamFile %s not found" % DBParamFile)
             use_phed=False
     except:
         print "Something went wrong with the Phedex config. Not using TMDB."

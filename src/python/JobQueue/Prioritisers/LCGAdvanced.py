@@ -66,58 +66,67 @@ class LCGAdvanced(PrioritiserInterface):
             msg += str(allowed_nr_of_ms)
             msg += ". Currently not releasing anything."
             logging.info(msg)
+            Session.commit_all()
+            return
+        
+        
+        #What extra code do we want here
+        # is workflow max not taken into account by other methods somewhere 
+        # how does PrioritiserInterface do it?
+        
+        return PrioritiserInterface.findMatchedJobs(self, constraint)
             
-        constraint['workflow']=constraintID2WFname(constraint['workflow'])
-        merge_frac=0.15
-        if js_is_ok and (constraint['site'] != None):
-            # site based job match
-            site = int(constraint['site']) 
-            #jobQ.loadSiteMatchData()
-            ct=int(constraint['count'])
-            merge_ct=int(merge_frac*float(ct))
-            jobIndices2_merge = jobQ.retrieveJobsAtSitesNotWorkflowSitesMax(
-                merge_ct,
-                'Merge',
-                constraint['workflow'],
-                * [site])
-            proc_ct=ct-len(jobIndices2_merge)
-            jobIndices2_proc = jobQ.retrieveJobsAtSitesNotWorkflowSitesMax(
-                proc_ct,
-                'Processing',
-                constraint['workflow'],
-                * [site])
-            jobIndices3 = jobQ.retrieveJobsAtSitesNotWorkflow(
-                constraint['count'],
-                constraint["type"],
-                constraint['workflow'],
-                * [site])
-            
-
-            jobIndices2=jobIndices2_merge+jobIndices2_proc
-            msg = "New style: count %s," % ct
-            msg += " merge number %s proc number %s merge %s, proc %s" % (
-                len(jobIndices2_merge),
-                len(jobIndices2_proc),
-                jobIndices2_merge,
-                jobIndices2_proc)
-            logging.debug(msg)
-            logging.debug("Old style: %s"%jobIndices3)
-
-            jobIndices=[]
-            jobs = jobQ.retrieveJobDetails(*jobIndices2)
-
-            [ x.__setitem__("Site", site) for x in jobs ]
-
-        else:
-            ## not implemented yet
-            pass
-
-        Session.commit_all()
-        Session.close_all()
-        logging.info("LCGAdvanced: Matched %s jobs for constraint %s" % (
-                len(jobs), constraint))
-        self.matchedJobs = jobs
-        return
+#        constraint['workflow']=constraintID2WFname(constraint['workflow'])
+#        merge_frac=0.15
+#        if js_is_ok and (constraint['site'] != None):
+#            # site based job match
+#            site = int(constraint['site']) 
+#            #jobQ.loadSiteMatchData()
+#            ct=int(constraint['count'])
+#            merge_ct=int(merge_frac*float(ct))
+#            jobIndices2_merge = jobQ.retrieveJobsAtSitesNotWorkflowSitesMax(
+#                merge_ct,
+#                'Merge',
+#                constraint['workflow'],
+#                * [site])
+#            proc_ct=ct-len(jobIndices2_merge)
+#            jobIndices2_proc = jobQ.retrieveJobsAtSitesNotWorkflowSitesMax(
+#                proc_ct,
+#                'Processing',
+#                constraint['workflow'],
+#                * [site])
+#            jobIndices3 = jobQ.retrieveJobsAtSitesNotWorkflow(
+#                constraint['count'],
+#                constraint["type"],
+#                constraint['workflow'],
+#                * [site])
+#            
+#
+#            jobIndices2=jobIndices2_merge+jobIndices2_proc
+#            msg = "New style: count %s," % ct
+#            msg += " merge number %s proc number %s merge %s, proc %s" % (
+#                len(jobIndices2_merge),
+#                len(jobIndices2_proc),
+#                jobIndices2_merge,
+#                jobIndices2_proc)
+#            logging.debug(msg)
+#            logging.debug("Old style: %s"%jobIndices3)
+#
+#            jobIndices=[]
+#            jobs = jobQ.retrieveJobDetails(*jobIndices2)
+#
+#            [ x.__setitem__("Site", site) for x in jobs ]
+#
+#        else:
+#            ## not implemented yet
+#            pass
+#
+#        Session.commit_all()
+#        Session.close_all()
+#        logging.info("LCGAdvanced: Matched %s jobs for constraint %s" % (
+#                len(jobs), constraint))
+#        self.matchedJobs = jobs
+#        return
 
 
     def prioritise(self, constraint):

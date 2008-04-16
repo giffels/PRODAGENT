@@ -23,6 +23,7 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.Database import Session
 from ProdAgent.ResourceControl.ResourceControlDB import ResourceControlDB
 
+from ProdMon.ProdMonDB import selectRcSitePerformance
 
 class MonitorInterface:
     """
@@ -33,10 +34,12 @@ class MonitorInterface:
 
     """
     def __init__(self):
+        self.performanceInterval = 259200 #3 days
         self.activeSites = []
         self.allSites = {}
         self.siteThresholds = {}
         self.siteAttributes = {}
+        self.sitePerformance = {}
         self.retrieveSites()
         self.pluginConfiguration = None
         
@@ -69,13 +72,14 @@ class MonitorInterface:
         for site in siteNames:
             siteData = resCon.getSiteData(site)
             self.allSites[site] = siteData
+            siteIndex = siteData['SiteIndex']
             if siteData['Active'] == True:
                 self.activeSites.append(site)
-            siteIndex = siteData['SiteIndex']
             self.siteThresholds[site] = resCon.siteThresholds(siteIndex)
             self.siteAttributes[site] = resCon.siteAttributes(siteIndex)
+            self.sitePerformance[site] = \
+                selectRcSitePerformance(siteIndex, self.performanceInterval)
             
-
         del resCon
         
         Session.commit_all()
@@ -83,6 +87,23 @@ class MonitorInterface:
         return 
     
 
+#    def retrieveSitePerformance(self):
+#        """
+#        get site performance - i.e. throughput and quality
+#        """
+#        Session.set_database(dbConfig)
+#        Session.connect()
+#        Session.start_transaction()
+#        
+#        #only get for active sites
+#        for site in self.activeSites:
+#            index = self.allSites[site]["SiteIndex"]
+#            self.sitePerformance[site] = \
+#                        selectRcSiteDetails(index, self.performanceInterval)
+#        
+#        Session.commit_all()
+#        Session.close_all()        
+#        return
     
 
     def __call__(self):
