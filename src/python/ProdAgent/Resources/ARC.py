@@ -203,9 +203,9 @@ class ARCJob:
         else:
             # FIXME: Are these assumptions on job naming conventions allways
             # true?
-            if self.jobSpecId.find("mergejob") >= 0:
+            if self.jobSpecId.lower().find("mergejob") >= 0:
                 self.jobType = "Merge"
-            elif self.jobSpecId.find("cleanup") >= 0:
+            elif self.jobSpecId.lower().find("cleanup") >= 0:
                 self.jobType = "CleanUp"
             else:
                 self.jobType = "Processing"
@@ -214,8 +214,7 @@ class ARCJob:
             self.CEName = CEName
         elif self.arcId:
             # Extract CEName from the arcId.  Assume the arcId has the form
-            # protocol://<CEname>[:port]/what/ever, where CEName may contain
-            # characters [a-zA-Z0-9-_.]
+            # protocol://<CEname>[:port]/what/ever
             # FIXME: What happens if arcId hasn't that form?
             s = re.sub('^\w+://', '', arcId)       
             self.CEName = re.sub('[:/].*$', '', s)
