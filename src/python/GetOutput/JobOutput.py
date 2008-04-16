@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.8 2008/04/08 15:00:33 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.8 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.9 2008/04/08 17:27:27 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.9 $"
 
 import logging
 import os
@@ -121,6 +121,8 @@ class JobOutput:
                     scheduler.postMortem( job, outdir + '/loggingInfo.log' )
                     job.runningJob['statusHistory'].append( \
                         'retrieved logging-info')
+                    logging.info('Retrieved logging info for job %s.%s' % \
+                                 (job['taskId'], job['jobId'] ))
                 except SchedulerError, err:
                     logging.info('Can not get logging.info for job %s.%s' % \
                                  (job['taskId'], job['jobId'] ))
@@ -172,6 +174,8 @@ class JobOutput:
                     scheduler = Scheduler.Scheduler( 
                         job.runningJob['scheduler'], schedulerConfig
                         )
+                    logging.info('Retrieved output for job %s.%s' % \
+                                 (job['taskId'], job['jobId'] ))
                     # Temporary workaround
                     try:
                         userProxy = os.environ["X509_USER_PROXY"]
