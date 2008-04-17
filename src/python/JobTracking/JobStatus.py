@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.12 2008/04/03 15:52:09 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.12 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.13 2008/04/08 14:56:59 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.13 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
@@ -157,15 +157,19 @@ class JobStatus:
         # if just one task, evaluate if the size requires further splits
         if taskn == 1:
             val = db.getTaskSize( tasklist )
-            subQuery = int( int( val ) / jobs ) + 1
+            if val < jobs :
+                jobs = val
+            else :
+                subQuery = int( int( val ) / jobs )
+                if  val % jobs != 0:
+                    subQuery += 1
 
         # close db session
         session.close()
 
         # perform the query for the task range or for the job range in the task
         for i in range ( subQuery ) :
-            if subQuery > 1:
-                jobRange = str( i * jobs ) + ':' + str( (i + 1) * jobs)
+            jobRange = str( i * jobs + 1 ) + ':' + str( (i + 1) * jobs)
 
             logging.debug( 'LB query jobs ' + jobRange \
                            +  ' of task ' + tasklist )
