@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.14 2008/04/08 15:05:44 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.14 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.15 2008/04/08 17:26:40 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.15 $"
 
 class JobHandling:
     """
@@ -67,11 +67,12 @@ class JobHandling:
 
         # get job information
         taskId = job['taskId']
-        jobId = job['jobId']
+        jobId = str(job['jobId'])
         jobSpecId = job['name']
                    
         # job status
         exitCode = -1
+        success = False
 
         # get outdir and report file name
         outdir = job.runningJob['outputDirectory']
@@ -91,7 +92,7 @@ class JobHandling:
         reportfilename = outdir + '/FrameworkJobReport.xml'
         fwjrExists = os.path.exists(reportfilename)
         if not fwjrExists:
-            tmp = outdir + '/crab_fjr_' + str(jobId) + '.xml'
+            tmp = outdir + '/crab_fjr_' + jobId + '.xml'
             fwjrExists = os.path.exists(tmp)
             if os.path.exists(reportfilename):
                 reportfilename = tmp
@@ -136,9 +137,10 @@ class JobHandling:
         if fwjrExists:
 
             # check success
-            if checkSuccess(reportfilename) :
+            success = checkSuccess(reportfilename)
+            logging.debug("check Job Success: %s" % str(success))
+            if success :
                 exitCode = 0
-                logging.debug("check Job Success: %s" % str(success))
 
         # FwkJobReport not there: create one based on db or assume failed
         else:
@@ -588,7 +590,7 @@ class JobHandling:
         # this is a crab job detected for the first time
         # set it and write the info file 
         if dashboardInfo.job == '' or dashboardInfo.job == None :
-            dashboardInfo.job = job['jobId'] + '_' + \
+            dashboardInfo.job = str(job['jobId']) + '_' + \
                                 job.runningJob['schedulerId']
 #            # create/update info file
 #            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
@@ -659,7 +661,7 @@ class JobHandling:
         # error
         except Exception, ex:
             msg = "Error setting job state to finished for job: %s\n" \
-                  % job['jobId']
+                  % str(job['jobId'])
             msg += str(ex)
             logging.error(msg)
 
