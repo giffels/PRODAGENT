@@ -73,7 +73,7 @@ class ARCTracker(TrackerPlugin):
         logging.debug("getJobReport: " + ngcp)
         try:
             ARC.executeNgCommand(ngcp)
-        except CommandExecutionError:
+        except ARC.CommandExecutionError:
             logging.warning("getJobReport: Report File Not Found for " + jobSpecId)
             return None
 
@@ -86,7 +86,7 @@ class ARCTracker(TrackerPlugin):
             ARC.executeNgCommand("ngcp %s/run.log %s/" % (arcId,localDir))
             ARC.executeNgCommand("ngcp %s/output %s/" % (arcId,localDir))
             ARC.executeNgCommand("ngcp %s/errors %s/" % (arcId,localDir))
-        except CommandExecutionError:
+        except ARC.CommandExecutionError:
             logging.warning("getJobReport: Copying of additional output files failed for " + jobSpecId)
 
         return localDir + "/FrameworkJobReport.xml"
@@ -211,7 +211,7 @@ class ARCTracker(TrackerPlugin):
         for id in complete:
             try:
                 ARC.executeNgCommand("ngclean " + id)
-            except CommandExecutionError, msg:
+            except ARC.CommandExecutionError, msg:
                 logging.warning("Cleaning up of job %s failed (%s)" % (id, msg))
             summary += " -> %s\n" % id
             ARC.clearNoInfo(id)

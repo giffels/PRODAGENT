@@ -187,7 +187,7 @@ class ARCSubmitter(BulkSubmitterInterface):
         logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
         try:
             output = ARC.executeNgCommand(submitCommand)
-        except CommandExecutionError, emsg:
+        except ARC.CommandExecutionError, emsg:
             msg = "Submitting with command\n"
             msg += "    '%s'\n" % submitCommand
             msg += "failed: " + str(emsg)

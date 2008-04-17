@@ -93,7 +93,7 @@ class ARCMonitor(MonitorInterface):
 
         try:
             output = ARC.executeNgCommand(cmd)
-        except CommandExecutionError, msg:
+        except ARC.CommandExecutionError, msg:
             logging.warning("Didn't get information on ARC resources: " + msg)
             return []
 
