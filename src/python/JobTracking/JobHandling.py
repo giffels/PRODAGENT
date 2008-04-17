@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.15 2008/04/08 17:26:40 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.15 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.16 2008/04/17 09:56:44 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.16 $"
 
 class JobHandling:
     """
@@ -65,6 +65,8 @@ class JobHandling:
         __performOutputProcessing__
         """
 
+        logging.info( "Evaluate job %s and publish the job results" \
+                      % self.fullId(job) )
         # get job information
         taskId = job['taskId']
         jobId = str(job['jobId'])
@@ -94,7 +96,7 @@ class JobHandling:
         if not fwjrExists:
             tmp = outdir + '/crab_fjr_' + jobId + '.xml'
             fwjrExists = os.path.exists(tmp)
-            if os.path.exists(reportfilename):
+            if fwjrExists:
                 reportfilename = tmp
         logging.debug("report file name %s exists: %s" % \
                       (reportfilename, str(fwjrExists)) )
@@ -144,8 +146,12 @@ class JobHandling:
 
         # FwkJobReport not there: create one based on db or assume failed
         else:
-            # FIXME : try to guess from db ???
-            if job.runningJob['processStatus'] != 'failed' :
+            # May be the job is aborted
+            if job.runningJob['processStatus'] == 'failed' :
+                exitCode = -1
+               
+            else :
+                # TODO: here probably the crab exit codes have to be handled
                 try:
                     exeCode = job.runningJob['wrapperReturnCode']
                     jobCode = job.runningJob['applicationReturnCode']
@@ -156,7 +162,7 @@ class JobHandling:
                             exitCode = 0
                 except :
                     ## FIXME what to do?
-                    pass
+                    exitCode = -1
 
             logging.debug("check Job Success: %s" % str(success))
 
