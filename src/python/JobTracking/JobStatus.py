@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.13 2008/04/08 14:56:59 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.13 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.14 2008/04/17 12:50:05 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.14 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
@@ -176,7 +176,7 @@ class JobStatus:
             # query group of tasks
             for taskId in parseRange( tasklist ) :
                 try :
-                    scheduler = db.getTaskScheduler( taskId )[0]
+                    scheduler = db.getTaskScheduler( taskId )
                     command = \
                             'python ' + \
                             '$PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' \

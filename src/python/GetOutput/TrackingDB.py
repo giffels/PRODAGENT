@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.6 2008/04/03 16:10:39 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.6 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.7 2008/04/08 15:00:33 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.7 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 
@@ -54,7 +54,7 @@ class TrackingDB:
         and scheduler_id is not NULL
         """ % str( taskId )
 
-        rows = directDB.select(self.session, query)[0]
+        rows = directDB.selectOne(self.session, query)
 
         return rows
 
