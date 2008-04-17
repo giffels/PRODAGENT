@@ -6,8 +6,8 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.4 2008/04/02 15:27:15 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.4 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.5 2008/04/03 15:52:09 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.5 $"
 
 from threading import Thread
 from time import sleep
@@ -72,7 +72,13 @@ class PoolScheduler(Thread):
             self.getNewJobs()
 
             # apply policy
-            groups = self.applyPolicy()
+            try:
+                groups = self.applyPolicy()
+            except:
+                import traceback
+                logging.error("Policy problems for thrad tokens: %s" \
+                              % traceback.format_exc() )
+                raise
 
             # any job to check?
             if len(groups) == 0:

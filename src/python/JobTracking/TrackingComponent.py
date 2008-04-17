@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.16 2008/04/03 16:02:14 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.16 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.17 2008/04/08 15:00:33 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.17 $"
 
 import os
 import os.path
@@ -131,7 +131,7 @@ class TrackingComponent:
         # create pool scheduler
         params = {}
         params['delay'] = delay
-        params['jobToPoll'] = self.args['jobsToPoll']
+        params['jobsToPoll'] = int( self.args['jobsToPoll'] )
         PoolScheduler(pool, params) 
 
         # initialize members
@@ -153,8 +153,8 @@ class TrackingComponent:
         logging.debug("DashboardInfo = %s" % str(self.usingDashboard))
 
         # component running, display info
-        logging.getLogger().setLevel(logging.DEBUG)
         logging.info("JobTracking Component Started...")
+
 
     def __call__(self, event, payload):
         """
