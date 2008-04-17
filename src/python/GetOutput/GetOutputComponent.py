@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.6 2008/04/08 15:00:33 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.6 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.7 2008/04/16 15:03:17 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.7 $"
 
 import os
 import logging
@@ -250,21 +250,22 @@ class GetOutputComponent:
 
         ## copy ISB ##
         sbi = SBinterface( loc, seEl )
-
+        filesToClean = []
         for filetocopy in localOutputTgz:
             source = os.path.abspath(filetocopy)
             dest = os.path.join(task['outputDirectory'], os.path.basename(filetocopy))
             try: 
                 ## logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) ) 
                 sbi.copy( source, dest, task['user_proxy'])
+                filesToClean.append(source)
             except Exception, e:
                 logging.info("Output rebounce transfer fail for %s.%s: %s " %( job['jobId'], job['taskId'], str(e) ) )
                 continue 
 
         logging.info("Output rebounce completed for %s.%s " %( job['jobId'], job['taskId'] ) )
-        for filetoclean in localOutputTgz:
+        for filetoclean in filesToClean:
             try: 
-                #os.remove( os.path.abspath(filetocopy) )   
+                os.remove( filetoclean )   
                 pass
             except Exception, e:
                 logging.info("Output rebounce local clean fail for %s.%s: %s " %( job['jobId'], job['taskId'], str(e) ) )
