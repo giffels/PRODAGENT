@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.10 2008/04/16 14:56:18 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.10 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.11 2008/04/17 17:30:59 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.11 $"
 
 import logging
 import os
@@ -111,7 +111,7 @@ class JobOutput:
                 return job
 
             # non expected status, abandon processing for job
-            if status != 'in_progress':
+            if status != 'in_progress' and status != 'failed':
                 logging.error("Cannot get output for job %s.%s, status is %s" \
                               % (job['taskId'], job['jobId'], status) )
                 return job
