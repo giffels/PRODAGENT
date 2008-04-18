@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.7 2008/04/08 15:00:33 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.7 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.8 2008/04/17 16:15:17 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.8 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 
@@ -122,6 +122,7 @@ class TrackingDB:
               + ' on (j.task_id=g.task_id and j.job_id=g.job_id) ' \
               + ' where g.job_id IS NULL and j.job_id IS NOT NULL' \
               + " and j.closed='N' and j.scheduler_id IS NOT NULL" \
+              + " and process_status like '%handled'" \
               + " order by j.task_id"
 
         rows = directDB.select(self.session, query)
