@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.15 2008/04/17 16:15:17 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.15 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.16 2008/04/18 14:18:51 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.16 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
@@ -150,6 +150,7 @@ class JobStatus:
         subQuery = 1
         jobRange = "all"
         jobs = int ( cls.params['jobsToPoll'] )
+        val= 0
 
         session = directDB.getDbSession()
         db = TrackingDB( session )        
@@ -170,7 +171,10 @@ class JobStatus:
         # perform the query for the task range or for the job range in the task
         for i in range ( subQuery ) :
             if taskn == 1:
-                jobRange = str( i * jobs + 1 ) + ':' + str( (i + 1) * jobs)
+                if i != subQuery-1 :
+                    jobRange = str( i * jobs + 1 ) + ':' + str( (i + 1) * jobs)
+                else:
+                    jobRange = str( i * jobs + 1 ) + ':' + val
 
             logging.debug( 'LB query jobs ' + jobRange \
                            +  ' of task ' + tasklist )
@@ -253,7 +257,7 @@ class JobStatus:
                 return
 
             for pair in joblist:
-                db.removeFromCheck( pair[0],  pair[1] )
+                db.removeFromCheck( group, pair[0],  pair[1],  )
                 logging.debug(
                     "Removing jobs for group " + str(group) \
                     + " with BOSS id " +  str( pair[0] ) + '.' \
