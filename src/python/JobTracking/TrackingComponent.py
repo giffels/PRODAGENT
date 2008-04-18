@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.17 2008/04/08 15:00:33 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.17 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.18 2008/04/17 12:13:08 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.18 $"
 
 import os
 import os.path
@@ -194,6 +194,11 @@ class TrackingComponent:
         logging.info("new jobs : " + str( len(newJobs) ) )
 
         for job in newJobs :
+            # FIXME: temp hack, to be removed as soon as BossLite is updated
+            if job.runningJob['status'] == 'C' or \
+               job.runningJob['status'] == 'S' :
+               continue
+
             ### TODO here was good the compound update... to be reimplemented
             job.runningJob['processStatus'] = 'handled'
             self.bossLiteSession.updateDB( job )
@@ -286,6 +291,10 @@ class TrackingComponent:
         # process all jobs
         for job in failedJobs:
 
+            # FIXME: temp hack, to be removed as soon as BossLite is updated
+            if job.runningJob['processStatus'].find( 'handled')  == -1 :
+               continue
+
             # publish information to the dashboard
             try:
                 self.jobHandling.dashboardPublish(job)
@@ -316,6 +325,10 @@ class TrackingComponent:
 
         # process all jobs
         for job in finishedJobs:
+
+            # FIXME: temp hack, to be removed as soon as BossLite is updated
+            if job.runningJob['processStatus'].find( 'handled')  == -1 :
+               continue
 
             # publish information to the dashboard
             try:
