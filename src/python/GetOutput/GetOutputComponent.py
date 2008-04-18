@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.7 2008/04/16 15:03:17 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.7 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.8 2008/04/17 17:31:40 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.8 $"
 
 import os
 import logging
@@ -162,7 +162,7 @@ class GetOutputComponent:
                 self.bossLiteSession.updateDB( job )
                 self.pool.enqueue(job, job)
 
-        logging.debug("Start processing of outputs")
+        logging.debug("Start processing of failed")
 
         # get jobs failed that require post-mortem operations
         outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(

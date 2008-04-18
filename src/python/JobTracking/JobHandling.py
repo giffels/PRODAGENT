@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.16 2008/04/17 09:56:44 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.16 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.17 2008/04/17 17:34:13 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.17 $"
 
 class JobHandling:
     """
@@ -159,7 +159,7 @@ class JobHandling:
                                exeCode == None or exeCode == 'NULL') \
                                and (jobCode == "0")
                     if success :
-                            exitCode = 0
+                        exitCode = 0
                 except :
                     ## FIXME what to do?
                     exitCode = -1
@@ -580,6 +580,7 @@ class JobHandling:
         """
 
         # dashboard information
+        self.recreateSession()
         ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
             job, self.bossLiteSession
             )
@@ -681,6 +682,7 @@ class JobHandling:
         """
 
         # force a re connect operation
+        Session.set_database(dbConfig)
         try:
             Session.session['default']['connection'].close()
         except:

@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.11 2008/04/17 17:30:59 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.11 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.12 2008/04/17 18:01:14 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.12 $"
 
 import logging
 import os
@@ -261,9 +261,11 @@ class JobOutput:
 
         # get interrupted operations
         jobs = bossLiteSession.loadJobsByRunningAttr( 
-            { 'processStatus' : 'in_progress' } ) + \
+            { 'processStatus' : 'in_progress' } )
+        jobs.extend(
             bossLiteSession.loadJobsByRunningAttr(
             { 'processStatus' : 'output_retrieved' } )
+            )
 
         numberOfJobs = len(jobs)
 
