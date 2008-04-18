@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.12 2008/04/17 18:01:14 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.12 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.13 2008/04/18 16:09:06 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.13 $"
 
 import logging
 import os
@@ -166,7 +166,6 @@ class JobOutput:
 
             #  get output, trying at most maxGetOutputAttempts
             retry = 0
-            output = "output successfully retrieved"
             while retry < cls.params['maxGetOutputAttempts']:
                 retry += 1
 
@@ -182,6 +181,7 @@ class JobOutput:
                     os.environ["X509_USER_PROXY"] = task['user_proxy']
                     scheduler.getOutput( job, outdir)
                     output = "output successfully retrieved"
+                    job.runningJob['statusHistory'].append(output)
                     os.environ["X509_USER_PROXY"] = userProxy
                     logging.info('Retrieved output for job %s.%s in %s' % \
                                  (job['taskId'], job['jobId'], outdir ))
@@ -192,38 +192,37 @@ class JobOutput:
                     output = str(msg)
                     job.runningJob['statusHistory'].append(output)
                     logging.error("job %s.%s retrieval failed: %s" % \
-                                  (job['taskId'], job['jobId'], str(msg)) )
+                                  (job['taskId'], job['jobId'], output ) )
                     if str( msg ).find( "Proxy Expired" ) != -1 :
                         break
                     elif str( msg ).find( "has been purged" ) != -1 :
-                        job['status'] = 'E'
-                        job['statusScheduler'] = 'Cleared'
+                        job.runningJob['status'] = 'E'
+                        job.runningJob['statusScheduler'] = 'Cleared'
                         bossLiteSession.archive( job )
                         break
                 except TaskError, msg:
                     output = str(msg)
                     job.runningJob['statusHistory'].append(output)
                     logging.error("job %s.%s retrieval failed: %s" % \
-                                  (job['taskId'], job['jobId'], str(msg)) )
+                                  (job['taskId'], job['jobId'], output ) )
                 except StandardError, msg:
                     output = str(msg)
                     job.runningJob['statusHistory'].append(output)
                     logging.error("job %s.%s retrieval failed: %s" % \
-                                  (job['taskId'], job['jobId'], str(msg)))
+                                  (job['taskId'], job['jobId'], output ) )
                 except :
                     import traceback
                     msg = traceback.format_exc()
                     output = str(msg)
                     job.runningJob['statusHistory'].append(output)
                     logging.error("job %s.%s retrieval failed: %s" % \
-                                  (job['taskId'], job['jobId'], str(msg)) )
+                                  (job['taskId'], job['jobId'], output ) )
 
             logging.info("job %s.%s retrieval status: %s" % \
                           (job['taskId'], job['jobId'], output))
 
             # log status & update
             try:
-                job.runningJob['statusHistory'].append(output)
                 bossLiteSession.updateDB( job )
             except TaskError, msg:
                 logging.error("job %s.%s retrieval failed: %d" % str(msg))
