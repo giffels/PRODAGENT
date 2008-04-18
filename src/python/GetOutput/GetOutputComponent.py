@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.8 2008/04/17 17:31:40 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.8 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.9 2008/04/18 16:09:06 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.9 $"
 
 import os
 import logging
@@ -146,6 +146,7 @@ class GetOutputComponent:
         logging.info("Starting poll cycle")
 
         # get jobs that require output
+        logging.debug("Start processing of outputs")
         outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
             { 'processStatus' : 'output_requested' } )
         numberOfJobs = len(outputRequestedJobs)
@@ -180,8 +181,6 @@ class GetOutputComponent:
                 self.bossLiteSession.updateDB( job )
                 self.pool.enqueue(job, job)
 
-        logging.debug("Start processing of outputs")
-
         # process outputs if ready
         jobFinished = self.pool.dequeue()
 
@@ -197,7 +196,7 @@ class GetOutputComponent:
             # get new work
             jobFinished = self.pool.dequeue()
 
-        logging.debug("Finished processing of outputs")
+        logging.debug("Finished processing of outputs and failed")
 
 
         # generate next polling cycle
