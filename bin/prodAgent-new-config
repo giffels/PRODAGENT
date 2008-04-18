@@ -131,6 +131,12 @@ componentFields = {
     "QueueJobMode": "True",
     },
 
+    "HTTPFrontend" : {
+    "ComponentDir" : None,
+    "FirstRun" : None,
+    },
+
+
     "JobCreator" : {
     "ComponentDir" : None,
     "CreatorName" : "testCreator",
