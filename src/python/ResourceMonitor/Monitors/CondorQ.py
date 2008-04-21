@@ -292,7 +292,7 @@ def countJobs(jobs,id_function,default_ids=[],default_value="",statuses=[[1,'Idl
         try:
             id_str  = id_function(item)
         except:
-            id_str = default_value.copy()
+            id_str = default_value
 
         if not attributes.has_key(id_str):
             attributes[id_str] = def_attribute.copy()
