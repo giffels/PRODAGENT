@@ -2,7 +2,7 @@
 """
 _workflowSummary_
 
-Extract details from StatTracker DB and produce a summary for a given workflow
+Extract details from prodMon and produce a summary for a given workflow
 
 """
 
@@ -22,7 +22,7 @@ workflowMatch = None
 workflowName = None
 interval = 86400 #24 hours
 doTiming = False
-
+allWorkflows = []
 
 for opt, arg in opts:
     if opt == "--workflows-matching":
@@ -33,7 +33,6 @@ for opt, arg in opts:
         workflowName = arg
     if opt == "--timing":
         doTiming = True
-        
 
 if workflowMatch == None:
     workflowMatch = ""
@@ -42,12 +41,14 @@ if workflowMatch == None:
 import ProdMon.ProdMonAPI as Stats
 
 
-if workflowName != None:
-    print "Workflow:\t  %s " % workflowName
-    print Stats.shortTextWorkflowSummary(workflowName)
-    sys.exit(0)
 
-allWorkflows = Stats.workflowSpecs() # all workflows known to StatTracker DB
+if workflowName != None:
+    allWorkflows.append(workflowName)
+else:
+    allWorkflows = Stats.workflowSpecs() # all workflows known to ProdMon
+
+
+
 for wf in allWorkflows:
     #  //
     # // filter based on command line match
