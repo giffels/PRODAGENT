@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.16 2008/04/22 16:09:42 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.16 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.17 2008/04/22 16:24:04 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.17 $"
 
 import logging
 import os
@@ -234,7 +234,7 @@ class JobOutput:
                 job.runningJob['processStatus'] = 'output_retrieved'
                 bossLiteSession.updateDB( job )
             except TaskError, msg:
-                logging.error("WARNING, job %s.%s UPDATE failed: %d" % \
+                logging.error("WARNING, job %s.%s UPDATE failed: %s" % \
                               (job['taskId'], job['jobId'], str(msg) ) )
 
 
