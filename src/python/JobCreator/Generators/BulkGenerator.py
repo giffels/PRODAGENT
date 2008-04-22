@@ -25,6 +25,7 @@ from TaskObjects.Tools.WriteShREEKConfig import generateShREEKConfig
 from TaskObjects.Tools.WriteShREEKConfig import writeShREEKConfig
 from TaskObjects.Tools.GenerateMainScript import GenerateMainScript
 
+from JobCreator.PythonLibTools import PythonLibInstaller
 from JobCreator.AppTools import InsertBulkAppDetails, PopulateMainScript
 from JobCreator.AppTools import InsertJobReportTools
 from JobCreator.RunResTools import InstallRunResComponent
@@ -58,10 +59,10 @@ import ProdCommon.FwkJobRep
 import StageOut
 
 
-_StandardPackages = [ShREEK, IMProv, StageOut, ProdCommon.MCPayloads,
-                     ProdCommon.CMSConfigTools,
-                     ProdCommon.Core,
-                     RunRes, ProdCommon.FwkJobRep]
+_StandardPackages = ["ShREEK", "IMProv", "StageOut", "ProdCommon.MCPayloads",
+                     "ProdCommon.CMSConfigTools",
+                     "ProdCommon.Core",
+                     "RunRes", "ProdCommon.FwkJobRep"]
 
 
 class TaskObjectMaker:
@@ -114,6 +115,7 @@ class BulkGenerator(GeneratorInterface):
         workflowSpec.payload.operate(TaskObjectMaker(wftype))
         
         jobTemplate = os.path.join(workflowCache, wftype)
+        self.workflowSpec = workflowSpec
         
         directory = self.newJobArea(workflowSpec.workflowName(), jobTemplate)
         taskObject = workflowSpec.payload.taskObject
@@ -247,30 +249,28 @@ class BulkGenerator(GeneratorInterface):
         # // build basic structure
         #//
         taskObj = TaskObject(jobname)
-        pythonObj = TaskObject("localPython")
-        prodCommonObj = TaskObject("ProdCommon")
         binObj = TaskObject("localBin")
         taskObj.attachFile(self.workflowFile)
-        taskObj.addChild(pythonObj)
         taskObj.addChild(binObj)
-        pythonObj.addChild(prodCommonObj)
-
-        prodCommonInit = inspect.getsourcefile(ProdCommon)
-        prodCommonObj.attachFile(prodCommonInit)
+        
+        
         
         #  //
         # // Attach standard python packages and shreek binary
         #//
-        for pkg in _StandardPackages:
-            srcfile = inspect.getsourcefile(pkg)
-            if pkg.__name__.startswith("ProdCommon."):
-                prodCommonObj.attachFile(os.path.dirname(srcfile))
-            else:
-                pythonObj.attachFile(os.path.dirname(srcfile))
-            
         shreekBin = os.path.join(
             os.path.dirname(inspect.getsourcefile(ShREEK)), "shreek")
         binObj.attachFile(shreekBin)
+
+        #  //
+        # // Include python libs specified in both StandardPackages and in the 
+        #//  WorkflowSpec itself
+        modules = set(_StandardPackages)
+        for wfmodule in self.workflowSpec.pythonLibraries():
+            modules.add(wfmodule)
+
+        installer = PythonLibInstaller(*modules)
+        installer(taskObj)
 
 
         #  //
