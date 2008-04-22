@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.15 2008/04/22 15:43:01 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.15 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.16 2008/04/22 16:09:42 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.16 $"
 
 import logging
 import os
@@ -124,7 +124,7 @@ class JobOutput:
                 return job
 
             # both for failed and done, a scheduler instance is needed:
-            scheduler = None
+            schedSession = None
             task = bossLiteSession.loadTask(job['taskId'])
             if task['user_proxy'] is None:
                 task['user_proxy'] = ''
@@ -234,7 +234,9 @@ class JobOutput:
                 job.runningJob['processStatus'] = 'output_retrieved'
                 bossLiteSession.updateDB( job )
             except TaskError, msg:
-                logging.error("job %s.%s retrieval failed: %d" % str(msg))
+                logging.error("WARNING, job %s.%s UPDATE failed: %d" % \
+                              (job['taskId'], job['jobId'], str(msg) ) )
+
 
             # return job info
             return job
