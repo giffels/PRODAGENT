@@ -53,7 +53,11 @@ for wf in allWorkflows:
     #  //
     # // filter based on command line match
     #//
-    if wf.startswith(workflowMatch):
+    #\\ 
+    # \\ but cut out CleanUp Jobs :)
+    #  \\
+    if not wf.startswith("CleanUp"):
+      if wf.startswith(workflowMatch):
         print "Workflow:\t  %s " % wf
         print Stats.shortTextWorkflowSummary(wf)
 
@@ -70,7 +74,9 @@ for wf in allWorkflows:
                 appStart = props['timing']['AppStartTime']
                 appEnd = props['timing']['AppEndTime']
                 timeTaken = int(appEnd) - int(appStart)
-                timePerEvent = float(timeTaken) / float(events)
+                timePerEvent = 0
+                if events > 0:
+                   timePerEvent = float(timeTaken) / float(events)
                 procTimes.append(int(timePerEvent))
 
 
@@ -82,10 +88,33 @@ for wf in allWorkflows:
                 maxProcTime = max(procTimes)
                 minProcTime =  min(procTimes)
 
+
+            for merps in mergeSuccess:
+                events = merps['events_written']
+                appStart = merps['timing']['AppStartTime']
+                appEnd = merps['timing']['AppEndTime']
+                timeTaken = int(appEnd) - int(appStart)
+                timePerEvent = 0
+                if events > 0:
+                   timePerEvent = float(timeTaken) / float(events)
+                mergeTimes.append(int(timeTaken))
+
+
+            avgMergeTime = 0
+            maxMergeTime = 0
+            minMergeTime = 0
+            if len(mergeTimes) > 0:
+                avgMergeTime = float(sum(mergeTimes)) / float (len(mergeTimes))
+                maxMergeTime = max(mergeTimes)
+                minMergeTime =  min(mergeTimes)
+
+
             msg = "Processing Times (secs):\tAvg Time/Event: "
             msg += "%s " % avgProcTime
-            msg += "\tMin: %s  \tMax: %s \n" % (
-                minProcTime, maxProcTime )
+            msg += "\tMin: %s  \tMax: %s \n" % (minProcTime, maxProcTime )
+            msg += "Merge Times (secs): \t\t Avg Time/Job: "
+            msg += "%s " % avgMergeTime
+            msg += "\tMin: %s  \tMax: %s \n" % (minMergeTime,maxMergeTime)
             
 
             
