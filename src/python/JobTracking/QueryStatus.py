@@ -50,7 +50,11 @@ except SchedulerError, err:
 for taskId in parseRange( taskRange ) :
     try:
         print 'checking status of task ' + str(taskId) + ' ....'
-        task = schedSession.query( taskId, jobRange, 'parent' )
+        task = schedSession.query( taskId, jobRange, \
+                                   queryType='parent', \
+                                   runningAttrs={'processStatus': '%handled',
+                                                 'closed' : 'N'}, \
+                                   strict=False )
         for job in task.jobs :
             print job.runningJob['schedulerId'], \
                   job.runningJob['statusScheduler'], \
@@ -62,4 +66,3 @@ for taskId in parseRange( taskRange ) :
         print "Error in ", taskId, " status query"
         print traceback.format_exc()
         
-
