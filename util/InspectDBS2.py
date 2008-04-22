@@ -59,10 +59,15 @@ if datasetPath:
      procds=datasetPath.split('/')[2]
      tier=datasetPath.split('/')[3]
 #     print " matchProcessedDatasets(%s,%s,%s)"%(primds,tier,procds)
+#     print "matchProcessedDatasets"
+#     import pdb
+#     pdb.set_trace()
      datasets=dbsreader.matchProcessedDatasets(primds,tier,procds)
 else:
+#     print "matchProcessedDatasets2"
      datasets=dbsreader.matchProcessedDatasets("*","*","*")
 
+#print "gotMatches"
 
 for dataset in datasets:
 #  //
@@ -70,9 +75,13 @@ for dataset in datasets:
 #//
  for datasetpath in dataset.get('PathList'):
    nevttot=0
+   nfiltot=0
+   totalbytes=0
    print "===== dataset %s"%datasetpath
+#   print "getFileBlocksInfo"
    blocks=dbsreader.getFileBlocksInfo(datasetpath)
    for block in blocks:
+#     print "listFileBlockLocation"
      SEList=dbsreader.listFileBlockLocation(block['Name'])  # replace that with DLS query
      print "== File block %s is located at: %s"%(block['Name'],SEList)
      print "File block name: %s" %block['Name']
@@ -87,8 +96,9 @@ for dataset in datasets:
       for file in files:
         print "%s %s %s %s"%(file['FileSize'],file['NumberOfEvents'],file['LogicalFileName'],file['Status'])
      nevttot = nevttot + block['NumberOfEvents']
-
-   print "\n total events: %s in dataset: %s\n"%(nevttot,datasetpath)
+     nfiltot = nfiltot + block['NumberOfFiles']
+     totalbytes = totalbytes + block['BlockSize']
+   print "\n total events: %s total files: %s total bytes: %s in dataset: %s\n"%(nevttot,nfiltot,totalbytes,datasetpath)
 
  if len(dataset.get('PathList'))==0:
    print "===== Empty dataset yet /%s/%s with tiers %s"%(dataset.get('PrimaryDataset')['Name'],dataset.get('Name'),dataset.get('TierList'))
