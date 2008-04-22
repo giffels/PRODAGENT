@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.17 2008/04/17 17:34:13 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.17 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.18 2008/04/18 16:09:06 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.18 $"
 
 class JobHandling:
     """
@@ -82,7 +82,7 @@ class JobHandling:
             outdir = self.buildOutdir( job )
         
         # FIXME: temporary to emulate SE
-        task = self.bossLiteSession.loadTask(job['taskId'], {'name' : ''})
+        task = self.bossLiteSession.loadTask(job['taskId'])
         if task['outputDirectory'] is None \
                or self.ft.match( task['outputDirectory'] ) is not None or \
                not os.access( task['outputDirectory'], os.W_OK):
@@ -192,7 +192,7 @@ class JobHandling:
         """
 
         # try with boss db
-        task = self.bossLiteSession.loadTask(job['taskId'], {'name' : ''})
+        task = self.bossLiteSession.loadTask(job['taskId'])
         if task['outputDirectory'] is not None \
                and task['outputDirectory'] != '' :
             outdir = task['outputDirectory']
@@ -663,6 +663,7 @@ class JobHandling:
 
         # set finished job state
         try:
+            self.recreateSession()
             JobState.finished(job)
 
         # error

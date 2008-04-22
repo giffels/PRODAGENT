@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.9 2008/04/18 10:43:15 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.9 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.10 2008/04/18 14:18:50 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.10 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 
@@ -75,7 +75,11 @@ class TrackingDB:
         query += " group by task_id order by count(job_id) desc"
 
         rows = directDB.select(self.session, query)
-        return rows
+
+        if rows is None:
+            return []
+
+        return [ key for key in rows ]
 
 
     def getGroupTasks(self, group):

@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.9 2008/04/18 16:09:06 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.9 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.10 2008/04/18 16:38:38 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.10 $"
 
 import os
 import logging
@@ -112,6 +112,7 @@ class GetOutputComponent:
         logging.getLogger().setLevel(logging.DEBUG)
         logging.info("GetOutput Component Started...")
 
+
     def __call__(self, event, payload):
         """
         __operator()__
@@ -136,6 +137,7 @@ class GetOutputComponent:
                      (str(event), str(payload)))
         return
 
+
     def checkJobs(self):
         """
         __checkJobs__
@@ -152,16 +154,17 @@ class GetOutputComponent:
         numberOfJobs = len(outputRequestedJobs)
         logging.info("Output requested for " + str( numberOfJobs ) + " jobs")
 
-        if numberOfJobs != 0:
+        while len( outputRequestedJobs ) != 0 :
             
             # change status for jobs that require get output operations
             # TODO here was good the compund update... to be reimplemented
-            for job in outputRequestedJobs:
-                job.runningJob['processStatus'] = 'in_progress'
-                job.runningJob['outputDirectory'] = \
+            job = outputRequestedJobs.pop()
+            job.runningJob['processStatus'] = 'in_progress'
+            job.runningJob['outputDirectory'] = \
                                             self.jobHandling.buildOutdir( job )
-                self.bossLiteSession.updateDB( job )
-                self.pool.enqueue(job, job)
+            self.bossLiteSession.updateDB( job )
+            self.pool.enqueue(job, job)
+            del( job )
 
         logging.debug("Start processing of failed")
 
@@ -171,15 +174,16 @@ class GetOutputComponent:
         numberOfJobs = len(outputRequestedJobs)
         logging.info("Notify failure for " + str( numberOfJobs ) + " jobs")
 
-        if numberOfJobs != 0:
+        while len( outputRequestedJobs ) != 0 :
             
             # change status for jobs that require get output operations
             # TODO here was good the compund update... to be reimplemented
-            for job in outputRequestedJobs:
-                job.runningJob['outputDirectory'] = \
+            job = outputRequestedJobs.pop()
+            job.runningJob['outputDirectory'] = \
                                             self.jobHandling.buildOutdir( job )
-                self.bossLiteSession.updateDB( job )
-                self.pool.enqueue(job, job)
+            self.bossLiteSession.updateDB( job )
+            self.pool.enqueue(job, job)
+            del( job )
 
         # process outputs if ready
         jobFinished = self.pool.dequeue()
@@ -204,6 +208,7 @@ class GetOutputComponent:
                      self.pollDelay)
         self.ms.publish("GetOutputComponent:pollDB", "", self.pollDelay)
         self.ms.commit()
+
 
     def processOutput(self, job):
         """

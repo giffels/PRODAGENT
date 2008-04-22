@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.17 2008/04/18 17:07:46 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.17 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.18 2008/04/18 17:10:29 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.18 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
@@ -222,6 +222,7 @@ class JobStatus:
 
             # in case of empty results
             if joblist is None:
+                logging.debug( "No new jobs to be added in query queues") 
                 return
 
             for pair in joblist:
@@ -254,6 +255,7 @@ class JobStatus:
 
             # in case of empty results
             if joblist is None:
+                logging.debug( "No finished jobs to be removed from query queues") 
                 return
 
             for pair in joblist:

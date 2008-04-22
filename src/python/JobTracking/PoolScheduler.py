@@ -6,8 +6,8 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.5 2008/04/03 15:52:09 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.5 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.6 2008/04/17 12:13:08 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.6 $"
 
 from threading import Thread
 from time import sleep
@@ -116,6 +116,7 @@ class PoolScheduler(Thread):
             # remove all finished jobs from this group
             JobStatus.removeFinishedJobs(group)
 
+
     def getNewJobs(self):
         """
         __getNewJobs__
@@ -175,16 +176,11 @@ class PoolScheduler(Thread):
                     # add task to group
                     groups[grid] += str(task) + ','
                     jobsReached += int(jobs)
-
-                    #MATTY's fix
-                    jobPerTask = jobPerTask[1:len(jobPerTask)]
-                    #jobPerTask.pop(0)
+                    jobPerTask.pop(0)
 
                 # go to next task
                 except IndexError, ex:
-                    #MATTY's fix
-                    jobPerTask = jobPerTask[1:len(jobPerTask)]
-                    #jobPerTask.pop(0)
+                    jobPerTask.pop(0)
                     logging.info("\n\n" + str(ex) + "\n\n")
                     continue
 
@@ -203,16 +199,11 @@ class PoolScheduler(Thread):
                     # add task to group
                     groups[grid] += task + ','
                     jobsReached += int(jobs)
-
-                    #MATTY's fix
-                    jobPerTask = jobPerTask[1:len(jobPerTask)]
-                    #jobPerTask.pop()
+                    jobPerTask.pop()
 
                 # go to next task
                 except IndexError:
-                    #MATTY's fix
-                    jobPerTask = jobPerTask[1:len(jobPerTask)]
-                    #jobPerTask.pop()
+                    jobPerTask.pop()
                     continue
 
             logging.info("group " + str(grid) + " filled with tasks " \

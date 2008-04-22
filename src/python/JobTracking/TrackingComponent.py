@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.18 2008/04/17 12:13:08 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.18 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.19 2008/04/18 11:08:19 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.19 $"
 
 import os
 import os.path
@@ -123,7 +123,7 @@ class TrackingComponent:
         # create pool thread
         params = {}
         params['delay'] = sleepTime
-        params['jobsToPoll'] = self.args['jobsToPoll']
+        params['jobsToPoll'] = int(self.args['jobsToPoll'])
         JobStatus.setParameters(params)
         pool = \
              WorkQueue([JobStatus.doWork] * int(self.args["PoolThreadsSize"]))
@@ -193,12 +193,16 @@ class TrackingComponent:
             )
         logging.info("new jobs : " + str( len(newJobs) ) )
 
-        for job in newJobs :
+        # for job in newJobs :
+        while len( newJobs ) != 0 :
+
+            job = newJobs.pop()
             # FIXME: temp hack, to be removed as soon as BossLite is updated
             if job.runningJob['status'] == 'C' or \
-               job.runningJob['status'] == 'S' :
-               continue
-
+                   job.runningJob['status'] == 'S' :
+                del( job )
+                continue
+            
             ### TODO here was good the compound update... to be reimplemented
             job.runningJob['processStatus'] = 'handled'
             self.bossLiteSession.updateDB( job )
@@ -206,7 +210,10 @@ class TrackingComponent:
             try:
                 self.jobHandling.dashboardPublish( job )
             except StandardError, msg:
-                logging.error("Cannot publish to dashboard:%s" % msg)   
+                logging.error("Cannot publish to dashboard:%s" % msg)
+            del( job )
+
+        del( newJobs )
 
         # summary of the jobs in the DB
         # TODO : change with a BossLite call
@@ -253,6 +260,7 @@ class TrackingComponent:
                 logging.info(ctr + " jobs : " + str(value))
             logging.info("....................")
 
+
     def checkJobs(self):
         """
         __checkJobs__
@@ -285,15 +293,16 @@ class TrackingComponent:
         """
 
         # query failed jobs
-        failedJobs = self.bossLiteSession.loadFailed()
+        failedJobs = self.bossLiteSession.loadFailed(
+            { 'processStatus' : 'handled' }
+            )
         logging.info("failed jobs : " + str( len(failedJobs) ) )
 
         # process all jobs
-        for job in failedJobs:
+        # for job in failedJobs:
+        while len( failedJobs ) != 0 :
 
-            # FIXME: temp hack, to be removed as soon as BossLite is updated
-            if job.runningJob['processStatus'].find( 'handled')  == -1 :
-               continue
+            job = failedJobs.pop()
 
             # publish information to the dashboard
             try:
@@ -308,6 +317,8 @@ class TrackingComponent:
 
             job.runningJob['processStatus'] = 'failed'
             self.bossLiteSession.updateDB( job.runningJob )
+            del( job )
+        del( failedJobs )
 
 
     def handleFinished(self):
@@ -320,15 +331,16 @@ class TrackingComponent:
         """
 
         # query finished jobs
-        finishedJobs = self.bossLiteSession.loadEnded()
+        finishedJobs = self.bossLiteSession.loadEnded(
+            { 'processStatus' : 'handled' }
+            )
         logging.info("finished jobs : " + str( len(finishedJobs) ) )
 
         # process all jobs
-        for job in finishedJobs:
+        # for job in finishedJobs:
+        while len( finishedJobs ) != 0 :
 
-            # FIXME: temp hack, to be removed as soon as BossLite is updated
-            if job.runningJob['processStatus'].find( 'handled')  == -1 :
-               continue
+            job = finishedJobs.pop()
 
             # publish information to the dashboard
             try:
@@ -341,8 +353,9 @@ class TrackingComponent:
                           self.jobHandling.fullId(job))
 
             JobOutput.requestOutput(job)
-                
-        return
+            del( job )
+
+        del( finishedJobs )
 
 
     def startComponent(self):
