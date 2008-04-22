@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.13 2008/04/18 16:09:06 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.13 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.14 2008/04/18 16:37:12 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.14 $"
 
 import logging
 import os
@@ -22,7 +22,6 @@ import os
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
-from ProdCommon.BossLite.Scheduler import Scheduler
 from ProdCommon.BossLite.Common.Exceptions import SchedulerError
 from ProdCommon.BossLite.Common.Exceptions import TaskError
 
@@ -129,13 +128,13 @@ class JobOutput:
             task = bossLiteSession.loadTask(job['taskId'])
             if task['user_proxy'] is None:
                 task['user_proxy'] = ''
-                    
+            task.appendJob( job )
             schedulerConfig = {'name' : job.runningJob['scheduler'],
                                'user_proxy' : task['user_proxy'] ,
                                'service' : job.runningJob['service'] }
             try:
-                scheduler = Scheduler.Scheduler(
-                    job.runningJob['scheduler'], schedulerConfig )
+                schedSession = BossLiteAPISched( bossLiteSession, \
+                                                 schedulerConfig )
             except SchedulerError, err:
                 logging.info('Can not get scheduler for job %s.%s' % \
                              (job['taskId'], job['jobId'] ))
@@ -145,7 +144,8 @@ class JobOutput:
             # job failed: perform postMortem operations and notify the failure
             if status == 'failed':
                 try:
-                    scheduler.postMortem( job, outdir + '/loggingInfo.log' )
+                    schedSession.postMortem( task, \
+                                       outfile = outdir + '/loggingInfo.log' )
                     job.runningJob['statusHistory'].append( \
                         'retrieved logging-info')
                     logging.info('Retrieved logging info for job %s.%s in %s' \
@@ -179,7 +179,7 @@ class JobOutput:
                     except KeyError:
                         userProxy = ''
                     os.environ["X509_USER_PROXY"] = task['user_proxy']
-                    scheduler.getOutput( job, outdir)
+                    schedSession.getOutput( task, outdir=outdir)
                     output = "output successfully retrieved"
                     job.runningJob['statusHistory'].append(output)
                     os.environ["X509_USER_PROXY"] = userProxy
@@ -200,6 +200,14 @@ class JobOutput:
                         job.runningJob['statusScheduler'] = 'Cleared'
                         bossLiteSession.archive( job )
                         break
+                    elif str( msg ).find( "Job current status doesn" ) != -1 :
+                        job.runningJob['statusHistory'].append(
+                            "waiting next round")
+                        logging.error(
+                            "waiting next round for job %s.%s in status %s" \
+                             % (job['taskId'], job['jobId'], job['status'] ) )
+                        break
+                    
                 except TaskError, msg:
                     output = str(msg)
                     job.runningJob['statusHistory'].append(output)
