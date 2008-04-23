@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.10 2008/04/18 16:38:38 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.10 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.11 2008/04/22 15:41:45 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.11 $"
 
 import os
 import logging
@@ -247,7 +247,7 @@ class GetOutputComponent:
         if len(localOutputTgz)==0:
             return   
 
-        task = self.bossLiteSession.loadTask( job['taskId'] )
+        task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
         logging.info("Output rebounce: %s.%s " %( job['jobId'], job['taskId'] ) )
         seEl = SElement(self.args["storageName"], self.args["Protocol"], self.args["storagePort"])
         loc = SElement("localhost", "local")

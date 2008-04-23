@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.18 2008/04/18 16:09:06 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.18 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.19 2008/04/22 15:39:51 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.19 $"
 
 class JobHandling:
     """
@@ -82,7 +82,7 @@ class JobHandling:
             outdir = self.buildOutdir( job )
         
         # FIXME: temporary to emulate SE
-        task = self.bossLiteSession.loadTask(job['taskId'])
+        task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
         if task['outputDirectory'] is None \
                or self.ft.match( task['outputDirectory'] ) is not None or \
                not os.access( task['outputDirectory'], os.W_OK):
@@ -192,7 +192,7 @@ class JobHandling:
         """
 
         # try with boss db
-        task = self.bossLiteSession.loadTask(job['taskId'])
+        task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
         if task['outputDirectory'] is not None \
                and task['outputDirectory'] != '' :
             outdir = task['outputDirectory']
@@ -526,7 +526,8 @@ class JobHandling:
             endedJobs = 0
             totJobs = 0
             try:
-                taskObj = self.bossLiteSession.loadTask( job['taskId'] )
+                taskObj = self.bossLiteSession.loadTask( job['taskId'],\
+                                                         deep=False )
                 for tjob in taskObj.jobs:
                     self.bossLiteSession.getRunningInstance(tjob)
                     totJobs += 1
