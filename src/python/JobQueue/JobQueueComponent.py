@@ -249,6 +249,8 @@ class JobQueueComponent:
                 continue
             bulkSpec.load(firstSpec)
             for specFile, specId in bulkSpecs.items():
+                if siteOverride != None:
+                    self.overrideSite(specFile, siteOverride)
                 bulkSpec.bulkSpecs.addJobSpec(specId, specFile)
             if siteOverride != None:
                 bulkSpec.siteWhitelist = []
