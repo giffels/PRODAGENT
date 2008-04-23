@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.18 2008/04/22 16:27:15 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.18 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.19 2008/04/23 17:33:23 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.19 $"
 
 import logging
 import os
@@ -152,7 +152,17 @@ class JobOutput:
 
             #  get output, trying at most maxGetOutputAttempts
             else :
+                # FIXME : Temporary workaround
+                try:
+                    userProxy = os.environ["X509_USER_PROXY"]
+                except KeyError:
+                    userProxy = ''
+                os.environ["X509_USER_PROXY"] = task['user_proxy']
+
                 job = cls.getOutput( job, task, schedSession)
+
+                # FIXME : Temporary workaround
+                os.environ["X509_USER_PROXY"] = userProxy
 
             # log status & update
             try:
@@ -240,13 +250,7 @@ class JobOutput:
 
             logging.info("job %s.%s retrieval attempt: %d" % \
                          (job['taskId'], job['jobId'], retry))
-                
-            # FIXME : Temporary workaround
-            try:
-                userProxy = os.environ["X509_USER_PROXY"]
-            except KeyError:
-                userProxy = ''
-            os.environ["X509_USER_PROXY"] = task['user_proxy']
+
 
             #  perform get output operation
             outdir = job.runningJob['outputDirectory']
@@ -259,15 +263,11 @@ class JobOutput:
                 logging.info('Retrieved output for job %s.%s in %s' % \
                              (job['taskId'], job['jobId'], outdir ))
 
-                # FIXME : Temporary workaround
-                os.environ["X509_USER_PROXY"] = userProxy
-
                 # success: stop processing
                 break
 
             # scheduler interaction error
             except SchedulerError, msg:
-                os.environ["X509_USER_PROXY"] = userProxy
                 output = str(msg)
                 job.runningJob['statusHistory'].append(output)
                 logging.error("job %s.%s retrieval failed: %s" % \
