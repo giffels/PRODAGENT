@@ -209,9 +209,9 @@ class PAJobStateMonitor(MonitorInterface):
             msg = "No mergeThreshold found for site entry: %s\n" % (
                 siteName,)
             raise RuntimeError, msg
-        cleanThresh = siteThresholds.get("cleanThreshold", None)
+        cleanThresh = siteThresholds.get("cleanupThreshold", None)
         if cleanThresh == None:
-            msg = "No cleanThreshold found for site entry: %s\n" % (
+            msg = "No cleanupThreshold found for site entry: %s\n" % (
                 siteName,)
             raise RuntimeError, msg
 
@@ -313,9 +313,9 @@ class PABOSSMonitor(MonitorInterface):
             msg = "No mergeThreshold found for site entry: %s\n" % (
                 siteName,)
             raise RuntimeError, msg
-        cleanThresh = siteThresholds.get("cleanThreshold", None)
+        cleanThresh = siteThresholds.get("cleanupThreshold", None)
         if cleanThresh == None:
-            msg = "No cleanThreshold found for site entry: %s\n" % (
+            msg = "No cleanupThreshold found for site entry: %s\n" % (
                 siteName,)
             raise RuntimeError, msg
 
