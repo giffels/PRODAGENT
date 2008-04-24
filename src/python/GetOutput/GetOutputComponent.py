@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.12 2008/04/23 17:34:26 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.12 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.13 2008/04/24 08:54:19 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.13 $"
 
 import os
 import logging
@@ -258,6 +258,7 @@ class GetOutputComponent:
         params['usingDashboard'] = None
         params['messageServiceInstance'] = self.ms
         params['OutputLocation'] = self.outputLocation
+        params['OutParams'] = self.args
         logging.info("handleeee")
         self.jobHandling = JobHandling(params)
 

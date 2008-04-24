@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.20 2008/04/23 17:36:35 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.20 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.21 2008/04/24 08:55:05 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.21 $"
 
 class JobHandling:
     """
@@ -50,7 +50,8 @@ class JobHandling:
         self.jobCreatorDir = params['jobCreatorDir']
         self.usingDashboard = params['usingDashboard']
         self.ms = params['messageServiceInstance']
-        self.outputLocation = params['OutputLocation']
+        self.configs = params['OutParams']
+        self.outputLocation = self.configs['OutputLocation']
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
         self.ft = re.compile( 'gsiftp://[\w.]+:\d+/*' )
         try:
@@ -716,24 +717,32 @@ class JobHandling:
                + str( job['submissionNumber'] )
 
     ######################
-    # TODO remove this temporary workaround once the OSB bypass problem will be fixed # Fabio
-    # This is a mess and must be removed ASAP # Fabio
+    # TODO remove this temporary workaround      # Fabio
+    #  once the OSB bypass problem will be fixed # Fabio
+    # This is a mess and must be removed ASAP    # Fabio
     def osbRebounce( self, job ):
         from ProdCommon.Storage.SEAPI.SElement import SElement
         from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
          
         localOutDir = job.runningJob['outputDirectory']
-        localOutputTgz = [ localOutDir +'/'+ f.split('/')[-1] for f in job['outputFiles'] if '.tgz' in f ]
+        localOutputTgz = [ localOutDir +'/'+ f.split('/')[-1]
+                           for f in job['outputFiles'] if '.tgz' in f ]
         localOutputTgz = [ f for f in localOutputTgz if os.path.exists(f) ]
 
-        logging.info( 'REBOUNCE DBG %s, %s, %s'%(localOutDir, localOutputTgz,[ localOutDir +'/'+ f.split('/')[-1] for f in job['outputFiles'] ] ) )
+        logging.info( 'REBOUNCE DBG %s, %s, %s' \
+                      % (localOutDir, localOutputTgz, \
+                         [ localOutDir +'/'+ f.split('/')[-1]
+                           for f in job['outputFiles'] ] ) )
 
         if len(localOutputTgz)==0:
             return   
 
         task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
-        logging.info("Output rebounce: %s.%s " %( job['jobId'], job['taskId'] ) )
-        seEl = SElement(self.args["storageName"], self.args["Protocol"], self.args["storagePort"])
+        logging.info("Output rebounce: %s.%s " \
+                     % ( job['jobId'], job['taskId'] ) )
+        seEl = SElement( self.configs["storageName"], \
+                         self.configs["Protocol"],    \
+                         self.configs["storagePort"] )
         loc = SElement("localhost", "local")
 
         ## copy ISB ##
@@ -741,23 +750,29 @@ class JobHandling:
         filesToClean = []
         for filetocopy in localOutputTgz:
             source = os.path.abspath(filetocopy)
-            dest = os.path.join(task['outputDirectory'], os.path.basename(filetocopy))
+            dest = os.path.join(
+                task['outputDirectory'], os.path.basename(filetocopy) )
             try: 
                 ## logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) ) 
                 sbi.copy( source, dest, task['user_proxy'])
                 filesToClean.append(source)
             except Exception, e:
-                logging.info("Output rebounce transfer fail for %s.%s: %s " %( job['jobId'], job['taskId'], str(e) ) )
+                logging.info("Output rebounce transfer fail for %s.%s: %s " \
+                             % ( job['jobId'], job['taskId'], str(e) ) )
                 continue 
 
-        logging.info("Output rebounce completed for %s.%s " %( job['jobId'], job['taskId'] ) )
+        logging.info("Output rebounce completed for %s.%s " \
+                     % ( job['jobId'], job['taskId'] ) )
         for filetoclean in filesToClean:
             try: 
                 os.remove( filetoclean )   
                 pass
             except Exception, e:
-                logging.info("Output rebounce local clean fail for %s.%s: %s " %( job['jobId'], job['taskId'], str(e) ) )
+                logging.info(
+                    "Output rebounce local clean fail for %s.%s: %s " \
+                    % ( job['jobId'], job['taskId'], str(e) ) )
                 continue
-        logging.info("Output rebounce clean for %s.%s " %( job['jobId'], job['taskId'] ) )
+        logging.info("Output rebounce clean for %s.%s " \
+                     % ( job['jobId'], job['taskId'] ) )
         return 
     ######################
