@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.21 2008/04/24 08:55:05 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.21 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.22 2008/04/24 09:23:59 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.22 $"
 
 class JobHandling:
     """
@@ -51,9 +51,15 @@ class JobHandling:
         self.usingDashboard = params['usingDashboard']
         self.ms = params['messageServiceInstance']
         self.configs = params['OutParams']
-        self.outputLocation = self.configs['OutputLocation']
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
-        self.ft = re.compile( 'gsiftp://[\w.]+:\d+/*' )
+
+        # evaluate if the output is retrieved locally or in a separate SE
+        try :
+            self.outputLocation = self.configs['OutputLocation']
+        except KeyError:
+            self.outputLocation = 'local'
+
+        # Crab Server has a specifica area for user tasks...
         try:
             from ProdAgentCore.Configuration import loadProdAgentConfiguration
             config = loadProdAgentConfiguration()
@@ -61,6 +67,9 @@ class JobHandling:
             self.tasksDir = compCfg["dropBoxPath"]
         except StandardError, ex:
             self.tasksDir = ''
+
+        # self.ft = re.compile( 'gsiftp://[\w.]+:\d+/*' )
+
 
     def performOutputProcessing(self, job):
         """
@@ -92,9 +101,19 @@ class JobHandling:
         # else:
         #     toWrite = True
 
-        if self.outputLocation != "SE" :
+        if self.outputLocation == "SE" :
+            try :
             ## temporary workaround for OSB rebounce # Fabio
-            self.osbRebounce( job )
+                self.osbRebounce( job )
+            except :
+                # as dirt as needed: any unknown error
+                import traceback
+                msg = traceback.format_exc()
+                output = str(msg)
+                logging.error("FAILED REBOUNCE for job %s.%s: %s" % \
+                              (job['taskId'], job['jobId'], output ) )
+                return
+                
 
         # is the FwkJobReport there?
         reportfilename = outdir + '/FrameworkJobReport.xml'
