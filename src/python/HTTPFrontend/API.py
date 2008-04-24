@@ -1,5 +1,6 @@
 from TaskTracking.TaskStateAPI import *
-import os
+import time, os, datetime
+
 
 
 def getNumTaskFinished():
@@ -94,4 +95,9 @@ def getNumJobNotCleared():
    return num_rows[0]
 
 
+def getNumBossLiteRunningJobs(key,date):
+   strDate = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(date)))
+   queryString = "select count(*),"+key+" from bl_runningjob where lb_timestamp < '"+strDate+"' group by "+key+" "
+   taskCheck = queryMethod(queryString, None)
+   return taskCheck
 
