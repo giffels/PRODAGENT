@@ -131,15 +131,12 @@ class ARCSubmitter(BulkSubmitterInterface):
         self.mainSandboxName = os.path.basename(self.mainSandbox)
         self.specSandboxName = None
         self.singleSpecName = None
-        #  //
-        # // Build a list of input files for every job
-        #//
+
+        # Build a list of input files for every job
         self.jobInputFiles = []
         self.jobInputFiles.append(self.mainSandbox)
         
-        #  //
-        # // For multiple bulk jobs there will be a tar of specs
-        #//
+        # For multiple bulk jobs there will be a tar of specs
         if self.primarySpecInstance.parameters.has_key('BulkInputSpecSandbox'):
             self.specSandboxName = os.path.basename(
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox']
@@ -166,16 +163,12 @@ class ARCSubmitter(BulkSubmitterInterface):
         for jobSpec, cacheDir in self.toSubmit.items():
             logging.debug("Submit: %s from %s" % (jobSpec, cacheDir) )
             logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
-            self.makeWrapperScript(os.path.join(cacheDir,"submit.sh"),
-                                   jobSpec,cacheDir)
+            self.makeWrapperScript(cacheDir, "submit.sh", jobSpec)
 
-            # Submit ARC job
-            submitCommand = "ngsub -e '%s'" % \
-                                   self.xrslCode(os.path.join(cacheDir,"submit.sh"),
-                                                 jobSpec, cacheDir)
-
+            submitCommand = "ngsub -e '"
+            submitCommand += self.xrslCode(cacheDir, "submit.sh", jobSpec)
+            submitCommand += "'"
             submitCommand += self.preferredSite()
-
             try:
                 logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
                 output = ARC.executeNgCommand(submitCommand)
@@ -206,37 +199,41 @@ class ARCSubmitter(BulkSubmitterInterface):
         logging.debug("Site %s whitelisted" % prefSite)
         ceMap = ResConAPI.createCEMap()
 
+        # prefSite should be in ceMap.keys(), but if it isn't, it's
+        # possible that it's an index given as a string (should be long).
         if prefSite in ceMap.keys():
             logging.info("Using preferred CE " + ceMap[prefSite])
             return " -c " + ceMap[prefSite]
 
-        # If prefSite wasn't in ceMap.keys(), it's possible that it's an
-        # index given as a string (should be long).
         elif str(prefSite).isdigit() and long(prefSite) in ceMap.keys():
             logging.info("Using preferred CE " + ceMap[long(prefSite)])
             return " -c " + ceMap[long(prefSite)]
 
         else:
-            logging.warning("WARNING: Preferred site %s unknown!" % str(prefSite))
+            msg = "WARNING: Preferred site %s unknown!" % str(prefSite)
+            logging.warning(msg)
             for k in ceMap.keys():
                 logging.debug("ceMap[%s] = %s" % (k, ceMap[k]))
             return ""
 
 
-    def xrslCode(self, wrapperscript, jobName, cacheDir):
+    def xrslCode(self, scriptDir, scriptName, jobName):
         """
         _xrslCode_
 
-        Produce the Xrsl code needed to submit the job to ARC
+        Produce the Xrsl code needed to submit the job to ARC.
+
+        'scriptDir' is the directory of the local system where the wrapper
+        script to be executed resides, and 'scriptName' it's basename.
 
         """
-        code = "&(executable=%s)" % os.path.basename(wrapperscript)
 
-        #  //
-        # // Input files to submit with the job
-        #//
+        code = "&(executable=%s)" % scriptName
+
+        # Input files to submit with the job
+        scriptPath = os.path.join(scriptDir, scriptName)
         code += "(inputFiles="
-        code += "(%s %s)" % (os.path.basename(wrapperscript), wrapperscript)
+        code += "(%s %s)" % (scriptName, scriptPath)
         for fname in self.jobInputFiles:
             code += "(%s %s)" % (os.path.basename(fname), fname)
         code += ")"
@@ -252,7 +249,7 @@ class ARCSubmitter(BulkSubmitterInterface):
         return code
 
 
-    def makeWrapperScript(self, filename, jobName, cacheDir):
+    def makeWrapperScript(self, scriptDir, scriptName, jobName):
         """
         _makeWrapperScript_
 
@@ -305,7 +302,9 @@ class ARCSubmitter(BulkSubmitterInterface):
 
         #script.extend(missingJobReportCheck(jobName))
 
-        handle = open(filename, 'w')
+        scriptPath = os.path.join(scriptDir, scriptName)
+        logging.debug("Writing script to '%s'" % scriptPath)
+        handle = open(scriptPath, 'w')
         handle.writelines(script)
         handle.close()
 
