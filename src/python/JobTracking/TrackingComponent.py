@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.19 2008/04/18 11:08:19 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.19 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.20 2008/04/22 15:39:51 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.20 $"
 
 import os
 import os.path
@@ -388,6 +388,7 @@ class TrackingComponent:
         params['jobCreatorDir'] = self.jobCreatorDir
         params['usingDashboard'] = self.usingDashboard
         params['messageServiceInstance'] = self.ms
+        params['OutputLocation'] = '' # needed just by GetOutput
         self.jobHandling = JobHandling(params)
 
         # wait for messages

@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.11 2008/04/22 15:41:45 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.11 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.12 2008/04/23 17:34:26 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.12 $"
 
 import os
 import logging
@@ -43,6 +43,7 @@ class GetOutputComponent:
         self.args.setdefault("ComponentDir", "/tmp")
         self.args.setdefault("JobTrackingDir", None)
         self.args.setdefault("GetOutputPoolThreadsSize", 5)
+        self.args.setdefault("OutputLocation", "SE")
         self.args.setdefault("Logfile", None)
         self.args.setdefault("verbose", 0)
         self.args.setdefault("configDir", None)
@@ -74,9 +75,8 @@ class GetOutputComponent:
         #workingDir = self.args['ProdAgentWorkDir']
         #workingDir = os.path.expandvars(workingDir)
         self.jobTrackingDir = self.args['JobTrackingDir']
-
-        # get BOSS configuration, set directores and verbose mode
         self.componentDir = self.args["ComponentDir"]
+        self.outputLocation = self.args['OutputLocation']
         self.jobCreatorDir = self.componentDir # fix for boss lite
         self.verbose = (self.args["verbose"] == 1)
 
@@ -109,7 +109,6 @@ class GetOutputComponent:
         Session.connect()
 
         # component running, display info
-        logging.getLogger().setLevel(logging.DEBUG)
         logging.info("GetOutput Component Started...")
 
 
@@ -224,59 +223,9 @@ class GetOutputComponent:
         # update status
         job.runningJob['processStatus'] = 'processed'
         self.bossLiteSession.updateDB( job )
-
-        ## temporary workaround for OSB rebounce # Fabio
-        self.osbRebounce( job )
-        ## 
         logging.debug("Processing output for job %s.%s finished" % \
                       ( job['jobId'], job['taskId'] ) )
 
-    ######################
-    # TODO remove this temporary workaround once the OSB bypass problem will be fixed # Fabio
-    # This is a mess and must be removed ASAP # Fabio
-    def osbRebounce( self, job ):
-        from ProdCommon.Storage.SEAPI.SElement import SElement
-        from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
-         
-        localOutDir = job.runningJob['outputDirectory']
-        localOutputTgz = [ localOutDir +'/'+ f.split('/')[-1] for f in job['outputFiles'] if '.tgz' in f ]
-        localOutputTgz = [ f for f in localOutputTgz if os.path.exists(f) ]
-
-        logging.info( 'REBOUNCE DBG %s, %s, %s'%(localOutDir, localOutputTgz,[ localOutDir +'/'+ f.split('/')[-1] for f in job['outputFiles'] ] ) )
-
-        if len(localOutputTgz)==0:
-            return   
-
-        task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
-        logging.info("Output rebounce: %s.%s " %( job['jobId'], job['taskId'] ) )
-        seEl = SElement(self.args["storageName"], self.args["Protocol"], self.args["storagePort"])
-        loc = SElement("localhost", "local")
-
-        ## copy ISB ##
-        sbi = SBinterface( loc, seEl )
-        filesToClean = []
-        for filetocopy in localOutputTgz:
-            source = os.path.abspath(filetocopy)
-            dest = os.path.join(task['outputDirectory'], os.path.basename(filetocopy))
-            try: 
-                ## logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) ) 
-                sbi.copy( source, dest, task['user_proxy'])
-                filesToClean.append(source)
-            except Exception, e:
-                logging.info("Output rebounce transfer fail for %s.%s: %s " %( job['jobId'], job['taskId'], str(e) ) )
-                continue 
-
-        logging.info("Output rebounce completed for %s.%s " %( job['jobId'], job['taskId'] ) )
-        for filetoclean in filesToClean:
-            try: 
-                os.remove( filetoclean )   
-                pass
-            except Exception, e:
-                logging.info("Output rebounce local clean fail for %s.%s: %s " %( job['jobId'], job['taskId'], str(e) ) )
-                continue
-        logging.info("Output rebounce clean for %s.%s " %( job['jobId'], job['taskId'] ) )
-        return 
-    ######################
 
     def startComponent(self):
         """
@@ -308,6 +257,7 @@ class GetOutputComponent:
         params['jobCreatorDir'] = self.jobCreatorDir
         params['usingDashboard'] = None
         params['messageServiceInstance'] = self.ms
+        params['OutputLocation'] = self.outputLocation
         logging.info("handleeee")
         self.jobHandling = JobHandling(params)
 
