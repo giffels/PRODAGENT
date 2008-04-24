@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.19 2008/04/22 15:39:51 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.19 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.20 2008/04/23 17:36:35 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.20 $"
 
 class JobHandling:
     """
@@ -50,6 +50,7 @@ class JobHandling:
         self.jobCreatorDir = params['jobCreatorDir']
         self.usingDashboard = params['usingDashboard']
         self.ms = params['messageServiceInstance']
+        self.outputLocation = params['OutputLocation']
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
         self.ft = re.compile( 'gsiftp://[\w.]+:\d+/*' )
         try:
@@ -81,14 +82,18 @@ class JobHandling:
         if outdir is None :
             outdir = self.buildOutdir( job )
         
-        # FIXME: temporary to emulate SE
-        task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
-        if task['outputDirectory'] is None \
-               or self.ft.match( task['outputDirectory'] ) is not None or \
-               not os.access( task['outputDirectory'], os.W_OK):
-            toWrite = False
-        else:
-            toWrite = True
+        # # FIXME: temporary to emulate SE
+        # task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
+        # if task['outputDirectory'] is None \
+        #        or self.ft.match( task['outputDirectory'] ) is not None or \
+        #        not os.access( task['outputDirectory'], os.W_OK):
+        #     toWrite = False
+        # else:
+        #     toWrite = True
+
+        if self.outputLocation != "SE" :
+            ## temporary workaround for OSB rebounce # Fabio
+            self.osbRebounce( job )
 
         # is the FwkJobReport there?
         reportfilename = outdir + '/FrameworkJobReport.xml'
@@ -101,85 +106,44 @@ class JobHandling:
         logging.debug("report file name %s exists: %s" % \
                       (reportfilename, str(fwjrExists)) )
 
-        ## # TODO : handle known failures?
-        ## # retrieve output message
-        ## try :
-        ##     # FIXME: take the last action 
-        ##     outp = job.runningJob['statusHistory'][-1]
-        ## except IndexError:
-        ##     logging.info( "##### No output information... try to continue..." )
-        ##     outp = ''
-        ## #  if output retrieval failed
-        ## if outp.find('it has been purged') != -1 :
-        ##     logging.error( "Missing output file for job %s.%s: %s" % \
-        ##                    (jobId, taskId, outp) )
-        ## 
-        ##     logging.debug("Job " + jobSpecId + \
-        ##                   " has no FrameworkReport : creating a dummy one")
-        ## 
-        ##     # create job report
-        ##     exitCode = -1
-        ## 
-        ## # proxy expire... nothing to do!
-        ## elif outp.find("Proxy Expired") != -1 :
-        ##     logging.error( "Proxy expired for task %s: skipping" % taskId )
-        ##     return
-        ## 
-        ## # FIXME: how to handle mismatching proxy?
-        ## elif outp.find('Error with credential') != -1 :
-        ##     logging.error( "Proxy error for task %s: %s" % \
-        ##                    (taskId, outp) )
-        ##     return
-        ## 
-        ## # successful output retrieval?
-        ## if outp.lower().find("logging-info") >= 0  \
-        ##    outp.find("already been retrieved") < 0 :
-
         # is the FwkJobReport there?
         if fwjrExists:
 
             # check success
-            success = checkSuccess(reportfilename)
+            success, exitCode = self.parseFinalReport(reportfilename, job)
+
             logging.debug("check Job Success: %s" % str(success))
-            if success :
-                exitCode = 0
 
         # FwkJobReport not there: create one based on db or assume failed
         else:
             # May be the job is aborted
             if job.runningJob['processStatus'] == 'failed' :
+                success = False
                 exitCode = -1
-               
+
+            # otherwise, missing just missing fwjr
             else :
-                # TODO: here probably the crab exit codes have to be handled
-                try:
-                    exeCode = job.runningJob['wrapperReturnCode']
-                    jobCode = job.runningJob['applicationReturnCode']
-                    success = (exeCode == "0" or exeCode == "" or \
-                               exeCode == None or exeCode == 'NULL') \
-                               and (jobCode == "0")
-                    if success :
-                        exitCode = 0
-                except :
-                    ## FIXME what to do?
-                    exitCode = -1
+                job.runningJob["applicationReturnCode"] = str(50115)
+                job.runningJob["wrapperReturnCode"] = str(50115)
+                success = False
+                exitCode = 50115
 
-            logging.debug("check Job Success: %s" % str(success))
-
+            # write fake fwjr
+            logging.debug("write fake fwjr: %s" % str(success))
             self.writeFwkJobReport( jobSpecId, exitCode, reportfilename )
 
 
         # in both cases: is the job successful?
-        if exitCode == 0:
+        if success:
 
             # yes, generate a job successful message and change status
-            self.publishJobSuccess(job, reportfilename, toWrite)
+            self.publishJobSuccess(job, reportfilename)
             self.notifyJobState(jobSpecId)
 
         else:
 
             # no, generate a job failure message
-            self.publishJobFailed(job, reportfilename, toWrite)
+            self.publishJobFailed(job, reportfilename)
 
         return
 
@@ -199,12 +163,13 @@ class JobHandling:
         else :
             outdir = self.baseDir
 
-        # FIXME: temporary to emulate SE
-        # SE? 
-        stdir = self.ft.match( outdir )
-        if stdir is not None or not os.access( outdir, os.W_OK):
-            # outdir = outdir[stdir.end()-1:]
+        # SE?
+        if self.outputLocation == "SE" :
             outdir = self.tasksDir + '/' + task['name'] + '_spec'
+        # stdir = self.ft.match( outdir )
+        # if  stdir is not None or not os.access( outdir, os.W_OK):
+        #     # outdir = outdir[stdir.end()-1:]
+        #     outdir = self.tasksDir + '/' + task['name'] + '_spec'
 
         # FIXME: get outdir
         outdir = "%s/BossJob_%s_%s/Submission_%s/" % \
@@ -248,13 +213,59 @@ class JobHandling:
         fwjr.write(reportfilename)
 
 
-    def publishJobSuccess(self, job, reportfilename, local=True):
+    def parseFinalReport(self, reportfilename, job):
+        """
+        __parseFinalReport__
+        
+        Parses the FWJR produced by job in order to retrieve 
+        the WrapperExitCode and ExeExitCode.
+        Updates the BossDB with these values.
+
+        """
+
+        # defaults
+        success = False
+        exitCode = 0
+       
+        if os.path.getsize(reportfilename) == 0 :
+            ### 50115 -
+            ### cmsRun did not produce a valid/readable job report at runtime
+            job.runningJob["applicationReturnCode"] = str(50115)
+            job.runningJob["wrapperReturnCode"] = str(50115)
+            self.writeFwkJobReport( job['name'], 50115, reportfilename )
+            return ( False, 50115 )
+
+        # read
+        jobReport = readJobReport(reportfilename)[0]
+        exitCode = jobReport.exitCode
+        success = ( jobReport.status == "Success" )
+
+        for report in jobReport.errors:
+            if report['Type'] == 'WrapperExitCode':
+                job.runningJob["wrapperReturnCode"] = report['ExitStatus']
+            elif report['Type'] == 'ExeExitCode':     
+                job.runningJob["applicationReturnCode"] = report['ExitStatus']
+            else:
+                continue
+
+        if job.runningJob["wrapperReturnCode"] is None and \
+           job.runningJob["applicationReturnCode"] is None :
+            return( success, exitCode )
+
+        elif job.runningJob["wrapperReturnCode"] == '0' and \
+             job.runningJob["applicationReturnCode"] == '0' :
+            return( True, exitCode )
+        else :
+            return( False, exitCode )
+
+
+    def publishJobSuccess(self, job, reportfilename):
         """
         __publishJobSuccess__
         """
 
         # set success job status
-        if local :
+        if self.outputLocation != "SE" :
             reportfilename = self.archiveJob("Success", job, reportfilename)
         else :
             # archive job
@@ -269,13 +280,13 @@ class JobHandling:
         return
 
 
-    def publishJobFailed(self, job, reportfilename, local=True):
+    def publishJobFailed(self, job, reportfilename):
         """
         __publishJobFailed__
         """
 
         # set failed job status
-        if local :
+        if self.outputLocation != "SE" :
             reportfilename = self.archiveJob("Failed", job, reportfilename)
         else :
             # archive job
@@ -291,23 +302,23 @@ class JobHandling:
         return
 
 
-    def resolveOutdir(self, job, fjr):
+    def resolveOutdir(self, job):
         """
         __resolveOutdir__
         """
 
         # fallback directory in JobTracking.
-        fallbackCacheDir = self.baseDir + "/%s" % fjr[0].jobSpecId
+        fallbackCacheDir = self.baseDir + "/%s" % job['name']
 
         # try to get cache from JobState
         try:
             jobCacheDir = \
-                        JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
+                        JobState.general(job['name'])['CacheDirLocation']
 
         # error, cannot get cache location
         except StandardError, ex:
             msg = "Cannot get JobCache from JobState.general for %s\n" % \
-                  fjr[0].jobSpecId
+                  job['name']
             msg += "Retrying with a rebuild session object\n"
             msg += str(ex)
             logging.warning(msg)
@@ -318,7 +329,7 @@ class JobHandling:
                 self.recreateSession()
 
                 jobCacheDir = \
-                        JobState.general(fjr[0].jobSpecId)['CacheDirLocation']
+                        JobState.general(job['name'])['CacheDirLocation']
                 logging.info("Retry OK!")
 
             # error, cannot get cache location
@@ -329,13 +340,13 @@ class JobHandling:
 
                 # try to get cache from WEJob
                 try:
-                    WEjobState = WEJob.get(fjr[0].jobSpecId)
+                    WEjobState = WEJob.get(job['name'])
                     jobCacheDir = WEjobState['cache_dir']
 
                 # error, cannot get cache location
                 except StandardError, ex:
                     msg = "Cant get JobCache from Job.get['cache_dir'] for %s" % \
-                          fjr[0].jobSpecId
+                          job['name']
                     msg += 'Retrying with a rebuild session object\n'
                     msg += str(ex)
                     logging.warning(msg)
@@ -344,13 +355,13 @@ class JobHandling:
                         # force a re connect operation
                         self.recreateSession()
 
-                        WEjobState = WEJob.get(fjr[0].jobSpecId)
+                        WEjobState = WEJob.get(job['name'])
                         jobCacheDir = WEjobState['cache_dir']
 
                     # error, cannot get cache location
                     except StandardError, ex:
                         msg = "Cant get JobCache from Job.get['cache_dir'] for %s" % \
-                              fjr[0].jobSpecId
+                              job['name']
                         msg += 'No, retry does not work\n'
                         msg += str(ex)
                         logging.warning(msg)
@@ -359,7 +370,7 @@ class JobHandling:
                         try:
 
                             # split the jobspecid=workflow-run into workflow/run
-                            spec = fjr[0].jobSpecId
+                            spec = job['name']
                             end = spec.rfind('-')
                             workflow = spec[:end]
                             run = spec[end+1:]
@@ -403,10 +414,10 @@ class JobHandling:
         resub = job['submissionNumber']
 
         # get job report
-        fjr = readJobReport(reportfilename)
+        jobSpecId = job['name']
 
         # get directory information
-        jobCacheDir = self.resolveOutdir( job, fjr)
+        jobCacheDir = self.resolveOutdir( job, reportfilename)
         baseDir = os.path.dirname(reportfilename) + "/"
         lastdir = os.path.dirname(reportfilename).split('/').pop()
         newPath = jobCacheDir + "/JobTracking/" + success + "/" + lastdir + "/"
@@ -494,7 +505,7 @@ class JobHandling:
 
         # get max retries from JobState
         try:
-            jobMaxRetries = JobState.general(fjr[0].jobSpecId)['MaxRetries']
+            jobMaxRetries = JobState.general(jobSpecId)['MaxRetries']
 
         # does not work, try from Workflow entities
         except StandardError:
@@ -502,7 +513,7 @@ class JobHandling:
             try:
                 # force a re connect operation
                 self.recreateSession()
-                WEjobState = WEJob.get(fjr[0].jobSpecId)
+                WEjobState = WEJob.get(jobSpecId)
                 jobMaxRetries = WEjobState['max_retries']
 
             # assume a default value
@@ -526,7 +537,7 @@ class JobHandling:
             endedJobs = 0
             totJobs = 0
             try:
-                taskObj = self.bossLiteSession.loadTask( job['taskId'],\
+                taskObj = self.bossLiteSession.loadTask( job['taskId'], \
                                                          deep=False )
                 for tjob in taskObj.jobs:
                     self.bossLiteSession.getRunningInstance(tjob)
@@ -554,11 +565,11 @@ class JobHandling:
                 # so that re-declaration is possible if needed
                 try:
                     os.remove(
-                        "%s/%sid" % (jobCacheDir,fjr[0].jobSpecId)
+                        "%s/%sid" % (jobCacheDir,jobSpecId)
                         )
                 except:
                     logging.info( "not removed file %s/%sid" \
-                                  % (jobCacheDir,fjr[0].jobSpecId)
+                                  % (jobCacheDir,jobSpecId)
                                   )
 
             # archive job
@@ -703,3 +714,50 @@ class JobHandling:
         return str( job['taskId'] ) + '.' \
                + str( job['jobId'] ) + '.' \
                + str( job['submissionNumber'] )
+
+    ######################
+    # TODO remove this temporary workaround once the OSB bypass problem will be fixed # Fabio
+    # This is a mess and must be removed ASAP # Fabio
+    def osbRebounce( self, job ):
+        from ProdCommon.Storage.SEAPI.SElement import SElement
+        from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
+         
+        localOutDir = job.runningJob['outputDirectory']
+        localOutputTgz = [ localOutDir +'/'+ f.split('/')[-1] for f in job['outputFiles'] if '.tgz' in f ]
+        localOutputTgz = [ f for f in localOutputTgz if os.path.exists(f) ]
+
+        logging.info( 'REBOUNCE DBG %s, %s, %s'%(localOutDir, localOutputTgz,[ localOutDir +'/'+ f.split('/')[-1] for f in job['outputFiles'] ] ) )
+
+        if len(localOutputTgz)==0:
+            return   
+
+        task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
+        logging.info("Output rebounce: %s.%s " %( job['jobId'], job['taskId'] ) )
+        seEl = SElement(self.args["storageName"], self.args["Protocol"], self.args["storagePort"])
+        loc = SElement("localhost", "local")
+
+        ## copy ISB ##
+        sbi = SBinterface( loc, seEl )
+        filesToClean = []
+        for filetocopy in localOutputTgz:
+            source = os.path.abspath(filetocopy)
+            dest = os.path.join(task['outputDirectory'], os.path.basename(filetocopy))
+            try: 
+                ## logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) ) 
+                sbi.copy( source, dest, task['user_proxy'])
+                filesToClean.append(source)
+            except Exception, e:
+                logging.info("Output rebounce transfer fail for %s.%s: %s " %( job['jobId'], job['taskId'], str(e) ) )
+                continue 
+
+        logging.info("Output rebounce completed for %s.%s " %( job['jobId'], job['taskId'] ) )
+        for filetoclean in filesToClean:
+            try: 
+                os.remove( filetoclean )   
+                pass
+            except Exception, e:
+                logging.info("Output rebounce local clean fail for %s.%s: %s " %( job['jobId'], job['taskId'], str(e) ) )
+                continue
+        logging.info("Output rebounce clean for %s.%s " %( job['jobId'], job['taskId'] ) )
+        return 
+    ######################
