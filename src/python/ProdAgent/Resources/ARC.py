@@ -34,12 +34,11 @@ def makeNonBlocking(fd):
         fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
 
 
-def executeNgCommand(command, proxyRetry = True):
+def executeNgCommand(command):
     """
-    Execute shell command 'command'. If proxyRetry = True and 'command' fails with an error
-    message like 'Could not determine location of a proxy certificate' or
-    'The proxy has expired', (re-)initialise a proxy and retry.  (Primarily
-    meant for ng* commands, but should work for any shell commands.)
+    Execute shell command 'command'.  Primarly meant for ng* (i.e. ARC)
+    commands, but should work for most shell commands.  Raise a
+    CommandExecutionError in case of error.
 
     """
 
@@ -81,10 +80,6 @@ def executeNgCommand(command, proxyRetry = True):
         raise CommandExecutionError(msg)
 
     if exitCode:
-        if proxyRetry and (stdoutBuffer.find("Could not determine location of a proxy certificate") >= 0 \
-                           or stdoutBuffer.find("The proxy has expired") >= 0):
-            executeNgCommand("grid-proxy-init")
-            return executeNgCommand(command, False)
         msg = "Error executing command:\n"
         msg += command
         msg += "Exited with code: %s\n" % exitCode

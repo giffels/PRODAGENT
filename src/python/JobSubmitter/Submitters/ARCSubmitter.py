@@ -147,52 +147,49 @@ class ARCSubmitter(BulkSubmitterInterface):
             self.jobInputFiles.append(
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox'])
 
-        #  //
-        # // For single jobs there will be just one job spec
-        #//
+        # For single jobs there will be just one job spec
         if not self.isBulk:
             self.jobInputFiles.append(self.specFiles[self.mainJobSpecName])
             self.singleSpecName = os.path.basename(
                 self.specFiles[self.mainJobSpecName])
 
         
-        #  // So now we have a list of input files for each job
-        # //  which have to be available to the job at runtime.
-        #//   So we may need some copy operation here to a drop
-        #  // box area visible on the WNs etc.
-        # //
-        #//
+        # So now we have a list of input files for each job
+        # which have to be available to the job at runtime.
+        # So we may need some copy operation here to a drop
+        # box area visible on the WNs etc.
 
-        #  //
-        # // We have a list of job IDs to submit.
-        #//  If this is a single job, there will be just one entry
-        #  //If it is a bulk submit, there will be multiple entries,
-        # // plus self.isBulk will be True
-        #//
+        # We have a list of job IDs to submit.  If this is a single job,
+        # there will be just one entry If it is a bulk submit, there will
+        # be multiple entries, plus self.isBulk will be True
+        failureList = []
         for jobSpec, cacheDir in self.toSubmit.items():
             logging.debug("Submit: %s from %s" % (jobSpec, cacheDir) )
             logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
             self.makeWrapperScript(os.path.join(cacheDir,"submit.sh"),
                                    jobSpec,cacheDir)
 
-        #  //
-        # // Submit ARC job
-        #//
-        submitCommand = "ngsub -e '%s'" % \
-                               self.xrslCode(os.path.join(cacheDir,"submit.sh"),
-                                             jobSpec, cacheDir)
+            # Submit ARC job
+            submitCommand = "ngsub -e '%s'" % \
+                                   self.xrslCode(os.path.join(cacheDir,"submit.sh"),
+                                                 jobSpec, cacheDir)
 
-        submitCommand += self.preferredSite()
+            submitCommand += self.preferredSite()
 
-        logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
-        try:
-            output = ARC.executeNgCommand(submitCommand)
-        except ARC.CommandExecutionError, emsg:
-            msg = "Submitting with command\n"
-            msg += "    '%s'\n" % submitCommand
-            msg += "failed: " + str(emsg)
-            logging.warning(msg)
-        logging.debug("ARCSubmitter.doSubmit: %s " % output)
+            try:
+                logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
+                output = ARC.executeNgCommand(submitCommand)
+                logging.debug("ARCSubmitter.doSubmit: %s " % output)
+            except ARC.CommandExecutionError, emsg:
+                msg = "Submitting with command\n"
+                msg += "    '%s'\n" % submitCommand
+                msg += "failed: " + str(emsg)
+                logging.warning(msg)
+                failureList.append(jobSpec)
+
+
+        if len(failureList) > 0:
+            raise JSException("Submission Failed", FailureList = failureList)
 
 
     def preferredSite(self):
@@ -299,12 +296,12 @@ class ARCSubmitter(BulkSubmitterInterface):
         script.append("cp %s/FrameworkJobReport.xml ./\n" % self.workflowName)
         script.append("cp %s/run.log ./\n" % self.workflowName)
 
-        #  Gather all the files in a tar.bz2 file for easier retrieval --
-        #  something we may want to do if the job failed and we want to
-        #  find out why.
-        script.append("tar jcvf %s.tar.bz2 %s\n" % (self.workflowName,self.workflowName))
-        script.append("rm -rf %s\n" % self.workflowName)
-        script.append("rm -rf certificates\n")
+#        #  Gather all the files in a tar.bz2 file for easier retrieval --
+#        #  something we may want to do if the job failed and we want to
+#        #  find out why.
+#        script.append("tar jcvf %s.tar.bz2 %s\n" % (self.workflowName,self.workflowName))
+#        script.append("rm -rf %s\n" % self.workflowName)
+#        script.append("rm -rf certificates\n")
 
         #script.extend(missingJobReportCheck(jobName))
 
