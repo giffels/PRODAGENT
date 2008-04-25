@@ -92,25 +92,25 @@ class Root:
         
 #
 # Pages:
-        html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_schedstat24\">Scheduler-status/24</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>History plot of number of job per different scheduler status for the last 24 hours</td></td>\n"
+        html += "<tr><td width=\"20"+'%'+"\">Scheduler-status: <a href=\"%s/hist_schedstat24\">24</a>/<a href=\"%s/hist_schedstat7\">7</a></td>\n" % (
+            self.myUrl,self.myUrl,)
+        html += "<td>History plot of number of job per different scheduler status for the last 24 hours or 7 days</td></td>\n"
 #        
-        html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_schedstat7\">Scheduler-status/7</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>History plot of number of job per different scheduler status, hourly for the last week</td></td>\n"
+#         html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_schedstat7\">Scheduler-status/7</a></td>\n" % (
+#             self.myUrl,)
+#         html += "<td>History plot of number of job per different scheduler status, hourly for the last week</td></td>\n"
         
-        html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_procsstat24\">Process-status/24</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>History plot of number of job per different process status for the last 24 hours</td></td>\n"
+        html += "<tr><td width=\"20"+'%'+"\">Process-status: <a href=\"%s/hist_procsstat24\">24</a>/<a href=\"%s/hist_procsstat7\">7</a></td>\n" % (
+            self.myUrl,self.myUrl,)
+        html += "<td>History plot of number of job per different process status for the last 24 hours or 7 days</td></td>\n"
 #        
-        html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_procsstat7\">Process-status/7</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>History plot of number of job per different process status, hourly for the last week</td></td>\n"
+#         html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_procsstat7\">Process-status/7</a></td>\n" % (
+#             self.myUrl,)
+#         html += "<td>History plot of number of job per different process status, hourly for the last week</td></td>\n"
 #        
-        html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_HW\">HW monitor</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>History plot of cpu load, memory and swap usage</td></td>\n"
+        html += "<tr><td width=\"20"+'%'+"\">HW monitor: <a href=\"%s/hist_HW_24\">24</a>/<a href=\"%s/hist_HW_7\">7</a></td>\n" % (
+            self.myUrl,self.myUrl)
+        html += "<td>History plot of cpu load, memory and swap usage for last 24 hours or 7 days</td></td>\n"
 #        
         html += """</table>"""
         html +="<br/><h6>version "+os.environ['CRAB_SERVER_VERSION']+"</h6>"
@@ -248,7 +248,8 @@ class HTTPFrontendComponent:
         statuses = ['not_handled','handled','failed','failure_handled','output_requested','in_progress','output_retrieved','processed', 'NULL']
         root.hist_procsstat7 = HistStatusMonitor(7*24,3600,'process_status',statuses)
         root.hist_procsstat24 = HistStatusMonitor(96,900,'process_status',statuses)
-        root.hist_HW = HistHWMonitor()
+        root.hist_HW_24 = HistHWMonitor(480)   # 480 times 3min is 24 hours
+        root.hist_HW_7 = HistHWMonitor(3360)   # 3360 times 3min is 7 days
 #            )
 
         
