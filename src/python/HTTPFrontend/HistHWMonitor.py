@@ -44,7 +44,8 @@ def gatherData(Nbins):
         logLines = open(logFilename,'r').readlines()
         end = len(logLines)-1;
         start = end - Nbins;
-        if start < 0: start = 0;
+        if start < 0:
+                start = 0;
         begin_time = int(logLines[start].split()[1]);
         end_time = int(logLines[end].split()[1]);
         for line in logLines:
@@ -57,21 +58,21 @@ def gatherData(Nbins):
                 swap[time]   = float(line.split(',')[5].split()[6])
         return begin_time, end_time, load1, load5, load15, mem, cached, swap
 
-def draw_TimeGraph():
+def draw_TimeGraph(Nbins):
         path= os.getcwd()
-        begin_time, end_time, load1, load5, load15, mem, cached, swap = gatherData(480);
+        begin_time, end_time, load1, load5, load15, mem, cached, swap = gatherData(Nbins);
 	file = path+'/image/mem.png'
-        metadata = {'title':'Memory Usage History', 'starttime':begin_time, 'endtime':end_time, 'span':180, 'is_cumulative':True }
+        metadata = {'title':'Memory Usage History', 'starttime':begin_time, 'endtime':end_time, 'span':180, 'is_cumulative':True } # span:180 is the 3min crontab freq.
         Graph = CumulativeGraph()
         data = {'cached (%)':cached, 'mem (%)':mem }
         Graph( data, file, metadata )
 	file = path+'/image/swp.png'
-        metadata = {'title':'Swap Usage History', 'starttime':begin_time, 'endtime':end_time, 'span':180, 'is_cumulative':True }
+        metadata = {'title':'Swap Usage History', 'starttime':begin_time, 'endtime':end_time, 'span':180, 'is_cumulative':True } # span:180 is the 3min crontab freq.
         Graph = CumulativeGraph()
         data = {'swap (%)':swap}
         Graph( data, file, metadata )
 	file = path+'/image/cpu.png'
-        metadata = {'title':'CPU Load History', 'starttime':begin_time, 'endtime':end_time, 'span':180, 'is_cumulative':True }
+        metadata = {'title':'CPU Load History', 'starttime':begin_time, 'endtime':end_time, 'span':180, 'is_cumulative':True } # span:180 is the 3min crontab freq.
         Graph = CumulativeGraph()
         data = {'load 5m':load5 } #, 'load 5m':load5, 'load 15m':load15  }
         Graph( data, file, metadata )
@@ -79,8 +80,9 @@ def draw_TimeGraph():
 
 class HistHWMonitor:
 
-    def __init__(self, graphMonUrl = None):
+    def __init__(self, Nbins, graphMonUrl = None):
         self.graphmon = graphMonUrl
+        self.Nbins = Nbins
 
     @cherrypy.expose
     def showimage_mem(self):
@@ -131,7 +133,7 @@ class HistHWMonitor:
         page = [_header]
         
         if NOmonitorMSG == 'OK':
-                draw_TimeGraph()
+                draw_TimeGraph(self.Nbins)
                 page.append('<img src="showimage_cpu" width="800" height="500" />' )
                 page.append('<img src="showimage_mem" width="800" height="500" />' )
                 page.append('<img src="showimage_swp" width="800" height="500" />' )
