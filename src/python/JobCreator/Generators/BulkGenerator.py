@@ -132,7 +132,6 @@ class BulkGenerator(GeneratorInterface):
         taskObject(InstallLogArch())
         taskObject(InstallBulkFastMerge())
         taskObject(NewInsertStageOut())
-        taskObject(InstallScriptControls())
         taskObject(InstallUserSandbox())
         taskObject(InsertLogCollect())
         
@@ -143,6 +142,7 @@ class BulkGenerator(GeneratorInterface):
         logging.debug("JobGenerator: Creator finished")
 
         taskObject(InstallUnpacker())
+        taskObject(InstallScriptControls())
         taskObject(BashEnvironmentMaker())
         taskObject(PopulateMainScript())
         taskObject(PopulateCmsGenScript("PayloadNode"))
