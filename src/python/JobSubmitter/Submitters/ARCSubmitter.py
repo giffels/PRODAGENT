@@ -171,7 +171,7 @@ class ARCSubmitter(BulkSubmitterInterface):
             submitCommand += self.preferredSite()
             try:
                 logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
-                output = ARC.executeNgCommand(submitCommand)
+                output = ARC.executeCommand(submitCommand)
                 logging.debug("ARCSubmitter.doSubmit: %s " % output)
             except ARC.CommandExecutionError, emsg:
                 msg = "Submitting with command\n"

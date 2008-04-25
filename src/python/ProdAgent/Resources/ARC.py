@@ -34,7 +34,7 @@ def makeNonBlocking(fd):
         fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
 
 
-def executeNgCommand(command):
+def executeCommand(command):
     """
     Execute shell command 'command'.  Primarly meant for ng* (i.e. ARC)
     commands, but should work for most shell commands.  Raise a
@@ -42,7 +42,7 @@ def executeNgCommand(command):
 
     """
 
-    logging.debug("executeNgCommand: %s" % command)
+    logging.debug("executeCommand: %s" % command)
 
     child = popen2.Popen3(command, 1) # capture stdout and stderr from command
     child.tochild.close()             # don't need to talk to child
@@ -75,7 +75,7 @@ def executeNgCommand(command):
         msg = "Error retrieving child exit code: %s\n" % str(ex)
         msg = "while executing command:\n"
         msg += command
-        logging.error("executeNgCommand: Failed to Execute Command")
+        logging.error("executeCommand: Failed to Execute Command")
         logging.error(msg)
         raise CommandExecutionError(msg)
 
@@ -83,7 +83,7 @@ def executeNgCommand(command):
         msg = "Error executing command:\n"
         msg += command
         msg += "Exited with code: %s\n" % exitCode
-        logging.error("executeNgCommand: Failed to Execute Command")
+        logging.error("executeCommand: Failed to Execute Command")
         logging.error(msg)
         raise CommandExecutionError(msg)
     return  stdoutBuffer
@@ -136,7 +136,7 @@ def jobIdMap():
     jobs = {}
     for i in range(len(file)):
         line = file[i]
-        fields = line.strip().split('#')[0:2]
+        fields = line.strip().split('#')
 
         if len(fields) < 2:
             logging.warning("Somethings funny with line %i in file %s" % (i+1, fname))
@@ -163,7 +163,7 @@ def getNoInfo(jobSpecId):
 
 class ARCJob:
 
-    def __init__(self, arcId = None, jobSpecId = None, status = None, CEName = None,
+    def __init__(self, jobIds = None, arcId = None, jobSpecId = None, status = None, CEName = None,
                  jobType = None):
         """
         Note that either arcId or jobSpecId has to be provided. If either
@@ -176,17 +176,17 @@ class ARCJob:
 
         """
         assert arcId or jobSpecId
+
+        if not jobIds: jobIds = jobIdMap()
             
         if arcId:
             self.arcId = arcId
         else:
-            jobIds = jobIdMap()
             self.arcId = jobIds.get(jobSpecId, None)
 
         if jobSpecId:
             self.jobSpecId = jobSpecId
         else:
-            jobIds = jobIdMap()
             self.jobSpecId = findKey(jobIds, arcId)
 
         assert self.jobSpecId
@@ -215,9 +215,7 @@ class ARCJob:
             self.CEName = re.sub('[:/].*$', '', s)
         else:
             self.CEName = None
-
             
-
 
 def getJobs():
     """
@@ -233,10 +231,12 @@ def getJobs():
     msg = "getJobs: Id:s to check:\n -> " + ids.strip().replace(" ", "\n -> ")
     logging.debug(msg)
 
-    if ids.strip():
-        output = executeNgCommand("ngstat " + ids)
-    else:
-        return []
+    if not ids.strip(): return []
+
+    try:
+        output = executeCommand("ngstat " + ids)
+    except CommandExecutionError, msg:
+        raise RuntimeError, msg
 
     jobs = []
     for line in output.split("\n"):
@@ -261,7 +261,7 @@ def getJobs():
             status = StatusCodes[s]
 
             try:
-                j = ARCJob(arcId = arcId, status = status)
+                j = ARCJob(jobIds = jobIds, arcId = arcId, status = status)
             except AssertionError:
                 # We could end up here e.g. if a job is removed between the
                 # jobIdMap() call in the beginning of this function, and the
@@ -281,7 +281,7 @@ def getJobs():
             jobSpecId = fields[1].strip()
             status = StatusCodes["ASSUMED_LOST"] 
 
-            jobs.append(ARCJob(jobSpecID = jobSpecId, status = status))
+            jobs.append(ARCJob(jobIds = JobIds, jobSpecID = jobSpecId, status = status))
 
             msg = "Malformed URL: "
             msg += "Status for job %s is ASSUMED_LOST" % id
@@ -316,7 +316,7 @@ def getJobs():
 
             s = ":".join(fields[1:]).strip()
             status = StatusCodes[s]
-            jobs.append(ARCJob(arcId = arcId, jobSpecId = jobSpecId, status = status))
+            jobs.append(ARCJob(jobIds=jobIds, arcId=arcId, jobSpecId=jobSpecId, status=status))
 
             clearNoInfo(jobSpecId)
 
@@ -324,3 +324,18 @@ def getJobs():
 
     return jobs
 
+
+def getJobsLite():
+    """
+    Return a list of ARCJobs, but only including information that can be
+    extracted from the filen ~/.ngjobs. (IOW, no job status)
+
+    """
+
+    jobs = []
+    jobIds = jobIdMap()
+    for (jobSpecId, arcId) in jobIds.items():
+        if len(jobSpecId.strip()) > 0:
+            j = ARCJob(jobIds = jobIds, arcId = arcId, jobSpecId = jobSpecId)
+            jobs.append(j)
+    return jobs

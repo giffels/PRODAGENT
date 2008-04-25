@@ -46,7 +46,7 @@ class ARCMonitor(MonitorInterface):
             jobs[ce] = {}
             for jobType in jobTypeMap.keys():
                 jobs[ce][jobType] = 0
-        for j in ARC.getJobs():
+        for j in ARC.getJobsLite():
             jobs[j.CEName][j.jobType] = jobs[j.CEName][j.jobType] + 1
 
         # Subtract the number of existing jobs of each type per CE
@@ -92,7 +92,7 @@ class ARCMonitor(MonitorInterface):
             cmd += " -c " + s["CEName"]
 
         try:
-            output = ARC.executeNgCommand(cmd)
+            output = ARC.executeCommand(cmd)
         except ARC.CommandExecutionError, msg:
             logging.warning("Didn't get information on ARC resources: " + msg)
             return []
