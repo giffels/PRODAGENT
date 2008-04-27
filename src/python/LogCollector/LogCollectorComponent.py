@@ -36,7 +36,7 @@ class LogCollectorComponent:
         self.args.setdefault("Logfile", None)
         self.args.setdefault("logURL", "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms")
         #self.args.setdefault("logURL", "srm://gfe02.hep.ph.ic.ac.uk:8443/srm/managerv2?SFN=/pnfs/hep.ph.ic.ac.uk/data/cms")
-        self.args.setdefault('logSE', 'gfe02.hep.ph.ic.ac.uk')
+        self.args.setdefault('logSE', 'srm-cms.cern.ch')
         self.args.setdefault("maxLogs", 200)
         self.args.setdefault("pollInterval", "96:00:00")
         self.args.setdefault("logLifetime", "24:00:00")
