@@ -146,9 +146,10 @@ class LogArchMgr:
             return
 
         fileInfo = {
-            'LFN' : "/store/unmerged/logs/prod/%s/%s/%s" % (self.workflowSpecId,
-                                                       self.jobSpecId,
-                                                       tarName),
+            'LFN' : "/store/unmerged/logs/prod/%s/%s/%s/%s/%s" % \
+                                        (time.gmtime()[0], time.gmtime()[1],
+                                         self.workflowSpecId, self.jobSpecId,
+                                        tarName),
             'PFN' : os.path.join(os.getcwd(), tarName),
             'SEName' : None,
             'GUID' : None,
