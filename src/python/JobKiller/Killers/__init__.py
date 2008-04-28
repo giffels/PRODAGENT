@@ -3,6 +3,6 @@ __all__ = []
 
 
 import CondorKiller
-import BOSSKiller
+import BossLiteKiller
 
 
