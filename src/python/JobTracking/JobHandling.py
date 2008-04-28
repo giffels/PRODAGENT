@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.22 2008/04/24 09:23:59 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.22 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.23 2008/04/24 09:54:28 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.23 $"
 
 class JobHandling:
     """
@@ -50,25 +50,9 @@ class JobHandling:
         self.jobCreatorDir = params['jobCreatorDir']
         self.usingDashboard = params['usingDashboard']
         self.ms = params['messageServiceInstance']
-        self.configs = params['OutParams']
+        self.outputLocation = params['OutputLocation']
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
-
-        # evaluate if the output is retrieved locally or in a separate SE
-        try :
-            self.outputLocation = self.configs['OutputLocation']
-        except KeyError:
-            self.outputLocation = 'local'
-
-        # Crab Server has a specifica area for user tasks...
-        try:
-            from ProdAgentCore.Configuration import loadProdAgentConfiguration
-            config = loadProdAgentConfiguration()
-            compCfg = config.getConfig("CrabServerConfigurations")
-            self.tasksDir = compCfg["dropBoxPath"]
-        except StandardError, ex:
-            self.tasksDir = ''
-
-        # self.ft = re.compile( 'gsiftp://[\w.]+:\d+/*' )
+        self.configs = params['OutputParams']
 
 
     def performOutputProcessing(self, job):
@@ -89,8 +73,6 @@ class JobHandling:
 
         # get outdir and report file name
         outdir = job.runningJob['outputDirectory']
-        if outdir is None :
-            outdir = self.buildOutdir( job )
         
         # # FIXME: temporary to emulate SE
         # task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
@@ -166,49 +148,6 @@ class JobHandling:
             self.publishJobFailed(job, reportfilename)
 
         return
-
-
-    def buildOutdir( self, job ) :
-        """
-        __buildOutdir__
-
-        compose outdir name and make the directory
-        """
-
-        # try with boss db
-        task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
-        if task['outputDirectory'] is not None \
-               and task['outputDirectory'] != '' :
-            outdir = task['outputDirectory']
-        else :
-            outdir = self.baseDir
-
-        # SE?
-        if self.outputLocation == "SE" :
-            outdir = self.tasksDir + '/' + task['name'] + '_spec'
-        # stdir = self.ft.match( outdir )
-        # if  stdir is not None or not os.access( outdir, os.W_OK):
-        #     # outdir = outdir[stdir.end()-1:]
-        #     outdir = self.tasksDir + '/' + task['name'] + '_spec'
-
-        # FIXME: get outdir
-        outdir = "%s/BossJob_%s_%s/Submission_%s/" % \
-                 (outdir, job['taskId'], job['jobId'], job['submissionNumber'])
-
-        # make outdir
-        logging.info("Creating directory: " + outdir)
-        try:
-            os.makedirs( outdir )
-        except OSError, err:
-            if  err.errno == 17:
-                # existing dir
-                pass
-            else :
-                logging.error("Cannot create directory : " + str(err))
-                raise
-
-        # return outdir
-        return outdir
 
         
     def writeFwkJobReport( self, jobSpecId, exitCode, reportfilename ):

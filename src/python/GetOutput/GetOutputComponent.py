@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.13 2008/04/24 08:54:19 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.13 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.14 2008/04/24 09:23:59 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.14 $"
 
 import os
 import logging
@@ -44,9 +44,11 @@ class GetOutputComponent:
         self.args.setdefault("JobTrackingDir", None)
         self.args.setdefault("GetOutputPoolThreadsSize", 5)
         self.args.setdefault("OutputLocation", "SE")
+        self.args.setdefault("dropBoxPath", None)
         self.args.setdefault("Logfile", None)
         self.args.setdefault("verbose", 0)
         self.args.setdefault("configDir", None)
+        self.args.setdefault('maxGetOutputAttempts', 3)
         self.args.update(args)
 
        # set up logging for this component
@@ -76,9 +78,18 @@ class GetOutputComponent:
         #workingDir = os.path.expandvars(workingDir)
         self.jobTrackingDir = self.args['JobTrackingDir']
         self.componentDir = self.args["ComponentDir"]
-        self.outputLocation = self.args['OutputLocation']
         self.jobCreatorDir = self.componentDir # fix for boss lite
+        self.outputLocation = self.args['OutputLocation']
         self.verbose = (self.args["verbose"] == 1)
+
+        # temp for rebounce
+        try :
+            self.outputParams = {}
+            self.outputParams["storageName"] = self.args["storageName"]
+            self.outputParams["Protocol"]    = self.args["Protocol"]
+            self.outputParams["storagePort"] = self.args["storagePort"]
+        except KeyError:
+            self.outputParams = None
 
         # initialize members
         self.ms = None
@@ -95,7 +106,10 @@ class GetOutputComponent:
         params = {}
         params['componentDir'] = self.jobTrackingDir
         params['dbConfig'] = self.database
-        params['maxGetOutputAttempts'] = 3
+        params['OutputLocation'] = self.outputLocation
+        params['dropBoxPath'] = self.args['dropBoxPath']
+        params['maxGetOutputAttempts'] = \
+                                       int( self.args['maxGetOutputAttempts'] )
 
         JobOutput.setParameters(params)
         self.pool = WorkQueue([JobOutput.doWork] * \
@@ -159,8 +173,6 @@ class GetOutputComponent:
             # TODO here was good the compund update... to be reimplemented
             job = outputRequestedJobs.pop()
             job.runningJob['processStatus'] = 'in_progress'
-            job.runningJob['outputDirectory'] = \
-                                            self.jobHandling.buildOutdir( job )
             self.bossLiteSession.updateDB( job )
             self.pool.enqueue(job, job)
             del( job )
@@ -178,9 +190,6 @@ class GetOutputComponent:
             # change status for jobs that require get output operations
             # TODO here was good the compund update... to be reimplemented
             job = outputRequestedJobs.pop()
-            job.runningJob['outputDirectory'] = \
-                                            self.jobHandling.buildOutdir( job )
-            self.bossLiteSession.updateDB( job )
             self.pool.enqueue(job, job)
             del( job )
 
@@ -258,7 +267,7 @@ class GetOutputComponent:
         params['usingDashboard'] = None
         params['messageServiceInstance'] = self.ms
         params['OutputLocation'] = self.outputLocation
-        params['OutParams'] = self.args
+        params['OutputParams'] = self.outputParams
         logging.info("handleeee")
         self.jobHandling = JobHandling(params)
 

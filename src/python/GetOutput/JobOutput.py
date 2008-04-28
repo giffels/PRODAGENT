@@ -38,7 +38,10 @@ class JobOutput:
     # default parameters
     params = {'maxGetOutputAttempts' : 3,
               'componentDir' : None,
-              'dbConfig' : None}
+              'dbConfig' : None,
+              'OutputLocation' : None,
+              'dropBoxPath' : None
+              }
 
     def __init__(self):
         """
@@ -52,7 +55,7 @@ class JobOutput:
         set parameters
         """
 
-        cls.params = params
+        cls.params.update( params )
 
     @classmethod
     def requestOutput(cls, job):
@@ -136,6 +139,10 @@ class JobOutput:
                                    'service' : job.runningJob['service'] }
                 schedSession = BossLiteAPISched( bossLiteSession, \
                                                  schedulerConfig )
+
+                # build needed output directory
+                job.runningJob['outputDirectory'] = cls.buildOutdir(job, task)
+
             except SchedulerError, err:
                 logging.error('Can not get scheduler for job %s.%s : [%s]' % \
                               (job['taskId'], job['jobId'], str(err)))
@@ -388,3 +395,41 @@ class JobOutput:
                       (job['taskId'], job['jobId']))
 
 
+
+    @classmethod
+    def buildOutdir( cls, job, task ) :
+        """
+        __buildOutdir__
+
+        compose outdir name and make the directory
+        """
+
+        # try with boss db
+        if task['outputDirectory'] is not None \
+               and task['outputDirectory'] != '' :
+            outdir = task['outputDirectory']
+        else :
+            outdir = cls.params['componentDir']
+
+        # SE?
+        if cls.params['OutputLocation'] == "SE" :
+            outdir = cls.params['dropBoxPath'] + '/' + task['name'] + '_spec'
+
+        # FIXME: get outdir
+        outdir = "%s/BossJob_%s_%s/Submission_%s/" % \
+                 (outdir, job['taskId'], job['jobId'], job['submissionNumber'])
+
+        # make outdir
+        logging.info("Creating directory: " + outdir)
+        try:
+            os.makedirs( outdir )
+        except OSError, err:
+            if  err.errno == 17:
+                # existing dir
+                pass
+            else :
+                logging.error("Cannot create directory : " + str(err))
+                raise
+
+        # return outdir
+        return outdir
