@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.19 2008/04/23 17:33:23 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.19 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.20 2008/04/23 17:49:45 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.20 $"
 
 import logging
 import os
@@ -274,11 +274,11 @@ class JobOutput:
                               (job['taskId'], job['jobId'], output ) )
 
                 # proxy expired: skip!
-                if str( msg ).find( "Proxy Expired" ) != -1 :
+                if output.find( "Proxy Expired" ) != -1 :
                     break
 
                 # purged: probably already retrieved. Archive
-                elif str( msg ).find( "has been purged" ) != -1 :
+                elif output.find( "has been purged" ) != -1 :
                     job.runningJob['status'] = 'E'
                     job.runningJob['statusScheduler'] = 'Cleared'
                     job.runningJob['closed'] = 'Y'
@@ -286,11 +286,19 @@ class JobOutput:
                     break
 
                 # not ready for GO: waiting for next round
-                elif str( msg ).find( "Job current status doesn" ) != -1 :
+                elif output.find( "Job current status doesn" ) != -1:
                     job.runningJob['statusHistory'].append(
                         "waiting next round")
                     logging.error(
                         "waiting next round for job %s.%s in status %s" \
+                        % (job['taskId'], job['jobId'], job['status'] ) )
+                    break
+                # not ready for GO: waiting for next round
+                elif output.find( "Job current status doesn" ) :
+                    job.runningJob['statusHistory'].append(
+                        "waiting next round")
+                    logging.error(
+                        "empty outfile for job %s.%s: waiting next round" \
                         % (job['taskId'], job['jobId'], job['status'] ) )
                     break
 
