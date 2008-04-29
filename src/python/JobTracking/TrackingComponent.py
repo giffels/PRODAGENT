@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.23 2008/04/24 09:54:28 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.23 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.25 2008/04/29 08:39:29 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.25 $"
 
 import os
 import os.path
@@ -103,14 +103,10 @@ class TrackingComponent:
                          seconds.zfill(2)
         
         # get configuration information
-        self.componentDir = self.args['ComponentDir']
-
-        self.directory = self.args["ComponentDir"]
         if self.args["JobCreatorComponentDir"] is None:
-            self.args["JobCreatorComponentDir"] = self.directory
-        self.jobCreatorDir = \
-                os.path.expandvars(self.args["JobCreatorComponentDir"])
-        self.verbose = (self.args["verbose"] == 1)
+            self.args["JobCreatorComponentDir"] = self.args["ComponentDir"]
+        self.args["JobCreatorComponentDir"] = \
+                        os.path.expandvars(self.args["JobCreatorComponentDir"])
 
         # initialize job handling
         self.jobHandling = None
@@ -136,7 +132,6 @@ class TrackingComponent:
 
         # initialize members
         self.ms = None
-        self.maxGetOutputAttempts = 3
         self.database = deepcopy(dbConfig)
 
         # initialize Session
@@ -144,7 +139,7 @@ class TrackingComponent:
 
         # set parameters for getoutput operations
         params = {}
-        params['componentDir'] = self.componentDir
+        params['componentDir'] = self.args['ComponentDir']
         params['dbConfig'] = self.database
         JobOutput.setParameters(params)
 
@@ -153,6 +148,7 @@ class TrackingComponent:
         logging.debug("DashboardInfo = %s" % str(self.usingDashboard))
 
         # some initializations
+        self.jobLimit = int(self.args['jobsToPoll'])
         self.newJobs = []
         self.failedJobs = []
         self.finishedJobs = []
@@ -186,41 +182,39 @@ class TrackingComponent:
         return
 
 
-    def pollNewJobs(self):
+    def checkJobs(self):
         """
-        __pollNewJobs__
+        __checkJobs__
 
-        Poll the BOSS DB for new job ids and handle they registration
+        Poll the DB and call the appropriate handler method for each
+        jobId that is returned.
 
-        Return a list of failed job ids
         """
 
-        self.newJobs = self.bossLiteSession.loadJobsByRunningAttr(
-            { 'processStatus' : 'not_handled' }
-            )
-        logging.info("new jobs : " + str( len(self.newJobs) ) )
+        # log the status of the jobs
+        self.getStatistic()
 
-        # for job in self.newJobs :
-        while self.newJobs != [] :
+        # get finished and failed jobs and handle them
+        self.handleFinished()
+        self.handleFailed()
+        
+        # notify new jobs
+        self.pollNewJobs()
 
-            job = self.newJobs.pop()
-            # FIXME: temp hack, to be removed as soon as BossLite is updated
-            if job.runningJob['status'] == 'C' or \
-                   job.runningJob['status'] == 'S' :
-                del( job )
-                continue
-            
-            ### TODO here was good the compound update... to be reimplemented
-            job.runningJob['processStatus'] = 'handled'
-            self.bossLiteSession.updateDB( job )
-            # publish information to dashboard
-            try:
-                self.jobHandling.dashboardPublish( job )
-            except StandardError, msg:
-                logging.error("Cannot publish to dashboard:%s" % msg)
-            del( job )
+        # generate next polling cycle
+        logging.info("Waiting %s for next get output polling cycle" % \
+                     self.pollDelay)
+        self.ms.publish("TrackingComponent:pollDB", "", self.pollDelay)
+        self.ms.commit()
 
-        del self.newJobs[:]
+
+    def getStatistic(self):
+        """
+        __getStatistics__
+
+        Poll the BOSS DB for a summary of the job status
+
+        """
 
         # summary of the jobs in the DB
         # TODO : change with a BossLite call
@@ -266,27 +260,65 @@ class TrackingComponent:
             del( result )
 
 
-    def checkJobs(self):
+    def pollNewJobs(self):
         """
-        __checkJobs__
+        __pollNewJobs__
 
-        Poll the DB and call the appropriate handler method for each
-        jobId that is returned.
+        Poll the BOSS DB for new job ids and handle they registration
 
         """
 
-        # get finished and failed jobs and handle them
-        self.handleFinished()
-        self.handleFailed()
-        
-        # notify new jobs
-        self.pollNewJobs()
+        offset = 0
+        loop = True
 
-        # generate next polling cycle
-        logging.info("Waiting %s for next get output polling cycle" % \
-                     self.pollDelay)
-        self.ms.publish("TrackingComponent:pollDB", "", self.pollDelay)
-        self.ms.commit()
+        while loop :
+
+            logging.debug("Max new jobs to be loaded %s:%s " % \
+                         (str( offset ), str( offset + self.jobLimit) ) )
+
+            # self.newJobs = self.bossLiteSession.loadJobsByRunningAttr(
+            #     { 'processStatus' : 'not_handled' }, \
+            #     limit=self.jobLimit, offset=offset
+            #     )
+
+            self.newJobs = self.bossLiteSession.loadJobsByRunningAttr(
+                {'processStatus' : 'not_handled', 'submissionTime' : '20%'}, \
+                strict=False, limit=self.jobLimit, offset=offset
+                )
+
+            logging.info("new jobs : " + str( len(self.newJobs) ) )
+
+            # exit if no more jobs to query
+            if self.newJobs == [] :
+                loop = False
+                break
+            else :
+                offset += self.jobLimit
+
+            while self.newJobs != [] :
+
+                job = self.newJobs.pop()
+
+                # FIXME: temp hack
+                if job.runningJob['status'] == 'C' or \
+                       job.runningJob['status'] == 'S' :
+                    del( job )
+                    continue
+
+                job.runningJob['processStatus'] = 'handled'
+                self.bossLiteSession.updateDB( job )
+
+                # publish information to dashboard
+                try:
+                    self.jobHandling.dashboardPublish( job )
+                except StandardError, msg:
+                    logging.error("Cannot publish to dashboard:%s" % msg)
+                
+                del( job )
+
+            del self.newJobs[:]
+
+        del self.newJobs[:]
 
 
     def handleFailed( self ):
@@ -297,32 +329,50 @@ class TrackingComponent:
 
         """
 
-        # query failed jobs
-        self.failedJobs = self.bossLiteSession.loadFailed(
-            { 'processStatus' : 'handled' }
-            )
-        logging.info("failed jobs : " + str( len(self.failedJobs) ) )
+        offset = 0
+        loop = True
 
-        # process all jobs
-        # for job in self.failedJobs:
-        while self.failedJobs != [] :
+        while loop :
 
-            job = self.failedJobs.pop()
+            logging.debug("Max failed jobs to be loaded %s:%s " % \
+                         (str( offset ), str( offset + self.jobLimit) ) )
 
-            # publish information to the dashboard
-            try:
-                self.jobHandling.dashboardPublish(job)
-            except StandardError, msg:
-                logging.error("Cannot publish to dashboard:%s" % msg)
+            # query failed jobs
+            self.failedJobs = self.bossLiteSession.loadFailed(
+                { 'processStatus' : 'handled' }, \
+                limit=self.jobLimit, offset=offset
+                )
+            logging.info("failed jobs : " + str( len(self.failedJobs) ) )
+
+            # exit if no more jobs to query
+            if self.newJobs == [] :
+                loop = False
+                break
+            else :
+                offset += self.jobLimit
+
+                # process all jobs
+            while self.failedJobs != [] :
+
+                job = self.failedJobs.pop()
+
+                # publish information to the dashboard
+                try:
+                    self.jobHandling.dashboardPublish(job)
+                except StandardError, msg:
+                    logging.error("Cannot publish to dashboard:%s" % msg)
 
 
-            # enqueue the get output operation
-            logging.debug("Enqueing failure handling request for %s" % \
-                          self.jobHandling.fullId(job))
+                # enqueue the get output operation
+                logging.debug("Enqueing failure handling request for %s" % \
+                              self.jobHandling.fullId(job))
 
-            job.runningJob['processStatus'] = 'failed'
-            self.bossLiteSession.updateDB( job.runningJob )
-            del( job )
+                job.runningJob['processStatus'] = 'failed'
+                self.bossLiteSession.updateDB( job.runningJob )
+                del( job )
+
+            del self.failedJobs[:]
+
         del self.failedJobs[:]
 
 
@@ -335,30 +385,48 @@ class TrackingComponent:
 
         """
 
-        # query finished jobs
-        self.finishedJobs = self.bossLiteSession.loadEnded(
-            { 'processStatus' : 'handled' }
-            )
-        logging.info("finished jobs : " + str( len(self.finishedJobs) ) )
+        offset = 0
+        loop = True
 
-        # process all jobs
-        # for job in self.finishedJobs:
-        while self.finishedJobs != [] :
+        while loop :
 
-            job = self.finishedJobs.pop()
+            logging.debug("Max finished jobs to be loaded %s:%s " % \
+                         (str( offset ), str( offset + self.jobLimit) ) )
 
-            # publish information to the dashboard
-            try:
-                self.jobHandling.dashboardPublish(job)
-            except StandardError, msg:
-                logging.error("Cannot publish to dashboard:%s" % msg)
+            # query finished jobs
+            self.finishedJobs = self.bossLiteSession.loadEnded(
+                { 'processStatus' : 'handled' }, \
+                limit=self.jobLimit, offset=offset
+                )
+            logging.info("finished jobs : " + str( len(self.finishedJobs) ) )
 
-            # enqueue the get output operation
-            logging.debug("Enqueing getoutput request for %s" % \
-                          self.jobHandling.fullId(job))
+            # exit if no more jobs to query
+            if self.newJobs == [] :
+                loop = False
+                break
+            else :
+                offset += self.jobLimit
 
-            JobOutput.requestOutput(job)
-            del( job )
+            # process all jobs
+            # for job in self.finishedJobs:
+            while self.finishedJobs != [] :
+
+                job = self.finishedJobs.pop()
+
+                # publish information to the dashboard
+                try:
+                    self.jobHandling.dashboardPublish(job)
+                except StandardError, msg:
+                    logging.error("Cannot publish to dashboard:%s" % msg)
+
+                # enqueue the get output operation
+                logging.debug("Enqueing getoutput request for %s" % \
+                              self.jobHandling.fullId(job))
+
+                JobOutput.requestOutput(job)
+                del( job )
+
+            del self.finishedJobs[:]
 
         del self.finishedJobs[:]
 
@@ -389,8 +457,8 @@ class TrackingComponent:
 
         # initialize job handling object
         params = {}
-        params['baseDir'] = self.componentDir
-        params['jobCreatorDir'] = self.jobCreatorDir
+        params['baseDir'] = self.args['ComponentDir']
+        params['jobCreatorDir'] = self.args["JobCreatorComponentDir"]
         params['usingDashboard'] = self.usingDashboard
         params['messageServiceInstance'] = self.ms
         params['OutputLocation'] = None

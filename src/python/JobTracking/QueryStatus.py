@@ -10,9 +10,9 @@ __author__ = "Giuseppe.Codispoti@bo.infn.it"
 
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
-from ProdCommon.BossLite.API.BossLiteAPI import  parseRange
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 from ProdCommon.BossLite.Common.Exceptions import SchedulerError
+from ProdCommon.BossLite.API.BossLiteAPI import parseRange
 import sys
 import traceback
 
@@ -32,7 +32,6 @@ try :
     proxy = sys.argv[4]
 except :
     proxy = ''
-    pass
 
 # BossLiteApi session
 bossSession = BossLiteAPI( "MySQL", dbConfig)
@@ -56,7 +55,8 @@ for taskId in parseRange( taskRange ) :
                                                  'closed' : 'N'}, \
                                    strict=False )
         for job in task.jobs :
-            print job.runningJob['schedulerId'], \
+            print job.runningJob['jobId'], \
+                  job.runningJob['schedulerId'], \
                   job.runningJob['statusScheduler'], \
                   job.runningJob['statusReason']
     except SchedulerError, err:

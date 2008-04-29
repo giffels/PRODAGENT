@@ -12,13 +12,18 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.19 2008/04/22 15:39:51 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.19 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.20 2008/04/29 08:39:29 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.20 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
 from ProdCommon.BossLite.API.BossLiteAPI import parseRange
 from ProdAgentCore.ProdAgentException import ProdAgentException
+from ProdAgentDB.Config import defaultConfig as dbConfig
+from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
+from ProdCommon.BossLite.Common.Exceptions import TaskError
+#from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
+#from ProdCommon.BossLite.Common.Exceptions import SchedulerError
 
 import traceback
 import logging
@@ -147,62 +152,74 @@ class JobStatus:
         Perform the LB query through BOSS
         """
 
-        subQuery = 1
-        jobRange = "all"
-        jobs = int ( cls.params['jobsToPoll'] )
-        val= 0
+        offset = 0
+        loop = True
+        jobRange = ''
+        bossSession = BossLiteAPI( "MySQL", dbConfig)
 
-        session = directDB.getDbSession()
-        db = TrackingDB( session )        
-
-        # if just one task, evaluate if the size requires further splits
-        if taskn == 1:
-            val = db.getTaskSize( tasklist )
-            if val < jobs :
-                jobs = val
-            else :
-                subQuery = int( int( val ) / jobs )
-                if  val % jobs != 0:
-                    subQuery += 1
-
-        # close db session
-        session.close()
-
-        # perform the query for the task range or for the job range in the task
-        for i in range ( subQuery ) :
-            if taskn == 1:
-                if i != subQuery-1 :
-                    jobRange = str( i * jobs + 1 ) + ':' + str( (i + 1) * jobs)
-                else:
-                    jobRange = str( i * jobs + 1 ) + ':' + str( val )
-
-            logging.debug( 'LB query jobs ' + jobRange \
-                           +  ' of task ' + tasklist )
-            # query group of tasks
-            for taskId in parseRange( tasklist ) :
+        for taskId in parseRange( tasklist ) :
+            while loop :
                 try :
-                    scheduler = db.getTaskScheduler( taskId )
+                    task = bossSession.load(
+                        taskId, \
+                        runningAttrs={'processStatus': '%handled', \
+                                      'closed' : 'N'}, \
+                        strict=False, \
+                        limit=int(cls.params['jobsToPoll']), offset=offset )[0]
+                    
+                    if task.jobs == [] :
+                        loop = False
+                        break
+                    else:
+                        offset += int(cls.params['jobsToPoll'])
+
+                    # # this is the correct way...
+                    # Scheduler session
+                    # schedulerConfig = {'name' : task.jobs[0].runningJob['scheduler'],
+                    #                    'user_proxy' : task['user_proxy'],
+                    #                    'service' : task.jobs[0].runningJob['service'] }
+                    # 
+                    # schedSession = BossLiteAPISched( bossSession, schedulerConfig )
+                    # 
+                    # task = schedSession.query( task, queryType='parent' )
+                    # 
+                    # for job in task.jobs :
+                    #     print job.runningJob['jobId'], \
+                    #           job.runningJob['schedulerId'], \
+                    #           job.runningJob['statusScheduler'], \
+                    #           job.runningJob['statusReason']
+                    
+                    # # this is workaround for the glite bug...
+                    jobRange = '%s:%s' % ( task.jobs[0]['jobId'], \
+                                           task.jobs[-1]['jobId'] )
                     command = \
                             'python ' + \
-                            '$PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' \
-                            + str(taskId) + ' ' + jobRange + ' ' \
-                            + scheduler + ' ' + cert
-                    logging.info('EXECUTING: ' + str(command))
+                            '$PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' + \
+                            str(taskId) + ' ' + jobRange + ' ' + \
+                            task.jobs[0].runningJob['scheduler'] + ' ' + \
+                            task['user_proxy']
+                    
+                    logging.debug('EXECUTING: ' + str(command))
                     pin, pout = popen4( command )
                     msg = pout.read()
-                    logging.info( "SUBPROCESS MESSAGE : " + msg )
-                    logging.info("LB status retrieved for jobs " + jobRange \
-                                 + ' of task ' + str(taskId) )
-                except TypeError, e:
+                    logging.debug( "SUBPROCESS MESSAGE : \n" + msg )
+
+                    # log the end of the query
+                    logging.info('LB status retrieved for jobs ' \
+                                 + jobRange + ' of task ' + str(taskId) )
+
+                except TaskError, e:
                     logging.error("Failed to retrieve status for jobs " \
                                   + jobRange + ' of task ' + str(taskId) \
                                   + ' : ' + str( e ) )
+                    offset += int(cls.params['jobsToPoll'])
+
                 except StandardError, e:
                     logging.error("Failed to retrieve status for jobs " \
                                   + jobRange + ' of task ' + str(taskId) \
                                   + ' : ' + str( e ) )
                     logging.error( traceback.format_exc() )
-
+                    offset += int(cls.params['jobsToPoll'])
 
 
     @classmethod
@@ -228,10 +245,10 @@ class JobStatus:
             for pair in joblist:
                 db.addForCheck( pair[0],  pair[1] )
  
-                logging.debug(\
-                    "Adding jobs to queue with BOSS id "\
-                    +  str( pair[0] ) + '.' + str( pair[1] )\
-                    )
+                #logging.debug(\
+                #    "Adding jobs to queue with BOSS id "\
+                #    +  str( pair[0] ) + '.' + str( pair[1] )\
+                #    )
             session.close()
             del( joblist ) 
 
@@ -261,11 +278,11 @@ class JobStatus:
 
             for pair in joblist:
                 db.removeFromCheck( group, pair[0],  pair[1],  )
-                logging.debug(
-                    "Removing jobs for group " + str(group) \
-                    + " with BOSS id " +  str( pair[0] ) + '.' \
-                    + str( pair[1] )\
-                    )
+                #logging.debug(
+                #    "Removing jobs for group " + str(group) \
+                #    + " with BOSS id " +  str( pair[0] ) + '.' \
+                #    + str( pair[1] )\
+                #    )
             session.close()
             del( joblist ) 
         except StandardError, ex:
