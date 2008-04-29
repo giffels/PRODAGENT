@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.8 2008/04/03 21:04:41 fvlingen Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.9 2008/04/29 15:47:23 sfoulkes Exp $"
+__version__ = "$Revision: 1.9 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -157,7 +157,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
         err = newReport.addError(1, "RandomEmulatorError")
         errDesc = "Failure in JobEmulator Layer \n"
         err['Description'] = errDesc
-        newReport.workflowSpecId = jobSpecPayload.workflow
+        newReport.jobSpecId = jobSpecPayload.jobName
         
         newReport.write(jobReportLocation)
         
