@@ -6,8 +6,8 @@ Implements an RSS channel
 
 """
 
-__revision__ = "$Id: Channel.py,v 1.3 2007/02/26 18:02:01 ckavka Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: Channel.py,v 1.4 2007/05/09 09:08:14 ckavka Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -15,7 +15,7 @@ import socket
 from time import localtime, strftime, time
 from xml.dom.minidom import Document
 from xml.dom import minidom
-from xml.dom.ext import PrettyPrint
+#from xml.dom.ext import PrettyPrint
 from shutil import copyfile, move
 
 ##############################################################################
@@ -363,7 +363,8 @@ class Channel:
 
         # write into file
         aFile = open(targetPath, 'w')
-        PrettyPrint(self.doc, aFile)
+        aFile.write(self.doc.toprettyxml())
+        
         aFile.close()
 
         # rename the temporary file
