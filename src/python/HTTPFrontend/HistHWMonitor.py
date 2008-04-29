@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-_HistStatusMonitor_
+_HistHWMonitor_
 
-CherryPy handler for displaying the history workflow plot 
+CherryPy handler for displaying the plot of CPU/MEM usage history 
 
 """
 
@@ -50,12 +50,12 @@ def gatherData(Nbins):
         end_time = int(logLines[end].split()[1]);
         for line in logLines:
                 time = int(line.split()[1]);
-                load1[time]  = float(line.split(',')[3].split()[2].split(',')[0])
-                load5[time]  = float(line.split(',')[4])
-                load15[time] = float(line.split(',')[5].split()[0])
-                mem[time]    = float(line.split(',')[5].split()[2])
-                cached[time] = float(line.split(',')[5].split()[4])
-                swap[time]   = float(line.split(',')[5].split()[6])
+                load1[time]  = float(line.split('l')[1].split()[2].split(',')[0])
+                load5[time]  = float(line.split('l')[1].split()[3].split(',')[0])
+                load15[time] = float(line.split('l')[1].split()[4])
+                mem[time]    = float(line.split('l')[1].split()[6])
+                cached[time] = float(line.split('l')[1].split()[8])
+                swap[time]   = float(line.split('l')[1].split()[10])
         return begin_time, end_time, load1, load5, load15, mem, cached, swap
 
 def draw_TimeGraph(Nbins):
@@ -120,7 +120,7 @@ class HistHWMonitor:
 	_header = """
                                 <html>
                                 <head>
-                                <title>CRABSERVER Monitor</title>
+                                <title>"""+os.environ['HOSTNAME']+""" - CRABSERVER Monitor</title>
                                 </head>
                                 <body>
                                 <div class="container">"""
