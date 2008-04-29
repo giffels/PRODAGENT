@@ -2,7 +2,7 @@
 """
 _HistStatusMonitor_
 
-CherryPy handler for displaying the history workflow plot 
+CherryPy handler for displaying the plot of workflow history 
 
 """
 
@@ -24,25 +24,26 @@ def make_time(length,span):
         begin_time = end_time - length*span
         return begin_time, end_time
 
-def gatherNumBossLiteRunningJobs(key, statuses, begin_time, end_time, span):
+def gatherNumBossLiteRunningJobs(key, begin_time, end_time, span):
         data = {};
+        statuses = API.getBossLiteRunningJobs(key);
         for status in statuses:
-                data[status] = {};
+                data[status[1]] = {};
         for t in range(begin_time, end_time, span):
-                tmp = API.getNumBossLiteRunningJobs(key,t)
+                tmp = API.getNumBossLiteRunningJobs(key,t+time.altzone)
                 for status in statuses:
-                        data[status][t] = 0;
+                        data[status[1]][t] = 0;
                         for row in tmp:
-                                if row[1] == status:
+                                if row[1] == status[1]:
                                         data[row[1]][t] = row[0];
         return data
 
 
-def draw_TimeGraph(key,statuses,length,span):
+def draw_TimeGraph(key,length,span):
         path= os.getcwd()
 	file = path+'/image/hist__'+key+'.png'
         begin_time, end_time = make_time(length,span);
-        data = gatherNumBossLiteRunningJobs(key,statuses, begin_time, end_time, span);
+        data = gatherNumBossLiteRunningJobs(key, begin_time, end_time, span);
         metadata = {'title':'Job per '+key+' history', 'starttime':begin_time, 'endtime':end_time, 'span':span, 'is_cumulative':True }
         Graph = CumulativeGraph()
         Graph( data, file, metadata )
@@ -50,12 +51,11 @@ def draw_TimeGraph(key,statuses,length,span):
 
 class HistStatusMonitor:
 
-    def __init__(self, length, span, key, statuses, graphMonUrl = None):
+    def __init__(self, length, span, key, graphMonUrl = None):
         self.graphmon = graphMonUrl
         self.length = length
         self.span = span
         self.key = key
-        self.statuses = statuses
 
     @cherrypy.expose
     def showimage(self):
@@ -73,7 +73,7 @@ class HistStatusMonitor:
 	_header = """
                                 <html>
                                 <head>
-                                <title>CRABSERVER Monitor</title>
+                                <title>"""+os.environ['HOSTNAME']+""" - CRABSERVER Monitor</title>
                                 </head>
                                 <body>
                                 <div class="container">"""
@@ -82,11 +82,23 @@ class HistStatusMonitor:
                                 </body>
                                 </html>"""
 
-        draw_TimeGraph(self.key,self.statuses,self.length,self.span)
+        draw_TimeGraph(self.key,self.length,self.span)
         cherrypy.response.headers['Content-Type']= 'text/html'
         
         page = [_header]
         page.append('<img src="showimage" width="800" height="500" />' )
+
+        actual = API.getBossLiteRunningJobs(self.key)
+        table = "<br/><table>\n"
+        table += "<tr colspan=2><b>Current Status</b></tr>"
+        sum = 0;
+        for row in actual:
+                table += '<tr><td align="right">'+str(row[1])+':&nbsp;</td><td><b>'+str(row[0])+"</b></td></tr>\n"
+                sum += row[0]
+        table += '<tr><td align="right"><b>Total</b>:&nbsp;</td><td><b>'+str(sum)+"</b></td></tr>\n"
+        table += "</table>\n"
+        page.append(table)
+
         page.append(_footer)
 	return page
         
