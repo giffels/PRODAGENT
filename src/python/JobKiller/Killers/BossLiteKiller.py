@@ -335,13 +335,13 @@ class BossLiteKiller:
                 jobsReadyToKill.remove(j['jobId'])
                 continue
 
-            if JobState.general(job['name'])['State'] in ['finished']:
+            if JobState.general(j['name'])['State'] in ['finished']:
                 msg = "Job %s is terminated, cannot be killed\n" % str(j['jobId'])
                 logging.info(msg)
                 jobsReadyToKill.remove(j['jobId'])
                 continue
 
-            jobSpecId.append(job['name'])
+            jobSpecId.append(j['name'])
             pass
 
         if len(jobsReadyToKill) == 0:
