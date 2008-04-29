@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.23 2008/04/24 09:54:28 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.23 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.24 2008/04/28 18:13:45 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.24 $"
 
 class JobHandling:
     """
@@ -549,6 +549,9 @@ class JobHandling:
         
         publishes dashboard info
         """
+
+        # FIXME :  memory consuming!!!!
+        return
 
         # dashboard information
         self.recreateSession()
