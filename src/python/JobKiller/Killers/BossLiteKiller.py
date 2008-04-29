@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BOSSKiller.py,v 1.12 2007/09/21 09:09:20 ckavka Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.1 2008/04/28 10:05:12 spiga Exp $"
+__version__ = "$Revision: 1.1.2.1 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -309,7 +309,7 @@ class BossLiteKiller:
 
         # get task specification
         task = self.bliteSession.loadTaskByName(taskSpecId)
-        if taskObj is None:
+        if task is None:
                 # no, signal error
                 msg = "Cannot get BossLite task information for %s\n" % taskSpecId
                 logging.error(msg)
@@ -330,8 +330,8 @@ class BossLiteKiller:
             if j['jobId'] not in jobsReadyToKill:
                 continue
   
-            if j['status'] not in ['SS','R']:
-                logging.info("Unable to kill Job #"+str(j['jobId'])+" : Status is "+str(j['statusScheduler']) )
+            if j.runningJob['status'] not in ['SS','R']:
+                logging.info("Unable to kill Job #"+str(j['jobId'])+" : Status is "+str(j.runningJob['statusScheduler']) )
                 jobsReadyToKill.remove(j['jobId'])
                 continue
 
