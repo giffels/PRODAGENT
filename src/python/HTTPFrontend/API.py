@@ -125,6 +125,6 @@ def getDeltaTimeBossLiteRunningJobs(from_time,to_time,Nbin):
 #    min = queryMethod(limitsQueryString, None)
 #    min = float(min[0][0]);
    h = int(max / Nbin)+1
-   queryString = "select count(*),floor(("+to_time+"-"+from_time+")/"+str(h)+") from bl_runningjob where "+to_time+"-"+from_time+">0 group by floor(("+to_time+"-"+from_time+")/"+str(h)+") "
+   queryString = "select count(*),floor(("+to_time+"-"+from_time+")/"+str(h)+") from bl_runningjob where "+to_time+"-"+from_time+">0 and  "+to_time+"-"+from_time+"<31536000 group by floor(("+to_time+"-"+from_time+")/"+str(h)+") "
    taskCheck = queryMethod(queryString, None)
    return max, taskCheck
