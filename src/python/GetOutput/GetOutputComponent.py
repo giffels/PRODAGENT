@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.14 2008/04/24 09:23:59 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.14 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.16 2008/04/29 08:39:29 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.16 $"
 
 import os
 import logging
@@ -76,10 +76,6 @@ class GetOutputComponent:
         # get configuration information
         #workingDir = self.args['ProdAgentWorkDir']
         #workingDir = os.path.expandvars(workingDir)
-        self.jobTrackingDir = self.args['JobTrackingDir']
-        self.componentDir = self.args["ComponentDir"]
-        self.jobCreatorDir = self.componentDir # fix for boss lite
-        self.outputLocation = self.args['OutputLocation']
         self.verbose = (self.args["verbose"] == 1)
 
         # temp for rebounce
@@ -94,9 +90,7 @@ class GetOutputComponent:
         # initialize members
         self.ms = None
         self.maxGetOutputAttempts = 3
-        self.database = dbConfig
         self.database = deepcopy(dbConfig)
-        self.database['dbType'] = 'MySQL'
         self.bossLiteSession = BossLiteAPI('MySQL', self.database)
 
         # initialize job handling
@@ -104,9 +98,9 @@ class GetOutputComponent:
 
         # create pool thread for get output operations
         params = {}
-        params['componentDir'] = self.jobTrackingDir
+        params['componentDir'] = self.args['JobTrackingDir']
         params['dbConfig'] = self.database
-        params['OutputLocation'] = self.outputLocation
+        params['OutputLocation'] = self.args['OutputLocation']
         params['dropBoxPath'] = self.args['dropBoxPath']
         params['maxGetOutputAttempts'] = \
                                        int( self.args['maxGetOutputAttempts'] )
@@ -269,11 +263,11 @@ class GetOutputComponent:
 
         # initialize job handling object
         params = {}
-        params['baseDir'] = self.jobTrackingDir
-        params['jobCreatorDir'] = self.jobCreatorDir
+        params['baseDir'] = self.args['JobTrackingDir']
+        params['jobCreatorDir'] = self.args["ComponentDir"]
         params['usingDashboard'] = None
         params['messageServiceInstance'] = self.ms
-        params['OutputLocation'] = self.outputLocation
+        params['OutputLocation'] = self.args['OutputLocation']
         params['OutputParams'] = self.outputParams
         logging.info("handleeee")
         self.jobHandling = JobHandling(params)
