@@ -1,7 +1,10 @@
 from TaskTracking.TaskStateAPI import *
 import time, os, datetime
+import logging
 
-
+# # #
+#  js_taskInstance
+#
 
 def getNumTaskFinished():
 
@@ -44,6 +47,9 @@ def getNumTask(statusName,ended = True):
          taskCheck = queryMethod(queryString, None)
          return len(taskCheck)
 
+# # #
+#  ms_message
+#
 def getNumJobResubmitting():
 
    queryString = "select count(*) from ms_message where ms_message.dest = (select procid  from ms_process where name = \'JobSubmitter\');"
@@ -52,6 +58,9 @@ def getNumJobResubmitting():
    return num_rows[0]
 
 
+# # #
+#  bl_runningjob
+#
 def getNum_Wrap_Error():
 
    queryString = "select count(*) from bl_runningjob where wrapper_return_code is not null or wrapper_return_code <> 0;"
@@ -94,10 +103,28 @@ def getNumJobNotCleared():
    num_rows=taskCheck[0]
    return num_rows[0]
 
-
-def getNumBossLiteRunningJobs(key,date):
-   strDate = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(date)))
-   queryString = "select count(*),"+key+" from bl_runningjob where lb_timestamp < '"+strDate+"' group by "+key+" "
+def getBossLiteRunningJobs(key):
+   queryString = "select count("+key+"),"+key+" from bl_runningjob group by "+key+" "
    taskCheck = queryMethod(queryString, None)
    return taskCheck
 
+def getNumBossLiteRunningJobs(key,date):
+   strDate = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(date)))
+#   queryString = "select count(*),"+key+" from bl_runningjob where lb_timestamp < '"+strDate+"' group by "+key+" "
+   queryString = "select count(*),"+key+" from bl_runningjob where submission_time < '"+strDate+"' group by "+key+" " 
+   logging.info("=============> %s"%queryString)
+
+   taskCheck = queryMethod(queryString, None)
+   return taskCheck
+
+def getDeltaTimeBossLiteRunningJobs(from_time,to_time,Nbin):
+   limitsQueryString = "select max("+to_time+"-"+from_time+") from bl_runningjob where "+to_time+"-"+from_time+">0;"
+   max = queryMethod(limitsQueryString, None)
+   max = float(max[0][0]);
+#    limitsQueryString = "select min("+to_time+"-"+from_time+") from bl_runningjob where "+to_time+"-"+from_time+">0;"
+#    min = queryMethod(limitsQueryString, None)
+#    min = float(min[0][0]);
+   h = int(max / Nbin)+1
+   queryString = "select count(*),floor(("+to_time+"-"+from_time+")/"+str(h)+") from bl_runningjob where "+to_time+"-"+from_time+">0 group by floor(("+to_time+"-"+from_time+")/"+str(h)+") "
+   taskCheck = queryMethod(queryString, None)
+   return max, taskCheck
