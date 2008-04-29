@@ -27,9 +27,7 @@ from ResourceMonitors import ResourceDetails,ResourceStatus
 #from Hist_SchStMonitor import Hist_SchStMonitor
 from HistStatusMonitor import HistStatusMonitor
 from HistHWMonitor import HistHWMonitor
-
-#VM test page 
-from HrMonitor import HrMonitor
+from TimeSpanMonitor import TimeSpanMonitor
 
 def getLocalDBSURL():
     try:
@@ -65,18 +63,17 @@ class Root:
         self.myUrl = myUrl
         
     def index(self):
-        html = """<html><body><h1>CRAB WEB MONITOR at %s </h1>\n """ % (
-            
-            os.environ['HOSTNAME'], )
+        html = """<html><head><title>%s CrabServer monitor</title></head><body><h1>%s - CRAB WEB MONITOR</h1>\n """ % (
+            os.environ['HOSTNAME'], os.environ['HOSTNAME'], )
 	html += "\n"
         html += "<h2>Current Status</h2>"
         html += "<table width=\"100"+'%'+"\">\n"
-        html += "<tr><th  align=\"left\" width=\"20"+'%'+"\">Service</th><th  align=\"left\">Description</th></tr>\n"
-        html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/task\">Task</a></td>\n" % (
+        html += "<tr><th  align=\"left\" width=\"32"+'%'+"\">Service</th><th  align=\"left\">Description</th></tr>\n"
+        html += "<tr><td width=\"32"+'%'+"\"><a href=\"%s/task\">Task</a></td>\n" % (
             self.myUrl,)
         html += "<td>Task status information </td></td>\n"
 
-        html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/resubmitting\">Job Resubmitting</a></td>\n" % (
+        html += "<tr><td width=\"32"+'%'+"\"><a href=\"%s/resubmitting\">Job Resubmitting</a></td>\n" % (
             self.myUrl,)
         html += "<td>Show number of job in resubmitting</td></td>\n"
         html += "<tr><td><a href=\"%s/retrieving\">Job Retrieving </a></td>\n" % (
@@ -86,33 +83,48 @@ class Root:
 #            self.myUrl,)
 #        html += "<td>commento</td></td>\n"
 
+# History Plots:
+
         html += "</table><table width=\"100"+'%'+"\">\n"
         html += "<h2>History Plots</h2>"
         html += "<tr><th align=\"left\">Service</th><th align=\"left\">Description</th></tr>\n"
         
 #
 # Pages:
-        html += "<tr><td width=\"20"+'%'+"\">Scheduler-status: <a href=\"%s/hist_schedstat24\">24</a>/<a href=\"%s/hist_schedstat7\">7</a></td>\n" % (
-            self.myUrl,self.myUrl,)
-        html += "<td>History plot of number of job per different scheduler status for the last 24 hours or 7 days</td></td>\n"
+        html += "<tr><td width=\"32"+'%'+"\">Scheduler-status: <a href=\"%s/hist_schedstat24\">24</a>&nbsp;/&nbsp;<a href=\"%s/hist_schedstat7\">7</a>&nbsp;/&nbsp;<a href=\"%s/hist_schedstat30\">30</a></td>\n" % (
+            self.myUrl,self.myUrl,self.myUrl,)
+        html += "<td>History plot of number of job per different scheduler status for the last 24 hours, 7 days or month</td></td>\n"
 #        
 #         html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_schedstat7\">Scheduler-status/7</a></td>\n" % (
 #             self.myUrl,)
 #         html += "<td>History plot of number of job per different scheduler status, hourly for the last week</td></td>\n"
         
-        html += "<tr><td width=\"20"+'%'+"\">Process-status: <a href=\"%s/hist_procsstat24\">24</a>/<a href=\"%s/hist_procsstat7\">7</a></td>\n" % (
-            self.myUrl,self.myUrl,)
-        html += "<td>History plot of number of job per different process status for the last 24 hours or 7 days</td></td>\n"
+        html += "<tr><td width=\"32"+'%'+"\">Process-status: <a href=\"%s/hist_procsstat24\">24</a>&nbsp;/&nbsp;<a href=\"%s/hist_procsstat7\">7</a>&nbsp;/&nbsp;<a href=\"%s/hist_procsstat30\">30</a></td>\n" % (
+            self.myUrl,self.myUrl,self.myUrl,)
+        html += "<td>History plot of number of job per different process status for the last 24 hours, 7 days or month</td></td>\n"
 #        
 #         html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_procsstat7\">Process-status/7</a></td>\n" % (
 #             self.myUrl,)
 #         html += "<td>History plot of number of job per different process status, hourly for the last week</td></td>\n"
 #        
-        html += "<tr><td width=\"20"+'%'+"\">HW monitor: <a href=\"%s/hist_HW_24\">24</a>/<a href=\"%s/hist_HW_7\">7</a></td>\n" % (
-            self.myUrl,self.myUrl)
-        html += "<td>History plot of cpu load, memory and swap usage for last 24 hours or 7 days</td></td>\n"
-#        
+        html += "<tr><td width=\"32"+'%'+"\">HW monitor: <a href=\"%s/hist_HW_24\">24</a>&nbsp;/&nbsp;<a href=\"%s/hist_HW_7\">7</a>&nbsp;/&nbsp;<a href=\"%s/hist_HW_30\">30</a></td>\n" % (
+            self.myUrl,self.myUrl,self.myUrl,)
+        html += "<td>History plot of cpu load, memory and swap usage for last 24 hours, 7 days or month</td></td>\n"
+#
+
+# Useful Statistics:
+
+        html += "</table><table width=\"100"+'%'+"\">\n"
+        html += "<h2>Useful statistics:</h2>"
+        html += "<tr><th align=\"left\">Service</th><th align=\"left\">Description</th></tr>\n"
+
+        html += "<tr><td width=\"32"+'%'+"\"><a href=\"%s/timespan\">job time span</a></td>\n" % (
+            self.myUrl,)
+        html += "<td>Number of job per life time span (per time-to-run, per running-time, per time-to-output)</td></td>\n"
+
+# Foot
         html += """</table>"""
+        
         html +="<br/><h6>version "+os.environ['CRAB_SERVER_VERSION']+"</h6>"
         html += """</body></html>"""
         
@@ -242,14 +254,19 @@ class HTTPFrontendComponent:
 #            "%s/images" % baseUrl,
 #            self.staticDir)
         root.resubmitting = JobResubmittingMonitor()
-        statuses = ['Retrieved', 'Done', 'Cleared', 'Aborted', 'Running', 'Created', 'NULL', 'Scheduled']
-        root.hist_schedstat24 = HistStatusMonitor(96,900,'status_scheduler',statuses)
-        root.hist_schedstat7 = HistStatusMonitor(7*24,3600,'status_scheduler',statuses)
-        statuses = ['not_handled','handled','failed','failure_handled','output_requested','in_progress','output_retrieved','processed', 'NULL']
-        root.hist_procsstat7 = HistStatusMonitor(7*24,3600,'process_status',statuses)
-        root.hist_procsstat24 = HistStatusMonitor(96,900,'process_status',statuses)
+#        statuses = ['Retrieved', 'Done', 'Cleared', 'Aborted', 'Running', 'Created', 'NULL', 'Scheduled']
+        root.hist_schedstat24 = HistStatusMonitor(96,900,'status_scheduler')
+        root.hist_schedstat7 = HistStatusMonitor(7*24,3600,'status_scheduler')
+        root.hist_schedstat30 = HistStatusMonitor(30*24,3600,'status_scheduler')
+#        statuses = ['not_handled','handled','failed','failure_handled','output_requested','in_progress','output_retrieved','processed', 'NULL']
+        root.hist_procsstat24 = HistStatusMonitor(96,900,'process_status')
+        root.hist_procsstat7 = HistStatusMonitor(7*24,3600,'process_status')
+        root.hist_procsstat30 = HistStatusMonitor(30*24,3600,'process_status')
         root.hist_HW_24 = HistHWMonitor(480)   # 480 times 3min is 24 hours
         root.hist_HW_7 = HistHWMonitor(3360)   # 3360 times 3min is 7 days
+        root.hist_HW_30 = HistHWMonitor(14400)   # 14400 times 3min is 7 days
+        root.timespan  = TimeSpanMonitor()
+
 #            )
 
         
