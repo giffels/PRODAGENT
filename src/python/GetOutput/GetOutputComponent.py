@@ -122,6 +122,10 @@ class GetOutputComponent:
         Session.set_database(dbConfig)
         Session.connect()
 
+        # some initializations
+        self.outputRequestedJobs = []
+        self.jobFinished = []
+
         # component running, display info
         logging.info("GetOutput Component Started...")
 
@@ -162,51 +166,54 @@ class GetOutputComponent:
 
         # get jobs that require output
         logging.debug("Start processing of outputs")
-        outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
+        self.outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
             { 'processStatus' : 'output_requested' } )
-        numberOfJobs = len(outputRequestedJobs)
+        numberOfJobs = len(self.outputRequestedJobs)
         logging.info("Output requested for " + str( numberOfJobs ) + " jobs")
 
-        while len( outputRequestedJobs ) != 0 :
+        while self.outputRequestedJobs != [] :
             
             # change status for jobs that require get output operations
             # TODO here was good the compund update... to be reimplemented
-            job = outputRequestedJobs.pop()
+            job = self.outputRequestedJobs.pop()
             job.runningJob['processStatus'] = 'in_progress'
             self.bossLiteSession.updateDB( job )
             self.pool.enqueue(job, job)
             del( job )
 
+        del self.outputRequestedJobs[:]
         logging.debug("Start processing of failed")
 
         # get jobs failed that require post-mortem operations
-        outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
+        self.outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
             { 'processStatus' : 'failed' } )
-        numberOfJobs = len(outputRequestedJobs)
+        numberOfJobs = len(self.outputRequestedJobs)
         logging.info("Notify failure for " + str( numberOfJobs ) + " jobs")
 
-        while len( outputRequestedJobs ) != 0 :
+        while self.outputRequestedJobs != [] :
             
             # change status for jobs that require get output operations
             # TODO here was good the compund update... to be reimplemented
-            job = outputRequestedJobs.pop()
+            job = self.outputRequestedJobs.pop()
             self.pool.enqueue(job, job)
             del( job )
 
-        # process outputs if ready
-        jobFinished = self.pool.dequeue()
+        del self.outputRequestedJobs[:]
 
-        while jobFinished != None:
+        # process outputs if ready
+        self.jobFinished = self.pool.dequeue()
+
+        while self.jobFinished != None:
 
             # ignore non successful threads, error message was displayed
-            if jobFinished[1] is None:
+            if self.jobFinished[1] is None:
                 continue
 
             # process output
-            self.processOutput(jobFinished[1])
+            self.processOutput(self.jobFinished[1])
 
             # get new work
-            jobFinished = self.pool.dequeue()
+            self.jobFinished = self.pool.dequeue()
 
         logging.debug("Finished processing of outputs and failed")
 

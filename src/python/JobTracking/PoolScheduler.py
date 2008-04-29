@@ -6,8 +6,8 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.6 2008/04/17 12:13:08 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.6 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.7 2008/04/22 15:39:51 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.7 $"
 
 from threading import Thread
 from time import sleep
@@ -145,11 +145,11 @@ class PoolScheduler(Thread):
         grlist = ",".join(["%s" % k for k in self.groupsUnderProcessing])
 
         # get information about tasks associated to these groups
-        jobPerTask = db.getUnprocessedJobs( grlist )
+        self.jobPerTask = db.getUnprocessedJobs( grlist )
 
         # process all groups
         grid = 0
-        while len(jobPerTask) !=0:
+        while self.jobPerTask != [] :
             grid = grid + 1
 
             # ignore groups under processing
@@ -164,9 +164,9 @@ class PoolScheduler(Thread):
             logging.info('filling group ' + str(grid) + ' with largest tasks')
 
             # fill group with the largest tasks
-            while len(jobPerTask) != 0:
+            while self.jobPerTask != []:
                 try:
-                    task, jobs = jobPerTask[0]
+                    task, jobs = self.jobPerTask[0]
 
                     # stop when there are enough jobs
                     if jobsReached + int(jobs) > self.maxJobs \
@@ -176,11 +176,11 @@ class PoolScheduler(Thread):
                     # add task to group
                     groups[grid] += str(task) + ','
                     jobsReached += int(jobs)
-                    jobPerTask.pop(0)
+                    self.jobPerTask.pop(0)
 
                 # go to next task
                 except IndexError, ex:
-                    jobPerTask.pop(0)
+                    self.jobPerTask.pop(0)
                     logging.info("\n\n" + str(ex) + "\n\n")
                     continue
 
@@ -188,9 +188,9 @@ class PoolScheduler(Thread):
                           ' with the smallest tasks')
 
             # fill group with the smallest tasks
-            while len(jobPerTask) != 0:
+            while self.jobPerTask != []:
                 try:
-                    task, jobs = jobPerTask[0]
+                    task, jobs = self.jobPerTask[0]
 
                     # stop when there are enough jobs
                     if jobsReached + int(jobs)  > self.maxJobs:
@@ -199,17 +199,18 @@ class PoolScheduler(Thread):
                     # add task to group
                     groups[grid] += task + ','
                     jobsReached += int(jobs)
-                    jobPerTask.pop()
+                    self.jobPerTask.pop()
 
                 # go to next task
                 except IndexError:
-                    jobPerTask.pop()
+                    self.jobPerTask.pop()
                     continue
 
             logging.info("group " + str(grid) + " filled with tasks " \
                           + groups[grid] + " and total jobs " \
                           + str(jobsReached))
-        
+
+        del self.jobPerTask[:]
         # process all groups
         for group, tasks in groups.iteritems():
 

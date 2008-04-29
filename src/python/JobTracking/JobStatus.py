@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.18 2008/04/18 17:10:29 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.18 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.19 2008/04/22 15:39:51 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.19 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
@@ -233,6 +233,7 @@ class JobStatus:
                     +  str( pair[0] ) + '.' + str( pair[1] )\
                     )
             session.close()
+            del( joblist ) 
 
         except StandardError, ex:
             logging.error( ex.__str__() )
@@ -266,6 +267,7 @@ class JobStatus:
                     + str( pair[1] )\
                     )
             session.close()
+            del( joblist ) 
         except StandardError, ex:
             logging.error( ex.__str__() )
             logging.error( traceback.format_exc() )

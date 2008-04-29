@@ -152,6 +152,13 @@ class TrackingComponent:
         self.usingDashboard = self.args['dashboardInfo']
         logging.debug("DashboardInfo = %s" % str(self.usingDashboard))
 
+        # some initializations
+        self.newJobs = []
+        self.failedJobs = []
+        self.finishedJobs = []
+        self.counters = ['pending', 'submitted', 'waiting', 'ready', \
+                         'scheduled', 'running', 'cleared', 'created', 'other']
+
         # component running, display info
         logging.info("JobTracking Component Started...")
 
@@ -188,15 +195,15 @@ class TrackingComponent:
         Return a list of failed job ids
         """
 
-        newJobs = self.bossLiteSession.loadJobsByRunningAttr(
+        self.newJobs = self.bossLiteSession.loadJobsByRunningAttr(
             { 'processStatus' : 'not_handled' }
             )
-        logging.info("new jobs : " + str( len(newJobs) ) )
+        logging.info("new jobs : " + str( len(self.newJobs) ) )
 
-        # for job in newJobs :
-        while len( newJobs ) != 0 :
+        # for job in self.newJobs :
+        while self.newJobs != [] :
 
-            job = newJobs.pop()
+            job = self.newJobs.pop()
             # FIXME: temp hack, to be removed as soon as BossLite is updated
             if job.runningJob['status'] == 'C' or \
                    job.runningJob['status'] == 'S' :
@@ -213,7 +220,7 @@ class TrackingComponent:
                 logging.error("Cannot publish to dashboard:%s" % msg)
             del( job )
 
-        del( newJobs )
+        del self.newJobs[:]
 
         # summary of the jobs in the DB
         # TODO : change with a BossLite call
@@ -223,13 +230,9 @@ class TrackingComponent:
         directDB.close( session )
 
         if result is not None:
-            
-            # initialize counters for statistic
-            counters = ['pending', 'submitted', 'waiting', 'ready', \
-                        'scheduled', 'running', 'cleared', 'created', 'other']
 
             counter = {}
-            for ctr in counters:
+            for ctr in self.counters:
                 counter[ctr] = 0
 
             for pair in result :
@@ -259,6 +262,8 @@ class TrackingComponent:
             for ctr, value in counter.iteritems():
                 logging.info(ctr + " jobs : " + str(value))
             logging.info("....................")
+
+            del( result )
 
 
     def checkJobs(self):
@@ -293,16 +298,16 @@ class TrackingComponent:
         """
 
         # query failed jobs
-        failedJobs = self.bossLiteSession.loadFailed(
+        self.failedJobs = self.bossLiteSession.loadFailed(
             { 'processStatus' : 'handled' }
             )
-        logging.info("failed jobs : " + str( len(failedJobs) ) )
+        logging.info("failed jobs : " + str( len(self.failedJobs) ) )
 
         # process all jobs
-        # for job in failedJobs:
-        while len( failedJobs ) != 0 :
+        # for job in self.failedJobs:
+        while self.failedJobs != [] :
 
-            job = failedJobs.pop()
+            job = self.failedJobs.pop()
 
             # publish information to the dashboard
             try:
@@ -318,7 +323,7 @@ class TrackingComponent:
             job.runningJob['processStatus'] = 'failed'
             self.bossLiteSession.updateDB( job.runningJob )
             del( job )
-        del( failedJobs )
+        del self.failedJobs[:]
 
 
     def handleFinished(self):
@@ -331,16 +336,16 @@ class TrackingComponent:
         """
 
         # query finished jobs
-        finishedJobs = self.bossLiteSession.loadEnded(
+        self.finishedJobs = self.bossLiteSession.loadEnded(
             { 'processStatus' : 'handled' }
             )
-        logging.info("finished jobs : " + str( len(finishedJobs) ) )
+        logging.info("finished jobs : " + str( len(self.finishedJobs) ) )
 
         # process all jobs
-        # for job in finishedJobs:
-        while len( finishedJobs ) != 0 :
+        # for job in self.finishedJobs:
+        while self.finishedJobs != [] :
 
-            job = finishedJobs.pop()
+            job = self.finishedJobs.pop()
 
             # publish information to the dashboard
             try:
@@ -355,7 +360,7 @@ class TrackingComponent:
             JobOutput.requestOutput(job)
             del( job )
 
-        del( finishedJobs )
+        del self.finishedJobs[:]
 
 
     def startComponent(self):
