@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.16 2008/04/29 08:39:29 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.16 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.17 2008/04/29 17:45:50 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.17 $"
 
 import os
 import logging
@@ -43,6 +43,7 @@ class GetOutputComponent:
         self.args.setdefault("ComponentDir", "/tmp")
         self.args.setdefault("JobTrackingDir", None)
         self.args.setdefault("GetOutputPoolThreadsSize", 5)
+        self.args.setdefault("jobsToPoll", 100)
         self.args.setdefault("OutputLocation", "SE")
         self.args.setdefault("dropBoxPath", None)
         self.args.setdefault("Logfile", None)
@@ -117,6 +118,7 @@ class GetOutputComponent:
         Session.connect()
 
         # some initializations
+        self.jobLimit = int(self.args['jobsToPoll'])
         self.outputRequestedJobs = []
         self.jobFinished = []
 
@@ -158,39 +160,75 @@ class GetOutputComponent:
 
         logging.info("Starting poll cycle")
 
+        offset = 0
+        loop = True
+
         # get jobs that require output
         logging.debug("Start processing of outputs")
-        self.outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
-            { 'processStatus' : 'output_requested' } )
-        numberOfJobs = len(self.outputRequestedJobs)
-        logging.info("Output requested for " + str( numberOfJobs ) + " jobs")
 
-        while self.outputRequestedJobs != [] :
+        while loop :
+
+            logging.debug("Max jobs number to be loaded %s:%s " % \
+                          (str( offset ), str( offset + self.jobLimit) ) )
+
+            self.outputRequestedJobs = \
+                                   self.bossLiteSession.loadJobsByRunningAttr(
+                                   { 'processStatus' : 'output_requested' }, \
+                                   limit=self.jobLimit, offset=offset )
+
+            numberOfJobs = len(self.outputRequestedJobs)
+            logging.info("Output requested for " + \
+                         str( numberOfJobs ) + " jobs")
+
+            # exit if no more jobs to query
+            if self.outputRequestedJobs == [] :
+                loop = False
+                break
+            else :
+                offset += self.jobLimit
+
+            while self.outputRequestedJobs != [] :
             
-            # change status for jobs that require get output operations
-            # TODO here was good the compund update... to be reimplemented
-            job = self.outputRequestedJobs.pop()
-            job.runningJob['processStatus'] = 'in_progress'
-            self.bossLiteSession.updateDB( job )
-            self.pool.enqueue(job, job)
-            del( job )
+                # change status for jobs that require get output operations
+                job = self.outputRequestedJobs.pop()
+                job.runningJob['processStatus'] = 'in_progress'
+                self.bossLiteSession.updateDB( job )
+                self.pool.enqueue(job, job)
+                del( job )
 
-        del self.outputRequestedJobs[:]
+            del self.outputRequestedJobs[:]
+         
+        # get jobs failed that require post-mortem operations
         logging.debug("Start processing of failed")
 
-        # get jobs failed that require post-mortem operations
-        self.outputRequestedJobs = self.bossLiteSession.loadJobsByRunningAttr(
-            { 'processStatus' : 'failed' } )
-        numberOfJobs = len(self.outputRequestedJobs)
-        logging.info("Notify failure for " + str( numberOfJobs ) + " jobs")
+        offset = 0
+        loop = True
 
-        while self.outputRequestedJobs != [] :
+        while loop :
+
+            self.outputRequestedJobs = \
+                                    self.bossLiteSession.loadJobsByRunningAttr(
+                                           { 'processStatus' : 'failed' }, \
+                                           limit=self.jobLimit, offset=offset )
+
+            numberOfJobs = len(self.outputRequestedJobs)
+            logging.info("Notify failure for " + str( numberOfJobs ) + " jobs")
+
+            # exit if no more jobs to query
+            if self.outputRequestedJobs == [] :
+                loop = False
+                break
+            else :
+                offset += self.jobLimit
+
+            while self.outputRequestedJobs != [] :
             
-            # change status for jobs that require get output operations
-            # TODO here was good the compund update... to be reimplemented
-            job = self.outputRequestedJobs.pop()
-            self.pool.enqueue(job, job)
-            del( job )
+                # change status for jobs that require get output operations
+                job = self.outputRequestedJobs.pop()
+                self.pool.enqueue(job, job)
+                del( job )
+
+            del self.outputRequestedJobs[:]
 
         del self.outputRequestedJobs[:]
 
