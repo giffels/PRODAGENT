@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.24 2008/04/28 18:13:45 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.24 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.25 2008/04/29 17:34:09 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.25 $"
 
 class JobHandling:
     """
@@ -207,15 +207,17 @@ class JobHandling:
             else:
                 continue
 
-        if job.runningJob["wrapperReturnCode"] is None and \
-           job.runningJob["applicationReturnCode"] is None :
-            return( success, exitCode )
+        #if job.runningJob["wrapperReturnCode"] is None and \
+        #   job.runningJob["applicationReturnCode"] is None :
+        #    return( success, exitCode )
 
-        elif job.runningJob["wrapperReturnCode"] == '0' and \
-             job.runningJob["applicationReturnCode"] == '0' :
-            return( True, exitCode )
-        else :
-            return( False, exitCode )
+        #elif job.runningJob["wrapperReturnCode"] == '0' and \
+        #     job.runningJob["applicationReturnCode"] == '0' :
+        #    return( True, exitCode )
+        #else :
+        #    return( False, exitCode )
+
+        return( success, exitCode )
 
 
     def publishJobSuccess(self, job, reportfilename):
