@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.20 2008/04/23 17:49:45 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.20 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.22 2008/04/28 18:13:45 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.22 $"
 
 import logging
 import os
@@ -25,6 +25,7 @@ from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 from ProdCommon.BossLite.Common.Exceptions import SchedulerError
 from ProdCommon.BossLite.Common.Exceptions import TaskError
 from ProdCommon.BossLite.Common.Exceptions import JobError
+from ProdCommon.BossLite.Common.Exceptions import DbError
 
 ###############################################################################
 # Class: JobOutput                                                            #
@@ -78,7 +79,7 @@ class JobOutput:
         try :
             bossLiteSession = BossLiteAPI('MySQL', dbConfig)
             bossLiteSession.updateDB( job.runningJob )
-        except TaskError:
+        except JobError:
             logging.error("Output for job %s.%s cannot be requested" % \
                           (job['taskId'], job['jobId'] ) )
 
@@ -297,16 +298,18 @@ class JobOutput:
                     job.runningJob['statusHistory'].append(
                         "waiting next round")
                     logging.error(
-                        "waiting next round for job %s.%s in status %s" \
-                        % (job['taskId'], job['jobId'], job['status'] ) )
+                        "waiting next round for job %s.%s in status %s" % \
+                        (job['taskId'], job['jobId'], job.runningJob['status'])
+                        )
                     break
                 # not ready for GO: waiting for next round
                 elif output.find( "Job current status doesn" ) :
                     job.runningJob['statusHistory'].append(
                         "waiting next round")
                     logging.error(
-                        "empty outfile for job %s.%s: waiting next round" \
-                        % (job['taskId'], job['jobId'], job['status'] ) )
+                        "empty outfile for job %s.%s: waiting next round" % \
+                        (job['taskId'], job['jobId'], job.runningJob['status'])
+                        )
                     break
 
             # oops: db error! What to do?!?!
@@ -351,16 +354,19 @@ class JobOutput:
 
         logging.debug("Recreating interrupted operations")
 
-        # open database
-        bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+        try :
+            # open database
+            bossLiteSession = BossLiteAPI('MySQL', dbConfig)
 
-        # get interrupted operations
-        jobs = bossLiteSession.loadJobsByRunningAttr( 
-            { 'processStatus' : 'in_progress' } )
-        jobs.extend(
-            bossLiteSession.loadJobsByRunningAttr(
-            { 'processStatus' : 'output_retrieved' } )
-            )
+            # get interrupted operations
+            jobs = bossLiteSession.loadJobsByRunningAttr( 
+                { 'processStatus' : 'in_progress' } )
+            jobs.extend(
+                bossLiteSession.loadJobsByRunningAttr(
+                { 'processStatus' : 'output_retrieved' } )
+                )
+        except DbError, msg:
+            logging.error('Error updating DB : %s ' % str(msg))
 
         numberOfJobs = len(jobs)
 
@@ -385,11 +391,14 @@ class JobOutput:
         logging.debug("set done status for job %s.%s" % \
                       (job['taskId'], job['jobId']))
 
-        bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+        try :
+            bossLiteSession = BossLiteAPI('MySQL', dbConfig)
 
-        # update job status
-        job['processStatus'] = 'processed'
-        bossLiteSession.updateDB( job )
+            # update job status
+            job['processStatus'] = 'processed'
+            bossLiteSession.updateDB( job )
+        except DbError, msg:
+            logging.error('Error updating DB : %s ' % str(msg))
 
         logging.debug("Output processing done for job %s.%s" % \
                       (job['taskId'], job['jobId']))
