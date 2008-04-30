@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.1 2008/04/28 10:05:12 spiga Exp $"
-__version__ = "$Revision: 1.1.2.1 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.3 2008/04/29 15:24:20 farinafa Exp $"
+__version__ = "$Revision: 1.1.2.3 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -326,11 +326,17 @@ class BossLiteKiller:
 
         # filter the killing list according job statuses
         jobSpecId = []
+        scheduler = ''
         for j in task.jobs:
+
+            if j.runningJob['scheduler'] is not None:
+                scheduler = j.runningJob['scheduler']
+                
+            logging.info("Working on job: \n" + str(j.runningJob) + "\n")
             if j['jobId'] not in jobsReadyToKill:
                 continue
   
-            if j.runningJob['status'] not in ['SS','R']:
+            if j.runningJob['status'] not in ['SS','R', 'SR']:
                 logging.info("Unable to kill Job #"+str(j['jobId'])+" : Status is "+str(j.runningJob['statusScheduler']) )
                 jobsReadyToKill.remove(j['jobId'])
                 continue
@@ -354,7 +360,7 @@ class BossLiteKiller:
         JobState.doNotAllowMoreSubmissions(jobSpecId)
  
         schedulerConfig = { \
-                          'name' : task.jobs[0].runningJob['scheduler'], \
+                          'name' : scheduler, \
                           'user_proxy' : task['user_proxy'], \
                           } 
         # kill
