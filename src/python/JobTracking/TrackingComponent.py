@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.25 2008/04/29 08:39:29 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.25 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.26 2008/04/29 17:38:32 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.26 $"
 
 import os
 import os.path
@@ -345,7 +345,7 @@ class TrackingComponent:
             logging.info("failed jobs : " + str( len(self.failedJobs) ) )
 
             # exit if no more jobs to query
-            if self.newJobs == [] :
+            if self.failedJobs == [] :
                 loop = False
                 break
             else :
@@ -401,7 +401,7 @@ class TrackingComponent:
             logging.info("finished jobs : " + str( len(self.finishedJobs) ) )
 
             # exit if no more jobs to query
-            if self.newJobs == [] :
+            if self.finishedJobs == [] :
                 loop = False
                 break
             else :
