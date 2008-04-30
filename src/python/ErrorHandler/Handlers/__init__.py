@@ -25,6 +25,7 @@ ErrorHandler Component
 
 """
 
+import CrabRunFailureHandler
 import RunFailureHandler
 import MergingRunFailureHandler
 import ProcessingRunFailureHandler
