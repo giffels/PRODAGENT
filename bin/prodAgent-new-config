@@ -197,6 +197,8 @@ componentFields = {
     },
 
     'ErrorHandler' : {
+    "RunHandlerName": None,
+    "SubmitHandlerName": None,
     "ComponentDir" : None,
     "MaxCacheDirSizeMB" : 80,
     "DelayFactor" : 100,
