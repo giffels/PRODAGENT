@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.10 2007/05/28 12:32:27 afanfani Exp $"
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.11 2008/04/09 16:09:21 swakef Exp $"
 
 
 import os
@@ -53,7 +53,7 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-cfgFile = None
+cfgFiles = []
 requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
 label = "Test"
@@ -70,10 +70,10 @@ selectionEfficiency = None
 
 for opt, arg in opts:
     if opt == "--cfg":
-        cfgFile = arg
+        cfgFiles.append(arg)
         cfgType = "cfg"
     if opt == "--py-cfg":
-        cfgFile = arg
+        cfgFiles.append(arg)
         cfgType = "python"
     if opt == "--version":
         version = arg
@@ -99,9 +99,11 @@ for opt, arg in opts:
         activity = arg
    
     
-if cfgFile == None:
+if len(cfgFiles) == 0:
     msg = "--cfg option not provided: This is required"
     raise RuntimeError, msg
+elif len(cfgFiles) > 1:
+    print "%s cfgs listed - chaining them" % len(cfgFiles)
 
 if version == None:
     msg = "--version option not provided: This is required"
@@ -113,9 +115,10 @@ if channel == None:
 
 
 
-if not os.path.exists(cfgFile):
-    msg = "Cfg File Not Found: %s" % cfgFile
-    raise RuntimeError, msg
+for cfgFile in cfgFiles:
+    if not os.path.exists(cfgFile):
+        msg = "Cfg File Not Found: %s" % cfgFile
+        raise RuntimeError, msg
 
 #  //
 # // Set CMSSW_SEARCH_PATH 
@@ -127,34 +130,43 @@ if not origcmsswsearch:
 cmsswsearch="/:%s"%origcmsswsearch
 os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
 
-if cfgType == "cfg":
-    from FWCore.ParameterSet.Config import include
-    cmsCfg = include(cfgFile) 
-else:
-    modRef = imp.find_module( os.path.basename(cfgFile).replace(".py", ""),  os.path.dirname(cfgFile))
-    cmsCfg = modRef.process
-    
-cfgWrapper = CMSSWConfig()
-cfgWrapper.originalCfg = file(cfgFile).read()
-cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
-cfgInt.validateForProduction()
-
 #  //
 # // Instantiate a WorkflowMaker
 #//
 maker = WorkflowMaker(requestId, channel, label )
-
-maker.setCMSSWVersion(version)
 maker.setPhysicsGroup(physicsGroup)
-maker.setConfiguration(cfgWrapper, Type = "instance")
-maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
 maker.changeCategory(category)
 
 if selectionEfficiency != None:
     maker.addSelectionEfficiency(selectionEfficiency)
 
+# loop over cfg's provided and add to workflow
+# first cmsRun node created implicitly by WorkflowMaker
+firstNode = True
+for cfgFile in cfgFiles:
     
-
+    if cfgType == "cfg":
+        from FWCore.ParameterSet.Config import include
+        cmsCfg = include(cfgFile)
+    else:
+        modRef = imp.find_module( os.path.basename(cfgFile).replace(".py", ""),  os.path.dirname(cfgFile))
+        cmsCfg = modRef.process
+        
+    cfgWrapper = CMSSWConfig()
+    cfgWrapper.originalCfg = file(cfgFile).read()
+    cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
+    cfgInt.validateForProduction()
+    
+    if not firstNode:
+        maker.appendCmsRunNode()
+        
+    maker.setCMSSWVersion(version)
+    maker.setConfiguration(cfgWrapper, Type = "instance")
+    
+    #TODO: What about pset hash
+    maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
+    
+    firstNode = False
 
 #  //
 # // Pileup sample?
@@ -164,8 +176,10 @@ if pileupDS != None:
     
   
 spec = maker.makeWorkflow()
+
 if activity is not None:
     spec.setActivity(activity)
+
 spec.save("%s-Workflow.xml" % maker.workflowName)
 
 

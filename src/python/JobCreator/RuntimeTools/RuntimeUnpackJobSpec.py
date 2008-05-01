@@ -14,6 +14,8 @@ from ProdCommon.MCPayloads.JobSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from RunRes.RunResComponent import RunResComponent
 
+from ProdCommon.TrivialFileCatalog import TrivialFileCatalog
+
 class NodeFinder:
 
     def __init__(self, nodeName):
@@ -112,18 +114,33 @@ class JobSpecExpander:
             msg += "Unable to load input job report file"
             raise RuntimeError, msg
 
+        # add files to override catalog
+        inputFileList = []
+        tfc = None
 
-        
-        inputFileList = [
-            x['PFN'] for x in inputReport.files if x['ModuleLabel'] == inpLink['OutputModule']
-            ]
-        inputFileList = [ "file:%s" % x for x in inputFileList ]
+        for file in inputReport.files:
+            if not file['ModuleLabel'] == inpLink['OutputModule']:
+                continue
+            if file.get('LFN', None) not in (None, '', 'None'):
+                if not tfc:
+                    tfc = TrivialFileCatalog.TrivialFileCatalog()
+                inputFileList.append(file['LFN'])
+                tfc.addLfnToPfnRule('override', file['LFN'], file['PFN'])
+            else:
+                inputFileList.append("file:%s" % file['PFN'])
 
+        if tfc:
+            print "Creating override tfc, contents below"
+            print str(tfc)
+            tfc.write(os.path.join(os.getcwd(), 'override_catalog.xml'))        
+                                                                                   
         if inpLink['InputSource'] == "source":
             #  //
             # // feed into main source
             #//
             config.inputFiles = inputFileList
+            if tfc:
+                config.inputOverrideCatalog = os.path.join(os.getcwd(), 'override_catalog.xml')
             msg = "Input Link created to input source for files:\n"
             for f in inputFileList:
                 msg += " %s\n" % f
@@ -153,7 +170,6 @@ class JobSpecExpander:
             # // We have in-job input links to be resolved
             #//
             self.handleInputLink(self.jobSpecNode.cfgInterface, inpLink)
-
     
         cmsProcess = self.jobSpecNode.cfgInterface.makeConfiguration()
 

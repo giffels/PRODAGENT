@@ -13,9 +13,10 @@ import socket
 import time
 import popen2
 
-from ProdCommon.FwkJobRep.TaskState import TaskState
+from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
 from ProdCommon.FwkJobRep.MergeReports import mergeReports
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+from ProdCommon.FwkJobRep.MergeReports import combineReports
 import ProdCommon.FwkJobRep.PerfLogParser as PerfReps
 
 def getSyncCE():
@@ -76,6 +77,7 @@ def processFrameworkJobReport():
     state = TaskState(os.getcwd())
     state.loadRunResDB()        
     state.loadJobSpecNode()
+    state.jobSpecNode.loadConfiguration()
     state.dumpJobReport()
     
     
@@ -199,19 +201,27 @@ def processFrameworkJobReport():
     # // write out updated report
     #//
     
-    report.write("./FrameworkJobReport.xml")
-
-
-    #  // 
-    # // Add this report to the job toplevel report
-    #//  This will create the toplevel job report if it doesnt
-    #  //exist, otherwise it will merge this report with whatever
-    # // is in there already.
-    #//
     toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
                                   "FrameworkJobReport.xml")
-    newReport = os.path.join(os.getcwd(), "FrameworkJobReport.xml")
-    mergeReports(toplevelReport, newReport)
+
+    if state.jobSpecNode._InputLinks:
+        #  // 
+        # // Merge with report from input node, save to toplevel and locally
+        #//
+        inputTaskNames = [ getTaskState(x['InputNode']).taskName() \
+                          for x in state.jobSpecNode._InputLinks ]
+        report = combineReports(toplevelReport, inputTaskNames, report)
+        report.write("./FrameworkJobReport.xml")
+    else:
+        #  // 
+        # // Add this report to the job toplevel report
+        #//  This will create the toplevel job report if it doesnt
+        #  //exist, otherwise it will merge this report with whatever
+        # // is in there already.
+        #//
+        report.write("./FrameworkJobReport.xml")
+        newReport = os.path.join(os.getcwd(), "FrameworkJobReport.xml")
+        mergeReports(toplevelReport, newReport)
     
     return
 
