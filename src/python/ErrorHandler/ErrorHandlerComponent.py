@@ -60,13 +60,16 @@ class ErrorHandlerComponent:
          self.args['Logfile'] = None
          self.args['MaxCacheDirSizeMB'] = 100
          self.args['DelayFactor'] = 60
+         self.args['RunHandlerName'] = None
+         self.args['SubmitHandlerName'] = None
          self.args.update(args)
  
 
          # the error events this components subscribes to
          # that invoke an error handler
-         self.args['Events']={'JobFailed':'runFailureHandler', \
-                              'SubmissionFailed':'submitFailureHandler', \
+         self.args['Events']={'JobFailed': self.args['RunHandlerName'] , \
+                              'SubmissionFailed': self.args['SubmitHandlerName'], \
+                              'CreateFailed':'createFailureHandler'}
                               'CreateFailed':'createFailureHandler'}
 
          if self.args['Logfile'] == None:
