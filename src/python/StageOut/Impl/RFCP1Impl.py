@@ -38,11 +38,6 @@ class RFCP1Impl(StageOutImpl):
         create dir with group permission
         """
         
-        #only create dir for remote storage
-        # hack coming up - it seems rfio isnt always present
-        if not targetPFN.startswith('rfio:') and not targetPFN.startswith('/castor/'):
-            return
-        
         targetdir= os.path.dirname(targetPFN)
 
         checkdircmd="rfstat %s > /dev/null " % targetdir
@@ -86,9 +81,11 @@ class RFCP1Impl(StageOutImpl):
         result += " %s " % sourcePFN
         result += " %s " % targetPFN
         
+        remotePFN, localPFN = targetPFN, sourcePFN
         for path in (sourcePFN, targetPFN):
             # hack coming up - it seems rfio isnt always present
-            if path.startswith('rfio:') or path.startswith('/castor/'):
+            if path.startswith('rfio:') or path.startswith('/castor/') or \
+                                                    path.startswith('/dpm/'):
                 remotePFN = path
             else:
                 localPFN = path
