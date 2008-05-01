@@ -82,14 +82,20 @@ class SRMImpl(StageOutImpl):
 #                #sourcePFN = path
 #                pass
 
-        for filePath in (sourcePFN, targetPFN):
-            if filePath.startswith("srm://"):
-                remotePFN = filePath
-                targetPnfsPath = self.createPnfsPath(filePath)
-                localPFN = filePath.replace("file://", "", 1)
-            else:
-                # assume this is the local file
-                localPFN = filePath.replace("file://", "", 1)
+        if self.stageIn:
+            remotePFN, localPFN = sourcePFN, targetPFN.replace("file://", "", 1)
+        else:
+            remotePFN, localPFN = targetPFN, sourcePFN.replace("file://", "", 1)
+            
+        targetPnfsPath = self.createPnfsPath(remotePFN)
+#        for filePath in (sourcePFN, targetPFN):
+#            if filePath.startswith("srm://"):
+#                remotePFN = filePath
+#                targetPnfsPath = self.createPnfsPath(filePath)
+#                localPFN = filePath.replace("file://", "", 1)
+#            else:
+#                # assume this is the local file
+#                localPFN = filePath.replace("file://", "", 1)
 
         if _CheckExitCodeOption:
             result += """

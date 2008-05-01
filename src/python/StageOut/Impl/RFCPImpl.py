@@ -81,24 +81,14 @@ class RFCPImpl(StageOutImpl):
         result += " %s " % sourcePFN
         result += " %s " % targetPFN
         
-        remotePFN, localPFN = targetPFN, sourcePFN
-        for path in (sourcePFN, targetPFN):
-            # hack coming up - it seems rfio isnt always present
-            if path.startswith('rfio:') or path.startswith('/castor/') or \
-                                                    path.startswith('/dpm/'):
-                remotePFN = path
-            else:
-                localPFN = path
+        if self.stageIn:
+            remotePFN, localPFN = sourcePFN, targetPFN
+        else:
+            remotePFN, localPFN = targetPFN, sourcePFN
         
         result += "\nFILE_SIZE=`stat -c %s"
         result += " %s ;`\n" % localPFN
         result += " echo \"Local File Size is: $FILE_SIZE\"; DEST_SIZE=`rfstat %s | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ $FILE_SIZE == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (remotePFN)
-        return result
-        
-#        original_size = os.stat(localPFN)[6]
-#        print "Local File Size is: %s" % original_size
-#        
-#        result += "; DEST_SIZE=`rfstat %s | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ '%s' == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (remotePFN,original_size)
         return result
 
     

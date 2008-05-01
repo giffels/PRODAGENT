@@ -27,9 +27,10 @@ class StageOutImpl:
     """
     executeCommand = staticmethod(execute)
 
-    def __init__(self):
+    def __init__(self, stagein=False):
         self.numRetries = 3
         self.retryPause = 600
+        self.stageIn = stagein
 
     def createSourceName(self, protocol, pfn):
         """

@@ -76,12 +76,10 @@ class SRMImpl(StageOutImpl):
         
             """ % self.createRemoveFileCommand(targetPFN)
 
-        for filePath in (sourcePFN, targetPFN):
-            if filePath.startswith("file://"):
-                localPFN = filePath.replace("file://", "", 1)
-            else:
-                # assume this is the remote file
-                remotePFN = filePath
+        if self.stageIn:
+            remotePFN, localPFN = sourcePFN, targetPFN.replace("file://", "", 1)
+        else:
+            remotePFN, localPFN = targetPFN, sourcePFN.replace("file://", "", 1)
 
         result += "FILE_SIZE=`stat -c %s"
         result += " %s `\n" % localPFN

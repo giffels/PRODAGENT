@@ -237,7 +237,7 @@ class StageInMgr:
             raise StageOutFailure(msg, LFN = lfn, TFC = str(self.tfc))
         
         try:
-            impl = retrieveStageOutImpl(command)
+            impl = retrieveStageOutImpl(command, stagein=True)
         except Exception, ex:
             msg = "Unable to retrieve impl for local stage in:\n"
             msg += "Error retrieving StageOutImpl for command named: %s\n" % (

@@ -60,7 +60,7 @@ def registerStageOutImpl(name, classRef):
     Registry.StageOutImpl[name] = classRef
     return
 
-def retrieveStageOutImpl(name):
+def retrieveStageOutImpl(name, stagein=False):
     """
     _retrieveStageOutImpl_
 
@@ -71,6 +71,6 @@ def retrieveStageOutImpl(name):
     if classRef == None:
         msg = "Failed to find StageOutImpl for name: %s\n" % name
         raise RegistryError, msg
-    return classRef()
+    return classRef(stagein)
 
         

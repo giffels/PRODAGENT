@@ -81,14 +81,10 @@ class RFCP1Impl(StageOutImpl):
         result += " %s " % sourcePFN
         result += " %s " % targetPFN
         
-        remotePFN, localPFN = targetPFN, sourcePFN
-        for path in (sourcePFN, targetPFN):
-            # hack coming up - it seems rfio isnt always present
-            if path.startswith('rfio:') or path.startswith('/castor/') or \
-                                                    path.startswith('/dpm/'):
-                remotePFN = path
-            else:
-                localPFN = path
+        if self.stageIn:
+            remotePFN, localPFN = sourcePFN, targetPFN
+        else:
+            remotePFN, localPFN = targetPFN, sourcePFN
                 
         result += "\nFILE_SIZE=`stat -c %s"
         result += " %s ;`\n" % localPFN
