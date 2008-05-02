@@ -44,7 +44,7 @@ class BulkSorter:
         # //  Sort jobs into potential bulk specs
         #//
         for job in jobs:
-            if job['JobType'] in ('Merge', 'CleanUp'):
+            if job['JobType'] in ('Merge', 'CleanUp', 'LogCollect'):
                 #  //
                 # // all merges and cleanups are individual
                 #//
