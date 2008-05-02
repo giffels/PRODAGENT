@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.22 2008/04/28 18:13:45 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.22 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.23 2008/04/30 13:26:58 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.23 $"
 
 import logging
 import os
@@ -208,11 +208,11 @@ class JobOutput:
 
         if len( task.jobs ) != 1 :
             logging.error( "ERROR: too many jobs loaded %s" % len( task.jobs ))
-            return
+            return job
 
         if id( task.jobs[0] ) != id( job ) :
             logging.error( "Fatal ERROR: mismatching job" )
-            return
+            return job
 
         outfile = job.runningJob['outputDirectory'] + \
                   '/loggingInfo.log'
@@ -231,6 +231,8 @@ class JobOutput:
 
         job.runningJob['processStatus'] = 'failure_handled'
 
+        return job
+
 
     @classmethod
     def getOutput(cls, job, task, schedSession ):
@@ -243,11 +245,11 @@ class JobOutput:
 
         if len( task.jobs ) != 1 :
             logging.error( "ERROR: too many jobs loaded %s" % len( task.jobs ))
-            return
+            return job
 
         if id( task.jobs[0] ) != id( job ) :
             logging.error( "Fatal ERROR: mismatching job" )
-            return
+            return job
         
         #  get output, trying at most maxGetOutputAttempts
         retry = 0
