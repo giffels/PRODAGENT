@@ -204,9 +204,9 @@ def getNumJobFailWrapper(destination='all',begin_t=0,end_t=time.time()-time.altz
 
 def getList_Destination(begin_t=0): 
    strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t))) 
-   queryString = "select distinct(destination) from bl_runningjob where destination is not null and destination!='' and getoutput_time > '"+strBegin+"'"
+#   queryString = "select distinct(destination) from bl_runningjob where destination is not null and destination!='' and getoutput_time > '"+strBegin+"'"
+   queryString = "select distinct(destination) from bl_runningjob where destination is not null and destination!='' and submission_time > '"+strBegin+"'"
    taskCheck = queryMethod(queryString, None)
-
    return taskCheck
 
 def getNumJobSubmittedBySite(begin_t=0): 
