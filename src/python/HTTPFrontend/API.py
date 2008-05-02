@@ -114,7 +114,6 @@ def getBossLiteRunningJobs(key):
    taskCheck = queryMethod(queryString, None)
    return taskCheck
 
-##AF - add possibility to specify destination
 def getNumBossLiteRunningJobs(key,date,destination='all'):
    if destination == 'all':
       dest_condition=""
@@ -142,6 +141,18 @@ def getDeltaTimeBossLiteRunningJobs(from_time,to_time,Nbin):
 # ########
 #  AF adding methods useful for efficency plots
 # #######
+def getTimeNumBossLiteRunningJobs(key,begin_t=0,end_t=time.time()-time.altzone,destination='all'):
+   if destination == 'all':
+      dest_condition=""
+   else:
+      dest_condition=" and destination like '%"+destination+"%'"
+   strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
+   strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
+   queryString = "select count(*),"+key+" from bl_runningjob where submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "+dest_condition+" group by "+key+" "
+   logging.info("=============> %s"%queryString)
+   taskCheck = queryMethod(queryString, None)
+   return taskCheck
+
 def getNumJobSubmitted(destination='all',begin_t=0,end_t=time.time()-time.altzone):
    if destination == 'all':
       dest_condition=""
@@ -195,6 +206,7 @@ def getList_Destination(begin_t=0):
    strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t))) 
    queryString = "select distinct(destination) from bl_runningjob where destination is not null and destination!='' and getoutput_time > '"+strBegin+"'"
    taskCheck = queryMethod(queryString, None)
+
    return taskCheck
 
 def getNumJobSubmittedBySite(begin_t=0): 
