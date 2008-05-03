@@ -70,7 +70,6 @@ class ErrorHandlerComponent:
          self.args['Events']={'JobFailed': self.args['RunHandlerName'] , \
                               'SubmissionFailed': self.args['SubmitHandlerName'], \
                               'CreateFailed':'createFailureHandler'}
-                              'CreateFailed':'createFailureHandler'}
 
          if self.args['Logfile'] == None:
               self.args['Logfile'] = os.path.join(self.args['ComponentDir'],\
