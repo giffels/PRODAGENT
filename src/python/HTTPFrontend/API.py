@@ -126,17 +126,31 @@ def getNumBossLiteRunningJobs(key,date,destination='all'):
    taskCheck = queryMethod(queryString, None)
    return taskCheck
 
-def getDeltaTimeBossLiteRunningJobs(from_time,to_time,Nbin):
-   limitsQueryString = "select max("+to_time+"-"+from_time+") from bl_runningjob where "+to_time+"-"+from_time+">0;"
+def getDeltaTimeBossLiteRunningJobs(from_time,to_time,Nbin, destination = 'all'):
+   if destination == 'all':
+      dest_condition=""
+   else:
+      dest_condition=" and destination like '%"+destination+"%'"
+   limitsQueryString = "select max("+to_time+"-"+from_time+") from bl_runningjob where "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 "+dest_condition+";"
+   logging.info("=============> %s"%limitsQueryString)
    max = queryMethod(limitsQueryString, None)
    max = float(max[0][0]);
-#    limitsQueryString = "select min("+to_time+"-"+from_time+") from bl_runningjob where "+to_time+"-"+from_time+">0;"
-#    min = queryMethod(limitsQueryString, None)
-#    min = float(min[0][0]);
    h = int(max / Nbin)+1
-   queryString = "select count(*),floor(("+to_time+"-"+from_time+")/"+str(h)+") from bl_runningjob where "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 group by floor(("+to_time+"-"+from_time+")/"+str(h)+") "
+   queryString = "select count(*),floor(("+to_time+"-"+from_time+")/"+str(h)+") from bl_runningjob where "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 "+dest_condition+" group by floor(("+to_time+"-"+from_time+")/"+str(h)+") "
+   logging.info("=============> %s"%queryString)
    taskCheck = queryMethod(queryString, None)
    return max, taskCheck
+
+def getSites():
+   outputSites=[];
+   queryString = "select distinct(destination) from bl_runningjob;"
+   taskCheck = queryMethod(queryString, None)
+   for site in taskCheck:
+      outputsite = (str(site[0])).split(':')
+      outputSites.append(str(outputsite[0]))
+   outputSites = tuple(set(outputSites))
+   return outputSites;
+      
 
 # ########
 #  AF adding methods useful for efficency plots
@@ -165,30 +179,31 @@ def getNumJobSubmitted(destination='all',begin_t=0,end_t=time.time()-time.altzon
    taskCheck = queryMethod(queryString, None)
    return taskCheck
 
-def getNumJobRetrieved(destination='all',begin_t=0,end_t=time.time()-time.altzone):
+def getNumJobRetrieved(destination='all',begin_t=0,end_t=time.time()-time.altzone,timetype="submission_time"):
    if destination == 'all':
       dest_condition=""
    else:
       dest_condition=" and destination like '%"+destination+"%'"
    strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
    strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
-   queryString = "select count(*) from bl_runningjob where getoutput_time > '"+strBegin+"' and getoutput_time < '"+strEnd+"' "+dest_condition
+   queryString = "select count(*) from bl_runningjob where "+timetype+" > '"+strBegin+"' and "+timetype+" < '"+strEnd+"' "+dest_condition
    logging.info("=============> %s"%queryString)
    taskCheck = queryMethod(queryString, None)
    return taskCheck
 
-
-def getNumJobSuccess(destination='all',begin_t=0,end_t=time.time()-time.altzone):
+def getNumJobSuccess(destination='all',begin_t=0,end_t=time.time()-time.altzone,timetype="submission_time"):
    if destination == 'all':
       dest_condition=""
    else:
       dest_condition=" and destination like '%"+destination+"%'"
    strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
    strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
-   queryString = "select count(*) from bl_runningjob where getoutput_time > '"+strBegin+"' and getoutput_time < '"+strEnd+"' and application_return_code=0 and wrapper_return_code=0 "+dest_condition
+   queryString = "select count(*) from bl_runningjob where "+timetype+" > '"+strBegin+"' and "+timetype+" < '"+strEnd+"' and application_return_code=0 and wrapper_return_code=0 "+dest_condition
    logging.info("=============> %s"%queryString)
    taskCheck = queryMethod(queryString, None)
    return taskCheck
+
+
 
 def getNumJobFailWrapper(destination='all',begin_t=0,end_t=time.time()-time.altzone):
    if destination == 'all':
@@ -204,7 +219,6 @@ def getNumJobFailWrapper(destination='all',begin_t=0,end_t=time.time()-time.altz
 
 def getList_Destination(begin_t=0): 
    strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t))) 
-#   queryString = "select distinct(destination) from bl_runningjob where destination is not null and destination!='' and getoutput_time > '"+strBegin+"'"
    queryString = "select distinct(destination) from bl_runningjob where destination is not null and destination!='' and submission_time > '"+strBegin+"'"
    taskCheck = queryMethod(queryString, None)
    return taskCheck
