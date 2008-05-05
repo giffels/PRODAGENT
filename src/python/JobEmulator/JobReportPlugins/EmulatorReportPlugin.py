@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.9 2008/04/29 15:47:23 sfoulkes Exp $"
-__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.10 2008/04/29 18:31:38 sfoulkes Exp $"
+__version__ = "$Revision: 1.10 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -89,7 +89,8 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             theFile['PFN'] ="fakefile:%s" % theFile['LFN']
             theFile['GUID'] = guid
             theFile['ModuleLabel'] = outName
-            theFile['Size'] = 500000 * randrange(5, 10)
+            # basic measurement is byte (minumum 4MB, max 4GB)
+            theFile['Size'] = 4000000 * randrange(1, 1000) 
             theFile.runs.append(jobSpecLoaded.parameters["RunNumber"])
             
             #check if the maxEvents['output'] is set if not set totalEvent using maxEvents['input']
