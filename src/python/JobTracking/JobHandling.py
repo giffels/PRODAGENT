@@ -8,7 +8,6 @@ __revision__ = "$Id"
 __version__ = "$Revision"
 
 import os
-import re
 import time
 import logging
 from shutil import copy
@@ -24,6 +23,7 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
 from ProdCommon.BossLite.Common.Exceptions import TaskError
+from ProdCommon.BossLite.Common.Exceptions import JobError
 from ProdAgentBOSS import BOSSCommands
 
 # Framework Job Report handling
@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.25 2008/04/29 17:34:09 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.25 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.26 2008/04/30 13:37:53 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.26 $"
 
 class JobHandling:
     """
@@ -63,7 +63,6 @@ class JobHandling:
         logging.info( "Evaluate job %s and publish the job results" \
                       % self.fullId(job) )
         # get job information
-        taskId = job['taskId']
         jobId = str(job['jobId'])
         jobSpecId = job['name']
                    
@@ -74,7 +73,7 @@ class JobHandling:
         # get outdir and report file name
         outdir = job.runningJob['outputDirectory']
         
-        # # FIXME: temporary to emulate SE
+        # temporary to emulate SE
         # task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
         # if task['outputDirectory'] is None \
         #        or self.ft.match( task['outputDirectory'] ) is not None or \
@@ -194,28 +193,33 @@ class JobHandling:
             self.writeFwkJobReport( job['name'], 50115, reportfilename )
             return ( False, 50115 )
 
-        # read
-        jobReport = readJobReport(reportfilename)[0]
-        exitCode = jobReport.exitCode
-        success = ( jobReport.status == "Success" )
+        # read standard info
+        try :
+            jobReport = readJobReport(reportfilename)[0]
+            exitCode = jobReport.exitCode
+            success = ( jobReport.status == "Success" )
+        except Exception, err:
+            logging.error('Invalid Framework Job Report : %s' %str(err) )
+            return( "Failed", -1 )
 
-        for report in jobReport.errors:
-            if report['Type'] == 'WrapperExitCode':
-                job.runningJob["wrapperReturnCode"] = report['ExitStatus']
-            elif report['Type'] == 'ExeExitCode':     
-                job.runningJob["applicationReturnCode"] = report['ExitStatus']
-            else:
-                continue
 
-        #if job.runningJob["wrapperReturnCode"] is None and \
-        #   job.runningJob["applicationReturnCode"] is None :
-        #    return( success, exitCode )
+        # read CS specific info
+        try :
+            for report in jobReport.errors:
+                if report['Type'] == 'WrapperExitCode':
+                    job.runningJob["wrapperReturnCode"] = report['ExitStatus']
+                elif report['Type'] == 'ExeExitCode':     
+                    job.runningJob["applicationReturnCode"] = report['ExitStatus']
+                else:
+                    continue
+            return( success, exitCode )
+        except:
+            pass
 
-        #elif job.runningJob["wrapperReturnCode"] == '0' and \
-        #     job.runningJob["applicationReturnCode"] == '0' :
-        #    return( True, exitCode )
-        #else :
-        #    return( False, exitCode )
+        if job.runningJob["wrapperReturnCode"] is None and \
+           job.runningJob["applicationReturnCode"] is None :
+            job.runningJob["wrapperReturnCode"] = exitCode
+            job.runningJob["applicationReturnCode"] = exitCode
 
         return( success, exitCode )
 
@@ -230,7 +234,11 @@ class JobHandling:
             reportfilename = self.archiveJob("Success", job, reportfilename)
         else :
             # archive job
-            self.bossLiteSession.archive( job )
+            try :
+                self.bossLiteSession.archive( job )
+            except JobError:
+                logging.error("Unable to archive job %s.%s" % \
+                              (job['taskId'], job['jobId'] ) )
 
         # publish success event
         self.ms.publish("JobSuccess", reportfilename)
@@ -251,7 +259,11 @@ class JobHandling:
             reportfilename = self.archiveJob("Failed", job, reportfilename)
         else :
             # archive job
-            self.bossLiteSession.archive( job )
+            try :
+                self.bossLiteSession.archive( job )
+            except JobError:
+                logging.error("Unable to archive job %s.%s" % \
+                              (job['taskId'], job['jobId'] ) )
 
         # publish job failed event
         self.ms.publish("JobFailed", reportfilename)
@@ -729,7 +741,7 @@ class JobHandling:
         for filetoclean in filesToClean:
             try: 
                 os.remove( filetoclean )   
-                pass
+
             except Exception, e:
                 logging.info(
                     "Output rebounce local clean fail for %s.%s: %s " \
