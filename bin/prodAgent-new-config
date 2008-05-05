@@ -109,7 +109,7 @@ coreFields = {
     'domain':'localdomain',
     'guestUser':'ProdAgentGuest',
     'guestPasswd':'ProdAgentGuestPasswd',
-    'realtimeMonitor':'yes',
+    'realtimeMonitor':'no',
     'configDir':'',
     'clarensKey':'',
     'clarensCert':'',
