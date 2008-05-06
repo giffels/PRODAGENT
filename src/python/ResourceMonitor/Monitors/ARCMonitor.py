@@ -5,7 +5,7 @@ _ARCMonitor_
 ResourceMonitor plugin that monitors ARC resources
 
 """
-import logging
+import logging, os
 from ResourceMonitor.Monitors.MonitorInterface import MonitorInterface
 from ResourceMonitor.Registry import registerMonitor
 from ProdAgentCore.ResourceConstraint import ResourceConstraint
@@ -16,9 +16,7 @@ from ProdAgent.Resources import ARC
 from popen2 import Popen4
 
 
-#
 # Mapping between job types and threshold types
-#
 jobTypeMap = {"Processing":"processingThreshold",
               "Merge":"mergeThreshold",
               "CleanUp":"cleanupThreshold" }
@@ -34,7 +32,6 @@ class ARCMonitor(MonitorInterface):
     Generate a per site constraint for each distinct site being used
 
     """
-    
     def __call__(self):
         constraints = []
         totCount = 0
@@ -75,12 +72,13 @@ class ARCMonitor(MonitorInterface):
 
 
     def availableCEs(self):
-        """
-        Return a list of CEs that are responding and who's queues are 'active'
+        """ 
+        Return a list of CEs that are responding and who's queues are
+        'active', and who's corresponding SEs appears to be up and running.
         
         """
     
-        sites = ResConAPI.activeSiteData()
+        sites = ResConAPI.activeSiteData() 
         logging.debug("availableCEs: " + str(sites))
 
         if not sites: 
@@ -97,12 +95,27 @@ class ARCMonitor(MonitorInterface):
             logging.warning("Didn't get information on ARC resources: " + msg)
             return []
 
+        seMap = ResConAPI.createSEMap()
         asites = []
         for cluster in self.parseNgstatq(output.split('\n')):
-            if cluster["Active"]: asites.append(cluster["CEName"])
+            CEName = cluster["CEName"]
+            if cluster["Active"] and self.SEWorks(seMap[CEName]):
+                asites.append(CEName)
 
         return asites
             
+
+    def SEWorks(self, SEName):
+        """
+        Return True if the SE is up and running.
+        """
+
+        # Check availability by srmpinging the server. 
+        # FIXME: Is this the best way to do it? What about XRoot?
+        r = os.system("srmping srm://" + SEName) == 0
+        logging.debug("SE " + SEName + " is up: " + str(r))
+        return r
+
 
 
     def parseNgstatq(self, output):
