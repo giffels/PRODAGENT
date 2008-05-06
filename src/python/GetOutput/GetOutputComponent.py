@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.18 2008/04/30 08:47:04 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.18 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.19 2008/05/06 09:49:24 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.19 $"
 
 import os
 import logging
@@ -279,7 +279,7 @@ class GetOutputComponent:
         """
 
         logging.debug("Processing output for job: %s.%s" % \
-                      ( job['jobId'], job['taskId'] ) )
+                      ( job['taskId'], job['jobId'] ) )
 
         # perform processing
         try :
@@ -293,7 +293,7 @@ class GetOutputComponent:
                            (job['taskId'], job['jobId'], str(err) ) )
             
         logging.debug("Processing output for job %s.%s finished" % \
-                      ( job['jobId'], job['taskId'] ) )
+                      ( job['taskId'], job['jobId'] ) )
 
 
     def startComponent(self):

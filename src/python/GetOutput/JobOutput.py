@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.24 2008/05/02 12:47:35 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.24 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.25 2008/05/06 09:49:24 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.25 $"
 
 import logging
 import os
@@ -159,6 +159,11 @@ class JobOutput:
                 job = cls.handleFailed( job, task, schedSession)
 
             #  get output, trying at most maxGetOutputAttempts
+            elif cls.params['OutputLocation'] == 'SE':
+                job.runningJob['status'] = 'E'
+                job.runningJob['closed'] = 'Y'
+                job.runningJob['statusScheduler'] = 'Retrieved'
+                job.runningJob['processStatus'] = 'output_retrieved'
             else :
                 # FIXME : Temporary workaround
                 try:
@@ -380,6 +385,7 @@ class JobOutput:
             pool.enqueue(job, job)
 
         logging.debug("Recreated %s get output requests" % numberOfJobs)
+
 
     @classmethod
     def setDoneStatus(cls, job):

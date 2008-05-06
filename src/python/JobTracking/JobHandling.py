@@ -10,6 +10,7 @@ __version__ = "$Revision"
 import os
 import time
 import logging
+import re
 from shutil import copy
 #from shutil import rmtree
 
@@ -30,10 +31,11 @@ from ProdAgentBOSS import BOSSCommands
 from ProdCommon.FwkJobRep.ReportState import checkSuccess
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
+from ProdCommon.Storage.SEAPI.SElement import SElement
+from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 
-
-__version__ = "$Id: JobHandling.py,v 1.1.2.26 2008/04/30 13:37:53 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.26 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.27 2008/05/05 14:06:05 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.27 $"
 
 class JobHandling:
     """
@@ -53,6 +55,7 @@ class JobHandling:
         self.outputLocation = params['OutputLocation']
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
         self.configs = params['OutputParams']
+        self.ft = re.compile( 'gsiftp://[\w.]+[:]*[\d]*/*' )
 
 
     def performOutputProcessing(self, job):
@@ -74,7 +77,8 @@ class JobHandling:
         outdir = job.runningJob['outputDirectory']
         
         # temporary to emulate SE
-        # task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
+        task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
+
         # if task['outputDirectory'] is None \
         #        or self.ft.match( task['outputDirectory'] ) is not None or \
         #        not os.access( task['outputDirectory'], os.W_OK):
@@ -84,8 +88,9 @@ class JobHandling:
 
         if self.outputLocation == "SE" :
             try :
+                self.reportRebounce( job )
             ## temporary workaround for OSB rebounce # Fabio
-                self.osbRebounce( job )
+            #    self.osbRebounce( job )
             except :
                 # as dirt as needed: any unknown error
                 import traceback
@@ -551,8 +556,8 @@ class JobHandling:
 
             # error, cannot archive job
             except TaskError, msg:
-                logging.error("Failed to archive job %s: %s" % \
-                              (job['jobId'], str(msg)))
+                logging.error("Failed to archive job %s.%s: %s" % \
+                              (job['taskId'], job['jobId'], str(msg)))
 
         return reportfilename
 
@@ -691,13 +696,61 @@ class JobHandling:
                + str( job['jobId'] ) + '.' \
                + str( job['submissionNumber'] )
 
+
+    def reportRebounce( self, job ):
+        """
+        __reportRebounce__
+        
+        """
+
+        logging.info("Output rebounce: %s.%s " \
+                     % ( job['taskId'], job['jobId'] ) )
+
+        # loading task
+        task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
+
+        # fwjr name
+        reportName = 'crab_fjr_' + str(job['jobId']) + '.xml'
+
+        # remote source name
+        outputDirectory = task['outputDirectory']
+        out = self.ft.match( outputDirectory )
+        if out is not None :
+            outputDirectory = outputDirectory[out.end()-1:]
+        source = os.path.join( outputDirectory, reportName )
+
+        # local destination name
+        dest = os.path.join( job.runningJob['outputDirectory'], reportName )
+        
+        # initialize tranfer protocol
+        seEl = SElement( self.configs["storageName"], \
+                         self.configs["Protocol"],    \
+                         self.configs["storagePort"] )
+        loc = SElement("localhost", "local")
+        sbi = SBinterface( seEl, loc )
+
+        # transfer fwjr
+        try: 
+            logging.debug( 'REBOUNCE DBG %s, %s'%(source, dest) ) 
+            sbi.copy( source, dest, task['user_proxy'])
+        except Exception, e:
+            logging.info("Report rebounce transfer fail for %s.%s: %s " \
+                         % ( job['taskId'], job['jobId'], str(e) ) )
+
+        logging.info("Report rebounce completed for %s.%s " \
+                     % ( job['taskId'], job['jobId'] ) )
+        return 
+
+
     ######################
     # TODO remove this temporary workaround      # Fabio
     #  once the OSB bypass problem will be fixed # Fabio
     # This is a mess and must be removed ASAP    # Fabio
     def osbRebounce( self, job ):
-        from ProdCommon.Storage.SEAPI.SElement import SElement
-        from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
+        """
+        __osbRebounce__
+        
+        """
          
         localOutDir = job.runningJob['outputDirectory']
         localOutputTgz = [ localOutDir +'/'+ f.split('/')[-1]
@@ -714,7 +767,7 @@ class JobHandling:
 
         task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
         logging.info("Output rebounce: %s.%s " \
-                     % ( job['jobId'], job['taskId'] ) )
+                     % ( job['taskId'], job['jobId'] ) )
         seEl = SElement( self.configs["storageName"], \
                          self.configs["Protocol"],    \
                          self.configs["storagePort"] )
@@ -733,11 +786,11 @@ class JobHandling:
                 filesToClean.append(source)
             except Exception, e:
                 logging.info("Output rebounce transfer fail for %s.%s: %s " \
-                             % ( job['jobId'], job['taskId'], str(e) ) )
+                             % ( job['taskId'], job['jobId'], str(e) ) )
                 continue 
 
         logging.info("Output rebounce completed for %s.%s " \
-                     % ( job['jobId'], job['taskId'] ) )
+                     % ( job['taskId'], job['jobId'] ) )
         for filetoclean in filesToClean:
             try: 
                 os.remove( filetoclean )   
@@ -745,9 +798,9 @@ class JobHandling:
             except Exception, e:
                 logging.info(
                     "Output rebounce local clean fail for %s.%s: %s " \
-                    % ( job['jobId'], job['taskId'], str(e) ) )
+                    % ( job['taskId'], job['jobId'], str(e) ) )
                 continue
         logging.info("Output rebounce clean for %s.%s " \
-                     % ( job['jobId'], job['taskId'] ) )
+                     % ( job['taskId'], job['jobId'] ) )
         return 
     ######################
