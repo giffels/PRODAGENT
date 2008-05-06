@@ -29,7 +29,7 @@ from ProdAgent.WorkflowEntities.JobState import doNotAllowMoreSubmissions
 
 class CrabRunFailureHandler(HandlerInterface):
     """
-    _RunFailureHandler_
+    _CrabRunFailureHandler_
 
     Handles job run failures. Called by the error handler if a job run failure 
     event is received. We distinguish two classes of failures. A failure 
@@ -154,7 +154,7 @@ class CrabRunFailureHandler(HandlerInterface):
          logging.info("--->>> wrapperReturnCode = " + str(wrapperReturnCode))         
          logging.info("--->>> applicationReturnCode = " + str(applicationReturnCode))
 
-         #### if both codes are ampty and the job has been killed or aborted
+         #### if both codes are empty and the job has been killed or aborted
          #### the job will be resubmit with delay
          
          #### add a control about the number of resubmission ####
@@ -163,12 +163,10 @@ class CrabRunFailureHandler(HandlerInterface):
              if ((task.jobs[0].runningJob['status'] == 'K') or (task.jobs[0].runningJob['status'] == 'A')):
                  ### to check if correct 
                  ### dont_allow_resubmission()
-                 if ((task.jobs[0].runningJob['submission'] >= 2) and (task.jobs[0].runningJob['status_history'] == 'A')):
+                 #if ((task.jobs[0].runningJob['submission'] >= 2) and (task.jobs[0].runningJob['status_history'] == 'A')):
+                 if (task.jobs[0].runningJob['submission'] >= 2):
                      try:
-                         #job_finished = []
-                         #job_finished.append(jobId) 
                          doNotAllowMoreSubmissions([jobId])
-                         raise
                      except ProdAgentException, ex:
                          msg = "Updating max racers fields failed for job %s\n" % jobId
                          logging.info(msg)
@@ -207,13 +205,17 @@ class CrabRunFailureHandler(HandlerInterface):
          #### to understand how to implement the notification #### 
          #else:
          #    self.publishEvent(notification)
+         
+         #### if wrapper code is 60303 (file already exists in the SE) or 70000 (output too big),
+         #### the job will be not resubmitted
+
+         if ((wrapperReturnCode == 60303) or (wrapperReturnCode == 70000)):
+             try:
+                 doNotAllowMoreSubmissions([jobId])
+             except ProdAgentException, ex:
+                 msg = "Updating max racers fields failed for job %s\n" % jobId
+                 logging.info(msg)
+                 logging.error(msg)
              
 
 registerHandler(CrabRunFailureHandler(),"crabRunFailureHandler","ErrorHandler")
-
-
-
-
-
-
-
