@@ -105,7 +105,7 @@ class BulkEventMonitor(ShREEKMonitor):
         """
         self.apmon.connect()
         timenow = int(time.time())
-        for i in range(0, 5):
+        for i in range(0, 1):
             self.apmon.send(JobStarted = timenow)
         
         self.apmon.disconnect()
@@ -121,7 +121,7 @@ class BulkEventMonitor(ShREEKMonitor):
         self.currentTask = task
         self.apmon.connect()
         timenow = int(time.time())
-        for i in range(0, 5):
+        for i in range(0, 1):
             self.apmon.send(TaskStarted = timenow,
                             TaskName = str(task.taskname()))
             
@@ -149,7 +149,7 @@ class BulkEventMonitor(ShREEKMonitor):
         self.eventLogger = None
         self.apmon.connect()
         timenow = int(time.time())
-        for i in range(0, 5):
+        for i in range(0, 1):
             self.apmon.send(
                 RunNumber = lastRun,
                 EventNumber = lastEvent,
@@ -166,7 +166,7 @@ class BulkEventMonitor(ShREEKMonitor):
         """
         self.apmon.connect()
         timenow = int(time.time())
-        for i in range(0, 5):
+        for i in range(0, 1):
             self.apmon.send(JobFinished = timenow)
         self.apmon.disconnect()
         return
