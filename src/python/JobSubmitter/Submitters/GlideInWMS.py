@@ -15,7 +15,7 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.4 2008/04/09 21:43:20 sfiligoi Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.5 2008/04/16 16:51:50 sfiligoi Exp $"
 
 import os
 import logging
@@ -266,12 +266,11 @@ class GlideInWMS(BulkSubmitterInterface):
         script = ["#!/bin/sh\n"]
         script.extend(standardScriptHeader(jobName, self.workflowName))
         
-
+        spec_file="$PRODAGENT_JOB_INITIALDIR/%s" % self.jsLinkFileName
         if self.isBulk:
-            script.extend(bulkUnpackerScript(self.specSandboxLink))
+            script.extend(bulkUnpackerScript(spec_file))
         else:
-            script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
-                          self.jsLinkFileName)   
+            script.append("JOB_SPEC_FILE=%s\n" %spec_file)
             
         script.append(
              "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % "SandBoxLink.tar.gz"
