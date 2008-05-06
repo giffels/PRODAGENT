@@ -638,11 +638,6 @@ class JobQueueDB:
         
         Session.execute(sqlStr)
         
-#        if siteIndex is not None:
-#            sqlStr = """UPDATE jq_queue SET released_to = %s WHERE job_index
-#             IN ( %s )""" % (siteIndex, str(reduce(reduceList, indices)))
-#            Session.execute(sqlStr)
-        
         return
 
 
@@ -1150,9 +1145,8 @@ class JobQueueDB:
         
         sqlStr = \
         """
-        SELECT COUNT(jobQ.job_index), we_Job.job_type, siteQ.released_to
+        SELECT COUNT(jobQ.job_index), we_Job.job_type, jobQ.released_site
         FROM jq_queue jobQ
-        LEFT OUTER JOIN jq_site siteQ ON jobQ.job_index = siteQ.job_index
         LEFT OUTER JOIN we_Job ON jobQ.job_spec_id = we_Job.id 
         WHERE jobQ.status = 'released'
         AND we_Job.status IN ('released', 'create', 'submit', 'inProgress')
@@ -1177,7 +1171,7 @@ class JobQueueDB:
             
             sqlStr += " AND job_type IN (%s) " % siteStr
         
-        sqlStr += " GROUP BY we_Job.job_type, siteQ.site_index"
+        sqlStr += " GROUP BY we_Job.job_type, jobQ.released_site"
         
         Session.execute(sqlStr)
         temp = Session.fetchall()
