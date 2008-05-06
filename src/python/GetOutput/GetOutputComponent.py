@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.17 2008/04/29 17:45:50 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.17 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.18 2008/04/30 08:47:04 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.18 $"
 
 import os
 import logging
@@ -23,6 +23,7 @@ from JobTracking.JobHandling import JobHandling
 
 # BossLite support 
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
+from ProdCommon.BossLite.Common.Exceptions import DbError
 
 # Threads
 from ProdCommon.ThreadTools.WorkQueue import WorkQueue
@@ -146,7 +147,7 @@ class GetOutputComponent:
             return
 
         # wrong event
-        logging.info("Unexpected event %s(%), ignored" % \
+        logging.info("Unexpected event %s(%s), ignored" % \
                      (str(event), str(payload)))
         return
 
@@ -171,14 +172,21 @@ class GetOutputComponent:
             logging.debug("Max jobs number to be loaded %s:%s " % \
                           (str( offset ), str( offset + self.jobLimit) ) )
 
-            self.outputRequestedJobs = \
+            try:
+                self.outputRequestedJobs = \
                                    self.bossLiteSession.loadJobsByRunningAttr(
                                    { 'processStatus' : 'output_requested' }, \
                                    limit=self.jobLimit, offset=offset )
 
-            numberOfJobs = len(self.outputRequestedJobs)
-            logging.info("Output requested for " + \
-                         str( numberOfJobs ) + " jobs")
+                numberOfJobs = len(self.outputRequestedJobs)
+                logging.info("Output requested for " + \
+                             str( numberOfJobs ) + " jobs")
+
+            except DbError, err:
+                logging.error( "failed to load jobs in range %s:%s " % \
+                          (str( offset ), str( offset + self.jobLimit) ) )
+                offset += self.jobLimit
+                continue
 
             # exit if no more jobs to query
             if self.outputRequestedJobs == [] :
@@ -206,13 +214,21 @@ class GetOutputComponent:
 
         while loop :
 
-            self.outputRequestedJobs = \
+            try:
+                self.outputRequestedJobs = \
                                     self.bossLiteSession.loadJobsByRunningAttr(
                                            { 'processStatus' : 'failed' }, \
                                            limit=self.jobLimit, offset=offset )
 
-            numberOfJobs = len(self.outputRequestedJobs)
-            logging.info("Notify failure for " + str( numberOfJobs ) + " jobs")
+                numberOfJobs = len(self.outputRequestedJobs)
+                logging.info("Notify failure for " + \
+                             str( numberOfJobs ) + " jobs")
+
+            except DbError, err:
+                logging.error( "failed to load jobs in range %s:%s : %s" % ( \
+                    str( offset ), str( offset + self.jobLimit), str(err) ) )
+                offset += self.jobLimit
+                continue
 
             # exit if no more jobs to query
             if self.outputRequestedJobs == [] :
@@ -266,11 +282,16 @@ class GetOutputComponent:
                       ( job['jobId'], job['taskId'] ) )
 
         # perform processing
-        self.jobHandling.performOutputProcessing(job)
+        try :
+            self.jobHandling.performOutputProcessing(job)
 
-        # update status
-        job.runningJob['processStatus'] = 'processed'
-        self.bossLiteSession.updateDB( job )
+            # update status
+            job.runningJob['processStatus'] = 'processed'
+            self.bossLiteSession.updateDB( job )
+        except Exception, err:
+            logging.error( "failed to process job %s:%s output : %s" % \
+                           (job['taskId'], job['jobId'], str(err) ) )
+            
         logging.debug("Processing output for job %s.%s finished" % \
                       ( job['jobId'], job['taskId'] ) )
 

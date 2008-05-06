@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.23 2008/04/30 13:26:58 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.23 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.24 2008/05/02 12:47:35 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.24 $"
 
 import logging
 import os
@@ -310,7 +310,7 @@ class JobOutput:
                         "waiting next round")
                     logging.error(
                         "empty outfile for job %s.%s: waiting next round" % \
-                        (job['taskId'], job['jobId'], job.runningJob['status'])
+                        (job['taskId'], job['jobId'])
                         )
                     break
 
