@@ -15,7 +15,7 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.5 2008/04/16 16:51:50 sfiligoi Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.6 2008/05/06 19:27:01 sfiligoi Exp $"
 
 import os
 import logging
@@ -264,6 +264,19 @@ class GlideInWMS(BulkSubmitterInterface):
         # // Generate main executable script for job
         #//
         script = ["#!/bin/sh\n"]
+
+        placeholderScript = \
+"""
+echo '<FrameworkJobReport JobSpecID=\"%s\" Name=\"cmsRun1\" WorkflowSpedID=\"%s\"Status=\"Failed\">' > FrameworkJobReport.xml
+echo ' <ExitCode Value=\"60998\"/>' >> FrameworkJobReport.xml
+echo ' <FrameworkError ExitStatus=\"60998\" Type=\"ErrorBootstrappingJob\">' >> FrameworkJobReport.xml
+echo "   hostname=`hostname -f` " >> FrameworkJobReport.xml
+echo "   site=$OSG_SITE_NAME " >> FrameworkJobReport.xml
+echo " </FrameworkError>"  >> FrameworkJobReport.xml
+echo "</FrameworkJobReport>" >> FrameworkJobReport.xml
+""" % (jobName, self.workflowName)
+        script.append(placeholderScript)
+
         script.extend(standardScriptHeader(jobName, self.workflowName))
         
         spec_file="$PRODAGENT_JOB_INITIALDIR/%s" % self.jsLinkFileName
