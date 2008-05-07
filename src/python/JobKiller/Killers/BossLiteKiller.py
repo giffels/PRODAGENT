@@ -6,12 +6,13 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.3 2008/04/29 15:24:20 farinafa Exp $"
-__version__ = "$Revision: 1.1.2.3 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.4 2008/04/30 17:48:33 spiga Exp $"
+__version__ = "$Revision: 1.1.2.4 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
 import os
+import traceback
 
 from JobKiller.Registry import registerKiller
 from JobKiller.KillerExceptions import InvalidJobException, \
@@ -308,7 +309,14 @@ class BossLiteKiller:
             logging.info("Jobs Recovered by Payload = " + str(jobsToKill))
 
         # get task specification
-        task = self.bliteSession.loadTaskByName(taskSpecId)
+        task = None
+        try: 
+            task = self.bliteSession.loadTaskByName(taskSpecId, deep=False)
+            task = self.bliteSession.load(task, jobsToKill)[0]
+        except Exception, e:
+            logging.info( traceback.format_exc() )
+            pass 
+
         if task is None:
                 # no, signal error
                 msg = "Cannot get BossLite task information for %s\n" % taskSpecId
@@ -316,7 +324,7 @@ class BossLiteKiller:
                 raise JobNotSubmittedException, msg
 
         ## build list of jobs to be killed
-        logging.info("Taskid: "+ str(task['id']) )
+        logging.info("Taskid: "+ taskSpecId )
 
         jobsReadyToKill = []
         if str(jobsToKill) == "all":
@@ -332,11 +340,12 @@ class BossLiteKiller:
             if j.runningJob['scheduler'] is not None:
                 scheduler = j.runningJob['scheduler']
                 
-            logging.info("Working on job: \n" + str(j.runningJob) + "\n")
             if j['jobId'] not in jobsReadyToKill:
                 continue
-  
-            if j.runningJob['status'] not in ['SS','R', 'SR']:
+
+            logging.info("Working on job: %s.%s"%(j['taskId'], j['jobId']) )
+
+            if j.runningJob['status'] not in ['SS','R', 'SR', 'SU', 'S' ]:
                 logging.info("Unable to kill Job #"+str(j['jobId'])+" : Status is "+str(j.runningJob['statusScheduler']) )
                 jobsReadyToKill.remove(j['jobId'])
                 continue
@@ -356,9 +365,6 @@ class BossLiteKiller:
 
         ## perform the actual kill
         # do not allow resubmisions for them
-        logging.info("JobSpecId list: "+ str(jobSpecId) + "\n")
-        JobState.doNotAllowMoreSubmissions(jobSpecId)
- 
         schedulerConfig = { \
                           'name' : scheduler, \
                           'user_proxy' : task['user_proxy'], \
@@ -366,13 +372,16 @@ class BossLiteKiller:
         # kill
         bliteSched = BossLiteAPISched(self.bliteSession, schedulerConfig)
         logging.info("Jobs to kill: "+ str(jobsReadyToKill) )
-        bliteSched.kill(task, jobsReadyToKill)
+        bliteSched.kill(task['id'], jobsReadyToKill)
 
         # archive
         for j in task.jobs:
             if j['jobId'] not in jobsReadyToKill:
                 continue
             self.bliteSession.archive(j)
+
+        logging.info("JobSpecId list: "+ str(jobSpecId) + "\n")
+        JobState.doNotAllowMoreSubmissions(jobSpecId)
 
         logging.info("Jobs "+ str(jobsReadyToKill) +" killed and Archived")
         return
