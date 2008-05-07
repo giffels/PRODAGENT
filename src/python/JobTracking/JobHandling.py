@@ -33,8 +33,8 @@ from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.28 2008/05/06 15:27:32 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.28 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.29 2008/05/07 18:07:15 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.29 $"
 
 class JobHandling:
     """
@@ -76,8 +76,8 @@ class JobHandling:
         outdir = job.runningJob['outputDirectory']
         
         # temporary to emulate SE
-        task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
-
+        # task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
+        #
         # if task['outputDirectory'] is None \
         #        or self.ft.match( task['outputDirectory'] ) is not None or \
         #        not os.access( task['outputDirectory'], os.W_OK):
@@ -85,7 +85,8 @@ class JobHandling:
         # else:
         #     toWrite = True
 
-        if self.outputLocation == "SE" :
+        if self.outputLocation == "SE" \
+               and job.runningJob['processStatus'] != 'failed':
             try :
                 self.reportRebounce( job )
             ## temporary workaround for OSB rebounce # Fabio
