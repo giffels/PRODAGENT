@@ -124,7 +124,7 @@ onlyClosedBlocks = False
 pileupDataset = None
 pileupFilesPerJob = 1
 
-activty = "Reprocessing"
+activity = "Reprocessing"
 
 
 
