@@ -8,7 +8,6 @@ __revision__ = "$Id"
 __version__ = "$Revision"
 
 import os
-import time
 import logging
 import re
 from shutil import copy
@@ -25,7 +24,6 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
 from ProdCommon.BossLite.Common.Exceptions import TaskError
 from ProdCommon.BossLite.Common.Exceptions import JobError
-from ProdAgentBOSS import BOSSCommands
 
 # Framework Job Report handling
 from ProdCommon.FwkJobRep.ReportState import checkSuccess
@@ -33,9 +31,10 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.27 2008/05/05 14:06:05 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.27 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.28 2008/05/06 15:27:32 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.28 $"
 
 class JobHandling:
     """
@@ -569,40 +568,60 @@ class JobHandling:
         publishes dashboard info
         """
 
-        # FIXME :  memory consuming!!!!
-        return
-
-        # dashboard information
-        self.recreateSession()
-        ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
-            job, self.bossLiteSession
-            )
-        if dashboardInfo.task == '' or dashboardInfo.task == None :
-            logging.error( "unable to retrieve DashboardId" )
-            return
-
-        # set dashboard destination
-        dashboardInfo.addDestination(
-            self.usingDashboard['address'], self.usingDashboard['port']
-            )
+        ### # dashboard information
+        ### self.recreateSession()
+        ### ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
+        ###     job, self.bossLiteSession
+        ###     )
+        ### if dashboardInfo.task == '' or dashboardInfo.task == None :
+        ###     logging.error( "unable to retrieve DashboardId" )
+        ###     return
+        ### 
+        ### # set dashboard destination
+        ### dashboardInfo.addDestination(
+        ###     self.usingDashboard['address'], self.usingDashboard['port']
+        ###     )
         
+        
+        dashboardInfo = DashboardInfo()
+        dashboardInfoFile = None
+
+        try :
+            dashboardInfoFile = \
+                              os.path.join(job.runningJob['outputDirectory'], \
+                                           "DashboardInfo.xml" )
+        except :
+            pass
+
         # if the dashboardInfo.job is not set,
         # this is a crab job detected for the first time
-        # set it and write the info file 
-        if dashboardInfo.job == '' or dashboardInfo.job == None :
+        # set it and write the info file
+        ### if dashboardInfo.job == '' or dashboardInfo.job == None :
+        ###    dashboardInfo.job = str(job['jobId']) + '_' + \
+        ###                        job.runningJob['schedulerId']
+        if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
+            task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
+            dashboardInfo.task = task['name']
             dashboardInfo.job = str(job['jobId']) + '_' + \
                                 job.runningJob['schedulerId']
-#            # create/update info file
-#            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-#            dashboardInfo.write( dashboardInfoFile )
-    
+        else:
+            try:
+                # it exists, get dashboard information
+                dashboardInfo.read(dashboardInfoFile)
+
+            except StandardError, msg:
+                # it does not work, abandon
+                logging.error("Reading dashboardInfoFile " + \
+                              dashboardInfoFile + " failed (jobId=" \
+                              + str(job['jobId']) + ")\n" + str(msg))
+                return
+
         # write dashboard information
         dashboardInfo['GridJobID'] = job.runningJob['schedulerId']
         
         try :
-            dashboardInfo['StatusEnterTime'] = time.strftime( \
-                             '%Y-%m-%d %H:%M:%S', \
-                             time.gmtime(float(job.runningJob['lbTimestamp'])))
+            dashboardInfo['StatusEnterTime'] = \
+                                             str(job.runningJob['lbTimestamp'])
         except StandardError:
             pass
 
@@ -626,18 +645,15 @@ class JobHandling:
         except KeyError:
             pass
 
-#        dashboardInfo['SubTimeStamp'] = time.strftime( \
-#                             '%Y-%m-%d %H:%M:%S', \
-#                             time.gmtime(float(schedulerI['LAST_T'])))
-
-        # create/update info file
-        logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-        dashboardInfo.write( dashboardInfoFile )
+        ### # create/update info file
+        ### logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
+        ### dashboardInfo.write( dashboardInfoFile )
         
         # publish it
         try:
-            logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
+            # logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
             dashboardInfo.publish(5)
+            logging.info("dashboard info sent for job %s" % self.fullId(job) )
 
         # error, cannot publish it
         except StandardError, msg:
