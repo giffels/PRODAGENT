@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.21 2008/04/29 17:38:32 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.21 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.22 2008/04/30 15:05:41 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.22 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
@@ -67,85 +67,22 @@ class JobStatus:
 
         logging.info("Getting job status for jobs in group " + str(group))
 
-        # get DB sessions
-        bossSession = BossLiteAPI( "MySQL", dbConfig)
-        session = directDB.getDbSession()
-        db = TrackingDB( session )
-        tasks = db.getGroupTasks(group)
-        session.close()
+        try:
+            # get DB sessions
+            bossSession = BossLiteAPI( "MySQL", dbConfig)
+            # session = directDB.getDbSession()
+            # db = TrackingDB( session )
+            bossSession.connect()
+            db = TrackingDB( bossSession.session )
+            tasks = db.getGroupTasks(group)
+            # session.close()
 
-        # process by certificate
-        ntask = int(len(tasks))
-        tasklist = ''
-        prevcert = ''
-        i = 0
-        while i < ntask:
-            logging.info('cycle: '+str(i)+' out of ' + str(ntask - 1))
-            task, cert = tasks[i]
-            i += 1
+            for taskId in tasks :
+                cls.bossQuery( bossSession, int(taskId) )
 
-            # if no proxy associated with the task
-            if cert == None:
-                cert = ''
-
-            logging.info("   task = " + str(task) )
-            logging.info("   cert = " + str(cert) )
-            #logging.info("using cert: " +str(cert) )
-
-            # if same certificate group or just first entry, append
-            if cert == prevcert or tasklist == '' :
-                #logging.info("cert == prevcert of tasklist == ''")
-                #logging.info("preC = " + str(prevcert))
-                #logging.info("list = " + str(tasklist))
-                tasklist += str(task) + ','
-                prevcert = cert
-
-                # if not last task, get next, otherwise process
-                if i != ntask :
-                    logging.info("....................")
-                    continue
-                
-            # else if not same certificate, but anyway the last,
-            # process current tasklist and step back to process the last
-            elif cert != prevcert and i == ntask :
-                i -= 1
-                #logging.info(" cert != prevcert and i == ntask")
-                #logging.info("preC = " + str(prevcert))
-                #logging.info("list = " + str(tasklist))
-            #else:
-                #logging.info("else")
-                #logging.info("preC = " + str(prevcert))
-                #logging.info("list = " + str(tasklist))
-
-            # evaluate valid certificates and perform the query
-            try :
-                #logging.info("preC = " + str(prevcert))
-                #logging.info("list = " + str(tasklist))
-                #logging.info("checking user proxy: " + str(prevcert))
-                # cls.checkUserProxy( prevcert )
-                #logging.info("checked.")
-                tasklist = tasklist[:-1]
-
-                # ask BOSS for LB query
-                logging.info('query for tasks ' + tasklist)
-
-                for taskId in parseRange( tasklist ) :
-                    cls.bossQuery( bossSession, taskId )
-
-            except ProdAgentException, exc:
-                logging.debug(str(exc))
-                logging.info( \
-                        "cert path " + prevcert + \
-                        " does not exists: skipping tasks " + tasklist \
-                        )
-            except StandardError, exg:
-                logging.error(str(exg))
-                logging.error( traceback.format_exc() )
-
-            # if reached this point, there is at least one task left
-            # the current task goes anyway in the next query
-            tasklist = str(task) + ','
-            prevcert = str(cert)
+        except Exception, ex:
+            logging.error( "JobTrackingThread exception: %s" \
+                           % str( traceback.format_exc() ) )
 
         sleep(cls.params['delay'])
 
@@ -156,27 +93,30 @@ class JobStatus:
         Perform the LB query through BOSS
         """
 
+        logging.info('Retrieving status for jobs of task ' + str(taskId) )
+
         # default values
         offset = 0
         loop = True
         jobRange = ''
+        runningAttrs={'processStatus': '%handled',
+                      'closed' : 'N',
+                      'submissionTime' : '20%'}
+        jobsToPoll = cls.params['jobsToPoll']
 
         # perform query
         while loop :
             try :
                 task = bossSession.load(
-                    taskId, \
-                    runningAttrs={'processStatus': '%handled', \
-                                  'closed' : 'N', \
-                                  'submissionTime' : '20%'}, \
+                    taskId, runningAttrs=runningAttrs, \
                     strict=False, \
-                    limit=int(cls.params['jobsToPoll']), offset=offset )[0]
+                    limit=jobsToPoll, offset=offset )[0]
                 
                 if task.jobs == [] :
                     loop = False
                     break
                 else:
-                    offset += int(cls.params['jobsToPoll'])
+                    offset += jobsToPoll
 
                 # # this is the correct way...
                 # Scheduler session
@@ -212,6 +152,16 @@ class JobStatus:
                 # log the end of the query
                 logging.info('LB status retrieved for jobs ' \
                              + jobRange + ' of task ' + str(taskId) )
+                del task, msg, pin, pout, command
+
+            except MemoryError, e:
+                logging.fatal("PROBLEM!!! " + \
+                         "Memory run out trying to retrieve status for jobs " \
+                              + jobRange + ' of task ' + str(taskId) \
+                              + ' : ' + str( e ) )
+                logging.error( "JobTrackingThread exception: %s" \
+                               % str( traceback.format_exc() ) )
+                break
 
             except TaskError, e:
                 logging.error("Failed to retrieve status for jobs " \

@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.10 2008/04/18 14:18:50 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.10 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.11 2008/04/22 15:41:45 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.11 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 
@@ -89,14 +89,17 @@ class TrackingDB:
         retrieves tasks for a given group
         """
 
-        query = """
-        select distinct(g.task_id),t.user_proxy from jt_group g,bl_task t 
-        where g.group_id=%s and g.task_id=t.ID order by t.user_proxy,t.ID
-        """ % str(group)
+        ### query = """
+        ### select distinct(g.task_id),t.user_proxy from jt_group g,bl_task t 
+        ### where g.group_id=%s and g.task_id=t.ID order by t.user_proxy,t.ID
+        ### """ % str(group)
 
+        query = "select distinct(task_id) from jt_group where group_id=" \
+                + str(group)
+        
         rows = directDB.select(self.session, query)
 
-        return rows
+        return [int(key[0]) for key in rows ]
 
 
     def getTaskSize(self, taskId ):
