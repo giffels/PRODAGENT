@@ -43,7 +43,7 @@ class T0LSFMonitor(MonitorInterface):
             # can only happen if bjobs call failed
             # do nothing in this case, next loop will work
             logging.debug("Call to bjobs failed, just wait for next loop")
-            return result
+            return []
 
         #
         # two different ways to operate
@@ -64,19 +64,21 @@ class T0LSFMonitor(MonitorInterface):
         # keep track of total number of jobs as list, first
         # element is processing jobs count, second element
         # is merge job count, third element is cleanup jobs 
+        # forth element is repack job count
         #
-        jobCountOverall = [0,0,0]
+        jobCountOverall = [0,0,0,0]
 
         #
         # the jobCount dictionary contains workflows as keys and
         # the corresponding values are a list, with the first
         # element the processing job count, second the merge
-        # job count and third the cleanup job count
+        # job count and third the cleanup job 
+        # forth repack job count
         #
         jobCountByWorkflow = {}
         if not self.allSites.has_key(defaultSiteName):
             for workflowId in self.allSites.iterkeys():
-                jobCountByWorkflow[workflowId] = [0,0,0]
+                jobCountByWorkflow[workflowId] = [0,0,0,0]
 
         #
         # loop over output of bjobs
@@ -110,6 +112,11 @@ class T0LSFMonitor(MonitorInterface):
                             jobCountOverall[2] += 1
                         elif jobCountByWorkflow.has_key(workflowId):
                             jobCountByWorkflow[workflowId][2] += 1
+                    elif ( jobType == 'Repack' ):
+                        if self.allSites.has_key(defaultSiteName):
+                            jobCountOverall[3] += 1
+                        elif jobCountByWorkflow.has_key(workflowId):
+                            jobCountByWorkflow[workflowId][3] += 1
 
                 else:
                     logging.debug("No job %s found in WE table" % jobId)
@@ -118,11 +125,13 @@ class T0LSFMonitor(MonitorInterface):
             logging.info("Number of processing jobs is %d" % jobCountOverall[0])
             logging.info("Number of merge jobs is %d" % jobCountOverall[1])
             logging.info("Number of cleanup jobs is %d" % jobCountOverall[2])
+            logging.info("Number of repack jobs is %d" % jobCountOverall[3])
         else:
             for workflowId in self.allSites.iterkeys():
                 logging.info("Number of processing jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][0]))
                 logging.info("Number of merge jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][1]))
-                logging.info("Number of cleanup jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][1]))
+                logging.info("Number of cleanup jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][2]))
+                logging.info("Number of repack jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][3]))
 
         result = []
 
@@ -145,10 +154,12 @@ class T0LSFMonitor(MonitorInterface):
         processingThreshold = siteThresholds.get("processingThreshold")
         mergeThreshold = siteThresholds.get("mergeThreshold")
         cleanupThreshold = siteThresholds.get("cleanupThreshold")
-
+        repackThreshold = siteThresholds.get("repackThreshold")
+        
         missingProcessingJobs = processingThreshold - jobCount[0]
         missingMergeJobs = mergeThreshold - jobCount[1]
         missingCleanupJobs = cleanupThreshold - jobCount[2]
+        missingRepackJobs = repackThreshold - jobCount[3]
 
         minSubmit = siteThresholds.get("minimumSubmission")
         maxSubmit = siteThresholds.get("maximumSubmission")
@@ -224,6 +235,31 @@ class T0LSFMonitor(MonitorInterface):
                 logging.info("Releasing %d Cleanup jobs" % constraint['count'])
 
             result.append(constraint)
+
+         # check if we should release repack jobs 
+        if ( missingRepackJobs >= minSubmit ):
+
+            constraint = self.newConstraint()
+
+            # determine number of jobs
+            if ( missingRepackJobs > maxSubmit ):
+                constraint['count'] = maxSubmit
+            else:
+                constraint['count'] = missingRepackJobs
+
+            # some more constraints
+            constraint['type'] = "Repack"
+            #constraint['site'] = self.allSites[siteName]['SiteIndex']
+
+            # contraint for workflow
+            if ( constrainWorkflow ):
+                constraint['workflow'] = siteName
+                logging.info("Releasing %d Repack jobs for workflow %s" % (constraint['count'],siteName))
+            else:
+                logging.info("Releasing %d Repack jobs" % constraint['count'])
+
+            result.append(constraint)
+
 
         return
 
