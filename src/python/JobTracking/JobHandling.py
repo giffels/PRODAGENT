@@ -33,8 +33,8 @@ from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.29 2008/05/07 18:07:15 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.29 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.30 2008/05/07 18:18:59 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.30 $"
 
 class JobHandling:
     """
@@ -129,10 +129,10 @@ class JobHandling:
 
             # otherwise, missing just missing fwjr
             else :
-                job.runningJob["applicationReturnCode"] = str(50115)
-                job.runningJob["wrapperReturnCode"] = str(50115)
+                job.runningJob["applicationReturnCode"] = str(50117)
+                job.runningJob["wrapperReturnCode"] = str(50117)
                 success = False
-                exitCode = 50115
+                exitCode = 50117
 
             # write fake fwjr
             logging.debug("write fake fwjr: %s" % str(success))
@@ -191,21 +191,22 @@ class JobHandling:
         exitCode = 0
        
         if os.path.getsize(reportfilename) == 0 :
-            ### 50115 -
+            return( success, -1 )
+            ### 50117 -
             ### cmsRun did not produce a valid/readable job report at runtime
-            job.runningJob["applicationReturnCode"] = str(50115)
-            job.runningJob["wrapperReturnCode"] = str(50115)
-            self.writeFwkJobReport( job['name'], 50115, reportfilename )
-            return ( False, 50115 )
+            # job.runningJob["applicationReturnCode"] = str(50117)
+            # job.runningJob["wrapperReturnCode"] = str(50117)
+            # self.writeFwkJobReport( job['name'], 50117, reportfilename )
+            # return ( False, 50117 )
 
         # read standard info
         try :
             jobReport = readJobReport(reportfilename)[0]
-            exitCode = jobReport.exitCode
             success = ( jobReport.status == "Success" )
+            exitCode = jobReport.exitCode
         except Exception, err:
             logging.error('Invalid Framework Job Report : %s' %str(err) )
-            return( "Failed", -1 )
+            return( success, -1 )
 
 
         # read CS specific info
