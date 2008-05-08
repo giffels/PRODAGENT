@@ -21,6 +21,7 @@ valid = [
     'processing-threshold=',                     # standard thresholds
     'merge-threshold=',                          # standard thresholds
     'cleanup-threshold=',                        # standard thresholds
+    'repack-threshold=',                        # standard thresholds
     'min-submit=', 'max-submit='                 # for new site mode 
     
     ]
@@ -41,6 +42,7 @@ setThisValue = None
 procThreshold = 100
 mergeThreshold = 10
 cleanThreshold = 10
+repThreshold = 100
 minSubmit = 1
 maxSubmit = 500
 
@@ -58,6 +60,7 @@ resourceControl.py --<MODE>     # Mode is one of: new, edit, drop, list
             --processing-threshold=<INT> (new, edit)
             --merge-threshold=<INT>      (new, edit)
             --cleanup-threshold=<INT>    (new, edit)
+            --repack-threshold=<INT>
                                 # Thresholds for triggering new submission
                                 # for merge or processing jobs respectively
             --min-submit=<INT>  # Minimum number of processing jobs to submit
@@ -113,6 +116,9 @@ for opt, arg in opts:
 
     if opt == "--cleanup-threshold":
         cleanThreshold = int(arg)
+    
+    if opt == "--repack-threshold":
+        repThreshold = int(arg)
         
     if opt == "--min-submit":
         minSubmit = int(arg)
@@ -190,6 +196,7 @@ def newMode():
     resCon.updateThresholds(siteIndex, processingThreshold = procThreshold,
                             mergeThreshold = mergeThreshold,
                             cleanupThreshold = cleanThreshold,
+                            repackThreshold = repThreshold,
                             minimumSubmission = minSubmit,
                             maximumSubmission = maxSubmit)
 
@@ -197,6 +204,7 @@ def newMode():
     msg += " Processing Threshold: %s\n" % procThreshold
     msg += " Merge Threshold: %s\n" % mergeThreshold
     msg += " Cleanup Threshold: %s\n" % cleanThreshold
+    msg += " Repack Threshold: %s\n" % repThreshold
     msg += " Minimum Submission: %s\n" % minSubmit
     msg += " Maximum Submission: %s\n" % maxSubmit
 
