@@ -640,6 +640,13 @@ fi
                 logging.error( "unable to retrieve DashboardId for job " + \
                                jobSpecId )
                 continue
+            
+            if not os.path.exists(dashboardInfoFile):
+                msg = "Dashboard Info file not found\n"
+                msg += "%s\n" % dashboardInfoFile
+                msg += "Skipping publication for %s\n" % jobSpecId
+                logging.warning(msg)
+                continue
         
             # job basic information
             dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
