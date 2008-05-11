@@ -12,7 +12,7 @@ Introduces a dependency on the cherrypy package
 """
 import socket
 import logging
-import os
+import time, os, random, datetime
 import cherrypy
 from cherrypy.lib.static import serve_file
 from ProdAgentCore.Configuration import prodAgentName
@@ -20,14 +20,24 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
+from graphtool.graphs.common_graphs import PieGraph, BarGraph, CumulativeGraph
+from graphtool.graphs.graph import TimeGraph
+
 from TaskMonitor import TaskMonitor
 from JobRetrievingMonitor import JobRetrievingMonitor
 from JobResubmittingMonitor import JobResubmittingMonitor
 from ResourceMonitors import ResourceDetails,ResourceStatus
-#from Hist_SchStMonitor import Hist_SchStMonitor
 from HistStatusMonitor import HistStatusMonitor
+from HistMonitor import HistMonitor
 from HistHWMonitor import HistHWMonitor
 from TimeSpanMonitor import TimeSpanMonitor
+from ErrorsMonitor import ErrorsMonitor
+from LastStatusMonitor import LastStatusMonitor
+from LastSitesMonitor import LastSitesMonitor
+from EfficiencyMonitor import EfficiencyMonitor
+from LastStatusDestinationMonitor import LastStatusDestinationMonitor
+import API
+# import fig
 
 def getLocalDBSURL():
     try:
@@ -48,9 +58,6 @@ def getLocalDBSURL():
 
     return dbsConfig.get("DBSURL", None)
 
-
-
-
 class Root:
     """
     _Root_
@@ -59,79 +66,151 @@ class Root:
     of the toplevel address
 
     """
-    def __init__(self, myUrl):
+    def __init__(self, myUrl, Sites):
         self.myUrl = myUrl
+        self.Sites = Sites
+
+    @cherrypy.expose
+    def showimage__hist__status_scheduler(self):
+        cherrypy.response.headers['Content-Type']= "image/png"
+        path= os.getcwd()+'/image/hist__status_scheduler.png'
+        f = open(path, "rb")
+        contents = f.read()
+        f.close()
+        return   contents
+
+    @cherrypy.expose
+    def showimage__hist__process_status(self):
+        cherrypy.response.headers['Content-Type']= "image/png"
+        path= os.getcwd()+'/image/hist__process_status.png'
+        f = open(path, "rb")
+        contents = f.read()
+        f.close()
+        return   contents
+#        return fig.Declare('hist_process_status')
+
+    
+#     @cherrypy.expose
+#     def prova(self,name):
+#         contents = fig.Declare(name);
+#         return contents
+
+    @cherrypy.expose
+    def showimage_mem(self):
+        cherrypy.response.headers['Content-Type']= "image/png"
+        path= os.getcwd()+'/image/mem.png'
+	f = open(path, "rb")
+        contents = f.read()
+        f.close()
+        return   contents
+
+    @cherrypy.expose
+    def showimage_swp(self):
+        cherrypy.response.headers['Content-Type']= "image/png"
+        path= os.getcwd()+'/image/swp.png'
+	f = open(path, "rb")
+        contents = f.read()
+        f.close()
+        return   contents
+
+    @cherrypy.expose
+    def showimage_cpu(self):
+        cherrypy.response.headers['Content-Type']= "image/png"
+        path= os.getcwd()+'/image/cpu.png'
+	f = open(path, "rb")
+        contents = f.read()
+        f.close()
+        return   contents
+
+
+    def history(self, length=24, span=3600, key='status_scheduler', site = 'all', graphMonUrl = None):
+        length=int(length)
+        if span == 'hours':
+            span=3600
+        elif span == 'days':
+            span = 86400        
+        page = HistMonitor(length,span,key,site,graphMonUrl).index()
+        return page
+    history.exposed = True
+
+
         
     def index(self):
         html = """<html><head><title>%s CrabServer monitor</title></head><body><h1>%s - CRAB WEB MONITOR</h1>\n """ % (
             os.environ['HOSTNAME'], os.environ['HOSTNAME'], )
 	html += "\n"
+
+# History Plots:
+        html += "<h2>History Plots</h2>" 
+        html += "History plot for the last custom period of hours or days<br/><br/>"
+        html += '<form action="history" method="get" target="_blank">'
+        html += 'key: '
+        html += '<select name="key"><option>status_scheduler</option><option>process_status</option><option>hardware sensors</option></select>'
+        html += ' for last '
+        html += '<input type="text" name="length" size=8 value=24>'
+        html += '<select name="span"><option>hours</option><option>days</option></select>'
+        html += '<input type="submit" value="Show History Plot"/>'
+        html += '</form>'
+
+# Overall:
+        html += "<h2>Overall Statistics</h2>" 
+        html += "<table width=\"100"+'%'+"\">\n"
+        html += "<tr><th align=\"left\">Service</th><th align=\"left\">Description</th></tr>\n"
+        html += "<tr><td width=\"32"+'%'+"\"><a href=\"errors_all\">Errors Pies</a></td>\n" 
+        html += "<td>Application and wrapper errors distributions</td></td>\n"
+
+        html += "<tr><td width=\"32"+'%'+"\"><a href=\"timespan_all\">job time span</a></td>\n" 
+        html += "<td>Number of job per life time span (per time-to-run, per running-time, per time-to-output)</td></td>\n"
+
+        html += "<tr><td width=\"32"+'%'+"\">Scheduler-status: <a href=\"lastStatus1_all\">1h</a>/<a href=\"lastStatus2_all\">2h</a>/<a href=\"lastStatus3_all\">3h</a>/<a href=\"lastStatus6_all\">6h</a>/<a href=\"lastStatus12_all\">12h</a>/<a href=\"lastStatus24_all\">24h</a>/<a href=\"lastStatusAll_all\">All</a></td>\n"
+        html += "<td>Current job status pies for job submittend in the last 1/2/3/6/12/24 hour(s) period</td></td>\n"
+#
+        html += "<tr><td width=\"32"+'%'+"\">Destination sites: <a href=\"lastSites1_all\">1h</a>/<a href=\"lastSites2_all\">2h</a>/<a href=\"lastSites3_all\">3h</a>/<a href=\"lastSites6_all\">6h</a>/<a href=\"lastSites12_all\">12h</a>/<a href=\"lastSites24_all\">24h</a>/<a href=\"lastSitesAll_all\">All</a></td>\n"
+        html += "<td>Current job status pies for job submittend in the last 1/2/3/6/12/24 hour(s) period</td></td>\n"
+#
+        html += "<tr><td width=\"32"+'%'+"\">Status per Destination sites: <a href=\"lastStatusSites1_all\">1h</a>/<a href=\"lastStatusSites2_all\">2h</a>/<a href=\"lastStatusSites3_all\">3h</a>/<a href=\"lastStatusSites6_all\">6h</a>/<a href=\"lastStatusSites12_all\">12h</a>/<a href=\"lastStatusSites24_all\">24h</a>/<a href=\"lastStatusSitesAll_all\">All</a></td>\n"
+        html += "<td>Current job status pies for job submittend in the last 1/2/3/6/12/24 hour(s) period</td></td>\n"
+
+        html += "</table>\n"
+
+# Sites:
+        html += "<h2>Per-Sites statistics:</h2>"
+        html += "<table width=\"100"+'%'+"\">\n"
+
+        for site in self.Sites.keys():
+            html += "<tr><td>&nbsp;</td></tr><tr><td wREMOVEMEidth=\"32"+'%'+"\"><b>%s</b></td></tr><tr>"%(site)
+            html += "<td>Handling History: <a href=\"hist_procsstat24_%s\">24h</a>/<a href=\"hist_procsstat7_%s\">7d</a>/<a href=\"hist_procsstat30_%s\">30d</a></td>\n" %(site,site,site,)
+            html += "<td>Status History: <a href=\"hist_schedstat24_%s\">24h</a>/<a href=\"hist_schedstat7_%s\">7d</a>/<a href=\"hist_schedstat30_%s\">30d</a></td>\n"%(site,site,site,)
+            html += "<td>Last Status Pies: <a href=\"lastStatus1_%s\">1h</a>/<a href=\"lastStatus2_%s\">2h</a>/<a href=\"lastStatus3_%s\">3h</a>/<a href=\"lastStatus6_%s\">6h</a>/<a href=\"lastStatus12_%s\">12h</a>/<a href=\"lastStatus24_%s\">24h</a>/<a href=\"lastStatus48_%s\">48h</a>/<a href=\"lastStatusAll_%s\">All</a></td>\n"%(site,site,site,site,site,site,site,site)
+            html += "<td>Last Error Pies: <a href=\"lastErrors1_%s\">1h</a>/<a href=\"lastErrors2_%s\">2h</a>/<a href=\"lastErrors3_%s\">3h</a>/<a href=\"lastErrors6_%s\">6h</a>/<a href=\"lastErrors12_%s\">12h</a>/<a href=\"lastErrors24_%s\">24h</a>/<a href=\"lastErrorsAll_%s\">All</a></td>\n"%(site,site,site,site,site,site,site)
+            html += "<td>Last Efficiency Pies: <a href=\"lastEfficiency1_%s\">1h</a>/<a href=\"lastEfficiency2_%s\">2h</a>/<a href=\"lastEfficiency3_%s\">3h</a>/<a href=\"lastEfficiency6_%s\">6h</a>/<a href=\"lastEfficiency12_%s\">12h</a>/<a href=\"lastEfficiency24_%s\">24h</a>/<a href=\"lastEfficiencyAll_%s\">All</a></td>\n"%(site,site,site,site,site,site,site)
+#            html += "<td><a href=\"errors_%s\">Error pies</a></td>\n" % (site,)
+            html += "<td><a href=\"timespan_%s\">job time span</a></td>\n" % (site,)
+            
+#            html += "<tr><th align=\"left\"><a href=\"\">"+str(site)+"</th><th align=\"left\">"+str(vars().keys())+"</th></tr>\n"
+
+# Foot
+
+        html += "</table>\n"
+
         html += "<h2>Current Status</h2>"
         html += "<table width=\"100"+'%'+"\">\n"
         html += "<tr><th  align=\"left\" width=\"32"+'%'+"\">Service</th><th  align=\"left\">Description</th></tr>\n"
-        html += "<tr><td width=\"32"+'%'+"\"><a href=\"%s/task\">Task</a></td>\n" % (
-            self.myUrl,)
+        html += "<tr><td width=\"32"+'%'+"\"><a href=\"task\">Task</a></td>\n" 
         html += "<td>Task status information </td></td>\n"
 
-        html += "<tr><td width=\"32"+'%'+"\"><a href=\"%s/resubmitting\">Job Resubmitting</a></td>\n" % (
-            self.myUrl,)
+        html += "<tr><td width=\"32"+'%'+"\"><a href=\"resubmitting\">Job Resubmitting</a></td>\n" 
         html += "<td>Show number of job in resubmitting</td></td>\n"
-        html += "<tr><td><a href=\"%s/retrieving\">Job Retrieving </a></td>\n" % (
-            self.myUrl,)
+        html += "<tr><td><a href=\"retrieving\">Job Retrieving </a></td>\n"
         html += "<td>Done Cleared vs Done not Cleared</td></td>\n"
-#        html += "<tr><td><a href=\"%s/resources\">build...</a></td>\n" % (
-#            self.myUrl,)
-#        html += "<td>commento</td></td>\n"
-
-# History Plots:
-
-        html += "</table><table width=\"100"+'%'+"\">\n"
-        html += "<h2>History Plots</h2>"
-        html += "<tr><th align=\"left\">Service</th><th align=\"left\">Description</th></tr>\n"
-        
-#
-# Pages:
-        html += "<tr><td width=\"32"+'%'+"\">Scheduler-status: <a href=\"%s/hist_schedstat24\">24</a>&nbsp;/&nbsp;<a href=\"%s/hist_schedstat7\">7</a>&nbsp;/&nbsp;<a href=\"%s/hist_schedstat30\">30</a></td>\n" % (
-            self.myUrl,self.myUrl,self.myUrl,)
-        html += "<td>History plot of number of job per different scheduler status for the last 24 hours, 7 days or month</td></td>\n"
-#        
-#         html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_schedstat7\">Scheduler-status/7</a></td>\n" % (
-#             self.myUrl,)
-#         html += "<td>History plot of number of job per different scheduler status, hourly for the last week</td></td>\n"
-        
-        html += "<tr><td width=\"32"+'%'+"\">Process-status: <a href=\"%s/hist_procsstat24\">24</a>&nbsp;/&nbsp;<a href=\"%s/hist_procsstat7\">7</a>&nbsp;/&nbsp;<a href=\"%s/hist_procsstat30\">30</a></td>\n" % (
-            self.myUrl,self.myUrl,self.myUrl,)
-        html += "<td>History plot of number of job per different process status for the last 24 hours, 7 days or month</td></td>\n"
-#        
-#         html += "<tr><td width=\"20"+'%'+"\"><a href=\"%s/hist_procsstat7\">Process-status/7</a></td>\n" % (
-#             self.myUrl,)
-#         html += "<td>History plot of number of job per different process status, hourly for the last week</td></td>\n"
-#        
-        html += "<tr><td width=\"32"+'%'+"\">HW monitor: <a href=\"%s/hist_HW_24\">24</a>&nbsp;/&nbsp;<a href=\"%s/hist_HW_7\">7</a>&nbsp;/&nbsp;<a href=\"%s/hist_HW_30\">30</a></td>\n" % (
-            self.myUrl,self.myUrl,self.myUrl,)
-        html += "<td>History plot of cpu load, memory and swap usage for last 24 hours, 7 days or month</td></td>\n"
-#
-
-# Useful Statistics:
-
-        html += "</table><table width=\"100"+'%'+"\">\n"
-        html += "<h2>Useful statistics:</h2>"
-        html += "<tr><th align=\"left\">Service</th><th align=\"left\">Description</th></tr>\n"
-
-        html += "<tr><td width=\"32"+'%'+"\"><a href=\"%s/timespan\">job time span</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>Number of job per life time span (per time-to-run, per running-time, per time-to-output)</td></td>\n"
-
-# Foot
         html += """</table>"""
-        
+
         html +="<br/><h6>version "+os.environ['CRAB_SERVER_VERSION']+"</h6>"
         html += """</body></html>"""
         
 #        html +="version "+os.environ['CRAB_SERVER_VERSION']
 	return html
     index.exposed = True
-
 
 class Downloader:
     """
@@ -195,6 +274,9 @@ class HTTPFrontendComponent:
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
+        LoggingUtils.installLogHandler(self)
+        logging.getLogger().setLevel(logging.DEBUG)
+
         if self.args['HTTPLogfile'] == None:
             self.args['HTTPLogfile'] = os.path.join(self.args['ComponentDir'],
                                                     "HTTPLog")
@@ -232,9 +314,59 @@ class HTTPFrontendComponent:
         
         baseUrl = "http://%s:%s" % (
             self.args['Host'], self.args['Port'])
-        
-        
-        root = Root(baseUrl)
+
+        T2 = {}
+# pisa        
+###        T2['T2_BE_IIHE'] = ('iihe',)
+###        T2['T2_BE_UCL'] = ('ucl',)
+###        T2['T2_DE_DESY'] = ('gridka',)
+###        T2['T2_DE_RWTH'] = ('rwth',)
+###        T2['T2_IT_Pisa'] = ('pi.infn.it',)
+###        T2['T2_US_Nebraska'] = ('unl.edu',)
+# crabas2
+        T2['T2_CH_CSCS'] = ('cscs.ch',)
+        T2['T2_TW_Taiwan'] = ('sinica.edu.tw',)
+        T2['T2_CN_Beijing'] = ('ac.cn',)
+        T2['T2_ES_CIEMAT'] = ('ciemat',)
+        T2['T2_ES_IFCA'] = ('ifca.es',)
+        T2['T2_FR_CCIN2P3'] = ('in2p3',)
+        T2['T2_HU_Budapest'] = ('.hu',)
+        T2['T2_IT_Bari'] = ('ba.infn.it',)
+        T2['T2_IT_Legnaro'] = ('lnl',)
+        T2['T2_IT_Rome'] = ('roma',)
+        T2['T2_US_Caltech'] = ('ultralight.org',)
+        T2['T2_US_UCSD'] = ('ucsd.edu',)
+        T2['T2_US_Purdue'] = ('purdue.edu',)
+        T2['T2_US_Florida'] = ('ufl.edu',)
+        T2['T2_IT_Pisa'] = ('pi.infn.it',)
+        T2['T2_KR_KNU'] = ('knu.ac.kr',)
+        T2['T2_UK_SouthGrid'] = ('rl.ac.uk',)
+        T2['T2_US_MIT'] = ('mit.edu',)
+#AF new
+        T2['T2_PL_Warsaw'] = ('polgrid.pl',)
+# nothing
+#        T2['T2_FR_GRIF'] = ()
+#        T2['T2_UK_London'] = ('ic','.uk',)#
+#        T2['T2_US_All'] = ('fnal.gov',)
+#        T2['T2_US_MIT'] = ()
+#        T2['T2_US_Wisconsin'] = ()
+#        T2['T2_BR_UERJ'] = ('what?!?',)
+#        T2['T2_BR_SPRACE'] = ('what?!?',)
+
+
+
+
+# this part is done only when (re)started the component, so is useless!
+#         Sites, dummy = API.getSites(Sites=T2)
+#         T2sk = {}
+#         for site in Sites.keys():
+#             if Sites[site] > 0:
+#                 T2sk[site] = Sites[site]
+#         logging.info("=============> %s"%str(T2sk))
+
+
+
+        root = Root(baseUrl,T2)
         root.download = Downloader(self.args['JobCreatorCache'])
         root.images = ImageServer(self.staticDir)
 #        root.workflowgraph = WorkflowGraph(
@@ -255,17 +387,118 @@ class HTTPFrontendComponent:
 #            self.staticDir)
         root.resubmitting = JobResubmittingMonitor()
 #        statuses = ['Retrieved', 'Done', 'Cleared', 'Aborted', 'Running', 'Created', 'NULL', 'Scheduled']
-        root.hist_schedstat24 = HistStatusMonitor(96,900,'status_scheduler')
-        root.hist_schedstat7 = HistStatusMonitor(7*24,3600,'status_scheduler')
-        root.hist_schedstat30 = HistStatusMonitor(30*24,3600,'status_scheduler')
+
+#        root.hist_schedstat = root.show_hist_schedstat()
+#        root.hist_schedstat24 = HistStatusMonitor(24,3600,'status_scheduler')
+#        root.hist_schedstat7 = HistStatusMonitor(7*4,6*3600,'status_scheduler')
+#        root.hist_schedstat30 = HistStatusMonitor(30,24*3600,'status_scheduler')
 #        statuses = ['not_handled','handled','failed','failure_handled','output_requested','in_progress','output_retrieved','processed', 'NULL']
-        root.hist_procsstat24 = HistStatusMonitor(96,900,'process_status')
-        root.hist_procsstat7 = HistStatusMonitor(7*24,3600,'process_status')
-        root.hist_procsstat30 = HistStatusMonitor(30*24,3600,'process_status')
+        root.hist_procsstat24 = HistStatusMonitor(24,3600,'process_status')
+        root.hist_procsstat7 = HistStatusMonitor(7*4,6*3600,'process_status')
+        root.hist_procsstat30 = HistStatusMonitor(30,24*3600,'process_status')
         root.hist_HW_24 = HistHWMonitor(480)   # 480 times 3min is 24 hours
         root.hist_HW_7 = HistHWMonitor(3360)   # 3360 times 3min is 7 days
         root.hist_HW_30 = HistHWMonitor(14400)   # 14400 times 3min is 7 days
-        root.timespan  = TimeSpanMonitor()
+        root.timespan_all  = TimeSpanMonitor('all');
+        root.errors_all  = ErrorsMonitor('all');
+        for site in T2.keys():
+            exec_str = 'root.timespan_'+site+"  = TimeSpanMonitor(T2[site])";
+            exec(exec_str);
+            exec_str = 'root.hist_procsstat24_'+site+"  = HistStatusMonitor(24,3600,'process_status',T2[site])";
+            exec(exec_str);
+            exec_str = 'root.hist_procsstat7_'+site+"  = HistStatusMonitor(7*4,6*3600,'process_status',T2[site])";
+            exec(exec_str);
+            exec_str = 'root.hist_procsstat30_'+site+"  = HistStatusMonitor(30,24*3600,'process_status',T2[site])";
+            exec(exec_str);
+            exec_str = 'root.hist_schedstat24_'+site+"  = HistStatusMonitor(24,3600,'status_scheduler',T2[site])";
+            exec(exec_str);
+            exec_str = 'root.hist_schedstat7_'+site+"  = HistStatusMonitor(7,24*3600,'status_scheduler',T2[site])";
+            exec(exec_str);
+            exec_str = 'root.hist_schedstat30_'+site+"  = HistStatusMonitor(30,24*3600,'status_scheduler',T2[site])";
+            exec(exec_str);
+            exec_str = 'root.lastErrors1_'+site+"  = ErrorsMonitor(T2[site],3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastErrors2_'+site+"  = ErrorsMonitor(T2[site],2*3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastErrors3_'+site+"  = ErrorsMonitor(T2[site],3*3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastErrors6_'+site+"  = ErrorsMonitor(T2[site],6*3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastErrors12_'+site+"  = ErrorsMonitor(T2[site],12*3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastErrors24_'+site+"  = ErrorsMonitor(T2[site],24*3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastErrorsAll_'+site+"  = ErrorsMonitor(T2[site],0,site)";
+            exec(exec_str);
+            exec_str = 'root.lastStatus1_'+site+"  = LastStatusMonitor(1*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastStatus2_'+site+"  = LastStatusMonitor(2*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastStatus3_'+site+"  = LastStatusMonitor(3*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastStatus6_'+site+"  = LastStatusMonitor(6*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastStatus12_'+site+"  = LastStatusMonitor(12*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastStatus24_'+site+"  = LastStatusMonitor(24*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastStatus48_'+site+"  = LastStatusMonitor(48*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastStatusAll_'+site+"  = LastStatusMonitor(0,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastSites1_'+site+"  = LastSitesMonitor(1*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastSites2_'+site+"  = LastSitesMonitor(2*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastSites3_'+site+"  = LastSitesMonitor(3*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastSites6_'+site+"  = LastSitesMonitor(6*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastSites12_'+site+"  = LastSitesMonitor(12*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastSites24_'+site+"  = LastSitesMonitor(24*3600,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastSitesAll_'+site+"  = LastSitesMonitor(0,T2[site],site)";
+            exec(exec_str);
+            exec_str = 'root.lastEfficiency1_'+site+"  = EfficiencyMonitor(T2[site],3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastEfficiency2_'+site+"  = EfficiencyMonitor(T2[site],2*3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastEfficiency3_'+site+"  = EfficiencyMonitor(T2[site],3*3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastEfficiency6_'+site+"  = EfficiencyMonitor(T2[site],6*3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastEfficiency12_'+site+"  = EfficiencyMonitor(T2[site],12*3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastEfficiency24_'+site+"  = EfficiencyMonitor(T2[site],24*3600,site)";
+            exec(exec_str);
+            exec_str = 'root.lastEfficiencyAll_'+site+"  = EfficiencyMonitor(T2[site],0,site)";
+            exec(exec_str);
+            
+        root.lastStatus1_all  = LastStatusMonitor(1*3600,'all');
+        root.lastStatus2_all  = LastStatusMonitor(2*3600,'all');
+        root.lastStatus3_all  = LastStatusMonitor(3*3600,'all');
+        root.lastStatus6_all  = LastStatusMonitor(6*3600,'all');
+        root.lastStatus12_all  = LastStatusMonitor(12*3600,'all');
+        root.lastStatus24_all  = LastStatusMonitor(24*3600,'all');
+        root.lastStatusAll_all  = LastStatusMonitor(0,'all');
+
+        root.lastSites1_all  = LastSitesMonitor(1*3600,T2);
+        root.lastSites2_all  = LastSitesMonitor(2*3600,T2);
+        root.lastSites3_all  = LastSitesMonitor(3*3600,T2);
+        root.lastSites6_all  = LastSitesMonitor(6*3600,T2);
+        root.lastSites12_all  = LastSitesMonitor(12*3600,T2);
+        root.lastSites24_all  = LastSitesMonitor(24*3600,T2);
+        root.lastSitesAll_all  = LastSitesMonitor(0,T2);
+
+        root.lastStatusSites1_all  = LastStatusDestinationMonitor(1*3600,T2);
+        root.lastStatusSites2_all  = LastStatusDestinationMonitor(2*3600,T2);
+        root.lastStatusSites3_all  = LastStatusDestinationMonitor(3*3600,T2);
+        root.lastStatusSites6_all  = LastStatusDestinationMonitor(6*3600,T2);
+        root.lastStatusSites12_all  = LastStatusDestinationMonitor(12*3600,T2);
+        root.lastStatusSites24_all  = LastStatusDestinationMonitor(24*3600,T2);
+        root.lastStatusSitesAll_all  = LastStatusDestinationMonitor(0,T2);
+           
 
 #            )
 
