@@ -292,9 +292,8 @@ class CondorTrackerComponent:
             msg += str(ex)
             logging.error(msg)
             return
-
+        
         jobReport = "%s/FrameworkJobReport.xml" % jobCache
-        logging.info("Creating Failure Report for %s" % jobSpecId)
         badReport = FwkJobReport(jobSpecId)
         badReport.jobSpecId = jobSpecId
         badReport.jobType = "Processing"
@@ -304,6 +303,19 @@ class CondorTrackerComponent:
         errDesc = "Failure in Batch or Middleware Layer \n"
         errDesc  += "No job report produced/retrieved"
         err['Description'] = errDesc
+
+        if not os.path.exists(jobCache):
+            msg = "Job Cache does not exist for job: %s\n" % jobSpecId
+            msg += "Cache : %s\n" % jobCache
+            msg += "Generating an error report in /tmp\n"
+            logging.error(msg)
+            jobReport = "/tmp/FrameworkJobReport-%s.xml" % jobSpecId
+            badReport.status = 997
+            err = badReport.addError(997, "MissingJobCache")
+            err['Description'] = msg
+            
+
+        logging.info("Creating Failure Report for %s" % jobSpecId)
         badReport.write(jobReport)
         self.ms.publish("JobFailed" ,jobReport)
         self.ms.commit()
