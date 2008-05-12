@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.19 2008/05/06 09:49:24 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.19 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.20 2008/05/06 15:27:32 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.20 $"
 
 import os
 import logging
@@ -24,6 +24,7 @@ from JobTracking.JobHandling import JobHandling
 # BossLite support 
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.Common.Exceptions import DbError
+from ProdCommon.BossLite.Common.Exceptions import JobError
 
 # Threads
 from ProdCommon.ThreadTools.WorkQueue import WorkQueue
@@ -198,10 +199,17 @@ class GetOutputComponent:
             while self.outputRequestedJobs != [] :
             
                 # change status for jobs that require get output operations
-                job = self.outputRequestedJobs.pop()
-                job.runningJob['processStatus'] = 'in_progress'
-                self.bossLiteSession.updateDB( job )
-                self.pool.enqueue(job, job)
+                try:
+                    job = self.outputRequestedJobs.pop()
+                    job.runningJob['processStatus'] = 'in_progress'
+                    self.bossLiteSession.updateDB( job )
+                    self.pool.enqueue(job, job)
+                except JobError, err:
+                    logging.error( "failed enqueue job %s:%s : %s" % \
+                                   (job['taskId'], job['jobId'] ) )
+                except Exception, err:
+                    logging.error( "failed enqueue job %s:%s : %s" % \
+                                   (job['taskId'], job['jobId'] ) )
                 del( job )
 
             del self.outputRequestedJobs[:]
@@ -240,8 +248,12 @@ class GetOutputComponent:
             while self.outputRequestedJobs != [] :
             
                 # change status for jobs that require get output operations
-                job = self.outputRequestedJobs.pop()
-                self.pool.enqueue(job, job)
+                try:
+                    job = self.outputRequestedJobs.pop()
+                    self.pool.enqueue(job, job)
+                except Exception, err:
+                    logging.error( "failed enqueue job %s:%s : %s" % \
+                                   (job['taskId'], job['jobId'] ) )
                 del( job )
 
             del self.outputRequestedJobs[:]

@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.25 2008/05/06 09:49:24 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.25 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.26 2008/05/06 15:27:32 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.26 $"
 
 import logging
 import os
@@ -83,7 +83,8 @@ class JobOutput:
             logging.error("Output for job %s.%s cannot be requested" % \
                           (job['taskId'], job['jobId'] ) )
 
-        logging.debug("getoutput request for %s successfully enqueued" % job['jobId'])
+        logging.debug("getoutput request for %s.%s successfully enqueued" % \
+                      (job['taskId'], job['jobId'] ) )
 
     @classmethod
     def doWork(cls, job):
@@ -148,9 +149,14 @@ class JobOutput:
                 logging.error('Can not get scheduler for job %s.%s : [%s]' % \
                               (job['taskId'], job['jobId'], str(err)))
                 return job
-                    
+
             except TaskError, err:
                 logging.error('Can not get scheduler for job %s.%s : [%s]' % \
+                              (job['taskId'], job['jobId'], str(err)))
+                return job
+
+            except Exception, err:
+                logging.error('Can not handle job %s.%s : [%s]' % \
                               (job['taskId'], job['jobId'], str(err)))
                 return job
 
@@ -422,9 +428,15 @@ class JobOutput:
         """
 
         # try with boss db
-        if task['outputDirectory'] is not None \
+        if job.runningJob['outputDirectory'] is not None :
+            outdir = job.runningJob['outputDirectory']
+
+        # try to compose the path from task
+        elif task['outputDirectory'] is not None \
                and task['outputDirectory'] != '' :
             outdir = task['outputDirectory']
+
+        # fallback to the component directory
         else :
             outdir = cls.params['componentDir']
 
@@ -446,7 +458,7 @@ class JobOutput:
                 pass
             else :
                 logging.error("Cannot create directory : " + str(err))
-                raise
+                raise err
 
         # return outdir
         return outdir
