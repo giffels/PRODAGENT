@@ -33,8 +33,8 @@ from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.30 2008/05/07 18:18:59 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.30 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.31 2008/05/08 13:27:15 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.31 $"
 
 class JobHandling:
     """
@@ -569,21 +569,6 @@ class JobHandling:
         
         publishes dashboard info
         """
-
-        ### # dashboard information
-        ### self.recreateSession()
-        ### ( dashboardInfo, dashboardInfoFile )= BOSSCommands.guessDashboardInfo(
-        ###     job, self.bossLiteSession
-        ###     )
-        ### if dashboardInfo.task == '' or dashboardInfo.task == None :
-        ###     logging.error( "unable to retrieve DashboardId" )
-        ###     return
-        ### 
-        ### # set dashboard destination
-        ### dashboardInfo.addDestination(
-        ###     self.usingDashboard['address'], self.usingDashboard['port']
-        ###     )
-        
         
         dashboardInfo = DashboardInfo()
         dashboardInfoFile = None
@@ -595,17 +580,18 @@ class JobHandling:
         except :
             pass
 
-        # if the dashboardInfo.job is not set,
-        # this is a crab job detected for the first time
-        # set it and write the info file
-        ### if dashboardInfo.job == '' or dashboardInfo.job == None :
-        ###    dashboardInfo.job = str(job['jobId']) + '_' + \
-        ###                        job.runningJob['schedulerId']
+        # if the dashboardInfoFile is not there, this is a crab job
         if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
             task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
             dashboardInfo.task = task['name']
             dashboardInfo.job = str(job['jobId']) + '_' + \
                                 job.runningJob['schedulerId']
+            dashboardInfo['JSTool'] = 'crab'
+            dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
+            dashboardInfo['User'] = task['name'].split('_')[0]
+            dashboardInfo['TaskType'] =  'analysis'
+
+        # otherwise, ProdAgent job: everithing is stored in thre file
         else:
             try:
                 # it exists, get dashboard information
