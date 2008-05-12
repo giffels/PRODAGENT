@@ -5,8 +5,8 @@ _JobKillerComponent_
 ProdAgent Component that kills jobs by job spec or workflow Id
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: JobKillerComponent.py,v 1.5 2007/08/24 14:13:36 afanfani Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: JobKillerComponent.py,v 1.6 2007/09/21 08:30:59 ckavka Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -152,7 +152,7 @@ class JobKillerComponent:
         try: 
             jobIds = jobQueue.retrieveJobs(1000000, byType, workflowSpecId)
             if len(jobIds)>0:
-               jobQueue.flagAsReleased(*jobIds)
+               jobQueue.flagAsReleased(None, *jobIds)
             else:
                logging.debug("No jobs in JobQueue associated to the workflow %s" % \
                          workflowSpecId)
