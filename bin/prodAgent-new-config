@@ -288,8 +288,11 @@ componentFields = {
     "GetOutput" : {
     "ComponentDir" : None,
     "PollInterval" : 60,
+    "jobsToPoll" : 100,
     "GetOutputPoolThreadsSize" : 5,
-    "RssFeed" : "no",
+    "OutputLocation" : "SE",
+    'maxGetOutputAttempts' : 3,
+    "RssFeed" : "no"
     }
 
     }# end componentFields
