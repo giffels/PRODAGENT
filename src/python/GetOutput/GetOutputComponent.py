@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.21 2008/05/12 12:38:30 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.21 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.22 2008/05/13 10:50:50 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.22 $"
 
 import os
 import logging
@@ -292,7 +292,7 @@ class GetOutputComponent:
             return False
 
         # bad entry
-        elif self.jobFinished[1] is not None:
+        elif self.jobFinished[1] is None:
             logging.error( "Error in dequeue, got %s" % \
                            str(self.jobFinished[0]) )
             return False
