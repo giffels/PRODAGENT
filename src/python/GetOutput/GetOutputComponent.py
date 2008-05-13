@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.20 2008/05/06 15:27:32 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.20 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.21 2008/05/12 12:38:30 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.21 $"
 
 import os
 import logging
@@ -261,19 +261,10 @@ class GetOutputComponent:
         del self.outputRequestedJobs[:]
 
         # process outputs if ready
-        self.jobFinished = self.pool.dequeue()
+        loop = True
+        while loop :
+            loop = self.processOutput()
 
-        while self.jobFinished != None:
-
-            # ignore non successful threads, error message was displayed
-            if self.jobFinished[1] is None:
-                continue
-
-            # process output
-            self.processOutput(self.jobFinished[1])
-
-            # get new work
-            self.jobFinished = self.pool.dequeue()
 
         logging.debug("Finished processing of outputs and failed")
 
@@ -285,13 +276,32 @@ class GetOutputComponent:
         self.ms.commit()
 
 
-    def processOutput(self, job):
+    def processOutput(self):
         """
         __processOutput__
         """
 
-        logging.debug("Processing output for job: %s.%s" % \
-                      ( job['taskId'], job['jobId'] ) )
+        # take a job from the work queue
+        try:
+            self.jobFinished = self.pool.dequeue()
+        except Exception, err:
+            logging.error( "failed in dequeue %s" % str(err) )
+
+        # no more jobs
+        if self.jobFinished is None :
+            return False
+
+        # bad entry
+        elif self.jobFinished[1] is not None:
+            logging.error( "Error in dequeue, got %s" % \
+                           str(self.jobFinished[0]) )
+            return False
+
+        # ok: job finished!
+        else :
+            job = self.jobFinished[1]
+            logging.debug("Processing output for job: %s.%s" % \
+                          ( job['taskId'], job['jobId'] ) )
 
         # perform processing
         try :
@@ -306,6 +316,8 @@ class GetOutputComponent:
             
         logging.debug("Processing output for job %s.%s finished" % \
                       ( job['taskId'], job['jobId'] ) )
+
+        return True
 
 
     def startComponent(self):
