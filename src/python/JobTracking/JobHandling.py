@@ -33,8 +33,8 @@ from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.31 2008/05/08 13:27:15 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.31 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.32 2008/05/12 10:55:33 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.32 $"
 
 class JobHandling:
     """
@@ -583,7 +583,8 @@ class JobHandling:
         # if the dashboardInfoFile is not there, this is a crab job
         if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
             task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
-            dashboardInfo.task = task['name']
+##            dashboardInfo.task = task['name']
+            dashboardInfo.task = str("_".join(task['name'].split('_')[:-1]))
             dashboardInfo.job = str(job['jobId']) + '_' + \
                                 job.runningJob['schedulerId']
             dashboardInfo['JSTool'] = 'crab'
