@@ -34,7 +34,7 @@ class LogCollectorComponent:
         self.args = {}
         self.args.setdefault("ComponentDir", None)
         self.args.setdefault("Logfile", None)
-        self.args.setdefault("logURL", "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms")
+        self.args.setdefault("logURL", "srm://srm-cms.cern.ch:8443/srm/managerv1?SFN=/castor/cern.ch/cms")
         #self.args.setdefault("logURL", "srm://gfe02.hep.ph.ic.ac.uk:8443/srm/managerv2?SFN=/pnfs/hep.ph.ic.ac.uk/data/cms")
         self.args.setdefault('logSE', 'srm-cms.cern.ch')
         self.args.setdefault("maxLogs", 200)
@@ -66,7 +66,7 @@ class LogCollectorComponent:
             
             
             self.stageOutOverride = {}
-            self.stageOutOverride['command'] = 'srmv2'
+            self.stageOutOverride['command'] = 'srm'
             self.stageOutOverride['option'] = '-streams_num=1' #seems to be needed by some site firewalls
             self.stageOutOverride['se-name'] = self.args['logSE']
             self.stageOutOverride['lfnPrefix'] = self.args['logURL']
