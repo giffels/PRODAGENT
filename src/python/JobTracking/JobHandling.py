@@ -33,8 +33,8 @@ from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.32 2008/05/12 10:55:33 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.32 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.33 2008/05/13 12:10:37 afanfani Exp $"
+__revision__ = "$Revision: 1.1.2.33 $"
 
 class JobHandling:
     """
@@ -54,7 +54,7 @@ class JobHandling:
         self.outputLocation = params['OutputLocation']
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
         self.configs = params['OutputParams']
-        self.ft = re.compile( 'gsiftp://[\w.]+[:]*[\d]*/*' )
+        self.ft = re.compile( 'gsiftp://[-\w.]+[:]*[\d]*/*' )
 
 
     def performOutputProcessing(self, job):
@@ -583,8 +583,7 @@ class JobHandling:
         # if the dashboardInfoFile is not there, this is a crab job
         if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
             task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
-##            dashboardInfo.task = task['name']
-            dashboardInfo.task = str("_".join(task['name'].split('_')[:-1]))
+            dashboardInfo.task = task['name'][: task['name'].rfind('_')]
             dashboardInfo.job = str(job['jobId']) + '_' + \
                                 job.runningJob['schedulerId']
             dashboardInfo['JSTool'] = 'crab'
@@ -592,7 +591,7 @@ class JobHandling:
             dashboardInfo['User'] = task['name'].split('_')[0]
             dashboardInfo['TaskType'] =  'analysis'
 
-        # otherwise, ProdAgent job: everithing is stored in thre file
+        # otherwise, ProdAgent job: everything is stored in the file
         else:
             try:
                 # it exists, get dashboard information
