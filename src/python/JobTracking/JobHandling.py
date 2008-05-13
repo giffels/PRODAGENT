@@ -33,8 +33,8 @@ from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.33 2008/05/13 12:10:37 afanfani Exp $"
-__revision__ = "$Revision: 1.1.2.33 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.34 2008/05/13 17:17:59 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.34 $"
 
 class JobHandling:
     """
@@ -54,7 +54,7 @@ class JobHandling:
         self.outputLocation = params['OutputLocation']
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
         self.configs = params['OutputParams']
-        self.ft = re.compile( 'gsiftp://[-\w.]+[:]*[\d]*/*' )
+        self.ft = re.compile( 'gsiftp://[-\w.]+[:\d]*/*' )
 
 
     def performOutputProcessing(self, job):
