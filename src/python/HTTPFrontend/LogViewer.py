@@ -12,6 +12,8 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from LogCollector.LogCollectorDB import getCollectedLogDetails, \
                                         getUnCollectedLogDetails
 
+from ProdCommon.SiteDB import SiteDB
+
 import os
 import urllib2
 import logging
@@ -28,11 +30,11 @@ class LogViewer:
         logs = getUnCollectedLogDetails()
 
         # find site pfns
-        sites = set()
+        ses = set()
         for wf, details in logs.items():
-            for site, log in details.items():
-                sites.add(site)
-        sitesPFNMapping = self.getSitePFNMapping(sites)
+            for se, log in details.items():
+                ses.add(se)
+        sitesPFNMapping = self.getSitePFNMapping(ses)
 
         # now format html
         html = """<html><body><h2>Job Logs</h2>\n """ 
@@ -68,7 +70,7 @@ class LogViewer:
     index.exposed = True
 
     
-    def getSitePFNMapping(self, sites):
+    def getSitePFNMapping(self, se_names):
         """
         Contact Brians server and get PFN mapping for log url's.
         Due to different namng conventions between phedex and mc prod
@@ -76,17 +78,25 @@ class LogViewer:
         sorry for the extra server load
         """
         results = {}
-        for site in sites:
+        for se in se_names:
+            if results.has_key(se):
+                continue;
             pfnRoot = None
-            for siteName in (site, "T1_%s"%site, "T2_%s"%site):
-                for name in (siteName, "%s_Buffer" % siteName, "%s_MSS" % siteName):
-                    if results.has_key(site):
-                        break
-                    try:
-                        data = urllib2.urlopen("%s/%s?lfn=/store/&protocol=srmv2" % (sitePFNMappingURL, name))
-                        results[site] = data.readline()
-                    except IOError:
-                        pass
+            #TODO: is this doable in one http call?
+            siteDetails = SiteDB.getJSON("SEtoCMSName", name=se)
+            if not siteDetails.has_key('0') and not siteDetails['0'].has_key('name'):
+                continue
+            site = siteDetails['0']['name']
+            # Buffer should match so MSS not really needed - kept for completeness
+            for siteName in (site, "%s_Buffer" % site, "%s_MSS" % site):
+                try:
+                    data = \
+                    urllib2.urlopen("%s/%s?lfn=/store/&protocol=srmv2" % 
+                                        (sitePFNMappingURL, siteName))
+                    results[se] = data.readline()
+                    break   #stop looping over this site
+                except IOError:
+                    pass
         return results
 
 

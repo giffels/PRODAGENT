@@ -127,8 +127,8 @@ def getUnCollectedLogDetails():
     return details of all non-archived logs
     """
     
-    sqlStr = """SELECT workflow, prodmon_Resource.site_name, lfn FROM log_input, prodmon_Resource 
-                WHERE status IN ('new') AND log_input.se_name = prodmon_Resource.se_hostname
+    sqlStr = """SELECT workflow, se_name, lfn FROM log_input
+                WHERE status IN ('new')
                 GROUP BY workflow, se_name, lfn ORDER BY workflow, se_name"""
         
     Session.execute(sqlStr)
