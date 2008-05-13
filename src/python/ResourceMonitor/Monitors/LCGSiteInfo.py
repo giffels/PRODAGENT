@@ -24,7 +24,8 @@ from urllib import urlopen
 from xml.dom.minidom import parse                                                            
 import urllib2
 import logging
-  
+from ProdCommon.SiteDB import SiteDB
+
 """
 Collect site info
 """
@@ -58,10 +59,16 @@ def samCheck(sites, url):
     check status of last sam tests for sites
         Returns list of ce's with failures
     """
-    ces_failed = set() 
 
     if url == None:
-      return ces_failed
+      return sites
+
+    ces = [x.split(':')[0] for x in sites.keys()]
+    cms_sites = set()
+    for ce in ces:
+        details = SiteDB.getJSON("CEtoCMSName", name=ce)
+        if details.has_key('0') and details['0'].has_key('name'):
+            cms_sites.add(details['0']['name'])
 
     # dashboard url takes test id's not names
     #TODO: move to config file at some point
@@ -70,8 +77,8 @@ def samCheck(sites, url):
     tests = ["133", "6"]
 
     #only return info for failed ce's
-    query_url = url + "?services=CE&exitStatus=error"
-    query_url += "&sites=" + "&sites=".join(sites)
+    query_url = url + "?services=CE&exitStatus=error&siteSelect3=All%20Sites&serviceTypeSelect3=vo"
+    query_url += "&sites=" + "&sites=".join(cms_sites)
     query_url += "&tests=" + "&tests=".join(tests)    
 
     logging.debug("sam query using url: %s" % query_url)
@@ -114,7 +121,7 @@ def samCheck(sites, url):
                     items = tests.getElementsByTagName('item')
                     for test in items:
 
-                        # now ignore age - this is staus of last test so 
+                        # now ignore age - this is status of last test so 
                         # on error put in failure mode
                         # --- old --- only trust if got last result
                         #if test.getElementsByTagName("Age")[0].firstChild == None or \
@@ -125,7 +132,9 @@ def samCheck(sites, url):
                         #statusNode not filled for non-error
                         #TODO: Change to fail only on error - look up syntax
                         if statusNode and statusNode.nodeValue != "ok":
-                            ces_failed.add(cename)
+                            for ce, details in sites.values():
+                                if ce.split(':')[0] == cename:
+                                    details['SAMfail'] = True
                 except Exception, ex:
                     logging.error("prob with sam query of %s: %s" % (site, str(ex)))
                     # on errror just ignore ce
@@ -134,7 +143,7 @@ def samCheck(sites, url):
     except Exception, ex:
         logging.error("Error on sam query: %s" % str(ex))
 
-    return list(ces_failed)
+    return sites
 
 
 """
@@ -383,10 +392,7 @@ def getSiteInfoFromBase(names,urls,ldaphost,dbp=None, samUrl=None):
             tmp_list[ceuid]['in_fcr']=True
 
     #sam test info
-    sam_fail_ces = samCheck(bdiiNames, samUrl)
-    for ceuid in tmp_list.keys():
-        if ceuid.split(":")[0] in sam_fail_ces:
-            tmp_list[ceuid]['SAMfail'] = True
+    tmp_list = samCheck(tmp_list, samUrl)
 
     if use_phed:
         Phmap=getPhedexSEmap(DBParamFile,Section)
