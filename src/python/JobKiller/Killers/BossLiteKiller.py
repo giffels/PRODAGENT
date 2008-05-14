@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.4 2008/04/30 17:48:33 spiga Exp $"
-__version__ = "$Revision: 1.1.2.4 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.5 2008/05/07 14:04:01 farinafa Exp $"
+__version__ = "$Revision: 1.1.2.5 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -23,6 +23,9 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
  
 # BossLite dependencies
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
+from ProdCommon.BossLite.Common.Exceptions import SchedulerError
+from ProdCommon.BossLite.Common.Exceptions import TaskError
+from ProdCommon.BossLite.Common.Exceptions import DbError
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 
@@ -86,7 +89,7 @@ class BossLiteKiller:
         # load the job by name
         job = None
         try:
-            jobList = self.bossSession.loadJobByName(jobSpecId)
+            jobList = self.bliteSession.loadJobByName(jobSpecId)
             # should be single unique item
             if not len(jobList) == 1:
                 msg = "  Cannot get BOSS task information for %s\n" % jobSpecId
@@ -97,14 +100,21 @@ class BossLiteKiller:
             job = jobList[0]
 
         # deal with BOSS specific error 
-        except (SchedulerError, BossError), err:
+        except (SchedulerError, DbError), err:
             msg = "Cannot get information for task %s, BOSS error: %s" % \
                   (jobSpecId, str(err))
             logging.error(msg)
             raise Exception, msg
 
+        # check for compatible status
+        if job.runningJob['status'] not in ['SS', 'R', 'SR', 'SU']:
+            logging.info( "Unable to kill Job #" + str(job['jobId']) \
+                          + " : Status is " \
+                          + str(job.runningJob['statusScheduler']) )
+            return
+            
         # kill command through BOSS
-        task = bossLiteSession.loadTask(job['taskId'], False)
+        task = self.bliteSession.loadTask(job['taskId'], False)
         schedulerConfig = { \
                           'name' : job.runningJob['scheduler'], \
                           'user_proxy' : task['user_proxy'], \
@@ -115,7 +125,7 @@ class BossLiteKiller:
 
         # archive if requested
         if erase:
-            self.bliteSession.archive(j)
+            self.bliteSession.archive(job)
         return 
 
 
@@ -318,10 +328,10 @@ class BossLiteKiller:
             pass 
 
         if task is None:
-                # no, signal error
-                msg = "Cannot get BossLite task information for %s\n" % taskSpecId
-                logging.error(msg)
-                raise JobNotSubmittedException, msg
+            # no, signal error
+            msg = "Cannot get BossLite task information for %s\n" % taskSpecId
+            logging.error(msg)
+            raise JobNotSubmittedException, msg
 
         ## build list of jobs to be killed
         logging.info("Taskid: "+ taskSpecId )
@@ -345,13 +355,16 @@ class BossLiteKiller:
 
             logging.info("Working on job: %s.%s"%(j['taskId'], j['jobId']) )
 
-            if j.runningJob['status'] not in ['SS','R', 'SR', 'SU', 'S' ]:
-                logging.info("Unable to kill Job #"+str(j['jobId'])+" : Status is "+str(j.runningJob['statusScheduler']) )
+            if j.runningJob['status'] not in ['SS', 'R', 'SR', 'SU']:
+                logging.info("Unable to kill Job #" + str(j['jobId']) \
+                             + " : Status is " \
+                             + str(j.runningJob['statusScheduler']) )
                 jobsReadyToKill.remove(j['jobId'])
                 continue
 
             if JobState.general(j['name'])['State'] in ['finished']:
-                msg = "Job %s is terminated, cannot be killed\n" % str(j['jobId'])
+                msg = "Job %s is terminated, cannot be killed\n" % \
+                      str(j['jobId'])
                 logging.info(msg)
                 jobsReadyToKill.remove(j['jobId'])
                 continue
