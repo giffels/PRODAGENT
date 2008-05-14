@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.26 2008/04/29 17:38:32 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.26 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.27 2008/04/30 08:43:49 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.27 $"
 
 import os
 import os.path
@@ -35,7 +35,6 @@ from GetOutput.JobOutput import JobOutput
 from JobTracking.JobHandling import JobHandling
 
 # to be substituted with a BossLite implementation
-from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
 
 # BossLite support 
@@ -136,6 +135,7 @@ class TrackingComponent:
 
         # initialize Session
         self.bossLiteSession = BossLiteAPI('MySQL', self.database)
+        self.bossLiteSession.connect()
 
         # set parameters for getoutput operations
         params = {}
@@ -218,10 +218,8 @@ class TrackingComponent:
 
         # summary of the jobs in the DB
         # TODO : change with a BossLite call
-        session = directDB.getDbSession()
-        db = TrackingDB( session )
+        db = TrackingDB( self.bossLiteSession.session )
         result = db.getJobsStatistic()
-        directDB.close( session )
 
         if result is not None:
 
