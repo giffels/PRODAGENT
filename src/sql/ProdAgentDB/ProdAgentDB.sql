@@ -545,7 +545,7 @@ CREATE TABLE jq_site(
    site_index INT,
    FOREIGN KEY (job_index) REFERENCES jq_queue(job_index)
      ON DELETE CASCADE,
-   FOREIGN KEY (site_index) REFERENCES rc_site(site_index),
+   FOREIGN KEY (site_index) REFERENCES rc_site(site_index)
 ) TYPE=InnoDB;
 
 
