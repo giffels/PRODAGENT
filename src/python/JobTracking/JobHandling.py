@@ -33,8 +33,8 @@ from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.35 2008/05/13 17:35:30 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.35 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.36 2008/05/14 06:59:11 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.36 $"
 
 class JobHandling:
     """
@@ -570,17 +570,15 @@ class JobHandling:
         publishes dashboard info
         """
         
+        # using Dashboard?
+        if self.usingDashboard['use'] == "False" :
+            return
+
+        # initialize
         dashboardInfo = DashboardInfo()
         dashboardInfoFile = None
 
-        if self.usingDashboard['use'] == False :
-            return
-
-        # set dashboard destination
-        dashboardInfo.addDestination(
-            self.usingDashboard['address'], self.usingDashboard['port']
-            )
-
+        # looking for dashboardInfoFile
         try :
             dashboardInfoFile = \
                               os.path.join(job.runningJob['outputDirectory'], \
@@ -644,6 +642,11 @@ class JobHandling:
         ### # create/update info file
         ### logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
         ### dashboardInfo.write( dashboardInfoFile )
+        
+        # set dashboard destination
+        dashboardInfo.addDestination(
+            self.usingDashboard['address'], self.usingDashboard['port']
+            )
         
         # publish it
         try:
