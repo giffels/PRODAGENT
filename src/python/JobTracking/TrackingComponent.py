@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.27 2008/04/30 08:43:49 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.27 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.28 2008/05/14 08:04:03 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.28 $"
 
 import os
 import os.path
@@ -75,7 +75,7 @@ class TrackingComponent:
         self.args.setdefault("JobCreatorComponentDir", None)
         self.args.setdefault("dashboardInfo", \
                              {'use' : 'True', \
-                              'address' : 'lxgate35.cern.ch', \
+                              'address' : 'cms-jobmon.cern.ch', \
                               'port' : '8884'})
         self.args.update(args)
 
