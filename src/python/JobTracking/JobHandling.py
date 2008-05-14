@@ -33,8 +33,8 @@ from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.34 2008/05/13 17:17:59 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.34 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.35 2008/05/13 17:35:30 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.35 $"
 
 class JobHandling:
     """
@@ -572,6 +572,14 @@ class JobHandling:
         
         dashboardInfo = DashboardInfo()
         dashboardInfoFile = None
+
+        if self.usingDashboard['use'] == False :
+            return
+
+        # set dashboard destination
+        dashboardInfo.addDestination(
+            self.usingDashboard['address'], self.usingDashboard['port']
+            )
 
         try :
             dashboardInfoFile = \
