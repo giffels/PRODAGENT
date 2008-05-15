@@ -42,6 +42,8 @@ def gatherNumBossLiteRunningJobs(key, begin_time, end_time, span, site = 'all'):
 def draw_TimeGraph(key,length,span, site = 'all'):
         path= os.getcwd()
 	file = path+'/image/hist__'+key+'.png'
+        logging.info("====span!!!========> %s "%(span))
+        logging.info("====length!!!========> %s "%(length))
         begin_time, end_time = make_time(length,span);
         data = gatherNumBossLiteRunningJobs(key, begin_time, end_time, span, site);
         metadata = {'title':'Job per '+key+' history', 'starttime':begin_time, 'endtime':end_time, 'span':span, 'is_cumulative':True }
@@ -62,6 +64,7 @@ class HistStatusMonitor:
     def showimage(self):
         cherrypy.response.headers['Content-Type']= "image/png"
         path= os.getcwd()+'/image/hist__'+self.key+'.png'
+        logging.info("====path========> %s "%(str(path)))
 	f = open(path, "rb")
         contents = f.read()
         f.close()

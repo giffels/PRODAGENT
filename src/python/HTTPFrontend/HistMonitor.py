@@ -19,6 +19,7 @@ from graphtool.graphs.common_graphs import PieGraph, BarGraph, CumulativeGraph
 from graphtool.graphs.graph import TimeGraph
 import API
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
+import Sites
 
 try:
         config = loadProdAgentConfiguration()
@@ -44,13 +45,13 @@ def make_time(length,span):
         begin_time = end_time - length*span
         return begin_time, end_time
 
-def gatherNumBossLiteRunningJobs(key, begin_time, end_time, span, site = 'all'):
+def gatherNumBossLiteRunningJobs(key, begin_time, end_time, span, siteRE = 'all'):
         data = {};
         statuses = API.getBossLiteRunningJobs(key);
         for status in statuses:
                 data[status[1]] = {};
         for t in range(begin_time, end_time, span):
-                tmp = API.getNumBossLiteRunningJobs(key,t,site) 
+                tmp = API.getNumBossLiteRunningJobs(key,t,siteRE) 
                 for status in statuses:
                         data[status[1]][t] = 0;
                         for row in tmp:
@@ -60,11 +61,11 @@ def gatherNumBossLiteRunningJobs(key, begin_time, end_time, span, site = 'all'):
 
 
 def draw_TimeKeyGraph(key,length,span, site = 'all'):
-        path= os.getcwd()
-	file = path+'/image/hist__'+key+'.png'
+	file = os.getcwd()+'/image/hist__'+key+'__'+str(length)+'__'+str(span)+'__'+site+'.png'
         begin_time, end_time = make_time(length,span);
-        data = gatherNumBossLiteRunningJobs(key, begin_time, end_time, span, site);
-        metadata = {'title':'Job per '+key+' history', 'starttime':begin_time, 'endtime':end_time, 'span':span, 'is_cumulative':True }
+        siteRE = Sites.SiteRegExp(site)
+        data = gatherNumBossLiteRunningJobs(key, begin_time, end_time, span, siteRE);
+        metadata = {'title':'Job per '+key+' history for '+site+' site(s)', 'starttime':begin_time, 'endtime':end_time, 'span':span, 'is_cumulative':True }
         Graph = CumulativeGraph()
         Graph( data, file, metadata )
 
@@ -92,17 +93,17 @@ def gatherHWData(Nbins):
 def draw_TimeHWGraph(Nbins):
         path= os.getcwd()
         begin_time, end_time, load1, load5, load15, mem, cached, swap = gatherHWData(Nbins);
-	file = path+'/image/mem.png'
+	file = path+'/image/hist__mem__'+str(Nbins)+'.png'
         metadata = {'title':'Memory Usage History', 'starttime':begin_time, 'endtime':end_time, 'span':180, 'is_cumulative':True } # span:180 is the 3min crontab freq.
         Graph = CumulativeGraph()
         data = {'cached (%)':cached, 'mem (%)':mem }
         Graph( data, file, metadata )
-	file = path+'/image/swp.png'
+	file = path+'/image/hist__swp__'+str(Nbins)+'.png'
         metadata = {'title':'Swap Usage History', 'starttime':begin_time, 'endtime':end_time, 'span':180, 'is_cumulative':True } # span:180 is the 3min crontab freq.
         Graph = CumulativeGraph()
         data = {'swap (%)':swap}
         Graph( data, file, metadata )
-	file = path+'/image/cpu.png'
+	file = path+'/image/hist__cpu__'+str(Nbins)+'.png'
         metadata = {'title':'CPU Load History', 'starttime':begin_time, 'endtime':end_time, 'span':180, 'is_cumulative':True } # span:180 is the 3min crontab freq.
         Graph = CumulativeGraph()
         data = {'load 5m':load5 } #, 'load 5m':load5, 'load 15m':load15  }
@@ -119,6 +120,7 @@ class HistMonitor:
         self.span = span
         self.key = key
         self.site = site
+        self.siteRE = Sites.SiteRegExp(site)
         self.Nbins = int(self.length*self.span/180.)
 
     def index(self):
@@ -142,16 +144,20 @@ class HistMonitor:
         if self.key == 'hardware sensors':
                 if NOmonitorMSG == 'OK':
                         draw_TimeHWGraph(self.Nbins)
-                        page.append('<img src="showimage_cpu" width="800" height="500" />' )
-                        page.append('<img src="showimage_mem" width="800" height="500" />' )
-                        page.append('<img src="showimage_swp" width="800" height="500" />' )
+                        page.append('<img src="showimage__hist?length='+str(self.length)+'&span='+str(self.span)+'&key=cpu" width="800" height="500" />' )
+                        page.append('<img src="showimage__hist?length='+str(self.length)+'&span='+str(self.span)+'&key=mem" width="800" height="500" />' )
+                        page.append('<img src="showimage__hist?length='+str(self.length)+'&span='+str(self.span)+'&key=swp" width="800" height="500" />' )
+#                         page.append('<img src="showimage_cpu" width="800" height="500" />' )
+#                         page.append('<img src="showimage_mem" width="800" height="500" />' )
+#                         page.append('<img src="showimage_swp" width="800" height="500" />' )
                 else:
                         page.append('<br/>'+NOmonitorMSG+'<br/>')
         else:
                 draw_TimeKeyGraph(self.key,self.length,self.span,self.site)
-                queues = API.getQueues(self.site)
-                page.append('<img src="showimage__hist__'+self.key+'" width="800" height="500" />' )
-                current = API.getBossLiteRunningJobs(self.key,self.site)
+                queues = API.getQueues(self.siteRE)
+#                page.append('<img src="showimage__hist__'+self.key+'" width="800" height="500" />' )
+                page.append('<img src="showimage__hist?length='+str(self.length)+'&span='+str(self.span)+'&key='+self.key+'&site='+self.site+'" width="800" height="500" />' )
+                current = API.getBossLiteRunningJobs(self.key,self.siteRE)
                 table = "<br/><table>\n"
                 table += "<tr colspan=2><b>Current Status</b></tr>"
                 sum = 0;

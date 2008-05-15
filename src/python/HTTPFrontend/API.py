@@ -2,6 +2,22 @@ from TaskTracking.TaskStateAPI import *
 import time, os, datetime
 import logging
 
+def composeDestinationCondition(destination = 'all'):
+   if destination == 'all' or destination == ():
+      dest_condition=""
+   else:
+      dest_condition="and ("
+      for sub in destination:
+         dest_condition+="destination like '%"+sub+"%' or "
+      dest_condition+=" false)"
+   return dest_condition
+
+def getQueues(destination = 'all'):
+   dest_condition = composeDestinationCondition(destination);
+   queryString = "select distinct(destination) from bl_runningjob where 1 "+dest_condition
+   queues = queryMethod(queryString, None)
+   return queues
+
 # # #
 #  js_taskInstance
 #
@@ -76,8 +92,12 @@ def getNum_Application_Error():
    return num_rows[0]
 
 
-def getList_Application_Error():
-        queryString = "select application_return_code, count(*) from bl_runningjob where application_return_code <> 0 or application_return_code is not null group by  application_return_code"
+def getList_Application_Error(destination='all'):
+        if destination == 'all':
+            dest_condition=""
+        else:
+            dest_condition=" and destination like '%"+destination+"%'"
+        queryString = "select application_return_code, count(*) from bl_runningjob where application_return_code <> 0 or application_return_code is not null "+dest_condition+" group by  application_return_code"
         taskCheck = queryMethod(queryString, None)
         return taskCheck
 
@@ -109,48 +129,247 @@ def getNumJobNotCleared():
    num_rows=taskCheck[0]
    return num_rows[0]
 
-def getBossLiteRunningJobs(key):
-   queryString = "select count("+key+"),"+key+" from bl_runningjob group by "+key+" "
+# # # VM
+def getBossLiteRunningJobs(key,destination='all'):
+   dest_condition = composeDestinationCondition(destination);
+   queryString = "select count("+key+"),"+key+" from bl_runningjob where 1 "+dest_condition+" group by "+key+" "
    taskCheck = queryMethod(queryString, None)
+   logging.info("====getBLRJ======> %s"%queryString)
    return taskCheck
 
+# # # VM
 def getNumBossLiteRunningJobs(key,date,destination='all'):
-   if destination == 'all':
-      dest_condition=""
-   else:
-      dest_condition=" and destination like '%"+destination+"%'"
-
+   dest_condition = composeDestinationCondition(destination);
    strDate = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(date)))
    queryString = "select count(*),"+key+" from bl_runningjob where submission_time < '"+strDate+"' "+dest_condition+" group by "+key+" " 
-   logging.info("=============> %s"%queryString)
    taskCheck = queryMethod(queryString, None)
    return taskCheck
 
-def getDeltaTimeBossLiteRunningJobs(from_time,to_time,Nbin, destination = 'all'):
-   if destination == 'all':
-      dest_condition=""
+# # # VM
+def getNumLastBossLiteRunningJobs(key,past=0,destination='all'):
+   dest_condition = composeDestinationCondition(destination);
+   tnow=time.time(); #-time.altzone
+   if past>0:
+      date=tnow-past
+      strDate = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(date)))
+      DateCondition = "where submission_time > '"+strDate+"' "
    else:
-      dest_condition=" and destination like '%"+destination+"%'"
-   limitsQueryString = "select max("+to_time+"-"+from_time+") from bl_runningjob where "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 "+dest_condition+";"
-   logging.info("=============> %s"%limitsQueryString)
-   max = queryMethod(limitsQueryString, None)
-   max = float(max[0][0]);
-   h = int(max / Nbin)+1
-   queryString = "select count(*),floor(("+to_time+"-"+from_time+")/"+str(h)+") from bl_runningjob where "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 "+dest_condition+" group by floor(("+to_time+"-"+from_time+")/"+str(h)+") "
+      DateCondition = "where 1 "
+   queryString = "select count(*),"+key+" from bl_runningjob "+DateCondition+" "+dest_condition+" group by "+key+" " 
+   taskCheck = queryMethod(queryString, None)
    logging.info("=============> %s"%queryString)
-   taskCheck = queryMethod(queryString, None)
-   return max, taskCheck
+   return taskCheck
 
-def getSites():
-   outputSites=[];
-   queryString = "select distinct(destination) from bl_runningjob;"
-   taskCheck = queryMethod(queryString, None)
-   for site in taskCheck:
-      outputsite = (str(site[0])).split(':')
-      outputSites.append(str(outputsite[0]))
-   outputSites = tuple(set(outputSites))
-   return outputSites;
+# # # VM
+def getLastDeltaTimeBossLiteRunningJobs(from_time,to_time, past=0,destination = 'all'):
+   dest_condition = composeDestinationCondition(destination);
+   logging.info("=====LastDeltaTime========> %s"%dest_condition)
+   tnow=time.time(); #-time.altzone
+   if past>0:
+      date=tnow-past
+      strDate = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(date)))
+      DateCondition = "where submission_time > '"+strDate+"' "
+   else:
+      DateCondition = "where 1 "
       
+   limitsQueryString = "select max("+to_time+"-"+from_time+") from bl_runningjob "+DateCondition+" and "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 "+dest_condition+";"
+   max = queryMethod(limitsQueryString, None)
+   if str(max[0][0]) != 'None':   #db gives NULL result
+      max = float(max[0][0]);
+   else:
+      max = 3600.;
+
+   limitsQueryString = "select count(*) from bl_runningjob "+DateCondition+" and "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 "+dest_condition+";"
+   Nbin = queryMethod(limitsQueryString, None)
+   if Nbin[0][0]>100:
+      Nbin = Nbin[0][0]/10
+   else:
+      Nbin = Nbin[0][0]
+   if Nbin>400:
+      Nbin = 400
+   if Nbin<=0:
+      Nbin = 60
+   
+   h = int(max / Nbin)+1
+
+   queryString = "select count(*),floor(("+to_time+"-"+from_time+")/"+str(h)+") from bl_runningjob  "+DateCondition+" and "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 "+dest_condition+" group by floor(("+to_time+"-"+from_time+")/"+str(h)+") "
+   taskCheck = queryMethod(queryString, None)
+   
+   return max, Nbin, taskCheck
+
+# # # VM
+def getDeltaTimeBossLiteRunningJobs(from_time,to_time, destination = 'all'):
+   dest_condition = composeDestinationCondition(destination);
+      
+   limitsQueryString = "select max("+to_time+"-"+from_time+") from bl_runningjob where "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 "+dest_condition+";"
+   max = queryMethod(limitsQueryString, None)
+   if str(max[0][0]) != 'None':   #db gives NULL result
+      max = float(max[0][0]);
+   else:
+      max = 3600.;
+
+   limitsQueryString = "select count(*) from bl_runningjob where "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 "+dest_condition+";"
+   Nbin = queryMethod(limitsQueryString, None)
+   if Nbin[0][0]>100:
+      Nbin = Nbin[0][0]/10
+   else:
+      Nbin = Nbin[0][0]
+   if Nbin>400:
+      Nbin = 400
+   if Nbin<=0:
+      Nbin = 60
+   
+   h = int(max / Nbin)+1
+
+   queryString = "select count(*),floor(("+to_time+"-"+from_time+")/"+str(h)+") from bl_runningjob where "+to_time+"-"+from_time+">0 and "+to_time+"-"+from_time+"<31536000 "+dest_condition+" group by floor(("+to_time+"-"+from_time+")/"+str(h)+") "
+   taskCheck = queryMethod(queryString, None)
+   
+   return max, Nbin, taskCheck
+
+
+# # # VM
+def getSites(past=0,Sites='flat'):
+   end_t = time.time(); #-time.altzone
+   strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
+   if past>0:
+      begin_t = end_t-past
+      strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
+      dateCondition = "where submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "
+   else:
+      dateCondition = "where submission_time < '"+strEnd+"' "
+   outputSites={};
+   OverallCount = 0;
+   if Sites=='flat':
+      queryString = "select count(*),destination from bl_runningjob "+dateCondition+" group by destination;"
+      taskCheck = queryMethod(queryString, None)
+      for site in taskCheck:
+#         outputsite = (str(site[1])).split(':')[0]
+         outputsite = str(site[1])
+         outputSites[outputsite] = site[0]
+         OverallCount+=site[0]
+   else:
+      for site in Sites.keys():
+         dest_condition = composeDestinationCondition(Sites[site]);
+         queryString = "select count(*),destination from bl_runningjob where submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "+dest_condition+"group by destination;"
+         taskCheck = queryMethod(queryString, None)
+         tmpcount = 0;
+         for queue in taskCheck:
+            tmpcount += queue[0]
+            OverallCount+=queue[0]
+         outputSites[site] = tmpcount;
+   return outputSites, OverallCount;
+
+# # # VM
+def getNum_WrapperErrors(destination = 'all',past=0): #begin_t=0,end_t=time.time()-time.altzone):
+   dest_condition = composeDestinationCondition(destination);
+   end_t = time.time(); #-time.altzone
+   strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
+   if past>0:
+      begin_t = end_t-past
+      strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
+      dateCondition = "submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "
+   else:
+      dateCondition = "submission_time < '"+strEnd+"' "
+   queryString = "select count(*) from bl_runningjob where (wrapper_return_code is not null or wrapper_return_code <> 0) "+dest_condition+" and "+dateCondition+" ;"
+   taskCheck = queryMethod(queryString, None)
+   num_rows=taskCheck[0]
+   return num_rows[0]
+
+# # # VM
+def getNum_ApplicationErrors(destination = 'all', past=0): 
+   dest_condition = composeDestinationCondition(destination);
+   end_t = time.time(); #-time.altzone
+   strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
+   if past>0:
+      begin_t = end_t-past
+      strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
+      dateCondition = "submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "
+   else:
+      dateCondition = "submission_time < '"+strEnd+"' "
+   queryString = "select count(*) from bl_runningjob where (application_return_code is not null or application_return_code <> 0) "+dest_condition+" and "+dateCondition+" ;"
+   taskCheck = queryMethod(queryString, None)
+   num_rows=taskCheck[0]
+   return num_rows[0]
+
+# # # VM
+def getList_ApplicationErrors(destination='all', past=0): 
+   dest_condition = composeDestinationCondition(destination);
+   end_t = time.time(); #-time.altzone
+   strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
+   if past>0:
+      begin_t = end_t-past
+      strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
+      dateCondition = "submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "
+   else:
+      dateCondition = "submission_time < '"+strEnd+"' "
+   queryString = "select application_return_code, count(*) from bl_runningjob where (application_return_code <> 0 or application_return_code is not null) "+dest_condition+" and "+dateCondition+" group by  application_return_code"
+   taskCheck = queryMethod(queryString, None)
+   return taskCheck
+
+# # # VM
+def getList_WrapperErrors(destination='all',past=0):
+   dest_condition = composeDestinationCondition(destination);
+   end_t = time.time(); #-time.altzone
+   strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
+   if past>0:
+      begin_t = end_t-past
+      strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
+      dateCondition = "submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "
+   else:
+      dateCondition = "submission_time < '"+strEnd+"' "
+   queryString = "select wrapper_return_code, count(*) from bl_runningjob where (wrapper_return_code <> 0 or application_return_code is not null) "+dest_condition+" and "+dateCondition+" group by wrapper_return_code"
+   taskCheck = queryMethod(queryString, None)
+   return taskCheck
+
+# # # VM
+def getNumJobs(destination='all',past=0):
+   dest_condition = composeDestinationCondition(destination);
+   end_t = time.time(); #-time.altzone
+   strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
+   if past>0:
+      begin_t = end_t-past
+      strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
+      dateCondition = "submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "
+   else:
+      dateCondition = "submission_time < '"+strEnd+"' "
+   queryString = "select count(*) from bl_runningjob where "+dateCondition+" "+dest_condition+" ;"
+   taskCheck = queryMethod(queryString, None)
+   logging.info("=============> %s"%queryString)
+   return taskCheck
+
+# # # VM
+def getNumSuccessJob(destination='all',past=0):
+   dest_condition = composeDestinationCondition(destination);
+   end_t = time.time(); #-time.altzone
+   strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
+   if past>0:
+      begin_t = end_t-past
+      strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
+      dateCondition = "submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "
+   else:
+      dateCondition = "submission_time < '"+strEnd+"' "
+   queryString = "select count(*) from bl_runningjob where getoutput_time>0 and "+dateCondition+" and application_return_code=0 and wrapper_return_code=0 "+dest_condition
+   taskCheck = queryMethod(queryString, None)
+   logging.info("=============> %s"%queryString)
+   return taskCheck
+
+# # # VM
+def getNumFailWrapperJob(destination='all',past=0):
+   dest_condition = composeDestinationCondition(destination);
+   end_t = time.time(); #-time.altzone
+   strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
+   if past>0:
+      begin_t = end_t-past
+      strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
+      dateCondition = "submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "
+   else:
+      dateCondition = "submission_time < '"+strEnd+"' "
+   queryString = "select count(*) from bl_runningjob where "+dateCondition+" and wrapper_return_code!=0 "+dest_condition
+   taskCheck = queryMethod(queryString, None)
+   logging.info("=============> %s - %s"%(queryString, str(past)))
+   return taskCheck
+
+    
 
 # ########
 #  AF adding methods useful for efficency plots
@@ -186,7 +405,7 @@ def getNumJobRetrieved(destination='all',begin_t=0,end_t=time.time()-time.altzon
       dest_condition=" and destination like '%"+destination+"%'"
    strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
    strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
-   queryString = "select count(*) from bl_runningjob where "+timetype+" > '"+strBegin+"' and "+timetype+" < '"+strEnd+"' "+dest_condition
+   queryString = "select count(*) from bl_runningjob where getoutput_time>0 and "+timetype+" > '"+strBegin+"' and "+timetype+" < '"+strEnd+"' "+dest_condition
    logging.info("=============> %s"%queryString)
    taskCheck = queryMethod(queryString, None)
    return taskCheck
@@ -198,7 +417,7 @@ def getNumJobSuccess(destination='all',begin_t=0,end_t=time.time()-time.altzone,
       dest_condition=" and destination like '%"+destination+"%'"
    strBegin = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(begin_t)))
    strEnd = time.strftime('%Y-%m-%d %H:%M:%S',(time.gmtime(end_t)))
-   queryString = "select count(*) from bl_runningjob where "+timetype+" > '"+strBegin+"' and "+timetype+" < '"+strEnd+"' and application_return_code=0 and wrapper_return_code=0 "+dest_condition
+   queryString = "select count(*) from bl_runningjob where getoutput_time>0 and "+timetype+" > '"+strBegin+"' and "+timetype+" < '"+strEnd+"' and application_return_code=0 and wrapper_return_code=0 "+dest_condition
    logging.info("=============> %s"%queryString)
    taskCheck = queryMethod(queryString, None)
    return taskCheck

@@ -39,7 +39,6 @@ def draw_pie_Wrapper_ErrorCodes(listWerrors):
         pie = PieGraph()
         coords = pie.run( data, file, metadata )
 
-
 def draw_pie_Application_ErrorCodes(listAerrors):
         file =  os.getcwd()+'/image/Aerrors.png'
         data= {}
@@ -49,9 +48,6 @@ def draw_pie_Application_ErrorCodes(listAerrors):
         metadata = {'title':'Application Error Codes'}
         pie = PieGraph()
         coords = pie.run( data, file, metadata )
-
-
-
 
 
 

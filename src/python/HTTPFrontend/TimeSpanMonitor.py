@@ -24,13 +24,17 @@ def gatherDeltaTimeBossLiteRunningJobs(from_time, to_time, site = 'all'):
         data = {};
         h = int(max/Nbin)+1
         I = range(0,Nbin)
+#        logging.info("GATHER_DELTA ####### max=%i; h=%i;Nbin=%i"%(max,h,Nbin))
         for i in I:
 #                label = (h*(i+1)/60.0)
                 label = i
+#                logging.info("GATHER_DELTA #######====== i=%i; label=%f"%(i,label))
                 data[label] = 0;
                 for row in binning:
                         if row[1] == i:
+#                                logging.info("GATHER_DELTA #######======+++++ i=%i; label=%f,row[1]=%i,row[0]=%i"%(i,label,row[1],row[0]))
                                 data[label]=row[0];
+#        logging.info("GATHER_DELTA ==================%s,%s,%s"%(str(data),site,str(binning)))
         return data, binning, h
 
 def draw_BarGraph(site):
