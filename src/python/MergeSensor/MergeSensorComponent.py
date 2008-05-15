@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.68 2007/10/10 10:48:06 ckavka Exp $"
-__version__ = "$Revision: 1.68 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.69 2008/01/03 17:21:41 evansde Exp $"
+__version__ = "$Revision: 1.69 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1224,12 +1224,9 @@ class MergeSensorComponent:
         tier = properties['dataTier']
         lfnBase = properties["mergedLFNBase"] 
 
-        # compute LFN group based on merge jobs counter
-        group = str(status['mergedjobs'] // 1000).zfill(4)
-        lfnBase = "%s/%s" % (lfnBase, group)
-        
         # create workflow
         spec = WorkflowSpec()
+        
         fileName = '#' + '#'.join(dataset) + '-workflow.xml'
         workflowPath = os.path.join(self.args['MergeJobSpecs'], \
                                         fileName)
@@ -1238,6 +1235,8 @@ class MergeSensorComponent:
         except Exception, msg:
             logging.error("cannot load base workflow file: " + str(msg))
             return None
+
+        
 
         # create job specification
         jobSpec = spec.createJobSpec()
@@ -1255,9 +1254,31 @@ class MergeSensorComponent:
         outModule = cfg.getOutputModule('Merged')
 
         # set output file name
+
+        prim=properties['primaryDataset']
+        tier=properties['dataTier']
+        lastBit=properties['processedDataset']
+
+        acqEra=None
+        #if .has_key("AcquisitionEra"):
+        acqEra=spec.parameters["AcquisitionEra"]
+
+        # compute LFN group based on merge jobs counter
+        group = str(status['mergedjobs'] // 1000).zfill(4)
+
+        remainingBits=lastBit
+        if acqEra != None:
+          thingtoStrip="%s_" % acqEra
+          mypieces=lastBit.split(thingtoStrip,1)
+          if len(mypieces)>1:  
+            remainingBits=mypieces[1].split("-unmerged",1)[0]
+          else:
+            remainingBits=lastBit 
+
+        extendedlfnBase = os.path.join(lfnBase,prim,tier,remainingBits,group)
         baseFileName = "%s-%s-%s.root" % (dataset[0], outputFile, tier)
         outModule['fileName'] = baseFileName
-        outModule['logicalFileName'] = os.path.join(lfnBase, baseFileName)
+        outModule['logicalFileName'] = os.path.join(extendedlfnBase, baseFileName)
         
         # set output catalog
         outModule['catalog'] = "%s-merge.xml" % jobId
