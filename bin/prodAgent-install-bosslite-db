@@ -1,0 +1,41 @@
+#!/usr/bin/env python
+"""
+_prodAgent-install-bosslite-db_
+
+Installation script for BossLite tables into prod agent database.
+
+"""
+
+__revision__ = "$Id: $"
+__version__ = "$version: $"
+
+from ProdAgentDB.Install import preInstall
+from ProdAgentCore.Configuration import ProdAgentConfiguration
+from ProdCommon.BossLite.API.BossLiteDB import  BossLiteDB
+
+# start the install db process:
+valid = ['config=', 'help']
+
+# check the input
+config = preInstall(valid)
+# load config file
+cfgObject = ProdAgentConfiguration()
+cfgObject.loadFromFile(config)
+# extract the information
+prodAgentConfig = cfgObject.get("ProdAgent")
+dbConfig = cfgObject.get("ProdAgentDB")
+
+## create BossLite DB
+bossLiteConfig = cfgObject.get("BOSS")
+bossLiteschemaLocation = bossLiteConfig['BossLiteschemaLocation']
+
+bossSession = BossLiteDB( "MySQL", dbConfig)
+try:
+    bossSession.installDB(bossLiteschemaLocation)
+except:
+    msg = "Error with %s" % bossLiteschemaLocation
+    print msg
+
+
+
+
