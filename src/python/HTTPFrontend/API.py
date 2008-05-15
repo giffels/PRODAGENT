@@ -250,7 +250,7 @@ def getSites(past=0,Sites='flat'):
    else:
       for site in Sites.keys():
          dest_condition = composeDestinationCondition(Sites[site]);
-         queryString = "select count(*),destination from bl_runningjob where submission_time < '"+strEnd+"' and submission_time > '"+strBegin+"' "+dest_condition+"group by destination;"
+         queryString = "select count(*),destination from bl_runningjob "+dateCondition+" "+dest_condition+"group by destination;"
          taskCheck = queryMethod(queryString, None)
          tmpcount = 0;
          for queue in taskCheck:
