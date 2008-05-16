@@ -101,14 +101,14 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-cfgFile = None
-version = None
+cfgFiles = []
+versions = []
 requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
 label = "Test"
 category = "mc"
 channel = None
-cfgType = "cfg"
+cfgTypes = []
 selectionEfficiency = None
 
 dataset = None
@@ -131,13 +131,13 @@ activity = "Reprocessing"
 
 for opt, arg in opts:
     if opt == "--cfg":
-        cfgFile = arg
-        cfgType = "cfg"
+        cfgFiles.append[arg]
+        cfgTypes.append("cfg")
     if opt == "--py-cfg":
-  	cfgFile = arg
-  	cfgType = "python"
+        cfgFiles.append[arg]
+        cfgTypes.append("python")
     if opt == "--version":
-        version = arg
+        versions.append(arg)
     if opt == "--category":
         category = arg
 
@@ -174,12 +174,17 @@ for opt, arg in opts:
     if opt == '--activity':
         activity = arg
         
-if cfgFile == None:
+if not len(cfgFiles):
     msg = "--cfg or --py-cfg option not provided: This is required"
     raise RuntimeError, msg
+elif len(cfgFiles) > 1:
+    print "%s cfgs listed - chaining them" % len(cfgFiles)
 
-if version == None:
+if not len(versions):
     msg = "--version option not provided: This is required"
+    raise RuntimeError, msg
+if len(versions) != len(cfgFiles):
+    msg = "Need same number of --cfg and --version arguments"
     raise RuntimeError, msg
 
 if dataset == None:
@@ -211,9 +216,10 @@ if channel == None:
     channel = DatasetConventions.parseDatasetPath(dataset)['Primary']
     
 
-if not os.path.exists(cfgFile):
-    msg = "Cfg File Not Found: %s" % cfgFile
-    raise RuntimeError, msg
+for cfgFile in cfgFiles:
+    if not os.path.exists(cfgFile):
+        msg = "Cfg File Not Found: %s" % cfgFile
+        raise RuntimeError, msg
 
 #  //
 # // Set CMSSW_SEARCH_PATH
@@ -224,35 +230,47 @@ if not origcmsswsearch:
    raise RuntimeError, msg
 cmsswsearch="/:%s"%origcmsswsearch
 os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
-
-if cfgType == "cfg":
-    from FWCore.ParameterSet.Config import include
-    cmsCfg = include(cfgFile)
-else:
-    modRef = imp.find_module( os.path.basename(cfgFile).replace(".py", ""),  os.path.dirname(cfgFile))
-    cmsCfg = modRef.process
-                                                                                                      
-cfgWrapper = CMSSWConfig()
-cfgWrapper.originalCfg = file(cfgFile).read()
-cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
-cfgInt.validateForProduction()
+                                                                                          
 
 #  //
 # // Instantiate a WorkflowMaker
 #//
 
 maker = WorkflowMaker(requestId, channel, label )
-
-maker.setCMSSWVersion(version)
 maker.setPhysicsGroup(physicsGroup)
-maker.setConfiguration(cfgWrapper, Type = "instance")
-maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
 maker.changeCategory(category)
 
 if selectionEfficiency != None:
     maker.addSelectionEfficiency(selectionEfficiency)
 
 
+# loop over cfg's provided and add to workflow
+# first cmsRun node created implicitly by WorkflowMaker
+nodeNumber = 0
+for cfgFile in cfgFiles:
+
+    if cfgTypes[nodeNumber] == "cfg":
+        from FWCore.ParameterSet.Config import include
+        cmsCfg = include(cfgFile)
+    else:
+        modRef = imp.find_module( os.path.basename(cfgFile).replace(".py", ""),  os.path.dirname(cfgFile))
+        cmsCfg = modRef.process
+
+    cfgWrapper = CMSSWConfig()
+    cfgWrapper.originalCfg = file(cfgFile).read()
+    cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
+    cfgInt.validateForProduction()
+
+    if nodeNumber:
+        maker.chainCmsRunNode()
+
+    maker.setCMSSWVersion(version)
+    maker.setConfiguration(cfgWrapper, Type = "instance")
+    #TODO: What about pset hash
+    maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
+    
+    nodeNumber = nodeNumber + 1
+    
 #  //
 # // Pileup sample?
 #//

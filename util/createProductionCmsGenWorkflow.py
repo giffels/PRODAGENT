@@ -42,15 +42,15 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-cmsRunCfg    = "/home/ceballos/PRODAGENT_0_3_X/work/cfg/config_alpgen_cmsrun.cfg"
-cmsGenCfg    = "/home/ceballos/PRODAGENT_0_3_X/work/cfg/myConfig_alpgen.cfg"
-version      = "CMSSW_1_4_3"
+cmsRunCfgs    = [] #"/home/ceballos/PRODAGENT_0_3_X/work/cfg/config_alpgen_cmsrun.cfg"
+cmsGenCfg    = None #"/home/ceballos/PRODAGENT_0_3_X/work/cfg/myConfig_alpgen.cfg"
+versions      = [] #"CMSSW_1_4_3"
 category     = "Generators"
 label        = "CSA07"
 channel      = "alpgen-z2j"
 physicsGroup = "Individual"
 requestId    = "%s-%s" % (os.environ['USER'], int(time.time()))
-cfgType      = "cfg"
+cfgTypes      = [] #"cfg"
 selectionEfficiency = None
 activity = None
 
@@ -59,11 +59,12 @@ for opt, arg in opts:
         print usage
         sys.exit(1)
     if opt == "--cmsRunCfg":
-        cmsRunCfg = arg
+        cmsRunCfgs.append(arg)
+        cfgTypes.append("cfg")
     if opt == "--cmsGenCfg":
         cmsGenCfg = arg
     if opt == "--version":
-        version = arg
+        versions.append(arg)
     if opt == "--category":
         category = arg
     if opt == "--label":
@@ -79,25 +80,28 @@ for opt, arg in opts:
     if opt == "--activity":
         activity = arg
 
-if cmsRunCfg == None:
+if not len(cmsRunCfgs):
     msg = "--cmsRunCfg option not provided: This is required"
     raise RuntimeError, msg
+elif len(cmsRunCfgs) > 1:
+    print "%s cmsRun cfgs listed - chaining them" % len(cfgFiles)
 
 if cmsGenCfg == None:
     msg = "--cmsGenCfg option not provided: This is required"
     raise RuntimeError, msg
 
-if version == None:
-    msg = "--version option not provided: This is required"
+if len(versions) != len(cmsRunCfgs):
+    msg = "Need same number of --cmsRunCfg and --version arguments"
     raise RuntimeError, msg
 
 if channel == None:
     msg = "--channel option not provided: This is required"
     raise RuntimeError, msg
 
-if not os.path.exists(cmsRunCfg):
-    msg = "cmsRunCfg File Not Found: %s" % cmsRunCfg
-    raise RuntimeError, msg
+for cfgFile in cmsRunCfgs:
+    if not os.path.exists(cfgFile):
+        msg = "cmsRunCfg File Not Found: %s" % cfgFile
+        raise RuntimeError, msg
 
 if not os.path.exists(cmsGenCfg):
     msg = "cmsGenCfg File Not Found: %s" % cmsGenCfg
@@ -113,17 +117,6 @@ if not origcmsswsearch:
 cmsswsearch="/:%s"%origcmsswsearch
 os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
 
-if cfgType == "cfg":
-    from FWCore.ParameterSet.Config import include
-    cmsCfg = include(cmsRunCfg) 
-else:
-    modRef = imp.find_module( os.path.basename(cmsRunCfg).replace(".py", ""),  os.path.dirname(cmsRunCfg))
-    cmsCfg = modRef.process
-    
-cfgWrapper = CMSSWConfig()
-cfgWrapper.originalCfg = file(cmsRunCfg).read()
-cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
-cfgInt.validateForProduction()
 
 # First line in the cmsGenCfg file is the generator
 # Second line in the cmsGenCfg file is the executable
@@ -136,20 +129,41 @@ generatorString  = generatorLine.split('\n')
 channel = "%s-%s"%(channel,generatorString[0])
 
 maker = CmsGenWorkflowMaker(requestId, channel, label)
-maker.setCMSSWVersion(version)
 maker.setPhysicsGroup(physicsGroup)
-maker.setConfiguration(cfgWrapper,  Type = "instance")
 maker.setCmsGenConfiguration(file(cmsGenCfg).read())
-maker.setPSetHash(WorkflowTools.createPSetHash(cmsRunCfg))
-maker.changeCategory(category)
 maker.setCmsGenParameters(generator  = generatorString[0])
+maker.changeCategory(category)
+
+# loop over cfg's provided and add to workflow
+# first cmsRun node created implicitly by WorkflowMaker
+nodeNumber = 0
+for cmsRunCfg in cmsRunCfgs:
+    
+    if cfgTypes[nodeNumber] == "cfg":
+        from FWCore.ParameterSet.Config import include
+        cmsCfg = include(cmsRunCfg) 
+    else:
+        modRef = imp.find_module( os.path.basename(cmsRunCfg).replace(".py", ""),  os.path.dirname(cmsRunCfg))
+        cmsCfg = modRef.process
+
+    cfgWrapper = CMSSWConfig()
+    cfgWrapper.originalCfg = file(cmsRunCfg).read()
+    cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
+    cfgInt.validateForProduction()
+    
+    if nodeNumber:
+        maker.chainCmsRunNode()
+
+    maker.setConfiguration(cfgWrapper,  Type = "instance")
+    maker.setCMSSWVersion(versions[nodeNumber])
+    #TODO: What about pset hash
+    maker.setPSetHash(WorkflowTools.createPSetHash(cmsRunCfg))
+
+    nodeNumber = nodeNumber + 1
 
 if selectionEfficiency != None:
     maker.addSelectionEfficiency(selectionEfficiency)
     maker.addCmsGenSelectionEfficiency(selectionEfficiency)
-
-#                         , executable = executableString[0]
-#                          )
 
 wfspec = maker.makeWorkflow()
 if activity is not None:

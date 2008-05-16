@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.11 2008/04/09 16:09:21 swakef Exp $"
+__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.12 2008/05/01 13:11:58 swakef Exp $"
 
 
 import os
@@ -57,10 +57,10 @@ cfgFiles = []
 requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
 label = "Test"
-version = None
+versions = []
 category = "mc"
 channel = None
-cfgType = "cfg"
+cfgTypes = []
 activity = None
 
 pileupDS = None
@@ -71,12 +71,14 @@ selectionEfficiency = None
 for opt, arg in opts:
     if opt == "--cfg":
         cfgFiles.append(arg)
+        cfgTypes.append("cfg")
         cfgType = "cfg"
     if opt == "--py-cfg":
         cfgFiles.append(arg)
+        cfgTypes.append("python")
         cfgType = "python"
     if opt == "--version":
-        version = arg
+        versions.append(arg)
     if opt == "--category":
         category = arg
     if opt == "--channel":
@@ -105,8 +107,11 @@ if len(cfgFiles) == 0:
 elif len(cfgFiles) > 1:
     print "%s cfgs listed - chaining them" % len(cfgFiles)
 
-if version == None:
+if versions == []:
     msg = "--version option not provided: This is required"
+    raise RuntimeError, msg
+if len(versions) != len(cfgFiles):
+    msg = "Need same number of --cfg and --version arguments"
     raise RuntimeError, msg
 
 if channel == None:
@@ -142,10 +147,10 @@ if selectionEfficiency != None:
 
 # loop over cfg's provided and add to workflow
 # first cmsRun node created implicitly by WorkflowMaker
-firstNode = True
+nodeNumber = 0
 for cfgFile in cfgFiles:
     
-    if cfgType == "cfg":
+    if cfgTypes[nodeNumber] == "cfg":
         from FWCore.ParameterSet.Config import include
         cmsCfg = include(cfgFile)
     else:
@@ -157,16 +162,15 @@ for cfgFile in cfgFiles:
     cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
     cfgInt.validateForProduction()
     
-    if not firstNode:
-        maker.appendCmsRunNode()
+    if nodeNumber:
+        maker.chainCmsRunNode()
         
-    maker.setCMSSWVersion(version)
+    maker.setCMSSWVersion(versions[nodeNumber])
     maker.setConfiguration(cfgWrapper, Type = "instance")
-    
     #TODO: What about pset hash
     maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
     
-    firstNode = False
+    nodeNumber = nodeNumber + 1
 
 #  //
 # // Pileup sample?
