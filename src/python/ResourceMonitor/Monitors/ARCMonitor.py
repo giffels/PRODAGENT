@@ -110,10 +110,18 @@ class ARCMonitor(MonitorInterface):
         Return True if the SE is up and running.
         """
 
-        # Check availability by srmpinging the server. 
         # FIXME: Is this the best way to do it? What about XRoot?
-        r = os.system("srmping srm://" + SEName) == 0
-        logging.debug("SE " + SEName + " is up: " + str(r))
+        cmd = "srmls srm://%s:8443/pnfs/csc.fi/data/cms/" % SEName
+        cmd += " -retry_num=0 -recursion_depth=0"
+        logging.debug("Executing command '%s'" % cmd)
+
+        r = (os.system(cmd + " > /dev/null 2>&1") == 0)
+
+        if r:
+            logging.info("SE " + SEName + " is UP")
+        else:
+            logging.info("SE " + SEName + " is DOWN!!!")
+
         return r
 
 
