@@ -33,8 +33,8 @@ from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.36 2008/05/14 06:59:11 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.36 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.37 2008/05/14 07:06:36 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.37 $"
 
 class JobHandling:
     """
@@ -396,7 +396,8 @@ class JobHandling:
         jobSpecId = job['name']
 
         # get directory information
-        jobCacheDir = self.resolveOutdir( job, reportfilename)
+        # jobCacheDir = self.resolveOutdir( job, reportfilename)
+        jobCacheDir = job.runningJob['outputDirectory']
         baseDir = os.path.dirname(reportfilename) + "/"
         lastdir = os.path.dirname(reportfilename).split('/').pop()
         newPath = jobCacheDir + "/JobTracking/" + success + "/" + lastdir + "/"
