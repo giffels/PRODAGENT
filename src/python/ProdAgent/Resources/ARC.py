@@ -71,10 +71,8 @@ def executeCommand(command):
     exitCode = child.poll()
 
     if exitCode != 0:
-        msg = "Error executing command:\n"
-        msg += command
-        msg += "Exited with code: %s\n" % exitCode
-        logging.debug("executeCommand: Failed to Execute Command")
+        msg = "Error executing command: %s" % command
+        msg += "Exit code: %s\n" % exitCode
         logging.debug(msg)
         raise CommandExecutionError(exitCode)
     return stdoutBuffer

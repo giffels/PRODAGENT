@@ -73,8 +73,10 @@ class ARCTracker(TrackerPlugin):
         logging.debug("getJobReport: " + ngcp)
         try:
             ARC.executeCommand(ngcp)
-        except ARC.CommandExecutionError:
-            logging.warning("getJobReport: Report File Not Found for " + jobSpecId)
+        except ARC.CommandExecutionError, s:
+            msg = "getJobReport: Report File Not Found for %s: " + jobSpecId
+            msg += "Command '%s' failed with exit status %s" % (ngcp, str(s))
+            logging.warning(msg)
             return None
 
         logging.debug("getJobReport: Report file for %s copied to %s" % \
@@ -86,8 +88,11 @@ class ARCTracker(TrackerPlugin):
             ARC.executeCommand("ngcp %s/run.log %s/" % (arcId,localDir))
             ARC.executeCommand("ngcp %s/output %s/" % (arcId,localDir))
             ARC.executeCommand("ngcp %s/errors %s/" % (arcId,localDir))
-        except ARC.CommandExecutionError:
-            logging.warning("getJobReport: Copying of additional output files failed for " + jobSpecId)
+        except ARC.CommandExecutionError, s:
+            msg = "getJobReport: Copying of additional files failed for job "
+            msg += jobSpecId + ": "
+            msg += "ngcp failed with exit status %s" % str(s)
+            logging.warning(msg)
 
         return localDir + "/FrameworkJobReport.xml"
 
@@ -210,10 +215,11 @@ class ARCTracker(TrackerPlugin):
         summary = "Jobs Completed:\n"
         for id in complete:
             try:
-                ARC.executeCommand("ngclean " + id)
+                cmd = "ngclean " + id
+                ARC.executeCommand(cmd)
             except ARC.CommandExecutionError, s:
-                msg = "Cleaning up of job %s failed, because" % id
-                msg += " command 'ngclean %s' failed with exit status %i" % (id, s)
+                msg = "Cleaning up of job %s failed; " % id
+                msg += "command '%s' failed with exit status %s" % (cmd, str(s))
                 logging.warning(msg)
             summary += " -> %s\n" % id
             ARC.clearNoInfo(id)

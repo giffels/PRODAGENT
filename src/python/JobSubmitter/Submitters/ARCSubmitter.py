@@ -176,7 +176,7 @@ class ARCSubmitter(BulkSubmitterInterface):
             except ARC.CommandExecutionError, s:
                 msg = "Submitting with command\n"
                 msg += "'%s'\n" % submitCommand
-                msg += "failed with exit status %i" % s
+                msg += "failed with exit status %s" % str(s)
                 logging.warning(msg)
                 failureList.append(jobSpec)
 

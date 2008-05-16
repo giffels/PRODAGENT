@@ -93,7 +93,7 @@ class ARCMonitor(MonitorInterface):
             output = ARC.executeCommand(cmd)
         except ARC.CommandExecutionError, s:
             msg = "Didn't get information on CEs:\n"
-            msg += "command '%s' exited with exit status %i" % (cmd, s)
+            msg += "command '%s' failed with exit status %s" % (cmd, str(s))
             logging.warning(msg)
             return []
 
