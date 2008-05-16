@@ -7,10 +7,10 @@ import re
 
 
 class CommandExecutionError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
+    def __init__(self, s):
+        self.s = s  # Exit status of command
     def __str__(self):
-        return str(self.msg)
+        return str(self.s)
 
 
 def findKey(dict, value, ifNotFound = None):
@@ -36,9 +36,8 @@ def makeNonBlocking(fd):
 
 def executeCommand(command):
     """
-    Execute shell command 'command'.  Primarly meant for ng* (i.e. ARC)
-    commands, but should work for most shell commands.  Raise a
-    CommandExecutionError in case of error.
+    Execute shell command 'command'.
+    Raise a CommandExecutionError if the command has non-zero exit status.
 
     """
 
@@ -69,24 +68,16 @@ def executeCommand(command):
         if outeof and erreof: break
         select.select([],[],[],.1) # give a little time for buffers to fill
 
-    try:
-        exitCode = child.poll()
-    except Exception, ex:
-        msg = "Error retrieving child exit code: %s\n" % str(ex)
-        msg = "while executing command:\n"
-        msg += command
-        logging.error("executeCommand: Failed to Execute Command")
-        logging.error(msg)
-        raise CommandExecutionError(msg)
+    exitCode = child.poll()
 
-    if exitCode:
+    if exitCode != 0:
         msg = "Error executing command:\n"
         msg += command
         msg += "Exited with code: %s\n" % exitCode
-        logging.error("executeCommand: Failed to Execute Command")
-        logging.error(msg)
-        raise CommandExecutionError(msg)
-    return  stdoutBuffer
+        logging.debug("executeCommand: Failed to Execute Command")
+        logging.debug(msg)
+        raise CommandExecutionError(exitCode)
+    return stdoutBuffer
 
 
 # 
@@ -235,7 +226,8 @@ def getJobs():
 
     try:
         output = executeCommand("ngstat " + ids)
-    except CommandExecutionError, msg:
+    except CommandExecutionError, s:
+        msg = "Command 'ngstat %s' exited with exit status %s" % (ids, str(s))
         raise RuntimeError, msg
 
     jobs = []

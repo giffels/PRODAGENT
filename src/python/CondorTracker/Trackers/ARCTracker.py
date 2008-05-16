@@ -211,8 +211,10 @@ class ARCTracker(TrackerPlugin):
         for id in complete:
             try:
                 ARC.executeCommand("ngclean " + id)
-            except ARC.CommandExecutionError, msg:
-                logging.warning("Cleaning up of job %s failed (%s)" % (id, msg))
+            except ARC.CommandExecutionError, s:
+                msg = "Cleaning up of job %s failed, because" % id
+                msg += " command 'ngclean %s' failed with exit status %i" % (id, s)
+                logging.warning(msg)
             summary += " -> %s\n" % id
             ARC.clearNoInfo(id)
         logging.info(summary)

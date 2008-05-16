@@ -91,8 +91,10 @@ class ARCMonitor(MonitorInterface):
 
         try:
             output = ARC.executeCommand(cmd)
-        except ARC.CommandExecutionError, msg:
-            logging.warning("Didn't get information on ARC resources: " + msg)
+        except ARC.CommandExecutionError, s:
+            msg = "Didn't get information on CEs:\n"
+            msg += "command '%s' exited with exit status %i" % (cmd, s)
+            logging.warning(msg)
             return []
 
         seMap = ResConAPI.createSEMap()

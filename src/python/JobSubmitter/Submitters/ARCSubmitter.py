@@ -173,10 +173,10 @@ class ARCSubmitter(BulkSubmitterInterface):
                 logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
                 output = ARC.executeCommand(submitCommand)
                 logging.debug("ARCSubmitter.doSubmit: %s " % output)
-            except ARC.CommandExecutionError, emsg:
+            except ARC.CommandExecutionError, s:
                 msg = "Submitting with command\n"
-                msg += "    '%s'\n" % submitCommand
-                msg += "failed: " + str(emsg)
+                msg += "'%s'\n" % submitCommand
+                msg += "failed with exit status %i" % s
                 logging.warning(msg)
                 failureList.append(jobSpec)
 
