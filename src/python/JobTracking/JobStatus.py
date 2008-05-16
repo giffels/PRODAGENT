@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.22 2008/04/30 15:05:41 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.22 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.23 2008/05/07 18:09:59 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.23 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
@@ -111,12 +111,15 @@ class JobStatus:
                     taskId, runningAttrs=runningAttrs, \
                     strict=False, \
                     limit=jobsToPoll, offset=offset )[0]
-                
+
                 if task.jobs == [] :
                     loop = False
                     break
                 else:
                     offset += jobsToPoll
+
+                if task['user_proxy'] is None :
+                    task['user_proxy'] = ''
 
                 # # this is the correct way...
                 # Scheduler session
@@ -137,6 +140,7 @@ class JobStatus:
                 # # this is workaround for the glite bug...
                 jobRange = '%s:%s' % ( task.jobs[0]['jobId'], \
                                        task.jobs[-1]['jobId'] )
+    
                 command = \
                         'python ' + \
                         '$PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' + \
