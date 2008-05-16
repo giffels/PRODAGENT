@@ -204,7 +204,7 @@ def processFrameworkJobReport():
     toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
                                   "FrameworkJobReport.xml")
 
-    if state.jobSpecNode._InputLinks:
+    if state.jobSpecNode._InputLinks and os.path.exists(toplevelReport):
         #  // 
         # // Merge with report from input node, save to toplevel and locally
         #//
