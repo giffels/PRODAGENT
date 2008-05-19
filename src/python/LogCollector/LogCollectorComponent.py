@@ -45,7 +45,7 @@ class LogCollectorComponent:
         self.args.setdefault("Enabled", False)
         self.args.setdefault("LogArchiveSpecs", None)
         self.args.setdefault("QueueJobMode", False)
-        self.args.setdefault('logLfnBase', '/store/logs/prod/%s' % prodAgentName())
+        self.args.setdefault('logLfnBase', '/store/logs/prod')
         
         # override default with provided values and convert to correct types
         try:
@@ -209,6 +209,10 @@ class LogCollectorComponent:
             logging.debug("no un-archived logs found")
             return
         
+        now = time.gmtime()
+        lfnBase = "%s/%s/%s/%s" % (self.args['logLfnBase'],
+                        now[0], now[1], prodAgentName())
+        
         for wf, details in toArchive.items():
             
             logCollectorWorkflow = self.createArchiveWF(wf)
@@ -218,20 +222,17 @@ class LogCollectorComponent:
                 
                 # form job specs for this wf/site for max number of input log files
                 njobs = len(logs)/self.args['maxLogs']
-                lfnBase = "%s/%s/%s/%s" % (self.args['logLfnBase'], time.gmtime()[0], time.gmtime()[1], wf)
-                
                 if (len(logs) % self.args['maxLogs']) > 0 :               
                     njobs = njobs + 1
                
                 ref = 0
-               
                 for i in range (0, njobs):         
                     #create jobs
                     spec = LogCollectorTools.createLogCollectorJobSpec(\
                                                     logCollectorWorkflow, 
                                                     wf, 
                                                     se,
-                                                    lfnBase, 
+                                                    "%s/%s" % (lfnBase, wf), 
                                                     self.stageOutOverride,
                                                     *logs[ref:ref+self.args['maxLogs']])
                     jobspec = os.path.join(self.args['LogArchiveSpecs'], \
