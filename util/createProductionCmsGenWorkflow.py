@@ -130,6 +130,8 @@ channel = "%s-%s"%(channel,generatorString[0])
 
 maker = CmsGenWorkflowMaker(requestId, channel, label)
 maker.setPhysicsGroup(physicsGroup)
+# set cmssw version to same as first cmsRun
+maker.setCmsGenCMSSWVersion(versions[0])
 maker.setCmsGenConfiguration(file(cmsGenCfg).read())
 maker.setCmsGenParameters(generator  = generatorString[0])
 maker.changeCategory(category)
