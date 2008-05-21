@@ -257,7 +257,7 @@ class CleanUpSchedulerComponent:
              goodMerges = self.dbsReader.crossCheck(mergedDataset, *mergedLFNs)
             except Exception, ex:
              logging.error("DBSReader crosscheck for goodmerges failed Exception: %s" % ex)
-             return  
+             continue  
                       
 
             doneUnmergedFiles = []
