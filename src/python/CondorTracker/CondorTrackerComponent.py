@@ -165,6 +165,17 @@ class CondorTrackerComponent:
             msg += "Cant perform update..."
             logging.error(msg)
             return
+
+
+        #  // Before this would return upon an exception in the
+        # //  tracker plugin.  This has the effect of killing the
+        #//   tracker completely when there are intermittent failures
+        #\\   Instead we skip the actual status updates (since we
+        # \\  didn't actually learn anything) and go ahead with the
+        #  \\ update to try again at the next polling cycle
+
+        skipUpdating=False
+
         
         try:
             tracker()
@@ -176,25 +187,27 @@ class CondorTrackerComponent:
             msg += "\n"
             msg += traceback.format_exc()
             logging.error(msg)
-            return
+            skipUpdating=True
 
-        #  //
-        # // Trawl list of completed jobs and publish events
-        #//  for them. Note that completed means they succeeded as
-        #  //jobs, the report must still be checked for success
-        # //
-        #//
-        completeJobs = TrackerDB.getJobsByState("complete")
-        for jobspec, jobindex in completeJobs.items():
+
+        if not skipUpdating:
+          #  //
+          # // Trawl list of completed jobs and publish events
+          #//  for them. Note that completed means they succeeded as
+          #  //jobs, the report must still be checked for success
+          # //
+          #//
+          completeJobs = TrackerDB.getJobsByState("complete")
+          for jobspec, jobindex in completeJobs.items():
             self.jobCompletion(jobspec)
             TrackerDB.removeJob(jobspec)
             logging.info("--> Stop Watching: %s" % jobspec)
 
-        #  //
-        # // Trawl list of failed jobs and publish events for them.
-        #//  Failed here means a failure in middleware/batch system
-        failedJobs = TrackerDB.getJobsByState("failed")
-        for jobspec, jobindex in failedJobs.items():
+          #  //
+          # // Trawl list of failed jobs and publish events for them.
+          #//  Failed here means a failure in middleware/batch system
+          failedJobs = TrackerDB.getJobsByState("failed")
+          for jobspec, jobindex in failedJobs.items():
             self.jobFailure(jobspec)
             TrackerDB.removeJob(jobspec)
             logging.info("--> Stop Watching: %s" % jobspec)
