@@ -960,18 +960,20 @@ def selectSiteDetails(site, interval=86400, workflow=None, type=None):
     Return a dictionary detailing site performances since interval
     """
     
-    sqlStr = """SELECT exit_code FROM prodmon_Resource JOIN 
-            prodmon_Job, prodmon_Job_instance, prodmon_Workflow WHERE 
-            prodmon_Resource.resource_id = prodmon_Job_instance.resource_id 
-            AND prodmon_Job.job_id = prodmon_Job_instance.job_id AND 
-            prodmon_Job_instance.insert_time > ADDTIME(NOW(), SEC_TO_TIME(-%s))
+    sqlStr = """SELECT exit_code FROM prodmon_Job
+                JOIN prodmon_Job_instance
+                ON prodmon_Job_instance.job_id = prodmon_Job.job_id
+                JOIN prodmon_Resource
+                ON prodmon_Resource.resource_id = prodmon_Job_instance.resource_id
+                WHERE prodmon_Job_instance.insert_time > ADDTIME(NOW(), SEC_TO_TIME(-%s))
             """ % interval
+            
     if site != None:
-        sqlStr += " AND prodmon_Resource.resource_name = " % addQuotes(site)
+        sqlStr += " AND prodmon_Resource.site_name = %s" % addQuotes(site)
     if workflow != None:
-        sqlStr += " AND prodmon_Workflow.workflow_name = " % addQuotes(workflow)
+        sqlStr += " AND prodmon_Workflow.workflow_name = %s" % addQuotes(workflow)
     if type != None:
-        sqlStr += " AND prodmon_Job.type = " % addQuotes(type)
+        sqlStr += " AND prodmon_Job.type = %s" % addQuotes(type)
     
     Session.set_database(dbConfig)
     Session.connect()
@@ -1002,11 +1004,12 @@ def selectRcSitePerformance(site, interval=86400, workflow=None, type=None):
     Return a dictionary detailing site performances since interval
     """
     
-    sqlStr = """SELECT prodmon_Job.type, exit_code FROM prodmon_Resource JOIN 
-            prodmon_Job, prodmon_Job_instance, prodmon_Workflow WHERE 
-            prodmon_Resource.resource_id = prodmon_Job_instance.resource_id 
-            AND prodmon_Job.job_id = prodmon_Job_instance.job_id AND 
-            prodmon_Job_instance.insert_time > ADDTIME(NOW(), SEC_TO_TIME(-%s))
+    sqlStr = """SELECT prodmon_Job.type, exit_code FROM prodmon_Job
+                JOIN prodmon_Job_instance
+                ON prodmon_Job_instance.job_id = prodmon_Job.job_id
+                JOIN prodmon_Resource
+                ON prodmon_Resource.resource_id = prodmon_Job_instance.resource_id
+                WHERE prodmon_Job_instance.insert_time > ADDTIME(NOW(), SEC_TO_TIME(-%s))
             """ % interval
     if site != None:
         sqlStr += " AND prodmon_Resource.rc_site_id = %s" % addQuotes(site)
