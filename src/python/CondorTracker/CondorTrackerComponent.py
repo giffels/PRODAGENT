@@ -244,7 +244,7 @@ class CondorTrackerComponent:
         jobReport = "%s/FrameworkJobReport.xml" % jobCache
         if not os.path.exists(jobReport):
             logging.info("Missing Report for %s" % jobSpecId)
-            badReport = FwkJobReport(jobSpecId)
+            badReport = FwkJobReport(name='unknown',jobSpecId=jobSpecId)
             badReport.status = "Failed"
             badReport.exitCode = 999
             err = badReport.addError(999, "MissingJobReport")
