@@ -29,6 +29,8 @@ from JobResubmittingMonitor import JobResubmittingMonitor
 from ResourceMonitors import ResourceDetails,ResourceStatus
 # to be removed?
 from HistStatusMonitor import HistStatusMonitor
+from StatUserMonitor import StatUserMonitor
+from ComponentMonitor import ComponentMonitor
 
 from HistMonitor import HistMonitor
 from HistHWMonitor import HistHWMonitor
@@ -159,6 +161,26 @@ class Root:
             os.environ['HOSTNAME'], os.environ['HOSTNAME'], )
 	html += "\n"
 
+# Current Status
+
+        html += "<h2>Current Status</h2>"
+        html += "<table width=\"100"+'%'+"\">\n"
+        html += "<tr><th  align=\"left\" width=\"32"+'%'+"\">Service</th><th  align=\"left\">Description</th></tr>\n"
+        html += "<tr><td width=\"32"+'%'+"\"><a href=\"task\">Task</a></td>\n" 
+        html += "<td>Task status information </td></td>\n"
+
+        html += "<tr><td width=\"32"+'%'+"\"><a href=\"resubmitting\">Job Resubmitting</a></td>\n" 
+        html += "<td>Show number of job in resubmitting</td></td>\n"
+        html += "<tr><td><a href=\"retrieving\">Job Retrieving </a></td>\n"
+        html += "<td>Done Cleared vs Done not Cleared</td></td>\n"
+	
+	html += "<tr><td><a href=\"status_components\">Components and Services Status</a></td>\n"
+        html += "<td>Show status of both server components and other services</td></td>\n"
+
+
+        html += """</table>"""
+
+
 # History Plots:
         html += "<h2>History Plots</h2>" 
         html += "History plot for the last custom period of hours or days<br/><br/>"
@@ -265,6 +287,10 @@ class Root:
         html += "<tr><td width=\"32"+'%'+"\">Status per Destination sites: <a href=\"lastStatusSites1_all\">1h</a>/<a href=\"lastStatusSites2_all\">2h</a>/<a href=\"lastStatusSites3_all\">3h</a>/<a href=\"lastStatusSites6_all\">6h</a>/<a href=\"lastStatusSites12_all\">12h</a>/<a href=\"lastStatusSites24_all\">24h</a>/<a href=\"lastStatusSitesAll_all\">All</a></td>\n"
         html += "<td>Current per-site job status distribution for jobs submitted in the last 1/2/3/6/12/24 hour(s) period</td></td>\n"
 
+	html += "<tr><td width=\"32"+'%'+"\">Users monitor: <a href=\"%s/stat_US_24\">24</a>&nbsp;/&nbsp;<a href=\"%s/stat_US_7\">7</a>&nbsp;/&nbsp;<a href=\"%s/stat_US_30\">30</a></td>\n" % (
+            self.myUrl,self.myUrl,self.myUrl,)
+        html += "<td>History plot of CrabServer usage by different users for last 24 hours, 7 days or month</td></td>\n"
+
         html += "</table>\n"
 
 # # # # Sites:
@@ -287,17 +313,6 @@ class Root:
 
 # # #         html += "</table>\n"
 
-        html += "<h2>Current Status</h2>"
-        html += "<table width=\"100"+'%'+"\">\n"
-        html += "<tr><th  align=\"left\" width=\"32"+'%'+"\">Service</th><th  align=\"left\">Description</th></tr>\n"
-        html += "<tr><td width=\"32"+'%'+"\"><a href=\"task\">Task</a></td>\n" 
-        html += "<td>Task status information </td></td>\n"
-
-        html += "<tr><td width=\"32"+'%'+"\"><a href=\"resubmitting\">Job Resubmitting</a></td>\n" 
-        html += "<td>Show number of job in resubmitting</td></td>\n"
-        html += "<tr><td><a href=\"retrieving\">Job Retrieving </a></td>\n"
-        html += "<td>Done Cleared vs Done not Cleared</td></td>\n"
-        html += """</table>"""
 
         html +="<br/><h6>version "+os.environ['CRAB_SERVER_VERSION']+"</h6>"
         html += """</body></html>"""
@@ -473,6 +488,10 @@ class HTTPFrontendComponent:
             
         root.task = TaskMonitor()
         root.retrieving = JobRetrievingMonitor()
+	root.stat_US_24 = StatUserMonitor(96,900,1)
+        root.stat_US_7 = StatUserMonitor(7*24,3600,7)
+        root.stat_US_30 = StatUserMonitor(30*24,3600,30)
+	root.status_components = ComponentMonitor()
 
 #        root.datasets = DatasetMonitor(getLocalDBSURL())
 
