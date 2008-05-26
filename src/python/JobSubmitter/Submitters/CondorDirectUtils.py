@@ -13,7 +13,7 @@ def outOfSpaceReport():
     
     scriptBase = \
     """
-      echo "<FrameworkJobReport JobSpecID=\"$JOB_SPEC_NAME\" Name=\"cmsRun1\" WorkflowSpedID=\"$WORKFLOW_SPEC_NAME\" Status=\"Failed\">" > FrameworkJobReport.xml
+      echo "<FrameworkJobReport JobSpecID=\"$JOB_SPEC_NAME\" Name=\"cmsRun1\" WorkflowSpecID=\"$WORKFLOW_SPEC_NAME\" Status=\"Failed\">" > FrameworkJobReport.xml
       echo '<ExitCode Value=\"60999\"/>' >> FrameworkJobReport.xml
       echo '<FrameworkError ExitStatus=\"60999\" Type=\"NoSpaceOnDevice\">' >> FrameworkJobReport.xml
       echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml

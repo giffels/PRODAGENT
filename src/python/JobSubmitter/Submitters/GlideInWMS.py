@@ -15,7 +15,7 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.6 2008/05/06 19:27:01 sfiligoi Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.7 2008/05/07 18:44:32 sfiligoi Exp $"
 
 import os
 import logging
@@ -267,7 +267,7 @@ class GlideInWMS(BulkSubmitterInterface):
 
         placeholderScript = \
 """
-echo '<FrameworkJobReport JobSpecID=\"%s\" Name=\"cmsRun1\" WorkflowSpedID=\"%s\"Status=\"Failed\">' > FrameworkJobReport.xml
+echo '<FrameworkJobReport JobSpecID=\"%s\" Name=\"cmsRun1\" WorkflowSpecID=\"%s\" Status=\"Failed\">' > FrameworkJobReport.xml
 echo ' <ExitCode Value=\"60998\"/>' >> FrameworkJobReport.xml
 echo ' <FrameworkError ExitStatus=\"60998\" Type=\"ErrorBootstrappingJob\">' >> FrameworkJobReport.xml
 echo "   hostname=`hostname -f` " >> FrameworkJobReport.xml

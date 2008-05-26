@@ -13,7 +13,7 @@ def makeErrorReportScript(jobSpecId, wfspecid = None):
     
     scriptBase = \
     """
-      echo '<FrameworkJobReport JobSpecID=\"%s\" Name=\"cmsRun1\" WorkflowSpedID=\"%s\" Status=\"Failed\">' > FrameworkJobReport.xml
+      echo '<FrameworkJobReport JobSpecID=\"%s\" Name=\"cmsRun1\" WorkflowSpecID=\"%s\" Status=\"Failed\">' > FrameworkJobReport.xml
       echo '<ExitCode Value=\"60999\"/>' >> FrameworkJobReport.xml
       echo '<FrameworkError ExitStatus=\"60999\" Type=\"NoSpaceOnDevice\">' >> FrameworkJobReport.xml
       echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
