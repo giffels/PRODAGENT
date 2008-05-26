@@ -131,10 +131,10 @@ activity = "Reprocessing"
 
 for opt, arg in opts:
     if opt == "--cfg":
-        cfgFiles.append[arg]
+        cfgFiles.append(arg)
         cfgTypes.append("cfg")
     if opt == "--py-cfg":
-        cfgFiles.append[arg]
+        cfgFiles.append(arg)
         cfgTypes.append("python")
     if opt == "--version":
         versions.append(arg)
@@ -264,7 +264,7 @@ for cfgFile in cfgFiles:
     if nodeNumber:
         maker.chainCmsRunNode()
 
-    maker.setCMSSWVersion(version)
+    maker.setCMSSWVersion(versions[nodeNumber])
     maker.setConfiguration(cfgWrapper, Type = "instance")
     #TODO: What about pset hash
     maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
