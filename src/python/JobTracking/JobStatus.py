@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.23 2008/05/07 18:09:59 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.23 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.24 2008/05/16 14:59:22 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.24 $"
 
 from ProdAgentBOSS.BOSSCommands import directDB
 from GetOutput.TrackingDB import TrackingDB
@@ -73,7 +73,7 @@ class JobStatus:
             # session = directDB.getDbSession()
             # db = TrackingDB( session )
             bossSession.connect()
-            db = TrackingDB( bossSession.session )
+            db = TrackingDB( bossSession.bossLiteDB )
             tasks = db.getGroupTasks(group)
             # session.close()
 
@@ -99,9 +99,9 @@ class JobStatus:
         offset = 0
         loop = True
         jobRange = ''
-        runningAttrs={'processStatus': '%handled',
-                      'closed' : 'N',
-                      'submissionTime' : '20%'}
+        runningAttrs = {'processStatus': '%handled',
+                        'closed' : 'N',
+                        'submissionTime' : '20%'}
         jobsToPoll = cls.params['jobsToPoll']
 
         # perform query

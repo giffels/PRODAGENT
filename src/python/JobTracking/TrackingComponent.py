@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.28 2008/05/14 08:04:03 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.28 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.29 2008/05/14 11:10:16 afanfani Exp $"
+__version__ = "$Revision: 1.47.2.29 $"
 
 import os
 import os.path
@@ -218,7 +218,7 @@ class TrackingComponent:
 
         # summary of the jobs in the DB
         # TODO : change with a BossLite call
-        db = TrackingDB( self.bossLiteSession.session )
+        db = TrackingDB( self.bossLiteSession.bossLiteDB )
         result = db.getJobsStatistic()
 
         if result is not None:
