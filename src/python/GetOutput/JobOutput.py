@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.26 2008/05/06 15:27:32 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.26 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.27 2008/05/12 12:38:30 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.27 $"
 
 import logging
 import os
@@ -62,7 +62,7 @@ class JobOutput:
     def requestOutput(cls, job):
         """
         __requestOutput__
-        
+
         request output for job.
 
         """
@@ -90,7 +90,7 @@ class JobOutput:
     def doWork(cls, job):
         """
         __doWork__
-        
+
         get the output of the job specified.
 
         *** thread safe ***
@@ -105,7 +105,7 @@ class JobOutput:
             # open database
             bossLiteSession = BossLiteAPI('MySQL', dbConfig)
 
-            # verify the status 
+            # verify the status
             status = job.runningJob['processStatus']
 
             # output retrieved before, then recover interrupted operation
@@ -166,22 +166,16 @@ class JobOutput:
 
             #  get output, trying at most maxGetOutputAttempts
             elif cls.params['OutputLocation'] == 'SE':
-                job.runningJob['status'] = 'E'
-                job.runningJob['closed'] = 'Y'
-                job.runningJob['statusScheduler'] = 'Retrieved'
+                try:
+                    schedSession.purgeService( task )
+                except SchedulerError, msg:
+                    output = str(msg)
+                    job.runningJob['statusHistory'].append(output)
+                    logging.warning("Warning: failed to purge job %s.%s : %s" \
+                                    % (job['taskId'], job['jobId'], output ) )
                 job.runningJob['processStatus'] = 'output_retrieved'
             else :
-                # FIXME : Temporary workaround
-                try:
-                    userProxy = os.environ["X509_USER_PROXY"]
-                except KeyError:
-                    userProxy = ''
-                os.environ["X509_USER_PROXY"] = task['user_proxy']
-
                 job = cls.getOutput( job, task, schedSession)
-
-                # FIXME : Temporary workaround
-                os.environ["X509_USER_PROXY"] = userProxy
 
             # log status & update
             try:
@@ -196,11 +190,11 @@ class JobOutput:
 
         # thread has failed
         except :
-            
+
             import traceback
             msg = traceback.format_exc()
 
-            # show error message 
+            # show error message
             msg = "GetOutputThread exception: %s" % str(msg)
             logging.error(msg)
 
@@ -212,7 +206,7 @@ class JobOutput:
     def handleFailed(cls, job, task, schedSession ):
         """
         __handleFailed__
-        
+
         perform postmortem and archive for failed jobs
 
         """
@@ -249,7 +243,7 @@ class JobOutput:
     def getOutput(cls, job, task, schedSession ):
         """
         __getOutput__
-        
+
         perform actual scheduler getOutput
 
         """
@@ -261,7 +255,7 @@ class JobOutput:
         if id( task.jobs[0] ) != id( job ) :
             logging.error( "Fatal ERROR: mismatching job" )
             return job
-        
+
         #  get output, trying at most maxGetOutputAttempts
         retry = 0
         output = ''
@@ -372,7 +366,7 @@ class JobOutput:
             bossLiteSession = BossLiteAPI('MySQL', dbConfig)
 
             # get interrupted operations
-            jobs = bossLiteSession.loadJobsByRunningAttr( 
+            jobs = bossLiteSession.loadJobsByRunningAttr(
                 { 'processStatus' : 'in_progress' } )
             jobs.extend(
                 bossLiteSession.loadJobsByRunningAttr(

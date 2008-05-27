@@ -31,7 +31,6 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
-from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
 __version__ = "$Id: JobHandling.py,v 1.1.2.37 2008/05/14 07:06:36 gcodispo Exp $"
 __revision__ = "$Revision: 1.1.2.37 $"
@@ -49,7 +48,6 @@ class JobHandling:
         # store parameters and open a connection
         self.baseDir = params['baseDir']
         self.jobCreatorDir = params['jobCreatorDir']
-        self.usingDashboard = params['usingDashboard']
         self.ms = params['messageServiceInstance']
         self.outputLocation = params['OutputLocation']
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
@@ -67,14 +65,14 @@ class JobHandling:
         # get job information
         jobId = str(job['jobId'])
         jobSpecId = job['name']
-                   
+
         # job status
         exitCode = -1
         success = False
 
         # get outdir and report file name
         outdir = job.runningJob['outputDirectory']
-        
+
         # temporary to emulate SE
         # task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
         #
@@ -99,7 +97,7 @@ class JobHandling:
                 logging.error("FAILED REBOUNCE for job %s.%s: %s" % \
                               (job['taskId'], job['jobId'], output ) )
                 return
-                
+
 
         # is the FwkJobReport there?
         reportfilename = outdir + '/FrameworkJobReport.xml'
@@ -153,7 +151,7 @@ class JobHandling:
 
         return
 
-        
+
     def writeFwkJobReport( self, jobSpecId, exitCode, reportfilename ):
         """
         __writeFwkJobReport__
@@ -179,8 +177,8 @@ class JobHandling:
     def parseFinalReport(self, reportfilename, job):
         """
         __parseFinalReport__
-        
-        Parses the FWJR produced by job in order to retrieve 
+
+        Parses the FWJR produced by job in order to retrieve
         the WrapperExitCode and ExeExitCode.
         Updates the BossDB with these values.
 
@@ -189,7 +187,7 @@ class JobHandling:
         # defaults
         success = False
         exitCode = 0
-       
+
         if os.path.getsize(reportfilename) == 0 :
             return( success, -1 )
             ### 50117 -
@@ -214,7 +212,7 @@ class JobHandling:
             for report in jobReport.errors:
                 if report['Type'] == 'WrapperExitCode':
                     job.runningJob["wrapperReturnCode"] = report['ExitStatus']
-                elif report['Type'] == 'ExeExitCode':     
+                elif report['Type'] == 'ExeExitCode':
                     job.runningJob["applicationReturnCode"] = report['ExitStatus']
                 else:
                     continue
@@ -367,7 +365,7 @@ class JobHandling:
                             # if it does not exist, use fallback
                             if not os.path.exists(jobCacheDir):
                                 jobCacheDir = fallbackCacheDir
- 
+
                         # error, cannot get cache location
                         except StandardError, ex:
 
@@ -564,105 +562,6 @@ class JobHandling:
         return reportfilename
 
 
-    def dashboardPublish(self, job):
-        """
-        __dashboardPublish__
-        
-        publishes dashboard info
-        """
-        
-        # using Dashboard?
-        if self.usingDashboard['use'] == "False" :
-            return
-
-        # initialize
-        dashboardInfo = DashboardInfo()
-        dashboardInfoFile = None
-
-        # looking for dashboardInfoFile
-        try :
-            dashboardInfoFile = \
-                              os.path.join(job.runningJob['outputDirectory'], \
-                                           "DashboardInfo.xml" )
-        except :
-            pass
-
-        # if the dashboardInfoFile is not there, this is a crab job
-        if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
-            task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
-            dashboardInfo.task = task['name'][: task['name'].rfind('_')]
-            dashboardInfo.job = str(job['jobId']) + '_' + \
-                                job.runningJob['schedulerId']
-            dashboardInfo['JSTool'] = 'crab'
-            dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
-            dashboardInfo['User'] = task['name'].split('_')[0]
-            dashboardInfo['TaskType'] =  'analysis'
-
-        # otherwise, ProdAgent job: everything is stored in the file
-        else:
-            try:
-                # it exists, get dashboard information
-                dashboardInfo.read(dashboardInfoFile)
-
-            except StandardError, msg:
-                # it does not work, abandon
-                logging.error("Reading dashboardInfoFile " + \
-                              dashboardInfoFile + " failed (jobId=" \
-                              + str(job['jobId']) + ")\n" + str(msg))
-                return
-
-        # write dashboard information
-        dashboardInfo['GridJobID'] = job.runningJob['schedulerId']
-        
-        try :
-            dashboardInfo['StatusEnterTime'] = \
-                                             str(job.runningJob['lbTimestamp'])
-        except StandardError:
-            pass
-
-        try :
-            dashboardInfo['StatusValue'] = job.runningJob['statusScheduler']
-        except KeyError:
-            pass
-
-        try :
-            dashboardInfo['StatusValueReason'] = job.runningJob['statusReason']
-        except KeyError:
-            pass
-
-        try :
-            dashboardInfo['StatusDestination'] = job.runningJob['destination']
-        except KeyError:
-            pass
-        
-        try :
-            dashboardInfo['RBname'] = job.runningJob['service']
-        except KeyError:
-            pass
-
-        ### # create/update info file
-        ### logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-        ### dashboardInfo.write( dashboardInfoFile )
-        
-        # set dashboard destination
-        dashboardInfo.addDestination(
-            self.usingDashboard['address'], self.usingDashboard['port']
-            )
-        
-        # publish it
-        try:
-            # logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
-            dashboardInfo.publish(5)
-            logging.info("dashboard info sent for job %s" % self.fullId(job) )
-
-        # error, cannot publish it
-        except StandardError, msg:
-            logging.error("Cannot publish dashboard information: " + \
-                          dashboardInfo.__str__() + "\n" + str(msg))
-
-        return
-
-
     def notifyJobState(self, job):
         """
         __notifyJobState__
@@ -687,7 +586,7 @@ class JobHandling:
     def recreateSession(self):
         """
         __recreateSession__
-        
+
         fix to recreate standard default session object
         """
 
@@ -704,7 +603,7 @@ class JobHandling:
     def fullId( self, job ):
         """
         __fullId__
-        
+
         compose job primary keys in a string
         """
 
@@ -716,7 +615,7 @@ class JobHandling:
     def reportRebounce( self, job ):
         """
         __reportRebounce__
-        
+
         """
 
         logging.info("Output rebounce: %s.%s " \
@@ -737,7 +636,7 @@ class JobHandling:
 
         # local destination name
         dest = os.path.join( job.runningJob['outputDirectory'], reportName )
-        
+
         # initialize tranfer protocol
         seEl = SElement( self.configs["storageName"], \
                          self.configs["Protocol"],    \
@@ -746,8 +645,8 @@ class JobHandling:
         sbi = SBinterface( seEl, loc )
 
         # transfer fwjr
-        try: 
-            logging.debug( 'REBOUNCE DBG %s, %s'%(source, dest) ) 
+        try:
+            logging.debug( 'REBOUNCE DBG %s, %s'%(source, dest) )
             sbi.copy( source, dest, task['user_proxy'])
         except Exception, e:
             logging.info("Report rebounce transfer fail for %s.%s: %s " \
@@ -755,7 +654,7 @@ class JobHandling:
 
         logging.info("Report rebounce completed for %s.%s " \
                      % ( job['taskId'], job['jobId'] ) )
-        return 
+        return
 
 
     ######################
@@ -765,9 +664,9 @@ class JobHandling:
     def osbRebounce( self, job ):
         """
         __osbRebounce__
-        
+
         """
-         
+
         localOutDir = job.runningJob['outputDirectory']
         localOutputTgz = [ localOutDir +'/'+ f.split('/')[-1]
                            for f in job['outputFiles'] if '.tgz' in f ]
@@ -779,7 +678,7 @@ class JobHandling:
                            for f in job['outputFiles'] ] ) )
 
         if len(localOutputTgz)==0:
-            return   
+            return
 
         task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
         logging.info("Output rebounce: %s.%s " \
@@ -796,20 +695,20 @@ class JobHandling:
             source = os.path.abspath(filetocopy)
             dest = os.path.join(
                 task['outputDirectory'], os.path.basename(filetocopy) )
-            try: 
-                ## logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) ) 
+            try:
+                ## logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) )
                 sbi.copy( source, dest, task['user_proxy'])
                 filesToClean.append(source)
             except Exception, e:
                 logging.info("Output rebounce transfer fail for %s.%s: %s " \
                              % ( job['taskId'], job['jobId'], str(e) ) )
-                continue 
+                continue
 
         logging.info("Output rebounce completed for %s.%s " \
                      % ( job['taskId'], job['jobId'] ) )
         for filetoclean in filesToClean:
-            try: 
-                os.remove( filetoclean )   
+            try:
+                os.remove( filetoclean )
 
             except Exception, e:
                 logging.info(
@@ -818,5 +717,5 @@ class JobHandling:
                 continue
         logging.info("Output rebounce clean for %s.%s " \
                      % ( job['taskId'], job['jobId'] ) )
-        return 
+        return
     ######################

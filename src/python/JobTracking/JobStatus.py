@@ -12,15 +12,14 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.24 2008/05/16 14:59:22 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.24 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.25 2008/05/27 08:20:32 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.25 $"
 
-from ProdAgentBOSS.BOSSCommands import directDB
-from GetOutput.TrackingDB import TrackingDB
+from JobTracking.TrackingDB import TrackingDB
 from ProdCommon.BossLite.API.BossLiteAPI import parseRange
 from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
+from ProdCommon.BossLite.API.BossLiteDB import  BossLiteDB
 from ProdCommon.BossLite.Common.Exceptions import TaskError
 #from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 #from ProdCommon.BossLite.Common.Exceptions import SchedulerError
@@ -69,13 +68,9 @@ class JobStatus:
 
         try:
             # get DB sessions
-            bossSession = BossLiteAPI( "MySQL", dbConfig)
-            # session = directDB.getDbSession()
-            # db = TrackingDB( session )
-            bossSession.connect()
+            bossSession = BossLiteAPI( "MySQL", cls.params['dbConfig'] )
             db = TrackingDB( bossSession.bossLiteDB )
             tasks = db.getGroupTasks(group)
-            # session.close()
 
             for taskId in tasks :
                 cls.bossQuery( bossSession, int(taskId) )
@@ -126,28 +121,28 @@ class JobStatus:
                 # schedulerConfig = {'name' : task.jobs[0].runningJob['scheduler'],
                 #                    'user_proxy' : task['user_proxy'],
                 #                    'service' : task.jobs[0].runningJob['service'] }
-                # 
+                #
                 # schedSession = BossLiteAPISched( bossSession, schedulerConfig )
-                # 
+                #
                 # task = schedSession.query( task, queryType='parent' )
-                # 
+                #
                 # for job in task.jobs :
                 #     print job.runningJob['jobId'], \
                 #           job.runningJob['schedulerId'], \
                 #           job.runningJob['statusScheduler'], \
                 #           job.runningJob['statusReason']
-                
+
                 # # this is workaround for the glite bug...
                 jobRange = '%s:%s' % ( task.jobs[0]['jobId'], \
                                        task.jobs[-1]['jobId'] )
-    
+
                 command = \
                         'python ' + \
                         '$PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' + \
                         str(taskId) + ' ' + jobRange + ' ' + \
                         task.jobs[0].runningJob['scheduler'] + ' ' + \
                         task['user_proxy']
-                
+
                 logging.debug('EXECUTING: ' + str(command))
                 pin, pout = popen4( command )
                 msg = pout.read()
@@ -192,24 +187,24 @@ class JobStatus:
 
         try:
 
-            session = directDB.getDbSession()
+            session = BossLiteDB ("MySQL", cls.params['dbConfig'] )
             db = TrackingDB( session )
             joblist = db.getUnassociatedJobs()
 
             # in case of empty results
             if joblist is None:
-                logging.debug( "No new jobs to be added in query queues") 
+                logging.debug( "No new jobs to be added in query queues")
                 return
 
             for pair in joblist:
                 db.addForCheck( pair[0],  pair[1] )
- 
+
                 #logging.debug(\
                 #    "Adding jobs to queue with BOSS id "\
                 #    +  str( pair[0] ) + '.' + str( pair[1] )\
                 #    )
             session.close()
-            del( joblist ) 
+            del( joblist )
 
         except StandardError, ex:
             logging.error( ex.__str__() )
@@ -226,13 +221,13 @@ class JobStatus:
         """
 
         try:
-            session = directDB.getDbSession()
+            session = BossLiteDB ("MySQL", cls.params['dbConfig'] )
             db = TrackingDB( session )
             joblist = db.getAssociatedJobs()
 
             # in case of empty results
             if joblist is None:
-                logging.debug( "No finished jobs to be removed from query queues") 
+                logging.debug( "No finished jobs to be removed from query queues")
                 return
 
             for pair in joblist:
@@ -243,7 +238,7 @@ class JobStatus:
                 #    + str( pair[1] )\
                 #    )
             session.close()
-            del( joblist ) 
+            del( joblist )
         except StandardError, ex:
             logging.error( ex.__str__() )
             logging.error( traceback.format_exc() )

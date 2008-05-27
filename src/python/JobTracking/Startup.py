@@ -6,7 +6,7 @@ Start the component, reading its configuration from
 the common configuration file, which is accessed by environment variable
 
 """
-__revision__ = "$Id: Startup.py,v 1.4.14.2 2007/10/03 18:16:11 gcodispo Exp $"
+__revision__ = "$Id: Startup.py,v 1.4.14.3 2008/03/28 15:35:25 gcodispo Exp $"
 
 import os
 import sys
@@ -44,7 +44,7 @@ try:
                                               jobCreatorConfig['ComponentDir']
     except AttributeError:
         compCfg['JobCreatorComponentDir'] = ""
-        
+
     try:
 
         # get dashboard information from submitter configuration plugin
@@ -53,7 +53,7 @@ try:
 
         # build dashboard info structure
         dashboardInfo = {}
-        dashboardInfo['use'] = dashboardCfg["UseDashboardINFO"] 
+        dashboardInfo['use'] = dashboardCfg["UseDashboardINFO"]
         dashboardInfo['address'] = dashboardCfg["DestinationHost"]
         dashboardInfo['port'] = dashboardCfg["DestinationPort"]
 

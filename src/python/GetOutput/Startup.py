@@ -6,7 +6,7 @@ Start the component, reading its configuration from
 the common configuration file, which is accessed by environment variable
 
 """
-__revision__ = "$Id: Startup.py,v 1.1.2.2 2008/03/28 15:36:51 gcodispo Exp $"
+__revision__ = "$Id: Startup.py,v 1.1.2.3 2008/04/16 16:57:35 gcodispo Exp $"
 
 import os
 import sys
@@ -47,7 +47,7 @@ try:
         compCfg['JobCreatorComponentDir'] = jtConfig['ComponentDir']
     elif 'ComponentDir' in jobCreatorConfig.keys():
         compCfg['JobCreatorComponentDir'] = jobCreatorConfig['ComponentDir']
-        
+
     try:
         # get dashboard information from submitter configuration plugin
         pluginConfig = loadPluginConfig("JobSubmitter", "Submitter")
@@ -72,7 +72,7 @@ try:
         compCfg.update( config.get("CrabServerConfigurations") )
     except Exception, e:
         pass
-    ## 
+    ##
 
 except StandardError, ex:
     msg = "Error reading configuration:\n"

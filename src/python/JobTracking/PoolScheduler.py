@@ -6,8 +6,8 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.7 2008/04/22 15:39:51 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.7 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.8 2008/04/29 08:39:29 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.8 $"
 
 from threading import Thread
 from time import sleep
@@ -16,24 +16,24 @@ import logging
 from random import shuffle
 
 from JobTracking.JobStatus import JobStatus
-from ProdAgentBOSS.BOSSCommands import directDB
+from JobTracking.TrackingDB import TrackingDB
 from ProdCommon.ThreadTools.WorkQueue import WorkQueue
-from GetOutput.TrackingDB import TrackingDB
+from ProdCommon.BossLite.API.BossLiteDB import BossLiteDB
 
 ###############################################################################
 # Class: PoolScheduler                                                        #
-############################################################################### 
-        
+###############################################################################
+
 class PoolScheduler(Thread):
     """
     An instance of this class performs a pool thread scheduler
     """
-    
+
     def __init__(self, pool, params = None):
         """
         initialize the pool instance and start the scheduler thread.
         """
-        
+
         # initialize thread
         Thread.__init__(self)
 
@@ -50,7 +50,13 @@ class PoolScheduler(Thread):
             self.maxJobs = params['jobsToPoll']
         except KeyError:
             self.maxJobs = 100
+        try:
+            self.database = params['dbConfig']
+        except KeyError:
+            from ProdAgentDB.Config import defaultConfig as dbConfig
+            self.database = dbConfig
         self.groupsUnderProcessing = Set([])
+        self.jobPerTask = None
 
         # start scheduler thread
         self.setDaemon(1)
@@ -59,7 +65,7 @@ class PoolScheduler(Thread):
     def run(self):
         """
         __run__
-        
+
         main body of the scheduler.
         """
 
@@ -91,7 +97,7 @@ class PoolScheduler(Thread):
 
             # new threads to start?
             if len(groups) >= self.threadsWorking:
- 
+
                 # yes, start threads
                 for grp in groups:
 
@@ -107,9 +113,9 @@ class PoolScheduler(Thread):
             logging.info("Thread processing group " + str(group) + \
                          " has finished")
 
-            # decrement threads counter 
+            # decrement threads counter
             self.threadsWorking = self.threadsWorking - 1
-                
+
             # remove its ID from groups
             self.groupsUnderProcessing.remove(group)
 
@@ -120,7 +126,7 @@ class PoolScheduler(Thread):
     def getNewJobs(self):
         """
         __getNewJobs__
-        
+
         get information about new jobs.
         """
 
@@ -130,18 +136,18 @@ class PoolScheduler(Thread):
     def applyPolicy(self):
         """
         __applyPolicy__
-        
+
         apply policy.
         """
 
         # get DB session
-        session = directDB.getDbSession()
+        session = BossLiteDB ("MySQL", self.database )
         db = TrackingDB( session )
 
         # set policy parameters
         groups = {}
 
-        # get list of groups under processing 
+        # get list of groups under processing
         grlist = ",".join(["%s" % k for k in self.groupsUnderProcessing])
 
         # get information about tasks associated to these groups
@@ -226,7 +232,7 @@ class PoolScheduler(Thread):
         # close db session
         session.close()
 
-        # build list of groups 
+        # build list of groups
         ret = groups.keys()
         ret.extend(self.groupsUnderProcessing)
 

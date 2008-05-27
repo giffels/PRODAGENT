@@ -29,15 +29,16 @@ from copy import deepcopy
 from MessageService.MessageService import MessageService
 import ProdAgentCore.LoggingUtils as LoggingUtils
 from ProdAgentDB.Config import defaultConfig as dbConfig
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
 ## other dependencies
 from GetOutput.JobOutput import JobOutput
-from JobTracking.JobHandling import JobHandling
 
 # to be substituted with a BossLite implementation
-from GetOutput.TrackingDB import TrackingDB
+from JobTracking.TrackingDB import TrackingDB
 
-# BossLite support 
+# BossLite support
+from ProdCommon.BossLite.API.BossLiteDB import BossLiteDB
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 
 # Threads pool
@@ -59,17 +60,16 @@ class TrackingComponent:
     """
 
     def __init__(self, **args):
-       
-        # set default values for parameters 
+
+        # set default values for parameters
         self.args = {}
-        self.args.setdefault("PollInterval", 10)
-        self.args.setdefault("QueryInterval", 300)
-        self.args.setdefault("jobsToPoll", 100)
+        self.args.setdefault("PollInterval", 900)
+        self.args.setdefault("QueryInterval", 30)
+        self.args.setdefault("jobsToPoll", 500)
         self.args.setdefault("ComponentDir", "/tmp")
         self.args.setdefault("configDir", None)
         self.args.setdefault("ProdAgentWorkDir", None)
         self.args.setdefault("PoolThreadsSize", 5)
-        self.args.setdefault("GetOutputPoolThreadsSize", 5)
         self.args.setdefault("Logfile", None)
         self.args.setdefault("verbose", 0)
         self.args.setdefault("JobCreatorComponentDir", None)
@@ -100,25 +100,27 @@ class TrackingComponent:
         self.pollDelay = hours.zfill(2) + ':' + \
                          minutes.zfill(2) + ':' + \
                          seconds.zfill(2)
-        
+
         # get configuration information
         if self.args["JobCreatorComponentDir"] is None:
             self.args["JobCreatorComponentDir"] = self.args["ComponentDir"]
         self.args["JobCreatorComponentDir"] = \
                         os.path.expandvars(self.args["JobCreatorComponentDir"])
 
-        # initialize job handling
-        self.jobHandling = None
-
         # compute delay for get output operations
         sleepTime = int(self.args['QueryInterval'])
         if sleepTime < 15:
             sleepTime = 15 # a minimum value
 
+        # initialize members
+        self.ms = None
+        self.database = deepcopy(dbConfig)
+
         # create pool thread
         params = {}
         params['delay'] = sleepTime
         params['jobsToPoll'] = int(self.args['jobsToPoll'])
+        params['dbConfig'] = self.database
         JobStatus.setParameters(params)
         pool = \
              WorkQueue([JobStatus.doWork] * int(self.args["PoolThreadsSize"]))
@@ -127,15 +129,11 @@ class TrackingComponent:
         params = {}
         params['delay'] = delay
         params['jobsToPoll'] = int( self.args['jobsToPoll'] )
-        PoolScheduler(pool, params) 
-
-        # initialize members
-        self.ms = None
-        self.database = deepcopy(dbConfig)
+        params['dbConfig'] = self.database
+        PoolScheduler(pool, params)
 
         # initialize Session
         self.bossLiteSession = BossLiteAPI('MySQL', self.database)
-        self.bossLiteSession.connect()
 
         # set parameters for getoutput operations
         params = {}
@@ -197,7 +195,7 @@ class TrackingComponent:
         # get finished and failed jobs and handle them
         self.handleFinished()
         self.handleFailed()
-        
+
         # notify new jobs
         self.pollNewJobs()
 
@@ -217,7 +215,6 @@ class TrackingComponent:
         """
 
         # summary of the jobs in the DB
-        # TODO : change with a BossLite call
         db = TrackingDB( self.bossLiteSession.bossLiteDB )
         result = db.getJobsStatistic()
 
@@ -308,10 +305,10 @@ class TrackingComponent:
 
                 # publish information to dashboard
                 try:
-                    self.jobHandling.dashboardPublish( job )
+                    self.dashboardPublish( job )
                 except StandardError, msg:
                     logging.error("Cannot publish to dashboard:%s" % msg)
-                
+
                 del( job )
 
             del self.newJobs[:]
@@ -356,14 +353,14 @@ class TrackingComponent:
 
                 # publish information to the dashboard
                 try:
-                    self.jobHandling.dashboardPublish(job)
+                    self.dashboardPublish(job)
                 except StandardError, msg:
                     logging.error("Cannot publish to dashboard:%s" % msg)
 
 
                 # enqueue the get output operation
                 logging.debug("Enqueing failure handling request for %s" % \
-                              self.jobHandling.fullId(job))
+                              self.fullId(job))
 
                 job.runningJob['processStatus'] = 'failed'
                 self.bossLiteSession.updateDB( job.runningJob )
@@ -413,13 +410,13 @@ class TrackingComponent:
 
                 # publish information to the dashboard
                 try:
-                    self.jobHandling.dashboardPublish(job)
+                    self.dashboardPublish(job)
                 except StandardError, msg:
                     logging.error("Cannot publish to dashboard:%s" % msg)
 
                 # enqueue the get output operation
                 logging.debug("Enqueing getoutput request for %s" % \
-                              self.jobHandling.fullId(job))
+                              self.fullId(job))
 
                 JobOutput.requestOutput(job)
                 del( job )
@@ -433,7 +430,7 @@ class TrackingComponent:
         """
         __startComponent__
 
-        Start up this component, 
+        Start up this component,
 
         """
 
@@ -453,16 +450,6 @@ class TrackingComponent:
         self.ms.publish("TrackingComponent:pollDB", "")
         self.ms.commit()
 
-        # initialize job handling object
-        params = {}
-        params['baseDir'] = self.args['ComponentDir']
-        params['jobCreatorDir'] = self.args["JobCreatorComponentDir"]
-        params['usingDashboard'] = self.usingDashboard
-        params['messageServiceInstance'] = self.ms
-        params['OutputLocation'] = None
-        params['OutputParams'] = None
-        self.jobHandling = JobHandling(params)
-
         # wait for messages
         while True:
 
@@ -473,5 +460,119 @@ class TrackingComponent:
 
             # process it
             self.__call__(mtype, payload)
+
+
+    def dashboardPublish(self, job):
+        """
+        __dashboardPublish__
+
+        publishes dashboard info
+        """
+
+        # using Dashboard?
+        if self.usingDashboard['use'] == "False" :
+            return
+
+        # initialize
+        dashboardInfo = DashboardInfo()
+        dashboardInfoFile = None
+
+        # looking for dashboardInfoFile
+        try :
+            dashboardInfoFile = \
+                              os.path.join(job.runningJob['outputDirectory'], \
+                                           "DashboardInfo.xml" )
+        except :
+            pass
+
+        # if the dashboardInfoFile is not there, this is a crab job
+        if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
+            task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
+            dashboardInfo.task = task['name'][: task['name'].rfind('_')]
+            dashboardInfo.job = str(job['jobId']) + '_' + \
+                                job.runningJob['schedulerId']
+            dashboardInfo['JSTool'] = 'crab'
+            dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
+            dashboardInfo['User'] = task['name'].split('_')[0]
+            dashboardInfo['TaskType'] =  'analysis'
+
+        # otherwise, ProdAgent job: everything is stored in the file
+        else:
+            try:
+                # it exists, get dashboard information
+                dashboardInfo.read(dashboardInfoFile)
+
+            except StandardError, msg:
+                # it does not work, abandon
+                logging.error("Reading dashboardInfoFile " + \
+                              dashboardInfoFile + " failed (jobId=" \
+                              + str(job['jobId']) + ")\n" + str(msg))
+                return
+
+        # write dashboard information
+        dashboardInfo['GridJobID'] = job.runningJob['schedulerId']
+
+        try :
+            dashboardInfo['StatusEnterTime'] = \
+                                             str(job.runningJob['lbTimestamp'])
+        except StandardError:
+            pass
+
+        try :
+            dashboardInfo['StatusValue'] = job.runningJob['statusScheduler']
+        except KeyError:
+            pass
+
+        try :
+            dashboardInfo['StatusValueReason'] = job.runningJob['statusReason']
+        except KeyError:
+            pass
+
+        try :
+            dashboardInfo['StatusDestination'] = job.runningJob['destination']
+        except KeyError:
+            pass
+
+        try :
+            dashboardInfo['RBname'] = job.runningJob['service']
+        except KeyError:
+            pass
+
+        ### # create/update info file
+        ### logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
+        ### dashboardInfo.write( dashboardInfoFile )
+
+        # set dashboard destination
+        dashboardInfo.addDestination(
+            self.usingDashboard['address'], self.usingDashboard['port']
+            )
+
+        # publish it
+        try:
+            # logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
+            dashboardInfo.publish(5)
+            logging.info("dashboard info sent for job %s" % self.fullId(job) )
+
+        # error, cannot publish it
+        except StandardError, msg:
+            logging.error("Cannot publish dashboard information: " + \
+                          dashboardInfo.__str__() + "\n" + str(msg))
+
+        return
+
+
+    def fullId( self, job ):
+        """
+        __fullId__
+
+        compose job primary keys in a string
+        """
+
+        return str( job['taskId'] ) + '.' \
+               + str( job['jobId'] ) + '.' \
+               + str( job['submissionNumber'] )
+
+
+
 
 

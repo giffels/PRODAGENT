@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.22 2008/05/13 10:50:50 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.22 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.23 2008/05/13 11:08:03 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.23 $"
 
 import os
 import logging
@@ -19,9 +19,9 @@ from ProdCommon.Database import Session
 
 # GetOutput
 from GetOutput.JobOutput import JobOutput
-from JobTracking.JobHandling import JobHandling
+from GetOutput.JobHandling import JobHandling
 
-# BossLite support 
+# BossLite support
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.Common.Exceptions import DbError
 from ProdCommon.BossLite.Common.Exceptions import JobError
@@ -41,12 +41,12 @@ class GetOutputComponent:
 
         # set default values for parameters
         self.args = {}
-        self.args.setdefault("PollInterval", 10)
+        self.args.setdefault("PollInterval", 300)
         self.args.setdefault("ComponentDir", "/tmp")
         self.args.setdefault("JobTrackingDir", None)
         self.args.setdefault("GetOutputPoolThreadsSize", 5)
-        self.args.setdefault("jobsToPoll", 100)
-        self.args.setdefault("OutputLocation", "SE")
+        self.args.setdefault("jobsToPoll", 500)
+        self.args.setdefault("OutputLocation", "local")
         self.args.setdefault("dropBoxPath", None)
         self.args.setdefault("Logfile", None)
         self.args.setdefault("verbose", 0)
@@ -115,7 +115,7 @@ class GetOutputComponent:
         # recreate interrupted get output operations
         JobOutput.recreateOutputOperations(self.pool)
 
-        # initialize Session 
+        # initialize Session
         Session.set_database(dbConfig)
         Session.connect()
 
@@ -197,7 +197,7 @@ class GetOutputComponent:
                 offset += self.jobLimit
 
             while self.outputRequestedJobs != [] :
-            
+
                 # change status for jobs that require get output operations
                 try:
                     job = self.outputRequestedJobs.pop()
@@ -213,7 +213,7 @@ class GetOutputComponent:
                 del( job )
 
             del self.outputRequestedJobs[:]
-         
+
         # get jobs failed that require post-mortem operations
         logging.debug("Start processing of failed")
 
@@ -246,7 +246,7 @@ class GetOutputComponent:
                 offset += self.jobLimit
 
             while self.outputRequestedJobs != [] :
-            
+
                 # change status for jobs that require get output operations
                 try:
                     job = self.outputRequestedJobs.pop()
@@ -313,7 +313,7 @@ class GetOutputComponent:
         except Exception, err:
             logging.error( "failed to process job %s:%s output : %s" % \
                            (job['taskId'], job['jobId'], str(err) ) )
-            
+
         logging.debug("Processing output for job %s.%s finished" % \
                       ( job['taskId'], job['jobId'] ) )
 
