@@ -4,22 +4,21 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.11 2008/04/22 15:41:45 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.11 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.12 2008/05/07 18:09:59 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.12 $"
 
-from ProdAgentBOSS.BOSSCommands import directDB
 
 class TrackingDB:
     """
     _TrackingDB_
     """
 
-    def __init__(self, session):
+    def __init__(self, bossSession):
         """
         __init__
         """
 
-        self.session = session
+        self.bossSession = bossSession
 
 
     def getJobsStatistic(self):
@@ -29,13 +28,13 @@ class TrackingDB:
         set job status for a set of jobs
         """
 
-        # build query 
+        # build query
         query = """
         select status, count( status ) from bl_runningjob
         where closed='N' group by  status
         """
 
-        rows = directDB.select(self.session, query)
+        rows = self.bossSession.select(query)
 
         return rows
 
@@ -47,14 +46,14 @@ class TrackingDB:
         retrieve scheduler used by task
         """
 
-        # build query 
+        # build query
         query = """
         select distinct( scheduler ) from bl_runningjob
         where task_id=%s and closed='N' and scheduler is not NULL
         and scheduler_id is not NULL
         """ % str( taskId )
 
-        rows = directDB.selectOne(self.session, query)
+        rows = self.bossSession.selectOne(query)
 
         return rows
 
@@ -62,19 +61,19 @@ class TrackingDB:
     def getUnprocessedJobs( self, grlist ) :
         """
         __getUnprocessedJobs__
-        
+
         select jobs not yet assigned to a status query group
         """
 
         queryAddin = "where group_id is not null "
         if grlist != '':
             queryAddin = "where group_id not in (%s) " % str(grlist)
-            
+
         # some groups with threads working on
         query = " select task_id, count(job_id) from jt_group %s" % queryAddin
         query += " group by task_id order by count(job_id) desc"
 
-        rows = directDB.select(self.session, query)
+        rows = self.bossSession.select(query)
 
         if rows is None:
             return []
@@ -90,14 +89,14 @@ class TrackingDB:
         """
 
         ### query = """
-        ### select distinct(g.task_id),t.user_proxy from jt_group g,bl_task t 
+        ### select distinct(g.task_id),t.user_proxy from jt_group g,bl_task t
         ### where g.group_id=%s and g.task_id=t.ID order by t.user_proxy,t.ID
         ### """ % str(group)
 
         query = "select distinct(task_id) from jt_group where group_id=" \
                 + str(group)
-        
-        rows = directDB.select(self.session, query)
+
+        rows = self.bossSession.select(query)
 
         return [int(key[0]) for key in rows ]
 
@@ -112,7 +111,7 @@ class TrackingDB:
         query = "select max(job_id) from  jt_group where task_id=" \
                 + taskId
 
-        rows = directDB.selectOne(self.session, query)
+        rows = self.bossSession.selectOne(query)
         return rows
 
 
@@ -132,7 +131,7 @@ class TrackingDB:
               + " and process_status like '%handled'" \
               + " order by j.task_id"
 
-        rows = directDB.select(self.session, query)
+        rows = self.bossSession.select(query)
         return rows
 
 
@@ -151,7 +150,7 @@ class TrackingDB:
               + ' where j.job_id IS NULL ' \
               + " or j.status in ('E','K','A','SD')"
 
-        rows = directDB.select(self.session, query)
+        rows = self.bossSession.select(query)
         return rows
 
 
@@ -167,7 +166,7 @@ class TrackingDB:
               " values(''," + str( taskId ) + ',' + str( jobId ) + \
               ') on duplicate key update group_id=group_id'
 
-        directDB.modify(self.session, query)
+        self.bossSession.modify(query)
 
 
     def removeFromCheck(self, group, taskId, jobId ):
@@ -182,7 +181,7 @@ class TrackingDB:
                         + ' and task_id=' + str( taskId ) \
                         + ' and job_id=' + str( jobId )
 
-        directDB.modify(self.session, query)
+        self.bossSession.modify(query)
 
 
     def setTaskGroup( self, group, taskList ) :
@@ -191,10 +190,10 @@ class TrackingDB:
 
         assign tasks to a given group
         """
-        
+
         query = \
               'update jt_group set group_id=' + str(group) + \
               ' where task_id in (' + taskList  + ')'
 
-        directDB.modify(self.session, query)
+        self.bossSession.modify(query)
 
