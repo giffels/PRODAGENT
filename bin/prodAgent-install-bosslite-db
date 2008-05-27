@@ -6,7 +6,7 @@ Installation and configuration script for prod agent database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-db,v 1.8 2007/01/17 19:00:19 fvlingen Exp $"
+__revision__ = "$Id: prodAgent-install-bosslite-db,v 1.1.2.1 2008/02/25 21:19:12 afanfani Exp $"
 
 import getpass
 import os
@@ -44,7 +44,7 @@ BossLiteschemaLocation=dbLiteConfig['BossLiteschemaLocation']
 
 bossSession = BossLiteAPI( "MySQL", dbConfig)
 try:
-    bossSession.installDB(BossLiteschemaLocation)
+    bossSession.bossLiteDB.installDB(BossLiteschemaLocation)
 except:
     msg= "Error with %s"%BossLiteschemaLocation
     print msg
