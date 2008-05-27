@@ -19,6 +19,7 @@ SHARE_DIR=$(PREFIX)/share
 build:
 	@cd $(PYTHON_SRC) && python setup.py build --build-lib=$(LIB_DIR)
 	/bin/cp $(PYTHON_SRC)/ShREEK/shreek $(LIB_DIR)/ShREEK
+	/bin/cp $(PYTHON_SRC)/HWlogging.sh $(LIB_DIR)/
 	/bin/cp $(SQL_SRC)/ProdAgentDB/*.sql  $(SHARE_DIR)
 	/bin/cp $(PYTHON_SRC)/RssFeeder/*.gif $(LIB_DIR)/RssFeeder
 	/bin/chmod +x $(LIB_DIR)/JobCreator/RuntimeTools/*.py
