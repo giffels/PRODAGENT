@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.29 2008/05/14 11:10:16 afanfani Exp $"
-__version__ = "$Revision: 1.47.2.29 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.31 2008/05/27 10:32:54 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.31 $"
 
 import os
 import os.path
@@ -63,9 +63,9 @@ class TrackingComponent:
 
         # set default values for parameters
         self.args = {}
-        self.args.setdefault("PollInterval", 900)
-        self.args.setdefault("QueryInterval", 30)
-        self.args.setdefault("jobsToPoll", 500)
+        self.args.setdefault("PollInterval", 300)
+        self.args.setdefault("QueryInterval", 3)
+        self.args.setdefault("jobsToPoll", 300)
         self.args.setdefault("ComponentDir", "/tmp")
         self.args.setdefault("configDir", None)
         self.args.setdefault("ProdAgentWorkDir", None)
