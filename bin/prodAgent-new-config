@@ -166,9 +166,9 @@ componentFields = {
 
     "JobTracking" : {
     "ComponentDir" : None,
-    "PollInterval" : 10,
-    "QueryInterval" : 300,
-    "jobsToPoll" : 100,
+    "PollInterval" : 300,
+    "QueryInterval" : 10,
+    "jobsToPoll" : 300,
     "PoolThreadsSize" : 5,
     "RssFeed": "no",
     },
@@ -287,8 +287,8 @@ componentFields = {
 
     "GetOutput" : {
     "ComponentDir" : None,
-    "PollInterval" : 60,
-    "jobsToPoll" : 100,
+    "PollInterval" : 120,
+    "jobsToPoll" : 300,
     "GetOutputPoolThreadsSize" : 5,
     "OutputLocation" : "SE",
     'maxGetOutputAttempts' : 3,
