@@ -2,11 +2,11 @@
 """
 _prodAgent-install-bosslite-db_
 
-Installation and configuration script for prod agent database.
+Installation script for BossLite tables into prod agent database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-bosslite-db,v 1.1.2.2 2008/05/27 07:22:17 spiga Exp $"
+__revision__ = "$Id: prodAgent-install-bosslite-db,v 1.1.2.3 2008/05/28 09:15:28 gcodispo Exp $"
 __version__ = "$version: $"
 
 from ProdAgentDB.Install import preInstall
