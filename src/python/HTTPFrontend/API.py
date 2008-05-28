@@ -504,3 +504,19 @@ def getPIDservice(search_service,service):
         msg = [service,"PID : "+pid ]
 
     return msg
+
+def getpidof(procname,service):
+    cmd = os.popen("ps -A -o pid,command")
+    for l in cmd.readlines():
+        s = l.strip().split(' ')[1]
+        pid = 0
+        if procname in s and s[0] =='/':
+           pid = l.strip().split(' ')[0]
+           break
+    if  not os.path.exists("/proc/"+str(pid)) or str(pid) == 0 :
+        msg = [service,"Not Running"]
+    else:
+        msg = [service,"PID : "+pid ]
+
+    return msg
+

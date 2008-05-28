@@ -86,8 +86,8 @@ class ComponentMonitor:
                             </html>"""
 
         run , not_run = status()
-	delegation = API.getPIDservice("delegation-server", "Delegation Service")
-        gridftp = API.getPIDservice("gridftp","Globus GridFtp")
+        delegation = API.getpidof("delegation", "Delegation Service")
+        gridftp = API.getpidof("gridftp-server","Globus GridFtp")
         page = [_header]
         table_run = '<h2> Status Components :</h2>'
         table_run += '<table>\n'
