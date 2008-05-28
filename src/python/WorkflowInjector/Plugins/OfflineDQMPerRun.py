@@ -34,12 +34,12 @@ class OfflineDQMPerRun(PluginInterface):
         self.workflow = None
         self.dbsUrl = None
         self.loadPayloads(payload)
-
+        self.siteName = None
         
         
         factory = RunJobFactory(self.workflow,
                                 self.workingDir,
-                                self.dbsUrl)
+                                self.dbsUrl, SiteName = self.siteName)
         
         
         jobs = factory()
@@ -73,17 +73,20 @@ class OfflineDQMPerRun(PluginInterface):
             logging.error(msg)
             raise RuntimeError, msg
 
-        siteName = self.workflow.parameters.get("OnlySites", None)
-        if siteName == None:
+        self.siteName = self.workflow.parameters.get("OnlySites", None)
+        if self.siteName == None:
             msg = "Error: No sitename provided for OfflineDQMByRun workflow"
             msg += "\n You need to add an OnlySites parameter containing\n"
             msg += "the site name where the jobs will run"
             logging.error(msg)
             raise RuntimeError, msg
 
-        runtimeScript = "JobCreator.RuntimeTools.RuntimeOfflineDQMPerRun"
-        self.workflow.payload.scriptControls['PostTask'].append(runtimeScript)
-        
+        runtimeScript = "JobCreator.RuntimeTools.RuntimeOfflineDQM"
+        postTasks = self.workflow.payload.scriptControls['PostTask']
+        if runtimeScript not in postTasks:
+            self.workflow.payload.scriptControls['PostTask'].append(
+                runtimeScript)
+            
         return
         
 registerPlugin(OfflineDQMPerRun, OfflineDQMPerRun.__name__)
