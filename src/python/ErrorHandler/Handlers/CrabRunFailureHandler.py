@@ -192,7 +192,7 @@ class CrabRunFailureHandler(HandlerInterface):
          #### if wrapper code is not null and different from 60303 (file already exists in the SE) and 
          #### from 70000 (output too big), the job will be resubmit banning the site where it previously run
 
-         if ((wrapperReturnCode is not None) and (wrapperReturnCode == 50117) and (wrapperReturnCode != 60303) and (wrapperReturnCode != 70000) and (wrapperReturnCode != 0)):
+         if ((wrapperReturnCode is not None) and (wrapperReturnCode != 50117) and (wrapperReturnCode != 60303) and (wrapperReturnCode != 70000) and (wrapperReturnCode != 0)):
              ce = str(task.jobs[0].runningJob['destination'])
              ce_temp = task.jobs[0].runningJob['destination'].split(':')
              ce_name = ce_temp[0]
