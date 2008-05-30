@@ -182,9 +182,12 @@ x
                 self.makeJobs(test)
             except Exception, ex:
                 msg = "Error Creating jobs for test: %s\n" % test['PickleFile']
-                msg += "Skipping Test..."
+                msg += "Skipping Test...\n"
+                msg += "Exception: %s\n" % str(ex)
                 test['BadTest'] = True
                 logging.error(msg)
+                dbg = traceback.format_exc()
+                logging.debug("Traceback:\n%s\n" % dbg)
                 continue
             
             if test['BadTest'] == False:
