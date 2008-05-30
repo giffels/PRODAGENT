@@ -6,8 +6,8 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.1 2008/05/15 15:09:55 gcodispo Exp $"
+__version__ = "$Revision: 1.1 $"
 
 import os
 import logging
@@ -38,22 +38,23 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
     scheduler  = "SchedulerGLiteAPI"
 
 
-    def getSchedulerConfig() :
+    def getSchedulerConfig(self) :
         """
         _getSchedulerConfig_
 
         retrieve configuration info for the BossLite scheduler
         """
-        
+
         if not 'WMSconfig' in self.pluginConfig['GLITE'].keys() or \
                self.pluginConfig['GLITE']['WMSconfig'] is None \
-               or self.pluginConfig['GLITE']['WMSconfig'] != 'None' :
+               or self.pluginConfig['GLITE']['WMSconfig'] == 'None' :
 
             schedulerConfig = ''
 
         elif os.path.exists( self.pluginConfig['GLITE']['WMSconfig'] ) :
             schedulerConfig = self.pluginConfig['GLITE']['WMSconfig']
         else :
+            schedulerConfig = ''
             logging.error( "WMSconfig File Not Found: %s" % \
                            self.pluginConfig['GLITE']['WMSconfig'] )
 

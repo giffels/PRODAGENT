@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.1 2008/05/15 15:09:55 gcodispo Exp $"
+__version__ = "$Revision: 1.1 $"
 
 import os, time
 import logging
@@ -64,6 +64,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
         self.mainSandboxName = os.path.basename(self.mainSandbox)
         self.singleSpecName = None
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+        self.bossJob = None
         self.bossTask = None
         self.submittedJobs = {}
         self.failedSubmission = []
@@ -117,12 +118,24 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
                  self.singleSpecName[:self.singleSpecName.find('-JobSpec.xml')]
             logging.debug("singleSpecName \"%s\"" % self.singleSpecName)
             try :
-                self.bossJob = self.bossLiteSession.loadJobByName(
+                jobs = self.bossLiteSession.loadJobByName(
                     self.singleSpecName
                     )
+
+                # handle failures
+                if jobs is None :
+                    raise JSException("no jobs matching in the BossLite DB", \
+                                      FailureList = self.toSubmit.keys())
+
+                if len( jobs ) != 1 :
+                    raise JSException("Too many intances in the BossLite DB", \
+                                      FailureList = self.toSubmit.keys())
+
+                # taking the job
+                self.bossJob = jobs[0]
+                logging.debug("resubmitting \"%s\"" % self.bossJob['name'])
             except JobError, ex:
                 raise JSException(str(ex), FailureList = self.toSubmit.keys()) 
-            logging.debug("resubmitting \"%s\"" % self.bossJob['name'])
         else :
             try :
                 self.bossTask = self.bossLiteSession.loadTaskByName(
@@ -156,7 +169,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
 
             self.bossTask = Task()
             self.bossTask['name'] = self.mainJobSpecName
-            self.bossTask['globalSandbox'] = [ executablePath, inpSandbox ]
+            self.bossTask['globalSandbox'] = executablePath + ':' + inpSandbox
 
             for jobSpecId, jobCacheDir in self.toSubmit.items():
                 if len(jobSpecId) == 0 :#or jobSpecId in jobSpecUsedList :
@@ -173,7 +186,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
                                        'FrameworkJobReport.xml' ]
                 self.bossLiteSession.getNewRunningInstance( job )
                 job.runningJob['outputDirectory'] = jobCacheDir \
-                                                    + '/ Submission1'
+                                                    + '/Submission1'
                 self.bossTask.addJob( job )
             self.bossLiteSession.updateDB( self.bossTask )
             logging.info( "Successfully Created task %s with %d jobs" % \
@@ -290,7 +303,7 @@ fi
             )
         script.append("cd %s\n" % self.workflowName)
         script.append( "./run.sh $JOB_SPEC_FILE > %s.out 2> %s.err\n" \
-                       % jobName )
+                       % ( jobName, jobName ) )
 
         script.append( "tar cvzf %s.tgz *\n" % jobName )
 
@@ -400,7 +413,7 @@ fi
         # check for not submitted jobs
         self.bossLiteSession.updateDB( self.bossTask )
         for job in self.bossTask.jobs :
-            if job.runningjob['schedulerId'] is None:
+            if job.runningJob['schedulerId'] is None:
                 self.failedSubmission.append( job['name'] )
 
         #  //
@@ -432,14 +445,15 @@ fi
         whitelist = str(self.whitelist)
         whitelist = whitelist.replace("[", "")
         whitelist = whitelist.replace("]", "")
-        
 
         for job in self.bossTask.jobs :
             if job.runningJob['schedulerId'] is None:
                 continue
-            dashboardInfoFile = \
-                              os.path.join(job.runningJob['outputDirectory'], \
-                                           "DashboardInfo.xml" )
+
+            # compose DashboardInfo.xml path
+            outdir = job.runningJob['outputDirectory']
+            outdir = outdir[ : outdir.rfind('/') ]
+            dashboardInfoFile = os.path.join(outdir, "DashboardInfo.xml" )
 
             if  not os.path.exists(dashboardInfoFile):
                 logging.error("Unable to find dashboardInfoFile " + \
