@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.27 2008/05/12 12:38:30 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.27 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.28 2008/05/27 10:32:55 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.28 $"
 
 import logging
 import os
@@ -69,8 +69,9 @@ class JobOutput:
 
         # verify status
         if job.runningJob['processStatus'] != 'handled':
-            logging.error("Job %s.%s is in status %s, cannot request output" \
-                          % (job['taskId'], job['jobId'], job.runningJob['processStatus']))
+            logging.error(
+                "Job %s.%s is in status %s, cannot request output" % \
+                (job['taskId'], job['jobId'], job.runningJob['processStatus']))
             return
 
         job.runningJob['processStatus'] = 'output_requested'
@@ -92,6 +93,8 @@ class JobOutput:
         __doWork__
 
         get the output of the job specified.
+        return job when successful,
+               None if the job does not need/allow further processing
 
         *** thread safe ***
 
@@ -112,13 +115,13 @@ class JobOutput:
             if status == 'output_retrieved':
                 logging.warning("Enqueuing previous ouput for job %s.%s" % \
                                 (job['taskId'], job['jobId']))
-                return job
+                return
 
             # non expected status, abandon processing for job
             if status != 'in_progress' and status != 'failed':
                 logging.error("Cannot get output for job %s.%s, status is %s" \
                               % (job['taskId'], job['jobId'], status) )
-                return job
+                return
 
             # inconsistent status
             if status == 'in_progress' and job.runningJob['closed'] == 'Y':
@@ -128,9 +131,9 @@ class JobOutput:
                 bossLiteSession.updateDB( job )
                 return job
 
-            # both for failed and done, a scheduler instance is needed:
             schedSession = None
             try:
+                # both for failed and done, a scheduler instance is needed:
                 task = bossLiteSession.loadTask(job['taskId'], False)
                 if task['user_proxy'] is None:
                     task['user_proxy'] = ''
@@ -145,39 +148,47 @@ class JobOutput:
                 # build needed output directory
                 job.runningJob['outputDirectory'] = cls.buildOutdir(job, task)
 
+                # job failed: perform postMortem operations and notify failure
+                if status == 'failed':
+                    job = cls.handleFailed( job, task, schedSession)
+
+                # output at destination: just purge service
+                elif cls.params['OutputLocation'] == 'SE':
+                    try :
+                        schedSession.purgeService( task )
+                    except SchedulerError, msg:
+                        output = str(msg)
+                        job.runningJob['statusHistory'].append(output)
+                        logging.warning(
+                            "Warning: failed to purge job %s.%s : %s" \
+                            % (job['taskId'], job['jobId'], output ) )
+                    job.runningJob['processStatus'] = 'output_retrieved'
+
+                # get output, trying at most maxGetOutputAttempts
+                else :
+                    job = cls.getOutput( job, task, schedSession)
+
             except SchedulerError, err:
+                output = str(err)
                 logging.error('Can not get scheduler for job %s.%s : [%s]' % \
-                              (job['taskId'], job['jobId'], str(err)))
-                return job
+                              (job['taskId'], job['jobId'], output))
+
+                # proxy expired: invalidate job and empty return
+                if output.find( "Proxy Expired" ) != -1 :
+                    job.runningJob['processStatus'] = 'failure_handled'
+                    bossLiteSession.updateDB( job )
+                    return
+
 
             except TaskError, err:
                 logging.error('Can not get scheduler for job %s.%s : [%s]' % \
                               (job['taskId'], job['jobId'], str(err)))
-                return job
 
             except Exception, err:
                 logging.error('Can not handle job %s.%s : [%s]' % \
                               (job['taskId'], job['jobId'], str(err)))
-                return job
 
-            # job failed: perform postMortem operations and notify the failure
-            if status == 'failed':
-                job = cls.handleFailed( job, task, schedSession)
-
-            #  get output, trying at most maxGetOutputAttempts
-            elif cls.params['OutputLocation'] == 'SE':
-                try:
-                    schedSession.purgeService( task )
-                except SchedulerError, msg:
-                    output = str(msg)
-                    job.runningJob['statusHistory'].append(output)
-                    logging.warning("Warning: failed to purge job %s.%s : %s" \
-                                    % (job['taskId'], job['jobId'], output ) )
-                job.runningJob['processStatus'] = 'output_retrieved'
-            else :
-                job = cls.getOutput( job, task, schedSession)
-
-            # log status & update
+            # update
             try:
                 bossLiteSession.updateDB( job )
             except JobError, msg:
