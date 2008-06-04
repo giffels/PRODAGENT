@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.25 2008/05/27 08:20:32 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.25 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.26 2008/05/27 10:32:54 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.26 $"
 
 from JobTracking.TrackingDB import TrackingDB
 from ProdCommon.BossLite.API.BossLiteAPI import parseRange
@@ -95,8 +95,7 @@ class JobStatus:
         loop = True
         jobRange = ''
         runningAttrs = {'processStatus': '%handled',
-                        'closed' : 'N',
-                        'submissionTime' : '20%'}
+                        'closed' : 'N'}
         jobsToPoll = cls.params['jobsToPoll']
 
         # perform query

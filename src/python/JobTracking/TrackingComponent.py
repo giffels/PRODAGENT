@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.31 2008/05/27 10:32:54 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.31 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.32 2008/05/27 13:06:58 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.32 $"
 
 import os
 import os.path
@@ -277,8 +277,8 @@ class TrackingComponent:
             #     )
 
             self.newJobs = self.bossLiteSession.loadJobsByRunningAttr(
-                {'processStatus' : 'not_handled', 'submissionTime' : '20%'}, \
-                strict=False, limit=self.jobLimit, offset=offset
+                {'processStatus' : 'not_handled'}, \
+                limit=self.jobLimit, offset=offset
                 )
 
             logging.info("new jobs : " + str( len(self.newJobs) ) )

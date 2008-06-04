@@ -52,8 +52,7 @@ for taskId in parseRange( taskRange ) :
         task = schedSession.query( taskId, jobRange, \
                                    queryType='parent', \
                                    runningAttrs={'processStatus': '%handled',
-                                                 'closed' : 'N',
-                                                 'submissionTime' : '20%'}, \
+                                                 'closed' : 'N'}, \
                                    strict=False )
         for job in task.jobs :
             print job.runningJob['jobId'], \
