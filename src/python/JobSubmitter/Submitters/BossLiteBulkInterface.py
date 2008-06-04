@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.1 2008/05/15 15:09:55 gcodispo Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.2 2008/05/30 16:29:24 gcodispo Exp $"
+__version__ = "$Revision: 1.2 $"
 
 import os, time
 import logging
@@ -157,19 +157,19 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
 
         #generate unique wrapper script
         executable = self.mainJobSpecName + '-submit'
-        executablePath = "%s/%s-submit" % (self.workingDir, executable) 
+        executablePath = "%s/%s" % (self.workingDir, executable) 
         logging.debug("makeWrapperScript = %s" % executablePath)
         self.makeWrapperScript( executablePath, "$1" )
 
         inpSandbox = ','.join( self.jobInputFiles )
         logging.debug("Declaring to BOSS")
    
-        wrapperName = "%s/%s-submit" % (self.workingDir, self.mainJobSpecName)
+        wrapperName = "%s/%s" % (self.workingDir, self.mainJobSpecName)
         try :
 
             self.bossTask = Task()
             self.bossTask['name'] = self.mainJobSpecName
-            self.bossTask['globalSandbox'] = executablePath + ':' + inpSandbox
+            self.bossTask['globalSandbox'] = executablePath + ',' + inpSandbox
 
             for jobSpecId, jobCacheDir in self.toSubmit.items():
                 if len(jobSpecId) == 0 :#or jobSpecId in jobSpecUsedList :
@@ -396,7 +396,8 @@ fi
             schedulercladfile = "%s/%s_scheduler.clad" % \
                                 (self.workingDir , self.mainJobSpecName )
             declareClad = open(schedulercladfile,"w")
-            declareClad.write(submissionAttrs)
+            declareClad.write( schedSession.jobDescription( self.bossTask, \
+                                                    requirements=submissionAttrs ) )
             declareClad.close()
         except:
             pass
