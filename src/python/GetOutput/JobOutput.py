@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.28 2008/05/27 10:32:55 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.28 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.29 2008/06/03 16:08:53 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.29 $"
 
 import logging
 import os
@@ -175,7 +175,7 @@ class JobOutput:
 
                 # proxy expired: invalidate job and empty return
                 if output.find( "Proxy Expired" ) != -1 :
-                    job.runningJob['processStatus'] = 'failure_handled'
+                    job.runningJob['processStatus'] = 'failed'
                     bossLiteSession.updateDB( job )
                     return
 
@@ -244,8 +244,6 @@ class JobOutput:
             logging.info( '[%s]' % str(err) )
             job.runningJob['statusHistory'].append( \
                         'failed to retrieve logging-info')
-
-        job.runningJob['processStatus'] = 'failure_handled'
 
         return job
 
