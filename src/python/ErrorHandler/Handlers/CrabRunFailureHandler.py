@@ -160,7 +160,7 @@ class CrabRunFailureHandler(HandlerInterface):
          #### add a control about the number of resubmission ####
 
          if ((wrapperReturnCode is None) and ( applicationReturnCode is None)):
-             if ((task.jobs[0].runningJob['status'] == 'K') or (task.jobs[0].runningJob['status'] == 'A')):
+             if (task.jobs[0].runningJob['status'] == 'K'):# or (task.jobs[0].runningJob['status'] == 'A')):
                  ### to check if correct 
                  ### dont_allow_resubmission()
                  #if ((task.jobs[0].runningJob['submission'] >= 2) and (task.jobs[0].runningJob['status_history'] == 'A')):
@@ -181,6 +181,13 @@ class CrabRunFailureHandler(HandlerInterface):
                      payload = str(taskId)+'::'+str(jobId) 
                      logging.info("--->>> payload = " + payload)         
                      self.publishEvent("ResubmitJob",payload,delay)
+             elif (task.jobs[0].runningJob['status'] == 'A'):
+                 try:
+                     doNotAllowMoreSubmissions([jobId])
+                 except ProdAgentException, ex:
+                     msg = "Updating max racers fields failed for job %s\n" % jobId
+                     logging.info(msg)
+                     logging.error(msg)
              else:
                  logging.info("--->>> status = " + task.jobs[0].runningJob['status'])
                  pass
