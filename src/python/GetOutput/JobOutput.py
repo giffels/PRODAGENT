@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.29 2008/06/03 16:08:53 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.29 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.30 2008/06/04 08:29:04 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.30 $"
 
 import logging
 import os
@@ -115,7 +115,7 @@ class JobOutput:
             if status == 'output_retrieved':
                 logging.warning("Enqueuing previous ouput for job %s.%s" % \
                                 (job['taskId'], job['jobId']))
-                return
+                return job
 
             # non expected status, abandon processing for job
             if status != 'in_progress' and status != 'failed':
@@ -435,20 +435,24 @@ class JobOutput:
             outdir = job.runningJob['outputDirectory']
 
         # try to compose the path from task
-        elif task['outputDirectory'] is not None \
-               and task['outputDirectory'] != '' :
-            outdir = task['outputDirectory']
-
-        # fallback to the component directory
         else :
-            outdir = cls.params['componentDir']
+            # SE?
+            if cls.params['OutputLocation'] == "SE" :
+                outdir = \
+                       cls.params['dropBoxPath'] + '/' + task['name'] + '_spec'
 
-        # SE?
-        if cls.params['OutputLocation'] == "SE" :
-            outdir = cls.params['dropBoxPath'] + '/' + task['name'] + '_spec'
+            # fallback to task directory
+            elif task['outputDirectory'] is not None \
+                   and task['outputDirectory'] != '' :
+                outdir = task['outputDirectory']
 
-        # FIXME: get outdir
-        outdir = "%s/BossJob_%s_%s/Submission_%s/" % \
+            # fallback to the component directory
+            else :
+                outdir = cls.params['componentDir']
+
+
+            # FIXME: get outdir
+            outdir = "%s/BossJob_%s_%s/Submission_%s/" % \
                  (outdir, job['taskId'], job['jobId'], job['submissionNumber'])
 
         # make outdir
