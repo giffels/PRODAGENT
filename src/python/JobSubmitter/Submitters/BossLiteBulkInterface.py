@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.2 2008/05/30 16:29:24 gcodispo Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.3 2008/06/04 14:36:33 gcodispo Exp $"
+__version__ = "$Revision: 1.3 $"
 
 import os, time
 import logging
@@ -133,7 +133,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
 
                 # taking the job
                 self.bossJob = jobs[0]
-                logging.debug("resubmitting \"%s\"" % self.bossJob['name'])
+                logging.info("resubmitting \"%s\"" % self.bossJob['name'])
             except JobError, ex:
                 raise JSException(str(ex), FailureList = self.toSubmit.keys()) 
         else :
@@ -177,11 +177,10 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
                 job = Job()
                 job['name'] = jobSpecId
                 job['arguments'] =  jobSpecId
-                job['standardOutput'] =  jobSpecId + '.stdout'
-                job['standardError']  =  jobSpecId + '.stderr'
+                job['standardOutput'] =  jobSpecId + '.log'
+                job['standardError']  =  jobSpecId + '.log'
                 job['executable']     =  executable
-                job['outputFiles'] = [ jobSpecId + '.stdout', \
-                                       jobSpecId + '.stderr', \
+                job['outputFiles'] = [ jobSpecId + '.log', 
                                        jobSpecId + '.tgz', \
                                        'FrameworkJobReport.xml' ]
                 self.bossLiteSession.getNewRunningInstance( job )
@@ -305,7 +304,8 @@ fi
         script.append( "./run.sh $JOB_SPEC_FILE > %s.out 2> %s.err\n" \
                        % ( jobName, jobName ) )
 
-        script.append( "tar cvzf %s.tgz *\n" % jobName )
+        script.append( "tar cvzf $PRODAGENT_JOB_INITIALDIR/%s.tgz  %s.out %s.err\n" \
+                       % ( jobName, jobName, jobName ) )
 
         # Handle missing FrameworkJobReport
 #        script.extend(missingJobReportCheck(jobName))
@@ -340,6 +340,7 @@ fi
 
         # is there a job? build a task!
         if self.bossTask is None and self.bossJob is not None:
+            logging.info( "Loading task for job resubmission..."  )
 
             # close previous instance and set up the outdir
             if self.bossJob.runnningJob['closed'] == 'Y' :
@@ -350,7 +351,8 @@ fi
                 self.bossJob.runningJob['outputDirectory'] = outdir
 
             # load the task ans append the job
-            self.bossTask = self.bossLiteSession.loadTask(self.bossJob, False)
+            self.bossTask = \
+                          self.bossLiteSession.loadTask(self.bossJob['taskId'], False)
             self.bossTask.appendJob( self.bossJob )
 
         # still no task? Something bad happened
@@ -412,7 +414,6 @@ fi
 
 
         # check for not submitted jobs
-        self.bossLiteSession.updateDB( self.bossTask )
         for job in self.bossTask.jobs :
             if job.runningJob['schedulerId'] is None:
                 self.failedSubmission.append( job['name'] )
