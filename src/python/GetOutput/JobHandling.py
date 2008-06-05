@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.1 2008/05/27 10:32:55 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.1 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.2 2008/06/04 17:50:16 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.2 $"
 
 class JobHandling:
     """
@@ -79,7 +79,7 @@ class JobHandling:
                 if job.runningJob['processStatus'] != 'failed':
                     self.reportRebounce( job )
                 else :
-                    self.loggingInfoRebounce( job )
+                    self.rebounceLoggingInfo( job )
             except :
                 # as dirt as needed: any unknown error
                 import traceback
@@ -463,75 +463,40 @@ class JobHandling:
                      % ( job['taskId'], job['jobId'] ) )
         return
 
-
-    def loggingInfoRebounce( self, job ):
+    def rebounceLoggingInfo( self, job ):
         """
-        __loggingInfoRebounce__
+        __rebounceLoggingInfo__
 
-
-        rebounce loggingInfo file
         """
-
-        loggingInfoFile = \
-                        job.runningJob['outputDirectory'] + '/loggingInfo.log'
-
-        if not os.path.exists(loggingInfoFile):
-            return
-
-        # TODO: implement here the rebounce
-
-        return
-
         localOutDir = job.runningJob['outputDirectory']
+        #logging.info("Using: " + str (localOutDir) + " - " + str ('loggingInfo.log') )
+        source = os.path.join( localOutDir, 'loggingInfo.log' )
+        if os.path.exists( source ):
+            task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
 
-        localOutputTgz = [ localOutDir +'/'+ f.split('/')[-1]
-                           for f in job['outputFiles'] if '.tgz' in f ]
-        localOutputTgz = [ f for f in localOutputTgz if os.path.exists(f) ]
+            logging.info("Output rebounce: %s.%s " \
+                         % ( job['taskId'], job['jobId'] ) )
 
-        logging.info( 'REBOUNCE DBG %s, %s, %s' \
-                      % (localOutDir, localOutputTgz, \
-                         [ localOutDir +'/'+ f.split('/')[-1]
-                           for f in job['outputFiles'] ] ) )
+            seEl = SElement( self.configs["storageName"], \
+                             self.configs["Protocol"],    \
+                             self.configs["storagePort"] )
+            loc = SElement("localhost", "local")
 
-        if len(localOutputTgz)==0:
-            return
-
-        task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
-        logging.info("Output rebounce: %s.%s " \
-                     % ( job['taskId'], job['jobId'] ) )
-        seEl = SElement( self.configs["storageName"], \
-                         self.configs["Protocol"],    \
-                         self.configs["storagePort"] )
-        loc = SElement("localhost", "local")
-
-        ## copy ISB ##
-        sbi = SBinterface( loc, seEl )
-        filesToClean = []
-        for filetocopy in localOutputTgz:
-            source = os.path.abspath(filetocopy)
-            dest = os.path.join(
-                task['outputDirectory'], os.path.basename(filetocopy) )
+            ## copy ISB ##
+            sbi = SBinterface( loc, seEl )
+            dest = os.path.join( task['outputDirectory'], 'loggingInfo_'+str(job['jobId'])+'.log' )
             try:
-                ## logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) )
+                logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) )
                 sbi.copy( source, dest, task['user_proxy'])
-                filesToClean.append(source)
+                #filesToClean.append(source)
             except Exception, e:
                 logging.info("Output rebounce transfer fail for %s.%s: %s " \
                              % ( job['taskId'], job['jobId'], str(e) ) )
-                continue
 
-        logging.info("Output rebounce completed for %s.%s " \
-                     % ( job['taskId'], job['jobId'] ) )
-        for filetoclean in filesToClean:
-            try:
-                os.remove( filetoclean )
-
-            except Exception, e:
-                logging.info(
-                    "Output rebounce local clean fail for %s.%s: %s " \
-                    % ( job['taskId'], job['jobId'], str(e) ) )
-                continue
-        logging.info("Output rebounce clean for %s.%s " \
-                     % ( job['taskId'], job['jobId'] ) )
+            logging.info("Output rebounce completed for %s.%s " \
+                         % ( job['taskId'], job['jobId'] ) )
+        else:
+            logging.info("Output rebounce not completed for %s.%s " \
+                         % ( job['taskId'], job['jobId'] ) )
+            logging.error("Missing [%s] file" % source)
         return
-    ######################
