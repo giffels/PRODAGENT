@@ -5,6 +5,8 @@ import popen2
 import fcntl, select, sys, os
 import re
 
+from ProdAgent.WorkflowEntities import Job
+
 
 class CommandExecutionError(Exception):
     def __init__(self, s):
@@ -151,9 +153,12 @@ def getNoInfo(jobSpecId):
 
 
 class ARCJob:
+     #
+     #   FIXME: This could be turned into a dictionary that extends the
+     #   information from Job.get() with some ARC specific information.
+     #
 
-    def __init__(self, jobIds = None, arcId = None, jobSpecId = None, status = None, CEName = None,
-                 jobType = None):
+    def __init__(self, jobIds = None, arcId = None, jobSpecId = None, status = None, CEName = None):
         """
         Note that either arcId or jobSpecId has to be provided. If either
         is missing, we'll try to figure it out using the other.  
@@ -182,18 +187,6 @@ class ARCJob:
 
         self.status = status
 
-        if jobType:
-            self.jobType = jobType
-        else:
-            # FIXME: Are these assumptions on job naming conventions allways
-            # true?
-            if self.jobSpecId.lower().find("mergejob") >= 0:
-                self.jobType = "Merge"
-            elif self.jobSpecId.lower().find("cleanup") >= 0:
-                self.jobType = "CleanUp"
-            else:
-                self.jobType = "Processing"
-
         if CEName:
             self.CEName = CEName
         elif self.arcId:
@@ -204,6 +197,10 @@ class ARCJob:
             self.CEName = re.sub('[:/].*$', '', s)
         else:
             self.CEName = None
+
+        if Job.exists(self.jobSpecId) > 0:
+            self.jobinfo = Job.get(self.jobSpecId)
+
             
 
 def getJobs():

@@ -13,6 +13,8 @@ import ProdAgent.ResourceControl.ResourceControlAPI as ResConAPI
 from ProdAgentCore.ResourceConstraint import ResourceConstraint
 from ProdAgent.Resources import ARC
 
+from ProdAgent.WorkflowEntities import Job
+
 from popen2 import Popen4
 
 
@@ -33,6 +35,7 @@ class ARCMonitor(MonitorInterface):
     Generate a per site constraint for each distinct site being used
 
     """
+
     def __call__(self):
         constraints = []
         totCount = 0
@@ -44,8 +47,12 @@ class ARCMonitor(MonitorInterface):
             jobs[ce] = {}
             for jobType in jobTypeMap.keys():
                 jobs[ce][jobType] = 0
-        for j in ARC.getJobsLite():
-            jobs[j.CEName][j.jobType] = jobs[j.CEName][j.jobType] + 1
+        for j in ARC.getJobsLite():  # FIXME: Use ProdAgent's internal data structures instead?
+            try:
+                jobType = j.jobinfo['job_type']
+            except KeyError:
+                continue
+            jobs[j.CEName][jobType] = jobs[j.CEName][jobType] + 1
 
         # Subtract the number of existing jobs of each type per CE
         # from the allowed ones to get the constraints
