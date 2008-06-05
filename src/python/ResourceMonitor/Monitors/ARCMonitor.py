@@ -5,7 +5,7 @@ _ARCMonitor_
 ResourceMonitor plugin that monitors ARC resources
 
 """
-import logging, os
+import logging, os, time
 from ResourceMonitor.Monitors.MonitorInterface import MonitorInterface
 from ResourceMonitor.Registry import registerMonitor
 from ProdAgentCore.ResourceConstraint import ResourceConstraint
@@ -21,6 +21,7 @@ jobTypeMap = {"Processing":"processingThreshold",
               "Merge":"mergeThreshold",
               "CleanUp":"cleanupThreshold" }
 
+SEStatusCache = {}
 
 class ARCMonitor(MonitorInterface):
     """
@@ -109,20 +110,34 @@ class ARCMonitor(MonitorInterface):
 
     def SEWorks(self, SEName):
         """
-        Return True if the SE is up and running.
+        Return True if the SE is up and running.  Since this is a pretty
+        slow operation (at least using srmls as we do now), we'll
+        use cached results if the cache is younger than one minute.
+        (For the ARC1 team, we will have several (two?) sites that share the
+        same SE, resulting in several checks of the same SE in quick succession)
+
         """
 
-        # FIXME: Is this the best way to do it? What about XRoot?
-        cmd = "srmls srm://%s:8443/pnfs/csc.fi/data/cms/" % SEName
-        cmd += " -retry_num=0 -recursion_depth=0"
-        logging.debug("Executing command '%s'" % cmd)
+        currTime = time.time()
+        cache = SEStatusCache.get(SEName, None)
 
-        r = (os.system(cmd + " > /dev/null 2>&1") == 0)
+        if cache and currTime - cache["time"] < 60:
+            r = cache["isup"]
+            msg = " (Cached)"
+        else:
+            # FIXME: Is this the best way to do it? What about XRoot?
+            cmd = "srmls srm://%s:8443/pnfs/csc.fi/data/cms/" % SEName
+            cmd += " -retry_num=0 -recursion_depth=0"
+            logging.debug("Executing command '%s'" % cmd)
+
+            r = (os.system(cmd + " > /dev/null 2>&1") == 0)
+            SEStatusCache[SEName] = {"time": currTime, "isup": r}
+            msg = ""
 
         if r:
-            logging.info("SE " + SEName + " is UP")
+            logging.info("SE " + SEName + " is UP" + msg)
         else:
-            logging.info("SE " + SEName + " is DOWN!!!")
+            logging.info("SE " + SEName + " is DOWN!!!" + msg)
 
         return r
 
