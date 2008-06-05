@@ -102,8 +102,6 @@ class ARCSubmitter(BulkSubmitterInterface):
 
         if not self.pluginConfig.has_key("ARC"):
             setup = self.pluginConfig.newBlock("ARC")
-            setup['Queue'] = "8nh"
-            setup['LsfLogDir'] = "None"
             setup['CmsRunLogDir'] = "None"
             setup['NodeType'] = "None"
 
@@ -257,23 +255,21 @@ class ARCSubmitter(BulkSubmitterInterface):
         job
         
         """
-        #  //
-        # // Generate main executable script for job
-        #//
+        # Generate main executable script for job
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        #  // 
-        # // Some code useful for debugging
-        #//
+        # Some code useful for debugging
         script.append("ulimit -a\n")
         script.append("echo pwd: `pwd`\n")
         script.append("ls -la\n")
+        script.append("df -h\n")
         script.append("export\n")
         script.append("python -V 2>&1\n")
         script.append("echo PYTHONPATH: $PYTHONPATH\n")
 
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
+        script.append("cd $TMPDIR\n")
 
         if self.isBulk:
             script.extend(bulkUnpackerScript(self.specSandboxName))
@@ -290,8 +286,8 @@ class ARCSubmitter(BulkSubmitterInterface):
         # ARCTracker.py will retrieve FrameworkJobReport and run.log from
         # $PRODAGENT_JOB_INITIALDIR.
         script.append("cd $PRODAGENT_JOB_INITIALDIR\n")
-        script.append("cp %s/FrameworkJobReport.xml ./\n" % self.workflowName)
-        script.append("cp %s/run.log ./\n" % self.workflowName)
+        script.append("cp $TMPDIR/%s/FrameworkJobReport.xml ./\n" % self.workflowName)
+        script.append("cp $TMPDIR/%s/run.log ./\n" % self.workflowName)
 
 #        #  Gather all the files in a tar.bz2 file for easier retrieval --
 #        #  something we may want to do if the job failed and we want to
