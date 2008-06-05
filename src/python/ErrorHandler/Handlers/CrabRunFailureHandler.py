@@ -202,11 +202,11 @@ class CrabRunFailureHandler(HandlerInterface):
          if ((wrapperReturnCode is not None) and (wrapperReturnCode != 50117) and (wrapperReturnCode != 60303) and (wrapperReturnCode != 70000) and (wrapperReturnCode != 0)):
              ce = str(task.jobs[0].runningJob['destination'])
              ce_temp = task.jobs[0].runningJob['destination'].split(':')
-             ce_name = ce_temp[0]
+             ce_name = [ ce_temp[0] ] # As a list...to avoid problems with CSW and to enable hystorical filtering #Fabio
              logging.info("--->>> ce = " + ce)
              logging.info("--->>> ce_name = " + ce_name)
              logging.info(">CrabRunFailureHandler<: re-submitting banning the ce "+ ce_name)
-             payload = str(taskId) + '::' + str(jobId) + '::' + ce_name  
+             payload = str(taskId) + '::' + str(jobId) + '::' + str(ce_name)  
              logging.info("--->>> payload = " + payload)         
              self.publishEvent("ResubmitJob",payload)
          #### to understand how to implement the notification #### 
