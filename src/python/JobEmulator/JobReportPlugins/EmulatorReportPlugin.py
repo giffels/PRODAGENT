@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.11 2008/05/05 16:33:51 sryu Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.12 2008/06/06 14:59:41 sryu Exp $"
+__version__ = "$Revision: 1.12 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -30,7 +30,7 @@ from JobEmulator.Registry import registerPlugin
 class EmulatorReportPlugin(JobReportPluginInterface):
     """
     _EumlatorReportPlugin_
-    
+
     Plugin for the Job Emulator to generate job reports
     upon job completion.  Successful reports are marked
     as success while failure are marked a middleware
@@ -56,31 +56,31 @@ class EmulatorReportPlugin(JobReportPluginInterface):
 
         if "jobId" in jobSpecLoaded.parameters.keys():
             newReport.jobSpecId = jobSpecLoaded.parameters["jobId"]
-        
+
         # Create a list of datasets from the JobSpec
         # then associate file to these later on
         datasets = getOutputDatasetDetails(jobSpecPayload)
         datasets.extend(getSizeBasedMergeDatasetsFromNode(jobSpecPayload))
         outModules = jobSpecPayload.cfgInterface.outputModules
-        
+
         inputFiles = jobSpecPayload.cfgInterface.inputFiles
-        
+
         for dataset in datasets:
             modName = dataset.get('OutputModuleName', None)
-            
+
             if outModules.has_key(modName):
                 dataset['LFNBase'] = outModules[modName].get('LFNBase', None)
                 self.setDefaultForNoneValue('LFNBase', dataset['LFNBase'])
                 dataset['MergeedLFNBase'] = \
                                 outModules[modName].get('MergedLFNBase', None)
-        
+
         datasetMap = {}
         for dataset in datasets:
             datasetMap[dataset['OutputModuleName']] = dataset
 
         for outName, outMod in \
                 jobSpecPayload.cfgInterface.outputModules.items():
-            
+
             theFile = newReport.newFile()
             guid = makeUUID()
             theFile['LFN'] = "%s/%s.root" % (outMod['LFNBase'], guid)
@@ -89,25 +89,26 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             theFile['GUID'] = guid
             theFile['ModuleLabel'] = outName
             # basic measurement is byte (minumum 4MB, max 4GB)
-            theFile['Size'] = 4000000 * randrange(1, 1000) 
-            theFile.runs.append(jobSpecLoaded.parameters["RunNumber"])
-            
+            theFile['Size'] = 4000000 * randrange(1, 1000)
+            theFile.runs.append(jobSpecLoaded.parameters["WorkflowRunNumber"])
+            theFile.addLumiSection(jobSpecLoaded.parameters['RunNumber'],
+                                   jobSpecLoaded.parameters['WorkflowRunNumber'])
             #check if the maxEvents['output'] is set if not set totalEvent using maxEvents['input']
             totalEvent = jobSpecPayload.cfgInterface.maxEvents['output']
             if totalEvent == None:
                 totalEvent = jobSpecPayload.cfgInterface.maxEvents['input']
-            
+
             # if there is no input and output, print out error message and set default to 1000
             totalEvent = self.setDefaultForNoneValue(
                                            "maxEvent['input' and 'output']",
-                                            totalEvent, 
+                                            totalEvent,
                                             100)
-            
+
             try:
                 totalEvent = int(totalEvent)
             except ValueError, ex:
                 logging.error("totalEvent is not a number. \n%s" % ex)
-            
+
             if (random() > self.avgEventProcessingRate):
                 # Gauss distribution of totalEvent.
                 meanEvent = int(totalEvent * 0.7)
@@ -119,32 +120,32 @@ class EmulatorReportPlugin(JobReportPluginInterface):
                     totalEvent = totalEvent - 1
                 else:
                     totalEvent = tempTotalEvent
-            
-            #logging.debug("---------- Total Event ----------: %s \n" % totalEvent)        
+
+            #logging.debug("---------- Total Event ----------: %s \n" % totalEvent)
             theFile['TotalEvents'] = totalEvent
-            
-            theFile['SEName'] = workerNodeInfo['se-name'] 
+
+            theFile['SEName'] = workerNodeInfo['se-name']
             theFile['CEname'] = workerNodeInfo['ce-name']
             theFile['Catalog'] = outMod['catalog']
             theFile['OutputModuleClass'] = "PoolOutputModule"
-            
+
             theFile.addChecksum("cksum", randrange(1000000, 10000000))
-            theFile.branches.extend(["fakeBranch_%d-%s.Rec" % (num, guid) 
+            theFile.branches.extend(["fakeBranch_%d-%s.Rec" % (num, guid)
                                   for num in range(randrange(5,20))])
             #theFile.load(theFile.save())
-            
-            [ theFile.addInputFile("fakefile:%s" % x , "%s" % x ) 
+
+            [ theFile.addInputFile("fakefile:%s" % x , "%s" % x )
               for x in inputFiles ]
-            
+
             if datasetMap.has_key(outName):
                 datasetForFile = theFile.newDataset()
                 datasetForFile.update(datasetMap[outName])
-            
-                
+
+
         newReport.write(reportFilePath)
-             
-        return
-    
+
+        return newReport
+
     def createFailureReport(self, jobSpecLoaded, workerNodeInfo, reportFilePath):
         """
         _createFailureReport_
@@ -164,11 +165,11 @@ class EmulatorReportPlugin(JobReportPluginInterface):
         errDesc = "Failure in JobEmulator Layer \n"
         err['Description'] = errDesc
         newReport.jobSpecId = jobSpecPayload.jobName
-        
+
         newReport.write(reportFilePath)
-        
-        return
-    
+
+        return newReport
+
     def __fwkJobReportCommon(self, jobSpecLoaded, workerNodeInfo):
         """
         __fwkJobReportCommon_
@@ -180,35 +181,35 @@ class EmulatorReportPlugin(JobReportPluginInterface):
         The jobSpecLoaded parameter is a reference to an instance
         of the JobSpec class that has been initialized with the
         job spec that we are generating a report for.
-        
+
         """
         #workerNodeInfo = RandomAllocationPlugin().allocateJob()
-        
+
         try:
             jobSpecPayload = jobSpecLoaded.payload
-            
+
             newReport = FwkJobReport()
             newReport.jobSpecId = jobSpecPayload.jobName
             newReport.jobType = jobSpecPayload.type
             newReport.workflowSpecId = jobSpecPayload.workflow
             newReport.name = jobSpecPayload.name
             #get information from the super class
-            newReport.siteDetails['SiteName'] = workerNodeInfo['SiteName'] 
+            newReport.siteDetails['SiteName'] = workerNodeInfo['SiteName']
             #HostName is the same as worker_node name
-            newReport.siteDetails['HostName'] = workerNodeInfo['HostName'] 
-            newReport.siteDetails['se-name'] = workerNodeInfo['se-name'] 
-            newReport.siteDetails['ce-name'] = workerNodeInfo['ce-name'] 
+            newReport.siteDetails['HostName'] = workerNodeInfo['HostName']
+            newReport.siteDetails['se-name'] = workerNodeInfo['se-name']
+            newReport.siteDetails['ce-name'] = workerNodeInfo['ce-name']
             return jobSpecPayload, newReport
-                
+
         except Exception, ex:
             #msg = "Unable to Publish Report for %s\n" % jobSpecPayload.jobName
             #msg += "Since It is not known to the JobState System:\n"
             msg = str(ex)
             logging.error(msg)
-            
+
             raise RuntimeError, msg
-            
-        
+
+
 registerPlugin(EmulatorReportPlugin, EmulatorReportPlugin.__name__)
 
 if __name__ == "__main__":
