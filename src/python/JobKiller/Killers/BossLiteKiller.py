@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.6 2008/05/14 13:59:11 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.6 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.2 2008/06/05 13:06:27 gcodispo Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -378,25 +378,34 @@ class BossLiteKiller:
 
         ## perform the actual kill
         # do not allow resubmisions for them
-        schedulerConfig = { \
+        try:
+            schedulerConfig = { \
                           'name' : scheduler, \
                           'user_proxy' : task['user_proxy'], \
                           } 
-        # kill
-        bliteSched = BossLiteAPISched(self.bliteSession, schedulerConfig)
-        logging.info("Jobs to kill: "+ str(jobsReadyToKill) )
-        bliteSched.kill(task['id'], jobsReadyToKill)
+            # kill
+            bliteSched = BossLiteAPISched(self.bliteSession, schedulerConfig)
+            logging.info("Jobs to kill: "+ str(jobsReadyToKill) )
+            bliteSched.kill(task['id'], jobsReadyToKill)
 
-        # archive
-        for j in task.jobs:
-            if j['jobId'] not in jobsReadyToKill:
-                continue
-            self.bliteSession.archive(j)
+            # archive
+            for j in task.jobs:
+                if j['jobId'] in jobsReadyToKill \
+                       and j.runningJob['status'] == 'K':
+                    self.bliteSession.archive(j)
 
-        logging.info("JobSpecId list: "+ str(jobSpecId) + "\n")
-        JobState.doNotAllowMoreSubmissions(jobSpecId)
+            logging.info("JobSpecId list: "+ str(jobSpecId) + "\n")
+            JobState.doNotAllowMoreSubmissions(jobSpecId)
 
-        logging.info("Jobs "+ str(jobsReadyToKill) +" killed and Archived")
+            logging.info("Jobs "+ str(jobsReadyToKill) +" killed and Archived")
+
+            # deal with BOSS specific error 
+        except (SchedulerError, DbError), err:
+            msg = "Cannot get information for task %s, BOSS error: %s" % \
+                  (jobSpecId, str(err))
+            logging.error(msg)
+            raise Exception, msg
+
         return
 
 # register the killer plugin
