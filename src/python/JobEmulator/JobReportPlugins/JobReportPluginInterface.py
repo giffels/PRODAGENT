@@ -7,8 +7,8 @@ that generate job reports for completed
 jobs.
 
 """
-__revision__ = "$Id: JobReportPluginInterface.py,v 1.3 2008/03/11 11:58:46 fvlingen Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: JobReportPluginInterface.py,v 1.4 2008/03/14 21:08:04 sryu Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "sfoulkes, sryu"
 import logging
 
@@ -26,7 +26,7 @@ class JobReportPluginInterface:
     def __init__(self):
         self.avgEventProcessingRate = None
         
-    def createSuccessReport(self, jobSpec, jobRunningLocation):
+    def createSuccessReport(self, jobSpec, workerNodeInfo, reportFilePath):
         """
         _createSuccessReport_
 
@@ -37,7 +37,7 @@ class JobReportPluginInterface:
         fname = "JobEmulator.FwkJobReportPluginInterface.createSuccessReport"
         raise NotImplementedError, fname
 
-    def createFailureReport(self, jobSpec, jobRunningLocation):
+    def createFailureReport(self, jobSpec, workerNodeInfo, reportFilePath):
         """
         _createFailureReport_
 
@@ -54,7 +54,9 @@ class JobReportPluginInterface:
         Check to see if a parameter exists in the ProdAgent config.
         If it does, return its value, otherwise return the default
         value.
-        Usage: setDefaultForNoneValue(parmeterName="LFN Name", parameter=self.lfn, default="/store/fake")
+        Usage: setDefaultForNoneValue(parmeterName="LFN Name", 
+                                      parameter=self.lfn, 
+                                      default="/store/fake")
         """
         if parameter == None:
             logging.error("%s not set, reporter plugin is using default: %s" %
