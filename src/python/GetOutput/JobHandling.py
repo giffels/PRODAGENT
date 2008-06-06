@@ -482,9 +482,16 @@ class JobHandling:
                              self.configs["storagePort"] )
             loc = SElement("localhost", "local")
 
-            ## copy ISB ##
+            ### copy ISB ###
             sbi = SBinterface( loc, seEl )
-            dest = os.path.join( task['outputDirectory'], 'loggingInfo_'+str(job['jobId'])+'.log' )
+
+            # remote source name
+            outputDirectory = task['outputDirectory']
+            out = self.ft.match( outputDirectory )
+            if out is not None :
+                outputDirectory = outputDirectory[out.end()-1:]
+            dest = os.path.join(outputDirectory, 'loggingInfo_'+str(job['jobId'])+'.log' )
+
             try:
                 logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) )
                 sbi.copy( source, dest, task['user_proxy'])
