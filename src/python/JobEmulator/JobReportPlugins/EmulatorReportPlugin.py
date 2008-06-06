@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.10 2008/04/29 18:31:38 sfoulkes Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.11 2008/05/05 16:33:51 sryu Exp $"
+__version__ = "$Revision: 1.11 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -21,9 +21,6 @@ from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.MCPayloads.DatasetTools import getOutputDatasetDetails
 from ProdCommon.MCPayloads.MergeTools import getSizeBasedMergeDatasetsFromNode
 from ProdCommon.MCPayloads.UUID import makeUUID
-
-from ProdAgent.WorkflowEntities import Job as WEJob
-from ProdAgentCore.ProdAgentException import ProdAgentException
 
 from JobEmulator.JobReportPlugins.JobReportPluginInterface \
      import JobReportPluginInterface
@@ -40,7 +37,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
     failures.
 
     """
-    def createSuccessReport(self, jobSpecLoaded, jobRunningLocation):
+    def createSuccessReport(self, jobSpecLoaded, workerNodeInfo, reportFilePath):
         """
         _createSuccessReport_
 
@@ -52,8 +49,8 @@ class EmulatorReportPlugin(JobReportPluginInterface):
         job spec that we are generating a report for.
 
         """
-        jobSpecPayload, jobReportLocation, newReport = \
-                self.__fwkJobReportCommon(jobSpecLoaded, jobRunningLocation)
+        jobSpecPayload, newReport = \
+                self.__fwkJobReportCommon(jobSpecLoaded, workerNodeInfo)
         newReport.exitCode = 0
         newReport.status = "Success"
 
@@ -65,6 +62,8 @@ class EmulatorReportPlugin(JobReportPluginInterface):
         datasets = getOutputDatasetDetails(jobSpecPayload)
         datasets.extend(getSizeBasedMergeDatasetsFromNode(jobSpecPayload))
         outModules = jobSpecPayload.cfgInterface.outputModules
+        
+        inputFiles = jobSpecPayload.cfgInterface.inputFiles
         
         for dataset in datasets:
             modName = dataset.get('OutputModuleName', None)
@@ -99,7 +98,10 @@ class EmulatorReportPlugin(JobReportPluginInterface):
                 totalEvent = jobSpecPayload.cfgInterface.maxEvents['input']
             
             # if there is no input and output, print out error message and set default to 1000
-            totalEvent = self.setDefaultForNoneValue("maxEvent['input' and 'output']", totalEvent, 100)
+            totalEvent = self.setDefaultForNoneValue(
+                                           "maxEvent['input' and 'output']",
+                                            totalEvent, 
+                                            100)
             
             try:
                 totalEvent = int(totalEvent)
@@ -121,8 +123,8 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             #logging.debug("---------- Total Event ----------: %s \n" % totalEvent)        
             theFile['TotalEvents'] = totalEvent
             
-            theFile['SEName'] = jobRunningLocation['se-name'] 
-            theFile['CEname'] = jobRunningLocation['ce-name']
+            theFile['SEName'] = workerNodeInfo['se-name'] 
+            theFile['CEname'] = workerNodeInfo['ce-name']
             theFile['Catalog'] = outMod['catalog']
             theFile['OutputModuleClass'] = "PoolOutputModule"
             
@@ -131,16 +133,19 @@ class EmulatorReportPlugin(JobReportPluginInterface):
                                   for num in range(randrange(5,20))])
             #theFile.load(theFile.save())
             
+            [ theFile.addInputFile("fakefile:%s" % x , "%s" % x ) 
+              for x in inputFiles ]
+            
             if datasetMap.has_key(outName):
                 datasetForFile = theFile.newDataset()
                 datasetForFile.update(datasetMap[outName])
             
                 
-        newReport.write(jobReportLocation)
+        newReport.write(reportFilePath)
              
         return
     
-    def createFailureReport(self, jobSpecLoaded, jobRunningLocation):
+    def createFailureReport(self, jobSpecLoaded, workerNodeInfo, reportFilePath):
         """
         _createFailureReport_
 
@@ -151,8 +156,8 @@ class EmulatorReportPlugin(JobReportPluginInterface):
         job spec that we are generating a report for.
 
         """
-        jobSpecPayload, jobReportLocation, newReport = \
-                    self.__fwkJobReportCommon(jobSpecLoaded, jobRunningLocation)
+        jobSpecPayload, newReport = \
+                    self.__fwkJobReportCommon(jobSpecLoaded, workerNodeInfo)
         newReport.status = "Fail"
         newReport.exitCode = 1
         err = newReport.addError(1, "RandomEmulatorError")
@@ -160,11 +165,11 @@ class EmulatorReportPlugin(JobReportPluginInterface):
         err['Description'] = errDesc
         newReport.jobSpecId = jobSpecPayload.jobName
         
-        newReport.write(jobReportLocation)
+        newReport.write(reportFilePath)
         
         return
     
-    def __fwkJobReportCommon(self, jobSpecLoaded, jobRunningLocation):
+    def __fwkJobReportCommon(self, jobSpecLoaded, workerNodeInfo):
         """
         __fwkJobReportCommon_
 
@@ -177,32 +182,28 @@ class EmulatorReportPlugin(JobReportPluginInterface):
         job spec that we are generating a report for.
         
         """
-        #jobRunningLocation = RandomAllocationPlugin().allocateJob()
+        #workerNodeInfo = RandomAllocationPlugin().allocateJob()
         
         try:
             jobSpecPayload = jobSpecLoaded.payload
-            jobState = WEJob.get(jobSpecPayload.jobName)
-            msg = "got state %s " % str(jobState)
-            jobCache = jobState['cache_dir']
-            msg += "test\n %s" % jobCache
-            jobReportLocation = "%s/FrameworkJobReport.xml" % jobCache
+            
             newReport = FwkJobReport()
             newReport.jobSpecId = jobSpecPayload.jobName
             newReport.jobType = jobSpecPayload.type
             newReport.workflowSpecId = jobSpecPayload.workflow
             newReport.name = jobSpecPayload.name
             #get information from the super class
-            newReport.siteDetails['SiteName'] = jobRunningLocation['SiteName'] 
+            newReport.siteDetails['SiteName'] = workerNodeInfo['SiteName'] 
             #HostName is the same as worker_node name
-            newReport.siteDetails['HostName'] = jobRunningLocation['HostName'] 
-            newReport.siteDetails['se-name'] = jobRunningLocation['se-name'] 
-            newReport.siteDetails['ce-name'] = jobRunningLocation['ce-name'] 
-            return jobSpecPayload, jobReportLocation, newReport
+            newReport.siteDetails['HostName'] = workerNodeInfo['HostName'] 
+            newReport.siteDetails['se-name'] = workerNodeInfo['se-name'] 
+            newReport.siteDetails['ce-name'] = workerNodeInfo['ce-name'] 
+            return jobSpecPayload, newReport
                 
         except Exception, ex:
             #msg = "Unable to Publish Report for %s\n" % jobSpecPayload.jobName
             #msg += "Since It is not known to the JobState System:\n"
-            msg += str(ex)
+            msg = str(ex)
             logging.error(msg)
             
             raise RuntimeError, msg
