@@ -29,6 +29,8 @@ class ARCTracker(TrackerPlugin):
     def __init__(self):
         TrackerPlugin.__init__(self)
         self.jobs = {}
+        logging.debug("ARCTracker.__init__()")
+        self.jobIdMap = ARC.jobIdMap()
 
 
     def initialise(self):
@@ -222,7 +224,10 @@ class ARCTracker(TrackerPlugin):
                 msg += "command '%s' failed with exit status %s" % (cmd, str(s))
                 logging.warning(msg)
             summary += " -> %s\n" % id
-            ARC.clearNoInfo(id)
+
+            arcId = self.jobIdMap.get(id, None)
+            ARC.clearNoInfo(arcId)
+
         logging.info(summary)
         return
 
@@ -241,7 +246,10 @@ class ARCTracker(TrackerPlugin):
         summary = "Jobs Failed:\n"
         for id in failed:
             summary += " -> %s\n" % id
-            ARC.clearNoInfo(id)
+
+            arcId = self.jobIdMap.get(id, None)
+            ARC.clearNoInfo(arcId)
+
         logging.debug(summary)
         return
 

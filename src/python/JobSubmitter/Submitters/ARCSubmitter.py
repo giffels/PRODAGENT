@@ -255,15 +255,18 @@ class ARCSubmitter(BulkSubmitterInterface):
         job
         
         """
-        # Generate main executable script for job
+        #  //
+        # // Generate main executable script for job
+        #//
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        # Some code useful for debugging
+        #  // 
+        # // Some code useful for debugging
+        #//
         script.append("ulimit -a\n")
         script.append("echo pwd: `pwd`\n")
         script.append("ls -la\n")
-        script.append("df -h\n")
         script.append("export\n")
         script.append("python -V 2>&1\n")
         script.append("echo PYTHONPATH: $PYTHONPATH\n")
@@ -294,7 +297,7 @@ class ARCSubmitter(BulkSubmitterInterface):
 #        #  find out why.
 #        script.append("tar jcvf %s.tar.bz2 %s\n" % (self.workflowName,self.workflowName))
 #        script.append("rm -rf %s\n" % self.workflowName)
-#        script.append("rm -rf certificates\n")
+        script.append("rm -rf certificates\n")
 
         #script.extend(missingJobReportCheck(jobName))
 

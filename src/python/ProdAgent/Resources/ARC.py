@@ -142,14 +142,14 @@ def jobIdMap():
 
 noInfo = {}  # jobSpecId:s we haven't gotten any info for for a while
 
-def incNoInfo(jobSpecId):
-    noInfo[jobSpecId] = noInfo.get(jobSpecId, 0) + 1
+def incNoInfo(arcId):
+    noInfo[arcId] = noInfo.get(arcId, 0) + 1
 
-def clearNoInfo(jobSpecId):
-    if noInfo.has_key(jobSpecId): del noInfo[jobSpecId]
+def clearNoInfo(arcId):
+    if noInfo.has_key(arcId): del noInfo[arcId]
 
-def getNoInfo(jobSpecId):
-    return noInfo.get(jobSpecId, 0)
+def getNoInfo(arcId):
+    return noInfo.get(arcId, 0)
 
 
 class ARCJob:
@@ -200,6 +200,9 @@ class ARCJob:
 
         if Job.exists(self.jobSpecId) > 0:
             self.jobinfo = Job.get(self.jobSpecId)
+        else:
+            self.jobinfo = {}
+            
 
             
 
@@ -240,9 +243,10 @@ def getJobs():
                 # that the job is happily running, unless we've gotten
                 # many "Job information not found" in a row, in which
                 # case we assume something bad has happened.
-                if getNoInfo(id) < 10:
+                logging.debug("NoInfo for job %s is %s\n" % (id, str(getNoInfo(arcId))))
+                if getNoInfo(arcId) < 10:
                     s = "ASSUMED_ALIVE"
-                    incNoInfo(id)
+                    incNoInfo(arcId)
                 else:
                     s = "ASSUMED_LOST"
             status = StatusCodes[s]
@@ -305,7 +309,7 @@ def getJobs():
             status = StatusCodes[s]
             jobs.append(ARCJob(jobIds=jobIds, arcId=arcId, jobSpecId=jobSpecId, status=status))
 
-            clearNoInfo(jobSpecId)
+            clearNoInfo(arcId)
 
             logging.debug("Status for job %s is %s" % (jobSpecId, s))
 
