@@ -18,8 +18,8 @@ Session.commit_all()
 Session.close_all()
 
 """
-__revision__ = "$Id: JobEmulatorDB.py,v 1.2 2008/02/12 22:11:46 sryu Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: JobEmulatorDB.py,v 1.3 2008/02/29 22:07:10 sryu Exp $"
+__version__ = "$Revision: 1.3 $"
 
 from ProdCommon.Database import Session
 from ProdCommon.Core.ProdException import ProdException
@@ -88,7 +88,10 @@ class JobEmulatorDB:
         SELECT * FROM job_emulator WHERE status = '%s' order by start_time
 
         """ % status
-        
+
+        # return values are 
+        # job_id, job_type, start_time, status, worker_node_id
+        # (x[0], x[1], x[2], x[3], x[4])
         Session.execute(sqlStr)
         result = Session.fetchall()
         result = [ (x[0], x[1], x[2], x[3], x[4]) for x in result ]
