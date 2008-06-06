@@ -8,8 +8,8 @@ and generating reports as they finish.
 
 """
 
-__revision__ = "$Id: JobEmulatorComponent.py,v 1.4 2008/03/06 22:58:58 sryu Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: JobEmulatorComponent.py,v 1.5 2008/03/14 21:08:34 sryu Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "sfoulkes, sryu"
 
 import os
@@ -184,32 +184,40 @@ class JobEmulatorComponent:
         newJobs = queryJobsByStatus("new")
         
         for newJob in newJobs:
-            jobRunningLocation = \
+            # newJob[4] is worker_node_id (change to datastruct)
+            workerNodeInfo = \
                     JobEmulator.JobEmulatorAPI.getWorkerNodeInfo(newJob[4])
-            newJobStatus = completionPlugin.processJob(newJob, jobRunningLocation)
+            newJobStatus = completionPlugin.processJob(newJob, workerNodeInfo)
 
             if newJobStatus == "new":
                 continue
 
             jobSpec = JobSpec()
-
+            
+            # newJob[0] is job_id (change to datastruct)
             jobState = WEJob.get(newJob[0])
             jobSpecPath = "%s/%s-JobSpec.xml" % \
                           (jobState["cache_dir"], newJob[0])
                           
             logging.debug("------ Job Spec Path ----\n%s\n" % jobSpecPath)
             jobSpec.load(jobSpecPath)
-
+            
+            reportFilePath = "%s/FrameworkJobReport.xml" % jobState["cache_dir"] 
+            
             if newJobStatus == "finished":
                 logging.debug("---------jobFinished")
                 if reportPlugin != None:
-                    reportPlugin.createSuccessReport(jobSpec, jobRunningLocation)
+                    reportPlugin.createSuccessReport(jobSpec, 
+                                                     workerNodeInfo, 
+                                                     reportFilePath)
             elif newJobStatus == "failed":
                 logging.debug("--------jobFailed")
                 if self.fwkReportPlugin != None:
-                    reportPlugin.createFailureReport(jobSpec, jobRunningLocation)
+                    reportPlugin.createFailureReport(jobSpec, 
+                                                     workerNodeInfo,
+                                                     reportFilePath)
             
-            logging.debug("--------- updating job status %s - %s" % (newJobStatus, newJob[0]))
+            logging.debug("--- updating job status %s - %s" % (newJobStatus, newJob[0]))
             JobEmulator.JobEmulatorAPI.updateJobStatus(newJob[0], newJobStatus)
             logging.debug(" *** Job Upadated ***")
             JobEmulator.JobEmulatorAPI.decreaseJobCountAtNode(newJob[0])
@@ -237,12 +245,12 @@ class JobEmulatorComponent:
             return
         
         addJob(jobSpec.parameters['JobName'], jobSpec.parameters['JobType'])
-        jobRunningLocation = allocationPlugin.allocateJob()
+        workerNodeInfo = allocationPlugin.allocateJob()
             
         # this will increase job count for give node
         JobEmulator.JobEmulatorAPI.assignJobToNode(jobSpec.parameters['JobName'],
-                                                   jobRunningLocation['HostID'])
-        logging.debug("------host id: %s add job" % jobRunningLocation['HostID'])
+                                                   workerNodeInfo['HostID'])
+        logging.debug("------host id: %s add job" % workerNodeInfo['HostID'])
         
 
         return
