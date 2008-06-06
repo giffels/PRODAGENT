@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.3 2008/06/04 14:36:33 gcodispo Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.4 2008/06/05 12:57:25 gcodispo Exp $"
+__version__ = "$Revision: 1.4 $"
 
 import os, time
 import logging
@@ -118,21 +118,15 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
                  self.singleSpecName[:self.singleSpecName.find('-JobSpec.xml')]
             logging.debug("singleSpecName \"%s\"" % self.singleSpecName)
             try :
-                jobs = self.bossLiteSession.loadJobByName(
-                    self.singleSpecName
-                    )
+                # loading the job
+                self.bossJob = self.bossLiteSession.loadJobByName(
+                    self.singleSpecName )
 
                 # handle failures
-                if jobs is None :
+                if self.bossJob is None :
                     raise JSException("no jobs matching in the BossLite DB", \
                                       FailureList = self.toSubmit.keys())
 
-                if len( jobs ) != 1 :
-                    raise JSException("Too many intances in the BossLite DB", \
-                                      FailureList = self.toSubmit.keys())
-
-                # taking the job
-                self.bossJob = jobs[0]
                 logging.info("resubmitting \"%s\"" % self.bossJob['name'])
             except JobError, ex:
                 raise JSException(str(ex), FailureList = self.toSubmit.keys()) 
@@ -340,19 +334,20 @@ fi
 
         # is there a job? build a task!
         if self.bossTask is None and self.bossJob is not None:
+
             logging.info( "Loading task for job resubmission..."  )
+            self.bossLiteSession.getRunningInstance( self.bossJob )
 
             # close previous instance and set up the outdir
-            if self.bossJob.runnningJob['closed'] == 'Y' :
-                outdir = self.bossJob.runningJob['outputDirectory']
+            if self.bossJob.runningJob['closed'] == 'Y' :
+                outdir = self.toSubmit[ self.singleSpecName ] + '/Submission' \
+                         + str(self.bossJob.runningJob['submission'])
                 self.bossLiteSession.getNewRunningInstance( self.bossJob )
-                outdir = outdir[ : outdir.rfind('/') ] + '/Submission' \
-                         + str( self.bossJob.runningJob['submission'] )
                 self.bossJob.runningJob['outputDirectory'] = outdir
 
             # load the task ans append the job
-            self.bossTask = \
-                          self.bossLiteSession.loadTask(self.bossJob['taskId'], False)
+            self.bossTask = self.bossLiteSession.loadTask(
+                self.bossJob['taskId'], False )
             self.bossTask.appendJob( self.bossJob )
 
         # still no task? Something bad happened
@@ -504,6 +499,8 @@ fi
         _createSchedulerAttributes_
     
         create the scheduler attributes
+        Specific implementation in the Scheduler specific part
+                 (e.g. BlGLiteBulkSubmitter)
         """
 
         return ''
@@ -514,6 +511,8 @@ fi
         _getSchedulerConfig_
 
         retrieve configuration info for the BossLite scheduler
+        Specific implementation in the Scheduler specific part
+                 (e.g. BlGLiteBulkSubmitter)
         """
 
         return ''
