@@ -149,8 +149,13 @@ def condorQ(constraints):
     logging.debug("condorQ command: '%s'"%command)
     si, sout = os.popen2(command)
     content = sout.read()
-    #logging.debug("condorQ content: '%s'"%content)
+
+    #  // If we get invalid xml from condor_q the line below will throw an
+    # //  exception -- we want that to happen -- the component catches it
+    #//   and that fact is used to distinguish an error from there being no jobs
+
     content = content.split("<!DOCTYPE classads SYSTEM \"classads.dtd\">")[1]
+    
     handler = CondorQHandler()
     parser = make_parser()
     parser.setContentHandler(handler)
@@ -285,6 +290,7 @@ def countJobs(jobs,id_function,default_ids=[],default_value="",statuses=[[1,'Idl
         def_attribute[AttrStatus]=0
         
     attributes = {}
+
     for default in default_ids:
         attributes[default] = def_attribute.copy()
 

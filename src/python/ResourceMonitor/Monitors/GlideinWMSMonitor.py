@@ -68,17 +68,30 @@ class GlideinWMSMonitor(MonitorInterface):
         #  //
         # // Calculate available merge slots
         #//
+        msg="mergeInfo: %s"%str(mergeInfo)
+        logging.debug(msg)
         for site, jobcounts in mergeInfo.items():
             idle = jobcounts["Idle"]
-            msg="mergeInfo: %s"%str(mergeInfo)
-            logging.debug(msg)
+            running = jobcounts["Running"]
             msg="site: %s"%site
             logging.debug(msg)
             if self.siteThresholds.has_key(site):
+
+              try:
+                mergeRunThrottle = self.siteThresholds[site]["mergeRunningThrottle"]
+              except:
+                mergeRunThrottle = 1000000000
+
               mergeThresh = self.siteThresholds[site]["mergeThreshold"]
               test = idle - mergeThresh
-              msg="GlideinWMSMonitor Merge: Site=%s, Idle=%s, Thresh=%s, Test=%s"%(site,idle,mergeThresh,test)
+              msg="GlideinWMSMonitor Merge: Site=%s, Idle=%s, Running=%s, Thresh=%s, Test=%s"%(site,idle,running,mergeThresh,test)
               logging.debug(msg)
+
+              if running>mergeRunThrottle:
+                 msg="GlideinWMSMonitor: Running merge jobs (%s) exceed throttle level (%s), not sending in more"%(running,mergeRunThrottle)
+                 logging.debug(msg)
+                 test=0
+
 
               if test < 0:
                 constraint = self.newConstraint()
@@ -93,16 +106,18 @@ class GlideinWMSMonitor(MonitorInterface):
         # || Basically cloning the merge stuff here -- doesn't seem to make sense that this be a bulk thing
         # || Would expect in steady state for the jobs to just sort of dribble out behind successful merges
         #//
+        msg="cleanupInfo: %s"%str(cleanupInfo)
+        logging.debug(msg)
+
         for site, jobcounts in cleanupInfo.items():
             idle = jobcounts["Idle"]
-            msg="cleanupInfo: %s"%str(cleanupInfo)
-            logging.debug(msg)
+            running = jobcounts["Running"]
             msg="site: %s"%site
             logging.debug(msg)
             if self.siteThresholds.has_key(site):
               cleanupThresh = self.siteThresholds[site]["cleanupThreshold"]
               test = idle - cleanupThresh
-              msg="GlideinWMSMonitor CleanUp: Site=%s, Idle=%s, Thresh=%s, Test=%s"%(site,idle,cleanupThresh,test)
+              msg="GlideinWMSMonitor CleanUp: Site=%s, Idle=%s, Running=%s, Thresh=%s, Test=%s"%(site,idle,running,cleanupThresh,test)
               logging.debug(msg)
 
               if test < 0:
@@ -114,16 +129,34 @@ class GlideinWMSMonitor(MonitorInterface):
                 result.append(constraint)
 
 
+        msg="processingInfo: %s"%str(processingInfo)
+        logging.debug(msg)
+
         for site, jobcounts in processingInfo.items():
             idle = jobcounts["Idle"]
+            running = jobcounts["Running"]
             if self.siteThresholds.has_key(site):
               procThresh = self.siteThresholds[site]["processingThreshold"]
               minSubmit = self.siteThresholds[site]["minimumSubmission"]
               maxSubmit = self.siteThresholds[site]["maximumSubmission"]
+              try:
+                 procRunThrottle = self.siteThresholds[site]["processingRunningThrottle"]
+              except:
+                 procRunThrottle = 1000000000
               test = idle - procThresh
-              msg="GlideinWMSMonitor Proc: Site=%s, Idle=%s, Thresh=%s, Test=%s"%(site,idle,procThresh,test)
+              msg="GlideinWMSMonitor Proc: Site=%s, Idle=%s, Running=%s Thresh=%s, Test=%s"%(site,idle,running,procThresh,test)
               logging.debug(msg)
-            
+
+              #  //  
+              # //  Some sites want us to throttle jobs to a certain level...  this is a crude way to do that
+              #||   Basically don't send in more jobs if we have more running jobs than the throttle level
+              #//
+              logging.debug("procRunThrottle: %s"%procRunThrottle)           
+              if running>procRunThrottle:
+                 msg="GlideinWMSMonitor: Running processing jobs (%s) exceed throttle level (%s), not sending in more"%(running,procRunThrottle) 
+                 logging.debug(msg)
+                 test=0
+
               if test < 0:
                 if abs(test) < minSubmit:
                     #  //
