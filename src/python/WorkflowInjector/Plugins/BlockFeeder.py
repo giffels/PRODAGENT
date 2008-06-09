@@ -103,6 +103,7 @@ class BlockFeeder(PluginInterface):
         self.blocks = []
         self.workflowFile=payload
         self.onlyClosedBlocks = False
+        self.sites = None
         self.loadPayloads(self.workflowFile)
 
         logging.debug("Now making DBS query & constructing jobs") 
@@ -134,7 +135,7 @@ class BlockFeeder(PluginInterface):
 
         self.publishNewDataset(self.workflowFile)
 
-        self.makeBlockList(onlyClosedBlocks = self.onlyClosedBlocks)
+        self.makeBlockList(self.onlyClosedBlocks, self.sites)
 
 
         factory = DatasetJobFactory(self.workflow,
@@ -204,6 +205,20 @@ class BlockFeeder(PluginInterface):
         if onlyClosedBlocks and onlyClosedBlocks.lower() == "true":
             self.onlyClosedBlocks = True
         
+        siteRestriction = self.workflow.parameters.get("OnlySites", None)
+        if siteRestriction != None:
+            #  //
+            # // restriction on sites present, populate allowedSites list
+            #//
+            self.sites = []
+            msg = "Site restriction provided in Workflow Spec:\n"
+            msg += "%s\n" % siteRestriction
+            logging.info(msg)
+            siteList = siteRestriction.split(",")
+            for site in siteList:
+                if len(site.strip()) > 0:
+                    self.sites.append(site.strip())
+        
         value = self.workflow.parameters.get("DBSURL", None)
         if value != None:
             self.dbsUrl = value
@@ -220,7 +235,7 @@ class BlockFeeder(PluginInterface):
         return
 
 
-    def makeBlockList(self, onlyClosedBlocks = False):
+    def makeBlockList(self, onlyClosedBlocks = False, sites=None):
         """
         _makeBlockList_
 
@@ -241,6 +256,15 @@ class BlockFeeder(PluginInterface):
             
         else:
             newBlocks = dbsBlocks
+        
+        if sites is not None:    
+            blocksAtSites = []
+            for block in newBlocks:
+                for location in reader.listFileBlockLocation(block):
+                    if location in sites:
+                        blocksAtSites.append(block)
+                        break
+            newBlocks = blocksAtSites
 
         if len(newBlocks) == 0:
             msg = "No New Blocks found for dataset\n"
