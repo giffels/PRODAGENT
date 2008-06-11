@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.2 2008/06/04 17:50:16 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.2 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.4 2008/06/06 12:58:51 mcinquil Exp $"
+__revision__ = "$Revision: 1.1.2.4 $"
 
 class JobHandling:
     """
@@ -383,10 +383,16 @@ class JobHandling:
 
         # error
         except Exception, ex:
-            msg = "Error setting job state to finished for job: %s\n" \
-                  % str(job['jobId'])
-            msg += str(ex)
-            logging.error(msg)
+            ## temporary try/except to handle special error with job obj
+            try:
+                msg = "Error setting job state to finished for job: %s\n" \
+                      % str(job['jobId'])
+                msg += str(ex)
+                logging.error(msg)
+            except Exception, ex:
+                msg = "Error setting the job at finished: \n" + str(job) + "\n"
+                msg += str(ex)
+                logging.error(msg)
 
         return
 
