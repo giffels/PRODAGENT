@@ -122,8 +122,14 @@ class LogArchMgr:
         if not os.path.exists(self.tarfile):
             os.makedirs(self.tarfile)
             
+        # add job/workflow spec
+        for spec in ("PRODAGENT_WORKFLOW_SPEC", "PRODAGENT_JOBSPEC"):
+            src = os.getenv(spec, '')
+            if os.path.exists(src):
+                print "Archiving File: %s" % src
+                command = "/bin/cp -f %s %s" % (src, self.tarfile)
+                os.system(command)
             
-                                    
         for task in self.inputTasks:
             self.processTask(task)
             
@@ -194,7 +200,6 @@ class LogArchMgr:
 
         for compRE in self.compRegexps:
             [ toArchive.append(x) for x in taskContents if compRE.search(x) ]
-
 
         for item in toArchive:
             src = os.path.join(taskDir, item)
