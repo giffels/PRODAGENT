@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.69 2008/01/03 17:21:41 evansde Exp $"
-__version__ = "$Revision: 1.69 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.70 2008/05/15 07:04:19 dmason Exp $"
+__version__ = "$Revision: 1.70 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1259,9 +1259,7 @@ class MergeSensorComponent:
         tier=properties['dataTier']
         lastBit=properties['processedDataset']
 
-        acqEra=None
-        #if .has_key("AcquisitionEra"):
-        acqEra=spec.parameters["AcquisitionEra"]
+        acqEra = spec.parameters.get("AcquisitionEra", None)
 
         # compute LFN group based on merge jobs counter
         group = str(status['mergedjobs'] // 1000).zfill(4)
