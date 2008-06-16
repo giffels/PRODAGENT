@@ -22,7 +22,10 @@ valid = [
     'merge-threshold=',                          # standard thresholds
     'cleanup-threshold=',                        # standard thresholds
     'repack-threshold=',                        # standard thresholds
-    'min-submit=', 'max-submit='                 # for new site mode 
+    'processing-throttle=',                      # standard throttles
+    'merge-throttle=',                           # standard throttles
+    'min-submit=', 'max-submit='                 # for new site mode
+    'processing-throttle=', 'merge-throttle='   # new standard throttles 
     
     ]
 
@@ -46,6 +49,9 @@ repThreshold = 100
 minSubmit = 1
 maxSubmit = 500
 
+procThrottle = 10000000
+mergeThrottle = 10000000
+
 usage = """
 resourceControl.py --<MODE>     # Mode is one of: new, edit, drop, list
 
@@ -63,6 +69,13 @@ resourceControl.py --<MODE>     # Mode is one of: new, edit, drop, list
             --repack-threshold=<INT>
                                 # Thresholds for triggering new submission
                                 # for merge or processing jobs respectively
+            --processing-throttle=<INT>  (new, edit)
+            --merge-throttle=<INT> (new, edit)
+                                # Throttles:  when the number of running jobs
+                                # exceed these, more jobs are not released
+                                # from the jobQueue (this does not prevent
+                                # released idle jobs from running however)
+                                # set these with --set-threshold
             --min-submit=<INT>  # Minimum number of processing jobs to submit
                                 # in a single attempt for bulk ops. (new, edit)
             --max-submit=<INT>  # Maximum number of processing jobs to submit
@@ -119,6 +132,12 @@ for opt, arg in opts:
     
     if opt == "--repack-threshold":
         repThreshold = int(arg)
+
+    if opt == "--processing-throttle":
+        procThrottle = int(arg)
+
+    if opt == "--merge-throttle":
+        mergeThrottle = int(arg)
         
     if opt == "--min-submit":
         minSubmit = int(arg)
@@ -197,6 +216,8 @@ def newMode():
                             mergeThreshold = mergeThreshold,
                             cleanupThreshold = cleanThreshold,
                             repackThreshold = repThreshold,
+                            processingRunningThrottle = procThrottle,
+                            mergeRunningThrottle = mergeThrottle,
                             minimumSubmission = minSubmit,
                             maximumSubmission = maxSubmit)
 
@@ -205,6 +226,8 @@ def newMode():
     msg += " Merge Threshold: %s\n" % mergeThreshold
     msg += " Cleanup Threshold: %s\n" % cleanThreshold
     msg += " Repack Threshold: %s\n" % repThreshold
+    msg += " Processing Running Throttle: %s\n" % procThrottle
+    msg += " Merge Running Throttle: %s\n" % mergeThrottle
     msg += " Minimum Submission: %s\n" % minSubmit
     msg += " Maximum Submission: %s\n" % maxSubmit
 
