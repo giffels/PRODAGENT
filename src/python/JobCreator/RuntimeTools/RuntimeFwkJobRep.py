@@ -139,6 +139,18 @@ def processFrameworkJobReport():
     # // filter zero event output files
     #//  TODO: Make this configurable via ProdAgent config switch
     #[ report.files.remove(x) for x in report.files if x['TotalEvents'] == 0 ]
+    
+    #  //
+    # // Filter out input files that are not globally known - i.e. no LFN and
+    #// should not be propagated to DBS (can be left by a previous cmsGen step)
+    if state.configurationDict().has_key('DropNonLFNInputs') and \
+                    state.configurationDict()['DropNonLFNInputs'][0] == 'True':
+        [report.inputFiles.remove(x) for x in report.inputFiles if \
+                                                        x['LFN'] in (None, '')]
+        for outfile in report.files:
+            [outfile.inputFiles.remove(x) for x in outfile.inputFiles if \
+                                                        x['LFN'] in (None, '')]
+    
     #  //
     # // generate sizes and checksums
     #//

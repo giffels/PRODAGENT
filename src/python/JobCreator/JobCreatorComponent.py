@@ -54,6 +54,7 @@ class JobCreatorComponent:
         self.args['LogArchStageOut'] = False
         self.args['FrontierDiagnostic'] = False
         self.args['MultipleJobsPerRun'] = False
+        self.args['DropNonLFNInputs'] = True
         
         self.args.update(args)
         self.prodAgent = prodAgentName()
@@ -76,8 +77,12 @@ class JobCreatorComponent:
             self.args['MultipleJobsPerRun'] = True
         else:
             self.args['MultipleJobsPerRun'] = False
+            
+        if str(self.args['DropNonLFNInputs']).lower() in ("true", "yes"):
+            self.args['DropNonLFNInputs'] = True
+        else:
+            self.args['DropNonLFNInputs'] = False
 
-      
 
 
         LoggingUtils.installLogHandler(self)

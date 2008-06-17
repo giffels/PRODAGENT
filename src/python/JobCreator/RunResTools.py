@@ -86,10 +86,16 @@ class CMSSWRunResDB:
         self.args = compArgs
         self.mergeThresh = self.args.get("MinMergeFileSize", 2000000000)
         self.doSizeMerge = self.args.get("SizeBasedMerge", False)
+        self.dropNonLFNInputs = self.args.get("DropNonLFNInputs", False)
         if str(self.doSizeMerge).lower() == "true":
             self.doSizeMerge = True
         else:
             self.doSizeMerge = False
+        if str(self.dropNonLFNInputs).lower() in ("true", "yes"):
+            self.dropNonLFNInputs = True
+        else:
+            self.dropNonLFNInputs = False
+        
     
     def __call__(self, taskObject):
         """
@@ -124,6 +130,10 @@ class CMSSWRunResDB:
                                self.doSizeMerge)
             runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
                                self.mergeThresh)
+            
+            # dropping non-LFN inputs only applies to processing
+            runresComp.addData("/%s/DropNonLFNInputs" % objName,
+                                                        self.dropNonLFNInputs)
         #  //
         # // Datasets
         #//
@@ -221,10 +231,15 @@ class BulkCMSSWRunResDB:
         self.args = compArgs
         self.mergeThresh = self.args.get("MinMergeFileSize", 2000000000)
         self.doSizeMerge = self.args.get("SizeBasedMerge", False)
+        self.dropNonLFNInputs = self.args.get("DropNonLFNInputs", False)
         if str(self.doSizeMerge).lower() == "true":
             self.doSizeMerge = True
         else:
             self.doSizeMerge = False
+        if str(self.dropNonLFNInputs).lower() in ("true", "yes"):
+            self.dropNonLFNInputs = True
+        else:
+            self.dropNonLFNInputs = False
             
     def __call__(self, taskObject):
         """
@@ -259,6 +274,10 @@ class BulkCMSSWRunResDB:
                                self.doSizeMerge)
             runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
                                self.mergeThresh)
+            
+            # dropping non-LFN inputs only applies to processing
+            runresComp.addData("/%s/DropNonLFNInputs" % objName,
+                                                        self.dropNonLFNInputs)
         #  //
         # // Datasets
         #//
