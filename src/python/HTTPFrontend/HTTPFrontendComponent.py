@@ -26,6 +26,7 @@ from HTTPFrontend.MergeMonitor import MergeDatasetMonitor, MergeMonitor, MergeGr
 from HTTPFrontend.DatasetsMonitor import DatasetMonitor
 from HTTPFrontend.ResourceMonitors import ResourceDetails,ResourceStatus
 from HTTPFrontend.LogViewer import LogViewer
+from HTTPFrontend.AlertMonitor import AlertMonitor, CurrentAlert, HistoryAlert
 
 def getLocalDBSURL():
     try:
@@ -82,6 +83,8 @@ class Root:
         html += "<tr><td><a href=\"%s/logs\">Logs</a></td>\n" % (
             self.myUrl,)
         html += "<td>Production logs</td></td>\n"
+
+        html += "<tr><td><a href=\"%s/alertmonitor\">AlertMonitor</a></td>"%(self.myUrl) + "<td>Alerts published by prodagent components</td></tr>"
         
         html += """</table></body></html>"""
         return html
@@ -208,6 +211,10 @@ class HTTPFrontendComponent:
             "%s/mergedgraph" % baseUrl,
             "%s/datasets" % baseUrl
             )
+        root.alertmonitor = AlertMonitor(baseUrl)
+        root.alertmonitor.currentalert = CurrentAlert (baseUrl)
+        root.alertmonitor.historyalert=HistoryAlert(baseUrl)
+
         
         root.logs = LogViewer()
         
