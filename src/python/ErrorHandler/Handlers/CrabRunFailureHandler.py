@@ -174,8 +174,8 @@ class CrabRunFailureHandler(HandlerInterface):
                  
                  else:
                      ### or check the statusReason or postmortem to get the failure reason
-                     ### wait half hour before resubmitting
-                     delay=1800
+                     ### wait 2 minutes before resubmitting
+                     delay = 120
                      delay=convertSeconds(delay) 
                      logging.info(">CrabRunFailureHandler<: re-submitting with delay (h:m:s) "+ str(delay))
                      payload = str(taskId)+'::'+str(jobId) 
