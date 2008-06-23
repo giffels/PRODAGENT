@@ -903,3 +903,28 @@ CREATE TABLE log_input (
        insert_time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP,
        INDEX (id, status)
 )TYPE=InnoDB;
+
+
+/*
+ALERT DB TABLES
+*/
+
+CREATE TABLE alert_current (
+       id int(11) not null auto_increment,
+       type varchar(30) not null,
+       component varchar(30) not null,
+       message text not null,
+       time timestamp default 0,
+       primary key (id));
+
+CREATE TABLE alert_history (
+       id int(11) not null auto_increment,
+       type varchar(30) not null,
+       component varchar(30) not null,
+       message text not null,
+       generationtime timestamp default 0,
+       historytime timestamp default 0,
+       primary key (id));
+
+
+
