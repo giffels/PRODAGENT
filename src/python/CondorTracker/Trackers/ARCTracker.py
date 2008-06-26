@@ -62,15 +62,14 @@ class ARCTracker(TrackerPlugin):
 
         """
 
-        jobs = ARC.jobIdMap()
-        if jobSpecId not in jobs.keys():
+        if jobSpecId not in self.jobIdMap.keys():
             logging.debug("getJobReport: Couldn't find job " + jobSpecId)
             return None
 
         # Get the FrameworkJobReport.xml file, copied to
         # arcId/FrameworkJobReport.xml by the wrapper script
 
-        arcId = jobs[jobSpecId]
+        arcId = self.jobIdMap[jobSpecId]
         ngcp = "ngcp %s/FrameworkJobReport.xml %s/" % (arcId,localDir)
         logging.debug("getJobReport: " + ngcp)
         try:
