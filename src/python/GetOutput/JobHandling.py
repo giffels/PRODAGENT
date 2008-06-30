@@ -15,25 +15,25 @@ from shutil import copy
 
 # PA configuration
 from ProdAgent.WorkflowEntities import JobState
-from ProdAgent.WorkflowEntities import Job as WEJob
+#from ProdAgent.WorkflowEntities import Job as WEJob
 from ProdCommon.Database import Session
-from ProdAgentCore.ProdAgentException import ProdAgentException
+#from ProdAgentCore.ProdAgentException import ProdAgentException
 
 # Blite API import
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
-from ProdCommon.BossLite.Common.Exceptions import TaskError
+#from ProdCommon.BossLite.Common.Exceptions import TaskError
 from ProdCommon.BossLite.Common.Exceptions import JobError
 
 # Framework Job Report handling
-from ProdCommon.FwkJobRep.ReportState import checkSuccess
+#from ProdCommon.FwkJobRep.ReportState import checkSuccess
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.4 2008/06/06 12:58:51 mcinquil Exp $"
-__revision__ = "$Revision: 1.1.2.4 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.5 2008/06/11 18:17:30 mcinquil Exp $"
+__revision__ = "$Revision: 1.1.2.5 $"
 
 class JobHandling:
     """
@@ -383,16 +383,10 @@ class JobHandling:
 
         # error
         except Exception, ex:
-            ## temporary try/except to handle special error with job obj
-            try:
-                msg = "Error setting job state to finished for job: %s\n" \
-                      % str(job['jobId'])
-                msg += str(ex)
-                logging.error(msg)
-            except Exception, ex:
-                msg = "Error setting the job at finished: \n" + str(job) + "\n"
-                msg += str(ex)
-                logging.error(msg)
+            msg = "Error setting job state to finished for job: %s\n" \
+                  % str(job)
+            msg += str(ex)
+            logging.error(msg)
 
         return
 
