@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.26 2008/05/27 10:32:54 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.26 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.27 2008/06/04 14:11:41 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.27 $"
 
 from JobTracking.TrackingDB import TrackingDB
 from ProdCommon.BossLite.API.BossLiteAPI import parseRange
@@ -23,6 +23,7 @@ from ProdCommon.BossLite.API.BossLiteDB import  BossLiteDB
 from ProdCommon.BossLite.Common.Exceptions import TaskError
 #from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 #from ProdCommon.BossLite.Common.Exceptions import SchedulerError
+from ProdCommon.BossLite.Common.System import executeCommand
 
 import traceback
 import logging
@@ -143,14 +144,13 @@ class JobStatus:
                         task['user_proxy']
 
                 logging.debug('EXECUTING: ' + str(command))
-                pin, pout = popen4( command )
-                msg = pout.read()
+                msg = executeCommand( command, len( task.jobs ) * 30 )
                 logging.debug( "SUBPROCESS MESSAGE : \n" + msg )
 
                 # log the end of the query
                 logging.info('LB status retrieved for jobs ' \
                              + jobRange + ' of task ' + str(taskId) )
-                del task, msg, pin, pout, command
+                del task, msg, command
 
             except MemoryError, e:
                 logging.fatal("PROBLEM!!! " + \
