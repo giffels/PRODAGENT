@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.28 2008/06/30 14:29:54 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.28 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.29 2008/07/01 14:23:26 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.29 $"
 
 from JobTracking.TrackingDB import TrackingDB
 from ProdCommon.BossLite.API.BossLiteAPI import parseRange
@@ -165,7 +165,8 @@ class JobStatus:
                 logging.error("Failed to retrieve status for jobs " \
                               + jobRange + ' of task ' + str(taskId) \
                               + ' : ' + str( e ) )
-                logging.debug( "PARTIAL SUBPROCESS MESSAGE : \n" + msg )
+                logging.error( "PARTIAL SUBPROCESS MESSAGE : \n" \
+                               + e.commandOutput() )
                 offset += int(cls.params['jobsToPoll'])
 
             except TaskError, e:
