@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.32 2008/05/27 13:06:58 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.32 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.33 2008/06/04 14:11:41 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.33 $"
 
 import os
 import os.path
@@ -153,6 +153,9 @@ class TrackingComponent:
         self.counters = ['pending', 'submitted', 'waiting', 'ready', \
                          'scheduled', 'running', 'cleared', 'created', 'other']
 
+        # ended/failed attributes
+        self.runningAttrs = { 'processStatus' : 'handled',
+                              'closed' : 'N' }
         # component running, display info
         logging.info("JobTracking Component Started...")
 
@@ -263,6 +266,9 @@ class TrackingComponent:
 
         """
 
+        # loading attributes
+        runningAttrs = { 'processStatus' : 'not_handled',
+                         'closed' : 'N' }
         offset = 0
         loop = True
 
@@ -277,7 +283,7 @@ class TrackingComponent:
             #     )
 
             self.newJobs = self.bossLiteSession.loadJobsByRunningAttr(
-                {'processStatus' : 'not_handled'}, \
+                runningAttrs=runningAttrs, \
                 limit=self.jobLimit, offset=offset
                 )
 
@@ -324,6 +330,7 @@ class TrackingComponent:
 
         """
 
+        # loading attributes
         offset = 0
         loop = True
 
@@ -334,7 +341,7 @@ class TrackingComponent:
 
             # query failed jobs
             self.failedJobs = self.bossLiteSession.loadFailed(
-                { 'processStatus' : 'handled' }, \
+                runningAttrs=self.runningAttrs, \
                 limit=self.jobLimit, offset=offset
                 )
             logging.info("failed jobs : " + str( len(self.failedJobs) ) )
@@ -380,6 +387,7 @@ class TrackingComponent:
 
         """
 
+        # loading attributes
         offset = 0
         loop = True
 
@@ -390,7 +398,7 @@ class TrackingComponent:
 
             # query finished jobs
             self.finishedJobs = self.bossLiteSession.loadEnded(
-                { 'processStatus' : 'handled' }, \
+                runningAttrs=self.runningAttrs, \
                 limit=self.jobLimit, offset=offset
                 )
             logging.info("finished jobs : " + str( len(self.finishedJobs) ) )

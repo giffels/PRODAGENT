@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.24 2008/05/27 10:32:55 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.24 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.25 2008/05/27 13:06:58 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.25 $"
 
 import os
 import logging
@@ -162,11 +162,14 @@ class GetOutputComponent:
 
         logging.info("Starting poll cycle")
 
+        # get jobs that require output
+        logging.debug("Start processing of outputs")
         offset = 0
         loop = True
 
-        # get jobs that require output
-        logging.debug("Start processing of outputs")
+        # loading attributes
+        runningAttrs = {'processStatus': 'output_requested',
+                        'closed' : 'N'}
 
         while loop :
 
@@ -176,7 +179,7 @@ class GetOutputComponent:
             try:
                 self.outputRequestedJobs = \
                                    self.bossLiteSession.loadJobsByRunningAttr(
-                                   { 'processStatus' : 'output_requested' }, \
+                                   runningAttrs=runningAttrs, \
                                    limit=self.jobLimit, offset=offset )
 
                 numberOfJobs = len(self.outputRequestedJobs)
@@ -217,6 +220,9 @@ class GetOutputComponent:
         # get jobs failed that require post-mortem operations
         logging.debug("Start processing of failed")
 
+        # loading attributes
+        runningAttrs = { 'processStatus' : 'failed',
+                         'closed' : 'N' }
         offset = 0
         loop = True
 
@@ -225,7 +231,7 @@ class GetOutputComponent:
             try:
                 self.outputRequestedJobs = \
                                     self.bossLiteSession.loadJobsByRunningAttr(
-                                           { 'processStatus' : 'failed' }, \
+                                           runningAttrs=runningAttrs, \
                                            limit=self.jobLimit, offset=offset )
 
                 numberOfJobs = len(self.outputRequestedJobs)
