@@ -12,15 +12,15 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.27 2008/06/04 14:11:41 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.27 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.28 2008/06/30 14:29:54 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.28 $"
 
 from JobTracking.TrackingDB import TrackingDB
 from ProdCommon.BossLite.API.BossLiteAPI import parseRange
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
 from ProdCommon.BossLite.API.BossLiteDB import  BossLiteDB
-from ProdCommon.BossLite.Common.Exceptions import TaskError
+from ProdCommon.BossLite.Common.Exceptions import TaskError, TimeOut
 #from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 #from ProdCommon.BossLite.Common.Exceptions import SchedulerError
 from ProdCommon.BossLite.Common.System import executeCommand
@@ -160,6 +160,13 @@ class JobStatus:
                 logging.error( "JobTrackingThread exception: %s" \
                                % str( traceback.format_exc() ) )
                 break
+
+            except TimeOut, e:
+                logging.error("Failed to retrieve status for jobs " \
+                              + jobRange + ' of task ' + str(taskId) \
+                              + ' : ' + str( e ) )
+                logging.debug( "PARTIAL SUBPROCESS MESSAGE : \n" + msg )
+                offset += int(cls.params['jobsToPoll'])
 
             except TaskError, e:
                 logging.error("Failed to retrieve status for jobs " \
