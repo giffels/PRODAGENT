@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.33 2008/06/04 14:11:41 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.33 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.34 2008/07/01 13:38:00 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.34 $"
 
 import os
 import os.path
@@ -341,7 +341,7 @@ class TrackingComponent:
 
             # query failed jobs
             self.failedJobs = self.bossLiteSession.loadFailed(
-                runningAttrs=self.runningAttrs, \
+                attributes=self.runningAttrs, \
                 limit=self.jobLimit, offset=offset
                 )
             logging.info("failed jobs : " + str( len(self.failedJobs) ) )
@@ -398,7 +398,7 @@ class TrackingComponent:
 
             # query finished jobs
             self.finishedJobs = self.bossLiteSession.loadEnded(
-                runningAttrs=self.runningAttrs, \
+                attributes=self.runningAttrs, \
                 limit=self.jobLimit, offset=offset
                 )
             logging.info("finished jobs : " + str( len(self.finishedJobs) ) )
