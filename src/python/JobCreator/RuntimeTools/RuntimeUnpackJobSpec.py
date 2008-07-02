@@ -32,7 +32,7 @@ def unquote(strg):
         strg = strg[1:]
     while strg.endswith("\'") or strg.endswith("\""):
         strg = strg[:-1]
-    return strg   
+    return strg
 
 
 class JobSpecExpander:
@@ -44,7 +44,7 @@ class JobSpecExpander:
         self.taskState.loadRunResDB()
         self.workflowSpec = WorkflowSpec()
         self.workflowSpec.load(os.environ["PRODAGENT_WORKFLOW_SPEC"])
-        
+
         self.config = self.taskState.configurationDict()
 
         finder = NodeFinder(self.taskState.taskName())
@@ -54,14 +54,14 @@ class JobSpecExpander:
         wffinder = NodeFinder(self.taskState.taskName())
         self.workflowSpec.payload.operate(wffinder)
         self.workflowNode = wffinder.result
-        
+
         self.setJobDetails()
 
-        
-        
+
+
 
         if self.jobSpecNode.jobType != "Merge":
-            
+
             if self.config.has_key('Configuration'):
                 #try:
                 self.createPSet()
@@ -73,15 +73,15 @@ class JobSpecExpander:
                 #    badfile.write("10040")
                 #    badfile.close()
 
-           
+
 
         else:
             #  //
             # // Merge job
             #//
             self.createMergePSet()
-        
-            
+
+
         if self.config.has_key('UserSandbox'):
              self.userSandbox()
 
@@ -99,13 +99,13 @@ class JobSpecExpander:
         print msg
 
         inputTask = getTaskState(inpLink['InputNode'])
-        
+
         if inputTask == None:
             msg = "Unable to create InputLink for task: %s\n" % (
                 inpLink['InputNode'],)
             msg += "Input TaskState could not be retrieved..."
             raise RuntimeError, msg
-        
+
         inputTask.loadJobReport()
         inputReport = inputTask.getJobReport()
         if inputReport == None:
@@ -132,8 +132,8 @@ class JobSpecExpander:
         if tfc:
             print "Creating override tfc, contents below"
             print str(tfc)
-            tfc.write(os.path.join(os.getcwd(), 'override_catalog.xml'))        
-                                                                                   
+            tfc.write(os.path.join(os.getcwd(), 'override_catalog.xml'))
+
         if inpLink['InputSource'] == "source":
             #  //
             # // feed into main source
@@ -144,15 +144,15 @@ class JobSpecExpander:
             msg = "Input Link created to input source for files:\n"
             for f in inputFileList:
                 msg += " %s\n" % f
-                
+
             print msg
             return
         #  //
         # // Need to add to secondary source with name provided
         #//
         raise NotImplementedError, "Havent implemented secondary source input links at present..."
-        
-            
+
+
     def createPSet(self):
         """
         _createPSet_
@@ -164,29 +164,32 @@ class JobSpecExpander:
         cfgFile = str(cfgFile)
         self.jobSpecNode.loadConfiguration()
         self.jobSpecNode.cfgInterface.rawCfg = self.workflowNode.cfgInterface.rawCfg
-        
+
         for inpLink in self.jobSpecNode._InputLinks:
             #  //
             # // We have in-job input links to be resolved
             #//
             self.handleInputLink(self.jobSpecNode.cfgInterface, inpLink)
-    
+
         cmsProcess = self.jobSpecNode.cfgInterface.makeConfiguration()
 
-     
+
         cfgDump = open("CfgFileDump.log", 'w')
         cfgDump.write(cmsProcess.dumpConfig())
         cfgDump.close()
-        
-        
+
+        pycfgDump = open("PyCfgFileDump.log", 'w')
+        pycfgDump.write(cmsProcess.dumpPython())
+        pycfgDump.close()
+
         handle = open(cfgFile, 'w')
         handle.write("import pickle\n")
         handle.write("pickledCfg=\"\"\"%s\"\"\"\n" % pickle.dumps(cmsProcess))
         handle.write("process = pickle.loads(pickledCfg)\n")
         handle.close()
-        
+
         return
-        
+
 
     def createMergePSet(self):
         """
@@ -211,7 +214,7 @@ class JobSpecExpander:
         process.source.fileNames = CfgTypes.untracked(CfgTypes.vstring())
         for entry in cfgInt.inputFiles:
             process.source.fileNames.append(str(entry))
-                
+
 
         outMod = cfgInt.outputModules['Merged']
         process.Merged = OutputModule("PoolOutputModule")
@@ -226,12 +229,12 @@ class JobSpecExpander:
 
         process.outputPath = EndPath(process.Merged)
 
-        
+
         cfgDump = open("CfgFileDump.log", 'w')
         cfgDump.write(process.dumpConfig())
         cfgDump.close()
-        
-        
+
+
         handle = open(cfgFile, 'w')
         handle.write("import pickle\n")
         handle.write("pickledCfg=\"\"\"%s\"\"\"\n" % pickle.dumps(process))
@@ -255,20 +258,20 @@ class JobSpecExpander:
             msg += str(ex)
             print msg
         return
-        
+
 
     def setJobDetails(self):
         """
         _setJobName_
 
         Propagate Job Information from JobSpec to RunResDB
-        
+
         """
-        
+
         self.config['JobSpecID'][0] = self.jobSpecNode.jobName
         self.jobSpecNode.loadConfiguration()
         cfgInt = self.jobSpecNode.cfgInterface
-        inpSrc = cfgInt.sourceParams 
+        inpSrc = cfgInt.sourceParams
         if  self.config['Input'].has_key("MaxEvents"):
             del self.config['Input']['MaxEvents']
         self.config['Input']['MaxEvents'] = [cfgInt.maxEvents['input']]
@@ -281,15 +284,15 @@ class JobSpecExpander:
         self.config['Input']['SourceType'] = [cfgInt.sourceType]
 
         self.config['Input']['InputFiles'] = []
-        
+
         inpFileList = cfgInt.inputFiles
 
         for inpFile in inpFileList:
             self.config['Input']['InputFiles'].append(
                 inpFile.replace("\'", "")
                 )
-                
-            
+
+
         for modName, item in cfgInt.outputModules.items():
             if item.get('catalog', None) == None:
                 continue
@@ -299,7 +302,7 @@ class JobSpecExpander:
                 self.config['Output']['Catalogs'][modName] = []
             self.config['Output']['Catalogs'][modName].append(catalog)
 
-            
+
         #  //
         # // Now save the RunResDB with the updates
         #//
@@ -313,10 +316,10 @@ class JobSpecExpander:
         handle.write(dom.toprettyxml())
         handle.close()
         return
-        
-        
+
+
 if __name__ == '__main__':
-   
+
     jobSpec = os.environ.get("PRODAGENT_JOBSPEC", None)
     if jobSpec == None:
         msg = "Unable to find JobSpec from PRODAGENT_JOBSPEC variable\n"
@@ -327,14 +330,14 @@ if __name__ == '__main__':
         msg = "Unable to find WorkflowSpec from PRODAGENT_WORKFLOW_SPEC variable\n"
         msg += "Unable to proceed\n"
         raise RuntimeError, msg
-    
+
     if not os.path.exists(jobSpec):
         msg = "Cannot find JobSpec file:\n %s\n" % jobSpec
         msg += "Unable to proceed\n"
         raise RuntimeError, msg
 
     instance = JobSpecExpander(jobSpec)
-    
-    
-    
-        
+
+
+
+
