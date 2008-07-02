@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.32 2008/06/30 17:29:52 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.32 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.33 2008/07/01 13:39:27 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.33 $"
 
 import logging
 import os
@@ -141,7 +141,8 @@ class JobOutput:
 
                 schedulerConfig = {'name' : job.runningJob['scheduler'],
                                    'user_proxy' : task['user_proxy'] ,
-                                   'service' : job.runningJob['service'] }
+                                   'service' : job.runningJob['service'],
+                                   'timeout' : 300}
                 schedSession = BossLiteAPISched( bossLiteSession, \
                                                  schedulerConfig )
 
