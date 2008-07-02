@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.4 2008/06/05 12:57:25 gcodispo Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.5 2008/06/06 13:15:36 gcodispo Exp $"
+__version__ = "$Revision: 1.5 $"
 
 import os, time
 import logging
@@ -122,12 +122,14 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
                 self.bossJob = self.bossLiteSession.loadJobByName(
                     self.singleSpecName )
 
-                # handle failures
-                if self.bossJob is None :
-                    raise JSException("no jobs matching in the BossLite DB", \
-                                      FailureList = self.toSubmit.keys())
+                # FIXME : find a way to log an error if it is a resubmission
+                # FIXME : but the job is no more in the DB
+                # // handle failures
+                #if self.bossJob is None :
+                #    raise JSException("no jobs matching in the BossLite DB", \
+                #                      FailureList = self.toSubmit.keys())
 
-                logging.info("resubmitting \"%s\"" % self.bossJob['name'])
+                # logging.info("resubmitting \"%s\"" % self.bossJob['name'])
             except JobError, ex:
                 raise JSException(str(ex), FailureList = self.toSubmit.keys()) 
         else :
@@ -157,7 +159,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
 
         inpSandbox = ','.join( self.jobInputFiles )
         logging.debug("Declaring to BOSS")
-   
+
         wrapperName = "%s/%s" % (self.workingDir, self.mainJobSpecName)
         try :
 
