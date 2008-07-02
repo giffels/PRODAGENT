@@ -21,7 +21,7 @@ class MinorAlertHandler (HandlerInterface):
           Constructor  
           """
           HandlerInterface.__init__(self)
-          self.alertDBOperations = Operation(dbConfig)
+          self.alertDBOperations = None
 
           logging.debug ('MinorAlertHandler Initialized...')
 
@@ -34,6 +34,8 @@ class MinorAlertHandler (HandlerInterface):
           logging.debug('\n\nMinorAlertHandler is handling Payload: '+payload)
 
           #// Handle Payload
+          self.alertDBOperations = Operation(dbConfig)
+
           alertPayload = AlertPayload()
           alertPayload.load(payload)
           alertPayload['Severity'] = 'minor'

@@ -22,7 +22,7 @@ class CriticalAlertHandler (HandlerInterface):
           Constructor  
           """
           HandlerInterface.__init__(self)
-          self.alertDBOperations = Operation(dbConfig)
+          self.alertDBOperations = None
 
           logging.debug ('CriticalAlertHandler Initialized...')
 
@@ -36,6 +36,8 @@ class CriticalAlertHandler (HandlerInterface):
           logging.debug('\n\nCriticalAlertHandler is handling Payload: '+payload)
 
           #// Handle Payload
+          self.alertDBOperations = Operation(dbConfig)
+
           alertPayload = AlertPayload()
           alertPayload.load(payload)
           alertPayload['Severity'] = 'critical'

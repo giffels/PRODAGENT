@@ -21,7 +21,7 @@ class WarningAlertHandler (HandlerInterface):
           Constructor  
           """
           HandlerInterface.__init__(self)
-          self.alertDBOperations = Operation(dbConfig)
+          self.alertDBOperations = None 
 
           logging.debug ('WarningAlertHandler Initialized...')
 	  
@@ -34,6 +34,8 @@ class WarningAlertHandler (HandlerInterface):
           logging.debug('\n\nWarningAlertHandler is handling Payload: '+payload)
 
           #// Handle Payload
+          self.alertDBOperations = Operation(dbConfig)
+
           alertPayload = AlertPayload()
           alertPayload.load(payload)
           alertPayload['Severity'] = 'warning'
