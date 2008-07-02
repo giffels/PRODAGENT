@@ -47,10 +47,12 @@ class ReRecoFeeder(PluginInterface):
         self.dbsUrl = None
         self.loadPayloads(payload)
         self.publishWorkflow(payload, self.workflow.workflowName())
+        self.publishNewDataset(payload)
+
         factory = ReRecoJobFactory(self.workflow,
                                    self.workingDir,
                                    self.dbsUrl)
-                                    
+
         jobs = factory()
 
         for job in jobs:
@@ -59,20 +61,20 @@ class ReRecoFeeder(PluginInterface):
                           job['WorkflowSpecId'],
                           job['WorkflowPriority'],
                           *job['Sites'])
-            
-        
+
+
         return
-        
+
 
     def loadPayloads(self, workflowFile):
         """
         _loadPayloads_
-        
-        
+
+
         """
         self.workflow = self.loadWorkflow(workflowFile)
-        
-        
+
+
         value = self.workflow.parameters.get("DBSURL", None)
         if value != None:
             self.dbsUrl = value
@@ -86,8 +88,8 @@ class ReRecoFeeder(PluginInterface):
 
 
         return
-        
-        
+
+
 registerPlugin(ReRecoFeeder, ReRecoFeeder.__name__)
 
 

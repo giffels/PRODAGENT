@@ -35,13 +35,15 @@ class OfflineDQMPerRun(PluginInterface):
         self.dbsUrl = None
         self.loadPayloads(payload)
         self.siteName = None
-        
-        
+        self.publishWorkflow(payload, self.workflow.workflowName())
+        self.publishNewDataset(payload)
+
+
         factory = RunJobFactory(self.workflow,
                                 self.workingDir,
                                 self.dbsUrl, SiteName = self.siteName)
-        
-        
+
+
         jobs = factory()
         for job in jobs:
             self.queueJob(job['JobSpecId'], job['JobSpecFile'],
@@ -49,20 +51,20 @@ class OfflineDQMPerRun(PluginInterface):
                           job['WorkflowSpecId'],
                           job['WorkflowPriority'],
                           *job['Sites'])
-            
-                
+
+
         return
-    
+
     def loadPayloads(self, payloadFile):
         """
         _loadPayloads_
-        
-        
-        """        
-        
+
+
+        """
+
         self.workflow = self.loadWorkflow(payloadFile)
-        
-        
+
+
         value = self.workflow.parameters.get("DBSURL", None)
         if value != None:
             self.dbsUrl = value
@@ -86,7 +88,7 @@ class OfflineDQMPerRun(PluginInterface):
         if runtimeScript not in postTasks:
             self.workflow.payload.scriptControls['PostTask'].append(
                 runtimeScript)
-            
+
         return
-        
+
 registerPlugin(OfflineDQMPerRun, OfflineDQMPerRun.__name__)
