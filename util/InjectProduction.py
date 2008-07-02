@@ -12,7 +12,7 @@ import sys,os,getopt,time
 usage="\n Usage: python InjectTest.py <options> \n Options: \n --workflow=<workflow.xml> \t\t workflow file \n --nevts=<NumberofEvent> \t\t number of events per job \n --njobs=<NumberofEvent> \t\t number of jobs \n --plugin=<Submission type> \t type of creation/submission plugin \n --site-pref=<StorageElement name>  storage element name \n [ --run=<firstRun> \t\t\t first run number effective only for New Workflow]\n\n *Note* that the run number option is effective only when a New workflow is created and it overwrites the FirstRun default in $PRODAGENT_CONFIG if set"
 
 valid = ['workflow=', 'run=', 'nevts=' , 'njobs=', 'site-pref=','plugin=']
-admitted_vals = ['LCGAdvanced', 'LCG','GliteBulk','T0LSF','GLITE', 'GLiteBulkResCon']
+admitted_vals = ['LCGAdvanced', 'LCG','GliteBulk','T0LSF','GLITE', 'GLiteBulkResCon', 'BossLite']
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
@@ -136,6 +136,13 @@ if submissiontype == "LCG":
 if submissiontype == "GLITE":
  ms.publish("JobCreator:SetCreator","LCGCreator")
  ms.publish("JobSubmitter:SetSubmitter","GLITESubmitter")
+if submissiontype == "BossLite":
+ ms.publish("JobCreator:SetGenerator","Bulk")
+ ms.commit()
+ time.sleep(0.1)
+ ms.publish("JobCreator:SetCreator","LCGBulkCreator")
+ ms.publish("JobSubmitter:SetSubmitter","BlGLiteBulkSubmitter")
+ ms.publish("RequestInjector:SetBulkMode",'')
 if submissiontype == "GliteBulk":
  ms.publish("JobCreator:SetGenerator","Bulk")
  ms.commit()
@@ -213,7 +220,7 @@ if queuemode:
 else:
   print " Trying to submit %s jobs with %s events each starting from %s"%(njobs,str(nevts),runcomment)
 
-if submissiontype == "GliteBulk":
+if submissiontype == "GliteBulk" or submissiontype == "BossLite":
  ms.publish("RequestInjector:ResourcesAvailable", str(njobs) )
  ms.commit()
 else:
