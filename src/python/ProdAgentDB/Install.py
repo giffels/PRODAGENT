@@ -8,11 +8,11 @@ import sys
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.DaemonDetails import DaemonDetails
 
-def usage(scriptName):
+def usage():
 
     usage = \
     """
-    Usage: %s
+    Usage: 
            You can optionally specify the ProdAgent Config file with
            --config otherwise it will expect to get the config file from
            the $PRODAGENT_CONFIG environment variable.
@@ -21,7 +21,7 @@ def usage(scriptName):
            Make sure you have the access rights to install the schema.
 
 
-    """ %(scriptName)
+    """ 
     print usage
 
 def preInstall(valid):
@@ -35,13 +35,15 @@ def preInstall(valid):
        sys.exit(1)
 
    config = None
-   
+   block = None   
    for opt, arg in opts:
        if opt == "--config":
            config = arg
        if opt == "--help":
            usage()
            sys.exit(1)
+       if opt == "--block":
+           block = arg 
 
    if config == None:
        config = os.environ.get("PRODAGENT_CONFIG", None)
@@ -49,6 +51,8 @@ def preInstall(valid):
            msg = "No ProdAgent Config file provided\n"
            msg += "either set $PRODAGENT_CONFIG variable\n"
            msg += "or provide the --config option"
+   if block == None:
+      block = 'ProdAgentDB'
 
    print
    print("This script assumes the mysql server is up and running and that you have")
@@ -57,7 +61,7 @@ def preInstall(valid):
    print
 
    print("Using config file: "+config)
-   return config
+   return config, block
 
 def adminLogin():
    # ask for password (optional)
@@ -72,7 +76,7 @@ def adminLogin():
    return (userName,passwd)
 
 
-def installDB(schemaLocation,dbName,socketFileLocation,portNr,host,installUser,replace=True ):
+def installMySQLDB(schemaLocation,dbName,socketFileLocation,portNr,host,installUser,replace=True ):
 
    updateData="--user="+installUser['userName']+ " --password="+str(installUser['passwd'])
    if (socketFileLocation!=""):
@@ -169,6 +173,58 @@ def grantUsers(dbName,socketFileLocation,portNr,host,users,installUser):
            print(str(y))
            print('Perhaps you do not have permission to grant access.')
            print('Check your SQL permissions with your database administrator')
+	  
+
+
+
+def installOracleDB(dbType, user, passwd, tnsName, schemaLocation):
+
+   try:
+      if dbType == 'oracle':
+         print 'Removing Installed Schema if any...'         
+         removeSchema = """
+                        BEGIN
+                           -- Tables
+                           FOR o IN (SELECT table_name name FROM user_tables) LOOP
+                               dbms_output.put_line ('Dropping table ' || o.name || ' with dependencies');
+                               execute immediate 'drop table ' || o.name || ' cascade constraints';
+                           END LOOP;
+
+                           -- Sequences
+                           FOR o IN (SELECT sequence_name name FROM user_sequences) LOOP
+                               dbms_output.put_line ('Dropping sequence ' || o.name);
+                               execute immediate 'drop sequence ' || o.name;
+                           END LOOP;
+
+                           -- Triggers
+                           FOR o IN (SELECT trigger_name name FROM user_triggers) LOOP
+                              dbms_output.put_line ('Dropping trigger ' || o.name);
+                              execute immediate 'drop trigger ' || o.name;
+                           END LOOP;
+
+                           -- Synonyms
+                           FOR o IN (SELECT synonym_name name FROM user_synonyms) LOOP
+                               dbms_output.put_line ('Dropping synonym ' || o.name);
+                               execute immediate 'drop synonym ' || o.name;
+                           END LOOP;
+                        END;
+                        /
+                        """
+
+         stdin,stdout = os.popen4('sqlplus %s/%s@%s << ! %s' %(user, passwd, tnsName,removeSchema))
+         print str(stdout.read())
+         print 'Previously Installed  Schema deleted successfully'
+         print '\nInstalling New Schema ...'
+         stdin, stdout=os.popen4('sqlplus %s/%s@%s < %s' %(user, passwd, tnsName, schemaLocation))
+         print str(stdout.read())
+         print 'Schema Installed successfully'
+      else:
+         print 'Config block is not of oracle dbType'
+         raise RuntimeError('please provide the oracle supported config block', 1) 
+
+   except Exception, ex:
+      print str(ex)
+      print 'Schema Installation Failed'
 
 
 
