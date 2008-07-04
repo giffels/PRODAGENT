@@ -24,7 +24,7 @@ from TaskObjects.Tools.WriteIMProvDocs import WriteIMProvDocs
 from TaskObjects.Tools.WriteShREEKConfig import generateShREEKConfig
 from TaskObjects.Tools.WriteShREEKConfig import writeShREEKConfig
 from TaskObjects.Tools.GenerateMainScript import GenerateMainScript
-
+from JobCreator.PrestageTool import InstallPrestage
 from JobCreator.PythonLibTools import PythonLibInstaller
 from JobCreator.AppTools import InsertBulkAppDetails, PopulateMainScript
 from JobCreator.AppTools import InsertJobReportTools
@@ -142,6 +142,10 @@ class BulkGenerator(GeneratorInterface):
         
         self.creator(taskObject)
         logging.debug("JobGenerator: Creator finished")
+
+        #//Enabling Prestage on Workflow
+        taskObject['PreStage'] = workflowSpec.parameters.get("PreStage",'False')
+        taskObject(InstallPrestage())
 
         taskObject(InstallUnpacker())
         taskObject(InstallScriptControls())
