@@ -6,7 +6,7 @@ Installation and configuration script for prod agent database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-db,v 1.7 2006/05/25 07:23:14 fvlingen Exp $"
+
 
 import getpass
 import os
@@ -14,39 +14,75 @@ import sys
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentDB.Install import adminLogin
-from ProdAgentDB.Install import installDB
+from ProdAgentDB.Install import installMySQLDB
 from ProdAgentDB.Install import grantUsers
 from ProdAgentDB.Install import preInstall
+from ProdAgentDB.Install import installOracleDB
 
 
-
-
-# start the install db process:
+def installDB():
+    """
+    _installDB_
+    installs the database schema 
+    """
+    #  //
+    # //start the install db process:
+    #//
     
-valid = ['config=','help']
+    valid = ['config=', 'help', 'block=']
 
-# check the input
-config=preInstall(valid)
-# load config file
-cfgObject = ProdAgentConfiguration()
-cfgObject.loadFromFile(config)
-# extract the information
-prodAgentConfig = cfgObject.get("ProdAgent")
-dbConfig = cfgObject.get("ProdAgentDB") 
-schemaLocation=dbConfig['schemaLocation']
-dbName=dbConfig['dbName']
-# ask for password (optional)
-userName,passwd=adminLogin()
+    # check the input
+    config, block = preInstall(valid)
 
-users={dbConfig['user']:dbConfig['passwd']}
+    # load config file
+    cfgObject = ProdAgentConfiguration()
+    cfgObject.loadFromFile(config)
 
-installUser={'userName':"'"+userName+"'",
-             'passwd':"'"+passwd+"'"}
-#installUser={'userName':userName,
-#             'passwd':passwd}
+    # extract the information
+    dbConfig = cfgObject.get(block) 
 
-# install the database
-installDB(schemaLocation,dbName,dbConfig['socketFileLocation'],dbConfig['portNr'],dbConfig['host'],installUser)
-grantUsers(dbName,dbConfig['socketFileLocation'],dbConfig['portNr'],dbConfig['host'],users,installUser)
+    if not dbConfig.has_key('dbType'):
+        
+       raise RuntimeError('Missing Parameter: dbType, please provide dbType in ProdAgentConfig block', 1)
+    
+    #  //
+    # // Install Mysql DB
+    #//
+    if dbConfig['dbType'] == 'mysql':
+
+       schemaLocation=dbConfig['schemaLocation']
+       dbName=dbConfig['dbName']
+       # ask for password (optional)
+       userName,passwd=adminLogin()
+
+       users={dbConfig['user']:dbConfig['passwd']}
+
+       installUser={'userName':"'"+userName+"'",
+                'passwd':"'"+passwd+"'"}
+ 
+       # install the database
+       installMySQLDB(schemaLocation,dbName,dbConfig['socketFileLocation'],dbConfig['portNr'],dbConfig['host'],installUser)
+       grantUsers(dbName,dbConfig['socketFileLocation'],dbConfig['portNr'],dbConfig['host'],users,installUser)
+
+    #  //
+    # // Install Oracle Schema
+    #//
+
+    elif dbConfig['dbType'] == 'oracle':
+
+       schemaLocation = dbConfig['schemaLocation']
+       dbType = dbConfig['dbType']
+       tnsName = dbConfig['tnsName']
+       user = dbConfig['user']
+       passwd = dbConfig['passwd']
+
+       installOracleDB(dbType, user, passwd, tnsName, schemaLocation)
+
+    else:
+       raise RuntimeError('dbType not supported', 1)
+
+if __name__ == '__main__':
+
+    installDB()
 
 #choice=raw_input('Continue with installing and configuring BOSS? Y/n ')
