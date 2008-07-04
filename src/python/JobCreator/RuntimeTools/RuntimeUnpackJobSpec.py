@@ -165,6 +165,20 @@ class JobSpecExpander:
         self.jobSpecNode.loadConfiguration()
         self.jobSpecNode.cfgInterface.rawCfg = self.workflowNode.cfgInterface.rawCfg
 
+        import FWCore.ParameterSet.Types as CfgTypes
+
+        workingDir = os.path.join(os.getcwd(),'prestage')
+        if os.path.exists(workingDir+'/prestageTFC.xml'):
+
+           rawCfg = pickle.loads(self.jobSpecNode.cfgInterface.rawCfg)
+           rawCfg.source.overrideCatalog = CfgTypes.untracked(CfgTypes.string('trivialcatalog_file:%s/prestageTFC.xml?protocol=local-stage-in' % workingDir ))
+
+           self.jobSpecNode.cfgInterface.rawCfg = pickle.dumps(rawCfg)
+
+
+
+
+
         for inpLink in self.jobSpecNode._InputLinks:
             #  //
             # // We have in-job input links to be resolved
