@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.33 2008/07/01 13:39:27 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.33 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.34 2008/07/02 13:47:43 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.34 $"
 
 import logging
 import os
@@ -156,7 +156,10 @@ class JobOutput:
                 # output at destination: just purge service
                 elif cls.params['OutputLocation'] == 'SE':
                     try :
+                        statusSched = job.runningJob['status']
                         schedSession.purgeService( task )
+                        if statusSched == 'UE' :
+                            job.runningJob['status'] = 'UE'
                     except SchedulerError, msg:
                         output = str(msg)
                         job.runningJob['statusHistory'].append(output)
