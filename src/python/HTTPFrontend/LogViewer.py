@@ -106,4 +106,4 @@ class LogViewer:
             return "Unable to map LFN to PFN at site"
         
         turl = "%s%s" % ( sitesPFNMapping[site], lfn.replace("/store/", "", 1))
-        return "srmcp -2 %s file:///$PWD/%s" % (turl, os.path.basename(lfn))
+        return "srmcp -srm_protocol_version=2 %s file:///$PWD/%s" % (turl, os.path.basename(lfn))
