@@ -37,18 +37,18 @@ class OfflineDQM(PluginInterface):
 
         self.splitType = "file"
         self.splitSize = 10000000 # quick and nasty
-        
+
         self.workflow = None
         self.dbsUrl = None
         self.loadPayloads(payload)
 
-        
-        
+
+
         factory = DatasetJobFactory(self.workflow,
                                     self.workingDir,
                                     self.dbsUrl)
-        
-        
+
+
         jobs = factory()
         for job in jobs:
             self.queueJob(job['JobSpecId'], job['JobSpecFile'],
@@ -56,22 +56,22 @@ class OfflineDQM(PluginInterface):
                           job['WorkflowSpecId'],
                           job['WorkflowPriority'],
                           *job['Sites'])
-            
-                
+
+
         return
-    
+
     def loadPayloads(self, payloadFile):
         """
         _loadPayloads_
-        
-        
+
+
         """
-        
-        
-        
+
+
+
         self.workflow = self.loadWorkflow(payloadFile)
-        
-        
+
+
         value = self.workflow.parameters.get("DBSURL", None)
         if value != None:
             self.dbsUrl = value
@@ -87,7 +87,7 @@ class OfflineDQM(PluginInterface):
 
         runtimeScript = "JobCreator.RuntimeTools.RuntimeOfflineDQM"
         self.workflow.payload.scriptControls['PostTask'].append(runtimeScript)
-        
+
         return
-        
-registerPlugin(OfflineDQM, OfflineDQM.__name__)
+
+#registerPlugin(OfflineDQM, OfflineDQM.__name__)
