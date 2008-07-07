@@ -34,7 +34,7 @@ class OfflineDQMHarvester:
         self.config = self.state.configurationDict()
         self.workflowSpecId = self.config['WorkflowSpecID'][0]
         self.jobSpecId = self.config['JobSpecID'][0]
-        
+
         try:
             self.state.loadJobReport()
         except Exception, ex:
@@ -42,7 +42,7 @@ class OfflineDQMHarvester:
             print str(ex)
             self.state._JobReport = None
 
-        
+
 
     def __call__(self):
         """
@@ -67,7 +67,7 @@ class OfflineDQMHarvester:
 
         return 0
 
-    
+
     def stageOut(self, filename):
         """
         _stageOut_
@@ -89,7 +89,7 @@ class OfflineDQMHarvester:
                                                       filename),
             'PFN' : os.path.join(os.getcwd(), filename),
             'SEName' : None,
-            'GUID' : makeUUID(),
+            'GUID' : os.path.basename(filename),
             }
         try:
             stager(**fileInfo)
@@ -98,8 +98,8 @@ class OfflineDQMHarvester:
             msg += str(ex)
             print msg
             return
-        
-            
+
+
 
 
     def httpPost(self, filename):
@@ -113,7 +113,7 @@ class OfflineDQMHarvester:
 
 if __name__ == '__main__':
 
-    
+
     harvester = OfflineDQMHarvester()
     status = harvester()
 
