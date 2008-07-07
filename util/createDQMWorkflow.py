@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.10 2007/05/28 12:32:27 afanfani Exp $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: createDQMWorkflow.py,v 1.1 2008/04/10 16:17:16 evansde Exp $"
 
 
 import os
@@ -27,8 +27,23 @@ from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 valid = ['cfg=', 'py-cfg=', 'version=', 'dataset=', "site="]
 
 
-usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
-usage += "                                  --version=<CMSSW version>\n"
+usage = \
+"""
+
+Usage: createProductionWorkflow.py --cfg=<cfgFile>
+                                   --version=<CMSSW version>
+                                   --dataset=<dataset name>
+                                   --site=<site SE name>
+
+
+cfgName - Harvesting config file
+version - version of CMSSW to use for harvesting jobs
+dataset - The input dataset from which histograms will be harvested
+site    - location where the job will run. Note that this is used only to
+          queue the job for the site, it doesnt affect the job definition,
+          current logic assumes all data at the same site.
+
+"""
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
@@ -90,7 +105,7 @@ if sitename == None:
     raise RuntimeError, msg
 
 #  //
-# // Set CMSSW_SEARCH_PATH 
+# // Set CMSSW_SEARCH_PATH
 #//
 origcmsswsearch=os.environ.get("CMSSW_SEARCH_PATH", None)
 if not origcmsswsearch:
@@ -101,11 +116,11 @@ os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
 
 if cfgType == "cfg":
     from FWCore.ParameterSet.Config import include
-    cmsCfg = include(cfgFile) 
+    cmsCfg = include(cfgFile)
 else:
     modRef = imp.find_module( os.path.basename(cfgFile).replace(".py", ""),  os.path.dirname(cfgFile))
     cmsCfg = modRef.process
-    
+
 cfgWrapper = CMSSWConfig()
 cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
 #cfgInt.validateForProduction()
@@ -120,8 +135,8 @@ maker.setPhysicsGroup(physicsGroup)
 maker.setConfiguration(cfgWrapper, Type = "instance")
 maker.changeCategory(category)
 maker.setPSetHash("NO_HASH")
-maker.addInputDataset(dataset)  
-  
+maker.addInputDataset(dataset)
+
 spec = maker.makeWorkflow()
 spec.parameters['DBSURL'] = "http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet"
 spec.parameters['OnlySites'] = sitename
