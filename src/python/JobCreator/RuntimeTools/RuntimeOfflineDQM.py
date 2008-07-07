@@ -83,13 +83,16 @@ class OfflineDQMHarvester:
             print msg
             return
 
+	filebasename = os.path.basename(filename)
+	filebasename = filebasename.replace(".root", "")
+	
         fileInfo = {
             'LFN' : "/store/unmerged/dqm/%s/%s/%s" % (self.workflowSpecId,
                                                       self.jobSpecId,
                                                       filename),
             'PFN' : os.path.join(os.getcwd(), filename),
             'SEName' : None,
-            'GUID' : os.path.basename(filename),
+            'GUID' : filebasename,
             }
         try:
             stager(**fileInfo)
