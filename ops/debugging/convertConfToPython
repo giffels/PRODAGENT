@@ -1,0 +1,65 @@
+#!/usr/bin/env python2.4
+
+import sys, os, getopt
+import FWCore.ParameterSet.Config as cms
+
+def main(argv) :
+    """
+    
+    convertConfToPython
+    
+    resolve includes of a given parameter-set and writes out resolved parameter-set in python format
+
+    required parameters
+    --parameter-set <name>                    :       name of input parameter-set
+
+    optional parameters                       :
+    --output-filename <name>                  :       name of output parameter-set (default parameter-set_resolved.cfg)
+    --help (-h)                               :       help
+    --debug (-d)                              :       debug statements
+    
+    """
+
+    # default
+    parameter_set = ''
+    output_filename = ''
+
+    try:
+        opts, args = getopt.getopt(argv, "", ["help", "debug", "parameter-set=", "output-filename="])
+    except getopt.GetoptError:
+        print main.__doc__
+        sys.exit(2)
+
+    # check command line parameter
+    for opt, arg in opts :
+        if opt == "--help" :
+            print main.__doc__
+            sys.exit()
+        elif opt == "--debug" :
+            debug = 1
+        elif opt == "--parameter-set" :
+            parameter_set = arg
+        elif opt == "--output-filename" :
+            output_filename = arg
+
+    if parameter_set == '' :
+        print main.__doc__
+        sys.exit(2)
+
+    if output_filename == '' :
+        output_filename = parameter_set.split('.cfg')[0] + '_resolved.py'
+
+    process = cms.include(parameter_set)
+
+    temp = process.dumpPython()
+
+    outputfile = file(output_filename,'w')
+
+    outputfile.write('import FWCore.ParameterSet.Config as cms\n')
+    outputfile.write(temp)
+
+    print 'Wrote resolved parameter-set into',output_filename
+
+
+if __name__ == '__main__' :
+    main(sys.argv[1:])
