@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.5 2008/06/06 13:15:36 gcodispo Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.6 2008/07/02 12:56:55 gcodispo Exp $"
+__version__ = "$Revision: 1.6 $"
 
 import os, time
 import logging
@@ -342,10 +342,10 @@ fi
 
             # close previous instance and set up the outdir
             if self.bossJob.runningJob['closed'] == 'Y' :
-                outdir = self.toSubmit[ self.singleSpecName ] + '/Submission' \
-                         + str(self.bossJob.runningJob['submission'])
+                outdir = self.toSubmit[ self.singleSpecName ] + '/Submission'
                 self.bossLiteSession.getNewRunningInstance( self.bossJob )
-                self.bossJob.runningJob['outputDirectory'] = outdir
+                self.bossJob.runningJob['outputDirectory'] = outdir \
+                         + str(self.bossJob.runningJob['submission'])
 
             # load the task ans append the job
             self.bossTask = self.bossLiteSession.loadTask(
@@ -408,6 +408,8 @@ fi
                                                  requirements=submissionAttrs )
         except SchedulerError, err:
             logging.error( "########### Failed submission : %s" %str(err) )
+            raise JSException( "Submission Failed", FailureList = \
+                               [ job['name'] for job in self.bossTask.jobs ] )
 
 
         # check for not submitted jobs
