@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.5 2008/06/11 18:17:30 mcinquil Exp $"
-__revision__ = "$Revision: 1.1.2.5 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.6 2008/06/30 14:29:27 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.6 $"
 
 class JobHandling:
     """
@@ -279,6 +279,11 @@ class JobHandling:
 
         # get directories
         jobOutDir = job.runningJob['outputDirectory']
+
+        # after a component recovery, the output can be already at destination
+        if jobOutDir.find( 'JobTracking' ) != -1 :
+            return reportfilename
+
         baseDir = os.path.dirname(jobOutDir)
         newPath = baseDir + "/JobTracking/" + success + "/" \
                   + os.path.basename(jobOutDir)
