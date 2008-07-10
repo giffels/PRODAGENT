@@ -12,15 +12,13 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.29 2008/07/01 14:23:26 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.29 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.30 2008/07/01 14:28:21 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.30 $"
 
 from JobTracking.TrackingDB import TrackingDB
-from ProdCommon.BossLite.API.BossLiteAPI import parseRange
-from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
 from ProdCommon.BossLite.API.BossLiteDB import  BossLiteDB
-from ProdCommon.BossLite.Common.Exceptions import TaskError, TimeOut
+from ProdCommon.BossLite.Common.Exceptions import DbError, TaskError, TimeOut
 #from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 #from ProdCommon.BossLite.Common.Exceptions import SchedulerError
 from ProdCommon.BossLite.Common.System import executeCommand
@@ -28,7 +26,6 @@ from ProdCommon.BossLite.Common.System import executeCommand
 import traceback
 import logging
 from time import sleep
-from os import popen4
 
 
 ###############################################################################
@@ -175,7 +172,7 @@ class JobStatus:
                               + ' : ' + str( e ) )
                 offset += int(cls.params['jobsToPoll'])
 
-            except StandardError, e:
+            except Exception, e:
                 logging.error("Failed to retrieve status for jobs " \
                               + jobRange + ' of task ' + str(taskId) \
                               + ' : ' + str( e ) )
@@ -213,7 +210,10 @@ class JobStatus:
             session.close()
             del( joblist )
 
-        except StandardError, ex:
+        except DbError, ex:
+            logging.error( 'Failed to remove jobs from queues: %s ' % ex )
+
+        except Exception, ex:
             logging.error( ex.__str__() )
             logging.error( traceback.format_exc() )
 
@@ -246,7 +246,11 @@ class JobStatus:
                 #    )
             session.close()
             del( joblist )
-        except StandardError, ex:
+
+        except DbError, ex:
+            logging.error( 'Failed to remove jobs from queues: %s ' % ex )
+
+        except Exception, ex:
             logging.error( ex.__str__() )
             logging.error( traceback.format_exc() )
 

@@ -6,8 +6,8 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.8 2008/04/29 08:39:29 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.8 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.9 2008/05/27 10:32:54 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.9 $"
 
 from threading import Thread
 from time import sleep
@@ -17,7 +17,6 @@ from random import shuffle
 
 from JobTracking.JobStatus import JobStatus
 from JobTracking.TrackingDB import TrackingDB
-from ProdCommon.ThreadTools.WorkQueue import WorkQueue
 from ProdCommon.BossLite.API.BossLiteDB import BossLiteDB
 
 ###############################################################################
@@ -75,7 +74,7 @@ class PoolScheduler(Thread):
         while True:
 
             # get job information about new jobs
-            self.getNewJobs()
+            JobStatus.addNewJobs()
 
             # apply policy
             try:
@@ -121,16 +120,6 @@ class PoolScheduler(Thread):
 
             # remove all finished jobs from this group
             JobStatus.removeFinishedJobs(group)
-
-
-    def getNewJobs(self):
-        """
-        __getNewJobs__
-
-        get information about new jobs.
-        """
-
-        JobStatus.addNewJobs()
 
 
     def applyPolicy(self):

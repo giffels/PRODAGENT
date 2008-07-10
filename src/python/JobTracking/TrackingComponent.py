@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.34 2008/07/01 13:38:00 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.34 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.35 2008/07/01 13:42:43 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.35 $"
 
 import os
 import os.path
@@ -38,7 +38,6 @@ from GetOutput.JobOutput import JobOutput
 from JobTracking.TrackingDB import TrackingDB
 
 # BossLite support
-from ProdCommon.BossLite.API.BossLiteDB import BossLiteDB
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 
 # Threads pool
@@ -312,7 +311,7 @@ class TrackingComponent:
                 # publish information to dashboard
                 try:
                     self.dashboardPublish( job )
-                except StandardError, msg:
+                except Exception, msg:
                     logging.error("Cannot publish to dashboard:%s" % msg)
 
                 del( job )
@@ -361,7 +360,7 @@ class TrackingComponent:
                 # publish information to the dashboard
                 try:
                     self.dashboardPublish(job)
-                except StandardError, msg:
+                except Exception, msg:
                     logging.error("Cannot publish to dashboard:%s" % msg)
 
 
@@ -419,7 +418,7 @@ class TrackingComponent:
                 # publish information to the dashboard
                 try:
                     self.dashboardPublish(job)
-                except StandardError, msg:
+                except Exception, msg:
                     logging.error("Cannot publish to dashboard:%s" % msg)
 
                 # enqueue the get output operation
@@ -510,7 +509,7 @@ class TrackingComponent:
                 # it exists, get dashboard information
                 dashboardInfo.read(dashboardInfoFile)
 
-            except StandardError, msg:
+            except Exception, msg:
                 # it does not work, abandon
                 logging.error("Reading dashboardInfoFile " + \
                               dashboardInfoFile + " failed (jobId=" \
@@ -523,7 +522,7 @@ class TrackingComponent:
         try :
             dashboardInfo['StatusEnterTime'] = \
                                              str(job.runningJob['lbTimestamp'])
-        except StandardError:
+        except Exception:
             pass
 
         try :
@@ -562,7 +561,7 @@ class TrackingComponent:
             logging.info("dashboard info sent for job %s" % self.fullId(job) )
 
         # error, cannot publish it
-        except StandardError, msg:
+        except Exception, msg:
             logging.error("Cannot publish dashboard information: " + \
                           dashboardInfo.__str__() + "\n" + str(msg))
 
