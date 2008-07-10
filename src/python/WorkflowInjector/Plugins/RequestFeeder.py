@@ -90,7 +90,7 @@ class RequestFeeder(PluginInterface):
         self.workflow = self.loadWorkflow(payload)
         self.totalEvents = self.workflow.parameters.get("TotalEvents", None)
         self.eventsPerJob = self.workflow.parameters.get('EventsPerJob', None)
-        self.initialRun = self.workflow.parameters.get("InitialRun", 0)
+        self.initialRun = self.workflow.parameters.get("InitialRun", 1)
 
         siteList = self.workflow.parameters.get("Sites", "")
         [ self.sites.append(x) for x in siteList.split(",") if x != "" ] 
