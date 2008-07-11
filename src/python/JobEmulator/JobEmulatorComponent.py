@@ -8,14 +8,15 @@ and generating reports as they finish.
 
 """
 
-__revision__ = "$Id: JobEmulatorComponent.py,v 1.5 2008/03/14 21:08:34 sryu Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: JobEmulatorComponent.py,v 1.6 2008/06/06 15:00:35 sryu Exp $"
+__version__ = "$Revision: 1.6 $"
 __author__ = "sfoulkes, sryu"
 
 import os
 import logging
 
 from ProdCommon.Database import Session
+from ProdCommon.Core.ProdException import ProdException
 from MessageService.MessageService import MessageService
 from ProdAgentDB.Config import defaultConfig as dbConfig
 import ProdAgentCore.LoggingUtils as LoggingUtils
@@ -294,7 +295,7 @@ class JobEmulatorComponent:
                 self.__call__(msgtype, payload)
                 Session.commit_all()
                 Session.close_all()
-            except Exception, ex:
+            except ProdException, ex:
                 msg = str(ex)
                 logging.error(msg)
                 
