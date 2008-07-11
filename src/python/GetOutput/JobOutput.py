@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.34 2008/07/02 13:47:43 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.34 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.35 2008/07/04 08:47:29 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.35 $"
 
 import logging
 import os
@@ -161,11 +161,9 @@ class JobOutput:
                         if statusSched == 'UE' :
                             job.runningJob['status'] = 'UE'
                     except SchedulerError, msg:
-                        output = str(msg)
-                        job.runningJob['statusHistory'].append(output)
                         logging.warning(
                             "Warning: failed to purge job %s.%s : %s" \
-                            % (job['taskId'], job['jobId'], output ) )
+                            % (job['taskId'], job['jobId'], str(msg) ) )
                     job.runningJob['processStatus'] = 'output_retrieved'
 
                 # get output, trying at most maxGetOutputAttempts
@@ -173,9 +171,8 @@ class JobOutput:
                     job = cls.getOutput( job, task, schedSession)
 
             except SchedulerError, err:
-                output = str(err)
                 logging.error('Can not get scheduler for job %s.%s : [%s]' % \
-                              (job['taskId'], job['jobId'], output))
+                              (job['taskId'], job['jobId'], str(err) ))
 
                 # proxy expired: invalidate job and empty return
                 if err.value.find( "Proxy Expired" ) != -1 :
@@ -204,14 +201,12 @@ class JobOutput:
             return job
 
         # thread has failed
-        except :
-
-            import traceback
-            msg = traceback.format_exc()
+        except Exception :
 
             # show error message
-            msg = "GetOutputThread exception: %s" % str(msg)
-            logging.error(msg)
+            import traceback
+            logging.error( "GetOutputThread exception: %s" % \
+                           str( traceback.format_exc() ) )
 
             # return also the id
             return job
@@ -285,7 +280,6 @@ class JobOutput:
             try:
                 schedSession.getOutput( task, outdir=outdir)
                 output = "output successfully retrieved"
-                job.runningJob['statusHistory'].append(output)
                 job.runningJob['processStatus'] = 'output_retrieved'
 
                 logging.info('Retrieved output for job %s.%s in %s' % \
@@ -296,17 +290,11 @@ class JobOutput:
 
             # scheduler interaction error
             except SchedulerError, msg:
-                output = str(msg)
-                job.runningJob['statusHistory'].append(output)
                 logging.error("job %s.%s retrieval failed: %s" % \
-                              (job['taskId'], job['jobId'], output ) )
-
-                # proxy expired: skip!
-                if msg.value.find( "Proxy Expired" ) != -1 :
-                    break
+                              (job['taskId'], job['jobId'], str(msg) ) )
 
                 # purged: probably already retrieved. Archive
-                elif output.find( "has been purged" ) != -1 :
+                if output.find( "has been purged" ) != -1 :
                     job.runningJob['status'] = 'E'
                     job.runningJob['statusScheduler'] = 'Cleared'
                     job.runningJob['closed'] = 'Y'
@@ -315,37 +303,22 @@ class JobOutput:
 
                 # not ready for GO: waiting for next round
                 elif output.find( "Job current status doesn" ) != -1:
-                    job.runningJob['statusHistory'].append(
-                        "waiting next round")
                     logging.error(
                         "waiting next round for job %s.%s in status %s" % \
                         (job['taskId'], job['jobId'], job.runningJob['status'])
                         )
                     break
-                # not ready for GO: waiting for next round
-                elif output.find( "Job current status doesn" ) :
-                    job.runningJob['statusHistory'].append(
-                        "waiting next round")
-                    logging.error(
-                        "empty outfile for job %s.%s: waiting next round" % \
-                        (job['taskId'], job['jobId'])
-                        )
-                    break
 
             # oops: db error! What to do?!?!
             except TaskError, msg:
-                output = str(msg)
-                job.runningJob['statusHistory'].append(output)
                 logging.error("job %s.%s retrieval failed: %s" % \
-                              (job['taskId'], job['jobId'], output ) )
+                              (job['taskId'], job['jobId'], str(msg) ) )
                 break
 
             # as dirty as needed: any unknown error
-            except :
+            except Exception:
                 import traceback
-                msg = traceback.format_exc()
-                output = str(msg)
-                job.runningJob['statusHistory'].append(output)
+                output = str( traceback.format_exc() )
                 logging.error("job %s.%s retrieval failed: %s" % \
                               (job['taskId'], job['jobId'], output ) )
                 break
