@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.12 2008/06/06 14:59:41 sryu Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.13 2008/06/06 18:59:22 evansde Exp $"
+__version__ = "$Revision: 1.13 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -83,7 +83,12 @@ class EmulatorReportPlugin(JobReportPluginInterface):
 
             theFile = newReport.newFile()
             guid = makeUUID()
-            theFile['LFN'] = "%s/%s.root" % (outMod['LFNBase'], guid)
+            
+            if outMod.has_key("LFNBase"):
+                theFile['LFN'] = "%s/%s.root" % (outMod['LFNBase'], guid)
+            else:
+                theFile['LFN'] = "/some/madeup/path/%s.root" % guid
+                
             self.setDefaultForNoneValue('LFNBase', theFile['LFN'])
             theFile['PFN'] ="fakefile:%s" % theFile['LFN']
             theFile['GUID'] = guid
