@@ -8,14 +8,16 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.13 2008/06/06 18:59:22 evansde Exp $"
-__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.14 2008/07/11 06:21:00 sfoulkes Exp $"
+__version__ = "$Revision: 1.14 $"
 __author__ = "sfoukes, sryu"
 
 import logging
+
 from random import randrange
 from random import random
 from random import gauss
+from random import choice
 
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.MCPayloads.DatasetTools import getOutputDatasetDetails
@@ -92,6 +94,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             self.setDefaultForNoneValue('LFNBase', theFile['LFN'])
             theFile['PFN'] ="fakefile:%s" % theFile['LFN']
             theFile['GUID'] = guid
+            theFile['MergedBySize'] = choice(["True", "False"])
             theFile['ModuleLabel'] = outName
             # basic measurement is byte (minumum 4MB, max 4GB)
             theFile['Size'] = 4000000 * randrange(1, 1000)
