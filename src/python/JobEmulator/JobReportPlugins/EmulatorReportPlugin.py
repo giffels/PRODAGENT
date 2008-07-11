@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.14 2008/07/11 06:21:00 sfoulkes Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.15 2008/07/11 17:48:54 sfoulkes Exp $"
+__version__ = "$Revision: 1.15 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -98,9 +98,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             theFile['ModuleLabel'] = outName
             # basic measurement is byte (minumum 4MB, max 4GB)
             theFile['Size'] = 4000000 * randrange(1, 1000)
-            theFile.runs.append(jobSpecLoaded.parameters["WorkflowRunNumber"])
-            theFile.addLumiSection(jobSpecLoaded.parameters['RunNumber'],
-                                   jobSpecLoaded.parameters['WorkflowRunNumber'])
+            theFile.runs.append(jobSpecLoaded.parameters["RunNumber"])
             #check if the maxEvents['output'] is set if not set totalEvent using maxEvents['input']
             totalEvent = jobSpecPayload.cfgInterface.maxEvents['output']
             if totalEvent == None:
