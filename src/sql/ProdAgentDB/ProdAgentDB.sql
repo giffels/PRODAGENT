@@ -896,7 +896,7 @@ CREATE TABLE prodmon_performance_modules (
 
 CREATE TABLE log_input (
        id INT NOT NULL AUTO_INCREMENT,
-       lfn VARCHAR(255) NOT NULL,
+       lfn TEXT,
        workflow VARCHAR(255) NOT NULL,
        se_name VARCHAR(255) NOT NULL,
        status enum("new", "inprogress", "done", "failed") default "new",
