@@ -6,8 +6,8 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.9 2008/05/27 10:32:54 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.9 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.10 2008/07/10 17:02:13 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.10 $"
 
 from threading import Thread
 from time import sleep
@@ -17,7 +17,7 @@ from random import shuffle
 
 from JobTracking.JobStatus import JobStatus
 from JobTracking.TrackingDB import TrackingDB
-from ProdCommon.BossLite.API.BossLiteDB import BossLiteDB
+from ProdCommon.BossLite.API.BossLitePoolDB import BossLitePoolDB
 
 ###############################################################################
 # Class: PoolScheduler                                                        #
@@ -49,11 +49,8 @@ class PoolScheduler(Thread):
             self.maxJobs = params['jobsToPoll']
         except KeyError:
             self.maxJobs = 100
-        try:
-            self.database = params['dbConfig']
-        except KeyError:
-            from ProdAgentDB.Config import defaultConfig as dbConfig
-            self.database = dbConfig
+
+        self.sessionPool = params['sessionPool']
         self.groupsUnderProcessing = Set([])
         self.jobPerTask = None
 
@@ -130,7 +127,7 @@ class PoolScheduler(Thread):
         """
 
         # get DB session
-        session = BossLiteDB ("MySQL", self.database )
+        session = BossLitePoolDB( "MySQL", pool=self.sessionPool )
         db = TrackingDB( session )
 
         # set policy parameters

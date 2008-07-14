@@ -12,12 +12,12 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.30 2008/07/01 14:28:21 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.30 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.31 2008/07/10 17:02:13 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.31 $"
 
 from JobTracking.TrackingDB import TrackingDB
-from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
-from ProdCommon.BossLite.API.BossLiteDB import  BossLiteDB
+from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
+from ProdCommon.BossLite.API.BossLitePoolDB import BossLitePoolDB
 from ProdCommon.BossLite.Common.Exceptions import DbError, TaskError, TimeOut
 #from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 #from ProdCommon.BossLite.Common.Exceptions import SchedulerError
@@ -66,12 +66,15 @@ class JobStatus:
 
         try:
             # get DB sessions
-            bossSession = BossLiteAPI( "MySQL", cls.params['dbConfig'] )
+            bossSession = BossLiteAPI("MySQL", pool=cls.params['sessionPool'])
             db = TrackingDB( bossSession.bossLiteDB )
             tasks = db.getGroupTasks(group)
 
             for taskId in tasks :
                 cls.bossQuery( bossSession, int(taskId) )
+
+        except DbError, ex:
+            logging.error( "JobTrackingThread exception: %s" % ex )
 
         except Exception, ex:
             logging.error( "JobTrackingThread exception: %s" \
@@ -115,11 +118,10 @@ class JobStatus:
 
                 # # this is the correct way...
                 # Scheduler session
-                # schedulerConfig = {'name' : task.jobs[0].runningJob['scheduler'],
-                #                    'user_proxy' : task['user_proxy'],
-                #                    'service' : task.jobs[0].runningJob['service'] }
+                # schedulerConfig = { 'timeout' : len( task.jobs ) * 30 }
                 #
-                # schedSession = BossLiteAPISched( bossSession, schedulerConfig )
+                # schedSession = \
+                #        BossLiteAPISched( bossSession, schedulerConfig, task )
                 #
                 # task = schedSession.query( task, queryType='parent' )
                 #
@@ -191,7 +193,7 @@ class JobStatus:
 
         try:
 
-            session = BossLiteDB ("MySQL", cls.params['dbConfig'] )
+            session = BossLitePoolDB( "MySQL", pool=cls.params['sessionPool'] )
             db = TrackingDB( session )
             joblist = db.getUnassociatedJobs()
 
@@ -228,7 +230,7 @@ class JobStatus:
         """
 
         try:
-            session = BossLiteDB ("MySQL", cls.params['dbConfig'] )
+            session = BossLitePoolDB( "MySQL", pool=cls.params['sessionPool'] )
             db = TrackingDB( session )
             joblist = db.getAssociatedJobs()
 

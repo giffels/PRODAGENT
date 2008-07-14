@@ -17,13 +17,12 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.35 2008/07/01 13:42:43 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.35 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.36 2008/07/10 17:02:13 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.36 $"
 
 import os
 import os.path
 import logging
-from copy import deepcopy
 
 # PA configuration
 from MessageService.MessageService import MessageService
@@ -113,13 +112,18 @@ class TrackingComponent:
 
         # initialize members
         self.ms = None
-        self.database = deepcopy(dbConfig)
+        self.database = dbConfig
+
+        # initialize Session
+        self.bossLiteSession = \
+                             BossLiteAPI('MySQL', self.database, makePool=True)
+        self.sessionPool = self.bossLiteSession.bossLiteDB.getPool()
 
         # create pool thread
         params = {}
         params['delay'] = sleepTime
         params['jobsToPoll'] = int(self.args['jobsToPoll'])
-        params['dbConfig'] = self.database
+        params['sessionPool'] = self.sessionPool
         JobStatus.setParameters(params)
         pool = \
              WorkQueue([JobStatus.doWork] * int(self.args["PoolThreadsSize"]))
@@ -128,16 +132,13 @@ class TrackingComponent:
         params = {}
         params['delay'] = delay
         params['jobsToPoll'] = int( self.args['jobsToPoll'] )
-        params['dbConfig'] = self.database
+        params['sessionPool'] = self.sessionPool
         PoolScheduler(pool, params)
-
-        # initialize Session
-        self.bossLiteSession = BossLiteAPI('MySQL', self.database)
 
         # set parameters for getoutput operations
         params = {}
         params['componentDir'] = self.args['ComponentDir']
-        params['dbConfig'] = self.database
+        params['sessionPool'] = self.sessionPool
         JobOutput.setParameters(params)
 
         # check for dashboard usage
