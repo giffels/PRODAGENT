@@ -23,7 +23,7 @@ from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
 from ProdCommon.JobFactory.RequestJobFactory import RequestJobFactory
-from ProdCommon.JobFactory.DatasetJobFactory import DatasetJobFactory 
+from ProdCommon.JobFactory.DatasetJobFactory import DatasetJobFactory
 
 #from RequestInjector.RequestIterator import RequestIterator
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
@@ -42,7 +42,7 @@ def getGlobalDBSURL():
         msg += str(ex)
         logging.error(msg)
         raise RuntimeError, msg
-    
+
     try:
         dbsConfig = config.getConfig("GlobalDBSDLS")
     except StandardError, ex:
@@ -79,7 +79,7 @@ class RelValTest(dict):
         self.setdefault("WorkflowFile", None)
         self.setdefault("JobSpecs", {}) # map jobspecid: jobspecFile
         self.setdefault("BadTest", False)
-        
+
 
     def save(self):
         """
@@ -96,7 +96,7 @@ class RelValTest(dict):
             if val != None:
                 node.addNode(IMProvNode(key, None, Value = str(val)))
         return node
-        
+
 
     def load(self, improvNode):
         """
@@ -111,8 +111,8 @@ class RelValTest(dict):
                 value = child.attrs.get("Value", None)
                 if value != None:
                     self[str(child.name)] = str(value)
-                
-                
+
+
 
 class RelValSpecMgr:
     """
@@ -139,7 +139,7 @@ class RelValSpecMgr:
         self.dbsUrl = getGlobalDBSURL()
         self.jobCounts = {}
         self.ms = None
-        
+
     def __call__(self):
         """
         _operator()_
@@ -158,10 +158,10 @@ x
             msg += "Error:\n %s\n" % str(ex)
             msg += "Traceback: %s\n" % traceback.format_exc()
             logging.error(msg)
-            return result 
+            return result
 
-        
-        
+
+
         for test in self.tests:
             try:
                 self.makeWorkflow(test)
@@ -173,11 +173,11 @@ x
                 dbg = traceback.format_exc()
                 logging.debug("Traceback:\n%s\n" % dbg)
                 continue
-            
-            
-      
 
-        
+
+
+
+
             try:
                 self.makeJobs(test)
             except Exception, ex:
@@ -189,7 +189,7 @@ x
                 dbg = traceback.format_exc()
                 logging.debug("Traceback:\n%s\n" % dbg)
                 continue
-            
+
             if test['BadTest'] == False:
                 self.submitTest(test)
             else:
@@ -197,11 +197,11 @@ x
                 msg += "%s" % test['Name']
                 logging.debug(msg)
             del test
-            
-                
-        return 
-        
-        
+
+
+        return
+
+
     def loadRelValSpec(self):
         """
         _loadRelValSpec_
@@ -212,7 +212,7 @@ x
         improv = loadIMProvFile(self.relvalSpecFile)
         testQ = IMProvQuery("/RelValSpec/RelValTest")
         testNodes = testQ(improv)
-        
+
         for test in testNodes:
             for site in self.sites:
                 newTest = RelValTest()
@@ -220,29 +220,29 @@ x
                 newTest['Site'] = site
                 self.tests.append(newTest)
 
-                
 
-                 
-            
+
+
+
         logging.info("Loaded %s tests from file:\n %s\n" % (
             len(self.tests),
             self.relvalSpecFile))
-        
-        
-        
+
+
+
         return
-    
-        
-    
+
+
+
     def makeWorkflow(self, testInstance):
         """
         _processTest_
 
         Process a test, create a WorkflowSpec for it, generate job specs
         and add the, to the test instance
-        
+
         """
-            
+
         loader = CMSSWAPILoader(testInstance['CMSSWArchitecture'],
                                 testInstance['CMSSWVersion'],
                                 testInstance['CMSPath'])
@@ -251,7 +251,7 @@ x
         process = pickle.load(file(testInstance['PickleFile']))
         cfgInt = cfgWrapper.loadConfiguration(process)
         cfgInt.validateForProduction()
-        cfgAsString = process.dumpConfig()
+        cfgAsString = process.dumpPython()
         #  //
         # // Get release validation PSet from process
         #//
@@ -286,7 +286,7 @@ x
             msg += "%s\n" % testInstance['PickleFile']
             logging.error(msg)
             return
-        
+
         if eventsPerJob != None:
             testInstance['EventsPerJob'] = eventsPerJob.value()
         else:
@@ -308,19 +308,19 @@ x
 
         if inputDataset != None:
             testInstance['InputDataset'] = inputDataset.value()
-        
+
         msg = "Processing : %s\n" % testInstance['Name']
         msg += "From Pickle: %s\n" % testInstance['PickleFile']
         msg += "TotalEvents: %s\n" % testInstance['TotalEvents']
         msg += "EventsPerJob: %s\n" % testInstance['EventsPerJob']
         msg += "SpeedCategory: %s\n" % testInstance['SpeedCategory']
         logging.info(msg)
-        
+
         if self.workflows.has_key(testInstance['Name']):
             testInstance['WorkflowSpecId'] = self.workflows[testInstance['Name']]
             testInstance['WorkflowSpecFile'] = self.workflowFiles[testInstance['Name']]
             testInstance['WorkingDir'] = self.workingDirs[testInstance['Name']]
-            
+
             loader.unload()
             return
 
@@ -333,11 +333,11 @@ x
 
 
         loader.unload()
-        
+
         maker = WorkflowMaker(str(self.timestamp),
                               testInstance['Name'],
                               'RelVal')
-        
+
         maker.setCMSSWVersion(testInstance['CMSSWVersion'])
         maker.setPhysicsGroup("RelVal")
         maker.setConfiguration(cfgWrapper, Type = "instance")
@@ -357,17 +357,17 @@ x
         if testInstance['InputDataset'] != None:
             maker.addInputDataset(testInstance['InputDataset'])
             maker.inputDataset["SplitType"] = "events"
-            maker.inputDataset["SplitSize"] = testInstance['EventsPerJob']              
+            maker.inputDataset["SplitSize"] = testInstance['EventsPerJob']
         spec = maker.makeWorkflow()
         spec.parameters['OnlySites'] = testInstance['Site']
         spec.parameters['DBSURL'] = self.dbsUrl
-        specFile = "/%s/%s-Workflow.xml" % (workingDir, maker.workflowName) 
+        specFile = "/%s/%s-Workflow.xml" % (workingDir, maker.workflowName)
         spec.save(specFile)
-        
+
         self.workflows[testInstance['Name']] = str(maker.workflowName)
         self.workflowFiles[testInstance['Name']] = specFile
         self.workingDirs[testInstance['Name']] = workingDir
-        
+
         testInstance['WorkflowSpecId'] = str(maker.workflowName)
         testInstance['WorkflowSpecFile'] = specFile
         testInstance['WorkingDir'] = workingDir
@@ -381,18 +381,18 @@ x
             maker.workflowName,
             {"owner" : "RelValInjector",
              "workflow_spec_file" : specFile,
-             
+
              })
-            
-        
+
+
         msg = "Publishing NewWorkflow/NewDataset for \n"
         msg += " %s\n "% specFile
         logging.debug(msg)
         self.ms.publish("NewWorkflow", specFile)
         self.ms.publish("NewDataset", specFile)
         self.ms.commit()
-        
-        
+
+
         return
 
 
@@ -411,7 +411,7 @@ x
         testName = testInstance['WorkflowSpecId']
         specInstance = WorkflowSpec()
         specInstance.load(testInstance['WorkflowSpecFile'])
-        
+
         if testInstance['InputDataset'] == None:
             initialRun = self.jobCounts.get(testInstance['Name'], 1)
             factory = RequestJobFactory(
@@ -425,31 +425,31 @@ x
             jobsList = factory()
             self.jobCounts[testInstance['Name']] += len(jobsList)
         else:
-            
+
             factory = DatasetJobFactory(
                 specInstance,
                 testInstance['WorkingDir'],
                 specInstance.parameters['DBSURL'],
                 )
-            
+
             jobsList = factory()
             self.jobCounts[testInstance['Name']] += len(jobsList)
-            
-        
+
+
         msg = "Created %s jobs:\n" % len(jobsList)
-    
+
         for job in jobsList:
             jobSpecFile = job['JobSpecFile']
             jobSpecId = job['JobSpecId']
             msg += "  %s\n" % jobSpecId
             testInstance['JobSpecs'][jobSpecId] = jobSpecFile
-            
-        
-        
-        logging.info(msg)
-            
 
-        
+
+
+        logging.info(msg)
+
+
+
         return
 
 
@@ -459,14 +459,14 @@ x
 
 
         Submit a test by dropping the JobSpecs into the JobQueue.
-        
+
         """
         #  //
         # // Add jobs to the JobQueue via the JobQueue API
         #//
         logging.info("RelValSpecMgr.submitTest(%s, %s)" % (test['Name'],
                                                            test['Site']))
-        
+
         sites = [ test['Site'] ]
         jobs = []
         for jobSpec, jobSpecFile in test['JobSpecs'].items():
@@ -476,7 +476,7 @@ x
                 "JobType" : "Processing",
                 "WorkflowSpecId" : test['WorkflowSpecId'],
                 "WorkflowPriority" : 100,
-                
+
                 })
             logging.debug("Registering Job Entity: %s.%s" % (
                 test['WorkflowSpecId'], jobSpec)
@@ -486,14 +486,14 @@ x
                 'job_type' : "Processing", "max_retries" : 3,
                 "max_racers" : 1,
                 })
-            
+
         bulkQueueJobs(sites, *jobs)
-        
-        
-        
+
+
+
         return
 
-    
+
 if __name__ == '__main__':
 
 
@@ -509,18 +509,18 @@ if __name__ == '__main__':
 
     args = {
         'ComponentDir' : '/home/evansde/work/PRODAGENT/src/python/RelValInjector/detritus',
-        
+
         "Fast" : 100,
         "Slow" : 50,
         "Medium" : 75,
         "VerySlow" : 25,
-        
+
         }
     sites = ['srm.cern.ch', 'cmssrm.fnal.gov']
     specFile = "/uscms/home/gutsche/work/software/People/DaveE/relval_workflows.xml"
-    
+
 
     mgr = RelValSpecMgr(specFile, sites, **args)
     mgr.ms = FakeMessageService()
     mgr()
-    
+
