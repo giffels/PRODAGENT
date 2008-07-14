@@ -13,7 +13,6 @@ import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
-from ProdAgentCore.PostMortem import runWithPostMortem
 from JobCleanup.JobCleanupComponent import JobCleanupComponent
 
 #  //
@@ -35,4 +34,4 @@ compCfg['jobReportLocation'] = compCfg['ComponentDir']+'/JobReports'
 #//
 createDaemon(compCfg['ComponentDir'])
 component = JobCleanupComponent(**dict(compCfg))
-runWithPostMortem(component, compCfg['ComponentDir'])
+component.startComponent()

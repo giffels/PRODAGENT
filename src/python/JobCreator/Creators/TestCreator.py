@@ -9,32 +9,34 @@ can be run interactively to test the job creation
 
 
 from JobCreator.Registry import registerCreator
-from JobCreator.Creators.CreatorInterface import CreatorInterface
 
 
-    
-class TestCreator(CreatorInterface):
+def printTaskObjectDetails(taskObject):
     """
-    _TestCreator_
-
-    Simple Creator implementation for testing/development
+    recursive printout of task objects attributes, along with
+    descriptions of some of the fields
 
     """
-    def __init__(self):
-        CreatorInterface.__init__(self)
-
-    def processTaskObject(self, taskObject):
-        typeVal = taskObject['Type']
-        if typeVal == "CMSSW":
-            handleCMSSWTaskObject(taskObject)
-            return
-        elif typeVal == "Script":
-            handleScriptTaskObject(taskObject)
-            return
-        else:
-            return
-    
+    desc = {
+        "Name" : "Unique name of TaskObject in TaskObject Tree",
+        "Executable" : "Name of StructuredFile instance containing main script",
+        "ShREEKTask" : "Instance of ShREEKTask to run the executable script",
+        "Directory" : "DMB instance that contains the task dir structure info",
+        "Environment" : "Map of variable names to variables for task env",
+        "CMSExecutable" : "CMS Exe to be run in main script",
+        "CMSProjectVersion" : "Version of CMS Software project containing exe",
+        "CMSPythonPSet" : "Python formatted string containing the PSet Python",
         
+            }
+
+    print "==>TaskObject Keys:"
+    for key in taskObject.keys():
+        print "===>", key, desc.get(key, "")
+        if key in taskObject['StructuredFiles']:
+            print "====> ** This object is a StructuredFile instance"
+        
+
+    
 
     
 def handleCMSSWTaskObject(taskObject):
@@ -81,7 +83,47 @@ def handleScriptTaskObject(taskObject):
     return
 
     
+def distributor(taskObject):
+    """
+    _distributor_
 
+    Function that distributes the taskObject to the appropriate handler
+    based on the taskObjects Type provided from the WorkflowSpec
+
+    """
+    typeVal = taskObject['Type']
+    if typeVal == "CMSSW":
+        handleCMSSWTaskObject(taskObject)
+        return
+    elif typeVal == "Script":
+        handleScriptTaskObject(taskObject)
+        return
+    else:
+        return
+    
+
+
+
+class TestCreator:
+    """
+    _TestCreator_
+
+    Test job creator implementation.
+
+    Static class containing tools to create a generic test job from
+    a TaskObject tree.
+    Since this class is static, care must be taken to avoid leaving
+    any state in the class since it may affect the next job created.
+    
+    
+    """
+
+
+
+    def __call__(self, taskObject):
+
+        #taskObject(printTaskObjectDetails)
+        taskObject(distributor)
 
 
 
@@ -91,6 +133,6 @@ def handleScriptTaskObject(taskObject):
 #  // registration based on import of entire module)
 # // 
 #//
-registerCreator(TestCreator, "TestCreator")
+registerCreator(TestCreator(), "testCreator")
 
 

@@ -11,6 +11,7 @@ import os
 from ShREEK.ControlPoints.Conditional import Conditional
 import ShREEK.ControlPoints.ControlPointFactory as Factory
 
+from ShLogger.LogStates import LogStates
 
 class ExistenceCheck(Conditional):
     """
@@ -53,11 +54,16 @@ class ExistenceCheck(Conditional):
         Check Existence of each file in File
         List and return True if they all exist
         """
+        self.log("Existence Checking Files", LogStates.Info)
         result = True
         for item in self._Files:
             item = os.path.expandvars(item)
+            self.log("Testing existence of: %s " % item, LogStates.Info)
             if not os.path.exists(item):
+                self.log("%s Not Found" % item, LogStates.Alert)
                 result = False
+            else:
+                self.log("%s Exists" % item, LogStates.Info)
         return result
 
 

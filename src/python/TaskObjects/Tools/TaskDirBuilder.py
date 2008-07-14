@@ -7,13 +7,12 @@ for the TaskObject Directory attributes, pulling in any files that
 are attached to it
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: TaskDirBuilder.py,v 1.1 2006/04/10 17:40:38 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: TaskDirBuilder.py,v 1.2 2006/02/15 20:55:05 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import os
-
-
+from MB.dmb_tools.DMBBuilder import DMBPopulator
 
 class FlatTaskDirBuilder:
     """
@@ -21,40 +20,48 @@ class FlatTaskDirBuilder:
 
     Build a flat directory structure for the task object dirs.
     All dirs are created in the targetDirectory provided, rather than
-    recursively like the taskObject tree structure.
+    recursively like the taskObject tree structure
 
-    Note that directory structures within the TaskObject are created
-    as a tree structure.
-
+    Location of the physical directory is set via the PathName variable in the
+    Directory DMB instance
+    
     """
     def __init__(self, targetDirectory):
         self.targetDir = targetDirectory
+        
+        
+        
 
-
-    def __call__(self, taskObject):
+    def __call__(self, taskObjectRef):
         """
         _operator()_
 
-        Operate on the TaskObject instance provided:
-        Create its dir structure in the target dir provided
-        in the ctor
-
+        Operate on a TaskObject using its Directory attribute
+        to generate a concrete dir in the targetDir area specified by
+        this object
+        
         """
-        taskObject['Directory'].create(self.targetDir)
-        taskObject['Directory'].physicalPath = os.path.join(
-            self.targetDir,
-            taskObject['Directory'].name)
-        taskObject['RuntimeDirectory'] = "./%s" % (
-            taskObject['Directory'].name,)
-        taskObject['ShREEKTask'].attrs['Directory'] = "./%s" % (
-            taskObject['Directory'].name,)
-                                      
+        dmb = taskObjectRef['Directory']
+        if dmb == None:
+            #  //
+            # // If DMB is None, implies that there is no dir to
+            #//  be created for this object.
+            return 
+        dmb['QueryMethod'] = 'local'
+
+        
+        #  //
+        # // Create and populate the task directory
+        #//
+        builder = DMBPopulator(self.targetDir)
+        dmb.execute(builder)
+        dmb['PathName'] = self.targetDir
+        taskObjectRef['RuntimeDirectory'] = "%s" % dmb['BaseName']
+        taskObjectRef['ShREEKTask'].attrs['Directory'] = "./%s" % (
+            dmb['BaseName'],
+            )
         return
-
-
-    
-    
-
+        
 
 
 class PathAccumulator:
@@ -80,14 +87,14 @@ class PathAccumulator:
         as the TaskObject Tree
 
         """
-        directory = taskObject.get('Directory', None)
-        if directory == None:
+        dmb = taskObject['Directory']
+        if dmb == None:
             #  //
             # // If DMB is None, implies that there is no dir to
             #//  be created for this object.
             return 
         
-        self.steps.insert(0, directory.name)
+        self.steps.insert(0, dmb['BaseName'])
 
         if taskObject.parent != None:
             self(taskObject.parent)
@@ -118,8 +125,6 @@ class PathAccumulator:
             result = os.path.join(result, item)
         return result
         
-
-
     
 
 class TreeTaskDirBuilder:
@@ -142,6 +147,15 @@ class TreeTaskDirBuilder:
         this object
         
         """
+        dmb = taskObjectRef['Directory']
+        if dmb == None:
+            #  //
+            # // If DMB is None, implies that there is no dir to
+            #//  be created for this object.
+            return 
+        dmb['QueryMethod'] = 'local'
+
+
         accum = PathAccumulator(self.targetDir)
         accum(taskObjectRef)
         targetPath = accum.result()
@@ -149,14 +163,9 @@ class TreeTaskDirBuilder:
         #  //
         # // Create and populate the task directory
         #//
-        taskObjectRef['Directory'].create(os.path.dirname(targetPath))
-        taskObjectRef['Directory'].physicalPath = targetPath
+        builder = DMBPopulator(os.path.dirname(targetPath))
+        dmb.execute(builder)
+        dmb['PathName'] = os.path.dirname(targetPath)
         taskObjectRef['RuntimeDirectory'] = accum.relativePath()
         taskObjectRef['ShREEKTask'].attrs['Directory'] = accum.relativePath()
         return
-
-
-
-
-
-    

@@ -9,22 +9,14 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.23 2007/03/13 11:48:24 bacchi Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.7 2006/05/04 13:07:54 bacchi Exp $"
 
 import os
 import logging
-import time
 from popen2 import Popen4
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
-from ProdAgentCore.PluginConfiguration import loadPluginConfig
-from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdAgentBOSS import BOSSCommands
-
-
-from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo,extractDashboardID
-
 
 class SubmitterInterface:
     """
@@ -38,50 +30,14 @@ class SubmitterInterface:
     """
     def __init__(self):
         self.parameters = {}
-        self.parameters['NoRecreate'] = True
-
         # Determine the location of the BOSS configuration files. These is 
         # expected to be in a specific location under the prodAgent workdir, 
-        # i.e. <prodAgentWorkDir>/bosscfg 
-        # AF: this is nolonger true.... pick up configdir from BOSS configDir
+        # i.e. <prodAgentWorkDir>/bosscfg
         cfgObject = loadProdAgentConfiguration()
         prodAgentConfig = cfgObject.get("ProdAgent")
         workingDir = prodAgentConfig['ProdAgentWorkDir'] 
         workingDir = os.path.expandvars(workingDir)
-        #AFself.bossCfgDir = workingDir + "/bosscfg/"
-        bossConfig = cfgObject.get("BOSS")
-        self.bossCfgDir = bossConfig['configDir']
-        
-        #  //
-        # // Load plugin configuration
-        #//
-        self.pluginConfig = None
-        try:
-            #  //
-            # // Always searches in JobSubmitter Config Block
-            #//  for parameter called SubmitterPluginConfig
-            self.pluginConfig = loadPluginConfig("JobSubmitter",
-                                                 "Submitter")
-        except StandardError, ex:
-            msg = "Failed to load Plugin Config for Submitter Plugin:\n"
-            msg += "Plugin Name: %s\n" % self.__class__.__name__
-            msg += str(ex)
-            logging.warning(msg)
-            
-        self.checkPluginConfig()
-
-    def checkPluginConfig(self):
-        """
-        _checkPluginConfig_
-
-        Override this method to check/set defaults etc for the
-        Plugin config for the Submitter Plugin being used
-
-        If self.pluginConfig == None, there was an error loading the config
-        or it was not found
-
-        """
-        pass
+        self.bossCfgDir = workingDir + "/bosscfg/"
     
     def doSubmit(self, wrapperScript, jobTarball):
         """
@@ -97,22 +53,6 @@ class SubmitterInterface:
         msg =  "Virtual Method SubmitterInterface.doSubmit called"
         raise RuntimeError, msg
         
-    def editDashboardInfo(self, dashboardInfo):
-        """
-        _editDashboardInfo_
-
-        Add data about submission to DashboardInfo dictionary before
-        it is published to the dashboard
-
-        A default set of information will be sent if this method is not
-        overridden.
-
-        If dashboardInfo is None, it is not available for this job.
-
-        """
-        pass
-    
-
     
     def generateWrapper(self, wrapperName, tarball, jobname):
         """
@@ -181,24 +121,6 @@ class SubmitterInterface:
                 # // NoRecreate is False, so we recreate 
                 #//
                 tarball = createTarball(workingDir, jobCreationArea, jobname)
-            else:
-                tarball = tarballName 
-
-        #  //
-        # // After creation of the tarball, cleanup the job area used to
-        #//  make it.
-        #  //
-        # // Subclasses can disable this by adding
-        #//  self.parameters["CleanTarInput"] = False to their ctor
-        if self.parameters.get("CleanTarInput", True):
-            #  //
-            # // Clean up tar input.
-            #//
-            logging.debug("SubmitterInterface:Cleaning Tar Input")
-            logging.debug("Removing: %s" % jobCreationArea)
-            os.system("/bin/rm -rf %s" % jobCreationArea)
-            
-            
                 
         wrapperName = os.path.join(workingDir, "%s-submit" % jobname)
         logging.debug("SubmitterInterface:Tarball=%s" % tarball)
@@ -225,36 +147,9 @@ class SubmitterInterface:
         self.parameters['Wrapper'] = wrapperName
         self.parameters['AppVersions'] = \
                    self.parameters['JobSpecInstance'].listApplicationVersions()
-        self.parameters['Blacklist'] = \
-                   self.parameters['JobSpecInstance'].siteBlacklist
-        self.parameters['Whitelist'] = \
-                   self.parameters['JobSpecInstance'].siteWhitelist
-
-
-        self.parameters['DashboardInfo'] = None
-        self.parameters['DashboardID'] = None
-        dashboardInfoFile = os.path.join(
-            os.path.dirname(jobCreationArea), 'DashboardInfo.xml')
-        if os.path.exists(dashboardInfoFile):
-            dashboardInfo = DashboardInfo()
-            dashboardInfo.read(dashboardInfoFile)
-            # no need to add timestamp, this makes the ID inconsistent
-            # between submission and runtime evansde 18/01/07
-            # re-add the timestamp so that at least LCG resubmission are recorded (hopefully) properly afnafani 07/03/07 
-#AF            dashboardInfo.job = "%s_%s" % (dashboardInfo.job, time.time())
-# AF : trying to extract DashboardID from JobSpec:  from ID
-            jobSpecFile = "%s/%s-JobSpec.xml" % (
-                os.path.dirname(jobCreationArea), self.parameters['JobName'])
-            dashboardInfo.task, dashboardInfo.job = \
-                           extractDashboardID(jobSpecFile)
-#AF
-            dashboardInfo['Scheduler'] = self.__class__.__name__
-            self.parameters['DashboardInfo'] = dashboardInfo
-            self.parameters['DashboardID'] = dashboardInfo.job
-            
-        
-              
-        
+        bossId = self.isBOSSDeclared()
+        if bossId != None:
+            self.parameters['BOSSID'] = bossId
             
 
         #  //
@@ -262,17 +157,10 @@ class SubmitterInterface:
         #//
         self.generateWrapper(wrapperName, tarball, jobname)
 
-
-        #  //
-        # // Invoke Hook to edit the DashboardInfo with submission 
-        #//  details in plugins and then publish the dashboard info.
-        
         #  //
         # // Invoke whatever is needed to do the submission
         #//
         self.doSubmit(wrapperName, tarball)
-        self.editDashboardInfo(self.parameters['DashboardInfo'])
-        self.publishSubmitToDashboard(self.parameters['DashboardInfo'])
         
         return
 
@@ -310,50 +198,170 @@ class SubmitterInterface:
         """
         return os.path.join(targetDir, "%s.tar.gz" % jobName)
 
-    def publishSubmitToDashboard(self, dashboardInfo):
+    def declareToBOSS(self):
         """
-        _publishSubmitToDashboard_
+        _declareToBOSS_
 
-        Publish the dashboard info to the appropriate destination
-
-        NOTE: should probably read destination from cfg file, hardcoding
-        it here for time being.
+        Declare this job to BOSS.
+        Parameters are extracted from this instance
 
         """
-        if dashboardInfo == None:
-            logging.debug(
-                "SubmitterInterface: No DashboardInfo available for job"
-                )
-            return
+        version="v4"   
+                                   
+        bossDeclare={"v3":self.BOSS3declare,"v4":self.BOSS4declare}
 
-        dashboardInfo['ApplicationVersion'] = self.listToString(self.parameters['AppVersions'])
-        dashboardInfo['TargetCE'] = self.listToString(self.parameters['Whitelist'])
-        dashboardInfo.addDestination("lxgate35.cern.ch", 8884)
-        dashboardInfo.publish(5)
+        logging.debug("SubmitterInterface:Declaring Job To BOSS")
+        bossJobId=bossDeclare[version]()
+
+        idFile = "%s/%sid" % (
+            self.parameters['JobCacheArea'], self.parameters['JobName'],
+            )
+        handle = open(idFile, 'w')
+        handle.write("JobId=%s" % bossJobId)
+        handle.close()
+        logging.debug("SubmitterInterface:BOSS JobID File:%s" % idFile)
+        #os.remove(cladfile)
         return
-        
 
-
-        
-    def listToString(self,listInstance):
+    def isBOSSDeclared(self):
         """
-        _listToString_
-        
-        Lists to string conversion util for Dashboard formatting
-        
+        _isBOSSDeclared_
+
+        If this job has been declared to BOSS, return the BOSS ID
+        from the cache area. If it has not, return None
+
         """
-        result = str(listInstance)
-        result = result.replace('[', '')
-        result = result.replace(']', '')
-        result = result.replace(' ', '')
-        result = result.replace('\'', '')
-        return result
+        idFile = "%s/%sid" % (
+            self.parameters['JobCacheArea'], self.parameters['JobName'],
+            )
+        if not os.path.exists(idFile):
+            #  //
+            # // No BOSS Id File ==> not declared
+            #//
+            return None
+        content = file(idFile).read().strip()
+        content=content.replace("JobId=", "")
+        try:
+            jobId = int(content)
+        except ValueError:
+            jobId = None
+        return jobId
+        
 
         
+    def BOSS4declare(self):
+        """
+        BOSS4declare
+
+        BOSS 4 command to declare a task
+        """
+        
+        bossQuery = "bossAdmin SQL -query \"select id from PROGRAM_TYPES "
+        bossQuery += "where id = 'cmssw'\" -c " + self.bossCfgDir
+        queryOut = self.executeCommand(bossQuery)
+        bossJobType = "cmssw"
+        if queryOut.find("cmssw") < 0:
+            bossJobType=""
+        
+
+        logging.debug( "bossJobType = %s"%bossJobType)
+        xmlfile = "%s/%sdeclare.xml" % (
+            self.parameters['JobCacheArea'], self.parameters['JobName'],
+            )
+        logging.debug( "xmlfile=%s"%xmlfile)
+        bossDeclare = "boss declare -xmlfile %s"%xmlfile + "  -c " + self.bossCfgDir
+        declareClad=open(xmlfile,"w")
+        declareClad.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
+        
+        declareClad.write("<task name=\"%s\">"%self.parameters['JobName'])
+        declareClad.write("<chain scheduler=\"%s\" rtupdater=\"mysql\" ch_tool_name=\"\">"%self.parameters['Scheduler'])
+        declareClad.write(" <program exec=\"%s\" args=\"\" stderr=\"%s.stderr\" program_types=\"%s\" stdin=\"\" stdout=\"%s.stdout\"  infiles=\"%s,%s\" outfiles=\"*.root,%s.stdout,%s.stderr,FrameworkJobReport.xml\"  outtopdir=\"\"/></chain></task>"% (os.path.basename(self.parameters['Wrapper']), self.parameters['JobName'],bossJobType, self.parameters['JobName'],self.parameters['Wrapper'],self.parameters['Tarball'], self.parameters['JobName'], self.parameters['JobName']))
+        declareClad.close()
+        logging.debug("SubmitterInterface:BOSS xml declare file written:%s" % xmlfile)
+
+        #  //
+        # // Do BOSS Declare
+        #//
+        bossJobId = self.executeCommand(bossDeclare)
+        print bossJobId
+        bossJobId = bossJobId.split("TASK_ID:")[1].split("\n")[0].strip()
+        logging.debug("SubmitterInterface:BOSS Job ID: %s" % bossJobId)
+        #os.remove(xmlfile)
+        return bossJobId
+        
+
+
+        
+    def BOSS3declare(self):
+        """
+        BOSS3declare
+
+        BOSS 3 command to declare a task
+        """
+        bossQuery = "boss SQL -query \"select name from JOBTYPE "
+        bossQuery += "where name = 'cmssw'\""
+        queryOut = self.executeCommand(bossQuery)
+        bossJobType = "cmssw"
+        if queryOut.find("cmssw") < 0:
+            bossJobType="stdjob"
+        cladfile = "%s/%s.clad" % (
+            self.parameters['JobCacheArea'], self.parameters['JobName'],
+            )
+        print "cladfile=%s"%cladfile
+        declareClad=open(cladfile,"w")
+        declareClad.write("executable = %s;\n" % ( os.path.basename(self.parameters['Wrapper'])))
+        declareClad.write("group = %s;\n" % self.parameters['JobName'])
+        
+        declareClad.write("jobtype = %s;\n" % bossJobType)
+        declareClad.write("stdout = %s.stdout;\n" % self.parameters['JobName'])
+        declareClad.write("stderr = %s.stderr;\n"% self.parameters['JobName'])
+        declareClad.write("infiles = %s,%s;\n" % (
+            self.parameters['Wrapper'], self.parameters['Tarball'],
+            )
+                          )
+        outfiles = "outfiles = %s.stdout,%s.stderr," % (
+            self.parameters['JobName'], self.parameters['JobName'],
+            )
+        outfiles += "FrameworkJobReport.xml;\n" 
+        declareClad.write(outfiles)
+        declareClad.close()
+        logging.debug("SubmitterInterface:BOSS Classad written:%s" % cladfile)
+
+        #  //
+        # // Do BOSS Declare
+        #//
+        bossDeclare = "boss declare -classad %s " % cladfile
+        bossJobId = self.executeCommand(bossDeclare)
+        bossJobId = bossJobId.replace("Job ID","").strip()
+        logging.debug("SubmitterInterface:BOSS Job ID: %s" % bossJobId)
+        #os.remove(cladfile)
+        return bossJobId
+
+
+    def BOSS4submit(self,bossJobId):
+        """
+        BOSS4submit
+
+        BOSS 4 command to submit a task
+        """
+        bossSubmit = "boss submit "
+        bossSubmit += "-taskid %s " % bossJobId
+        bossSubmit += "-scheduler %s " %  self.parameters['Scheduler']
+        bossSubmit += " -c " + self.bossCfgDir + " "
+        return bossSubmit
                 
+    def BOSS3submit(self,bossJobId):
+        """
+        BOSS3submit
+
+        BOSS 3 command to submit a task
+        """
+        bossSubmit = "boss submit "
+        bossSubmit += "-jobid %s " % bossJobId
+        bossSubmit += "-scheduler %s " %  self.parameters['Scheduler']
+        return bossSubmit
 
 
-     
 def createTarball(targetDir, sourceDir, tarballName):
     """
     _createTarball_

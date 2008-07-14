@@ -12,15 +12,14 @@ the standard CMS error codes
 #//
 _StandardCMSVOSWDIR = \
 """
-# Check CMS_VO_SW_DIR is set or OSG_GRID
-if [ -n "$VO_CMS_SW_DIR" ] || [ -n "$OSG_GRID" ] ; then
+# Check CMS_VO_SW_DIR is set
+if [ -n "$VO_CMS_SW_DIR" ]; then
    echo "VO_CMS_SW_DIR is set to $VO_CMS_SW_DIR"
-   echo "or"
-   echo "OSG_GRID is set to $OSG_GRID"
 else
-   echo "ERROR: VO_CMS_SW_DIR or OSG_GRID is not set"
+   echo "ERROR: VO_CMS_SW_DIR is not set"
    prodAgentFailure 10030
 fi
+
 """
 
 #  //

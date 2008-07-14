@@ -11,8 +11,8 @@ import operator
 import types
 from MessageService.MessageService import MessageService
 from MessageService.MessageServiceStatus import MessageServiceStatus
-import ProdAgent.WorkflowEntities.Job as WEJobState
-
+import JobState.JobStateAPI.JobStateInfoAPI as JobStateStatus
+import JobState.JobStateAPI.JobStateChangeAPI as JobStateChange
 
 from xmlrpclib import Fault
 
@@ -182,7 +182,7 @@ class AdminControlInterface:
 
         """
         try:
-            return WEJobState.jobSpecTotal()
+            return JobStateStatus.jobSpecTotal()
         except StandardError, ex:
             msg = "Error retrieving JobSpec count:\n"
             msg += str(ex)
@@ -200,7 +200,7 @@ class AdminControlInterface:
         well not be performant.
 
         """
-        return WEJobState.rangeGeneral(offset, total)
+        return JobStateStatus.rangeGeneral(offset, total)
     
         
     def purgeProdAgentDB(self):
@@ -220,7 +220,7 @@ class AdminControlInterface:
             msg += str(ex)
             return Fault(1, msg)
         try:
-            WEJobState.purgeStates()
+            JobStateChange.purgeStates()
         except StandardError, ex:
             msg = "Failed to Purge States:\n"
             msg += str(ex)

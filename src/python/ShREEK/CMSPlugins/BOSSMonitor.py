@@ -53,9 +53,8 @@ class BOSSMonitor(ShREEKMonitor):
         """
         Periodic update.
         """
-        # do nothing:
-        #for key, value in monitorState.items():
-        #    print self._Prefix, "%s=%s" % (key, value)
+        for key, value in monitorState.items():
+            print self._Prefix, "%s=%s" % (key, value)
 
 
     #  //
@@ -87,15 +86,6 @@ class BOSSMonitor(ShREEKMonitor):
         print self._Prefix, "BOSSMonitor.taskEnd Task=%s Exit=%s Ended=%s" % (
             task.taskname(), exitCode, time.time()
             )
-        print self._Prefix, "Dump taskEnd FrameworkJobReport "
-        jobReport="FrameworkJobReport.xml"
-        if os.path.exists(jobReport):
-            handle = open(jobReport, 'r')
-            print handle.read()
-        else:
-            print "NOT FOUND: %s" % jobReport
-
-        print self._Prefix, "End Dump taskEnd FrameworkJobReport "
 
         
     def jobEnd(self):
@@ -103,15 +93,6 @@ class BOSSMonitor(ShREEKMonitor):
         Job ended notifier.
         """
         print self._Prefix, "BOSSMonitor.jobEnd Ended=%s"%time.time()
-        print self._Prefix, "Dump Final FrameworkJobReport "
-        jobReport="FrameworkJobReport.xml"
-        if os.path.exists(jobReport):
-            handle = open(jobReport, 'r')
-            print handle.read()
-        else:
-            print "NOT FOUND: %s" % jobReport
-
-        print self._Prefix, "End Dump Final FrameworkJobReport "
 
     def jobKilled(self):
         """
@@ -152,10 +133,8 @@ class BOSSMonitor(ShREEKMonitor):
         cpunumber=len(cpuList)
         cpu='unknown'
         if output.count(':') >0:
-            try:
-                cpu=cpuList[0].split(':')[1].strip()
-            except:
-                cpu='unknown'
+          cpu=cpuList[0].split(':')[1].strip()
+                                                                                                                 
         return cpu,cpunumber
 
 

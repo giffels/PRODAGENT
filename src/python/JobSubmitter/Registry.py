@@ -48,7 +48,7 @@ def registerSubmitter(objectRef, name):
     """
     if name in Registry.SubmitterRegistry.keys():
         msg = "Duplicate Name used to registerSubmitter object:\n"
-        msg += "%s already exists\n" % name
+        msg += "%s already exists\n"
         raise RuntimeError, msg
 
     if type(objectRef) != types.ClassType:

@@ -6,28 +6,18 @@ ProdAgent Component implementation to fake a call out to the ProdMgr to
 get the next available request allocation.
 
 """
-__version__ = "$Revision: 1.30 $"
-__revision__ = "$Id: ReqInjComponent.py,v 1.30 2007/08/01 14:17:30 afanfani Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: ReqInjComponent.py,v 1.6 2006/05/01 22:12:53 fvlingen Exp $"
 __author__ = "evansde@fnal.gov"
 
 
-from logging.handlers import RotatingFileHandler
 import os
 import logging
+from logging.handlers import RotatingFileHandler
 
-from ProdCommon.Database import Session
-from ProdCommon.MCPayloads.JobSpec import JobSpec
-
-from JobQueue.JobQueueAPI import bulkQueueJobs
-from ProdAgentDB.Config import defaultConfig as dbConfig
-from ProdAgent.WorkflowEntities import JobState
 from RequestInjector.RequestIterator import RequestIterator
 from MessageService.MessageService import MessageService
-
-from ProdAgentCore.Configuration import loadProdAgentConfiguration
-
-import ProdAgent.ResourceControl.ResourceControlAPI as ResourceControlAPI
-import ProdAgentCore.LoggingUtils as LoggingUtils
+from JobState.JobStateAPI import JobStateChangeAPI
 
 
 class ReqInjComponent:
@@ -43,21 +33,19 @@ class ReqInjComponent:
         self.args['Logfile'] = None
         self.args['JobState'] = True
         self.args['WorkflowCache'] = None
-        self.args['QueueJobMode'] = True
         self.args.update(args)
         self.job_state = self.args['JobState']
         
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
+        logHandler = RotatingFileHandler(self.args['Logfile'],
+                                         "a", 1000000, 3)
+        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
+        logHandler.setFormatter(logFormatter)
+        logging.getLogger().addHandler(logHandler)
+        logging.getLogger().setLevel(logging.INFO)
 
-        LoggingUtils.installLogHandler(self)
-
-        self.queueMode = False
-        if str(self.args['QueueJobMode']).lower() == "true":
-            self.queueMode = True
-        self.bulkTestMode = False
-            
         if self.args['WorkflowCache'] == None:
             self.args['WorkflowCache'] = os.path.join(
                 self.args['ComponentDir'], "WorkflowCache")
@@ -67,9 +55,7 @@ class ReqInjComponent:
         self.iterators = {}
         self.iterator = None
         self.ms = None
-        msg = "RequestInjector Component Started\n"
-        msg += " => QueueMode: %s\n" % self.queueMode
-        logging.info(msg)
+        logging.info("RequestInjector Component Started")
         
     def __call__(self, event, payload):
         """
@@ -78,8 +64,8 @@ class ReqInjComponent:
         Define call for this object to allow it to handle events that
         it is subscribed to
         """
-        if event == "RequestInjector:ResourcesAvailable":
-            self.makeJobs(payload)
+        if event == "ResourcesAvailable":
+            self.newJob()
             return
         if event == "RequestInjector:SetWorkflow":
             self.newWorkflow(payload)
@@ -87,13 +73,7 @@ class ReqInjComponent:
         if event == "RequestInjector:SelectWorkflow":
             self.selectWorkflow(payload)
             return
-        if event == "RequestInjector:SetSitePref":
-            self.setSitePref(payload)
-            return
-
-        if event == "AcceptedJob":
-            self.removeJobSpec(payload)
-            return
+            
         if event == "RequestInjector:NewDataset":
             self.newDataset()
             return
@@ -105,10 +85,6 @@ class ReqInjComponent:
             return
         if event == "RequestInjector:SetInitialRun":
             self.setInitialRun(payload)
-            return
-        if event == "RequestInjector:SetBulkMode":
-            self.setBulkMode()
-            logging.info(" => BulkTestMode: %s\n"% self.bulkTestMode)
             return
         if event == "RequestInjector:StartDebug":
             logging.getLogger().setLevel(logging.DEBUG)
@@ -163,45 +139,11 @@ class ReqInjComponent:
         os.system(migrateCommand)
         workflowName = os.path.basename(workflowFile)
         workflowPath = os.path.join( self.args['WorkflowCache'], workflowName)
-        try:
-            newIterator = RequestIterator(workflowPath,
+        newIterator = RequestIterator(workflowPath,
                                       self.args['ComponentDir'] )
-            self.iterators[workflowName] = newIterator
-        except StandardError, ex:
-             logging.error("ERROR Loading NEW Workflow: %s : %s" % (workflowName, ex))
-             logging.error("Cannot create jobs for Workflow : %s "%workflowName)
-             return
-        except:
-             logging.error("ERROR Loading NEW Workflow: %s " % (workflowName))
-             logging.error("Cannot create jobs for Workflow : %s "%workflowName)
-             return
-
+        self.iterators[workflowName] = newIterator
         self.iterator = newIterator
-        self.iterator.loadPileupDatasets()
-        SEnames=self.iterator.loadPileupSites()
-        if (isinstance(SEnames,list)) and len(SEnames) > 0:
-           site=",".join(SEnames)
-           self.setSitePref(site) 
-
-        
-        self.ms.publish("NewWorkflow", workflowPath)
-        self.ms.publish("NewDataset", workflowPath)
-        self.ms.commit()     
         return
-
-    def removeJobSpec(self, jobSpecId):
-        """
-        _removeJobSpec_
-
-        Remove the spec file for the job spec ID provided
-
-        """
-        for iterName, iterInstance in self.iterators.items():
-            if jobSpecId.startswith(jobSpecId):
-                iterInstance.removeSpec(jobSpecId)
-                iterInstance.save(self.args['WorkflowCache'])
-        return
-    
 
     def selectWorkflow(self, workflowName):
         """
@@ -221,119 +163,10 @@ class ReqInjComponent:
             logging.error(msg)
             return
         self.iterator = self.iterators[workflowName]
-        currWorkflow = os.path.join( self.args['WorkflowCache'],
-                                     "current.workflow")
-        handle = open(currWorkflow, 'w')
-        handle.write(workflowName)
-        handle.close()
         return
     
-    def setSitePref(self, sitePrefName):
-        """
-        _setSitePref_
-
-        Add a site preference for the current workflow, this will
-        be added to the JobSpecs site whitelist of all the jobs created
         
-        """
-        logging.debug("SetSitePref:%s" % sitePrefName)
-        if self.iterator == None:
-            msg = "RequestInjector: No Workflow Set, cannot set Site Pref"
-            msg += "You need to send a RequestInjector:SetWorkflow event"
-            msg += "With the file containing the workflow as the payload"
-            logging.warning(msg)
-            return
-        self.iterator.sitePref = sitePrefName
-        self.iterator.save(self.args['WorkflowCache'])
-        return
-
-    def makeJobs(self, payload):
-        """
-        _makeJobs_
-
-        Make N jobs and publish CreateJob or QueueJob events
-        for the job specs.
-
-        If bulkTestMode is used, create a bulk JobSpec instead
-        of individual job specs.
-
-        """
-        try:
-            nCalls = int(payload)
-        except ValueError:
-            nCalls = 1
-
-        logging.info("Creating %s job(s)" % nCalls)
-        jobSpecs = []
-        for i in range(0, nCalls):
-            jobSpecs.append(self.newJob())
-            
-            
-        if self.queueMode:
-            #  //
-            # // first check site prefs are known (if any)
-            #//
-            sites = []
-            if self.iterator == None:
-               msg = "RequestInjector: No Workflow Set or Invalid one, cannot create job"
-               msg += "You need to send a RequestInjector:SetWorkflow event"
-               msg += "With the file containing the workflow as the payload\n"
-               msg += "or\n"
-               msg += "Remove the invalid workflow files from RequestInjector/WorkflowCache and retry"
-               logging.warning(msg)
-               return None
-
-            sitePref = self.iterator.sitePref
-            if sitePref != None:
-                #  //
-                # // List Of sites?
-                #//
-                if sitePref.find(",") > -1:
-                    sitePrefs = sitePref.split(',')
-                else:
-                    sitePrefs = [sitePref]
-
-                    
-                for s in sitePrefs:
-                    #  //
-                    # // Do we know about this site?
-                    #//
-
-                    config = loadProdAgentConfiguration()
-                    JQConfig = config.getConfig("JobQueue")
-                    VerifySites = JQConfig.get("VerifySites", None)
-                    if str(VerifySites).lower() in ("false", "no"):
-                          VerifySites = False
-                    if str(VerifySites).lower() in ("true", "yes"):
-                          VerifySites = True
-
-                    siteIndex = ResourceControlAPI.knownSite(s)
-                    if siteIndex == None:
-                       if VerifySites:
-                        msg = "Error: Site %s not known\n" % s
-                        msg += "Cannot queue jobs for unknown site!!!"
-                        logging.error(msg)
-                        return
-                    if VerifySites:
-                       sites.append(s)
-                    else:
-                       sites=[]
-
-            logging.info("Sites List: %s" % sites)
-            bulkQueueJobs(sites, *jobSpecs)
-            return
-                
-        else:
-            for jobSpec in jobSpecs:
-                self.ms.publish("CreateJob", jobSpec['JobSpecFile'])
-                self.ms.commit()
-                
-                    
-
-
-                    
-        return
-    
+        
     def newJob(self):
         """
         _newJob_
@@ -349,31 +182,29 @@ class ReqInjComponent:
             msg += "You need to send a RequestInjector:SetWorkflow event"
             msg += "With the file containing the workflow as the payload"
             logging.warning(msg)
-            return None
-
-
-        self.iterator.load(self.args['WorkflowCache'])
+            return
         jobSpec = self.iterator()
-        self.iterator.save(self.args['WorkflowCache'])
-        jobData = {
-            "JobSpecId" : self.iterator.currentJob,
-            "JobSpecFile" : jobSpec,
-            "JobType" : "Processing",
-            "WorkflowSpecId" : self.iterator.workflowSpec.workflowName(),
-            "WorkflowPriority": self.iterator.workflowSpec.parameters.get(
-            "WorkflowPriority", 1),
-            }
-
+        #  //
+        # // Save last known counter in WorkflowCache area for workflow
+        #//
+        workflowCount = os.path.join(
+            self.args['WorkflowCache'],
+            "%s%s"  % (os.path.basename(self.iterator.workflow), ".counter") )
+        handle = open(workflowCount, 'w')
+        handle.write("%s" % self.iterator.count)
+        handle.close()
         
         if self.job_state:
             try: 
                 jobSpecID = self.iterator.currentJob
                 # NOTE: temporal fix for dealing with duplicate job spec:
-                JobState.cleanout(jobSpecID)
+                JobStateChangeAPI.cleanout(jobSpecID)
             except StandardError, ex:
                 logging.error('ERROR: '+str(ex))
         
-        return jobData
+        self.ms.publish("CreateJob", jobSpec)
+        self.ms.commit()
+        return
 
     def setEventsPerJob(self, numEvents):
         """
@@ -395,7 +226,15 @@ class ReqInjComponent:
             logging.warning(msg)
             return
         self.iterator.eventsPerJob = eventsPerJob
-        self.iterator.save(self.args['WorkflowCache'])
+        #  //
+        # // Save last known events per job in WorkflowCache area for workflow
+        #//
+        workflowEvents = os.path.join(
+            self.args['WorkflowCache'],
+            "%s%s"  % (os.path.basename(self.iterator.workflow), ".events") )
+        handle = open(workflowEvents, 'w')
+        handle.write("%s" % self.iterator.eventsPerJob)
+        handle.close()
         return
 
     def setInitialRun(self, initialRun):
@@ -418,19 +257,16 @@ class ReqInjComponent:
             logging.warning(msg)
             return
         self.iterator.count = run
-        self.iterator.save(self.args['WorkflowCache'])
+        #  //
+        # // Save last known counter in WorkflowCache area for workflow
+        #//
+        workflowCount = os.path.join(
+            self.args['WorkflowCache'],
+            "%s%s"  % (os.path.basename(self.iterator.workflow), ".counter") )
+        handle = open(workflowCount, 'w')
+        handle.write("%s" % self.iterator.count)
+        handle.close()
         return
-
-    def setBulkMode(self):
-        """
-        _setBulkMode_
-
-        """
-        self.args['BulkTestMode'] = True 
-        self.bulkTestMode = True
-        return
-
-
 
     def loadWorkflows(self):
         """
@@ -449,9 +285,6 @@ class ReqInjComponent:
         for item in fileList:
             if not item.endswith(".xml"):
                 continue
-            if item.endswith("-Persist.xml"):
-                # persistency file, not a workflow
-                continue
             pathname = os.path.join(self.args['WorkflowCache'], item)
             if not os.path.exists(pathname):
                 continue
@@ -469,14 +302,24 @@ class ReqInjComponent:
             #  //
             # // try and load event and run count.
             #//
-            iterator.load( self.args['WorkflowCache'])
-            
-        currWorkflow = os.path.join( self.args['WorkflowCache'],
-                                     "current.workflow")
-        if os.path.exists(currWorkflow):
-            content = readStringFromFile(currWorkflow)
-            self.selectWorkflow(content)
-            
+            eventsFile = os.path.join(self.args['WorkflowCache'],
+                                      "%s.events" % item)
+            counterFile = os.path.join(self.args['WorkflowCache'],
+                                       "%s.counter" % item)
+            eventsValue = readIntFromFile(eventsFile)
+            counterValue = readIntFromFile(counterFile)
+            logging.debug("EventCounter for workflow %s = %s" % (
+                item, eventsValue)
+                          )
+            logging.debug("RunCounter for workflow %s = %s" % (
+                item, counterValue)
+                          )
+            if eventsValue != None:
+                iterator.eventsPerJob = eventsValue
+
+            if counterValue != None:
+                iterator.count = counterValue
+                
         return
     
             
@@ -495,31 +338,22 @@ class ReqInjComponent:
         self.ms.registerAs("RequestInjector")
                                                                                 
         # subscribe to messages
-        self.ms.subscribeTo("RequestInjector:ResourcesAvailable")
+        self.ms.subscribeTo("ResourcesAvailable")
         self.ms.subscribeTo("RequestInjector:SetWorkflow")
         self.ms.subscribeTo("RequestInjector:LoadWorkflows")
         self.ms.subscribeTo("RequestInjector:SelectWorkflow")
         self.ms.subscribeTo("RequestInjector:NewDataset")
         self.ms.subscribeTo("RequestInjector:SetEventsPerJob")
         self.ms.subscribeTo("RequestInjector:SetInitialRun")
-        self.ms.subscribeTo("RequestInjector:SetSitePref")
-        self.ms.subscribeTo("RequestInjector:SetBulkMode")
         self.ms.subscribeTo("RequestInjector:StartDebug")
         self.ms.subscribeTo("RequestInjector:EndDebug")
-        self.ms.subscribeTo("AcceptedJob")
         
         # wait for messages
         while True:
-            Session.set_database(dbConfig)
-            Session.connect()
-            Session.start_transaction()
             msgtype, payload = self.ms.get()
             self.ms.commit()
             logging.debug("ReqInjector: %s, %s" % (msgtype, payload))
             self.__call__(msgtype, payload)
-            Session.commit_all()
-            Session.close_all()
-
 
 
 
@@ -539,16 +373,3 @@ def readIntFromFile(filename):
     except ValueError:
         return None
     
-
-def readStringFromFile(filename):
-    """
-    _readStringFromFile_
-
-    util to extract file content as a string
-
-    """
-    if not os.path.exists(filename):
-        return None
-    content = file(filename).read()
-    content = content.strip()
-    return content

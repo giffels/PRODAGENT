@@ -17,12 +17,10 @@ from logging.handlers import RotatingFileHandler
 import os
 import socket
 
+from ErrorHandler.Registry import retrieveHandler
+from ErrorHandler.Registry import Registry 
 from MessageService.MessageService import MessageService
 
-from ProdAgentDB.Config import defaultConfig as dbConfig
-from ProdCommon.Database import Session
-from ProdCommon.Core.GlobalRegistry import retrieveHandler
-from ProdCommon.Core.GlobalRegistry import GlobalRegistry
 
 
 class ErrorHandlerComponent:
@@ -34,11 +32,7 @@ class ErrorHandlerComponent:
     a particular error handler is invoked.  For example the default 
     job failure error handler either submits a request for renewed 
     submission or cleanout the job information stored in the database 
-    and contact the ProdManager (through an event submission). 
-
-    If resubmission takes place, the size of the job cache is examined.
-    if found to larget, it is selectively purged by submitting a 
-    "PartialJobCleanup" event to the JobCleanup component.
+    and contact the ProdManager (through an event submission).
 
     """
 
@@ -47,18 +41,15 @@ class ErrorHandlerComponent:
          __init__
  
          initialization of the component. This methods defines
-         to what events this component subscribes and initializes
+         to what events this components subscribes and initializes
          the logging for this component.
 
          """
          self.args = {}
          # if nothing is set, the location for storing the job
          # reports when there is a failure will be in the tmp dir.
-         self.args['jobReportLocation'] = '/tmp/prodAgentJobReports'
-         self.args['ReportAction'] = 'noMove'
+         self.args['jobReportLocation']='/tmp/prodAgentJobReports'
          self.args['Logfile'] = None
-         self.args['MaxCacheDirSizeMB'] = 100
-         self.args['DelayFactor'] = 60
          self.args.update(args)
  
 
@@ -67,13 +58,6 @@ class ErrorHandlerComponent:
          self.args['Events']={'JobFailed':'runFailureHandler', \
                               'SubmissionFailed':'submitFailureHandler', \
                               'CreateFailed':'createFailureHandler'}
-
-         # check if we need to use non default handlers
-         for handler in self.args['Events'].keys():
-
-             # assign the non default handler if provided
-             if self.args.has_key(handler):
-                 self.args['Events'][handler] = self.args[handler]
 
          if self.args['Logfile'] == None:
               self.args['Logfile'] = os.path.join(self.args['ComponentDir'],\
@@ -111,26 +95,23 @@ class ErrorHandlerComponent:
                    logging.info("logging level changed to INFO")
                    return
               elif event in self.args['Events'].keys():
-                  handler=retrieveHandler(self.args['Events'][event],"ErrorHandler")
+                  handler=retrieveHandler(self.args['Events'][event])
                   handler.handleError(payload)
-              else:
-                  logging.error("No handler available for %s event with payload: %s" \
-                      %(event,str(payload)))
          except Exception, ex:
               logging.error("Failed to handle %s event with payload: %s" \
                             %(event,str(payload)))
               logging.error("Details: %s" % str(ex)) 
                 
-    def publishEvent(self,name,payload,delay="00:00:00"):
+    def publishEvent(self,name,payload):
         """
         _publishEvent_
          
         Method called by the handlers if they need to publish an event.
         This method automatically chooses the message service consistent
-        with its configuration and commits the publication.
+        with its configuration.
 
         """   
-        self.ms.publish(name,payload,delay)
+        self.ms.publish(name,payload)
         self.ms.commit()
 
  
@@ -142,12 +123,11 @@ class ErrorHandlerComponent:
  
          """
          # prepare handlers:
-         for handlerName in GlobalRegistry.registries["ErrorHandler"].keys():
-             handler=GlobalRegistry.registries["ErrorHandler"][handlerName]
+         for handlerName in Registry.HandlerRegistry.keys():
+             handler=Registry.HandlerRegistry[handlerName]
              handler.publishEvent=self.publishEvent
-             handler.args=self.args
-             #NOTE: remove this
-             handler.maxCacheDirSizeMB=self.args['MaxCacheDirSizeMB']
+             if (handlerName == "runFailureHandler"):
+                 handler.setJobReportLocation(self.args['jobReportLocation'])
                  
          # main body using persistent based message server
          logging.info("ErrorHandler persistent based message service Starting...")
@@ -167,14 +147,7 @@ class ErrorHandlerComponent:
          self.ms.commit()
          # wait for messages
          while True:
-             Session.set_database(dbConfig)
-             Session.connect()
-             Session.start_transaction()
              type, payload = self.ms.get()
-
+             self.ms.commit()
              logging.debug("ErrorHandler: %s, %s" % (type, payload))
              self.__call__(type, payload)
-
-             Session.commit_all()
-             Session.close_all()
-             self.ms.commit()

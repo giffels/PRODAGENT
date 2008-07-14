@@ -19,8 +19,8 @@ ms.registerAs("TestComponent")
 ms.subscribeTo("JobSubmitted")
 ms.subscribeTo("SubmissionFailed")
 # Job Tracker generated
-#ms.subscribeTo("JobFailed")
-#ms.subscribeTo("JobSuccess")
+ms.subscribeTo("JobFailed")
+ms.subscribeTo("JobSuccess")
 
 # Error Handler generated
 ms.subscribeTo("SubmissionFailed")
@@ -38,9 +38,8 @@ ms.publish("RequestInjector:StartDebug","none")
 ms.publish("JobCreator:StartDebug","none")
 ms.publish("JobSubmitter:StartDebug","none")
 ms.publish("ErrorHandler:StartDebug","none")
-ms.publish("JobCleanup:StartDebug","none")
 #ms.publish("JobSubmitter:SetSubmitter","boss")
-#ms.publish("TrackingComponent:StartDebug","none")
+ms.publish("TrackingComponent:StartDebug","none")
 
 ms.publish("RequestInjector:SetWorkflow",dataPath+\
                  'workflowSpec/PreProdR2Electron300GeV-Workflow.xml')

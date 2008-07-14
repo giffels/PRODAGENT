@@ -6,15 +6,15 @@ _Conditional_
 Conditional Object definition
 
 """
-__revision__ = "$Id: Conditional.py,v 1.1 2006/04/10 17:38:44 evansde Exp $"
+__revision__ = "$Id: Conditional.py,v 1.1 2005/12/30 18:54:26 evansde Exp $"
 __version__ = "$Revision: 1.1 $"
 __author__ = "evansde@fnal.gov"
 
 from ShREEK.ShREEKException import ShREEKException
+from ShLogger.LogInterface import LogInterface
 from IMProv.IMProvNode import IMProvNode
 
-
-class Conditional:
+class Conditional(LogInterface):
     """
     _Conditional_
 
@@ -23,6 +23,7 @@ class Conditional:
     to evaluate controld point specifics
     """
     def __init__(self):
+        LogInterface.__init__(self)
         self.name = self.__class__.__name__
         self.attrs = {}
         self.content = None

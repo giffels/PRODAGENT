@@ -20,8 +20,8 @@ to this handler using the HandlerInterface method:
 handlerError(payload).
 
 """
-__revision__ = "$Id: __init__.py,v 1.3 2006/05/19 15:10:35 fvlingen Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: __init__.py,v 1.2 2006/05/02 05:51:56 fvlingen Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "fvlingen@caltech.edu"
 
 import ErrorHandler.Handlers

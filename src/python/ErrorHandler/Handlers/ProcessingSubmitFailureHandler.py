@@ -3,14 +3,19 @@
 import logging
 
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
-from ProdCommon.Core.GlobalRegistry import registerHandler
+from ErrorHandler.Registry import registerHandler
+
+from JobState.Database.Api.RetryException import RetryException
+from JobState.JobStateAPI import JobStateChangeAPI
 
 class ProcessingSubmitFailureHandler(HandlerInterface):
     """
     _ProcessingSubmitFailureHandler_
 
-    Failure handler for dealing with specific submit failures of processing type 
-    jobs.   
+    Processing submission error handler that either generates a new submit event
+    or cleans out the job information if the maximum number of retries
+    has been reached (and generates a general failure event).
+
     """
 
     def __init__(self):
@@ -18,9 +23,22 @@ class ProcessingSubmitFailureHandler(HandlerInterface):
 
     def handleError(self,payload):
          jobId = payload
-         logging.debug(">ProcessingSubmitFailureHandler<: do nothing 4 the moment") 
 
-registerHandler(ProcessingSubmitFailureHandler(),"ProcessingSubmitFailureHandler","ErrorHandler")
+         try:
+              JobStateChangeAPI.submitFailure(jobId)
+              logging.debug(">ProcessingSubmitFailureHandler<: Registered "+\
+                            "a job submit failure,"\
+                            "publishing a submit job event")
+              self.publishEvent("SubmitJob",(jobId))
+         except RetryException:
+              logging.debug(">ProcessingSubmitFailureHandler<: Registered "+\
+                            "a job submit failure "+ \
+                            "Maximum number of retries reached!" +\
+                            " Submitting a failure job and cleanpu event ")
+              self.publishEvent("JobCleanup",(jobId))
+              self.publishEvent("GeneralJobFailure",(jobId))
+
+registerHandler(ProcessingSubmitFailureHandler(),"processingSubmitFailureHandler")
 
 
 

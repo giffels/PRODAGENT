@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 
-from ProdAgentDB.Config import defaultConfig
 try:
    import MySQLdb
 except:
@@ -12,43 +11,33 @@ except:
                             "more information at: " \
                             "http://sourceforge.net/projects/mysql-python ")
 import time
-import logging
 
 # Cache (connection pool) so we can reuse connections.
 __connectionCache={}
 # Refresh connections every 4 hours
-__refreshPeriod=int(defaultConfig['refreshPeriod'])
+__refreshPeriod=4*3600
+# Check the connection every 3 minutes.
+__checkConnectionPeriod=3*60
 # Try to connect a maximum of 5 times.
-__maxConnectionAttempts=int(defaultConfig['maxConnectionAttempts'])
+__maxConnectionAttempts=5
 # Time to wait to reconnect
-__dbWaitingTime=int(defaultConfig['dbWaitingTime'])
-# Set check connectivity period
-__checkConnectionPeriod = (__maxConnectionAttempts * __dbWaitingTime) / 2
-
+__dbWaitingTime=10
+       
 def connect(dbName,dbHost,dbUser,dbPasswd,socketLocation,portNr="",cache=True):
 
    """
-
-   _connect_
-
    Generic connect method that returns a connection opbject.
    We do not need to close this object as we can reuse it.
    We do however have a refresh period to prevent the connection 
    from actually "cutting" us of.
    """
    cacheKey=dbName+dbHost+dbUser+dbPasswd
-   if __connectionCache.has_key(cacheKey) and cache:
+   if __connectionCache.has_key(cacheKey):
        conn, staleness, lastCheck = __connectionCache[cacheKey]
        timeDiff=time.time()-staleness
-       if(timeDiff > __refreshPeriod) :
-           try:
-               conn.close()
-               del __connectionCache[cacheKey] 
-           except:
-               try:
-                   del __connectionCache[cacheKey] 
-               except:
-                   pass
+       if(timeDiff > __refreshPeriod) or not cache:
+           conn.close()
+           del __connectionCache[cacheKey] 
        else:
            # test if the connection is still open?
            # NOTE: is there a better way to do this?
@@ -63,7 +52,7 @@ def connect(dbName,dbHost,dbUser,dbPasswd,socketLocation,portNr="",cache=True):
                  cursor.execute("SELECT CURDATE()")
                  cursor.close()
                  return conn
-              except Exception,ex:
+              except:
                  pass
            else:
               return conn
@@ -77,8 +66,7 @@ def connect(dbName,dbHost,dbUser,dbPasswd,socketLocation,portNr="",cache=True):
                conn=MySQLdb.Connect(unix_socket=socketLocation,\
                                    host=dbHost,db=dbName,\
                                    user=dbUser,passwd=dbPasswd)
-           if cache:
-               __connectionCache[cacheKey]=(conn,time.time(),time.time())
+           __connectionCache[cacheKey]=(conn,time.time(),time.time())
            return conn
        except Exception, v:
            # wait and try again.

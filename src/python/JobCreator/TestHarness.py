@@ -20,151 +20,78 @@ import os
 import sys
 import getopt
 import logging
-import hotshot, hotshot.stats
 logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler())
 
-from ProdCommon.MCPayloads.JobSpec import JobSpec
-from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-from JobCreator.Registry import retrieveGenerator, retrieveCreator
+from MCPayloads.JobSpec import JobSpec
+from JobCreator.JobGenerator import JobGenerator
 import JobCreator.Creators
-import JobCreator.Generators
 
-
-usage = "Usage: TestHarness.py --dir=<job creation dir>\n"
-usage += "                      --job-spec=<jobspec XML>\n"
-usage += "                      --workflow-spec=<workflow spec XML>\n"
-usage += "                      --creator=<creator name>\n"
-usage += "                      --generator=<generator name>\n"
-valid = ['dir=', 'workflow-spec=', 'job-spec=', "creator=", "generator="]
-try:
-    opts, args = getopt.getopt(sys.argv[1:], "", valid)
-except getopt.GetoptError, ex:
-    print usage
-    print str(ex)
-    sys.exit(1)
-
-workingDir = None
-workflowSpecFile = None
-jobSpecFile = None
-creator = None
-generator = None
-
-for opt, arg in opts:
-    if opt == "--dir":
-        workingDir = arg
-    if opt == "--job-spec":
-        jobSpecFile = arg
-    if opt == "--workflow-spec":
-        workflowSpecFile = arg
-    if opt == "--creator":
-        creator = arg
-    if opt == "--generator":
-        generator = arg
-    
-if workingDir == None:
-    print "No Working dir specified: --dir option is required"
-    sys.exit(1)
-if not os.path.exists(workingDir):
-    print "Working Dir Does Not Exist:"
-    print workingDir
-    sys.exit(1)
-
-if jobSpecFile == None:
-    print "No JobSpec file specified: Skipping JobSpec call"
-
-if jobSpecFile != None:
-    if not os.path.exists(jobSpecFile):
-        print "JobSpec File does not exist:"
-        print jobSpecFile
+if __name__ == '__main__':
+    usage = "Usage: TestHarness.py --dir=<job creation dir>\n"
+    usage += "                      --spec=<jobspec XML>\n"
+    usage += "                      --creator=<creator name>\n"
+    usage += "                      --submitter=<submitter name>\n"
+    valid = ['dir=', 'spec=', "creator=", "submitter="]
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "", valid)
+    except getopt.GetoptError, ex:
+        print usage
+        print str(ex)
         sys.exit(1)
 
-if workflowSpecFile == None:
-    print "No Workflow Spec file specified: --workflow-spec option is required"
-    sys.exit(1)
-if not os.path.exists(workflowSpecFile):
-    print "Workflow Spec File does not exist:"
-    print workflowSpecFile
-    sys.exit(1)
-
-
-
-
-try:
-    workflowSpec = WorkflowSpec()
-    workflowSpec.load(workflowSpecFile)
-except Exception, ex:
-    msg = "Error loading workflow spec file:\n"
-    msg += workflowSpecFile
-    msg += "\n"
-    msg += str(ex)
-    print msg
-    sys.exit(1)
-
-if creator == None:
-    print "No creator specified: --creator option is required"
-    sys.exit(1)
-if generator == None:
-    print "No generator specified: --generator option is required"
-    sys.exit(1)
-
-
-
-#  //
-# // Load the generator and process the workflow spec
-#//
-wfname = workflowSpec.workflowName()
-wfCache = os.path.join(workingDir, wfname)
-if not os.path.exists(wfCache):
-    os.makedirs(wfCache)
-    
-    
-gen = retrieveGenerator(generator)
-creatorInst = retrieveCreator(creator)
-gen.creator = creatorInst
-gen.workflowCache = wfCache
-gen.workflowFile = workflowSpecFile
-print "Generator on Workflow Spec:"
-gen.actOnWorkflowSpec(workflowSpec, wfCache)
-
-
-del gen
-del creatorInst
-#  //
-# // Now process the job spec 
-#//
-if jobSpecFile == None:
-    sys.exit(0)
-try:
-    jobSpec = JobSpec()
-    jobSpec.load(jobSpecFile)
-except StandardError, ex:
-    msg = "Error loading job spec file:\n"
-    msg += jobSpecFile
-    msg += "\n"
-    msg += str(ex)
-    print msg
-    sys.exit(1)
-
-jobname = jobSpec.parameters['JobName']
-jobCache = os.path.join(wfCache, jobname)
-if not os.path.exists(jobCache):
-    os.makedirs(jobCache)
-
-statsFile = "TestHarness_%s_%s.prof" % (generator, creator)
-prof = hotshot.Profile(statsFile)
-prof.start()
+    workingDir = None
+    specfile = None
+    creator = None
+    submitter = "noSubmit"
+    for opt, arg in opts:
+        if opt == "--dir":
+            workingDir = arg
+        if opt == "--spec":
+            specfile = arg
+        if opt == "--creator":
+            creator = arg
+        if opt == "--submitter":
+            submitter = arg
         
-gen = retrieveGenerator(generator)
-creatorInst = retrieveCreator(creator)
-gen.creator = creatorInst
-gen.workflowCache = wfCache
-gen.workflowFile = workflowSpecFile
-gen.jobCache = jobCache
-gen.actOnJobSpec(jobSpec, jobCache)
+    if workingDir == None:
+        print "No Working dir specified: --dir option is required"
+        sys.exit(1)
+    if not os.path.exists(workingDir):
+        print "Working Dir Does Not Exist:"
+        print workingDir
+        sys.exit(1)
 
-prof.stop()
-stats = hotshot.stats.load(statsFile)
-stats.strip_dirs()
-stats.sort_stats('time', 'calls')
-stats.print_stats(10)
+    if specfile == None:
+        print "No JobSpec file specified: --spec option is required"
+        sys.exit(1)
+    if not os.path.exists(specfile):
+        print "JobSpec File does not exist:"
+        print specfile
+        sys.exit(1)
+    try:
+        jobSpecInstance = JobSpec()
+        jobSpecInstance.load(specfile)
+    except StandardError, ex:
+        msg = "Error loading job spec file:\n"
+        msg += specfile
+        msg += "\n"
+        msg += str(ex)
+        print msg
+        sys.exit(1)
+
+    if creator == None:
+        print "No creator specified: --creator option is required"
+        sys.exit(1)
+
+    #  //
+    # // Initialise the JobGenerator 
+    #//
+    jobGen = JobGenerator(jobSpecInstance, {"ComponentDir" : workingDir,
+                                            "CreatorName"  : creator,
+                                            "SubmitterName" : submitter})
+    
+    #  //
+    # // Invoke the creator
+    #//
+    jobGen()

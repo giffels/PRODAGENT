@@ -15,24 +15,20 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.18 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.18 2007/08/23 13:21:52 afanfani Exp $"
+__version__ = "$Revision$"
+__revision__ = "$Id$"
 
 import os
 import logging
+from logging.handlers import RotatingFileHandler
 
-from ProdCommon.Database import Session
-from ProdCommon.MCPayloads.JobSpec import JobSpec
+
+from MessageService.MessageService import MessageService
 
 from JobSubmitter.Registry import retrieveSubmitter
-from JobSubmitter.JSException import JSException
-from MessageService.MessageService import MessageService
-from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdAgentDB.Config import defaultConfig as dbConfig
-from ProdAgent.WorkflowEntities import JobState
-import ProdAgentCore.LoggingUtils  as LoggingUtils
-
-from ProdCommon.Core.ProdException import ProdException
+from MCPayloads.JobSpec import JobSpec
+from JobState.JobStateAPI import JobStateChangeAPI
+from JobState.JobStateAPI import JobStateInfoAPI
 
 class JobSubmitterComponent:
     """
@@ -55,10 +51,13 @@ class JobSubmitterComponent:
 
         
             
-        LoggingUtils.installLogHandler(self)
-        msg = "JobSubmitter Component Started...\n"
-        msg += " => SubmitterName: %s\n" % self.args['SubmitterName']
-        logging.info(msg)
+        logHandler = RotatingFileHandler(self.args['Logfile'],
+                                         "a", 1000000, 3)
+        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
+        logHandler.setFormatter(logFormatter)
+        logging.getLogger().addHandler(logHandler)
+        logging.getLogger().setLevel(logging.INFO)
+        logging.info("JobSubmitter Component Started...")
         
         
 
@@ -79,12 +78,8 @@ class JobSubmitterComponent:
                 self.submitJob(payload)
                 return
             except StandardError, ex:
-                msg = "Failed to Submit Job: %s" % payload
-                msg += "Details: %s" % str(ex)
-                import traceback, sys
-                for x in traceback.format_tb(sys.exc_info()[2]):
-                    msg += str(x)
-                logging.error(msg)
+                logging.error("Failed to Submit Job: %s" % payload)
+                logging.error("Details: %s" % str(ex))
                 return
             
      
@@ -126,175 +121,34 @@ class JobSubmitterComponent:
         should simplify to just the jobSpecID with the JobStates 
 
         """
-        logging.debug("submitJob: %s" % payload)
-        jobSpecFile = payload
+        jobSpecId = payload
+        jobCache = JobStateInfoAPI.general(jobSpecId)['CacheDirLocation']
+        
+        jobToSubmit = os.path.join(jobCache, jobSpecId)
+        
+        
+        jobSpecFile = os.path.join(jobCache, "%s-JobSpec.xml" % jobSpecId)
+
+        
+        logging.debug("JobSpecID=%s" % jobSpecId)
+        logging.debug("JobCache=%s" % jobCache)
+        logging.debug("JobToSubmit=%s" % jobToSubmit)
+        logging.debug("JobSpecFile=%s" % jobSpecFile)
+
         try:
             jobSpecInstance = JobSpec()
             jobSpecInstance.load(jobSpecFile)
-            logging.debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-            logging.debug("whitelist=%s" % jobSpecInstance.siteWhitelist)
             #TEST ErrorHandler Comment Above, Uncomment below:
             #jobSpecInstance.load(jobSpecFile+"generate_error")
         except StandardError, ex:
-            msg = "Failed to read JobSpec File for Job\n"
+            msg = "Failed to read JobSpec File for Job %s\n" % jobSpecId
             msg += "From: %s\n" % jobSpecFile
-            msg += str(ex)
-            logging.error(msg)
-            self.ms.publish("SubmissionFailed", jobSpecFile)
-            self.ms.commit()
-            return
-        
-        # get submission counter
-        submissionCount = jobSpecInstance.parameters.get('SubmissionCount', 0)
-
-        if not jobSpecInstance.isBulkSpec():
-            logging.debug("Non Bulk Submission")
-            jobSpecId = jobSpecInstance.parameters['JobName']
-            jobState = self.checkJobState(jobSpecId)
-            jobCache = jobState.get('CacheDirLocation', None)
-            msg = "jobSpecId=%s\n" % jobSpecId
-            msg += "jobCache=%s\n" % jobCache
-            logging.debug(msg)
-            if jobCache == None:
-                #  //
-                # // JobState check failed and published a SubmissionFailed event
-                #//  nothing more to do
-                return
-
-            # get submission counter from database
-            retriesNumber = jobState['Retries']
-
-            # update jobSpec with new submission counter if necessary
-            if (int(retriesNumber) != int(submissionCount)):
-                jobSpecInstance.parameters['SubmissionCount'] = \
-                    str(retriesNumber)
-                jobSpecInstance.save(jobSpecFile)
-                logging.debug("Submission counter updated to " + \
-                              str(retriesNumber))
-            
-            jobToSubmit = os.path.join(jobCache, jobSpecId)
-            result = self.invokeSubmitter(jobCache, jobToSubmit,
-                                          jobSpecId, jobSpecInstance,
-                                          { jobSpecId : jobCache }
-                                          )
-            #  //
-            # // Publish Successful submission 
-            #//
-            if result:
-                self.ms.publish("TrackJob", jobSpecId)
-                self.ms.commit()
-                try:
-                    JobState.submit(jobSpecId)
-                except (ProdAgentException, ProdException) , ex:
-                    # NOTE: this should be stored in the logger
-                    # NOTE: we can have different errors here
-                    # NOTE: transition, submission, other...
-                    # NOTE: and need to take different action for it.
-                    msg = "Accessing Job State Failed for job %s\n" % jobSpecId
-                    msg += str(ex)
-                    logging.error(msg) 
-                 
-            return
-        
-        #  //
-        # // Still here => Bulk style job spec, need to check all job specs
-        #//  with JobStates then invoke submitter on bulk spec.
-        usedSpecs = {}
-        for specId, specFile in jobSpecInstance.bulkSpecs.items():
-            jobState = self.checkJobState(specId)
-            specCache = jobState.get('CacheDirLocation', None)
-            if specCache == None:
-                msg = "Bulk Spec Problem with JobState for %s\n" % specId
-                msg += "Skipping job"
-                continue
-            usedSpecs[specId] = specCache
-
-        result = self.invokeSubmitter(
-            "JobCacheNotUsed", "JobToSubmitNotUsed", "JobSpecIDNotUsed",
-            jobSpecInstance, usedSpecs)
-        
-        if result:
-            for specId in usedSpecs.keys():
-                self.ms.publish("TrackJob", specId)
-                self.ms.commit()
-                try:
-                    JobState.submit(specId)
-                except ProdAgentException, ex:
-                    # NOTE: this should be stored in the logger
-                    # NOTE: we can have different errors here
-                    # NOTE: transition, submission, other...
-                    # NOTE: and need to take different action for it.
-                    msg = "Accessing Job State Failed for job %s\n" % specId
-                    msg += str(ex)
-                    logging.error(msg) 
-        return
- 
-    def invokeSubmitter(self, jobCache, jobToSubmit, jobSpecId,
-                        jobSpecInstance, specToCacheMap = {}):
-        """
-        _invokeSubmitter_
-
-        Invoke the submission plugin for the spec provided for normal 1-submit jobs
-        
-        """
-        #  //
-        # // Retrieve the submitter plugin and invoke it
-        #//
-        submitter = retrieveSubmitter(self.args['SubmitterName'])
-        try:
-            submitter(
-                jobCache,
-                jobToSubmit, jobSpecId,
-                JobSpecInstance = jobSpecInstance,
-                CacheMap = specToCacheMap
-                )
-        except JSException, ex:
-            if ex.data.has_key("FailureList"):
-                for failedId in ex.data['FailureList']:
-                    msg = "Submission Failed for job %s\n" % failedId
-                    msg += str(ex)
-                    logging.error(msg)
-                    self.ms.publish("SubmissionFailed", failedId)
-                    self.ms.commit()
-                return False
-            elif ex.data.has_key("mainJobSpecName"):
-                failedId = ex.data['mainJobSpecName']
-                msg = "Bulk Submission Failed for job %s\n" % failedId
-                msg += str(ex)
-                logging.error(msg)
-                self.ms.publish("SubmissionFailed", failedId)
-                self.ms.commit()
-                return False
-            else:
-                msg = "Submission Failed for job %s\n" % jobSpecId
-                msg += str(ex)
-                logging.error(msg)
-                self.ms.publish("SubmissionFailed", jobSpecId)
-                self.ms.commit()
-                return False
-        except ProdAgentException, ex:
-            msg = "Submission Failed for job %s\n" % jobSpecId
             msg += str(ex)
             logging.error(msg)
             self.ms.publish("SubmissionFailed", jobSpecId)
             self.ms.commit()
-            return False
-        self.ms.publish("JobSubmitted", jobSpecId)
-        self.ms.commit()
-        return True
+            return
 
-
-    def checkJobState(self, jobSpecId):
-        """
-        _checkJobState_
-
-        Check JobStates DB for jobSpecId prior to submission.
-
-        Check job is resubmittable.
-
-        Return Cache dir, or None, if job shouldnt be submitted
-
-        """
         #  //
         # // Should we actually submit the job?
         #//  The Racers settings in the JobStates DB define how many
@@ -305,7 +159,7 @@ class JobSubmitterComponent:
         # //
         #//
         try:
-            stateInfo = JobState.general(jobSpecId)
+            stateInfo = JobStateInfoAPI.general(jobSpecId)
         except StandardError, ex:
             #  //
             # // Error here means JobSpecID is unknown to 
@@ -314,30 +168,8 @@ class JobSubmitterComponent:
             msg += "Aborting submitting job...\n"
             msg += str(ex)
             logging.error(msg)
-            self.ms.publish("SubmissionFailed", jobSpecId)
-            self.ms.commit()
-            return {}
-        except ProdAgentException, ex:
-            #  //
-            # // Error here means JobSpecID is unknown to 
-            #//  JobStates DB.
-            msg = "Error retrieving JobState Information for %s\n" % jobSpecId
-            msg += "Aborting submitting job...\n"
-            msg += str(ex)
-            logging.error(msg)
-            self.ms.publish("SubmissionFailed", jobSpecId)
-            self.ms.commit()
-            return {}
-
-        cacheDir = stateInfo.get('CacheDirLocation', 'UnknownCache')
-        if not os.path.exists(cacheDir):
-            msg = "Cache Dir does not exist for job spec id: %s\n" % jobSpecId
-            msg += "JobState reports Cache as:\n   %s\n" % cacheDir
-            logging.error(msg)
-            self.ms.publish("SubmissionFailed", jobSpecId)
-            self.ms.commit()            
-            return {}
-            
+            return
+        
         numRacers = stateInfo['Racers'] # number of currently submitted
         maxRacers = stateInfo['MaxRacers'] # limit on parallel jobs
 
@@ -351,10 +183,44 @@ class JobSubmitterComponent:
             logging.warning(msg)
             self.ms.publish("SubmissionFailed", jobSpecId)
             self.ms.commit()
-            return {}
+            return
 
-        return stateInfo
+        #  //
+        # // Retrieve the submitter plugin and invoke it
+        #//
+        submitter = retrieveSubmitter(self.args['SubmitterName'])
+        try:
+            submitter(
+                jobCache,
+                jobToSubmit, jobSpecId,
+                JobSpecInstance = jobSpecInstance
+                )
+        except StandardError, ex:
+            msg = "Submission Failed for job %s\n" % jobSpecId
+            msg += str(ex)
+            logging.error(msg)
+            self.ms.publish("SubmissionFailed", jobSpecId)
+            self.ms.commit()
+            return
+        #  //
+        # // Publish Successful submission 
+        #//
+        if self.job_state:
+            try:
+                JobStateChangeAPI.submit(jobSpecId)
+            except StandardError, ex:
+                # NOTE: this should be stored in the logger
+                # NOTE: we can have different errors here
+                # NOTE: transition, submission, other...
+                # NOTE: and need to take different action for it.
+                msg = "Accessing Job State Failed for job %s\n" % jobSpecId
+                msg += str(ex)
+                logging.error(msg) 
         
+        self.ms.publish("JobSubmitted", jobSpecId)
+        self.ms.commit()
+        return
+ 
         
 
         
@@ -381,14 +247,8 @@ class JobSubmitterComponent:
  
         # wait for messages
         while True:
-            Session.set_database(dbConfig)
-            Session.connect()
-            Session.start_transaction()
             msgtype, payload = self.ms.get()
             self.ms.commit()
             logging.debug("JobSubmitter: %s, %s" % (msgtype, payload))
             self.__call__(msgtype, payload)
-            Session.commit_all()
-            Session.close_all()
-
 

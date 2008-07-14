@@ -8,10 +8,7 @@ import unittest
 
 from JobState.JobStateAPI import JobStateChangeAPI
 from MessageService.MessageService import MessageService
-from ProdAgent.Trigger.Trigger import Trigger as TriggerAPI
-from ProdAgentDB.Config import defaultConfig as dbConfig
-from ProdCommon.Database import Session
-
+from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 
 
 class TriggerUnitTests(unittest.TestCase):
@@ -24,9 +21,6 @@ class TriggerUnitTests(unittest.TestCase):
     def setUp(self):
 
         if not TriggerUnitTests._triggerSet:
-           Session.set_database(dbConfig)
-           Session.connect()
-           Session.start_transaction()
            print "\n**************Start TriggerUnitTests**********"
            self.ms=MessageService()
            self.ms.registerAs("TriggerTest")
@@ -35,28 +29,18 @@ class TriggerUnitTests(unittest.TestCase):
            self.jobspecs=5
            self.flags=5
            TriggerUnitTests._triggerSet=True
-           Session.commit_all()
-           Session.close_all()
 
     def testA(self):
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
         try:
            print("\nCreate job spec ids")
            for j in xrange(0,self.jobspecs):
-               JobStateChangeAPI.register("jobSpec"+str(j),"Processing",3,1)
+               JobStateChangeAPI.register("jobSpec"+str(j),"processing",3,1)
         except StandardError, ex:
             msg = "Failed TestA:\n"
             msg += str(ex)
             self.fail(msg)
-        Session.commit_all()
-        Session.close_all()
 
     def testB(self):
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
         try:
            print("\nCreate Triggers")
            for i in xrange(0,self.triggers):
@@ -71,13 +55,8 @@ class TriggerUnitTests(unittest.TestCase):
             msg = "Failed TestB:\n"
             msg += str(ex)
             self.fail(msg)
-        Session.commit_all()
-        Session.close_all()
 
     def testFlags1(self,value):
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
         try:
             print("\nTest if flags are set")
             for i in xrange(0,self.triggers):
@@ -89,13 +68,8 @@ class TriggerUnitTests(unittest.TestCase):
             msg = "Failed Test Flags1:\n"
             msg += str(ex)
             self.fail(msg)
-        Session.commit_all()
-        Session.close_all()
 
     def testFlags2(self,value):
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
         try:
             print("\nTest if flags are set")
             for i in xrange(0,self.triggers):
@@ -106,13 +80,8 @@ class TriggerUnitTests(unittest.TestCase):
             msg = "Failed Test Flags2:\n"
             msg += str(ex)
             self.fail(msg)
-        Session.commit_all()
-        Session.close_all()
 
     def testC(self):
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
         try:
            print("\nCreate Duplicate Triggers (to test exceptions)")
            for i in xrange(0,self.triggers):
@@ -121,18 +90,13 @@ class TriggerUnitTests(unittest.TestCase):
                       try:
                          self.trigger.addFlag("trigger"+str(i),"jobSpec"+str(j),"flag"+str(k))
                       except Exception, ex:
-                         print(">>>Test suceeded for duplicate trigger exception\n")
+                         self.assertEqual(str(ex[1]),"Flag trigger"+str(i)+",jobSpec"+str(j)+",flag"+str(k)+" already exists or jobspec ID does not exist.")
         except Exception , ex:
             msg = "Failed Test C:\n"
             msg += str(ex)
             self.fail(msg)
-        Session.commit_all()
-        Session.close_all()
 
     def testD(self):
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
         try:
            print("\nSet Some (not all) Flags")
            for i in xrange(0,self.triggers):
@@ -145,13 +109,8 @@ class TriggerUnitTests(unittest.TestCase):
             msg = "Failed Test D:\n"
             msg += str(ex)
             self.fail(msg)
-        Session.commit_all()
-        Session.close_all()
 
     def testE(self):
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
         try:
            print("\nReset Triggers")
            for i in xrange(0,self.triggers):
@@ -164,13 +123,8 @@ class TriggerUnitTests(unittest.TestCase):
             msg = "Failed Test E:\n"
             msg += str(ex)
             self.fail(msg)
-        Session.commit_all()
-        Session.close_all()
 
     def testF(self):
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
         try:
            print("\nSet Flags that do not exist (to test exceptions)")
            for i in xrange(0,self.triggers):
@@ -180,20 +134,15 @@ class TriggerUnitTests(unittest.TestCase):
                           self.trigger.setFlag("not_exists_trigger"+str(i),\
                               "not_exist_jobSpec"+str(j),"not_exist_flag"+str(k))
                       except Exception,ex:
-                         print(">>>Test succeeded for flag not exist exception\n")
+                         self.assertEqual(str(ex[1]),"Flag not_exists_trigger"+str(i)+",not_exist_jobSpec"+str(j)+",not_exist_flag"+str(k)+" does not exists")
         except StandardError, ex:
             msg = "Failed Test F:\n"
             msg += str(ex)
             self.fail(msg)
-        Session.commit_all()
-        Session.close_all()
 
     def testG(self):
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
         try:
-           print("\nSet All Flags (TestG)")
+           print("\nSet All Flags")
            for i in xrange(0,self.triggers):
                for j in xrange(0,self.jobspecs):
                    for k in xrange(0,self.flags):
@@ -201,11 +150,23 @@ class TriggerUnitTests(unittest.TestCase):
                           "jobSpec"+str(j),"flag"+str(k))
 
         except StandardError, ex:
-            msg = "Failed Test G:\n"
+            msg = "Failed Test F:\n"
             msg += str(ex)
             self.fail(msg)
-        Session.commit_all()
-        Session.close_all()
+
+    def testH(self):
+        try:
+           print("\nSet All Flags")
+           for i in xrange(0,self.triggers):
+               for j in xrange(0,self.jobspecs):
+                   for k in xrange(0,self.flags):
+                      self.trigger.setFlag("trigger"+str(i),\
+                          "jobSpec"+str(j),"flag"+str(k))
+
+        except StandardError, ex:
+            msg = "Failed Test F:\n"
+            msg += str(ex)
+            self.fail(msg)
 
     def runTest(self):
         self.testA()

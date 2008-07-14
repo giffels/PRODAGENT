@@ -28,8 +28,8 @@ if userInput!="Y":
 
 testSuite = unittest.TestSuite()
 # this is the order in which they will be tested
-#testSuite.addTest(JobStateUnitTests2())
-#testSuite.addTest(TriggerUnitTests2())
+testSuite.addTest(JobStateUnitTests2())
+testSuite.addTest(TriggerUnitTests2())
 testSuite.addTest(ComponentServerTest())
 testResult= unittest.TestResult()
 testResult=testSuite.run(testResult)

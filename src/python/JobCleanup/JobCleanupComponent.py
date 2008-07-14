@@ -2,13 +2,11 @@
 """
 _JobCleanupComponent_
 
-The JobCleanup subcribes to cleanup events. Currently there are two 
-types of cleanups:
+Skeleton JobCleanupComponent
 
--JobCleanup : cleans upd the database entries and the cache dir
--PartialJobCleanup : selectively cleans up the cache dir to prevent
-it from growing to large.
- 
+The JobCleanup subcribes to cleanup events. The payload of an cleanup event
+is the job spec id.
+
 """
 
 import logging
@@ -16,12 +14,9 @@ from logging.handlers import RotatingFileHandler
 import os
 import socket
 
+from JobCleanup.Registry import retrieveHandler
+from JobCleanup.Registry import Registry 
 from MessageService.MessageService import MessageService
-from ProdAgentDB.Config import defaultConfig as dbConfig
-from ProdAgent.Trigger.Trigger import Trigger
-from ProdCommon.Database import Session
-from ProdCommon.Core.GlobalRegistry import retrieveHandler
-from ProdCommon.Core.GlobalRegistry import GlobalRegistry
 
 
 
@@ -31,7 +26,7 @@ class JobCleanupComponent:
 
     ProdAgent Component that responds to cleanup events. Depending
     on the type of handler that is associated to a particular event,
-    a particular cleanup handler is invoked.  For example the default 
+    a particular error handler is invoked.  For example the default 
     cleanup handler removes the job cache and cleans the database.
 
     """
@@ -47,17 +42,12 @@ class JobCleanupComponent:
          """
          self.args = {}
          self.args['Logfile'] = None
-         self.args['FailureArchive'] = None
-#         self.args['SuccessArchive'] = None
-         self.args['KeepLogsInSuccessArchive'] = False
          self.args.update(args)
  
 
          # the cleanup events this components subscribes to
          # that invoke an cleanup handler
-         self.args['Events']={'JobCleanup':'cleanupHandler',
-                              'PartialJobCleanup':'partialCleanupHandler',\
-                              'FailureCleanup':'failureCleanupHandler'}
+         self.args['Events']={'JobCleanup':'cleanupHandler'}
 
          if self.args['Logfile'] == None:
               self.args['Logfile'] = os.path.join(self.args['ComponentDir'],\
@@ -90,7 +80,7 @@ class JobCleanupComponent:
                    logging.info("logging level changed to INFO")
                    return
               elif event in self.args['Events'].keys():
-                  handler=retrieveHandler(self.args['Events'][event],"JobCleanup")
+                  handler=retrieveHandler(self.args['Events'][event])
                   handler.handleEvent(payload)
          except Exception, ex:
               logging.error("Failed to handle %s event with payload: %s" \
@@ -103,7 +93,7 @@ class JobCleanupComponent:
          
         Method called by the handlers if they need to publish an event.
         This method automatically chooses the message service consistent
-        with its configuration and commits the publication.
+        with its configuration.
 
         """   
         self.ms.publish(name,payload)
@@ -117,27 +107,18 @@ class JobCleanupComponent:
          Start up the component
  
          """
-         # create message service
-         self.ms = MessageService()
-         self.trigger=Trigger(self.ms)
          # prepare handlers:
-         for handlerName in GlobalRegistry.registries["JobCleanup"].keys():
-             handler=GlobalRegistry.registries["JobCleanup"][handlerName]
+         for handlerName in Registry.HandlerRegistry.keys():
+             handler=Registry.HandlerRegistry[handlerName]
              handler.publishEvent=self.publishEvent
-             handler.failureArchive=self.args['FailureArchive']
-             handler.successArchive=self.args['SuccessArchive']
-             handler.keepLogsInSuccessArchive=self.args['KeepLogsInSuccessArchive']
-             handler.trigger = self.trigger
+             if (handlerName == "runFailureHandler"):
+                 handler.setJobReportLocation(self.args['jobReportLocation'])
                  
          # main body using persistent based message server
          logging.info("JobCleanup persistent based message service Starting...")
-         msg="Success Archive: %s" % handler.successArchive
-         logging.info(msg)
-         msg="Failure Archive: %s" % handler.failureArchive
-         logging.info(msg)
-         if handler.keepLogsInSuccessArchive:
-           logging.info("Set to keep logfiles in successful job archive")         
-
+         
+         # create message service
+         self.ms = MessageService()
          
          # register
          self.ms.registerAs("JobCleanup")
@@ -151,16 +132,7 @@ class JobCleanupComponent:
          self.ms.commit()
          # wait for messages
          while True:
-             Session.set_database(dbConfig)
-             Session.connect()
-             Session.start_transaction()
-
              type, payload = self.ms.get()
+             self.ms.commit()
              logging.debug("JobCleanup: %s, %s" % (type, payload))
              self.__call__(type, payload)
-             # we only want to commit if the cleanup or archiving succeeds
-             # and is not interupted by a crash of the prodagent.
-             self.ms.commit()
-             Session.commit_all()
-             Session.close_all()
-

@@ -1,12 +1,8 @@
 #!/usr/bin/env python
-from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Config import defaultConfig
 from ProdAgentDB import Mysql
 
-cursorCache={}
-connectionCache={}
-
-def connect(cache=True):
+def connect(**config):
      """
      _connect_  Connects to the underlying MySQL database.
     
@@ -19,20 +15,20 @@ def connect(cache=True):
      passwd              : pass word
      socketFileLocation  : socket file location (use if connect local)
                            but leave empty if connecting from remote.
-     portNr            : port number if you connect from remote.
+     dbPortNr            : port number if you connect from remote.
                            Leave empty if you connect via a socket file.
      """
      actualConfig = defaultConfig
+     if config != {}:
+          actualConfig = config
      try:
          conn=Mysql.connect(actualConfig['dbName'],\
                             actualConfig['host'],\
                             actualConfig['user'],\
                             actualConfig['passwd'],\
                             actualConfig['socketFileLocation'],\
-                            actualConfig['portNr'],
-                            cache)
+                            actualConfig['dbPortNr'])
          return conn
      except:
          raise
-
 
