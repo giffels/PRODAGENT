@@ -187,13 +187,23 @@ class JobSpecExpander:
 
         cmsProcess = self.jobSpecNode.cfgInterface.makeConfiguration()
 
-
         cfgDump = open("CfgFileDump.log", 'w')
-        cfgDump.write(cmsProcess.dumpConfig())
+        try:
+            cfgDump.write(cmsProcess.dumpConfig())
+        except Exception, ex:
+            msg = "Error writing CfgFile cfg format dump\n"
+            msg += "This feature is deprecated for CMSSW_2_1_X and higher"
+            cfgDump.write(msg)
         cfgDump.close()
 
         pycfgDump = open("PyCfgFileDump.log", 'w')
-        pycfgDump.write(cmsProcess.dumpPython())
+        try:
+            pycfgDump.write(cmsProcess.dumpPython())
+        except Exception, ex:
+            msg = "Error writing python format cfg dump:\n"
+            msg += "%s\n" % str(ex)
+            msg += "This needs to be reported to the framework team"
+            pycfgDump.write(msg)
         pycfgDump.close()
 
         handle = open(cfgFile, 'w')
