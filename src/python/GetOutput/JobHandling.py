@@ -20,7 +20,6 @@ from ProdCommon.Database import Session
 #from ProdAgentCore.ProdAgentException import ProdAgentException
 
 # Blite API import
-from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
 #from ProdCommon.BossLite.Common.Exceptions import TaskError
 from ProdCommon.BossLite.Common.Exceptions import JobError
@@ -32,8 +31,8 @@ from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.6 2008/06/30 14:29:27 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.6 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.7 2008/07/08 10:55:05 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.7 $"
 
 class JobHandling:
     """
@@ -50,7 +49,8 @@ class JobHandling:
         self.jobCreatorDir = params['jobCreatorDir']
         self.ms = params['messageServiceInstance']
         self.outputLocation = params['OutputLocation']
-        self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+        self.bossLiteSession = params['bossLiteSession']
+        self.database = params['dbConfig']
         self.configs = params['OutputParams']
         self.ft = re.compile( 'gsiftp://[-\w.]+[:\d]*/*' )
 
@@ -385,6 +385,8 @@ class JobHandling:
         try:
             self.recreateSession()
             JobState.finished(job)
+            Session.commit()
+            Session.close()
 
         # error
         except Exception, ex:
@@ -402,15 +404,16 @@ class JobHandling:
         fix to recreate standard default session object
         """
 
+        Session.set_database(self.database)
+
         # force a re connect operation
-        Session.set_database(dbConfig)
         try:
             Session.session['default']['connection'].close()
         except:
             pass
         Session.session = {}
+        Session.set_database(self.database)
         Session.connect()
-
 
     def fullId( self, job ):
         """

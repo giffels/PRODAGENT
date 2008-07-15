@@ -4,12 +4,11 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.25 2008/05/27 13:06:58 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.25 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.26 2008/07/01 13:37:59 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.26 $"
 
 import os
 import logging
-from copy import deepcopy
 
 # PA configuration
 from ProdAgentDB.Config import defaultConfig as dbConfig
@@ -93,16 +92,15 @@ class GetOutputComponent:
         # initialize members
         self.ms = None
         self.maxGetOutputAttempts = 3
-        self.database = deepcopy(dbConfig)
-        self.bossLiteSession = BossLiteAPI('MySQL', self.database)
-
-        # initialize job handling
-        self.jobHandling = None
+        self.database = dbConfig
+        self.bossLiteSession = \
+                             BossLiteAPI('MySQL', self.database, makePool=True)
+        self.sessionPool = self.bossLiteSession.bossLiteDB.getPool()
 
         # create pool thread for get output operations
         params = {}
         params['componentDir'] = self.args['JobTrackingDir']
-        params['dbConfig'] = self.database
+        params['sessionPool'] = self.sessionPool
         params['OutputLocation'] = self.args['OutputLocation']
         params['dropBoxPath'] = self.args['dropBoxPath']
         params['maxGetOutputAttempts'] = \
@@ -123,6 +121,19 @@ class GetOutputComponent:
         self.jobLimit = int(self.args['jobsToPoll'])
         self.outputRequestedJobs = []
         self.jobFinished = []
+
+        # initialize job handling object
+        params = {}
+        params['baseDir'] = self.args['JobTrackingDir']
+        params['jobCreatorDir'] = self.args["ComponentDir"]
+        params['usingDashboard'] = None
+        params['messageServiceInstance'] = self.ms
+        params['OutputLocation'] = self.args['OutputLocation']
+        params['OutputParams'] = self.outputParams
+        params['bossLiteSession'] = self.bossLiteSession
+        params['database'] = self.database
+        logging.info("handleeee")
+        self.jobHandling = JobHandling(params)
 
         # component running, display info
         logging.info("GetOutput Component Started...")
@@ -349,17 +360,6 @@ class GetOutputComponent:
         self.ms.remove("GetOutputComponent:pollDB")
         self.ms.publish("GetOutputComponent:pollDB", "")
         self.ms.commit()
-
-        # initialize job handling object
-        params = {}
-        params['baseDir'] = self.args['JobTrackingDir']
-        params['jobCreatorDir'] = self.args["ComponentDir"]
-        params['usingDashboard'] = None
-        params['messageServiceInstance'] = self.ms
-        params['OutputLocation'] = self.args['OutputLocation']
-        params['OutputParams'] = self.outputParams
-        logging.info("handleeee")
-        self.jobHandling = JobHandling(params)
 
         # wait for messages
         logging.info("waiting for mexico" )

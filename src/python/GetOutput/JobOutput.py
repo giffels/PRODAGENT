@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-_Joboutput_
+_JobOutput_
 
 Deals with job get output operations.
 
@@ -12,20 +12,18 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.35 2008/07/04 08:47:29 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.35 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.36 2008/07/11 14:15:54 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.36 $"
 
 import logging
 import os
 
 # BossLite import
-from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
-from ProdCommon.BossLite.Common.Exceptions import SchedulerError
-from ProdCommon.BossLite.Common.Exceptions import TaskError
 from ProdCommon.BossLite.Common.Exceptions import JobError
 from ProdCommon.BossLite.Common.Exceptions import DbError
+from ProdCommon.BossLite.Common.Exceptions import BossLiteError
 
 ###############################################################################
 # Class: JobOutput                                                            #
@@ -39,7 +37,7 @@ class JobOutput:
     # default parameters
     params = {'maxGetOutputAttempts' : 3,
               'componentDir' : None,
-              'dbConfig' : None,
+              'sessionPool' : None,
               'OutputLocation' : None,
               'dropBoxPath' : None
               }
@@ -78,7 +76,8 @@ class JobOutput:
 
         # commit and close session
         try :
-            bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+            bossLiteSession = \
+                           BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
             bossLiteSession.updateDB( job.runningJob )
         except JobError:
             logging.error("Output for job %s.%s cannot be requested" % \
@@ -106,7 +105,8 @@ class JobOutput:
                           (job['taskId'], job['jobId']))
 
             # open database
-            bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+            bossLiteSession = \
+                           BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
 
             # verify the status
             status = job.runningJob['processStatus']
@@ -134,17 +134,10 @@ class JobOutput:
             schedSession = None
             try:
                 # both for failed and done, a scheduler instance is needed:
-                task = bossLiteSession.loadTask(job['taskId'], False)
-                if task['user_proxy'] is None:
-                    task['user_proxy'] = ''
-                task.appendJob( job )
-
-                schedulerConfig = {'name' : job.runningJob['scheduler'],
-                                   'user_proxy' : task['user_proxy'] ,
-                                   'service' : job.runningJob['service'],
-                                   'timeout' : 300}
+                task = bossLiteSession.getTaskFromJob( job )
+                schedulerConfig = { 'timeout' : 300 }
                 schedSession = BossLiteAPISched( bossLiteSession, \
-                                                 schedulerConfig )
+                                                 schedulerConfig, task )
 
                 # build needed output directory
                 job.runningJob['outputDirectory'] = cls.buildOutdir(job, task)
@@ -155,43 +148,19 @@ class JobOutput:
 
                 # output at destination: just purge service
                 elif cls.params['OutputLocation'] == 'SE':
-                    try :
-                        statusSched = job.runningJob['status']
-                        schedSession.purgeService( task )
-                        if statusSched == 'UE' :
-                            job.runningJob['status'] = 'UE'
-                    except SchedulerError, msg:
-                        logging.warning(
-                            "Warning: failed to purge job %s.%s : %s" \
-                            % (job['taskId'], job['jobId'], str(msg) ) )
-                    job.runningJob['processStatus'] = 'output_retrieved'
+                    cls.purgeService( job, task, schedSession)
 
                 # get output, trying at most maxGetOutputAttempts
                 else :
                     job = cls.getOutput( job, task, schedSession)
 
-            except SchedulerError, err:
+            except BossLiteError, err:
                 logging.error('Can not get scheduler for job %s.%s : [%s]' % \
                               (job['taskId'], job['jobId'], str(err) ))
 
-                # proxy expired: invalidate job and empty return
-                if err.value.find( "Proxy Expired" ) != -1 :
-                    job.runningJob['closed'] = 'Y'
-                    bossLiteSession.updateDB( job )
-                    return
-
-
-            except TaskError, err:
-                logging.error('Can not get scheduler for job %s.%s : [%s]' % \
-                              (job['taskId'], job['jobId'], str(err)))
-
-            except Exception, err:
-                logging.error('Can not handle job %s.%s : [%s]' % \
-                              (job['taskId'], job['jobId'], str(err)))
-
             # update
             try:
-                bossLiteSession.updateDB( job )
+                bossLiteSession.updateDB( job.runningJob )
             except JobError, msg:
                 logging.error("WARNING, job %s.%s UPDATE failed: %s" % \
                               (job['taskId'], job['jobId'], str(msg) ) )
@@ -201,10 +170,11 @@ class JobOutput:
             return job
 
         # thread has failed
-        except Exception :
+        except Exception, ex :
 
             # show error message
             import traceback
+            logging.error( '[%s]' % str(ex) )
             logging.error( "GetOutputThread exception: %s" % \
                            str( traceback.format_exc() ) )
 
@@ -229,20 +199,59 @@ class JobOutput:
             logging.error( "Fatal ERROR: mismatching job" )
             return job
 
-        outfile = job.runningJob['outputDirectory'] + \
-                  '/loggingInfo.log'
         try:
+            outfile = job.runningJob['outputDirectory'] + '/loggingInfo.log'
             schedSession.postMortem( task, outfile = outfile )
-            job.runningJob['statusHistory'].append( \
-                        'retrieved logging-info')
             logging.info('Retrieved logging info for job %s.%s in %s' \
                          % (job['taskId'], job['jobId'], outfile ))
-        except SchedulerError, err:
+        except BossLiteError, err:
             logging.info('Can not get logging info for job %s.%s' % \
                          (job['taskId'], job['jobId'] ))
             logging.info( '[%s]' % str(err) )
-            job.runningJob['statusHistory'].append( \
-                        'failed to retrieve logging-info')
+
+            # proxy expired: invalidate job and empty return
+            if err.value.find( "Proxy Expired" ) != -1 :
+                job.runningJob['closed'] = 'Y'
+
+        # log warnings and errors collected by the scheduler session
+        logging.info( str(schedSession.getLogger()) )
+
+        return job
+
+
+    @classmethod
+    def purgeService(cls, job, task, schedSession ):
+        """
+        __purgeService__
+
+        clean up for jobs already retrieved
+
+        """
+
+        if len( task.jobs ) != 1 :
+            logging.error( "ERROR: too many jobs loaded %s" % len( task.jobs ))
+            return job
+
+        if id( task.jobs[0] ) != id( job ) :
+            logging.error( "Fatal ERROR: mismatching job" )
+            return job
+
+        try :
+            statusSched = job.runningJob['status']
+            schedSession.purgeService( task )
+            if statusSched == 'UE' :
+                job.runningJob['status'] = 'UE'
+        except BossLiteError, err:
+            logging.warning( "Warning: failed to purge job %s.%s : %s" \
+                             % (job['taskId'], job['jobId'], str(err) ) )
+            job.runningJob['processStatus'] = 'output_retrieved'
+            
+            # proxy expired: invalidate job and empty return
+            if err.value.find( "Proxy Expired" ) != -1 :
+                job.runningJob['closed'] = 'Y'
+
+        # log warnings and errors collected by the scheduler session
+        logging.info( str(schedSession.getLogger()) )
 
         return job
 
@@ -276,8 +285,8 @@ class JobOutput:
 
 
             #  perform get output operation
-            outdir = job.runningJob['outputDirectory']
             try:
+                outdir = job.runningJob['outputDirectory']
                 schedSession.getOutput( task, outdir=outdir)
                 output = "output successfully retrieved"
                 job.runningJob['processStatus'] = 'output_retrieved'
@@ -289,12 +298,17 @@ class JobOutput:
                 break
 
             # scheduler interaction error
-            except SchedulerError, msg:
+            except BossLiteError, err:
                 logging.error("job %s.%s retrieval failed: %s" % \
-                              (job['taskId'], job['jobId'], str(msg) ) )
+                              (job['taskId'], job['jobId'], str(err) ) )
+
+                # proxy expired: invalidate job and empty return
+                if err.value.find( "Proxy Expired" ) != -1 :
+                    job.runningJob['closed'] = 'Y'
+                    return
 
                 # purged: probably already retrieved. Archive
-                if output.find( "has been purged" ) != -1 :
+                elif err.message().find( "has been purged" ) != -1 :
                     job.runningJob['status'] = 'E'
                     job.runningJob['statusScheduler'] = 'Cleared'
                     job.runningJob['closed'] = 'Y'
@@ -302,33 +316,25 @@ class JobOutput:
                     break
 
                 # not ready for GO: waiting for next round
-                elif output.find( "Job current status doesn" ) != -1:
+                elif err.message().find( "Job current status doesn" ) != -1:
                     logging.error(
                         "waiting next round for job %s.%s in status %s" % \
                         (job['taskId'], job['jobId'], job.runningJob['status'])
                         )
                     break
 
-            # oops: db error! What to do?!?!
-            except TaskError, msg:
-                logging.error("job %s.%s retrieval failed: %s" % \
-                              (job['taskId'], job['jobId'], str(msg) ) )
-                break
-
-            # as dirty as needed: any unknown error
-            except Exception:
-                import traceback
-                output = str( traceback.format_exc() )
-                logging.error("job %s.%s retrieval failed: %s" % \
-                              (job['taskId'], job['jobId'], output ) )
-                break
+                else :
+                    # oops: What to do?!?!
+                    logging.error("no action taken for job %s.%s " % \
+                                  (job['taskId'], job['jobId'], str(err) ) )
 
             # log status
             logging.info("job %s.%s retrieval status: %s" % \
                           (job['taskId'], job['jobId'], output))
 
+        # log warnings and errors collected by the scheduler session
+        logging.info( str(schedSession.getLogger()) )
 
-        # return job
         return job
 
 
@@ -349,7 +355,8 @@ class JobOutput:
 
         try :
             # open database
-            bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+            bossLiteSession = \
+                           BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
 
             # get interrupted operations
             jobs = bossLiteSession.loadJobsByRunningAttr(
@@ -386,7 +393,8 @@ class JobOutput:
                       (job['taskId'], job['jobId']))
 
         try :
-            bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+            bossLiteSession = \
+                           BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
 
             # update job status
             job['processStatus'] = 'processed'
