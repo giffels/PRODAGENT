@@ -12,7 +12,7 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from LogCollector.LogCollectorDB import getCollectedLogDetails, \
                                         getUnCollectedLogDetails
 
-from ProdCommon.SiteDB import SiteDB
+from ProdCommon.SiteDB.CmsSiteMapper import SECmsMap
 
 import os
 import urllib2
@@ -78,15 +78,13 @@ class LogViewer:
         sorry for the extra server load
         """
         results = {}
+        mapper = SECmsMap()
         for se in se_names:
             if results.has_key(se):
                 continue;
             pfnRoot = None
             #TODO: is this doable in one http call?
-            siteDetails = SiteDB.getJSON("SEtoCMSName", name=se)
-            if not siteDetails.has_key('0') and not siteDetails['0'].has_key('name'):
-                continue
-            site = siteDetails['0']['name']
+            site = mapper[se]
             # Buffer should match so MSS not really needed - kept for completeness
             for siteName in (site, "%s_Buffer" % site, "%s_MSS" % site):
                 try:

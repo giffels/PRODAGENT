@@ -24,7 +24,7 @@ from urllib import urlopen
 from xml.dom.minidom import parse                                                            
 import urllib2
 import logging
-from ProdCommon.SiteDB import SiteDB
+from ProdCommon.SiteDB.CmsSiteMapper import CECmsMap
 
 """
 Collect site info
@@ -63,18 +63,14 @@ def samCheck(sites, url):
     if url == None:
       return sites
 
-    ces = [x.split(':')[0] for x in sites.keys()]
-    cms_sites = set()
-    for ce in ces:
-        details = SiteDB.getJSON("CEtoCMSName", name=ce)
-        if details.has_key('0') and details['0'].has_key('name'):
-            cms_sites.add(details['0']['name'])
+    site_mapper = CECmsMap()
+    cms_sites = set([site_mapper[ce.split(':')[0]] for ce in sites.keys()])
 
     # dashboard url takes test id's not names
     #TODO: move to config file at some point
     # 6 = CE-cms-mc
     # 133 = CE-cms-basic
-    tests = ["133", "6"]
+    tests = ("133", "6")
 
     #only return info for failed ce's
     query_url = url + "?services=CE&exitStatus=error&siteSelect3=All%20Sites&serviceTypeSelect3=vo"
