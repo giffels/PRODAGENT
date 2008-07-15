@@ -4,8 +4,9 @@ _JobHandling_
 
 """
 
-__revision__ = "$Id"
-__version__ = "$Revision"
+
+__revision__ = "$Id: JobHandling.py,v 1.1.2.8 2007/12/03 17:37:21 evansde Exp $"
+__version__ = "$Revision: 1.1.2.8 $"
 
 import os
 import logging
@@ -31,8 +32,8 @@ from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.7 2008/07/08 10:55:05 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.7 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.8 2008/07/15 10:05:36 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.8 $"
 
 class JobHandling:
     """
