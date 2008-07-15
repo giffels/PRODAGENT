@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.1.2.8 2007/12/03 17:37:21 evansde Exp $"
-__version__ = "$Revision: 1.1.2.8 $"
+__revision__ = "$Id: JobHandling.py,v 1.1.2.9 2008/07/15 10:07:17 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.9 $"
 
 import os
 import logging
@@ -32,8 +32,8 @@ from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.8 2008/07/15 10:05:36 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.8 $"
+__version__ = "$Id: JobHandling.py,v 1.1.2.9 2008/07/15 10:07:17 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.9 $"
 
 class JobHandling:
     """
@@ -51,7 +51,7 @@ class JobHandling:
         self.ms = params['messageServiceInstance']
         self.outputLocation = params['OutputLocation']
         self.bossLiteSession = params['bossLiteSession']
-        self.database = params['dbConfig']
+        self.database = params['database']
         self.configs = params['OutputParams']
         self.ft = re.compile( 'gsiftp://[-\w.]+[:\d]*/*' )
 
