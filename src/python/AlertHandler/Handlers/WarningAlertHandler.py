@@ -40,6 +40,11 @@ class WarningAlertHandler (HandlerInterface):
           alertPayload.load(payload)
           alertPayload['Severity'] = 'warning'
 
+          logging.debug(alertPayload) 
+
+          alertPayload['Message'] = alertPayload['Message'].replace("\'", '"')
+
+          logging.debug(alertPayload) 
 
           tableName = 'alert_current'
           sqlStr = "insert into " + tableName + " (type, component, message, time) values ( \'" + str(alertPayload['Severity'])+ "\',\'" + str(alertPayload['Component']) + '\',\'' + str(alertPayload['Message']) + '\',\'' + str(alertPayload['Time']) + "\')"

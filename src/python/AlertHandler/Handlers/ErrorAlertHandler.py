@@ -39,6 +39,8 @@ class ErrorAlertHandler (HandlerInterface):
           alertPayload.load(payload)
           alertPayload['Severity'] = 'error'
 
+          alertPayload['Message'] = alertPayload['Message'].replace("\'", '"')
+
           tableName = 'alert_current'
           sqlStr = "insert into " + tableName + " (type, component, message, time) values ( \'" + str(alertPayload['Severity'])+ "\',\'" + str(alertPayload['Component']) + '\',\'' + str(alertPayload['Message']) + '\',\'' + str(alertPayload['Time']) + "\')"
 
