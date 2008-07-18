@@ -25,7 +25,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'only-closed-blocks',
          'dbs-url=', 
          'pileup-dataset=', 'pileup-files-per-job=',
-         'activity='
+         'activity=', 'stageout-intermediates='
          
          ]
 
@@ -46,7 +46,7 @@ usage += "                                --only-sites=<List of sites>\n"
 usage += "                                --dbs-url=<DBSUrl>\n"
 usage += "                                  --override-channel=<Phys Channel/Primary Dataset>\n"
 usage += "                                  --activity=<activity>\n"
-
+usage += "                                  --stageout-intermediates=<true|false>\n"
 
 
 
@@ -88,6 +88,9 @@ options = \
     
   --activity=<activity>, The activiy represented but this workflow
     i.e. Reprocessing, Skimming etc.
+    
+   --stageout-intermediates=<true|false>, Stageout intermediate files in 
+    chained processing
 """
 
 
@@ -103,6 +106,7 @@ except getopt.GetoptError, ex:
 
 cfgFiles = []
 versions = []
+stageoutOutputs = []
 requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
 label = "Test"
@@ -138,6 +142,11 @@ for opt, arg in opts:
         cfgTypes.append("python")
     if opt == "--version":
         versions.append(arg)
+    if opt == "--stageout-intermediates":
+        if arg.lower() in ("true", "yes"):
+            stageoutOutputs.append(True)
+        else:
+            stageoutOutputs.append(False)
     if opt == "--category":
         category = arg
 
@@ -185,6 +194,9 @@ if not len(versions):
     raise RuntimeError, msg
 if len(versions) != len(cfgFiles):
     msg = "Need same number of --cfg and --version arguments"
+    raise RuntimeError, msg
+if len(stageoutOutputs) != len(cfgFiles) - 1:
+    msg = "Need one less --stageout-intermediates than --cfg arguments"
     raise RuntimeError, msg
 
 if dataset == None:
@@ -257,16 +269,16 @@ for cfgFile in cfgFiles:
         cmsCfg = modRef.process
 
     cfgWrapper = CMSSWConfig()
-    cfgWrapper.originalCfg = file(cfgFile).read()
+    #cfgWrapper.originalCfg = file(cfgFile).read()
     cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
     cfgInt.validateForProduction()
 
     if nodeNumber:
-        maker.chainCmsRunNode()
+        maker.chainCmsRunNode(stageOutIntermediates=stageoutOutputs[nodeNumber-1])
 
     maker.setCMSSWVersion(versions[nodeNumber])
     maker.setConfiguration(cfgWrapper, Type = "instance")
-    #TODO: What about pset hash
+    maker.setOriginalCfg(file(cfgFile).read())
     maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
     
     nodeNumber = nodeNumber + 1

@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.12 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.12 2008/05/01 13:11:58 swakef Exp $"
+__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.13 2008/05/16 14:31:20 swakef Exp $"
 
 
 import os
@@ -26,7 +26,7 @@ from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=',
          'pileup-dataset=', 'pileup-files-per-job=',
-         'selection-efficiency=', 'activity='
+         'selection-efficiency=', 'activity=', 'stageout-intermediates='
          ]
 
 usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
@@ -37,6 +37,7 @@ usage += "                                  --request-id=<Request ID>\n"
 usage += "                                  --label=<Production Label>\n"
 usage += "                                  --category=<Production category>\n"
 usage += "                                  --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
+usage += "                                  --stageout-intermediates=<true|false>\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -54,6 +55,7 @@ except getopt.GetoptError, ex:
     sys.exit(1)
 
 cfgFiles = []
+stageoutOutputs = []
 requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
 label = "Test"
@@ -79,6 +81,11 @@ for opt, arg in opts:
         cfgType = "python"
     if opt == "--version":
         versions.append(arg)
+    if opt == "--stageout-intermediates":
+        if arg.lower() in ("true", "yes"):
+            stageoutOutputs.append(True)
+        else:
+            stageoutOutputs.append(False)
     if opt == "--category":
         category = arg
     if opt == "--channel":
@@ -106,12 +113,14 @@ if len(cfgFiles) == 0:
     raise RuntimeError, msg
 elif len(cfgFiles) > 1:
     print "%s cfgs listed - chaining them" % len(cfgFiles)
-
 if versions == []:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
 if len(versions) != len(cfgFiles):
     msg = "Need same number of --cfg and --version arguments"
+    raise RuntimeError, msg
+if len(stageoutOutputs) != len(cfgFiles) - 1:
+    msg = "Need one less --stageout-intermediates than --cfg arguments"
     raise RuntimeError, msg
 
 if channel == None:
@@ -158,19 +167,19 @@ for cfgFile in cfgFiles:
         cmsCfg = modRef.process
         
     cfgWrapper = CMSSWConfig()
-    cfgWrapper.originalCfg = file(cfgFile).read()
+    #cfgWrapper.originalCfg = file(cfgFile).read()
     cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
     cfgInt.validateForProduction()
     
     if nodeNumber:
-        maker.chainCmsRunNode()
+        maker.chainCmsRunNode(stageOutIntermediates=stageoutOutputs[nodeNumber-1])
         
     maker.setCMSSWVersion(versions[nodeNumber])
     maker.setConfiguration(cfgWrapper, Type = "instance")
-    #TODO: What about pset hash
+    maker.setOriginalCfg(file(cfgFile).read())
     maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
     
-    nodeNumber = nodeNumber + 1
+    nodeNumber += 1
 
 #  //
 # // Pileup sample?

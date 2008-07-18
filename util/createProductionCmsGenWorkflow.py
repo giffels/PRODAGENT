@@ -21,7 +21,7 @@ import time
 
 valid = ['cmsRunCfg=', 'cmsGenCfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=', 'selection-efficiency=', 'help',
-         'activity=',
+         'activity=', 'stageout-intermediates='
          ]
 
 usage =  "Usage: createProductionCmsGenWorkflow.py --cmsRunCfg=<cmsRunCfg>\n"
@@ -33,6 +33,7 @@ usage += "                        		 --channel=<Phys Channel/Primary Dataset>\n"
 usage += "                        		 --group=<Physics Group>\n"
 usage += "                        		 --request-id=<Request ID>\n"
 usage += "                               --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
+usage += "                               --stageout-intermediates=<true|false>\n"
 
 
 try:
@@ -45,6 +46,7 @@ except getopt.GetoptError, ex:
 cmsRunCfgs    = [] #"/home/ceballos/PRODAGENT_0_3_X/work/cfg/config_alpgen_cmsrun.cfg"
 cmsGenCfg    = None #"/home/ceballos/PRODAGENT_0_3_X/work/cfg/myConfig_alpgen.cfg"
 versions      = [] #"CMSSW_1_4_3"
+stageoutOutputs = []
 category     = "Generators"
 label        = "CSA07"
 channel      = "alpgen-z2j"
@@ -65,6 +67,11 @@ for opt, arg in opts:
         cmsGenCfg = arg
     if opt == "--version":
         versions.append(arg)
+    if opt == "--stageout-intermediates":
+        if arg.lower() in ("true", "yes"):
+            stageoutOutputs.append(True)
+        else:
+            stageoutOutputs.append(False)
     if opt == "--category":
         category = arg
     if opt == "--label":
@@ -84,7 +91,10 @@ if not len(cmsRunCfgs):
     msg = "--cmsRunCfg option not provided: This is required"
     raise RuntimeError, msg
 elif len(cmsRunCfgs) > 1:
-    print "%s cmsRun cfgs listed - chaining them" % len(cfgFiles)
+    print "%s cmsRun cfgs listed - chaining them" % len(cmsRunCfgs)
+if len(stageoutOutputs) != len(cmsRunCfgs) - 1:
+    msg = "Need one less --stageout-intermediates than --cfg arguments"
+    raise RuntimeError, msg
 
 if cmsGenCfg == None:
     msg = "--cmsGenCfg option not provided: This is required"
@@ -149,19 +159,19 @@ for cmsRunCfg in cmsRunCfgs:
         cmsCfg = modRef.process
 
     cfgWrapper = CMSSWConfig()
-    cfgWrapper.originalCfg = file(cmsRunCfg).read()
+    #cfgWrapper.originalCfg = file(cmsRunCfg).read()
     cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
     cfgInt.validateForProduction()
     
     if nodeNumber:
-        maker.chainCmsRunNode()
+        maker.chainCmsRunNode(stageOutIntermediates=stageoutOutputs[nodeNumber-1])
 
     maker.setConfiguration(cfgWrapper,  Type = "instance")
     maker.setCMSSWVersion(versions[nodeNumber])
-    #TODO: What about pset hash
+    maker.setOriginalCfg(file(cmsRunCfg).read())
     maker.setPSetHash(WorkflowTools.createPSetHash(cmsRunCfg))
 
-    nodeNumber = nodeNumber + 1
+    nodeNumber += 1
 
 if selectionEfficiency != None:
     maker.addSelectionEfficiency(selectionEfficiency)
