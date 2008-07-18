@@ -389,14 +389,19 @@ class JobCreatorComponent:
         if not os.path.exists(jobCache):
             os.makedirs(jobCache)
 
-            
-        if not WEJob.exists(jobname):
-            numberOfAttempts = 0
-        else:
-            jobData = WEJob.get(jobname)
-            numberOfAttempts = jobData.get('retries', 0)
+        # check if this is a resubmission - if so
+        #  only change will be site whitelist
+        if WEJob.exists(jobname):
+            logging.info("Job %s already exists" % jobname)
+            oldspecfile = os.path.join(jobCache, '%s-JobSpec.xml' % jobname)
+            oldspec = JobSpec()
+            oldspec.load(oldspecfile)
+            if not oldspec.siteWhitelist == jobSpec.siteWhitelist:
+                oldspec.siteWhitelist = jobSpec.siteWhitelist
+                oldspec.save(oldspecfile)
+            return oldspecfile
 
-        jobSpec.parameters['SubmissionCount'] = numberOfAttempts
+        jobSpec.parameters['SubmissionCount'] = 0
 
         try:
             gen = retrieveGenerator(self.args['GeneratorName'])

@@ -18,6 +18,8 @@ from ErrorHandler.DirSize import convertSize
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
 from ErrorHandler.TimeConvert import convertSeconds
 
+from JobQueue import JobQueueAPI
+
 class RunFailureHandler(HandlerInterface):
     """
     _RunFailureHandler_
@@ -121,8 +123,11 @@ class RunFailureHandler(HandlerInterface):
                   logging.debug(">RunFailureHandler<:Registered "+\
                                 "a job run failure,"\
                                 "publishing a submit job event")
-                  self.publishEvent("SubmitJob",jobspecfile,delay)
-#                 self.publishEvent("SubmitJob",(jobId),delay)
+                  if self.args['QueueFailures']:
+                      JobQueueAPI.reQueueJob(jobId)
+                  else:
+                      self.publishEvent("SubmitJob",jobspecfile,delay)
+
          except ProdException,ex:
               if(ex["ErrorNr"]==3013): 
                   logging.debug(">RunFailureHandler<:Registered "+\

@@ -13,6 +13,8 @@ from ProdCommon.Core.GlobalRegistry import retrieveHandler
 from ProdCommon.Core.GlobalRegistry import registerHandler
 from ProdCommon.Core.ProdException import ProdException
 
+from JobQueue import JobQueueAPI
+
 class SubmitFailureHandler(HandlerInterface):
     """
     _SubmitFailureHandler_
@@ -66,8 +68,11 @@ class SubmitFailureHandler(HandlerInterface):
                   logging.debug(">SubmitFailureHandler<:Registered "+\
                      "a job submit failure,"\
                      "publishing a submit job event")
-                  self.publishEvent("SubmitJob",jobspecfile,delay)
-#                  self.publishEvent("SubmitJob",(jobId),delay)
+                  if self.args['QueueFailures']:
+                      JobQueueAPI.reQueueJob(jobId)
+                  else:
+                      self.publishEvent("SubmitJob",jobspecfile,delay)
+
          except ProdException,ex:
               if(ex["ErrorNr"]==3013):
                   logging.debug(">SubmitFailureHandler<:Registered "+\

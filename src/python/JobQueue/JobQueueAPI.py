@@ -183,4 +183,18 @@ def getSiteForReleasedJob(job_spec_id):
     return result
     
     
+def reQueueJob(jobs_spec_id):
+    """
+    Put job back in queue - generally used after a failure
+    """
+    Session.connect()
+    Session.start_transaction()
+    
+    jobQ = JobQueueDB()
+    result = jobQ.reQueueJob(jobs_spec_id)
+    
+    Session.commit_all()
+    Session.close_all()
+    
+    return result
     

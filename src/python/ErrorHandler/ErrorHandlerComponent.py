@@ -59,8 +59,13 @@ class ErrorHandlerComponent:
          self.args['Logfile'] = None
          self.args['MaxCacheDirSizeMB'] = 100
          self.args['DelayFactor'] = 60
+         self.args['QueueFailures'] = "False"
          self.args.update(args)
- 
+
+         if self.args['QueueFailures'].lower() in ('true', 'yes'):
+             self.args['QueueFailures'] = True
+         else:
+             self.args['QueueFailures'] = False
 
          # the error events this components subscribes to
          # that invoke an error handler

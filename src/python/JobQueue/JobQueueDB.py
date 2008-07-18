@@ -641,6 +641,16 @@ class JobQueueDB:
         return
 
 
+    def reQueueJob(self, job_spec_id):
+        """
+        Put job back in queue - generally used after a failure
+        """
+        sqlStr = """UPDATE jq_queue SET status = 'new', time = NOW()
+                    WHERE job_spec_id = \"%s\" """ % job_spec_id
+        Session.execute(sqlStr)
+        return
+
+
     def cleanOut(self, timeInterval):
         """
         _cleanOut_

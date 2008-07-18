@@ -276,6 +276,9 @@ class JobQueueComponent:
         jobSpec = JobSpec()
         try:
             jobSpec.load(jobSpecFile)
+            if jobSpec.siteWhitelist == [site]:
+                logging.info("Site already %s for %s") % (site, jobSpecFile)
+                return
             jobSpec.siteWhitelist = []
             jobSpec.siteWhitelist.append(site)
             jobSpec.save(jobSpecFile)
