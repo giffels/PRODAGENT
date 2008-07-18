@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: Dataset.py,v 1.31 2007/06/06 14:34:11 ckavka Exp $"
+__version__ = "$Revision: 1.31 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -59,7 +59,7 @@ class Dataset:
     # Dataset initialization
     ##########################################################################
 
-    def __init__(self, info, outputModule = None, fromFile = False):
+    def __init__(self, info, outputModule = None, dsCounter = 0, fromFile = False):
         """
 
         Initialize a Dataset. 
@@ -72,6 +72,7 @@ class Dataset:
             
           info -- the workflow specification or the dataset name
           outputModule -- the output module name
+          dsCounter -- which dataset in the file to take (integer offset)
           fromFile -- indicates if initialization is from a workflow
                       file or from the database
 
@@ -131,10 +132,10 @@ class Dataset:
 
             elif len(datasetsToProcess) > 1:
                 self.logging.warning( \
-                    "more that one dataset specified, using the first one")
+                    "More than one dataset, processing  %s" % dsCounter)
 
             # get the dataset
-            outputDataset = datasetsToProcess[0]
+            outputDataset = datasetsToProcess[dsCounter]
             
         except (IndexError, KeyError):
             raise MergeSensorError( \

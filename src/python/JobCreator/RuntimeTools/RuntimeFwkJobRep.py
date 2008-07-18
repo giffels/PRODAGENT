@@ -216,12 +216,21 @@ def processFrameworkJobReport():
     toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
                                   "FrameworkJobReport.xml")
 
-    if state.jobSpecNode._InputLinks and os.path.exists(toplevelReport):
+    if state.jobSpecNode._InputLinks and \
+                state.jobSpecNode._InputLinks[0]["AppearStandalone"] and \
+                os.path.exists(toplevelReport):
         #  // 
-        # // Merge with report from input node, save to toplevel and locally
+        # // Combine with report from input node, save to toplevel and locally
         #//
+        for link in state.jobSpecNode._InputLinks:
+            if not link["AppearStandalone"]:
+                msg = """Reports will only be combined when all input
+                        links have AppearStandalone set to true"""
+                raise RuntimeError, msg
+        
         inputTaskNames = [ getTaskState(x['InputNode']).taskName() \
                           for x in state.jobSpecNode._InputLinks ]
+        print "Combining current report with %s" % str(inputTaskNames)
         report = combineReports(toplevelReport, inputTaskNames, report)
         report.write("./FrameworkJobReport.xml")
     else:
@@ -231,6 +240,7 @@ def processFrameworkJobReport():
         #  //exist, otherwise it will merge this report with whatever
         # // is in there already.
         #//
+        print "Adding report to top level"
         report.write("./FrameworkJobReport.xml")
         newReport = os.path.join(os.getcwd(), "FrameworkJobReport.xml")
         mergeReports(toplevelReport, newReport)

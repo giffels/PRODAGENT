@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.12 2006/12/06 14:18:59 evansde Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.13 2007/03/05 10:45:05 ckavka Exp $"
+__version__ = "$Revision: 1.13 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
@@ -170,29 +170,32 @@ class WatchedDatasets:
         # create a dataset instances for each output module
         for outputModule in outputModulesList:
             
-            try:
-                dataset = Dataset(wfile, outputModule=outputModule, \
-                                  fromFile = True)
-            except InvalidDataset, message:
-                self.logging.error(message)
-                continue
-            except NonMergeableDataset, message:
-                self.logging.info(message)
-                continue
+            for counter in range(len(wfile.outputDatasets())):
             
-            # get dataset name
-            datasetId = dataset.getName()
-        
-            # check: dataset should not exist, ignore if it is registered
-            if datasetId in self.datasets.keys():
-                self.logging.info( \
-                       "Ignoring workflow %s, is currently watched" % \
-                       workflowFile)
-                continue
-
-            # add it
-            self.datasets[datasetId] = dataset
-            datasetIdList.append(datasetId)
+                try:
+                    dataset = Dataset(wfile, outputModule=outputModule, \
+                                      dsCounter = counter, \
+                                      fromFile = True)
+                except InvalidDataset, message:
+                    self.logging.error(message)
+                    continue
+                except NonMergeableDataset, message:
+                    self.logging.info(message)
+                    continue
+                
+                # get dataset name
+                datasetId = dataset.getName()
+            
+                # check: dataset should not exist, ignore if it is registered
+                if datasetId in self.datasets.keys():
+                    self.logging.info( \
+                           "Ignoring workflow %s, is currently watched" % \
+                           workflowFile)
+                    continue
+    
+                # add it
+                self.datasets[datasetId] = dataset
+                datasetIdList.append(datasetId)
             
         # return list of added datasets
         return datasetIdList
