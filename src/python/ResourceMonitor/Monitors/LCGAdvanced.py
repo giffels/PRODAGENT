@@ -280,6 +280,7 @@ class LCGAdvanced(MonitorInterface):
                 limit = thresholds['%sThreshold' % jobtype.lower() ]
                 
                 currentjobs = self.sitejobs.get(site['SiteIndex'], {}).get(jobtype, 0)
+                logging.debug("%s jobs of type %s at %s" %(currentjobs, jobtype, sitename))
                 available = limit - currentjobs
                 
                 # is there resources available
