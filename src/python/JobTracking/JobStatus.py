@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.31 2008/07/10 17:02:13 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.31 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.32 2008/07/14 17:37:15 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.32 $"
 
 from JobTracking.TrackingDB import TrackingDB
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
@@ -135,12 +135,26 @@ class JobStatus:
                 jobRange = '%s:%s' % ( task.jobs[0]['jobId'], \
                                        task.jobs[-1]['jobId'] )
 
+                # retrieve scheduler
+                # FIXME : to be replaced with a task specific field
+                scheduler = None
+                for job in task.jobs :
+                    if job.runningJob['scheduler'] is not None:
+                        scheduler = job.runningJob['scheduler']
+                        break
+
+                if scheduler is None:
+                    logging.error( 'Unable to retrieve Scheduler, ' + \
+                                   'skip check for jobs ' +  jobRange + \
+                                   ' of task ' + str(taskId) )
+                    continue
+                    
+
                 command = \
                         'python ' + \
                         '$PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' + \
-                        str(taskId) + ' ' + jobRange + ' ' + \
-                        task.jobs[0].runningJob['scheduler'] + ' ' + \
-                        task['user_proxy']
+                        str(taskId) + ' ' + jobRange + ' ' + scheduler + \
+                        ' ' + task['user_proxy']
 
                 logging.debug('EXECUTING: ' + str(command))
                 msg = executeCommand( command, len( task.jobs ) * 30 )
@@ -236,7 +250,8 @@ class JobStatus:
 
             # in case of empty results
             if joblist is None:
-                logging.debug( "No finished jobs to be removed from query queues")
+                logging.debug(
+                    "No finished jobs to be removed from query queues" )
                 return
 
             for pair in joblist:
