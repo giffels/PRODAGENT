@@ -5,8 +5,8 @@ _JobCreator.Creators_
 Plugins and tools for creating Jobs and acting on TaskObjects
 
 """
-__version__ = "$Revision: 1.9 $"
-__revision__ = "$Id: __init__.py,v 1.9 2007/12/18 22:25:56 evansde Exp $"
+__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: __init__.py,v 1.10 2008/02/12 21:28:18 sryu Exp $"
 __all__ = []
 
 
@@ -21,4 +21,3 @@ import OSGCreator
 import OSGBulkCreator
 import T0LSFCreator
 import ARCCreator
-import JobEmulatorCreator
