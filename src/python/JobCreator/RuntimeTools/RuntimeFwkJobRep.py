@@ -18,6 +18,7 @@ from ProdCommon.FwkJobRep.MergeReports import mergeReports
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.MergeReports import combineReports
 import ProdCommon.FwkJobRep.PerfLogParser as PerfReps
+from ShREEK.CMSPlugins.DashboardInfo import generateDashboardID
 
 def getSyncCE():
     """
@@ -57,13 +58,16 @@ def getSyncCE():
         return result
     return result
 
-def getDashboardId():
+def getDashboardId(jobSpec):
     """
     _getDashboardId_
     
     Extract dashboard id from environemt variable
     """
-    return os.environ.get("PRODAGENT_DASHBOARD_ID", "Unknown")
+    try:
+        return generateDashboardID(jobSpec)[1]
+    except:
+        return os.environ.get("PRODAGENT_DASHBOARD_ID", "Unknown")
 
 
 def processFrameworkJobReport():
@@ -195,7 +199,7 @@ def processFrameworkJobReport():
     #  //    
     # // add dashboard id
     #//
-    report.dashboardId = getDashboardId()
+    report.dashboardId = getDashboardId(state.jobSpec)
 
     #  //
     # // Add Performance Report if logfiles are Available
