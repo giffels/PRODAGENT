@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.26 2008/07/01 13:37:59 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.26 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.27 2008/07/15 10:05:36 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.27 $"
 
 import os
 import logging
@@ -121,19 +121,7 @@ class GetOutputComponent:
         self.jobLimit = int(self.args['jobsToPoll'])
         self.outputRequestedJobs = []
         self.jobFinished = []
-
-        # initialize job handling object
-        params = {}
-        params['baseDir'] = self.args['JobTrackingDir']
-        params['jobCreatorDir'] = self.args["ComponentDir"]
-        params['usingDashboard'] = None
-        params['messageServiceInstance'] = self.ms
-        params['OutputLocation'] = self.args['OutputLocation']
-        params['OutputParams'] = self.outputParams
-        params['bossLiteSession'] = self.bossLiteSession
-        params['database'] = self.database
-        logging.info("handleeee")
-        self.jobHandling = JobHandling(params)
+        self.jobHandling = None
 
         # component running, display info
         logging.info("GetOutput Component Started...")
@@ -360,6 +348,19 @@ class GetOutputComponent:
         self.ms.remove("GetOutputComponent:pollDB")
         self.ms.publish("GetOutputComponent:pollDB", "")
         self.ms.commit()
+
+        # initialize job handling object
+        params = {}
+        params['baseDir'] = self.args['JobTrackingDir']
+        params['jobCreatorDir'] = self.args["ComponentDir"]
+        params['usingDashboard'] = None
+        params['messageServiceInstance'] = self.ms
+        params['OutputLocation'] = self.args['OutputLocation']
+        params['OutputParams'] = self.outputParams
+        params['bossLiteSession'] = self.bossLiteSession
+        params['database'] = self.database
+        logging.info("handleeee")
+        self.jobHandling = JobHandling(params)
 
         # wait for messages
         logging.info("waiting for mexico" )
