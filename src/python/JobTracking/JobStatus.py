@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.32 2008/07/14 17:37:15 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.32 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.33 2008/07/22 10:11:30 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.33 $"
 
 from JobTracking.TrackingDB import TrackingDB
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
@@ -99,6 +99,15 @@ class JobStatus:
                         'closed' : 'N'}
         jobsToPoll = cls.params['jobsToPoll']
 
+        # get scheduler        
+        db = TrackingDB( bossSession.bossLiteDB )
+        scheduler = db.getTaskScheduler(taskId)
+        if scheduler is None:
+            logging.error( 'Unable to retrieve Scheduler, ' + \
+                           'skip check for task ' + str(taskId) )
+            return
+        del db
+
         # perform query
         while loop :
             try :
@@ -134,21 +143,6 @@ class JobStatus:
                 # # this is workaround for the glite bug...
                 jobRange = '%s:%s' % ( task.jobs[0]['jobId'], \
                                        task.jobs[-1]['jobId'] )
-
-                # retrieve scheduler
-                # FIXME : to be replaced with a task specific field
-                scheduler = None
-                for job in task.jobs :
-                    if job.runningJob['scheduler'] is not None:
-                        scheduler = job.runningJob['scheduler']
-                        break
-
-                if scheduler is None:
-                    logging.error( 'Unable to retrieve Scheduler, ' + \
-                                   'skip check for jobs ' +  jobRange + \
-                                   ' of task ' + str(taskId) )
-                    continue
-                    
 
                 command = \
                         'python ' + \

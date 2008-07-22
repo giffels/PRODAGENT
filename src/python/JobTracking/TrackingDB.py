@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.13 2008/05/27 09:32:40 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.13 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.1 2008/05/27 10:32:54 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.1 $"
 
 
 class TrackingDB:
@@ -126,7 +126,7 @@ class TrackingDB:
               'select j.task_id,j.job_id from bl_runningjob j' \
               + ' left join jt_group g' \
               + ' on (j.task_id=g.task_id and j.job_id=g.job_id) ' \
-              + ' where g.job_id IS NULL and j.job_id IS NOT NULL' \
+              + ' where g.job_id IS NULL ' \
               + " and j.closed='N' and j.scheduler_id IS NOT NULL" \
               + " and process_status like '%handled'" \
               + " order by j.task_id"
@@ -147,8 +147,9 @@ class TrackingDB:
               'select g.task_id,g.job_id from bl_runningjob j' \
               + ' right join jt_group g' \
               + ' on (j.task_id=g.task_id and j.job_id=g.job_id) ' \
-              + ' where j.job_id IS NULL ' \
-              + " or j.status in ('E','K','A','SD')"
+              + ' where g.job_id IS NOT NULL ' \
+              + " and j.status in ('E','K','A','SD') " \
+              + " or process_status not like '%handled'" \
 
         rows = self.bossSession.select(query)
         return rows
