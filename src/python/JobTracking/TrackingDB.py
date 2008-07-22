@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.1 2008/05/27 10:32:54 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.1 $"
+__version__ = "$Id: TrackingDB.py,v 1.1.2.2 2008/07/22 13:15:04 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.2 $"
 
 
 class TrackingDB:
@@ -49,8 +49,7 @@ class TrackingDB:
         # build query
         query = """
         select distinct( scheduler ) from bl_runningjob
-        where task_id=%s and closed='N' and scheduler is not NULL
-        and scheduler_id is not NULL
+        where task_id=%s and scheduler is not NULL
         """ % str( taskId )
 
         rows = self.bossSession.selectOne(query)
