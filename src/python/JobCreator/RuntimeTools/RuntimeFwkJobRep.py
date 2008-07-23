@@ -130,7 +130,7 @@ def processFrameworkJobReport():
     report.status = reportStatus
     report.exitCode = exitCode
     report.workflowSpecId = state.taskAttrs['WorkflowSpecID']
-    report.jobSpecId = state.taskAttrs['JobSpecID']
+    report.jobSpecId = state.jobSpec.parameters['JobName']
     report.jobType = state.taskAttrs['JobType']
     
     
