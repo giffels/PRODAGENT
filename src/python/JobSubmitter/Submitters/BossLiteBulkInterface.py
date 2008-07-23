@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.6 2008/07/02 12:56:55 gcodispo Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.7 2008/07/08 09:51:05 gcodispo Exp $"
+__version__ = "$Revision: 1.7 $"
 
 import os, time
 import logging
@@ -31,7 +31,7 @@ from ProdCommon.BossLite.DbObjects.Job import Job
 from ProdCommon.BossLite.DbObjects.RunningJob import RunningJob
 from ProdCommon.BossLite.Common.Exceptions import TaskError
 from ProdCommon.BossLite.Common.Exceptions import JobError
-from ProdCommon.BossLite.Common.Exceptions import SchedulerError
+from ProdCommon.BossLite.Common.Exceptions import BossLiteError
 
 class BossLiteBulkInterface(BulkSubmitterInterface):
     """
@@ -375,11 +375,10 @@ fi
             schedSession = BossLiteAPISched( self.bossLiteSession, \
                                              schedulerConfig )
 
-        except SchedulerError, err:
+        except BossLiteError, err:
+            logging.error( "########### Failed submission : %s" % str( err ) )
             raise JSException( "Unable to find a valid certificate", \
-                               FailureList = self.toSubmit.keys() ) 
- 
-
+                               FailureList = self.toSubmit.keys() )
         
         # // prepare extra jdl attributes
         logging.info("doBOSSSubmit : preparing jdl")
@@ -387,6 +386,7 @@ fi
             jobType = self.primarySpecInstance.parameters['JobType']
             submissionAttrs = self.createSchedulerAttributes(jobType)
         except Exception, ex:
+            logging.error( "unable to build scheduler specific attributes" )
 #           raise JSException("Failed to createJDL", mainJobSpecName = self.mainJobSpecName))
             pass
 
@@ -399,6 +399,7 @@ fi
                                                     requirements=submissionAttrs ) )
             declareClad.close()
         except:
+            logging.error( "unable to build scheduler specific requirements" )
             pass
 
         # // Executing BOSS Submit command
@@ -406,8 +407,9 @@ fi
             logging.debug ("BossLiteBulkInterface.doSubmit" )
             self.bossTask = schedSession.submit( self.bossTask, \
                                                  requirements=submissionAttrs )
-        except SchedulerError, err:
-            logging.error( "########### Failed submission : %s" %str(err) )
+        except BossLiteError, err:
+            logging.error( "########### Failed submission : %s" % \
+                           str(schedSession.getLogger()) )
             raise JSException( "Submission Failed", FailureList = \
                                [ job['name'] for job in self.bossTask.jobs ] )
 
