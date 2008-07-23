@@ -34,6 +34,7 @@ class PollInterface(dict):
         self.setdefault("Merge", None)
         self.setdefault("Processing", None)
         self.setdefault("CleanUp", None)
+        self.setdefault("LogCollect", None)
     
     def __call__(self):
         """
@@ -82,12 +83,20 @@ class PAJobStatePoll(PollInterface):
            WHERE job_type="CleanUp" AND status='inProgress';
         """
 
+        sqlStr4 = \
+        """
+        SELECT COUNT(id) FROM we_Job
+           WHERE job_type="LogCollect" AND status='inProgress';
+        """
+        
         Session.execute(sqlStr1)
         numProcessing = Session.fetchone()[0]
         Session.execute(sqlStr2)
         numMerge = Session.fetchone()[0]
         Session.execute(sqlStr3)
         numClean = Session.fetchone()[0]
+        Session.execute(sqlStr4)
+        numLog = Session.fetchone()[0]
         Session.close_all()
         
         total = numProcessing + numMerge
@@ -95,6 +104,7 @@ class PAJobStatePoll(PollInterface):
         self['Processing'] = numProcessing
         self['Merge'] = numMerge
         self['CleanUp'] = numClean
+        self['LogCollect'] = numLog
         return
     
 
@@ -130,6 +140,10 @@ class PABOSSPoll(PollInterface):
         """
         select count(JOB.ID) from CHAIN,JOB where JOB.CHAIN_ID=CHAIN.ID and JOB.TASK_ID=CHAIN.TASK_ID and CHAIN.NAME like '%CleanUp%' and JOB.STATUS not in ('W','SA','SD');
         """
+        sqlStr4 = \
+        """
+        select count(JOB.ID) from CHAIN,JOB where JOB.CHAIN_ID=CHAIN.ID and JOB.TASK_ID=CHAIN.TASK_ID and CHAIN.NAME like '%collect%' and JOB.STATUS not in ('W','SA','SD');
+        """
 
         processingout=commands.getoutput("bossAdmin SQL -query \"%s\" -c %s"%(sqlStr1,bossCfgDir))
         numProcessing=long(processingout.strip().split('\n')[1])
@@ -139,6 +153,9 @@ class PABOSSPoll(PollInterface):
 
         cleanout=commands.getoutput("bossAdmin SQL -query \"%s\" -c %s"%(sqlStr3,bossCfgDir))
         numClean=long(cleanout.strip().split('\n')[1])
+        
+        cleanout=commands.getoutput("bossAdmin SQL -query \"%s\" -c %s"%(sqlStr4,bossCfgDir))
+        numLog=long(cleanout.strip().split('\n')[1])
 
 
         #
@@ -160,6 +177,7 @@ class PABOSSPoll(PollInterface):
         self['Processing'] = numProcessing
         self['Merge'] = numMerge
         self['CleanUp'] = numClean
+        self['LogCollect'] = numLog
 
         return
         
@@ -214,7 +232,11 @@ class PAJobStateMonitor(MonitorInterface):
             msg = "No cleanupThreshold found for site entry: %s\n" % (
                 siteName,)
             raise RuntimeError, msg
-
+        logThresh = siteThresholds.get("logcollectThreshold", None)
+        if logThresh == None:
+            msg = "No logcollectThreshold found for site entry: %s\n" % (
+                siteName,)
+            raise RuntimeError, msg
 
         #  //
         # // Poll the JobStatesDB
@@ -251,8 +273,19 @@ class PAJobStateMonitor(MonitorInterface):
                 constraint['type'] = "CleanUp"
                 result.append(constraint)
 
+        if poller['LogCollect'] != None:
+            logging.info(" LogCollect jobs are: %s Threshold: %s" % \
+                         (poller['LogCollect'], logThresh) )
+            test = poller['LogCollect'] - logThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "LogCollect"
+                result.append(constraint)
 
-        if (poller['Merge'] == None) and (poller['Processing'] == None) and (poller['CleanUp'] == None):
+        if (poller['Merge'] == None) and (poller['Processing'] == None) \
+                    and (poller['CleanUp'] == None) \
+                    and (poller['LogCollect'] == None):
             test = poller['Processing'] - procThresh
             if test < 0:
                 constraint = self.newConstraint()
@@ -318,7 +351,11 @@ class PABOSSMonitor(MonitorInterface):
             msg = "No cleanupThreshold found for site entry: %s\n" % (
                 siteName,)
             raise RuntimeError, msg
-
+        logThresh = siteThresholds.get("logcollectThreshold", None)
+        if logThresh == None:
+            msg = "No logcollectThreshold found for site entry: %s\n" % (
+                siteName,)
+            raise RuntimeError, msg
 
         # Maximum number of processing jobs to submit in a single attempt for bulk ops.
         maxSubmit = siteThresholds.get("maximumSubmission", None)
@@ -379,6 +416,16 @@ class PABOSSMonitor(MonitorInterface):
                 constraint = self.newConstraint()
                 constraint['count'] = abs(test)
                 constraint['type'] = "CleanUp"
+                result.append(constraint)
+                
+        if poller['LogCollect'] != None:
+            logging.info(" LogCollect jobs are: %s Threshold: %s" % \
+                         (poller['LogCollect'], logThresh) )
+            test = poller['LogCollect'] - logThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "LogCollect"
                 result.append(constraint)
 
         if (poller['Merge'] == None) and (poller['Processing'] == None) and (poller['CleanUp'] == None):
