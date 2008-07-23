@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.54 2008/04/11 14:33:15 swakef Exp $"
+__revision__ = "$Id: setup.py,v 1.55 2008/06/27 13:59:28 ahmadh Exp $"
 
 from distutils.core import setup
 
@@ -19,7 +19,6 @@ packages = [
     'CondorTracker',
     'CondorTracker.Trackers',
     'DBSInterface',
-    'DatasetInjector',
     'ErrorHandler',
     'ErrorHandler.Handlers',
     'HTTPFrontend',
@@ -33,7 +32,7 @@ packages = [
     'JobEmulator',
     'JobEmulator.JobAllocationPlugins',
     'JobEmulator.JobCompletionPlugins',
-    'JobEmulator.JobReportPlugins',    
+    'JobEmulator.JobReportPlugins',
     'JobQueue',
     'JobQueue.Prioritisers',
     'JobKiller',
@@ -66,8 +65,6 @@ packages = [
     'ProdMgrInterface.States.Aux',
     'ProdMon',
     'RelValInjector',
-    'RepackerInjector',
-    'RequestInjector',
     'ResourceMonitor',
     'ResourceMonitor.Monitors',
     'RssFeeder',
@@ -91,7 +88,7 @@ packages = [
     'Trigger.TriggerAPI',
     'WorkflowInjector',
     'WorkflowInjector.Plugins',
-    
+
     ]
 
 setup(name='ProdAgent',
