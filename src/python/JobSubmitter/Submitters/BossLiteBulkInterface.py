@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.7 2008/07/08 09:51:05 gcodispo Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.8 2008/07/23 12:08:36 gcodispo Exp $"
+__version__ = "$Revision: 1.8 $"
 
 import os, time
 import logging
@@ -346,6 +346,7 @@ fi
                 self.bossLiteSession.getNewRunningInstance( self.bossJob )
                 self.bossJob.runningJob['outputDirectory'] = outdir \
                          + str(self.bossJob.runningJob['submission'])
+                self.bossLiteSession.updateDB( self.bossJob )
 
             # load the task ans append the job
             self.bossTask = self.bossLiteSession.loadTask(
