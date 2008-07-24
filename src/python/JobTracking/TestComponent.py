@@ -5,7 +5,7 @@ starting the component as an interactive process so that you can get
 stdout/stderr etc
 
 """
-__revision__ = "$Id: TrackingComponent.py,v 1.8 2006/05/01 11:45:04 elmer Exp $"
+__revision__ = "$Id: TestComponent.py,v 1.2 2006/05/01 11:46:22 elmer Exp $"
 
 import os
 import sys
@@ -23,9 +23,7 @@ def usage():
     """
     print usage
 
-argsDict = {"BOSSDIR" : os.environ.get("BOSSDIR", None),
-            "BOSSPATH" : os.environ.get("BOSSPATH", None),
-            "BOSSVERSION" : os.environ.get("BOSSVERSION", None),
+argsDict = {
             "ComponentDir" : os.getcwd(),
             }
 
