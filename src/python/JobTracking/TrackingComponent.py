@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.36 2008/07/10 17:02:13 gcodispo Exp $"
-__version__ = "$Revision: 1.47.2.36 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.47.2.37 2008/07/14 17:37:15 gcodispo Exp $"
+__version__ = "$Revision: 1.47.2.37 $"
 
 import os
 import os.path
@@ -493,6 +493,7 @@ class TrackingComponent:
         except :
             pass
 
+        useFile = False
         # if the dashboardInfoFile is not there, this is a crab job
         if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
             task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
@@ -503,9 +504,12 @@ class TrackingComponent:
             dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
             dashboardInfo['User'] = task['name'].split('_')[0]
             dashboardInfo['TaskType'] =  'analysis'
+            dashboardInfo.addDestination(self.usingDashboard['address'],
+                                         self.usingDashboard['port'])
 
         # otherwise, ProdAgent job: everything is stored in the file
         else:
+            useFile = True
             try:
                 # it exists, get dashboard information
                 dashboardInfo.read(dashboardInfoFile)
@@ -516,6 +520,8 @@ class TrackingComponent:
                               dashboardInfoFile + " failed (jobId=" \
                               + str(job['jobId']) + ")\n" + str(msg))
                 return
+            if not dashboardInfo.destinations.has_key('cms-pamon.cern.ch'):
+                dashboardInfo.addDestination('cms-pamon.cern.ch', '8884')
 
         # write dashboard information
         dashboardInfo['GridJobID'] = job.runningJob['schedulerId']
@@ -546,25 +552,21 @@ class TrackingComponent:
         except KeyError:
             pass
 
-        ### # create/update info file
-        ### logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-        ### dashboardInfo.write( dashboardInfoFile )
-
-        # set dashboard destination
-        dashboardInfo.addDestination(
-            self.usingDashboard['address'], self.usingDashboard['port']
-            )
-
         # publish it
         try:
             # logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
-            dashboardInfo.publish(5)
+            dashboardInfo.publish(1)
             logging.info("dashboard info sent for job %s" % self.fullId(job) )
 
         # error, cannot publish it
         except Exception, msg:
             logging.error("Cannot publish dashboard information: " + \
                           dashboardInfo.__str__() + "\n" + str(msg))
+
+        ### # create/update info file
+        if useFile:
+            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
+            dashboardInfo.write( dashboardInfoFile )
 
         return
 
