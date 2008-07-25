@@ -83,7 +83,7 @@ creatorTemplate = {
     #//
     "Dashboard" : {
     "UseDashboard" : "True",
-    "DestinationHost" : "lxgate35.cern.ch",
+    "DestinationHost" : "cms-pamon.cern.ch",
     "DestinationPort" : "8884",
     "EventDestinationHost" :"lxarda12.cern.ch",
     "EventDestinationPort" : "8884",
@@ -166,7 +166,7 @@ submitterTemplate = {
     },
     "Dashboard" : {
     "UseDashboard" : "True",
-    "DestinationHost" : "lxgate35.cern.ch",
+    "DestinationHost" : "cms-pamon.cern.ch",
     "DestinationPort" : "8884",
     },
 

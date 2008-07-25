@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: LCGSubmitter.py,v 1.36 2008/02/15 16:54:37 afanfani Exp $"
+__revision__ = "$Id: LCGSubmitter.py,v 1.37 2008/04/09 17:57:16 swakef Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -276,7 +276,7 @@ class LCGSubmitter(SubmitterInterface):
           logging.info("No Dashboard section in SubmitterPluginConfig")
           usingDashboard="False"
         if  usingDashboard.lower()=='true':
-          dashboardInfo.publish(5)
+          dashboardInfo.publish(1)
 #          dashboardInfo.clear()
           dashboardInfo.write(dashboardinfodir +"/DashboardInfo%s_%s_%s.xml"%(taskid,chainid,resub))
 

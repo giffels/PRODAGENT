@@ -94,7 +94,7 @@ if __name__ == '__main__':
         }
 
 
-    mgr.newDestination("lxgate35.cern.ch", 8884)
+    mgr.newDestination("cms-pamon.cern.ch", 8884)
     mgr.newDestination("cithep90.ultralight.org", 58884)
 
      

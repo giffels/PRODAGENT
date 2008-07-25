@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: GLITESubmitter.py,v 1.8 2007/09/26 09:36:05 afanfani Exp $"
+__revision__ = "$Id: GLITESubmitter.py,v 1.9 2007/09/27 15:29:56 afanfani Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -382,7 +382,7 @@ class GLITESubmitter(SubmitterInterface):
         logging.debug("usingdashboard.lower()=='true' =%s"%(usingDashboard.lower()=='true'))
         
         if  usingDashboard.lower()=='true':
-          dashboardInfo.publish(5)
+          dashboardInfo.publish(1)
 #          dashboardInfo.clear()  
           dashboardInfo.write(dashboardinfodir + "/DashboardInfo%s_%s_%s.xml"%(taskid,chainid,resub))
 

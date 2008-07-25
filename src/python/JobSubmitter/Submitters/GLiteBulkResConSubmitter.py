@@ -30,7 +30,7 @@ class GLiteBulkResConSubmitter(GLiteBulkInterface):
                 try:
                     name = cemap[int(i)]
                     sitelist += "other.GlueCEUniqueID==\"%s\" || " % name
-                    logging.debug("Whitelist element %s" % i)
+                    logging.debug("Whitelist element %s" % name)
                 except Exception, ex:
                     raise RuntimeError("Error mapping site id %s to ce: %s" % (str(i), str(ex)))
             sitelist = sitelist[:len(sitelist)-4]

@@ -206,7 +206,7 @@ class ApMonDestination(dict):
 
 if __name__ == '__main__':
 
-    destHost = "lxgate35.cern.ch"
+    destHost = "cms-pamon.cern.ch"
     destPort =  8884 # ApMon destination port here
     destPasswd = ''
     clusterName = "evansdetest"

@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.55 2008/06/27 13:59:28 ahmadh Exp $"
+__revision__ = "$Id: setup.py,v 1.56 2008/07/23 13:37:58 evansde Exp $"
 
 from distutils.core import setup
 
@@ -21,6 +21,7 @@ packages = [
     'DBSInterface',
     'ErrorHandler',
     'ErrorHandler.Handlers',
+    'GetOutput',
     'HTTPFrontend',
     'JobCleanup',
     'JobCleanup.Handlers',

@@ -35,6 +35,7 @@ class PollInterface(dict):
         self.setdefault("Merge", None)
         self.setdefault("Processing", None)
         self.setdefault("CleanUp", None)
+        self.setdefault("LogCollect", None)
     
     def __call__(self):
         """
@@ -82,13 +83,19 @@ class PAJobStatePoll(PollInterface):
         SELECT COUNT(id) FROM we_Job
            WHERE job_type="CleanUp" AND status='inProgress';
         """
-
+        sqlStr4 = \
+        """
+        SELECT COUNT(id) FROM we_Job
+           WHERE job_type="LogCollect" AND status='inProgress';
+        """
         Session.execute(sqlStr1)
         numProcessing = Session.fetchone()[0]
         Session.execute(sqlStr2)
         numMerge = Session.fetchone()[0]
         Session.execute(sqlStr3)
         numClean = Session.fetchone()[0]
+        Session.execute(sqlStr4)
+        numCollect = Session.fetchone()[0]
         Session.close_all()
         
         total = numProcessing + numMerge
@@ -96,6 +103,7 @@ class PAJobStatePoll(PollInterface):
         self['Processing'] = numProcessing
         self['Merge'] = numMerge
         self['CleanUp'] = numClean
+        self['LogCollect'] = numCollect
         return
     
 
@@ -121,7 +129,7 @@ class PABossLitePoll(PollInterface):
 
         sqlStr1 = \
         """
-        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.job_id and bl_runningjob.task_id=bl_job.task_id and bl_job.name not like '%merge%' and bl_job.name not like '%CleanUp%' and bl_runningjob.status not in ('C','A','SD');
+        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.job_id and bl_runningjob.task_id=bl_job.task_id and bl_job.name not like '%merge%' and bl_job.name not like '%CleanUp%' and bl_job.name not like '%LogCollect%' and bl_runningjob.status not in ('C','A','SD');
         """
         sqlStr2 = \
         """
@@ -131,6 +139,11 @@ class PABossLitePoll(PollInterface):
         """
         select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.id and bl_runningjob.task_id=bl_job.task_id and bl_job.name like '%CleanUp%' and bl_runningjob.status not in ('C','SA','SD');
         """
+        sqlStr4 = \
+        """
+        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.id and bl_runningjob.task_id=bl_job.task_id and bl_job.name like '%LogCollect%' and bl_runningjob.status not in ('C','SA','SD');
+        """
+        
 
         ### processingout=commands.getoutput("bossAdmin SQL -query \"%s\" -c %s"%(sqlStr1,bossCfgDir))
         ### numProcessing=long(processingout.strip().split('\n')[1])
@@ -151,6 +164,9 @@ class PABossLitePoll(PollInterface):
         
         cleanout = bossLiteDB.selectOne( sqlStr3 )
         numClean = long(cleanout.strip())
+        
+        collectout = bossLiteDB.selectOne( sqlStr4 )
+        numCollect = long(collectout.strip())       
 
         #
         #BOSSdbConfig = dbConfig
@@ -171,6 +187,7 @@ class PABossLitePoll(PollInterface):
         self['Processing'] = numProcessing
         self['Merge'] = numMerge
         self['CleanUp'] = numClean
+        self['LogCollect'] = numCollect
 
         return
         
@@ -332,6 +349,11 @@ class PABossLiteMonitor(MonitorInterface):
             msg = "No cleanupThreshold found for site entry: %s\n" % (
                 siteName,)
             raise RuntimeError, msg
+        collectThresh = siteThresholds.get("logcollectThreshold", None)
+        if collectThresh == None:
+            msg = "No logCollect found for site entry: %s\n" % (
+                siteName,)
+            raise RuntimeError, msg
 
 
         # Maximum number of processing jobs to submit in a single attempt for bulk ops.
@@ -397,8 +419,19 @@ class PABossLiteMonitor(MonitorInterface):
                 constraint['count'] = abs(test)
                 constraint['type'] = "CleanUp"
                 result.append(constraint)
+        
+        if poller['LogCollect'] != None:
+            logging.info(" LogCollect jobs are: %s Threshold: %s" % \
+                         (poller['LogCollect'], collectThresh) )
+            test = poller['LogCollect'] - collectThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "LogCollect"
+                result.append(constraint)
 
-        if (poller['Merge'] == None) and (poller['Processing'] == None) and (poller['CleanUp'] == None):
+        if (poller['Merge'] == None) and (poller['Processing'] == None) \
+            and (poller['CleanUp'] == None) and (poller['LogCollect'] == None):
             test = poller['Processing'] - procThresh
             if test < 0:
                 constraint = self.newConstraint()
@@ -418,5 +451,5 @@ class PABossLiteMonitor(MonitorInterface):
 
 
 
-registerMonitor(PABlJobStateMonitor, PAJobStateMonitor.__name__)
+registerMonitor(PAJobStateMonitor, PAJobStateMonitor.__name__)
 registerMonitor(PABossLiteMonitor, PABossLiteMonitor.__name__)

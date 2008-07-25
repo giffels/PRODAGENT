@@ -67,11 +67,6 @@ if  homeDir == None:
     sys.exit(1)
 
 
-BOSSDIR=os.environ.get("BOSSDIR")
-if  BOSSDIR == None:
-    print "WARNING: BOSSDIR variable not found"
-    BOSSDIR=""
-
 coreFields = {
     #  //
     # // Core pieces: ProdAgent, ProdAgentDB, MessageService, JobStates
@@ -99,25 +94,8 @@ coreFields = {
     },
 
     "BOSS": {
-    # BossConfig.clad
-    'tmpDir':'/tmp',
-    'minUpdInt':30,
-    'maxUpdInt':180,
-    'maxRetry':3,
-    'monaLisaUrl':'',
-    # MySQLConfig.clad
-    'domain':'localdomain',
-    'guestUser':'ProdAgentGuest',
-    'guestPasswd':'ProdAgentGuestPasswd',
-    'realtimeMonitor':'no',
-    'configDir':'',
-    'clarensKey':'',
-    'clarensCert':'',
-    'clarensUrl':'',
-    'clarensProxy':'',
-    'rtHost':socket.gethostname(),
-    'rtDomain':socket.getfqdn(),
-    'rtPortNr':'3306'},
+    'BossLiteschemaLocation': "$PRODCOMMON_ROOT/share/setupDatabase.sql"
+    },
     
     "MessageService" : {
     "pollInterval" : 5, 
@@ -193,11 +171,10 @@ componentFields = {
 
     "JobTracking" : {
     "ComponentDir" : None,
-    "BOSSDIR" : BOSSDIR,
-    "BOSSPATH" : None,
-    "BOSSVERSION" : None,
-    "PollInterval" : 10,
-    "jobsToPoll" : 100,
+    "PollInterval" : 300,
+    "QueryInterval" : 3,
+    "jobsToPoll" : 300,
+    "PoolThreadsSize" : 5,
     "RssFeed": "no",
     },
 
@@ -230,6 +207,7 @@ componentFields = {
     "DelayFactor" : 100,
     "ReportAction" : "noMove",
     "RssFeed": "no",
+    "QueueFailures", False
     },
 
     'JobCleanup'   : {
@@ -311,6 +289,15 @@ componentFields = {
 	"PollInterval" : "01:00:00",
 	},
 
+    "GetOutput" : {
+    "ComponentDir" : None,
+    "PollInterval" : 300,
+    "GetOutputPoolThreadsSize" : 5,
+    "OutputLocation" : "local",
+    'maxGetOutputAttempts' : 3,
+    "RssFeed" : "no",
+    },
+
 	"JobEmulator" : {
 	"ComponentDir" : None,
 	"JobAllocationPlugin" : "LoadBalanceAllocationPlugin",
@@ -357,20 +344,6 @@ flush privileges;
 show grants for 'root'@'machine.domain';
 
 Beware usernames in mysql can be too long.
-""",
-   "BOSS" : \
-"""
-Please look over these parameters carefully.
-If you are not using the Clarens based web service for database
-communication you can leave the Clarens entries empty.
-The BOSS database names will be derived from the ProdAgent DB name
-
-If the mysqldb is not on the same machine, make sure to 
-add some things to the boss config:
-prodAgent-edit-config --component=BOSS --parameter=rtDomain 
---value=yourdomain
-prodAgent-edit-config --component=BOSS --parameter=rtHost --value=yourdbhost
-prodAgent-edit-config --component=BOSS --parameter=domain --value=yourdomain
 """,
    "JobSubmitter" : \
 """

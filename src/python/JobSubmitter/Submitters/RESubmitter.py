@@ -9,7 +9,7 @@ in this module, for simplicity in the prototype.
 
 """
 
-__revision__ = "$Id: RESubmitter.py,v 1.3 2007/03/13 11:48:58 bacchi Exp $"
+__revision__ = "$Id: RESubmitter.py,v 1.4 2007/03/15 09:32:54 bacchi Exp $"
 
 #  //
 # // Configuration variables for this submitter
@@ -262,7 +262,7 @@ class RESubmitter(SubmitterInterface):
           logging.info("No Dashboard section in SubmitterPluginConfig")
           usingDashboard="False"
         if  usingDashboard.lower()=='true':
-          dashboardInfo.publish(5)
+          dashboardInfo.publish(1)
 #          dashboardInfo.clear()
           dashboardInfo.write(dashboardinfodir +"/DashboardInfo%s_%s_%s.xml"%(taskid,chainid,resub))
 

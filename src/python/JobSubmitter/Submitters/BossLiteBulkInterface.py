@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.8 2008/07/23 12:08:36 gcodispo Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.9 2008/07/24 15:37:06 gcodispo Exp $"
+__version__ = "$Revision: 1.9 $"
 
 import os, time
 import logging
@@ -20,7 +20,7 @@ from JobSubmitter.JSException import JSException
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentCore.ProdAgentException import ProdAgentException
-from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, extractDashboardID
 
 # Blite API import
 from ProdAgentDB.Config import defaultConfig as dbConfig
@@ -459,21 +459,21 @@ fi
             outdir = outdir[ : outdir.rfind('/') ]
             dashboardInfoFile = os.path.join(outdir, "DashboardInfo.xml" )
 
-            if  not os.path.exists(dashboardInfoFile):
-                logging.error("Unable to find dashboardInfoFile " + \
-                              dashboardInfoFile )
-                continue
+            if  os.path.exists(dashboardInfoFile):
+                #logging.error("Unable to find dashboardInfoFile " + \
+                #              dashboardInfoFile )
+                #continue
 
-            try:
-                # it exists, get dashboard information
-                dashboardInfo.read(dashboardInfoFile)
-
-            except StandardError, msg:
-                # it does not work, abandon
-                logging.error("Reading dashboardInfoFile " + \
-                              dashboardInfoFile + " failed (jobId=" \
-                              + str(job['jobId']) + ")\n" + str(msg))
-                continue
+                try:
+                    # it exists, get dashboard information
+                    dashboardInfo.read(dashboardInfoFile)
+    
+                except StandardError, msg:
+                    # it does not work, abandon
+                    logging.error("Reading dashboardInfoFile " + \
+                                  dashboardInfoFile + " failed (jobId=" \
+                                  + str(job['jobId']) + ")\n" + str(msg))
+                    continue
         
             # assign job dashboard id
             if dashboardInfo.task == '' :
@@ -488,16 +488,23 @@ fi
             dashboardInfo['SubTimeStamp'] = job.runningJob['submissionTime']
             dashboardInfo['ApplicationVersion'] = appData
             dashboardInfo['TargetCE'] = whitelist
-            
-            dashboardInfo.write( dashboardInfoFile )
-            logging.info("Created dashboardInfoFile " + dashboardInfoFile )
+            jobSpec = os.path.join(outdir, "%s-JobSpec.xml" % job['name'])
+            dashboardInfo.task, dashboardInfo.job = extractDashboardID(jobSpec)
 
-            # publish to Dashboard
-            logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
-            dashboardInfo.addDestination(
-                self.usingDashboard['address'], self.usingDashboard['port']
-                )
-            dashboardInfo.publish(5)
+            try:
+                dashboardInfo.write( dashboardInfoFile )
+                logging.info("Created dashboardInfoFile " + dashboardInfoFile )
+            
+                dashboardInfo.addDestination(
+                    self.usingDashboard['address'], self.usingDashboard['port']
+                    )
+                # publish to Dashboard
+                logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
+                dashboardInfo.write( dashboardInfoFile )
+                
+                dashboardInfo.publish(1)
+            except Exception, ex:
+                logging.error("Error publishing to dashbaord: %s" % str(ex))
         return
 
 

@@ -93,7 +93,7 @@ class GLiteBulkInterface(BulkSubmitterInterface):
         # // check for dashboard usage
         #//
         self.usingDashboard = {'use' : 'True', \
-                               'address' : 'lxgate35.cern.ch', \
+                               'address' : 'cms-pamon.cern.ch', \
                                'port' : '8884'}
         try:
             dashboardCfg = self.pluginConfig.get('Dashboard', {})
@@ -664,7 +664,7 @@ fi
             dashboardInfo.addDestination(
                 self.usingDashboard['address'], self.usingDashboard['port']
                 )
-            dashboardInfo.publish(5)
+            dashboardInfo.publish(1)
         return
     
     def getSiteRequirements(self):

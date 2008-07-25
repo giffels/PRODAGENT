@@ -236,7 +236,7 @@ class BulkSubmitterInterface:
             
             dashData['ApplicationVersion'] = appData
             dashData['TargetCE'] = whitelist
-            dashData.addDestination("lxgate35.cern.ch", 8884)
-            dashData.publish(5)
+            dashData.addDestination("cms-pamon.cern.ch", 8884)
+            dashData.publish(1)
         return
     

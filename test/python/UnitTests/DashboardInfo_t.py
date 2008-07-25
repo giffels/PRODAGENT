@@ -36,7 +36,7 @@ class DashboardInfoTest(unittest.TestCase):
         info = DashboardInfo()
         info.job = "JobName"
         info.task = "TaskName"
-        info.addDestination("lxgate35.cern.ch", 8884)
+        info.addDestination("cms-pamon.cern.ch", 8884)
         info.addDestination("cithep90.ultralight.org", 58884)
         info['FloatParam'] = 1.234
         info['IntParam'] = 1234
@@ -76,7 +76,7 @@ class DashboardInfoTest(unittest.TestCase):
         info = DashboardInfo()
         info.job = "JobName"
         info.task = "TaskName"
-        info.addDestination("lxgate35.cern.ch", 8884)
+        info.addDestination("cms-pamon.cern.ch", 8884)
         info.addDestination("cithep90.ultralight.org", 58884)
         try:
             info.write(self.testFile)
@@ -108,7 +108,7 @@ class DashboardInfoTest(unittest.TestCase):
     #    info['GridUser'] = "DavidEvans"
     #    info['NodeName'] = "twoflower.fnal.gov"
     #    info['Application'] = "CMSSW"
-    #    info.addDestination("lxgate35.cern.ch", 8884)
+    #    info.addDestination("cms-pamon.cern.ch", 8884)
     #    info.publish(100)
 
 if __name__ == '__main__':

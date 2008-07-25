@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.23 2007/03/13 11:48:24 bacchi Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.24 2007/07/13 21:21:49 afanfani Exp $"
 
 import os
 import logging
@@ -328,8 +328,8 @@ class SubmitterInterface:
 
         dashboardInfo['ApplicationVersion'] = self.listToString(self.parameters['AppVersions'])
         dashboardInfo['TargetCE'] = self.listToString(self.parameters['Whitelist'])
-        dashboardInfo.addDestination("lxgate35.cern.ch", 8884)
-        dashboardInfo.publish(5)
+        dashboardInfo.addDestination("cms-pamon.cern.ch", 8884)
+        dashboardInfo.publish(1)
         return
         
 
