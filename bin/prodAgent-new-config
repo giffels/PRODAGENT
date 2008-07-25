@@ -126,12 +126,6 @@ coreFields = {
 
 componentFields = {
 
-    "RequestInjector" : {
-    "ComponentDir" : None,
-    "FirstRun" : None,
-    "QueueJobMode": "True",
-    },
-
     "JobCreator" : {
     "ComponentDir" : None,
     "CreatorName" : "testCreator",
@@ -207,7 +201,7 @@ componentFields = {
     "DelayFactor" : 100,
     "ReportAction" : "noMove",
     "RssFeed": "no",
-    "QueueFailures", False
+    "QueueFailures": False,
     },
 
     'JobCleanup'   : {
@@ -242,12 +236,6 @@ componentFields = {
     "AgentTag":"please insert a proper value",
     "Locations":"please insert a proper value",
     "ProdMgrFeedback":"direct",
-    "RssFeed": "no",
-    },
-
-    "DatasetInjector" : {
-    "ComponentDir" : None,
-    "QueueJobMode": "True",
     "RssFeed": "no",
     },
 
@@ -318,6 +306,10 @@ componentFields = {
 	"maxLogs" : 200,
 	},
 	
+	"WorkflowInjector" : {
+	  "ComponentDir" : None,
+	  "Plugin" : "RequestFeeder"
+	  },
 	
     }# end componentFields
 
