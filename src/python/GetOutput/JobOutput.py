@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.37 2008/07/15 10:05:37 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.37 $"
+__version__ = "$Id: JobOutput.py,v 1.2 2008/07/25 15:44:37 swakef Exp $"
+__revision__ = "$Revision: 1.2 $"
 
 import logging
 import os
@@ -79,9 +79,13 @@ class JobOutput:
             bossLiteSession = \
                            BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
             bossLiteSession.updateDB( job.runningJob )
-        except JobError:
-            logging.error("Output for job %s.%s cannot be requested" % \
-                          (job['taskId'], job['jobId'] ) )
+        except JobError, err:
+            logging.error("Output for job %s.%s cannot be requested : %s" % \
+                          (job['taskId'], job['jobId'], str( err ) ) )
+        except Exception, err:
+            logging.error("Unknown Error :Output for job %s.%s " + \
+                          "cannot be requested : %s" % \
+                          (job['taskId'], job['jobId'], str( err ) ) )
 
         logging.debug("getoutput request for %s.%s successfully enqueued" % \
                       (job['taskId'], job['jobId'] ) )
@@ -368,6 +372,9 @@ class JobOutput:
         except DbError, msg:
             logging.error('Error updating DB : %s ' % str(msg))
 
+        except Exception, msg:
+            logging.error('Unknown Error updating DB : %s ' % str(msg))
+
         numberOfJobs = len(jobs)
 
         logging.debug("Going to recreate %s get output requests" % \
@@ -401,6 +408,9 @@ class JobOutput:
             bossLiteSession.updateDB( job )
         except DbError, msg:
             logging.error('Error updating DB : %s ' % str(msg))
+
+        except Exception, msg:
+            logging.error('Unknown Error updating DB : %s ' % str(msg))
 
         logging.debug("Output processing done for job %s.%s" % \
                       (job['taskId'], job['jobId']))

@@ -6,8 +6,8 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.11 2008/07/14 17:37:15 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.11 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.3 2008/07/25 15:47:41 swakef Exp $"
+__version__ = "$Revision: 1.3 $"
 
 from threading import Thread
 from time import sleep
@@ -70,53 +70,58 @@ class PoolScheduler(Thread):
         # do forever
         while True:
 
-            # get job information about new jobs
-            JobStatus.addNewJobs()
+            try :
+                # get job information about new jobs
+                JobStatus.addNewJobs()
 
-            # apply policy
-            try:
+                # apply policy
                 groups = self.applyPolicy()
-            except:
+
+                # any job to check?
+                if len(groups) == 0:
+
+                    # no, wait for jobs to arrive
+                    logging.info( "No work to do, " + \
+                                  "scheduler goes to sleep for " + \
+                                 str(self.delay) + " seconds")
+                    sleep(self.delay)
+                    continue
+
+                # new threads to start?
+                if len(groups) >= self.threadsWorking:
+
+                    # yes, start threads
+                    for grp in groups:
+
+                        # but only for new groups
+                        if grp not in self.groupsUnderProcessing:
+
+                            # insert group ID into queue
+                            # to trigger thread start
+                            self.groupsUnderProcessing.add(grp)
+                            self.pool.enqueue(grp, grp)
+
+                # wait for a thread to finish
+                (group, result) = self.pool.dequeue()
+                logging.info("Thread processing group " + str(group) + \
+                             " has finished")
+
+                # decrement threads counter
+                self.threadsWorking = self.threadsWorking - 1
+
+                # remove its ID from groups
+                self.groupsUnderProcessing.remove(group)
+
+                # remove all finished jobs from this group
+                JobStatus.removeFinishedJobs(group)
+
+            except Exception, ex :
                 import traceback
-                logging.error("Policy problems for thrad tokens: %s" \
-                              % traceback.format_exc() )
-                raise
-
-            # any job to check?
-            if len(groups) == 0:
-
-                # no, wait for jobs to arrive
-                logging.info("No work to do, scheduler goes to sleep for " + \
-                             str(self.delay) + " seconds")
+                logging.error( 'Error in PoolScheduler : [%s]' % str(ex) )
+                logging.error( "Traceback: %s" % traceback.format_exc() )
+                logging.error( "PoolScheduler goes to sleep for " + \
+                               str(self.delay) + " seconds" )
                 sleep(self.delay)
-                continue
-
-            # new threads to start?
-            if len(groups) >= self.threadsWorking:
-
-                # yes, start threads
-                for grp in groups:
-
-                    # but only for new groups
-                    if grp not in self.groupsUnderProcessing:
-
-                        # insert group ID into queue to trigger thread start
-                        self.groupsUnderProcessing.add(grp)
-                        self.pool.enqueue(grp, grp)
-
-            # wait for a thread to finish
-            (group, result) = self.pool.dequeue()
-            logging.info("Thread processing group " + str(group) + \
-                         " has finished")
-
-            # decrement threads counter
-            self.threadsWorking = self.threadsWorking - 1
-
-            # remove its ID from groups
-            self.groupsUnderProcessing.remove(group)
-
-            # remove all finished jobs from this group
-            JobStatus.removeFinishedJobs(group)
 
 
     def applyPolicy(self):
