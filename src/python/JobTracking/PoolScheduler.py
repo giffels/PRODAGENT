@@ -6,18 +6,20 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.10 2008/07/10 17:02:13 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.10 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.9 2008/05/27 10:32:54 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.9 $"
 
 from threading import Thread
 from time import sleep
 from sets import Set
 import logging
+import traceback
 from random import shuffle
 
 from JobTracking.JobStatus import JobStatus
 from JobTracking.TrackingDB import TrackingDB
-from ProdCommon.BossLite.API.BossLitePoolDB import BossLitePoolDB
+from ProdCommon.ThreadTools.WorkQueue import WorkQueue
+from ProdCommon.BossLite.API.BossLiteDB import BossLiteDB
 
 ###############################################################################
 # Class: PoolScheduler                                                        #
@@ -49,8 +51,11 @@ class PoolScheduler(Thread):
             self.maxJobs = params['jobsToPoll']
         except KeyError:
             self.maxJobs = 100
-
-        self.sessionPool = params['sessionPool']
+        try:
+            self.database = params['dbConfig']
+        except KeyError:
+            from ProdAgentDB.Config import defaultConfig as dbConfig
+            self.database = dbConfig
         self.groupsUnderProcessing = Set([])
         self.jobPerTask = None
 
@@ -69,9 +74,9 @@ class PoolScheduler(Thread):
 
         # do forever
         while True:
-
+          try:
             # get job information about new jobs
-            JobStatus.addNewJobs()
+            self.getNewJobs()
 
             # apply policy
             try:
@@ -117,6 +122,20 @@ class PoolScheduler(Thread):
 
             # remove all finished jobs from this group
             JobStatus.removeFinishedJobs(group)
+          except:
+            logging.error("Thread error: %s "%traceback.format_exc())
+            logging.info(" scheduler goes to sleep for " + str(self.delay) + " seconds")
+            sleep(self.delay)
+ 
+
+    def getNewJobs(self):
+        """
+        __getNewJobs__
+
+        get information about new jobs.
+        """
+
+        JobStatus.addNewJobs()
 
 
     def applyPolicy(self):
@@ -127,7 +146,7 @@ class PoolScheduler(Thread):
         """
 
         # get DB session
-        session = BossLitePoolDB( "MySQL", pool=self.sessionPool )
+        session = BossLiteDB ("MySQL", self.database )
         db = TrackingDB( session )
 
         # set policy parameters
