@@ -6,20 +6,18 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.9 2008/05/27 10:32:54 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.9 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.12 2008/07/14 17:37:15 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.12$"
 
 from threading import Thread
 from time import sleep
 from sets import Set
 import logging
-import traceback
 from random import shuffle
 
 from JobTracking.JobStatus import JobStatus
 from JobTracking.TrackingDB import TrackingDB
-from ProdCommon.ThreadTools.WorkQueue import WorkQueue
-from ProdCommon.BossLite.API.BossLiteDB import BossLiteDB
+from ProdCommon.BossLite.API.BossLitePoolDB import BossLitePoolDB
 
 ###############################################################################
 # Class: PoolScheduler                                                        #
@@ -51,11 +49,8 @@ class PoolScheduler(Thread):
             self.maxJobs = params['jobsToPoll']
         except KeyError:
             self.maxJobs = 100
-        try:
-            self.database = params['dbConfig']
-        except KeyError:
-            from ProdAgentDB.Config import defaultConfig as dbConfig
-            self.database = dbConfig
+
+        self.sessionPool = params['sessionPool']
         self.groupsUnderProcessing = Set([])
         self.jobPerTask = None
 
@@ -74,68 +69,59 @@ class PoolScheduler(Thread):
 
         # do forever
         while True:
-          try:
-            # get job information about new jobs
-            self.getNewJobs()
 
-            # apply policy
-            try:
+            try :
+                # get job information about new jobs
+                JobStatus.addNewJobs()
+
+                # apply policy
                 groups = self.applyPolicy()
-            except:
+
+                # any job to check?
+                if len(groups) == 0:
+
+                    # no, wait for jobs to arrive
+                    logging.info( "No work to do, " + \
+                                  "scheduler goes to sleep for " + \
+                                  str(self.delay) + " seconds")
+                    sleep(self.delay)
+                    continue
+
+                # new threads to start?
+                if len(groups) >= self.threadsWorking:
+
+                    # yes, start threads
+                    for grp in groups:
+
+                        # but only for new groups
+                        if grp not in self.groupsUnderProcessing:
+
+                            # insert group ID into queue
+                            # to trigger thread start
+                            self.groupsUnderProcessing.add(grp)
+                            self.pool.enqueue(grp, grp)
+
+                # wait for a thread to finish
+                (group, result) = self.pool.dequeue()
+                logging.info("Thread processing group " + str(group) + \
+                             " has finished")
+
+                # decrement threads counter
+                self.threadsWorking = self.threadsWorking - 1
+
+                # remove its ID from groups
+                self.groupsUnderProcessing.remove(group)
+
+                # remove all finished jobs from this group
+                JobStatus.removeFinishedJobs(group)
+
+            except Exception, ex :
                 import traceback
-                logging.error("Policy problems for thrad tokens: %s" \
-                              % traceback.format_exc() )
-                raise
-
-            # any job to check?
-            if len(groups) == 0:
-
-                # no, wait for jobs to arrive
-                logging.info("No work to do, scheduler goes to sleep for " + \
-                             str(self.delay) + " seconds")
+                logging.error( 'Error in PoolScheduler : [%s]' % str(ex) )
+                logging.error( "Traceback: %s" % traceback.format_exc() )
+                logging.error( "PoolScheduler goes to sleep for " + \
+                               str(self.delay) + " seconds" )
                 sleep(self.delay)
-                continue
-
-            # new threads to start?
-            if len(groups) >= self.threadsWorking:
-
-                # yes, start threads
-                for grp in groups:
-
-                    # but only for new groups
-                    if grp not in self.groupsUnderProcessing:
-
-                        # insert group ID into queue to trigger thread start
-                        self.groupsUnderProcessing.add(grp)
-                        self.pool.enqueue(grp, grp)
-
-            # wait for a thread to finish
-            (group, result) = self.pool.dequeue()
-            logging.info("Thread processing group " + str(group) + \
-                         " has finished")
-
-            # decrement threads counter
-            self.threadsWorking = self.threadsWorking - 1
-
-            # remove its ID from groups
-            self.groupsUnderProcessing.remove(group)
-
-            # remove all finished jobs from this group
-            JobStatus.removeFinishedJobs(group)
-          except:
-            logging.error("Thread error: %s "%traceback.format_exc())
-            logging.info(" scheduler goes to sleep for " + str(self.delay) + " seconds")
-            sleep(self.delay)
- 
-
-    def getNewJobs(self):
-        """
-        __getNewJobs__
-
-        get information about new jobs.
-        """
-
-        JobStatus.addNewJobs()
 
 
     def applyPolicy(self):
@@ -146,7 +132,7 @@ class PoolScheduler(Thread):
         """
 
         # get DB session
-        session = BossLiteDB ("MySQL", self.database )
+        session = BossLitePoolDB( "MySQL", pool=self.sessionPool )
         db = TrackingDB( session )
 
         # set policy parameters
