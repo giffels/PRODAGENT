@@ -6,13 +6,14 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.1.2.8 2008/04/29 08:39:29 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.8 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.1.2.9 2008/05/27 10:32:54 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.9 $"
 
 from threading import Thread
 from time import sleep
 from sets import Set
 import logging
+import traceback
 from random import shuffle
 
 from JobTracking.JobStatus import JobStatus
@@ -73,7 +74,7 @@ class PoolScheduler(Thread):
 
         # do forever
         while True:
-
+          try:
             # get job information about new jobs
             self.getNewJobs()
 
@@ -121,7 +122,11 @@ class PoolScheduler(Thread):
 
             # remove all finished jobs from this group
             JobStatus.removeFinishedJobs(group)
-
+          except:
+            logging.error("Thread error: %s "%traceback.format_exc())
+            logging.info(" scheduler goes to sleep for " + str(self.delay) + " seconds")
+            sleep(self.delay)
+ 
 
     def getNewJobs(self):
         """

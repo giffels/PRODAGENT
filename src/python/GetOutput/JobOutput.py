@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.34 2008/07/02 13:47:43 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.34 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.35 2008/07/04 08:47:29 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.35 $"
 
 import logging
 import os
@@ -83,6 +83,10 @@ class JobOutput:
         except JobError:
             logging.error("Output for job %s.%s cannot be requested" % \
                           (job['taskId'], job['jobId'] ) )
+        except :
+            logging.error("Generic exception: Output for job %s.%s cannot be requested" % \
+                          (job['taskId'], job['jobId'] ) )
+
 
         logging.debug("getoutput request for %s.%s successfully enqueued" % \
                       (job['taskId'], job['jobId'] ) )
