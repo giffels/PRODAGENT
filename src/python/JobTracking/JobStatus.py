@@ -12,12 +12,12 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.35 2008/07/25 17:23:40 afanfani Exp $"
-__version__ = "$Revision: 1.1.2.35 $"
+__revision__ = "$Id: JobStatus.py,v 1.1.2.37 2008/07/25 17:48:38 afanfani Exp$"
+__version__ = "$Revision: 1.1.2.37$"
 
 from JobTracking.TrackingDB import TrackingDB
-from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
-from ProdCommon.BossLite.API.BossLiteDB import  BossLiteDB
+from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
+from ProdCommon.BossLite.API.BossLitePoolDB import BossLitePoolDB
 from ProdCommon.BossLite.Common.Exceptions import DbError, TaskError, TimeOut
 #from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 #from ProdCommon.BossLite.Common.Exceptions import SchedulerError
@@ -66,12 +66,15 @@ class JobStatus:
 
         try:
             # get DB sessions
-            bossSession = BossLiteAPI( "MySQL", cls.params['dbConfig'] )
+            bossSession = BossLiteAPI("MySQL", pool=cls.params['sessionPool'])
             db = TrackingDB( bossSession.bossLiteDB )
             tasks = db.getGroupTasks(group)
 
             for taskId in tasks :
                 cls.bossQuery( bossSession, int(taskId) )
+
+        except DbError, ex:
+            logging.error( "JobTrackingThread exception: %s" % ex )
 
         except Exception, ex:
             logging.error( "JobTrackingThread exception: %s" \
@@ -96,9 +99,14 @@ class JobStatus:
                         'closed' : 'N'}
         jobsToPoll = cls.params['jobsToPoll']
 
-        # get scheduler onece for task
+        # get scheduler        
         db = TrackingDB( bossSession.bossLiteDB )
         scheduler = db.getTaskScheduler(taskId)
+        if scheduler is None:
+            logging.error( 'Unable to retrieve Scheduler, ' + \
+                           'skip check for task ' + str(taskId) )
+            return
+        del db
 
         # perform query
         while loop :
@@ -119,11 +127,10 @@ class JobStatus:
 
                 # # this is the correct way...
                 # Scheduler session
-                # schedulerConfig = {'name' : task.jobs[0].runningJob['scheduler'],
-                #                    'user_proxy' : task['user_proxy'],
-                #                    'service' : task.jobs[0].runningJob['service'] }
+                # schedulerConfig = { 'timeout' : len( task.jobs ) * 30 }
                 #
-                # schedSession = BossLiteAPISched( bossSession, schedulerConfig )
+                # schedSession = \
+                #        BossLiteAPISched( bossSession, schedulerConfig, task )
                 #
                 # task = schedSession.query( task, queryType='parent' )
                 #
@@ -140,11 +147,8 @@ class JobStatus:
                 command = \
                         'python ' + \
                         '$PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' + \
-                        str(taskId) + ' ' + jobRange + ' ' + \
-                        scheduler + ' ' + \
-                        task['user_proxy']
-
-##        task.jobs[0].runningJob['scheduler'] + ' ' + \
+                        str(taskId) + ' ' + jobRange + ' ' + scheduler + \
+                        ' ' + task['user_proxy']
 
                 logging.debug('EXECUTING: ' + str(command))
                 msg = executeCommand( command, len( task.jobs ) * 30 )
@@ -197,7 +201,7 @@ class JobStatus:
 
         try:
 
-            session = BossLiteDB ("MySQL", cls.params['dbConfig'] )
+            session = BossLitePoolDB( "MySQL", pool=cls.params['sessionPool'] )
             db = TrackingDB( session )
             joblist = db.getUnassociatedJobs()
 
@@ -234,13 +238,14 @@ class JobStatus:
         """
 
         try:
-            session = BossLiteDB ("MySQL", cls.params['dbConfig'] )
+            session = BossLitePoolDB( "MySQL", pool=cls.params['sessionPool'] )
             db = TrackingDB( session )
             joblist = db.getAssociatedJobs()
 
             # in case of empty results
             if joblist is None:
-                logging.debug( "No finished jobs to be removed from query queues")
+                logging.debug(
+                    "No finished jobs to be removed from query queues" )
                 return
 
             for pair in joblist:
