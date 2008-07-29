@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.20 2008/01/12 18:19:17 afanfani Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.21 2008/03/28 12:08:44 afanfani Exp $"
 
 import getpass
 import os
@@ -14,7 +14,7 @@ import sys
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentDB.Install import adminLogin 
-from ProdAgentDB.Install import installDB
+from ProdAgentDB.Install import installMySQLDB as installDB
 from ProdAgentDB.Install import grantUsers
 from ProdAgentDB.Install import preInstall
 
