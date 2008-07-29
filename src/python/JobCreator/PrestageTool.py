@@ -28,7 +28,7 @@ class InstallPrestage:
           if taskObject['Type'] != "CMSSW":
              return
 
-          if taskObject['PreStage'].lower() == 'false':
+          if taskObject.get('PreStage','false').lower() == 'false':
              return
 
                       
