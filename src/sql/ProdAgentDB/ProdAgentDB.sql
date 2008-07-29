@@ -530,7 +530,7 @@ CREATE TABLE jq_queue(
    workflow_id VARCHAR(255) NOT NULL, 
    priority INT DEFAULT 0,
    workflow_priority INT DEFAULT 0,
-   status ENUM ("new", "released") DEFAULT "new",
+   status ENUM ("new", "held", "released") DEFAULT "new",
    time TIMESTAMP NOT NULL default NOW(),
    released_site INT DEFAULT NULL,
    UNIQUE(job_spec_id),
