@@ -27,6 +27,7 @@ from HTTPFrontend.DatasetsMonitor import DatasetMonitor
 from HTTPFrontend.ResourceMonitors import ResourceDetails,ResourceStatus
 from HTTPFrontend.LogViewer import LogViewer
 from HTTPFrontend.AlertMonitor import AlertMonitor, CurrentAlert, HistoryAlert
+from HTTPFrontend.ConfDBEmulator import ConfDBEmulator
 
 def getLocalDBSURL():
     try:
@@ -85,7 +86,7 @@ class Root:
         html += "<td>Production logs</td></td>\n"
 
         html += "<tr><td><a href=\"%s/alertmonitor\">AlertMonitor</a></td>"%(self.myUrl) + "<td>Alerts published by prodagent components</td></tr>"
-        
+        html += "<tr><td><a href=\"%s/confdbemu\">ConfDBEmulator</a></td>"%(self.myUrl) + "<td>ConfDB Emulator</td></tr>"        
         html += """</table></body></html>"""
         return html
     index.exposed = True
@@ -215,6 +216,7 @@ class HTTPFrontendComponent:
         root.alertmonitor.currentalert = CurrentAlert (baseUrl)
         root.alertmonitor.historyalert=HistoryAlert(baseUrl)
 
+        root.confdbemu = ConfDBEmulator()
         
         root.logs = LogViewer()
         
