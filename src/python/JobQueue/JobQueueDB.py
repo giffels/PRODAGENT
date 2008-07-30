@@ -291,7 +291,7 @@ class JobQueueDB:
         
     
     def insertJobSpec(self, jobSpecId, jobSpecFile, jobType, workflowId,
-                      workflowPriority, sitesList):
+                      workflowPriority, sitesList, status = "new"):
         """
         _insertJobSpecs_
 
@@ -316,11 +316,12 @@ class JobQueueDB:
                                  job_spec_file,
                                  job_type,
                                  workflow_id,
-                                 priority)
-        VALUES (  "%s", "%s", "%s", "%s", %s ) """ % (
+                                 priority,
+                                 status)
+        VALUES (  "%s", "%s", "%s", "%s", %s, "%s" ) """ % (
         jobSpecDict["JobSpecId"], jobSpecDict['JobSpecFile'],
         jobSpecDict['JobType'], jobSpecDict['WorkflowSpecId'],
-        jobSpecDict['WorkflowPriority']
+        jobSpecDict['WorkflowPriority'], status
         )
         dbCur = Session.get_cursor()
         dbCur.execute(sqlStr)
@@ -601,26 +602,6 @@ class JobQueueDB:
         
         
         
-#    def flagAsReleased(self, *indices):
-#        """
-#        _flagAsReleased_
-#
-#        For the job indices in the list provided, flag the jobs as
-#        released status
-#        """
-#        sqlStr = \
-#        """
-#        UPDATE  jq_queue SET status = 'released', time = NOW() WHERE job_index
-#          IN 
-#        """
-#        
-#        sqlStr += " ( "
-#        sqlStr += str(reduce(reduceList, indices))
-#        sqlStr += " );"
-#        Session.execute(sqlStr)
-#        return
-
-
     def flagAsReleased(self, siteIndex = None, *indices):
         """
         flag jobs as released at a site
@@ -682,6 +663,18 @@ class JobQueueDB:
             workflowSpecId,)
         Session.execute(sqlStr)
         return
+
+    def removeHoldForWorkflow(self, workflowSpecId):
+        """
+        _removeHoldForWorkflow_
+
+        Change the status of all jobs that have a particular workflow ID from
+        "held" to "new" so that they can be released and run.
+        """
+        sqlStr = "update jq_queue set status = \"new\" where workflow_id=\"%s\";" % \
+                 (workflowSpecId)
+        Session.execute(sqlStr)
+        return    
         
     def retrieveJobsAtSitesNotWorkflow(self, count = 1, jobType = None,
                                        notWFL = None, *sites):

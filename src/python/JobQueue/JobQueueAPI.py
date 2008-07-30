@@ -15,18 +15,21 @@ from ProdCommon.Database import Session
 
 Session.set_database(dbConfig)
 
-def queueJob(jobSpecFile, priorityMap, jobSpec=None):
+def queueJob(jobSpecFile, priorityMap, jobSpec = None, status = "new"):
     """
     _queueJob_
 
-    Add JobSpec to the JobQueue with a priority looked up from the
-    priority map by job Type.
-    This queues a single job and is potentially slow for large groups of
-    jobs.
+    Add a JobSpec to the JobQueue with a priority looked up from the
+    priority map by job type. This queues a single job and is potentially slow
+    for large groups of jobs.
    
     jobSpec is a JobSpec instance. If the jobSpec is available pass the jobSpec
     as well as the jobSpecFile location for the performace.
     jobSpecFile won't be loaded, but needed to update the database
+
+    The status parameter can either be "new" or "held".  Jobs marked as "new"
+    will be released as resources become available, while jobs marked as "held"
+    will sit in the JobQueue until they are explicitly released.
     """
     if jobSpec != None and jobSpec.__class__ is JobSpec:
         spec = jobSpec
@@ -53,9 +56,8 @@ def queueJob(jobSpecFile, priorityMap, jobSpec=None):
         Session.connect()
         Session.start_transaction()
         jobQ = JobQueueDB()
-        #jobQ.loadSiteMatchData()
         jobQ.insertJobSpec(jobSpecId, jobSpecFile, jobType, workflow,
-                           priority, sitesList)
+                           priority, sitesList, status)
         logging.info("Job %s Queued with priority %s" % (jobSpecId, priority))
         Session.commit_all()
         Session.close_all()
@@ -103,28 +105,6 @@ def bulkQueueJobs(listOfSites, *jobSpecDicts):
         Session.rollback()
         Session.close_all()
     return
-
-
-#def releaseJobs( *jobDefs):
-#    """
-#    _releaseJobs_
-#
-#    Flag jobs as released so that they can be removed from the queue
-#
-#    """
-#    logging.debug("releasing jobDefs: %s" % str(jobDefs))
-#    indices = [ x['JobIndex'] for x in jobDefs ]
-#    logging.debug("releasing indices: %s" % indices)
-#    Session.connect()
-#    Session.start_transaction()
-#    
-#    jobQ = JobQueueDB()
-#    jobQ.flagAsReleased(*indices)
-#    
-#    
-#    Session.commit_all()
-#    Session.close_all()
-#    return
 
 
 def releaseJobs(siteIndex = None, *jobDefs):
@@ -181,7 +161,28 @@ def getSiteForReleasedJob(job_spec_id):
     Session.close_all()
     
     return result
-    
+
+def removeHoldByWorkflow(workflowID):
+    """
+    _removeHoldByWorkflow_
+
+    Change the status of all jobs in the JobQueue with a particular workflow ID
+    from "held" to "new" so that they will eventually be released.
+    """
+    try:
+        Session.connect()
+        Session.start_transaction()
+        jobQ = JobQueueDB()
+        jobQ.removeHoldForWorkflow(workflowID)
+        Session.commit_all()
+        Session.close_all()
+    except Exception, ex:
+        msg = "Failed to remove jobs for workflow %s." % workflowID
+        msg += str(ex)
+        logging.error(msg)
+        Session.rollback()
+        Session.close_all()
+    return    
     
 def reQueueJob(jobs_spec_id):
     """
@@ -197,4 +198,3 @@ def reQueueJob(jobs_spec_id):
     Session.close_all()
     
     return result
-    
