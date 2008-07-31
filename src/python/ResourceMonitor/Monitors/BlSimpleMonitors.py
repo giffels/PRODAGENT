@@ -133,7 +133,7 @@ class PABossLitePoll(PollInterface):
         """
         sqlStr2 = \
         """
-        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.job_id and bl_runningjob.task_id=bl_job.task_id and bl_job.name like '%merge%' and bl_runningjob.status not in ('C','SA','SD'); # 
+        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.job_id and bl_runningjob.task_id=bl_job.task_id and bl_job.name like '%merge%' and bl_runningjob.status not in ('C','SA','SD');
         """
         sqlStr3 = \
         """
@@ -156,17 +156,13 @@ class PABossLitePoll(PollInterface):
 
         bossLiteDB = BossLiteDB( 'MySQL', dbConfig )
 
-        processingout = bossLiteDB.selectOne( sqlStr1 )
-        numProcessing = long(processingout.strip())
+        numProcessing = bossLiteDB.selectOne( sqlStr1 )
 
-        mergeout = bossLiteDB.selectOne( sqlStr2 )
-        numMerge = long(mergeout.strip())
+        numMerge = bossLiteDB.selectOne( sqlStr2 )
         
-        cleanout = bossLiteDB.selectOne( sqlStr3 )
-        numClean = long(cleanout.strip())
+        numClean = bossLiteDB.selectOne( sqlStr3 )
         
-        collectout = bossLiteDB.selectOne( sqlStr4 )
-        numCollect = long(collectout.strip())       
+        numCollect = bossLiteDB.selectOne( sqlStr4 )   
 
         #
         #BOSSdbConfig = dbConfig
