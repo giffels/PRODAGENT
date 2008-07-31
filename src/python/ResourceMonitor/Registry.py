@@ -41,7 +41,7 @@ def registerMonitor(objectRef, name):
     """
     if name in Registry.MonitorRegistry.keys():
         msg = "Duplicate Name used to registerMonitor object:\n"
-        msg += "%s already exists\n"
+        msg += "%s already exists\n" % name
         logging.error(msg)
         raise RuntimeError, msg
     if not type(objectRef) == types.ClassType:
