@@ -17,3 +17,7 @@ try:
     import LCGAdvanced
 except:
     pass
+try:
+    import BlSimpleMonitors
+except:
+    pass
