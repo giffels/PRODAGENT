@@ -52,9 +52,8 @@ class ARCCreator(CreatorInterface):
             swsetup['ScramCommand'] = "scramv1"
             swsetup['ScramArch'] = "slc4_ia32_gcc345"
 
-        #  //
-        # // Make sure the standard environment setup is set to
-        #//  something.
+        # Make sure the standard environment setup is set to
+        # something.
         self.swSetupCommand = self.pluginConfig['SoftwareSetup'].get(
             "SoftwareSetupCommand",
             ". $VO_CMS_SW_DIR/cmsset_default.sh ;") # CERN default
@@ -124,15 +123,11 @@ class ARCCreator(CreatorInterface):
             self.pluginConfig['SoftwareSetup']['ScramArch'])
 
         
-        #  //
-        # // Command that sets up CMS environment, makes scram available 
-        #//  etc
+        # Command that sets up CMS environment, makes scram available etc
         taskObject['PreTaskCommands'].append(
            setupScramEnvironment(self.swSetupCommand))
 
-        #  //
-        # // Build a scram setup for the job environment
-        #//
+        # Build a scram setup for the job environment
         scramSetup = taskObject.addStructuredFile("scramSetup.sh")
         scramSetup.interpreter = "."
         taskObject['PreAppCommands'].append(
@@ -150,8 +145,6 @@ class ARCCreator(CreatorInterface):
             self.pluginConfig['SoftwareSetup']['ScramCommand'],
             True)
           )
-        
-        return
 
 
     def handleStageOut(self, taskObject):
@@ -161,12 +154,9 @@ class ARCCreator(CreatorInterface):
         Handle a StageOut task object.
         
         """
-        #  //
-        # // Assuming stage out tools have same setup as rest of CMS
-        #//  environment
+        # Assuming stage out tools have same setup as rest of CMS
+        # environment
         taskObject['PreStageOutCommands'].append(self.swSetupCommand)
-        
-        return
     
     
     def handleCleanUp(self, taskObject):
@@ -176,20 +166,14 @@ class ARCCreator(CreatorInterface):
         Handle a CleanUp task object
 
         """
-        #  //
-        # // Assuming stage out tools have same setup as rest of CMS
-        #//  environment, this is usually the same as the StageOut
+        # Assuming stage out tools have same setup as rest of CMS
+        # environment, this is usually the same as the StageOut
         taskObject['PreCleanUpCommands'].append(
             self.swSetupCommand
             )
-        
-        return
 
 
-#  //
-# // Register an instance of ARCCreator with the Creator Registry
-#//  (Add import in Creators/__init__.py of this module to enable auto
-#  // registration based on import of entire module)
-# // 
-#//
+# Register an instance of ARCCreator with the Creator Registry
+# (Add import in Creators/__init__.py of this module to enable auto
+# registration based on import of entire module)
 registerCreator(ARCCreator, ARCCreator.__name__)

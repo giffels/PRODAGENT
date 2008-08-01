@@ -110,42 +110,31 @@ class ARCTracker(TrackerPlugin):
         for subId in submitted:
             status = self.jobs.get(subId, None)
   
-            #  // 
-            # //  Job not in getJobStatus() output, check job report
-            #//
+            # Job not in getJobStatus() output, check job report
             if status == None:
                 msg = "No Status entry for %s, checking job report" % subId
                 logging.debug(msg)
                 status = self.jobReportStatus(subId)
                 
-            #  //
-            # // If status still None, declare job lost/failed
-            #//
+            # If status still None, declare job lost/failed
             if status == None:
                 self.TrackerDB.jobFailed(subId)
                 logging.debug("Job %s has been lost" % (subId))
                 continue
 
-            #  // 
-            # // Now examine the status value, not sure what these are, but act
-            #//  accordingly
+            # Now examine the status value, not sure what these are, but act
+            # accordingly
             if status == "PEND":
-                #  //
-                # // Still submitted, nothing to be done
-                #//
+                # Still submitted, nothing to be done
                 logging.debug("Job %s is pending" % (subId))
                 continue 
             if status in ("RUN", "DONE"):
-                #  //
-                # // Is running or completed already, forward to running handler
-                #//
+                # Is running or completed already, forward to running handler
                 self.TrackerDB.jobRunning(subId)
                 logging.debug("Job %s is running or finished" % (subId))
                 continue
             if status == "EXIT":
-                #  //
-                # // Failed or Aborted
-                #//
+                # Failed or Aborted
                 logging.debug("Job %s is held..." % (subId))
                 self.TrackerDB.jobFailed(subId)
                 
@@ -164,32 +153,24 @@ class ARCTracker(TrackerPlugin):
 
             status = self.jobs.get(id, None)
   
-            #  // 
-            # //  Job not in getJobStatus output, check job report
-            #//
+            # Job not in getJobStatus output, check job report
             if status == None:
                 msg = "No Status entry for %s, checking job report" % id
                 logging.debug(msg)
                 status = self.jobReportStatus(id)
                 
-            #  //
-            # // If status still None, declare job lost/failed
-            #//
+            # If status still None, declare job lost/failed
             if status == None:
                 self.TrackerDB.jobFailed(id)
                 logging.debug("Job %s has been lost" % (id))
                 continue
             
             if status == "RUN":
-                #  //
-                # // Is running
-                #//
+                # Is running
                 logging.debug("Job %s is still running" % (id))
                 continue
             if status == "DONE":
-                #  //
-                # // Is Complete 
-                #//
+                # Is Complete 
                 self.TrackerDB.jobComplete(id)
                 report = self.findJobReport(id, True)
                 logging.debug("Job %s complete with report %s" % (id,report))

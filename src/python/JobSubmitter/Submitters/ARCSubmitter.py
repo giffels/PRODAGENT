@@ -255,15 +255,11 @@ class ARCSubmitter(BulkSubmitterInterface):
         job
         
         """
-        #  //
-        # // Generate main executable script for job
-        #//
+        # Generate main executable script for job
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        #  // 
-        # // Some code useful for debugging
-        #//
+        # Some code useful for debugging
         script.append("ulimit -a\n")
         script.append("echo pwd: `pwd`\n")
         script.append("ls -la\n")
