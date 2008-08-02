@@ -6,7 +6,7 @@ Installation and configuration script for prod agent boss database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-boss-db,v 1.20 2008/01/12 18:19:17 afanfani Exp $"
+__revision__ = "$Id: prodAgent-install-boss-db,v 1.22 2008/07/29 15:06:27 ahmadh Exp $"
 
 import getpass
 import os
@@ -14,7 +14,7 @@ import sys
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentDB.Install import adminLogin 
-from ProdAgentDB.Install import installDB
+from ProdAgentDB.Install import installMySQLDB as installDB
 from ProdAgentDB.Install import grantUsers
 from ProdAgentDB.Install import preInstall
 
@@ -32,7 +32,7 @@ if(exists==-1):
 # start the install db process:
 valid = ['config=','help']
 # check the input
-config=preInstall(valid)
+config, block=preInstall(valid)
 # load config file
 cfgObject = ProdAgentConfiguration()
 cfgObject.loadFromFile(config)

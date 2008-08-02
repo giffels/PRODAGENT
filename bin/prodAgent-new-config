@@ -148,12 +148,6 @@ coreFields = {
 
 componentFields = {
 
-    "RequestInjector" : {
-    "ComponentDir" : None,
-    "FirstRun" : None,
-    "QueueJobMode": "True",
-    },
-
     "JobCreator" : {
     "ComponentDir" : None,
     "CreatorName" : "testCreator",
@@ -267,11 +261,6 @@ componentFields = {
     "RssFeed": "no",
     },
 
-    "DatasetInjector" : {
-    "ComponentDir" : None,
-    "QueueJobMode": "True",
-    "RssFeed": "no",
-    },
 
     "JobQueue" : {
     "ComponentDir" : None,
