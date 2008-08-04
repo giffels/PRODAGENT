@@ -86,6 +86,7 @@ coreFields = {
         
 
     "ProdAgentDB": {
+    'dbType' : 'mysql',
     'dbName':'ProdAgentDB',
     'host':'localhost',
     'user':'ProdAgentUser',
