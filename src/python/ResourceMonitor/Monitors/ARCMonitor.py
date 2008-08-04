@@ -21,7 +21,9 @@ from popen2 import Popen4
 # Mapping between job types and threshold types
 jobTypeMap = {"Processing":"processingThreshold",
               "Merge":"mergeThreshold",
-              "CleanUp":"cleanupThreshold" }
+              "CleanUp":"cleanupThreshold",
+              "Repack":"repackThreshold" }
+
 
 SEStatusCache = {}
 
@@ -181,7 +183,6 @@ class ARCMonitor(MonitorInterface):
             i += 1
 
         return r
-
 
     
 registerMonitor(ARCMonitor, ARCMonitor.__name__)
