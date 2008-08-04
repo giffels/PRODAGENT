@@ -7,9 +7,10 @@ for simulated grid jobs.
 
 """
 
-__revision__ = "$Id: "
-__version__ = "$Revision: "
+__revision__ = "$Id: $"
+__version__ = "$Revision: $"
 
 __all__ = []
 
 import EmulatorReportPlugin
+import Tier0ReportPlugin
