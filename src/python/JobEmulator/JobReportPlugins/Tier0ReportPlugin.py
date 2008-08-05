@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: Tier0ReportPlugin.py,v 1.1 2008/08/04 21:59:37 sryu Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: Tier0ReportPlugin.py,v 1.2 2008/08/05 14:43:02 sryu Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -90,7 +90,7 @@ class Tier0ReportPlugin(JobReportPluginInterface):
             if outModules.has_key(modName):
                 dataset['LFNBase'] = outModules[modName].get('LFNBase', None)
                 self.setDefaultForNoneValue('LFNBase', dataset['LFNBase'])
-                dataset['MergeedLFNBase'] = \
+                dataset['MergedLFNBase'] = \
                                 outModules[modName].get('MergedLFNBase', None)
 
         datasetMap = {}
@@ -103,13 +103,6 @@ class Tier0ReportPlugin(JobReportPluginInterface):
             theFile = newReport.newFile()
             guid = makeUUID()
             
-            if outMod.has_key("LFNBase"):
-                theFile['LFN'] = "%s/%s.root" % (outMod['LFNBase'], guid)
-            else:
-                theFile['LFN'] = "/some/madeup/path/%s.root" % guid
-                
-            self.setDefaultForNoneValue('LFNBase', theFile['LFN'])
-            theFile['PFN'] ="fakefile:%s" % theFile['LFN']
             theFile['GUID'] = guid
             theFile['ModuleLabel'] = outName
             
@@ -170,6 +163,13 @@ class Tier0ReportPlugin(JobReportPluginInterface):
             # for the all other 
             theFile['Size'] = 4000000 * randrange(1, 1000) #random size
             theFile['MergedBySize'] = choice(["True", "False"])
+            # setting up default LFN
+            if outMod.has_key("LFNBase"):
+                theFile['LFN'] = "%s%s.root" % (outMod['LFNBase'], guid)
+            else:
+                theFile['LFN'] = "/some/madeup/path/%s.root" % guid
+                
+            self.setDefaultForNoneValue('LFNBase', theFile['LFN'])
             
             if tier0JobType == "Repack":
                 # parse dataset name set the size according to the threshold
@@ -184,6 +184,8 @@ class Tier0ReportPlugin(JobReportPluginInterface):
                 else :
                     theFile['Size'] = 4000000000  #(4 G)
                     theFile['MergedBySize'] = "True"
+                    #override LFN fro Merged file
+                    theFile['LFN'] = "%s%s.root" % (outMod['MergedLFNBase'], guid)
                     
             elif tier0JobType == "RepackMerge":
                 theFile['Size'] = 4000000000  #(4 G)
@@ -193,6 +195,8 @@ class Tier0ReportPlugin(JobReportPluginInterface):
                 theFile['Size'] = 2000000000  #(2 G)
             else :
                 theFile['Size'] = 4000000 * randrange(1, 1000) #random size        
+            
+            theFile['PFN'] ="fakefile:%s" % theFile['LFN']
             
         newReport.write(reportFilePath)
 
