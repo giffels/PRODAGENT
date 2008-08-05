@@ -8,8 +8,8 @@ of time.
 
 """
 
-__revision__ = "$Id: $"
-__version__ = "$Revision: $"
+__revision__ = "$Id: RandomCompletionPlugin.py,v 1.1 2008/02/12 21:55:07 sryu Exp $"
+__version__ = "$Revision: 1.1 $"
 
 import datetime
 import logging
@@ -47,6 +47,12 @@ class RandomCompletionPlugin(JobCompletionPluginInterface):
         self.avgCompletionPercentage variables have been set.
         
         """
+        if self.avgCompletionTime == "00:00:00":
+            if random() < float(self.avgCompletionPercentage):
+                return "finished"
+            else:
+                return "failed"            
+        
         # We start completing/failing jobs once a job has been in the
         # queue for 85% of its specified interval.
         completionHours, completionMinutes, completionSeconds = \
