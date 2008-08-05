@@ -7,8 +7,8 @@ that generate job reports for completed
 jobs.
 
 """
-__revision__ = "$Id: JobReportPluginInterface.py,v 1.4 2008/03/14 21:08:04 sryu Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: JobReportPluginInterface.py,v 1.5 2008/06/06 15:00:10 sryu Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "sfoulkes, sryu"
 import logging
 
@@ -25,6 +25,9 @@ class JobReportPluginInterface:
     """
     def __init__(self):
         self.avgEventProcessingRate = None
+        # thresholdForMerge is Tier0ReportPlugin specific
+        # this shouldn't be in interface, but quick fix.
+        self.thresholdForMerge = None
         
     def createSuccessReport(self, jobSpec, workerNodeInfo, reportFilePath):
         """
