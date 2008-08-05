@@ -134,6 +134,8 @@ def initializeJobEM_DB():
     """
     #JobEmulatorDB.deleteTable("job_emulator")
     #JobEmulatorDB.deleteTable("jobEM_node_info")
+    
+    numberOfNode = 1000
     try:
         JobEmulatorDB.dropTable("job_emulator")
     except Exception, ex:
@@ -155,7 +157,7 @@ def initializeJobEM_DB():
         logging.error("need to have some entries in rc_site table")
         
     for siteName in siteNames:
-        for num in range(50):
+        for num in range(numberOfNode):
             JobEmulatorDB.insertWorkerNode("fakeHost_%d.%s.FAKE" 
                                            % (num, siteName))
     
