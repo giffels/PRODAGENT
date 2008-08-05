@@ -26,8 +26,8 @@ from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=',
          'pileup-dataset=', 'pileup-files-per-job=','only-sites='
-         'selection-efficiency=','starting-run=','totalevents=',
-         'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version='
+         'selection-efficiency=','starting-run=','totalevents=','activity=',
+         'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=', 'stageout-intermediates='
          ]
 
 usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
@@ -37,6 +37,7 @@ usage += "                                  --group=<Physics Group>\n"
 #usage += "                                  --request-id=<Request ID>\n"
 #usage += "                                  --label=<Production Label>\n"
 usage += "                                  --category=<Production category>\n"
+usage += "                                  --stageout-intermediates=<true|false>\n"
 usage += "                                  --starting-run=<Starting run>\n"
 usage += "                                  --totalevents=<Total Events>\n"
 usage += "                                  --eventsperjob=<Events/job>\n"
@@ -60,14 +61,16 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-cfgFile = None
+cfgFiles = []
+stageoutOutputs = []
 requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
 label = "Test"
-version = None
+versions = []
 category = "mc"
 channel = None
-cfgType = "cfg"
+cfgTypes = []
+activity = None
 startingRun=1
 totalEvents=1000
 eventsPerJob=100
@@ -83,13 +86,18 @@ selectionEfficiency = None
 
 for opt, arg in opts:
     if opt == "--cfg":
-        cfgFile = arg
-        cfgType = "cfg"
+        cfgFiles.append(arg)
+        cfgTypes.append("cfg")
     if opt == "--py-cfg":
-        cfgFile = arg
-        cfgType = "python"
+        cfgFiles.append(arg)
+        cfgTypes.append("python")
     if opt == "--version":
-        version = arg
+        versions.append(arg)
+    if opt == "--stageout-intermediates":
+        if arg.lower() in ("true", "yes"):
+            stageoutOutputs.append(True)
+        else:
+            stageoutOutputs.append(False)
     if opt == "--category":
         category = arg
     if opt == "--channel":
@@ -100,6 +108,8 @@ for opt, arg in opts:
         physicsGroup = arg
 #    if opt == "--request-id":
 #        requestId = arg
+    if opt == '--activity':
+        activity = arg
     if opt == "--starting-run":
         startingRun = arg
     if opt == "--totalevents":
@@ -124,14 +134,20 @@ for opt, arg in opts:
         onlySites = arg
    
     
-if cfgFile == None:
+if len(cfgFiles) == 0:
     msg = "--cfg option not provided: This is required"
     raise RuntimeError, msg
-
-if version == None:
+elif len(cfgFiles) > 1:
+    print "%s cfgs listed - chaining them" % len(cfgFiles)
+if versions == []:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
-
+if len(versions) != len(cfgFiles):
+    msg = "Need same number of --cfg and --version arguments"
+    raise RuntimeError, msg
+if len(stageoutOutputs) != len(cfgFiles) - 1:
+    msg = "Need one less --stageout-intermediates than --cfg arguments"
+    raise RuntimeError, msg
 if channel == None:
     msg = "--channel option not provided: This is required"
     raise RuntimeError, msg
@@ -140,9 +156,10 @@ if channel == None:
 requestId="%s_%s" % (conditions,processingVersion)
 label=acquisitionEra
 
-if not os.path.exists(cfgFile):
-    msg = "Cfg File Not Found: %s" % cfgFile
-    raise RuntimeError, msg
+for cfgFile in cfgFiles:
+    if not os.path.exists(cfgFile):
+        msg = "Cfg File Not Found: %s" % cfgFile
+        raise RuntimeError, msg
 
 #  //
 # // Set CMSSW_SEARCH_PATH 
@@ -154,40 +171,52 @@ if not origcmsswsearch:
 cmsswsearch="/:%s"%origcmsswsearch
 os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
 
-if cfgType == "cfg":
-    from FWCore.ParameterSet.Config import include
-    cmsCfg = include(cfgFile) 
-else:
-    import imp
-    modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
-    cmsCfg = modRef.process
-    
-cfgWrapper = CMSSWConfig()
-cfgWrapper.originalCfg = file(cfgFile).read()
-cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
-cfgInt.validateForProduction()
-
 #  //
 # // Instantiate a WorkflowMaker
 #//
 maker = WorkflowMaker(requestId, channel, label )
-
-maker.setCMSSWVersion(version)
 maker.setPhysicsGroup(physicsGroup)
-maker.setConfiguration(cfgWrapper, Type = "instance")
-#from tempfile import NamedTemporaryFile
-#tmpCfg = NamedTemporaryFile()
-#tmpCfg.write(cmsCfg.dumpConfig())
-#tmpCfg.flush()
-maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
+maker.changeCategory(category)
+
+if selectionEfficiency != None:
+    maker.addSelectionEfficiency(selectionEfficiency)
+
+# loop over cfg's provided and add to workflow
+# first cmsRun node created implicitly by WorkflowMaker
+nodeNumber = 0
+for cfgFile in cfgFiles:
+
+    if cfgTypes[nodeNumber] == "cfg":
+        from FWCore.ParameterSet.Config import include
+        cmsCfg = include(cfgFile) 
+    else:
+        import imp
+        modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
+        cmsCfg = modRef.process
+    
+    cfgWrapper = CMSSWConfig()
+    cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
+    cfgInt.validateForProduction()
+    if nodeNumber:
+        maker.chainCmsRunNode(stageOutIntermediates=stageoutOutputs[nodeNumber-1])
+
+    maker.setCMSSWVersion(versions[nodeNumber])
+    maker.setConfiguration(cfgWrapper, Type = "instance")
+    maker.setOriginalCfg(file(cfgFile).read())
+    maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
+
+    nodeNumber += 1
+
+#  //
+# // Pileup sample?
+# //
+if pileupDS != None:
+    maker.addPileupDataset( pileupDS, pileupFilesPerJob)
+        
 maker.changeCategory(category)
 maker.setAcquisitionEra(acquisitionEra)
 maker.workflow.parameters['Conditions'] = conditions
 maker.workflow.parameters['ProcessingVersion'] = processingVersion
-
-
-if selectionEfficiency != None:
-    maker.addSelectionEfficiency(selectionEfficiency)
 
 
 #  //
@@ -197,6 +226,9 @@ if pileupDS != None:
     maker.addPileupDataset( pileupDS, pileupFilesPerJob)
   
 spec = maker.makeWorkflow()
+
+if activity is not None:
+        spec.setActivity(activity)
 
 spec.parameters['TotalEvents']=totalEvents
 spec.parameters['EventsPerJob']=eventsPerJob
