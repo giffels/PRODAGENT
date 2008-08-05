@@ -8,8 +8,8 @@ and generating reports as they finish.
 
 """
 
-__revision__ = "$Id: JobEmulatorComponent.py,v 1.7 2008/07/11 06:22:40 sfoulkes Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: JobEmulatorComponent.py,v 1.8 2008/08/05 14:43:30 sryu Exp $"
+__version__ = "$Revision: 1.8 $"
 __author__ = "sfoulkes, sryu"
 
 import os
@@ -80,8 +80,8 @@ class JobEmulatorComponent:
         else:
             self.avgEventProcessingRate = "0.95"
         
-        if self.args.get("thresholdForMergeParmeter", None) != None:
-            self.thresholdForMerge = self.args["thresholdForMergeParmeter"]
+        if self.args.get("thresholdForMergeParameter", None) != None:
+            self.thresholdForMerge = self.args["thresholdForMergeParameter"]
         else:
             self.thresholdForMerge = "0"
                         
