@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: $"
-__version__ = "$Revision: $"
+__revision__ = "$Id: Tier0ReportPlugin.py,v 1.1 2008/08/04 21:59:37 sryu Exp $"
+__version__ = "$Revision: 1.1 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -40,7 +40,6 @@ class Tier0ReportPlugin(JobReportPluginInterface):
 
     """
     
-    thresholdForMerge = 0
     
     def createSuccessReport(self, jobSpecLoaded, workerNodeInfo, 
                             reportFilePath):
@@ -112,7 +111,6 @@ class Tier0ReportPlugin(JobReportPluginInterface):
             self.setDefaultForNoneValue('LFNBase', theFile['LFN'])
             theFile['PFN'] ="fakefile:%s" % theFile['LFN']
             theFile['GUID'] = guid
-            theFile['MergedBySize'] = choice(["True", "False"])
             theFile['ModuleLabel'] = outName
             
             theFile.runs.append(jobSpecLoaded.parameters["RunNumber"])
@@ -171,6 +169,7 @@ class Tier0ReportPlugin(JobReportPluginInterface):
             # it should be overridden if the primary dataset exist.
             # for the all other 
             theFile['Size'] = 4000000 * randrange(1, 1000) #random size
+            theFile['MergedBySize'] = choice(["True", "False"])
             
             if tier0JobType == "Repack":
                 # parse dataset name set the size according to the threshold
@@ -181,13 +180,17 @@ class Tier0ReportPlugin(JobReportPluginInterface):
                 # need to add sanity check
                 if self.thresholdForMerge < int(datasetNameParts[2]):
                     theFile['Size'] = 500000000 #(500 MG)
+                    theFile['MergedBySize'] = "False"
                 else :
                     theFile['Size'] = 4000000000  #(4 G)
+                    theFile['MergedBySize'] = "True"
                     
             elif tier0JobType == "RepackMerge":
                 theFile['Size'] = 4000000000  #(4 G)
-            elif tier0JobType == "RepackMerge": 
-                theFile['Size'] = 2000000000  #(4 G)
+                theFile['MergedBySize'] = "True"
+                    
+            elif tier0JobType == "PromptReco": 
+                theFile['Size'] = 2000000000  #(2 G)
             else :
                 theFile['Size'] = 4000000 * randrange(1, 1000) #random size        
             
