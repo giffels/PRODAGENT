@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.15 2008/07/11 17:48:54 sfoulkes Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.16 2008/07/11 19:26:12 sfoulkes Exp $"
+__version__ = "$Revision: 1.16 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -73,7 +73,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             if outModules.has_key(modName):
                 dataset['LFNBase'] = outModules[modName].get('LFNBase', None)
                 self.setDefaultForNoneValue('LFNBase', dataset['LFNBase'])
-                dataset['MergeedLFNBase'] = \
+                dataset['MergedLFNBase'] = \
                                 outModules[modName].get('MergedLFNBase', None)
 
         datasetMap = {}
