@@ -8,8 +8,8 @@ and generating reports as they finish.
 
 """
 
-__revision__ = "$Id: JobEmulatorComponent.py,v 1.6 2008/06/06 15:00:35 sryu Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: JobEmulatorComponent.py,v 1.7 2008/07/11 06:22:40 sfoulkes Exp $"
+__version__ = "$Revision: 1.7 $"
 __author__ = "sfoulkes, sryu"
 
 import os
@@ -79,7 +79,12 @@ class JobEmulatorComponent:
             self.avgEventProcessingRate = self.args["avgEventProcessingRate"]
         else:
             self.avgEventProcessingRate = "0.95"
-                
+        
+        if self.args.get("thresholdForMergeParmeter", None) != None:
+            self.thresholdForMerge = self.args["thresholdForMergeParmeter"]
+        else:
+            self.thresholdForMerge = "0"
+                        
         if self.args.get("JobAllocationPlugin", None) != None:
             self.allocationPlugin = self.args["JobAllocationPlugin"] 
         else:
@@ -172,15 +177,22 @@ class JobEmulatorComponent:
         completionPlugin.avgCompletionPercentage = self.avgCompletionPercentage
         
         reportPlugin = self.loadPlugin(self.fwkReportPlugin)
+        if reportPlugin == None:
+            logging.error("Error: no report plugin")
+            return
         try:
             reportPlugin.avgEventProcessingRate = float(self.avgEventProcessingRate)
         except ValueError, ex:
             msg = "avgEventProcessingRate format is not a number.\n Default value is set.\n%s" % str(ex)
             logging.error(msg)
             
-        if reportPlugin == None:
-            logging.error("Error: no report plugin")
-            return
+        try:
+            reportPlugin.thresholdForMerge = int(self.thresholdForMerge)
+        except ValueError, ex:
+            msg = "thresholdForMerge format is not a number.\n Default value is set.\n%s" % str(ex)
+            msg += "\nThis is Tier0ReportPlugin specific. Ignore if Tier0ReportPlugin is not used."
+            logging.error(msg)
+        
         
         newJobs = queryJobsByStatus("new")
         
