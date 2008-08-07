@@ -56,6 +56,7 @@ class RequestFeeder(PluginInterface):
         self.totalEvents = None
         self.eventsPerJob = None
         self.initialRun = None
+        self.initialEvent = None
         self.sites = []
         self.loadPayload(payload)
         self.publishWorkflow(payload, self.workflow.workflowName())
@@ -65,6 +66,7 @@ class RequestFeeder(PluginInterface):
                                     self.workingDir,
                                     self.totalEvents,
                                     InitialRun = self.initialRun,
+                                    InitialEvent = self.initialEvent,
                                     EventsPerJob = self.eventsPerJob)
         jobsList = factory()
 
@@ -91,12 +93,13 @@ class RequestFeeder(PluginInterface):
         self.totalEvents = self.workflow.parameters.get("TotalEvents", None)
         self.eventsPerJob = self.workflow.parameters.get('EventsPerJob', None)
         self.initialRun = self.workflow.parameters.get("InitialRun", 1)
+        self.initialEvent = self.workflow.parameters.get("InitialEvent", 1)
 
         siteList = self.workflow.parameters.get("Sites", "")
         [ self.sites.append(x) for x in siteList.split(",") if x != "" ] 
 
-        msg = "Total Events: %s  EventsPerJob: %s  InitialRun: %s" % (
-            self.totalEvents, self.eventsPerJob, self.initialRun)
+        msg = "Total Events: %s  EventsPerJob: %s  InitialRun: %s  InitialEvent %s" % (
+            self.totalEvents, self.eventsPerJob, self.initialRun, self.initialEvent)
         logging.info(msg)
         
         if self.totalEvents == None:
@@ -109,6 +112,7 @@ class RequestFeeder(PluginInterface):
         self.totalEvents = int(self.totalEvents)
         self.eventsPerJob = int(self.eventsPerJob)
         self.initialRun = int(self.initialRun)
+        self.initialEvent = int(self.initialEvent)
 
         #  //
         # // in case of PU
