@@ -9,6 +9,8 @@ Submitter for ARC submissions
 import os
 import logging
 import string
+import time
+import random
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
@@ -16,6 +18,7 @@ from JobSubmitter.JSException import JSException
 from ProdAgent.Resources import ARC
 
 import ProdAgent.ResourceControl.ResourceControlAPI as ResConAPI
+import ShREEK.CMSPlugins.DashboardInfo  as DashboardUtils
 
 bulkUnpackerScriptMain = \
 """
@@ -53,7 +56,6 @@ fi
 """
 
 
-
 def bulkUnpackerScript(bulkSpecTarName):
     """
     _bulkUnpackerScript_
@@ -86,6 +88,9 @@ class ARCSubmitter(BulkSubmitterInterface):
 
     def __init__(self):
         BulkSubmitterInterface.__init__(self)
+        self.jobIdCEMap = {}
+        self.subTime = {}
+        self.gridJobId = {}
 
 
     def checkPluginConfig(self):
@@ -155,67 +160,93 @@ class ARCSubmitter(BulkSubmitterInterface):
         # box area visible on the WNs etc.
 
         # We have a list of job IDs to submit.  If this is a single job,
-        # there will be just one entry If it is a bulk submit, there will
-        # be multiple entries, plus self.isBulk will be True
+        # there will be just one entry. If it is a bulk submit, there will
+        # be multiple entries, plus self.isBulk will be True (?)
         failureList = []
-        for jobSpec, cacheDir in self.toSubmit.items():
-            logging.debug("Submit: %s from %s" % (jobSpec, cacheDir) )
-            logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
-            self.makeWrapperScript(cacheDir, "submit.sh", jobSpec)
+        for jobId, cacheDir in self.toSubmit.items():
+            logging.debug("Submit: %s from %s" % (jobId, cacheDir) )
+            logging.debug("SpecFile = %s" % self.specFiles[jobId])
+            self.makeWrapperScript(cacheDir, "submit.sh", jobId)
+
+            t = time.time()
+            self.subTime[jobId] = int(t)
+
+            # For Dashboard, we'll need unique a job id ('GridJobId' in
+            # Dashboard) of the form https://<something>:<something else>
+            # We'll use 
+            # https://nordugrid:<last part of jobId>/<timestamp>
+            s = jobId.split('-')[-1]
+            self.gridJobId[jobId] = "https://nordugrid:%s/%f" % (s, t)
 
             submitCommand = "ngsub -e '"
-            submitCommand += self.xrslCode(cacheDir, "submit.sh", jobSpec)
+            submitCommand += self.xrslCode(cacheDir, "submit.sh", jobId)
             submitCommand += "'"
-            submitCommand += self.preferredSite()
             try:
-                logging.debug("ARCSubmitter.doSubmit: %s" % submitCommand)
+                logging.debug("Submission command: %s" % submitCommand)
                 output = ARC.executeCommand(submitCommand)
-                logging.debug("ARCSubmitter.doSubmit: %s " % output)
+                logging.debug("Submission command output: %s " % output)
             except ARC.CommandExecutionError, s:
                 msg = "Submitting with command\n"
                 msg += "'%s'\n" % submitCommand
                 msg += "failed with exit status %s" % str(s)
                 logging.warning(msg)
-                failureList.append(jobSpec)
+                failureList.append(jobId)
 
+            logging.info("%s submitted with GridJobId %s" % (jobId,
+                                                         self.gridJobId[jobId]))
 
         if len(failureList) > 0:
             raise JSException("Submission Failed", FailureList = failureList)
 
 
-    def preferredSite(self):
+    def getSite(self):
         """
-        Generate command line option for ngsub for submitting to a
-        preferred site, if such exist.
+        Return tuple of name and CE of preferred site, if such exist,
+        or randomly chosen otherwise.
 
         """
-        if not self.parameters['JobSpecInstance'].siteWhitelist:
-           logging.debug("No preferred site")
-           return ""
+        if self.parameters['JobSpecInstance'].siteWhitelist:
+            choice = "preferred"
 
-        prefSite = self.parameters['JobSpecInstance'].siteWhitelist[0]
-        logging.debug("Site %s whitelisted" % prefSite)
-        ceMap = ResConAPI.createCEMap()
+            prefSite = self.parameters['JobSpecInstance'].siteWhitelist[0]
+            logging.debug("Site %s whitelisted" % str(prefSite))
+            nameMap = ResConAPI.createSiteNameMap()
 
-        # prefSite should be in ceMap.keys(), but if it isn't, it's
-        # possible that it's an index given as a string (should be long).
-        if prefSite in ceMap.keys():
-            logging.info("Using preferred CE " + ceMap[prefSite])
-            return " -c " + ceMap[prefSite]
+            if prefSite in nameMap.keys():
+                siteName = nameMap[prefSite]
+            elif str(prefSite).isdigit() and long(prefSite) in nameMap.keys():
+                # prefSite should be in nameMap.keys(), but if it isn't, it's
+                # possible that it's an index (number) given as a string
+                # (should be long).
+                siteName = nameMap[long(prefSite)]
+            else:
+                msg = "WARNING: Preferred site %s unknown!" % str(prefSite)
+                logging.warning(msg)
+                for k in nameMap.keys():
+                    logging.debug("nameMap[%s] = %s" % (k, nameMap[k]))
+                return (None, None)
 
-        elif str(prefSite).isdigit() and long(prefSite) in ceMap.keys():
-            logging.info("Using preferred CE " + ceMap[long(prefSite)])
-            return " -c " + ceMap[long(prefSite)]
-
+            ceMap = ResConAPI.createCEMap()
+            ceName = ceMap.get(siteName, None)  
         else:
-            msg = "WARNING: Preferred site %s unknown!" % str(prefSite)
-            logging.warning(msg)
-            for k in ceMap.keys():
-                logging.debug("ceMap[%s] = %s" % (k, ceMap[k]))
-            return ""
+            choice = "randomly chosen"
+            logging.debug("No preferred site; choosing a site at random")
+
+            siteList = ResConAPI.activeSiteData()
+            if not siteList:
+                logging.warning("No active sites found!")
+                return (None, None)
+            site = random.choice(siteList)
+            siteName = site['SiteName']
+            ceName = site['CEName']
+
+        logging.info("Using %s site %s with CE %s" % (choice, siteName,
+                                                      str(ceName)))
+        return (siteName, ceName)
 
 
-    def xrslCode(self, scriptDir, scriptName, jobName):
+
+    def xrslCode(self, scriptDir, scriptName, jobId):
         """
         _xrslCode_
 
@@ -225,7 +256,6 @@ class ARCSubmitter(BulkSubmitterInterface):
         script to be executed resides, and 'scriptName' it's basename.
 
         """
-
         code = "&(executable=%s)" % scriptName
 
         # Input files to submit with the job
@@ -242,12 +272,23 @@ class ARCSubmitter(BulkSubmitterInterface):
         code += "(outputFiles=(\"/\" \"\"))"
 
         code += "(runTimeEnvironment=APPS/HEP/CMSSW-PA)"
-        code += "(jobName=%s)" % jobName
+        code += "(jobName=%s)" % jobId
         code += "(stdout=output)(stderr=errors)(gmlog=gridlog)"
+
+        envVars = "(ARCSUBMITTER_JOBID %s)" % self.gridJobId[jobId]
+
+        site, ce = self.getSite()
+        if ce:
+            code += "(cluster=%s)" % ce
+            envVars += "(NORDUGRID_CE %s)" % ce
+            self.jobIdCEMap[jobId] = ce
+
+        code += "(environment=%s)" % envVars
+
         return code
 
 
-    def makeWrapperScript(self, scriptDir, scriptName, jobName):
+    def makeWrapperScript(self, scriptDir, scriptName, jobId):
         """
         _makeWrapperScript_
 
@@ -257,7 +298,6 @@ class ARCSubmitter(BulkSubmitterInterface):
         """
         # Generate main executable script for job
         script = ["#!/bin/sh\n"]
-        #script.extend(standardScriptHeader(jobName))
 
         # Some code useful for debugging
         script.append("ulimit -a\n")
@@ -276,8 +316,7 @@ class ARCSubmitter(BulkSubmitterInterface):
             script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
                           self.singleSpecName)   
             
-        script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % 
-                                                           self.mainSandboxName)
+        script.append("tar -zxvf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
         script.append("./run.sh $JOB_SPEC_FILE > ./run.log 2>&1 \n")
 
@@ -288,14 +327,10 @@ class ARCSubmitter(BulkSubmitterInterface):
         script.append("cp $TMPDIR/%s/FrameworkJobReport.xml ./\n" % self.workflowName)
         script.append("cp $TMPDIR/%s/run.log ./\n" % self.workflowName)
 
-#        #  Gather all the files in a tar.bz2 file for easier retrieval --
-#        #  something we may want to do if the job failed and we want to
-#        #  find out why.
-#        script.append("tar jcvf %s.tar.bz2 %s\n" % (self.workflowName,self.workflowName))
-#        script.append("rm -rf %s\n" % self.workflowName)
+        # If we, in a debug session, want to "ngget" the (entire) job, we
+        # don't want huge number of "extra" files around; let's remove the
+        # certificates directory:
         script.append("rm -rf certificates\n")
-
-        #script.extend(missingJobReportCheck(jobName))
 
         scriptPath = os.path.join(scriptDir, scriptName)
         logging.debug("Writing script to '%s'" % scriptPath)
@@ -304,5 +339,55 @@ class ARCSubmitter(BulkSubmitterInterface):
         handle.close()
 
         return
+    
+
+    def publishSubmitToDashboard(self):
+        """
+        _publishSubmitToDashboard_
+
+        Publish the dashboard info to the appropriate destination
+
+        """
+        dashboardCfg = self.pluginConfig.get('Dashboard', {})
+        useDashboard = dashboardCfg.get("UseDashboard", "False")
+
+        if not useDashboard: return
+
+        appData = str(self.applicationVersions)
+        appData = appData.replace("[", "")
+        appData = appData.replace("]", "")
+        whitelist = str(self.whitelist)
+        whitelist = whitelist.replace("[", "")
+        whitelist = whitelist.replace("]", "")
+        
+        for jobId, jobCache in self.toSubmit.items():
+            jobSpec = self.specFiles[jobId]
+            dashInfoFile = os.path.join(jobCache, "DashboardInfo.xml")
+            if not os.path.exists(dashInfoFile):
+                msg = "Dashboard Info file not found\n"
+                msg += "%s\n" % dashInfoFile
+                msg += "Skipping publication for %s\n" % jobId
+                logging.warning(msg)
+                continue
+            dashData = DashboardUtils.DashboardInfo()
+            dashData.read(dashInfoFile)
+            dashData.task, dashData.job = \
+                           DashboardUtils.extractDashboardID(jobSpec)
+            
+            dashData['ApplicationVersion'] = appData
+            dashData['TargetCE'] = self.jobIdCEMap.get(jobId, whitelist)
+            t = time.gmtime(self.subTime[jobId])
+            dashData['SubTimeStamp'] = time.strftime('%Y-%m-%d %H:%M:%S', t)
+            dashData['GridJobID'] = self.gridJobId[jobId]
+            dashData['JSToolUI'] = os.environ['HOSTNAME']
+            dashData['Scheduler'] = self.__class__.__name__
+
+            DashboardAddress = dashboardCfg.get("DestinationHost")
+            DashboardPort=dashboardCfg.get("DestinationPort")
+            dashData.addDestination(DashboardAddress, int(DashboardPort))
+            dashData.publish(5)
+            logging.debug("Dashboard data for %s: %s" % (jobId, str(dashData)))
+        return
+    
     
 registerSubmitter(ARCSubmitter, ARCSubmitter.__name__)

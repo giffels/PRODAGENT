@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: BulkDashboardMonitor.py,v 1.4 2007/09/17 07:34:06 evansde Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: BulkDashboardMonitor.py,v 1.5 2008/05/06 11:12:53 swakef Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -31,6 +31,7 @@ _GridJobIDPriority = [
     'EDG_WL_JOBID',
     'GLITE_WMS_JOBID',
     'GLOBUS_GRAM_JOB_CONTACT',
+    'ARCSUBMITTER_JOBID',
     ]
 
 
@@ -70,6 +71,13 @@ def getSyncCE():
         content = pop.fromchild.read()
         result = content.strip()
         return result
+
+    if os.environ.has_key('NORDUGRID_CE'):
+        #  //
+        # // ARC, Sync CE from env. var. submitted with the job by JobSubmitter
+        #//
+        return os.environ['NORDUGRID_CE']
+
     return result
 
 def loadJobSpec():

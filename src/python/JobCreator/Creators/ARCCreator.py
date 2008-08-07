@@ -9,6 +9,9 @@ environment setup for jobs sent to sites via the ARC Middleware
 
 """
 
+import socket
+import logging
+
 from JobCreator.Registry import registerCreator
 from JobCreator.Creators.CreatorInterface import CreatorInterface
 from JobCreator.JCException import JCException
@@ -16,6 +19,8 @@ from JobCreator.JCException import JCException
 from JobCreator.ScramSetupTools import setupScramEnvironment
 from JobCreator.ScramSetupTools import scramProjectCommand
 from JobCreator.ScramSetupTools import scramRuntimeCommand
+
+from IMProv.IMProvNode import IMProvNode
 
 
 class ARCCreator(CreatorInterface):
@@ -47,18 +52,68 @@ class ARCCreator(CreatorInterface):
             msg += self.__class__.__name__
             raise JCException(msg, ClassInstance = self)
             
+        if not self.pluginConfig.has_key("StageOut"):
+            msg = "Creator Plugin Config contains no StageOut Config:\n"
+            msg += self.__class__.__name__
+            logging.error(msg)
+            raise JCException(msg, ClassInstance = self)
+
         if not self.pluginConfig.has_key("SoftwareSetup"):
-            swsetup = self.pluginConfig.newBlock("SoftwareSetup")
-            swsetup['ScramCommand'] = "scramv1"
-            swsetup['ScramArch'] = "slc4_ia32_gcc345"
+            msg = "Creator Plugin Config contains no SoftwareSetup Config:\n"
+            msg += self.__class__.__name__
+            logging.error(msg)
+            raise JCException(msg, ClassInstance = self)
+
+        for key, value in self.pluginConfig['SoftwareSetup'].items():
+            if value in ("", None, "None", "none"):
+                msg = "Bad Value for SoftwareSetup parameter: %s\n" % key
+                msg += "This must be set to a proper value"
+                raise JCException(msg, ClassInstance = self)
 
         # Make sure the standard environment setup is set to
         # something.
         self.swSetupCommand = self.pluginConfig['SoftwareSetup'].get(
             "SoftwareSetupCommand",
             ". $VO_CMS_SW_DIR/cmsset_default.sh ;") # CERN default
-        
             
+        return
+
+
+    def handleSVSuite(self, taskObject):
+        """
+        _handleSVSuite_
+
+        Install setup commands for SVSuite type task objects
+
+        """
+        swSetupCommand = self.pluginConfig['SoftwareSetup']['SetupCommand']
+        swSetupCommand = swSetupCommand.replace(
+            "$CMSSWVERSION",
+            taskObject['CMSProjectVersion'])
+        logging.debug("CMSSW Software Setup Command: %s" % swSetupCommand)
+
+        taskObject['Environment'].addVariable(
+            "SCRAM_ARCH",
+            self.pluginConfig['SoftwareSetup']['ScramArch'])
+
+        taskObject['PreTaskCommands'].append(
+            swSetupCommand
+            )
+
+        scramSetup = taskObject['scramSetup.sh']
+        scramSetup.append(
+            scramProjectCommand(
+            taskObject['CMSProjectName'],
+            taskObject['CMSProjectVersion'],
+            self.pluginConfig['SoftwareSetup']['ScramCommand']
+            )
+            )
+        scramSetup.append(
+        scramRuntimeCommand(
+            taskObject['CMSProjectVersion'],
+            self.pluginConfig['SoftwareSetup']['ScramCommand']
+            )
+        )
         return
 
     
@@ -82,15 +137,19 @@ class ARCCreator(CreatorInterface):
         typeVal = taskObject['Type']
         if typeVal == "CMSSW":
             self.handleCMSSWTaskObject(taskObject)
-            return
+        if typeVal == "CmsGen":
+            self.handleCMSSWTaskObject(taskObject)
+        elif typeVal == "Script":
+            self.handleScriptTaskObject(taskObject)
         elif typeVal == "StageOut":
             self.handleStageOut(taskObject)
-            return
         elif typeVal == "CleanUp":
             self.handleCleanUp(taskObject)
-            return
-        else:
-            return
+        elif typeVal == "SVSuite":
+            self.handleSVSuite(taskObject)
+        elif typeVal == "LogCollect":
+            self.handleLogCollect(taskObject)
+        return
 
 
     def preprocessTree(self, taskObjectTree):
@@ -100,10 +159,68 @@ class ARCCreator(CreatorInterface):
         Get the entire tree of task objects, useful for
         installing job wide monitoring etc.
 
-        Skip this for now.
+        """
+        self.installMonitor(taskObjectTree)
+
+
+    def installMonitor(self, taskObject):
+        """
+        _installMonitor_
+
+        Installs shreek monitoring plugins
 
         """
-        return
+        shreekConfig = taskObject['ShREEKConfig']
+
+        # Insert list of plugin modules to be used
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.BulkDashboardMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.PerfMonitor")
+        shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
+
+        # Perf Monitor
+        perfConfig = self.pluginConfig.get("PerformanceMonitor", {})
+        usingPerfMon = perfConfig.get("UsePerformanceMonitor", "False")
+        if usingPerfMon.lower() == "true":
+            perfMonitor =  shreekConfig.newMonitorCfg()
+            perfMonitor.setMonitorName("perfmonitor-1")
+            perfMonitor.setMonitorType("perf-monitor")
+            shreekConfig.addMonitorCfg(perfMonitor)
+
+        # (Optional) JobTimeout
+        timeoutCfg = self.pluginConfig.get('JobTimeout', {})
+        usingJobTimeout = timeoutCfg.get("UseJobTimeout", "False")
+        if usingJobTimeout.lower() == "true":
+            shreekConfig.addPluginModule("ShREEK.CMSPlugins.JobTimeout")
+            jobtimeout= shreekConfig.newMonitorCfg()
+            jobtimeout.setMonitorName("bulktimeout-1")
+            jobtimeout.setMonitorType("timeout")
+            jobtimeout.addKeywordArg(
+                Timeout = timeoutCfg['Timeout'],
+                HardKillDelay = timeoutCfg['HardKillDelay'])
+            shreekConfig.addMonitorCfg(jobtimeout)
+
+        # Dashboard Monitoring
+        dashboardCfg = self.pluginConfig.get('Dashboard', {})
+        usingDashboard = dashboardCfg.get("UseDashboard", "False")
+        logging.debug("usingDashboard = '%s'" % (usingDashboard))
+        if usingDashboard.lower() == "true":
+            dashboard = shreekConfig.newMonitorCfg()
+            dashboard.setMonitorName("cmsdashboard-1")
+            dashboard.setMonitorType("bulk-dashboard")
+            dashboard.addKeywordArg(
+                     ServerHost = dashboardCfg['DestinationHost'],
+                     ServerPort = dashboardCfg['DestinationPort'],
+                     DashboardInfo = taskObject['DashboardInfoLocation'])
+
+            # Use realtime event monitoring?
+            evHost = dashboardCfg.get("EventDestinationHost", None)
+            evPort = dashboardCfg.get("EventDestinationPort", None)
+            if evPort and evHost:
+                dashboard.addNode(IMProvNode("EventDestination", None,
+                                             Host = evHost, Port = evPort))
+
+            shreekConfig.addMonitorCfg(dashboard)
+
 
 
     def handleCMSSWTaskObject(self, taskObject):
@@ -147,6 +264,22 @@ class ARCCreator(CreatorInterface):
           )
 
 
+    def handleScriptTaskObject(self, taskObject):
+        """
+        _handleScriptTaskObject_
+
+        Handle a Script type TaskObject, assumes the the Executable specifies
+        a shell command, the command is extracted from the JobSpecNode and
+        inserted into the main script
+
+        """
+        exeScript = taskObject[taskObject['Executable']]
+        jobSpec = taskObject['JobSpecNode']
+        exeCommand = jobSpec.application['Executable']
+        exeScript.append(exeCommand)
+        return
+
+
     def handleStageOut(self, taskObject):
         """
         _handleStageOut_
@@ -171,6 +304,23 @@ class ARCCreator(CreatorInterface):
         taskObject['PreCleanUpCommands'].append(
             self.swSetupCommand
             )
+
+
+    def handleLogCollect(self, taskObject):
+        stageOutSetup = self.pluginConfig['StageOut']['SetupCommand']
+        parentVersion = None
+        if taskObject.parent != None:
+            if taskObject.parent.has_key("CMSProjectVersion"):
+                parentVersion = taskObject.parent["CMSProjectVersion"]
+        if parentVersion != None:
+            stageOutSetup = stageOutSetup.replace("$CMSSWVERSION",
+                                                  parentVersion)
+
+        logging.debug("LogCollect Software Setup Command: %s" % stageOutSetup)
+        taskObject['PreLogCollectCommands'].append(
+            stageOutSetup
+            )
+        return
 
 
 # Register an instance of ARCCreator with the Creator Registry

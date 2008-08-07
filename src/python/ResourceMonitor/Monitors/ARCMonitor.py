@@ -27,6 +27,7 @@ jobTypeMap = {"Processing":"processingThreshold",
 
 SEStatusCache = {}
 
+
 class ARCMonitor(MonitorInterface):
     """
     _CondorMonitor_
@@ -53,7 +54,7 @@ class ARCMonitor(MonitorInterface):
             try:
                 jobType = j.jobinfo['job_type']
             except KeyError:
-                logging.debug("No job_type for job '%s'" % j.jobSpecId)
+                logging.warning("No job_type for job '%s'" % j.jobSpecId)
                 continue
             jobs[j.CEName][jobType] = jobs[j.CEName][jobType] + 1
 
