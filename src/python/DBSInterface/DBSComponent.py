@@ -594,10 +594,18 @@ class DBSComponent:
          logging.info(">>>>> inserting Files")
          MergedBlockList=dbswriter.insertFiles(jobreport) 
 
+         # Check to see if the processing job produced merged output so
+         # we can trigger the block close out code.
+         triggerCloseout = False
+         for processedFile in jobreport.files:
+           if processedFile["MergedBySize"] == "True":
+             triggerCloseout = True
+             break
+
          #  //
          # //  Check on block closure conditions for merged fileblocks
          #//
-         if (jobreport.jobType == "Merge"):
+         if jobreport.jobType == "Merge" or triggerCloseout == True:
             maxFiles=100
             maxSize=None
             if ( self.args['CloseBlockSize'] != "None"):  maxSize=float(self.args['CloseBlockSize'])
