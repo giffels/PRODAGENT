@@ -6,8 +6,8 @@ Job Emulator Bulk Submitter implementation.
 
 """
 
-__revision__ = "$Id: JobEmulatorBulkSubmitter.py,v 1.1 2008/02/12 21:32:01 sryu Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: JobEmulatorBulkSubmitter.py,v 1.2 2008/02/29 22:01:42 sryu Exp $"
+__version__ = "$Revision: 1.2 $"
 
 import logging
 
@@ -39,6 +39,7 @@ class JobEmulatorBulkSubmitter(BulkSubmitterInterface):
             logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
             ms.publish("EmulateJob", self.specFiles[jobSpec])
             ms.commit()
+            logging.debug("EmulateJob message sent")
         return
 
     def checkPluginConfig(self):
