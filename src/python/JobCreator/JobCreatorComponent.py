@@ -391,7 +391,7 @@ class JobCreatorComponent:
 
         # check if this is a resubmission - if so
         #  only change will be site whitelist
-        if WEJob.exists(jobname):
+        if WEJob.exists(jobname) and WEJob.get(jobname).get('retries', 0):
             logging.info("Job %s already exists" % jobname)
             oldspecfile = os.path.join(jobCache, '%s-JobSpec.xml' % jobname)
             oldspec = JobSpec()
