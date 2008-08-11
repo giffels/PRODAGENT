@@ -8,8 +8,8 @@ and generating reports as they finish.
 
 """
 
-__revision__ = "$Id: JobEmulatorComponent.py,v 1.8 2008/08/05 14:43:30 sryu Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: JobEmulatorComponent.py,v 1.9 2008/08/05 15:27:48 sryu Exp $"
+__version__ = "$Revision: 1.9 $"
 __author__ = "sfoulkes, sryu"
 
 import os
@@ -229,10 +229,13 @@ class JobEmulatorComponent:
                     reportPlugin.createFailureReport(jobSpec, 
                                                      workerNodeInfo,
                                                      reportFilePath)
-            
-            logging.debug("--- updating job status %s - %s" % (newJobStatus, newJob[0]))
+                    
+            logging.debug("------ Job Report Path ----\n%s\n" % reportFilePath)
+    
+            logging.debug("""--- updating job status in EM table %s - %s
+                          """ % (newJobStatus, newJob[0]))
             JobEmulator.JobEmulatorAPI.updateJobStatus(newJob[0], newJobStatus)
-            logging.debug(" *** Job Upadated ***")
+            #logging.debug(" *** Job Upadated ***")
             JobEmulator.JobEmulatorAPI.decreaseJobCountAtNode(newJob[0])
     
     def emulateJob(self, payload):
