@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: Tier0ReportPlugin.py,v 1.2 2008/08/05 14:43:02 sryu Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: Tier0ReportPlugin.py,v 1.3 2008/08/05 15:47:18 sryu Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -178,7 +178,7 @@ class Tier0ReportPlugin(JobReportPluginInterface):
             
                 datasetNameParts = theFile.dataset[0]["PrimaryDataset"].split('_')
                 # need to add sanity check
-                if self.thresholdForMerge < int(datasetNameParts[2]):
+                if self.thresholdForMerge > int(datasetNameParts[2]):
                     theFile['Size'] = 500000000 #(500 MG)
                     theFile['MergedBySize'] = "False"
                 else :
