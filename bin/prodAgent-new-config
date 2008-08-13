@@ -322,6 +322,12 @@ componentFields = {
 	},
 	
 	
+	"WorkflowInjector" : {
+	  "ComponentDir" : None,
+	  "Plugin" : "RequestFeeder"
+	  },
+	
+	
     }# end componentFields
 
 #  //
