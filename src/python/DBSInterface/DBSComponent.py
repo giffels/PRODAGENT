@@ -605,7 +605,7 @@ class DBSComponent:
          #  //
          # //  Check on block closure conditions for merged fileblocks
          #//
-         if jobreport.jobType == "Merge" or triggerCloseout == True:
+         if (jobreport.jobType == "Merge" or triggerCloseout == True) :
             maxFiles=100
             maxSize=None
             if ( self.args['CloseBlockSize'] != "None"):  maxSize=float(self.args['CloseBlockSize'])
@@ -613,6 +613,15 @@ class DBSComponent:
             if len(MergedBlockList)>0:
                MigrateBlockList=[]
                for MergedBlockName in MergedBlockList:
+
+
+               #  //  added check on unmerged being in block name to prevent 
+               # //   FJR's with multiple files from triggering a global 
+               #||    migration of the other unmerged datasets when one 
+               #||    is MergeBySize...
+               #//    if its an unmerged DS split will be > 1
+
+                 if len(MergedBlockName.split("unmerged",1))==1:
                    logging.info(">>>>> Checking Close-Block Condition: Size > %s or Files > %s for FileBlock %s"%(maxSize,maxFiles,MergedBlockName)) 
                    closedBlock=dbswriter.manageFileBlock(MergedBlockName , maxFiles= maxFiles, maxSize = maxSize)
                    if closedBlock:
