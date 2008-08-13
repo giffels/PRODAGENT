@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.15 2008/08/11 19:11:19 swakef Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.14.4.1 2008/08/13 14:46:37 swakef Exp $"
+__version__ = "$Revision: 1.14.4.1 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
@@ -168,7 +168,7 @@ class WatchedDatasets:
         datasetIdList = []
         
         # create a dataset instances for each output module
-        for outputModule, numDS in outputModulesList:
+        for outputModule, numDS in outputModulesList.items():
             
             for counter in range(numDS):
             
