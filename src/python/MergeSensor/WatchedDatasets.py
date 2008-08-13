@@ -7,8 +7,8 @@ currently watched datasets.
  
 """
  
-__revision__ = "$Id: WatchedDatasets.py,v 1.13 2007/03/05 10:45:05 ckavka Exp $"
-__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: WatchedDatasets.py,v 1.15 2008/08/11 19:11:19 swakef Exp $"
+__version__ = "$Revision: 1.15 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
  
 # MergeSensor
@@ -154,11 +154,11 @@ class WatchedDatasets:
             outputModules = [outDS['OutputModuleName'] \
                              for outDS in outputDatasetsList]
             
-            # remove duplicates
+            # count outputs per module
             outputModulesList = {}
             for module in outputModules:
-                outputModulesList[module] = module
-            outputModulesList = outputModulesList.values()
+                outputModulesList.setdefault(module, 0)
+                outputModulesList[module] += 1
             
         except (IndexError, KeyError):
             raise MergeSensorError( \
@@ -168,9 +168,9 @@ class WatchedDatasets:
         datasetIdList = []
         
         # create a dataset instances for each output module
-        for outputModule in outputModulesList:
+        for outputModule, numDS in outputModulesList:
             
-            for counter in range(len(wfile.outputDatasets())):
+            for counter in range(numDS):
             
                 try:
                     dataset = Dataset(wfile, outputModule=outputModule, \
