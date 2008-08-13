@@ -69,12 +69,6 @@ class ARCCreator(CreatorInterface):
                 msg = "Bad Value for SoftwareSetup parameter: %s\n" % key
                 msg += "This must be set to a proper value"
                 raise JCException(msg, ClassInstance = self)
-
-        # Make sure the standard environment setup is set to
-        # something.
-        self.swSetupCommand = self.pluginConfig['SoftwareSetup'].get(
-            "SoftwareSetupCommand",
-            ". $VO_CMS_SW_DIR/cmsset_default.sh ;") # CERN default
             
         return
 
