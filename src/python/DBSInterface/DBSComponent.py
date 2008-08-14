@@ -929,9 +929,18 @@ class DBSComponent:
         #  //
         # // inject each fileblock of the dataset
         # //
-        for blockName in reader.listFileBlocks(datasetPath):
-           self.handlePhEDExInjectBlock(blockName)
-
+        try:
+            for blockName in reader.listFileBlocks(datasetPath):
+                self.handlePhEDExInjectBlock(blockName)
+        except DBSReaderError, ex:
+                logging.error("Failed to PhEDExInjectDataset: %s" % datasetPath)
+                logging.error("Details: %s" % str(ex))
+        except StandardError, ex:
+                logging.error("Failed to PhEDExInjectDataset: %s" % datasetPath)
+                logging.error("Details: %s" % str(ex))
+        except RuntimeError, ex:
+                logging.error("Failed to PhEDExInjectDataset: %s" % datasetPath)
+                logging.error("Details: %s" % str(ex))
 
     def PhEDExRetryFailures(self,fileName, filehandle):
         """
