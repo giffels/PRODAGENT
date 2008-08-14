@@ -26,7 +26,8 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'dbs-url=', 
          'pileup-dataset=', 'pileup-files-per-job=','workflow_tag=',
          'tar-up-lib','tar-up-src','split-into-primary',
-         'acquisition_era=','conditions=','processing_version='
+         'acquisition_era=','conditions=','processing_version=',
+         'activity='
          
          ]
 
@@ -53,7 +54,7 @@ usage += "                                  --workflow_tag=<Workflow tag>\n"
 usage += "                                --split-into-primary\n"
 usage += "                                --tar-up-lib\n"
 usage += "                                --tar-up-src\n"
-
+usage += "                                --activity=<activity>\n"
 
 
 
@@ -101,6 +102,8 @@ options = \
    --tar-up-src Similar to --tar-up-lib, but for src.  It makes sense
      to have this be seperate
 
+   --activity=<activity>, The activity represented but this workflow
+    i.e. Reprocessing, Skimming etc.
     
 """
 
@@ -147,8 +150,7 @@ conditions="Bad"
 processingVersion=666
 workflow_tag=None
 
-
-
+activity = "Reprocessing"
 
 for opt, arg in opts:
     if opt == "--cfg":
@@ -211,6 +213,8 @@ for opt, arg in opts:
         tarupLib = True
     if opt == '--tar-up-src':
         tarupSrc = True  
+    if opt == '--activity':
+        activity = arg
 
 if workflow_tag in (None,""):
    requestId="%s_%s" % (conditions,processingVersion)
@@ -279,7 +283,8 @@ if cfgType == "cfg":
     from FWCore.ParameterSet.Config import include
     cmsCfg = include(cfgFile)
 else:
-    modRef = imp.find_module( os.path.basename(cfgFile).replace(".py", ""),  os.path.dirname(cfgFile))
+    import imp
+    modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
     cmsCfg = modRef.process
                                                                                                       
 cfgWrapper = CMSSWConfig()
@@ -445,6 +450,7 @@ maker.workflow.parameters['Conditions'] = conditions
 maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
 spec = maker.makeWorkflow()
+spec.setActivity(activity)
 appendedname="%s-%s" % (maker.workflowName,channel0)
 spec.save("%s-Workflow.xml" % maker.workflowName)
 
