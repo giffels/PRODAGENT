@@ -21,7 +21,7 @@ import time
 
 valid = ['cmsRunCfg=', 'cmsGenCfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=', 'selection-efficiency=', 'help',
-         'activity=', 'stageout-intermediates='
+         'activity=', 'stageout-intermediates=', 'chained-input='
          ]
 
 usage =  "Usage: createProductionCmsGenWorkflow.py --cmsRunCfg=<cmsRunCfg>\n"
@@ -34,6 +34,7 @@ usage += "                        		 --group=<Physics Group>\n"
 usage += "                        		 --request-id=<Request ID>\n"
 usage += "                               --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
 usage += "                               --stageout-intermediates=<true|false>\n"
+usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
 
 
 try:
@@ -47,6 +48,7 @@ cmsRunCfgs    = [] #"/home/ceballos/PRODAGENT_0_3_X/work/cfg/config_alpgen_cmsru
 cmsGenCfg    = None #"/home/ceballos/PRODAGENT_0_3_X/work/cfg/myConfig_alpgen.cfg"
 versions      = [] #"CMSSW_1_4_3"
 stageoutOutputs = []
+chainedInputs = []
 category     = "Generators"
 label        = "CSA07"
 channel      = "alpgen-z2j"
@@ -72,6 +74,8 @@ for opt, arg in opts:
             stageoutOutputs.append(True)
         else:
             stageoutOutputs.append(False)
+    if opt == '--chained-input':
+        chainedInputs.append([x.strip() for x in arg.split(',') if x!=''])
     if opt == "--category":
         category = arg
     if opt == "--label":
@@ -94,6 +98,9 @@ elif len(cmsRunCfgs) > 1:
     print "%s cmsRun cfgs listed - chaining them" % len(cmsRunCfgs)
 if len(stageoutOutputs) != len(cmsRunCfgs) - 1:
     msg = "Need one less --stageout-intermediates than --cfg arguments"
+    raise RuntimeError, msg
+if len(chainedInputs) and len(chainedInputs) != len(cfgFiles) - 1:
+    msg = "Need one less chained-input than --cfg arguments"
     raise RuntimeError, msg
 
 if cmsGenCfg == None:
@@ -155,7 +162,8 @@ for cmsRunCfg in cmsRunCfgs:
         from FWCore.ParameterSet.Config import include
         cmsCfg = include(cmsRunCfg) 
     else:
-        modRef = imp.find_module( os.path.basename(cmsRunCfg).replace(".py", ""),  os.path.dirname(cmsRunCfg))
+        import imp
+        modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
         cmsCfg = modRef.process
 
     cfgWrapper = CMSSWConfig()
@@ -164,7 +172,11 @@ for cmsRunCfg in cmsRunCfgs:
     cfgInt.validateForProduction()
     
     if nodeNumber:
-        maker.chainCmsRunNode(stageOutIntermediates=stageoutOutputs[nodeNumber-1])
+        try:
+            inputModules = chainedInputs[nodeNumber-1]
+        except IndexError:
+            inputModules = []
+        maker.chainCmsRunNode(stageoutOutputs[nodeNumber-1], *inputModules)
 
     maker.setConfiguration(cfgWrapper,  Type = "instance")
     maker.setCMSSWVersion(versions[nodeNumber])

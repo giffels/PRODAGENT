@@ -25,8 +25,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'only-closed-blocks',
          'dbs-url=', 
          'pileup-dataset=', 'pileup-files-per-job=',
-         'activity=', 'stageout-intermediates='
-         
+         'activity=', 'stageout-intermediates=', 'chained-input='         
          ]
 
 
@@ -47,6 +46,7 @@ usage += "                                --dbs-url=<DBSUrl>\n"
 usage += "                                  --override-channel=<Phys Channel/Primary Dataset>\n"
 usage += "                                  --activity=<activity>\n"
 usage += "                                  --stageout-intermediates=<true|false>\n"
+usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
 
 
 
@@ -91,6 +91,11 @@ options = \
     
    --stageout-intermediates=<true|false>, Stageout intermediate files in 
     chained processing
+    
+   --chained-input=comma,separated,list,of,output,module,names Optional param
+   that specifies the output modules to chain to the next input module. Defaults
+   to all modules in a step, leave blank for all. If given should be specified 
+   for each step 
 """
 
 
@@ -107,6 +112,7 @@ except getopt.GetoptError, ex:
 cfgFiles = []
 versions = []
 stageoutOutputs = []
+chainedInputs = []
 requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
 label = "Test"
@@ -147,6 +153,8 @@ for opt, arg in opts:
             stageoutOutputs.append(True)
         else:
             stageoutOutputs.append(False)
+    if opt == '--chained-input':
+        chainedInputs.append([x.strip() for x in arg.split(',') if x!=''])
     if opt == "--category":
         category = arg
 
@@ -197,6 +205,9 @@ if len(versions) != len(cfgFiles):
     raise RuntimeError, msg
 if len(stageoutOutputs) != len(cfgFiles) - 1:
     msg = "Need one less --stageout-intermediates than --cfg arguments"
+    raise RuntimeError, msg
+if len(chainedInputs) and len(chainedInputs) != len(cfgFiles) - 1:
+    msg = "Need one less chained-input than --cfg arguments"
     raise RuntimeError, msg
 
 if dataset == None:
@@ -265,7 +276,8 @@ for cfgFile in cfgFiles:
         from FWCore.ParameterSet.Config import include
         cmsCfg = include(cfgFile)
     else:
-        modRef = imp.find_module( os.path.basename(cfgFile).replace(".py", ""),  os.path.dirname(cfgFile))
+        import imp
+        modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
         cmsCfg = modRef.process
 
     cfgWrapper = CMSSWConfig()
@@ -274,7 +286,11 @@ for cfgFile in cfgFiles:
     cfgInt.validateForProduction()
 
     if nodeNumber:
-        maker.chainCmsRunNode(stageOutIntermediates=stageoutOutputs[nodeNumber-1])
+        try:
+            inputModules = chainedInputs[nodeNumber-1]
+        except IndexError:
+            inputModules = []
+        maker.chainCmsRunNode(stageoutOutputs[nodeNumber-1], *inputModules)
 
     maker.setCMSSWVersion(versions[nodeNumber])
     maker.setConfiguration(cfgWrapper, Type = "instance")

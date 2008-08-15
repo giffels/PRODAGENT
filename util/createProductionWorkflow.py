@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.13 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.13 2008/05/16 14:31:20 swakef Exp $"
+__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.14 2008/07/18 14:13:39 swakef Exp $"
 
 
 import os
@@ -26,7 +26,8 @@ from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=',
          'pileup-dataset=', 'pileup-files-per-job=',
-         'selection-efficiency=', 'activity=', 'stageout-intermediates='
+         'selection-efficiency=', 'activity=', 'stageout-intermediates=',
+         'chained-input='
          ]
 
 usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
@@ -38,6 +39,7 @@ usage += "                                  --label=<Production Label>\n"
 usage += "                                  --category=<Production category>\n"
 usage += "                                  --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
 usage += "                                  --stageout-intermediates=<true|false>\n"
+usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -56,6 +58,7 @@ except getopt.GetoptError, ex:
 
 cfgFiles = []
 stageoutOutputs = []
+chainedInputs = []
 requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
 label = "Test"
@@ -86,6 +89,8 @@ for opt, arg in opts:
             stageoutOutputs.append(True)
         else:
             stageoutOutputs.append(False)
+    if opt == '--chained-input':
+        chainedInputs.append([x.strip() for x in arg.split(',') if x!=''])
     if opt == "--category":
         category = arg
     if opt == "--channel":
@@ -121,6 +126,9 @@ if len(versions) != len(cfgFiles):
     raise RuntimeError, msg
 if len(stageoutOutputs) != len(cfgFiles) - 1:
     msg = "Need one less --stageout-intermediates than --cfg arguments"
+    raise RuntimeError, msg
+if len(chainedInputs) and len(chainedInputs) != len(cfgFiles) - 1:
+    msg = "Need one less chained-input than --cfg arguments"
     raise RuntimeError, msg
 
 if channel == None:
@@ -163,7 +171,8 @@ for cfgFile in cfgFiles:
         from FWCore.ParameterSet.Config import include
         cmsCfg = include(cfgFile)
     else:
-        modRef = imp.find_module( os.path.basename(cfgFile).replace(".py", ""),  os.path.dirname(cfgFile))
+        import imp
+        modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
         cmsCfg = modRef.process
         
     cfgWrapper = CMSSWConfig()
@@ -172,7 +181,11 @@ for cfgFile in cfgFiles:
     cfgInt.validateForProduction()
     
     if nodeNumber:
-        maker.chainCmsRunNode(stageOutIntermediates=stageoutOutputs[nodeNumber-1])
+        try:
+            inputModules = chainedInputs[nodeNumber-1]
+        except IndexError:
+            inputModules = []
+        maker.chainCmsRunNode( stageoutOutputs[nodeNumber-1], *inputModules)
         
     maker.setCMSSWVersion(versions[nodeNumber])
     maker.setConfiguration(cfgWrapper, Type = "instance")
