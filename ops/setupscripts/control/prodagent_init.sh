@@ -9,9 +9,11 @@ export PRODAGENT_ROOT=$MYTESTAREA/PRODAGENT
 export PRODCOMMON_ROOT=$MYTESTAREA/PRODCOMMON
 export DBS_ROOT=$MYTESTAREA/DBS
 export PATH=$PRODAGENT_ROOT/bin:$PATH
-export PYTHONPATH=$PRODAGENT_ROOT/lib:$PRODCOMMON_ROOT/lib:$DBS_ROOT/Clients/Python:$MYTESTAREA/T0/src/python:$MYTESTAREA/T0/src/python/T0:$MYTESTAREA/LUMIDB/LumiWebService/Client:$PYTHONPATH
+export PYTHONPATH=$PRODAGENT_ROOT/lib:$PRODCOMMON_ROOT/lib:$DBS_ROOT/Clients/Python:$MYTESTAREA/T0/src/python:$MYTESTAREA/T0/src/python/T0:$MYTESTAREA/LUMIDB/LumiWebService/Client:$MYTESTAREA/WMCORE/src/python:$PYTHONPATH
 
 export PUTIL=$PRODAGENT_ROOT/util
+
+alias PAmysql='mysql -u root -p -S $PRODAGENT_WORKDIR/mysqldata/mysql.sock'
 
 # This line adds the PhEDEx commands to the PATH.
 #source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/cms/PHEDEX-micro/PHEDEX_3_0_4-cmp/etc/profile.d/init.sh
@@ -27,6 +29,4 @@ export X509_HOST_KEY=/data/cmsprod/X509/tier0key.pem
 #export X509_HOST_KEY=/afs/cern.ch/user/c/cmsprod/private/certs/tier0key.pem
 
 #prodAgentd --status
-
-alias PAmysql='mysql -u root -p -S $PRODAGENT_WORKDIR/mysqldata/mysql.sock'
 

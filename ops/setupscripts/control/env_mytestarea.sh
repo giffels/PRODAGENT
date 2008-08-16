@@ -7,9 +7,9 @@ export PRODAGENT_USER=cmsprod
 export PRODAGENT_INITIAL=c
 
 #The version you want to install
-export PAVERSION=0_11_6
+export PAVERSION=0_11_7
 #The DBS version we want to install
-export DBSVERSION=1_1_9
+export DBSVERSION=1_2_3
 
 #Note, don't change this!
 #export PBIN=$HOME/public/bin/PRODAGENT_$PAVERSION

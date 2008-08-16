@@ -29,6 +29,7 @@ cvs co -r DBS_$DBSVERSION DBS
 
 # T0 specific components
 
-cvs co -r T0_0_0_2_pre13 T0
+cvs co -r T0_0_0_2_pre14 T0
+cvs co -r WMCORE_REQMGR_0_0_1 WMCORE
 cvs co -r LUMIDB_0_0_2 LUMIDB/LumiWebService/Client/LumiWebClient
 
