@@ -24,7 +24,7 @@ from StageOut.StageOutMgr import StageOutMgr
 from StageOut.StageOutError import StageOutInitError
 import StageOut.Impl
 
-_DoHTTPPost = False
+_DoHTTPPost = True
 
 class OfflineDQMHarvester:
     """
@@ -121,7 +121,8 @@ class OfflineDQMHarvester:
         args = {}
         args['step'] = 'Pass-1'
         args['producer'] = 'automatic'
-        args['url'] = 'https://cmsweb.cern.ch/dqm/dev'
+        #args['url'] = 'https://cmsweb.cern.ch/dqm/dev' #test instance
+        args['url'] = 'https://cmsweb.cern.ch/dqm/tier-0' 
 
         try:
             self.upload(args, file)
