@@ -11,6 +11,12 @@ Will do one/both of the following:
 """
 import os
 import sys
+from urllib2   import Request, build_opener, HTTPError, URLError
+from mimetypes import guess_type
+from gzip      import GzipFile
+from cStringIO import StringIO
+from md5       import md5
+
 from ProdCommon.FwkJobRep.TaskState import TaskState
 from ProdCommon.MCPayloads.UUID import makeUUID
 
@@ -112,7 +118,86 @@ class OfflineDQMHarvester:
         perform an HTTP POST operation to a webserver
 
         """
-        print "HTTP Post: %s\n Not yet implemented" % filename
+        args = {}
+        args['step'] = 'Pass-1'
+        args['producer'] = 'automatic'
+        args['url'] = 'https://cmsweb.cern.ch/dqm/dev'
+
+        try:
+            self.upload(args, file)
+        except HTTPError, e:
+            print 'Automated upload of %s failed' % filename
+            print "ERROR", e
+            print 'Status code: ', e.hdrs.get("Dqm-Status-Code", "None")
+            print 'Message:     ', e.hdrs.get("Dqm-Status-Message", "None")
+            print 'Detail:      ', e.hdrs.get("Dqm-Status-Detail", "None")
+        except:
+            print 'Automated upload of %s failed' % filename
+            print 'problem unknown'
+
+
+                        
+    def encode(self, args, files):
+        """
+        Encode form (name, value) and (name, filename, type) elements into
+        multi-part/form-data. We don't actually need to know what we are
+        uploading here, so just claim it's all text/plain.
+        """
+        boundary = '----------=_DQM_FILE_BOUNDARY_=-----------'
+        (body, crlf) = ('', '\r\n')
+        for (key, value) in args.items():
+            body += '--' + boundary + crlf
+            body += ('Content-disposition: form-data; name="%s"' % key) + crlf
+            body += crlf + str(value) + crlf
+        for (key, filename) in files.items():
+            filetype = guess_type(filename)[0] or 'application/octet-stream'
+            body += '--' + boundary + crlf
+            body += ('Content-Disposition: form-data; name="%s"; filename="%s"'
+                     % (key, os.path.basename(filename))) + crlf
+            body += ('Content-Type: %s' % filetype) + crlf
+            body += crlf + open(filename, "r").read() + crlf
+        body += '--' + boundary + '--' + crlf + crlf
+        return ('multipart/form-data; boundary=' + boundary, body)
+
+
+
+    def upload(self, args, file):
+
+        #make or check workflow description
+        (fdir, fname) = (os.path.dirname(file), os.path.basename(file))
+        fnameSplit = fname.rstrip('.root').split('__')
+        if not args.has_key('workflow'):
+            args['workflow'] = '/' + '/'.join(fnameSplit[1:])
+
+        #preparing a checksum
+        blockSize = 0x10000
+        def upd(m, data):
+            m.update(data)
+            return m
+        fd = open(file, 'rb')
+        try:
+            contents = iter(lambda: fd.read(blockSize), '')
+            m = reduce(upd, contents,md5())
+        finally:
+            fd.close()
+
+        args['checksum'] = 'md5:' + m.hexdigest()
+        args['size']     = str(os.stat(file)[6])
+
+        # open a connection and upload the file
+        url = args.pop('url')
+        request = Request(url)   
+        (type, body) = self.encode(args, {'file': file})
+        request.add_header('Accept-encoding', 'gzip')
+        request.add_header('Content-type',    type)
+        request.add_header('Content-length',  str(len(body)))
+        request.add_data(body)
+        result = build_opener().open(request)
+        data   = result.read()
+        if result.headers.get('Content-encoding', '') == 'gzip':
+            data = GzipFile(fileobj=StringIO(data)).read()
+        return (result.headers, data)      
+
 
 if __name__ == '__main__':
 
