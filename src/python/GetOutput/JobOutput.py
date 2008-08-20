@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.3 2008/07/28 13:39:21 gcodispo Exp $"
-__revision__ = "$Revision: 1.3 $"
+__version__ = "$Id: JobOutput.py,v 1.4 2008/08/20 12:08:48 gcodispo Exp $"
+__revision__ = "$Revision: 1.4 $"
 
 import logging
 import os
@@ -159,7 +159,7 @@ class JobOutput:
                     job = cls.getOutput( job, task, schedSession)
 
             except BossLiteError, err:
-                logging.error('Can not get scheduler for job %s.%s : %s' % \
+                logging.error('Can not get scheduler for job %s.%s : [%s]' % \
                               (job['taskId'], job['jobId'], str(err) ))
 
             # update
