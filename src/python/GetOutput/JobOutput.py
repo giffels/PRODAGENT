@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.38 2008/07/15 10:05:37 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.38$"
+__version__ = "$Id: JobOutput.py,v 1.1.2.39 2008/07/28 14:51:52 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.39 $"
 
 import logging
 import os
@@ -329,7 +329,7 @@ class JobOutput:
 
                 else :
                     # oops: What to do?!?!
-                    logging.error("no action taken for job %s.%s " % \
+                    logging.error("no action taken for job %s.%s: [%s]" % \
                                   (job['taskId'], job['jobId'], str(err) ) )
 
             # log status
