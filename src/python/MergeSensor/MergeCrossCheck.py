@@ -6,13 +6,14 @@ _FileCrossCheck_
 Tools for cross checking file lists in merge sensor, DBS etc
 
 """
-__version__ = "$Revision$"
+__version__ = "$Revision: 1.5 $"
 __revision__ = "$id$"
 
 import logging
 
 
-from MergeSensor.MergeSensorDB import MergeSensorDB
+from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
+
 
 
 def listAllMergeDatasets():

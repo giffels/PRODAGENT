@@ -15,7 +15,7 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.Database import Session
 
 
-from MergeSensor.MergeSensorDB import MergeSensorDB
+from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
 from MergeSensor.MergeCrossCheck import MergeSensorCrossCheck
 from MergeSensor.MergeCrossCheck import listAllMergeDatasets 
 import ProdCommon.MCPayloads.CleanUpTools as CleanUpTools

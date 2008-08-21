@@ -7,13 +7,14 @@ input and output file accounting.
 
 """
 
-__revision__ = "$Id: MergeAccountantComponent.py,v 1.10 2008/01/03 17:16:08 evansde Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: MergeAccountantComponent.py,v 1.11 2008/01/17 14:08:39 afanfani Exp $"
+__version__ = "$Revision: 1.11 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
 
-from MergeSensor.MergeSensorDB import MergeSensorDB
+from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
+
 from MergeSensor.InsertReport import ReportHandler
 
 # Message service import

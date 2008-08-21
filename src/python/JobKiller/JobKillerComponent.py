@@ -5,8 +5,8 @@ _JobKillerComponent_
 ProdAgent Component that kills jobs by job spec or workflow Id
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: JobKillerComponent.py,v 1.6 2007/09/21 08:30:59 ckavka Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: JobKillerComponent.py,v 1.7 2008/05/12 17:17:28 swakef Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -20,7 +20,7 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
 from JobQueue.JobQueueDB import JobQueueDB
-from MergeSensor.MergeSensorDB import MergeSensorDB
+from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
 
 from JobKiller.Registry import retrieveKiller
 

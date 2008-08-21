@@ -7,10 +7,11 @@ back into the MergeSensor DB
 
 """
 __revision__ = "$Id"
-__version__ = "$Revision: 1.2 $"
+__version__ = "$Revision: 1.3 $"
 
 import logging
-from MergeSensor.MergeSensorDB import MergeSensorDB
+from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
+
 from MergeSensor.MergeSensorError import DuplicateLFNError
 
 from ProdCommon.FwkJobRep.ReportParser import readJobReport

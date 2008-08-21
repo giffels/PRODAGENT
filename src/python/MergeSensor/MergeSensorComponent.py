@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.70 2008/05/15 07:04:19 dmason Exp $"
-__version__ = "$Revision: 1.70 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.71 2008/06/13 15:52:28 swakef Exp $"
+__version__ = "$Revision: 1.71 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -22,7 +22,8 @@ from MergeSensor.MergeSensorError import MergeSensorError, \
                                          InvalidDataset, \
                                          DatasetNotInDatabase
 from MergeSensor.Dataset import Dataset
-from MergeSensor.MergeSensorDB import MergeSensorDB
+from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
+
 from MergeSensor.Registry import retrieveMergePolicy
 import MergeSensor.MergePolicies
 

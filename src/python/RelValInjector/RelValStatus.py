@@ -12,7 +12,7 @@ import ProdAgent.WorkflowEntities.Utilities as WEUtils
 import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.MergeTools import createMergeDatasetWorkflow
-from MergeSensor.MergeSensorDB import MergeSensorDB
+from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
 from ProdCommon.Database import Session
 
 

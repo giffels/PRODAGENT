@@ -1,7 +1,8 @@
 # fills secondary tiers field in MergeSensor database
 
 from MergeSensor.Dataset import Dataset
-from MergeSensor.MergeSensorDB import MergeSensorDB
+from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
+
 from MergeSensor.MergeSensorError import MergeSensorError, \
                                          InvalidDataset, \
                                          NonMergeableDataset
