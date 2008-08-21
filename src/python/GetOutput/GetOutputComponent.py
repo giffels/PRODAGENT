@@ -4,11 +4,12 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.28 2008/07/22 08:14:08 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.28 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.2 2008/07/25 15:44:37 swakef Exp $"
+__revision__ = "$Revision: 1.2 $"
 
 import os
 import logging
+import traceback
 
 # PA configuration
 from ProdAgentDB.Config import defaultConfig as dbConfig
@@ -22,8 +23,7 @@ from GetOutput.JobHandling import JobHandling
 
 # BossLite support
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
-from ProdCommon.BossLite.Common.Exceptions import DbError
-from ProdCommon.BossLite.Common.Exceptions import JobError
+from ProdCommon.BossLite.Common.Exceptions import BossLiteError, DbError
 
 # Threads
 from ProdCommon.ThreadTools.WorkQueue import WorkQueue
@@ -106,6 +106,8 @@ class GetOutputComponent:
         params['maxGetOutputAttempts'] = \
                                        int( self.args['maxGetOutputAttempts'] )
 
+        logging.info("Number of threads : %s" % \
+                     self.args["GetOutputPoolThreadsSize"])
         JobOutput.setParameters(params)
         self.pool = WorkQueue([JobOutput.doWork] * \
                               int(self.args["GetOutputPoolThreadsSize"]))
@@ -206,12 +208,17 @@ class GetOutputComponent:
                     job.runningJob['processStatus'] = 'in_progress'
                     self.bossLiteSession.updateDB( job )
                     self.pool.enqueue(job, job)
-                except JobError, err:
-                    logging.error( "failed enqueue job %s:%s : %s" % \
-                                   (job['taskId'], job['jobId'] ) )
+                except BossLiteError, err:
+                    logging.error( "failed request for job %s:%s : %s" % \
+                                   (job['taskId'], job['jobId'], str(err) ) )
                 except Exception, err:
+                    logging.error( "failed enqueue for job %s:%s : %s" % \
+                                   (job['taskId'], job['jobId'], str(err) ) )
+                except:
                     logging.error( "failed enqueue job %s:%s : %s" % \
-                                   (job['taskId'], job['jobId'] ) )
+                                   (job['taskId'], job['jobId'], \
+                                   str( traceback.format_exc() ) ) )
+                    
                 del( job )
 
             del self.outputRequestedJobs[:]
@@ -258,7 +265,11 @@ class GetOutputComponent:
                     self.pool.enqueue(job, job)
                 except Exception, err:
                     logging.error( "failed enqueue job %s:%s : %s" % \
-                                   (job['taskId'], job['jobId'] ) )
+                                   (job['taskId'], job['jobId'], err ) )
+                except :
+                    logging.error( "failed enqueue job %s:%s : %s" % \
+                                   (job['taskId'], job['jobId'], \
+                                   str( traceback.format_exc() ) ) )
                 del( job )
 
             del self.outputRequestedJobs[:]
@@ -287,13 +298,18 @@ class GetOutputComponent:
         """
 
         # take a job from the work queue
+        self.jobFinished = None
         try:
             self.jobFinished = self.pool.dequeue()
         except Exception, err:
             logging.error( "failed in dequeue %s" % str(err) )
+        except :
+            logging.error( "failed in dequeue %s" % \
+                           str( traceback.format_exc() ) )
 
         # no more jobs
         if self.jobFinished is None :
+            logging.error( "No jobs to dequeue" )
             return False
 
         # bad entry
@@ -315,6 +331,9 @@ class GetOutputComponent:
             # update status
             job.runningJob['processStatus'] = 'processed'
             self.bossLiteSession.updateDB( job )
+        except BossLiteError, err:
+            logging.error( "failed to process job %s:%s output : %s" % \
+                           (job['taskId'], job['jobId'], str(err) ) )
         except Exception, err:
             logging.error( "failed to process job %s:%s output : %s" % \
                            (job['taskId'], job['jobId'], str(err) ) )
