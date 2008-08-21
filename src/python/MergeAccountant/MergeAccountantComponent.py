@@ -14,7 +14,6 @@ __author__ = "Carlos.Kavka@ts.infn.it"
 import os
 
 from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
-
 from MergeSensor.InsertReport import ReportHandler
 
 # Message service import
@@ -217,71 +216,25 @@ class MergeAccountantComponent:
 
         """
 
-        # remove file:// from file name (if any)
-        jobReport = jobReport.replace('file://','')
 
-        # verify the file exists
-        if not os.path.exists(jobReport):
-            logging.error("Cannot process JobSuccess event: " \
-                         + "job report %s does not exist." % jobReport)
-            return
 
-        # read the report
+        jobName = None
         try:
-            reports = readJobReport(jobReport)
+	
+	    #// Invoke job report handler with jobReport location and flag to enable/disable merge job report handling
+	    
+            handler = ReportHandler(jobReport, int(self.args['MaxInputAccessFailures']), enableMergeHandling=self.enabled)	    
+            jobName = handler()
+	    logging.info('this is jobname'+ str(jobName))
+        except Exception, ex:
+            msg = "Failed to handle job report from job:\n"
+            msg += "%s\n" % jobReport
+            msg += str(ex)
+            logging.error(msg)
 
-        # check errors
-        except Exception, msg:
-            logging.error("Cannot process JobSuccess event for %s: %s" \
-                           % (jobReport, msg))
-            return
-
-        # get job name from first report (should be only one)
-        try:
-            report = reports[0]
-            jobName = report.jobSpecId
-
-        # if cannot be done, signal error
-        except Exception, msg:
-
-            logging.error("Cannot process JobSuccess event for %s: %s" \
-                          % (jobReport, msg))
-            return
-
-        # get output file (should be only one)
-        try:
-            outputFiles = report.files
-            for outputFile in outputFiles:
-                mergedLfn = outputFile['LFN']
-
-        # if cannot be done, signal error
-        except Exception, msg:
-
-            logging.error("Cannot process JobSuccess event for %s: %s" \
-                          % (jobReport, msg))
-            return
-
-        # ignore non merge jobs
-        if jobName.find('mergejob') == -1:
-            logging.info("Handling processing job: %s"
-                         % jobName)
-            
-            try:
-                handler = ReportHandler(jobReport)
-                handler()
-                logging.info(handler.summarise())
-            except Exception, ex:
-                msg = "Failed to handle job report from processing job:\n"
-                msg += "%s\n" % jobReport
-                msg += str(ex)
-                logging.error(msg)
-            # Add cleanup flag for non merge jobs too
-            logging.info("trigger cleanup for: %s" % jobName)
-            try:
-                self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
-            except (ProdAgentException, ProdException):
-                logging.error("trying to continue processing success event") 
-            return
+        #// Failed to read job report
+        if jobName is None:
+           return
 
         # files can be cleaned up now
         logging.info("trigger cleanup for: %s" % jobName)
@@ -290,95 +243,13 @@ class MergeAccountantComponent:
             self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
         except (ProdAgentException, ProdException):
             logging.error("trying to continue processing success event")
-
-        # verify enable condition
-        if not self.enabled:
-            return
-        
-        # get skipped files
-        skippedFiles = [aFile['Lfn'] for aFile in report.skippedFiles]
-        
-        # open a DB connection 
-        database = MergeSensorDB()
-
-        # start a transaction
-        database.startTransaction()
-
-        # get job information
-        try:
-            jobInfo = database.getJobInfo(jobName)
-
-        # cannot get it!
-        except Exception, msg:
-            logging.error("Cannot process JobSuccess event for job %s: %s" \
-                  % (jobName, msg))
-            database.closeDatabaseConnection()
-            return
-
-        # check that job exists
-        if jobInfo is None:
-            logging.error("Job %s does not exists." % jobName)
-            database.closeDatabaseConnection()
-            return
-
-        # check status
-        if jobInfo['status'] != 'undermerge':
-            logging.error("Cannot process JobSuccess event for job %s: %s" \
-                  % (jobName, "the job is not currently running"))
-            database.closeDatabaseConnection()
-            return
-
-        # get dataset id
-        datasetId = database.getDatasetId(jobInfo['datasetName'])
-
-        # update input files status
-        finishedFiles = []
-        unFinishedFiles = []
+	    
  
-        for fileName in jobInfo['inputFiles']:
 
-            if fileName not in skippedFiles:
-                
-                # set non skipped input files as 'merged'
-                database.updateInputFile(datasetId, fileName, status="merged")
-
-                # add to the list of finished files 
-                finishedFiles.append(fileName)
-
-            else:
-                
-                # increment failure counter for skipped input files
-                newStatus = database.updateInputFile( \
-                       datasetId, fileName, \
-                       status = "unmerged", \
-                       maxAttempts = int(self.args['MaxInputAccessFailures']))
-
-                # add invalid files to list of non finished files
-                if newStatus == 'invalid':
-                    unFinishedFiles.append(fileName)
-
-        # mark output file as 'merged'
-        database.updateOutputFile(datasetId, jobName=jobName, \
-                                  status='merged', lfn = mergedLfn)
-
-        # commit changes
-        database.commit()
-
-        # notify the PM
-        File.merged(finishedFiles)
-        if len(unFinishedFiles) > 0:
-            File.merged(unFinishedFiles, True)
-
-        # log messages
-        logging.info("Job %s finished succesfully, file information updated." \
-                     % jobName)
+     
+        return #// END jobSuccess
         
-        if len(skippedFiles) > 0:
-            logging.info("*** Warning: the files: " + str(skippedFiles) + \
-                         " were skipped")
-        
-        # close connection
-        database.closeDatabaseConnection()
+ 
 
     ##########################################################################
     # handle a general failure job event
