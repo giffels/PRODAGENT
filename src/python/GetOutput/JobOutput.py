@@ -12,11 +12,12 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.39 2008/07/28 14:51:52 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.39 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.40 2008/08/20 12:11:25 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.40 $"
 
 import logging
 import os
+import traceback
 
 # BossLite import
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
@@ -164,7 +165,7 @@ class JobOutput:
 
             # update
             try:
-                bossLiteSession.updateDB( job.runningJob )
+                bossLiteSession.updateDB( job )
             except JobError, msg:
                 logging.error("WARNING, job %s.%s UPDATE failed: %s" % \
                               (job['taskId'], job['jobId'], str(msg) ) )
@@ -177,8 +178,14 @@ class JobOutput:
         except Exception, ex :
 
             # show error message
-            import traceback
             logging.error( '[%s]' % str(ex) )
+            logging.error( "GetOutputThread exception: %s" % \
+                           str( traceback.format_exc() ) )
+
+        # thread has failed
+        except :
+
+            # show error message
             logging.error( "GetOutputThread exception: %s" % \
                            str( traceback.format_exc() ) )
 
@@ -382,7 +389,17 @@ class JobOutput:
 
         # enqueue requests
         for job in jobs:
-            pool.enqueue(job, job)
+
+            try:
+                pool.enqueue(job, job)
+
+            except Exception, err:
+                logging.error( "failed restoring job %s:%s : %s" % \
+                               (job['taskId'], job['jobId'], str(err) ) )
+            except:
+                logging.error( "failed restoring job %s:%s : %s" % \
+                               (job['taskId'], job['jobId'], \
+                                str( traceback.format_exc() ) ) )
 
         logging.debug("Recreated %s get output requests" % numberOfJobs)
 
