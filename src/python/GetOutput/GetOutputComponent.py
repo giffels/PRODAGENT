@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.2 2008/07/25 15:44:37 swakef Exp $"
-__revision__ = "$Revision: 1.2 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.3 2008/08/21 16:09:25 gcodispo Exp $"
+__revision__ = "$Revision: 1.3 $"
 
 import os
 import logging
@@ -265,7 +265,7 @@ class GetOutputComponent:
                     self.pool.enqueue(job, job)
                 except Exception, err:
                     logging.error( "failed enqueue job %s:%s : %s" % \
-                                   (job['taskId'], job['jobId'], err ) )
+                                   (job['taskId'], job['jobId'], str(err) ) )
                 except :
                     logging.error( "failed enqueue job %s:%s : %s" % \
                                    (job['taskId'], job['jobId'], \
@@ -279,8 +279,8 @@ class GetOutputComponent:
         # process outputs if ready
         loop = True
         while loop :
-            loop = self.processOutput()
 
+            loop = self.processOutput()
 
         logging.debug("Finished processing of outputs and failed")
 

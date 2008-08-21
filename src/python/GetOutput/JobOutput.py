@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.5 2008/08/20 12:11:40 gcodispo Exp $"
-__revision__ = "$Revision: 1.5 $"
+__version__ = "$Id: JobOutput.py,v 1.6 2008/08/21 16:09:25 gcodispo Exp $"
+__revision__ = "$Revision: 1.6 $"
 
 import logging
 import os
@@ -400,7 +400,6 @@ class JobOutput:
                 logging.error( "failed restoring job %s:%s : %s" % \
                                (job['taskId'], job['jobId'], \
                                 str( traceback.format_exc() ) ) )
-            
 
         logging.debug("Recreated %s get output requests" % numberOfJobs)
 
