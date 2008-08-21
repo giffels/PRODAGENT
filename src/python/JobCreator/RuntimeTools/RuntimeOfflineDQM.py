@@ -121,11 +121,11 @@ class OfflineDQMHarvester:
         args = {}
         args['step'] = 'Pass-1'
         args['producer'] = 'automatic'
-        #args['url'] = 'https://cmsweb.cern.ch/dqm/dev' #test instance
-        args['url'] = 'https://cmsweb.cern.ch/dqm/tier-0' 
+        #args['url'] = 'https://cmsweb.cern.ch/dqm/dev/data/put' #test instance
+        args['url'] = 'https://cmsweb.cern.ch/dqm/tier-0/data/put' 
 
         try:
-            self.upload(args, file)
+            self.upload(args, filename)
         except HTTPError, e:
             print 'Automated upload of %s failed' % filename
             print "ERROR", e
