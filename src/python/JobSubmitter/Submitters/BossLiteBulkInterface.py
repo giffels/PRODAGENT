@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.9 2008/07/24 15:37:06 gcodispo Exp $"
-__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.10 2008/07/25 15:29:16 swakef Exp $"
+__version__ = "$Revision: 1.10 $"
 
 import os, time
 import logging
@@ -69,7 +69,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
         self.submittedJobs = {}
         self.failedSubmission = []
         self.jobInputFiles = []
-        
+
         #  //
         # // Build a list of input files for every job
         #//
@@ -166,6 +166,8 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
             self.bossTask = Task()
             self.bossTask['name'] = self.mainJobSpecName
             self.bossTask['globalSandbox'] = executablePath + ',' + inpSandbox
+            self.bossTask['jobType'] = \
+                                 self.primarySpecInstance.parameters['JobType']
 
             for jobSpecId, jobCacheDir in self.toSubmit.items():
                 if len(jobSpecId) == 0 :#or jobSpecId in jobSpecUsedList :
