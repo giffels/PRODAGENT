@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.56 2008/07/23 13:37:58 evansde Exp $"
+__revision__ = "$Id: setup.py,v 1.57 2008/07/25 15:29:17 swakef Exp $"
 
 from distutils.core import setup
 
@@ -48,6 +48,15 @@ packages = [
     'LogCollector',
     'MergeSensor',
     'MergeSensor.MergePolicies',
+    'MergeSensor.MergeSensorDB',
+    'MergeSensor.MergeSensorDB.Interface',
+    'MergeSensor.MergeSensorDB.MySQL',
+    'MergeSensor.MergeSensorDB.MySQL.Dataset',  
+    'MergeSensor.MergeSensorDB.MySQL.File',
+    'MergeSensor.MergeSensorDB.MySQL.Job',
+    'MergeSensor.MergeSensorDB.MySQL.Schema',
+    'MergeSensor.MergeSensorDB.MySQL.Status',
+    'MergeSensor.MergeSensorDB.MySQL.Workflow',
     'MergeAccountant',
     'MessageService',
     'PileupTools',
