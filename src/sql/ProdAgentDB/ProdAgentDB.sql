@@ -928,3 +928,22 @@ CREATE TABLE alert_history (
 
 
 
+/*
+Lumi Info tables
+*/
+create table merge_input_lumi 
+
+       (run int(11) not null, 
+       lumi int(11) not null, 
+       file_id int(11) not null, 
+       foreign key(file_id) references merge_inputfile(id) on delete cascade)  TYPE = InnoDB default charset=latin1;
+
+
+create table merge_lumi
+
+       (run int(11) not null,
+       lumi int(11) not null,
+       file_id int(11) not null,
+       foreign key(file_id) references merge_inputfile(id) on delete cascade)  TYPE = InnoDB default charset=latin1;
+
+
