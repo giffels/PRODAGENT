@@ -6,136 +6,90 @@ Utilities to insert data from a Job Report
 back into the MergeSensor DB
 
 """
-__revision__ = "$Id"
-__version__ = "$Revision: 1.3 $"
+
 
 import logging
-from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
-
+import os
 from MergeSensor.MergeSensorError import DuplicateLFNError
-
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
+from MergeSensor.HandleJobReport import HandleJobReport
 
 
 
-
-
-class ReportHandler:
+class ReportHandler (list):
     """
     _ReportHandler_
-
+    
+    Handles the Framework job report for both processing and merge jobs. 
     Helper class to insert data from a physical job report file
     into the MergeSensor DB
     
     """
-    def __init__(self, repFile):
-        self.mergeDB = MergeSensorDB()
+    def __init__(self, repFile, maxInputAccessFailures, enableMergeHandling = False):
+        """
+        _init_
+        Initialization function
+        """
+	
+	#// Base class constructor	
+        list.__init__ (self)
+	
+
         self.reportFile = repFile
-        self.datasetIds = {}
-        [ self.datasetIds.__setitem__(x, self.mergeDB.getDatasetId(x))
-          for x in self.mergeDB.getDatasetList() ]
-        
-        self.insertedLFNs = []
-        self.duplicateLFNs = []
-        self.unknownDatasets = []
-        self.removedLFNs = []
-        self.unremovedLFNs = []
+        self.enableMergeHandling = enableMergeHandling
+        self.maxInputAccessFailures = maxInputAccessFailures
+
     def __call__(self):
         """
         _operator()_
+	
+	Callable funtions to handle job report
 
-        """
-        reps = readJobReport(self.reportFile)
-        for rep in reps:
-            self.handleReport(rep)
-
-    def summarise(self):
-        """
-        _summarise_
-
-        debug friendly statement of what was done
-
-        """
-        msg = "Report Handled: %s\n " % self.reportFile
-        if len(self.unknownDatasets) > 0:
-            msg += "Unknown Datasets:\n"
-            for ds in self.unknownDatasets:
-                msg += "=> %s\n" % ds
-        if len(self.duplicateLFNs) > 0:
-            msg += "Duplicate LFNS:\n"
-            for lfn in self.duplicateLFNs:
-                msg += "=> %s\n" % lfn
-        msg += "Inserted LFNs:\n"
-        for lfn in self.insertedLFNs:
-            msg += "=> %s\n" % lfn
-
-        if len(self.removedLFNs) > 0:
-            msg += "Removed LFNs:\n"
-            for lfn in self.removedLFNs:
-                msg += "=> %s\n" % lfn
-
-        if len(self.unremovedLFNs) > 0:
-            msg += "Unremoved LFNs:\n"
-            for lfn in self.unremovedLFNs:
-                msg += "=> %s\n" % lfn
-
-
-        return msg
-                
-
-    def handleReport(self, report):
-        """
-        _handleReport_
+        """     
+		
+        logging.info ('read job report.......') 
+	 
+	#  remove file:// from file name (if any)
         
-        
-        """
-        removedFiles = report.removedFiles.keys()
-        if len(removedFiles) > 0:
-            self.mergeDB.removedState(*removedFiles)
-            self.mergeDB.commit()
-            self.removedLFNs.extend(removedFiles)
+	jobReport = self.reportFile.replace('file://','')
 
-        unremovedFiles = report.unremovedFiles.keys()
-        if len(unremovedFiles) > 0:
-            self.mergeDB.unremovedState(*unremovedFiles)
-            self.mergeDB.commit()
-            self.unremovedLFNs.extend(unremovedFiles)
+        # verify the file exists
+        if not os.path.exists(jobReport):
+            logging.error("Cannot process JobSuccess event: " \
+                         + "job report %s does not exist." % jobReport)
+            return None
 
-            
-            
-        
-        for ofile in report.files:
-            datasets = set([ x.name() for x in ofile.dataset ])
-            for dataset in datasets:
-                if dataset not in self.datasetIds.keys():
-                    self.unknownDatasets.append(dataset)
-                    continue
-                datasetId = self.datasetIds[dataset]
-                runsList = [ {'RunNumber' : x } for x in ofile.runs ]
-                try:
-                    self.mergeDB.addFile(
-                        datasetId, ofile['LFN'],
-                        ofile['SEName'],
-                        {
-                        'FileSize' : ofile['Size'],
-                        'NumberOfEvents' : ofile['TotalEvents'],
-                        'RunsList' : runsList
-                        })
-                    self.mergeDB.commit()
-                    self.insertedLFNs.append(ofile['LFN'])
-                except DuplicateLFNError, ex:
-                    msg = "Not registering duplicate unmerged file:\n"
-                    msg += "%s\n" % ofile['LFN']
-                    msg += str(ex)
-                    logging.warning(msg)
-                    self.mergeDB.rollback()
-                    self.duplicateLFNs.append(ofile['LFN'])
-                    continue
-                
+        # read the report
+        try:
+            self.extend(readJobReport(jobReport))
 
-                
-                
-                
+        # check errors
+        except Exception, msg:
+            logging.error("Cannot process JobSuccess event for %s: %s" \
+                           % (jobReport, msg))
+            return None
+	
+	
+	result = None
+			
+	try:
+	
+	
+           for report in self:
+               handler = HandleJobReport(report, jobReport, self.maxInputAccessFailures, self.enableMergeHandling)
+	       result = handler()
+               logging.info(handler.summarise())
+	       
+	
+	except Exception, ex:
+	   
+           msg = "Failed to handle job report from processing job:\n"
+           msg += "%s\n" % self.reportFile
+           msg += str(ex)
+           logging.error(msg)
+	   return result
+	
+	return result   #// End __call__
 
 
 
