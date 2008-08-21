@@ -53,7 +53,8 @@ def getDAOFactory ():
  
  
     #// Get Logger
-    logger = logging.getLogger()
+    logger = logging.getLogger('MergeSensorDB')
+    logger.setLevel(logging.ERROR)
 
     #// Initializing dbFactory    
     dbFactory = DBFactory(logger, dbURL, options = param)
