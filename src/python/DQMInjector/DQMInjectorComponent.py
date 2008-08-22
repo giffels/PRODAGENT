@@ -16,6 +16,8 @@ from ProdCommon.Database import Session
 from MessageService.MessageService import MessageService
 from ProdAgentDB.Config import defaultConfig as dbConfig
 import ProdAgentCore.LoggingUtils as LoggingUtils
+import ProdAgent.WorkflowEntities.Job as WEJob
+from JobQueue.JobQueueAPI import bulkQueueJobs
 
 from DQMInjector.CollectPayload import CollectPayload
 from DQMInjector.Plugins.DBSPlugin import DBSPlugin
@@ -35,6 +37,7 @@ class DQMInjectorComponent:
         self.args['ScramArch'] = None
         self.args['CmsPath'] = None
         self.args['ConfigFile'] = None
+        self.args['Site'] = "srm.cern.ch"
         self.args.update(args)
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(
@@ -56,6 +59,7 @@ class DQMInjectorComponent:
         msg += " => Plugin: %s\n" % self.args['Plugin']
         msg += " => Cms Path: %s\n" % self.args['CmsPath']
         msg += " => Scram Arch: %s\n" % self.args['ScramArch']
+        msg += " => Site: %s\n" % self.args['Site']
         if self.args['ConfigFile'] != None:
             msg += " => ConfigFile : %s\n" % self.args['ConfigFile']
         else:
@@ -114,7 +118,7 @@ class DQMInjectorComponent:
 
 
         try:
-            plugin(collectPayload)
+            jobs = plugin(collectPayload)
         except Exception, ex:
             msg = "Error invoking %s plugin on collect payload:\n%s" % (
                 self.args['Plugin'], str(collectPayload))
@@ -124,8 +128,20 @@ class DQMInjectorComponent:
             return
 
 
-
-
+        #  //
+        # // publish and queue harvesting jobs
+        #//
+        for job in jobs:
+            logging.info("Registering Job %s" % job['JobSpecId'])
+            WEJob.register(job['WorkflowSpecId'], None, {
+                'id' : job['JobSpecId'], 'owner' : 'DQMInjector',
+                'job_type' : "Processing", "max_retries" : 3,
+                "max_racers" : 1,
+                })
+            
+        site = self.args['Site']
+        bulkQueueJobs(site, *jobs)
+        return
 
 
 
