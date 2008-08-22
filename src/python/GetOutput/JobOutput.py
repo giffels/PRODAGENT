@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.6 2008/08/21 16:09:25 gcodispo Exp $"
-__revision__ = "$Revision: 1.6 $"
+__version__ = "$Id: JobOutput.py,v 1.7 2008/08/21 16:38:22 gcodispo Exp $"
+__revision__ = "$Revision: 1.7 $"
 
 import logging
 import os
@@ -170,7 +170,6 @@ class JobOutput:
                 logging.error("WARNING, job %s.%s UPDATE failed: %s" % \
                               (job['taskId'], job['jobId'], str(msg) ) )
 
-
             # return job info
             return job
 
@@ -178,19 +177,18 @@ class JobOutput:
         except Exception, ex :
 
             # show error message
-            logging.error( '[%s]' % str(ex) )
-            logging.error( "GetOutputThread exception: %s" % \
-                           str( traceback.format_exc() ) )
+            logging.error( 'GetOutputThread exception: [%s]\nTraceback: %s' % \
+                           ( str(ex), str( traceback.format_exc() ) ) )
 
         # thread has failed
         except :
 
             # show error message
-            logging.error( "GetOutputThread exception: %s" % \
+            logging.error( "GetOutputThread traceback: %s" % \
                            str( traceback.format_exc() ) )
 
-            # return also the id
-            return job
+        # return also the id
+        return job
 
 
     @classmethod
@@ -225,7 +223,7 @@ class JobOutput:
                 job.runningJob['closed'] = 'Y'
 
         # log warnings and errors collected by the scheduler session
-        logging.info( str(schedSession.getLogger()) )
+        logging.info( "BossLiteLogger : %s " % str(schedSession.getLogger()) )
 
         return job
 
@@ -262,7 +260,7 @@ class JobOutput:
                 job.runningJob['closed'] = 'Y'
 
         # log warnings and errors collected by the scheduler session
-        logging.info( str(schedSession.getLogger()) )
+        logging.info( "BossLiteLogger : %s " % str(schedSession.getLogger()) )
 
         return job
 
@@ -305,6 +303,10 @@ class JobOutput:
                 logging.info('Retrieved output for job %s.%s in %s' % \
                              (job['taskId'], job['jobId'], outdir ))
 
+                # log warnings and errors collected by the scheduler session
+                logging.info( "BossLiteLogger : %s " % \
+                              str(schedSession.getLogger()) )
+
                 # success: stop processing
                 break
 
@@ -312,6 +314,8 @@ class JobOutput:
             except BossLiteError, err:
                 logging.error("job %s.%s retrieval failed: %s" % \
                               (job['taskId'], job['jobId'], str(err) ) )
+                logging.info( "BossLiteLogger : %s " % \
+                              str(schedSession.getLogger()) )
 
                 # proxy expired: invalidate job and empty return
                 if err.value.find( "Proxy Expired" ) != -1 :
@@ -342,9 +346,6 @@ class JobOutput:
             # log status
             logging.info("job %s.%s retrieval status: %s" % \
                           (job['taskId'], job['jobId'], output))
-
-        # log warnings and errors collected by the scheduler session
-        logging.info( str(schedSession.getLogger()) )
 
         return job
 

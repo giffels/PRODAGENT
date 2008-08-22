@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.3 2008/08/21 16:09:25 gcodispo Exp $"
-__revision__ = "$Revision: 1.3 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.4 2008/08/21 16:38:22 gcodispo Exp $"
+__revision__ = "$Revision: 1.4 $"
 
 import os
 import logging
@@ -44,7 +44,7 @@ class GetOutputComponent:
         self.args.setdefault("ComponentDir", "/tmp")
         self.args.setdefault("JobTrackingDir", None)
         self.args.setdefault("GetOutputPoolThreadsSize", 5)
-        self.args.setdefault("jobsToPoll", 300)
+        self.args.setdefault("jobsToPoll", 50)
         self.args.setdefault("OutputLocation", "local")
         self.args.setdefault("dropBoxPath", None)
         self.args.setdefault("Logfile", None)
@@ -218,10 +218,10 @@ class GetOutputComponent:
                     logging.error( "failed enqueue job %s:%s : %s" % \
                                    (job['taskId'], job['jobId'], \
                                    str( traceback.format_exc() ) ) )
-                    
-                del( job )
 
-            del self.outputRequestedJobs[:]
+                # del( job )
+
+            # del self.outputRequestedJobs[:]
 
         # get jobs failed that require post-mortem operations
         logging.debug("Start processing of failed")
@@ -270,11 +270,11 @@ class GetOutputComponent:
                     logging.error( "failed enqueue job %s:%s : %s" % \
                                    (job['taskId'], job['jobId'], \
                                    str( traceback.format_exc() ) ) )
-                del( job )
+                # del( job )
 
-            del self.outputRequestedJobs[:]
+            # del self.outputRequestedJobs[:]
 
-        del self.outputRequestedJobs[:]
+        # del self.outputRequestedJobs[:]
 
         # process outputs if ready
         loop = True
@@ -283,7 +283,6 @@ class GetOutputComponent:
             loop = self.processOutput()
 
         logging.debug("Finished processing of outputs and failed")
-
 
         # generate next polling cycle
         logging.info("Waiting %s for next get output polling cycle" % \
@@ -337,6 +336,10 @@ class GetOutputComponent:
         except Exception, err:
             logging.error( "failed to process job %s:%s output : %s" % \
                            (job['taskId'], job['jobId'], str(err) ) )
+        except :
+            logging.error( "failed to process job %s:%s output : %s" % \
+                           (job['taskId'], job['jobId'], \
+                            str( traceback.format_exc() )  ) )
 
         logging.debug("Processing output for job %s.%s finished" % \
                       ( job['taskId'], job['jobId'] ) )
