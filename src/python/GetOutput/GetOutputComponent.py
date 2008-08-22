@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.29 2008/08/21 16:35:12 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.29 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.30 2008/08/22 11:30:55 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.30 $"
 
 import os
 import logging
@@ -221,7 +221,7 @@ class GetOutputComponent:
 
                 # del( job )
 
-            del self.outputRequestedJobs[:]
+            # del self.outputRequestedJobs[:]
 
         # get jobs failed that require post-mortem operations
         logging.debug("Start processing of failed")
@@ -272,18 +272,17 @@ class GetOutputComponent:
                                    str( traceback.format_exc() ) ) )
                 # del( job )
 
-            del self.outputRequestedJobs[:]
+            # del self.outputRequestedJobs[:]
 
-        del self.outputRequestedJobs[:]
+        # del self.outputRequestedJobs[:]
 
         # process outputs if ready
         loop = True
         while loop :
+
             loop = self.processOutput()
 
-
         logging.debug("Finished processing of outputs and failed")
-
 
         # generate next polling cycle
         logging.info("Waiting %s for next get output polling cycle" % \
