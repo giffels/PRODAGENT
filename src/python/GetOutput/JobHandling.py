@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.1.2.9 2008/07/15 10:07:17 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.9 $"
+__revision__ = "$Id: JobHandling.py,v 1.1.2.10 2008/07/15 10:14:41 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.10 $"
 
 import os
 import logging
@@ -32,8 +32,6 @@ from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 
-__version__ = "$Id: JobHandling.py,v 1.1.2.9 2008/07/15 10:07:17 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.9 $"
 
 class JobHandling:
     """
@@ -384,16 +382,27 @@ class JobHandling:
 
         # set finished job state
         try:
-            self.recreateSession()
-            JobState.finished(job)
-            Session.commit()
-            Session.close()
+            try:
+                JobState.finished(job)
+                Session.commit()
+            except :
+                logging.warning(
+                    "failed connection for JobState Notify, trying recovery" )
+                self.recreateSession()
+                JobState.finished(job)
+                Session.commit()
 
         # error
         except Exception, ex:
             msg = "Error setting job state to finished for job: %s\n" \
                   % str(job)
             msg += str(ex)
+            logging.error(msg)
+        except :
+            msg = "Error setting job state to finished for job: %s\n" \
+                  % str(job)
+            import traceback
+            msg += traceback.format_exc()
             logging.error(msg)
 
         return

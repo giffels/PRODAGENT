@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.40 2008/08/20 12:11:25 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.40 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.41 2008/08/21 16:35:13 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.41 $"
 
 import logging
 import os
@@ -178,19 +178,18 @@ class JobOutput:
         except Exception, ex :
 
             # show error message
-            logging.error( '[%s]' % str(ex) )
-            logging.error( "GetOutputThread exception: %s" % \
-                           str( traceback.format_exc() ) )
+            logging.error( 'GetOutputThread exception: [%s]\nTraceback: %s' % \
+                           % ( str(ex), str( traceback.format_exc() ) ) )
 
         # thread has failed
         except :
 
             # show error message
-            logging.error( "GetOutputThread exception: %s" % \
+            logging.error( "GetOutputThread traceback: %s" % \
                            str( traceback.format_exc() ) )
 
-            # return also the id
-            return job
+        # return also the id
+        return job
 
 
     @classmethod
@@ -225,7 +224,7 @@ class JobOutput:
                 job.runningJob['closed'] = 'Y'
 
         # log warnings and errors collected by the scheduler session
-        logging.info( str(schedSession.getLogger()) )
+        logging.info( "BossLiteLogger : %s " % str(schedSession.getLogger()) )
 
         return job
 
@@ -262,7 +261,7 @@ class JobOutput:
                 job.runningJob['closed'] = 'Y'
 
         # log warnings and errors collected by the scheduler session
-        logging.info( str(schedSession.getLogger()) )
+        logging.info( "BossLiteLogger : %s " % str(schedSession.getLogger()) )
 
         return job
 
@@ -344,7 +343,7 @@ class JobOutput:
                           (job['taskId'], job['jobId'], output))
 
         # log warnings and errors collected by the scheduler session
-        logging.info( str(schedSession.getLogger()) )
+        logging.info( "BossLiteLogger : %s " % str(schedSession.getLogger()) )
 
         return job
 

@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.28 2008/07/22 08:14:08 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.28 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.29 2008/08/21 16:35:12 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.29 $"
 
 import os
 import logging
@@ -44,7 +44,7 @@ class GetOutputComponent:
         self.args.setdefault("ComponentDir", "/tmp")
         self.args.setdefault("JobTrackingDir", None)
         self.args.setdefault("GetOutputPoolThreadsSize", 5)
-        self.args.setdefault("jobsToPoll", 300)
+        self.args.setdefault("jobsToPoll", 50)
         self.args.setdefault("OutputLocation", "local")
         self.args.setdefault("dropBoxPath", None)
         self.args.setdefault("Logfile", None)
@@ -219,7 +219,7 @@ class GetOutputComponent:
                                    (job['taskId'], job['jobId'], \
                                    str( traceback.format_exc() ) ) )
 
-                del( job )
+                # del( job )
 
             del self.outputRequestedJobs[:]
 
@@ -270,7 +270,7 @@ class GetOutputComponent:
                     logging.error( "failed enqueue job %s:%s : %s" % \
                                    (job['taskId'], job['jobId'], \
                                    str( traceback.format_exc() ) ) )
-                del( job )
+                # del( job )
 
             del self.outputRequestedJobs[:]
 
@@ -337,6 +337,10 @@ class GetOutputComponent:
         except Exception, err:
             logging.error( "failed to process job %s:%s output : %s" % \
                            (job['taskId'], job['jobId'], str(err) ) )
+        except :
+            logging.error( "failed to process job %s:%s output : %s" % \
+                           (job['taskId'], job['jobId'], \
+                            str( traceback.format_exc() )  ) )
 
         logging.debug("Processing output for job %s.%s finished" % \
                       ( job['taskId'], job['jobId'] ) )
