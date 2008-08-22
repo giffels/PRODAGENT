@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.1.2.41 2008/08/21 16:35:13 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.41 $"
+__version__ = "$Id: JobOutput.py,v 1.1.2.42 2008/08/22 11:30:55 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.42 $"
 
 import logging
 import os
@@ -179,7 +179,7 @@ class JobOutput:
 
             # show error message
             logging.error( 'GetOutputThread exception: [%s]\nTraceback: %s' % \
-                           % ( str(ex), str( traceback.format_exc() ) ) )
+                           ( str(ex), str( traceback.format_exc() ) ) )
 
         # thread has failed
         except :

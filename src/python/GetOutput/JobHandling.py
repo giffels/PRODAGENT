@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.1.2.10 2008/07/15 10:14:41 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.10 $"
+__revision__ = "$Id: JobHandling.py,v 1.1.2.11 2008/08/22 11:30:55 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.11 $"
 
 import os
 import logging
@@ -21,7 +21,7 @@ from ProdCommon.Database import Session
 #from ProdAgentCore.ProdAgentException import ProdAgentException
 
 # Blite API import
-from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
+#from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
 #from ProdCommon.BossLite.Common.Exceptions import TaskError
 from ProdCommon.BossLite.Common.Exceptions import JobError
 
