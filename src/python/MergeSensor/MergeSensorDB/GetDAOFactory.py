@@ -32,17 +32,23 @@ def getDAOFactory ():
     cfgObject = ProdAgentConfiguration()
     cfgObject.loadFromFile(config)
     dbConfig = cfgObject.get("ProdAgentDB")
-    dbURL = None
     param = {}
    
     try:
 
        #// connection parameters
-       dbURL = dbConfig['dbURL']
+       param['dialect'] =  dbConfig['dbType']
+       param['user'] = dbConfig['user']
+       param['password'] = dbConfig['passwd']
+       param['database'] = dbConfig['dbName']
+       param['host'] = dbConfig['host']
 
-       #// customized parameters
-       if dbConfig.has_key('socketFileLocation'): 
-          param['unix_socket'] = dbConfig['socketFileLocation']
+       if dbConfig['portNr']:
+           param['port'] = dbConfig['portNr']
+
+       if dbConfig['socketFileLocation']: 
+           param['unix_socket'] = dbConfig['socketFileLocation']
+         
 
        #// otherwise use default socket location /tmp
 
@@ -57,7 +63,7 @@ def getDAOFactory ():
     logger.setLevel(logging.ERROR)
 
     #// Initializing dbFactory    
-    dbFactory = DBFactory(logger, dbURL, options = param)
+    dbFactory = DBFactory(logger, dburl = None, options = param)
 
     daoFactory = DAOFactory(package = 'MergeSensor.MergeSensorDB',
                          logger = logger,
