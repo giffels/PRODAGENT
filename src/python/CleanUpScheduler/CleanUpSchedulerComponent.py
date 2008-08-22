@@ -20,6 +20,8 @@ from MergeSensor.MergeCrossCheck import MergeSensorCrossCheck
 from MergeSensor.MergeCrossCheck import listAllMergeDatasets 
 import ProdCommon.MCPayloads.CleanUpTools as CleanUpTools
 from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
+from ProdCommon.DataMgmt.DBS.DBSErrors import DBSReaderError
+from DBSAPI.dbsApiException import DbsConnectionError
 import time
 
 
@@ -195,7 +197,7 @@ class CleanUpSchedulerComponent:
           try:
                
               self.dbsReader = DBSReader(self.args['DBSURL'])
-          except (DBSReaderError,DBSConnectionError), ex:
+          except (DBSReaderError,DbsConnectionError), ex:
               logging.error("Failed to connect to DBS (Exception: %s) Trying again in %s seconds" % (str(ex),self.delayDBS))
               time.sleep(self.delayDBS)
           else:
