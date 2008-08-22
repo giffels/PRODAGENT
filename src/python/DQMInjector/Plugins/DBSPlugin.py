@@ -8,10 +8,15 @@ Plugin for retrieving files to harvest from DBS
 
 import logging
 import os
-from DQMInjector.HarvestWorkflow import createHarvestingWorkflow
-from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
 
+from DQMInjector.Plugins.BasePlugin import BasePlugin
+from DQMInjector.HarvestWorkflow import createHarvestingWorkflow
+
+from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.JobFactory.RunJobFactory import RunJobFactory
+
+
 
 
 def findVersionForDataset(dbsUrl, primary, processed, tier, run):
@@ -22,12 +27,13 @@ def findVersionForDataset(dbsUrl, primary, processed, tier, run):
     """
     reader  = DBSReader(dbsUrl)
     datasetName = "/%s/%s/%s" % (primary, processed, tier)
-
+ 
+    
     try:
         fileList = reader.dbs.listFiles(
             path = datasetName,
             runNumber = run,
-            retriveList = ['retrive_algo'])
+            retriveList = ['retrive_algo',])
     except Exception, ex:
         msg = "Failed to get details from DBS for dataset:\n"
         msg += "%s\n for run %s\n" % (datasetName, run)
@@ -54,11 +60,11 @@ def findVersionForDataset(dbsUrl, primary, processed, tier, run):
 
 
 
-class DBSPlugin:
+class DBSPlugin(BasePlugin):
 
     def __init__(self):
+        BasePlugin.__init__(self)
         self.dbsUrl = "http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet"
-        self.args = {}
 
     def __call__(self, collectPayload):
         """
@@ -71,38 +77,73 @@ class DBSPlugin:
         msg = "DBSPlugin invoked for %s" % str(collectPayload)
         logging.info(msg)
 
-        cmsswVersion = findVersionForDataset(self.dbsUrl,
-                              collectPayload['PrimaryDataset'],
-                              collectPayload['ProcessedDataset'],
-                              collectPayload['DataTier'],
-                              collectPayload['RunNumber'])
-
-
 
         site = self.args.get("Site", "srm.cern.ch")
 
-        workflowSpec = createHarvestingWorkflow(collectPayload.datasetPath(),
-                                                site,
-                                                self.args['CmsPath'],
-                                                self.args['ScramArch'],
-                                                cmsswVersion,
-                                                self.args['ConfigFile'])
+        baseCache = os.path.join(self.args['ComponentDir'],
+                                 "DBSPlugin")
+        if not os.path.exists(baseCache):
+            os.makedirs(baseCache)
 
-        cache = os.path.join(self.args['ComponentDir'],
-                             "DBSPlugin",
-                             workflowSpec.workflowName())
-        if not os.path.exists(cache):
-            os.makedirs(cache)
-        workflowFile = "%s/%s-Workflow.xml" % (
-            cache, workflowSpec.workflowName())
-        workflowSpec.save(workflowFile)
+        datasetCache = os.path.join(baseCache,
+                                    collectPayload['PrimaryDataset'],
+                                    collectPayload['ProcessedDataset'],
+                                    collectPayload['DataTier'])
+        
+        if not os.path.exists(datasetCache):
+            os.makedirs(datasetCache)
+
+        workflowFile = os.path.join(
+            datasetCache,
+            "%s-%s-%s-DQMHarvest-Workflow.xml" % (
+            collectPayload['PrimaryDataset'],
+            collectPayload['ProcessedDataset'],
+            collectPayload['DataTier'])
+            )
+        if not os.path.exists(workflowFile):
+            msg = "No workflow found for dataset: %s\n " % (
+                collectPayload.datasetPath(),)
+            msg += "Looking up software version and generating workflow..."
+
+            cmsswVersion = findVersionForDataset(
+                self.dbsUrl,
+                collectPayload['PrimaryDataset'],
+                collectPayload['ProcessedDataset'],
+                collectPayload['DataTier'],
+                collectPayload['RunNumber'])
+            msg = "Found CMSSW Version for dataset/run\n"
+            msg += " Dataset %s Run %s\n" % (collectPayload.datasetPath(),
+                                             collectPayload['RunNumber'])
+            msg += " CMSSW Version = %s\n " % cmsswVersion
+            logging.info(msg)
+            
+            workflowSpec = createHarvestingWorkflow(
+                collectPayload.datasetPath(),
+                site,
+                self.args['CmsPath'],
+                self.args['ScramArch'],
+                cmsswVersion,
+                self.args['ConfigFile'])
+            
+            workflowSpec.save(workflowFile)
+            msg = "Created Harvesting Workflow:\n %s" % workflowFile
+            logging.info(msg)
+            self.publishWorkflow(workflowFile, workflowSpec.workflowName())
+        else:
+            msg = "Loading existing workflow for dataset: %s\n " % (
+                collectPayload.datasetPath(),)
+            msg += " => %s\n" % workflowFile
+            logging.info(msg)
+
+            workflowSpec = WorkflowSpec()
+            workflowSpec.load(workflowFile)
 
 
-        msg = "Created Harvesting Workflow:\n %s" % workflowFile
-        logging.info(msg)
-
+        #  //
+        # //  Callout to create the harvesting job for the run
+        #//
         factory = RunJobFactory(workflowSpec,
-                                cache,
+                                datasetCache,
                                 self.dbsUrl, SiteName = site,
                                 FilterRuns = [int(collectPayload['RunNumber'])],
                                 )
@@ -122,5 +163,5 @@ class DBSPlugin:
             msg += " => Site:      %s\n" % job['Sites']
             logging.info(msg)
 
-        return
+        return jobs
 

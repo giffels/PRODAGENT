@@ -101,6 +101,7 @@ class DQMInjectorComponent:
         try:
             plugin = self.getPlugin()
             plugin.args.update(self.args)
+            plugin.msRef = self.ms
         except Exception, ex:
             msg = "Error creating plugin instance of type: %s\n" % (
                 self.args['Plugin'],

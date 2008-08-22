@@ -9,7 +9,7 @@ Generate a Harvesting workflow spec
 import time
 import os
 import logging
-
+import imp
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
@@ -110,8 +110,10 @@ def configFromFile(cmsPath, scramArch, cmsswVersion, filename):
         modRef = imp.load_module(cfgBaseName, modPath[0],
                                  modPath[1], modPath[2])
     except Exception, ex:
-        msg = "Error loading config file: %s" % ex
+        msg = "Error loading config file:\n"
         msg += "%s\n" % filename
+        msg += "%s" % ex
+        
         logging.error(msg)
         loader.unload()
         raise RuntimeError, msg
@@ -147,12 +149,12 @@ def createHarvestingWorkflow(dataset, site, cmsPath, scramArch, cmsswVersion,
     category = "DQM"
     channel = "DQMHarvest"
 
-    cfgWrapper = CMSSWConfig()
-##    if configFile != None:
-##        cfgWrapper = configFromFile(cmsPath, scramArch,
-##                                    cmsswVersion, configFile)
-##    else:
-##        cfgWrapper = configFromScratch(cmsPath, scramArch, cmsswVersion)
+    ##cfgWrapper = CMSSWConfig()
+    if configFile != None:
+        cfgWrapper = configFromFile(cmsPath, scramArch,
+                                    cmsswVersion, configFile)
+    else:
+        cfgWrapper = configFromScratch(cmsPath, scramArch, cmsswVersion)
 
 
 
