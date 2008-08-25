@@ -16,6 +16,7 @@ from mimetypes import guess_type
 from gzip      import GzipFile
 from cStringIO import StringIO
 from md5       import md5
+import traceback
 
 from ProdCommon.FwkJobRep.TaskState import TaskState
 from ProdCommon.MCPayloads.UUID import makeUUID
@@ -25,7 +26,7 @@ from StageOut.StageOutError import StageOutInitError
 import StageOut.Impl
 
 _DoHTTPPost = True
-
+_DoStageOut = False 
 
 class OfflineDQMHarvester:
     """
@@ -76,23 +77,24 @@ class OfflineDQMHarvester:
                 aFile['FileName'] = aFile['FileName'].replace("./", "")
 
             msg = "==========Handling Analysis File=========\n"
-            for key, value in aFile.keys():
+            for key, value in aFile.items():
                 msg += " => %s: %s\n" % (key, value)
             print msg
-            self.stageOut(aFile['FileName'])
+            self.stageOut(aFile)
             if _DoHTTPPost:
-                self.httpPost(aFile['FileName'])
+                self.httpPost(aFile)
 
         return 0
 
 
-    def stageOut(self, filename):
+    def stageOut(self, analysisFile):
         """
         _stageOut_
 
         stage out the DQM Histogram to local storage
 
         """
+        filename = analysisFile['FileName']
         try:
             stager = StageOutMgr()
         except Exception, ex:
@@ -112,26 +114,33 @@ class OfflineDQMHarvester:
             'SEName' : None,
             'GUID' : filebasename,
             }
-        try:
-            stager(**fileInfo)
-        except Exception, ex:
-            msg = "Unable to stage out DQM File:\n"
-            msg += str(ex)
+        if _DoStageOut:
+            try:
+                stager(**fileInfo)
+            except Exception, ex:
+                msg = "Unable to stage out DQM File:\n"
+                msg += str(ex)
+                print msg
+                return
+        else:
+            msg = "Stage Out is disabled"
             print msg
-            return
-        self.mssNames[filename] = stager.searchTFC(fileInfo['LFN'])
+            
+        storagePFN = stager.searchTFC(fileInfo['LFN'])
+        self.mssNames[filename] = storagePFN
+        analysisFile['StoragePFN'] = storagePFN
         return
 
 
 
-    def httpPost(self, filename):
+    def httpPost(self, analysisFile):
         """
         _httpPost_
 
         perform an HTTP POST operation to a webserver
 
         """
-       
+        filename = analysisFile['FileName']
         
         args = {}
         args['step'] = 'Pass-1'
@@ -158,9 +167,14 @@ class OfflineDQMHarvester:
             print 'Status code: ', e.hdrs.get("Dqm-Status-Code", "None")
             print 'Message:     ', e.hdrs.get("Dqm-Status-Message", "None")
             print 'Detail:      ', e.hdrs.get("Dqm-Status-Detail", "None")
-        except:
+        except Exception, ex:
             print 'Automated upload of %s failed' % filename
             print 'problem unknown'
+            print ex
+
+            
+
+            
 
 
                         
