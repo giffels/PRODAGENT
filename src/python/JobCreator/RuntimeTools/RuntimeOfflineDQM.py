@@ -26,6 +26,7 @@ import StageOut.Impl
 
 _DoHTTPPost = True
 
+
 class OfflineDQMHarvester:
     """
     _OfflineDQMHarvester_
@@ -48,6 +49,11 @@ class OfflineDQMHarvester:
             print str(ex)
             self.state._JobReport = None
 
+        self.state.loadJobSpecNode()
+
+        # map local to storage PFN
+        self.mssNames = {}
+
 
 
     def __call__(self):
@@ -66,7 +72,13 @@ class OfflineDQMHarvester:
         jobRep = self.state._JobReport
 
         for aFile in jobRep.analysisFiles:
-            print "Found Analysis File: %s" % aFile
+            if aFile['FileName'].startswith("./"):
+                aFile['FileName'] = aFile['FileName'].replace("./", "")
+
+            msg = "==========Handling Analysis File=========\n"
+            for key, value in aFile.keys():
+                msg += " => %s: %s\n" % (key, value)
+            print msg
             self.stageOut(aFile['FileName'])
             if _DoHTTPPost:
                 self.httpPost(aFile['FileName'])
@@ -88,14 +100,14 @@ class OfflineDQMHarvester:
             msg += str(ex)
             print msg
             return
-
+            
 	filebasename = os.path.basename(filename)
 	filebasename = filebasename.replace(".root", "")
 	
         fileInfo = {
             'LFN' : "/store/unmerged/dqm/%s/%s/%s" % (self.workflowSpecId,
                                                       self.jobSpecId,
-                                                      filename),
+                                                      filebasename),
             'PFN' : os.path.join(os.getcwd(), filename),
             'SEName' : None,
             'GUID' : filebasename,
@@ -107,7 +119,8 @@ class OfflineDQMHarvester:
             msg += str(ex)
             print msg
             return
-
+        self.mssNames[filename] = stager.searchTFC(fileInfo['LFN'])
+        return
 
 
 
@@ -118,12 +131,25 @@ class OfflineDQMHarvester:
         perform an HTTP POST operation to a webserver
 
         """
+       
+        
         args = {}
         args['step'] = 'Pass-1'
-        args['producer'] = 'automatic'
-        #args['url'] = 'https://cmsweb.cern.ch/dqm/dev/data/put' #test instance
-        args['url'] = 'https://cmsweb.cern.ch/dqm/tier-0/data/put' 
+        args['producer'] = 'ProdSys'
+        args['url'] = 'https://cmsweb.cern.ch/dqm/dev/data/put' #test instance
+        #args['url'] = 'https://cmsweb.cern.ch/dqm/tier-0/data/put' 
 
+        jobSpecNode = self.state.jobSpecNode
+        inputDataset = jobSpecNode._InputDatasets[0]
+        args['workflow'] = inputDataset.name()
+        
+        args['mssname'] = self.mssNames[filename]
+        msg = "HTTP Upload of file commencing with args:\n"
+        msg += " => Filename: %s\n" % filename
+        for key, val in args.items():
+            msg += " => %s: %s\n" % (key, val)
+        print msg
+        
         try:
             self.upload(args, filename)
         except HTTPError, e:
@@ -164,12 +190,7 @@ class OfflineDQMHarvester:
 
     def upload(self, args, file):
 
-        #make or check workflow description
-        (fdir, fname) = (os.path.dirname(file), os.path.basename(file))
-        fnameSplit = fname.rstrip('.root').split('__')
-        if not args.has_key('workflow'):
-            args['workflow'] = '/' + '/'.join(fnameSplit[1:])
-
+        
         #preparing a checksum
         blockSize = 0x10000
         def upd(m, data):
@@ -184,6 +205,7 @@ class OfflineDQMHarvester:
 
         args['checksum'] = 'md5:' + m.hexdigest()
         args['size']     = str(os.stat(file)[6])
+
 
         # open a connection and upload the file
         url = args.pop('url')
