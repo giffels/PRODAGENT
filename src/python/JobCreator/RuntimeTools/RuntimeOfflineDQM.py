@@ -26,7 +26,13 @@ from StageOut.StageOutError import StageOutInitError
 import StageOut.Impl
 
 _DoHTTPPost = True
-_DoStageOut = False 
+_DoStageOut = True
+_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/dev/data/put' #test instance
+#_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/tier-0/data/put' # prod instance
+
+
+
+
 
 class OfflineDQMHarvester:
     """
@@ -145,8 +151,7 @@ class OfflineDQMHarvester:
         args = {}
         args['step'] = 'Pass-1'
         args['producer'] = 'ProdSys'
-        args['url'] = 'https://cmsweb.cern.ch/dqm/dev/data/put' #test instance
-        #args['url'] = 'https://cmsweb.cern.ch/dqm/tier-0/data/put' 
+        args['url'] = _HTTPPostURL
 
         jobSpecNode = self.state.jobSpecNode
         inputDataset = jobSpecNode._InputDatasets[0]
