@@ -10,6 +10,7 @@ from StageOut.Registry import registerStageOutImpl
 from StageOut.StageOutImpl import StageOutImpl
 from StageOut.StageOutError import StageOutError
 
+from StageOut.Execute import runCommand
 
 _CheckExitCodeOption = True
 
@@ -23,6 +24,8 @@ class SRMV2Impl(StageOutImpl):
     
     """
     
+    run = staticmethod(runCommand)
+    
     def createSourceName(self, protocol, pfn):
         """
         _createSourceName_
@@ -35,7 +38,43 @@ class SRMV2Impl(StageOutImpl):
         else:
             return pfn
 
-    
+    def createOutputDirectory(self, targetPFN):
+        """
+        _createOutputDirectory_
+        
+        SRMV2 does not create directories, 
+            see http://sdm.lbl.gov/srm-wg/doc/SRM.v2.2.html#_Toc199734394
+
+        """
+        targetdir = os.path.dirname(targetPFN)
+        
+        if self.stageIn:
+            # stage in to local directory - should exist but you never know
+            if not os.path.exists(targetdir):
+                os.makedirs(targetdir)
+            return
+        
+        # create remote dirs
+        mkdircommand = "srmmkdir -retry_num=0 "
+        #checkdircmd="srmls -retry_num=0 "
+        
+        #  //  Loop from root creating dirs
+        # //  would use srmls first but that returns 0 for (non) existing dirs
+        #//  assume first 4 slashes are from srm://host:8443/srm/managerv2?SFN=
+        print "Create directories - walk from root"
+        for i in range(targetdir.count("/") - 4):
+            dir = "/".join(targetdir.split("/")[0:6+i])
+            print "Create %s" % dir
+            try:
+                self.run(mkdircommand + dir)
+            except Exception, ex:
+                 msg = "Warning: Exception while invoking command:\n"
+                 msg += "%s\n" % mkdircommand + dir
+                 msg += "Exception: %s\n" % str(ex)
+                 msg += "Go on anyway..."
+                 print msg
+                 pass
+                 
     def createRemoveFileCommand(self, pfn):
         """
         handle both srm and file pfn types
