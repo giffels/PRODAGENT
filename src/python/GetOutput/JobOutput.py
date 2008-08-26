@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.7 2008/08/21 16:38:22 gcodispo Exp $"
-__revision__ = "$Revision: 1.7 $"
+__version__ = "$Id: JobOutput.py,v 1.8 2008/08/22 15:31:16 gcodispo Exp $"
+__revision__ = "$Revision: 1.8 $"
 
 import logging
 import os
@@ -69,8 +69,8 @@ class JobOutput:
         # verify status
         if job.runningJob['processStatus'] != 'handled':
             logging.error(
-                "Job %s.%s is in status %s, cannot request output" % \
-                (job['taskId'], job['jobId'], job.runningJob['processStatus']))
+                "Job %s is in status %s, cannot request output" % \
+                ( cls.fullId( job ), job.runningJob['processStatus']))
             return
 
         job.runningJob['processStatus'] = 'output_requested'
@@ -81,15 +81,15 @@ class JobOutput:
                            BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
             bossLiteSession.updateDB( job.runningJob )
         except JobError, err:
-            logging.error("Output for job %s.%s cannot be requested : %s" % \
-                          (job['taskId'], job['jobId'], str( err ) ) )
+            logging.error("Job %s: output for cannot be requested : %s" % \
+                          (cls.fullId( job ), str( err ) ) )
         except Exception, err:
-            logging.error("Unknown Error :Output for job %s.%s " + \
-                          "cannot be requested : %s" % \
-                          (job['taskId'], job['jobId'], str( err ) ) )
+            logging.error(
+                "Job %s: Unknown Error, output cannot be requested : %s" % \
+                          (cls.fullId( job ), str( err ) ) )
 
-        logging.debug("getoutput request for %s.%s successfully enqueued" % \
-                      (job['taskId'], job['jobId'] ) )
+        logging.debug("Job %s: getoutput request successfully enqueued" % \
+                      cls.fullId( job ) )
 
     @classmethod
     def doWork(cls, job):
@@ -106,8 +106,7 @@ class JobOutput:
 
         try:
 
-            logging.debug("Getting output for job %s.%s" % \
-                          (job['taskId'], job['jobId']))
+            logging.debug("Job %s: Getting output" % cls.fullId( job ) )
 
             # open database
             bossLiteSession = \
@@ -118,20 +117,21 @@ class JobOutput:
 
             # output retrieved before, then recover interrupted operation
             if status == 'output_retrieved':
-                logging.warning("Enqueuing previous ouput for job %s.%s" % \
-                                (job['taskId'], job['jobId']))
+                logging.warning("Job %s: Enqueuing previous ouput" % \
+                                cls.fullId( job ) )
                 return job
 
             # non expected status, abandon processing for job
             if status != 'in_progress' and status != 'failed':
-                logging.error("Cannot get output for job %s.%s, status is %s" \
-                              % (job['taskId'], job['jobId'], status) )
+                logging.error("Job %s: Cannot get output, status is %s" % \
+                              (cls.fullId( job ), status) )
                 return
 
             # inconsistent status
             if status == 'in_progress' and job.runningJob['closed'] == 'Y':
-                logging.warning("Enqueuing previous ouput for job %s.%s" % \
-                                (job['taskId'], job['jobId']))
+                logging.warning(
+                    "Job %s in status %s: Enqueuing previous output" % \
+                    (cls.fullId( job ), status) )
                 job.runningJob['processStatus'] = 'output_retrieved'
                 bossLiteSession.updateDB( job )
                 return job
@@ -152,43 +152,52 @@ class JobOutput:
                     job = cls.handleFailed( job, task, schedSession)
 
                 # output at destination: just purge service
-                elif cls.params['OutputLocation'] == 'SE':
+                elif cls.params['OutputLocation'] == 'SE' or \
+                         cls.params['OutputLocation'] == 'SEcopy':
                     cls.purgeService( job, task, schedSession)
 
                 # get output, trying at most maxGetOutputAttempts
                 else :
                     job = cls.getOutput( job, task, schedSession)
 
+                # if success, the job is returned: update and return!
+                if job is not None:
+                    bossLiteSession.updateDB( job )
+
+                # return job info
+                return job
+
             except BossLiteError, err:
-                logging.error('Can not get scheduler for job %s.%s : [%s]' % \
-                              (job['taskId'], job['jobId'], str(err) ))
+                logging.error('Job %s: Can not get scheduler : [%s]' % \
+                              (cls.fullId( job ), str(err) ))
 
             # update
-            try:
-                bossLiteSession.updateDB( job )
-            except JobError, msg:
-                logging.error("WARNING, job %s.%s UPDATE failed: %s" % \
-                              (job['taskId'], job['jobId'], str(msg) ) )
+            #try:
+            #    bossLiteSession.updateDB( job )
+            #except JobError, msg:
+            #    logging.error("WARNING, job %s.%s UPDATE failed: %s" % \
+            #                  (job['taskId'], job['jobId'], str(msg) ) )
 
             # return job info
-            return job
+            #return job
 
         # thread has failed
         except Exception, ex :
 
             # show error message
-            logging.error( 'GetOutputThread exception: [%s]\nTraceback: %s' % \
-                           ( str(ex), str( traceback.format_exc() ) ) )
+            logging.error(
+                'Job %s: GetOutputThread exception: [%s]\nTraceback: %s' % \
+                ( cls.fullId( job ), str(ex), str( traceback.format_exc() ) ) )
 
         # thread has failed
         except :
 
             # show error message
-            logging.error( "GetOutputThread traceback: %s" % \
-                           str( traceback.format_exc() ) )
+            logging.error( "Job %s: GetOutputThread traceback: %s" % \
+                           ( cls.fullId( job ), traceback.format_exc() ) )
 
         # return also the id
-        return job
+        # return job
 
 
     @classmethod
@@ -202,28 +211,26 @@ class JobOutput:
 
         if len( task.jobs ) != 1 :
             logging.error( "ERROR: too many jobs loaded %s" % len( task.jobs ))
-            return job
+            return
 
         if id( task.jobs[0] ) != id( job ) :
             logging.error( "Fatal ERROR: mismatching job" )
-            return job
+            return
 
         try:
             outfile = job.runningJob['outputDirectory'] + '/loggingInfo.log'
             schedSession.postMortem( task, outfile = outfile )
-            logging.info('Retrieved logging info for job %s.%s in %s' \
-                         % (job['taskId'], job['jobId'], outfile ))
+            logging.info('Job %s: Retrieved logging info in %s' \
+                         % (cls.fullId( job ), outfile ))
         except BossLiteError, err:
-            logging.info('Can not get logging info for job %s.%s' % \
-                         (job['taskId'], job['jobId'] ))
-            logging.info( '[%s]' % str(err) )
+            logging.info( 'Job %s: Can not get logging info : [%s]' % \
+                          ( cls.fullId( job ), str(err) ) )
 
             # proxy expired: invalidate job and empty return
             if err.value.find( "Proxy Expired" ) != -1 :
                 job.runningJob['closed'] = 'Y'
 
-        # log warnings and errors collected by the scheduler session
-        logging.info( "BossLiteLogger : %s " % str(schedSession.getLogger()) )
+            return
 
         return job
 
@@ -239,28 +246,33 @@ class JobOutput:
 
         if len( task.jobs ) != 1 :
             logging.error( "ERROR: too many jobs loaded %s" % len( task.jobs ))
-            return job
+            return
 
         if id( task.jobs[0] ) != id( job ) :
             logging.error( "Fatal ERROR: mismatching job" )
-            return job
+            return
 
         try :
             statusSched = job.runningJob['status']
             schedSession.purgeService( task )
             if statusSched == 'UE' :
                 job.runningJob['status'] = 'UE'
+
+            # log warnings and errors collected by the scheduler session
+            log = str(schedSession.getLogger())
+            if log is not None:
+                    logging.info( log )
+
         except BossLiteError, err:
-            logging.warning( "Warning: failed to purge job %s.%s : %s" \
-                             % (job['taskId'], job['jobId'], str(err) ) )
+            logging.warning( "Job %s: Warning, failed to purge : %s" \
+                             % (cls.fullId( job ), str(err) ) )
             job.runningJob['processStatus'] = 'output_retrieved'
             
             # proxy expired: invalidate job and empty return
             if err.value.find( "Proxy Expired" ) != -1 :
                 job.runningJob['closed'] = 'Y'
 
-        # log warnings and errors collected by the scheduler session
-        logging.info( "BossLiteLogger : %s " % str(schedSession.getLogger()) )
+            return
 
         return job
 
@@ -276,47 +288,48 @@ class JobOutput:
 
         if len( task.jobs ) != 1 :
             logging.error( "ERROR: too many jobs loaded %s" % len( task.jobs ))
-            return job
+            return
 
         if id( task.jobs[0] ) != id( job ) :
             logging.error( "Fatal ERROR: mismatching job" )
-            return job
+            return
 
         #  get output, trying at most maxGetOutputAttempts
         retry = 0
-        output = ''
 
         while retry < int( cls.params['maxGetOutputAttempts'] ):
             retry += 1
 
-            logging.info("job %s.%s retrieval attempt: %d" % \
-                         (job['taskId'], job['jobId'], retry))
-
+            logging.info("Job %s: retrieval attempt %d" % \
+                         (cls.fullId( job ), retry))
 
             #  perform get output operation
             try:
                 outdir = job.runningJob['outputDirectory']
                 schedSession.getOutput( task, outdir=outdir)
-                output = "output successfully retrieved"
                 job.runningJob['processStatus'] = 'output_retrieved'
 
-                logging.info('Retrieved output for job %s.%s in %s' % \
-                             (job['taskId'], job['jobId'], outdir ))
+                logging.info('Job %s: Retrieved output in %s' % \
+                             (cls.fullId( job ), outdir ))
 
                 # log warnings and errors collected by the scheduler session
-                logging.info( "BossLiteLogger : %s " % \
-                              str(schedSession.getLogger()) )
+                log = str(schedSession.getLogger())
+                if log is not None:
+                    logging.info( log )
 
                 # success: stop processing
                 break
 
             # scheduler interaction error
             except BossLiteError, err:
-                logging.error("job %s.%s retrieval failed: %s" % \
-                              (job['taskId'], job['jobId'], str(err) ) )
+                logging.error("Job %s: retrieval failed: %s" % \
+                              (cls.fullId( job ), str(err) ) )
+                logging.error("%s" % job)
+                logging.error("%s" % job.runningJob)
                 logging.info( "BossLiteLogger : %s " % \
                               str(schedSession.getLogger()) )
 
+                logging.error( str( traceback.format_exc() ) )
                 # proxy expired: invalidate job and empty return
                 if err.value.find( "Proxy Expired" ) != -1 :
                     job.runningJob['closed'] = 'Y'
@@ -332,20 +345,17 @@ class JobOutput:
 
                 # not ready for GO: waiting for next round
                 elif err.message().find( "Job current status doesn" ) != -1:
-                    logging.error(
-                        "waiting next round for job %s.%s in status %s" % \
-                        (job['taskId'], job['jobId'], job.runningJob['status'])
+                    logging.error( 
+                        "Job %s in status %s: waiting next round" % \
+                        (cls.fullId( job ), job.runningJob['status'])
                         )
-                    break
+                    return
 
                 else :
                     # oops: What to do?!?!
-                    logging.error("no action taken for job %s.%s: [%s]" % \
-                                  (job['taskId'], job['jobId'], str(err) ) )
-
-            # log status
-            logging.info("job %s.%s retrieval status: %s" % \
-                          (job['taskId'], job['jobId'], output))
+                    logging.error("Job %s: no action taken: [%s]" % \
+                                  (cls.fullId( job ), str(err) ) )
+                    return
 
         return job
 
@@ -395,11 +405,11 @@ class JobOutput:
                 pool.enqueue(job, job)
 
             except Exception, err:
-                logging.error( "failed restoring job %s:%s : %s" % \
-                               (job['taskId'], job['jobId'], str(err) ) )
+                logging.error( "Job %s: failed restoring : %s" % \
+                               (cls.fullId( job ), str(err) ) )
             except:
-                logging.error( "failed restoring job %s:%s : %s" % \
-                               (job['taskId'], job['jobId'], \
+                logging.error( "Job %s: failed restoring: %s" % \
+                               (cls.fullId( job ), \
                                 str( traceback.format_exc() ) ) )
 
         logging.debug("Recreated %s get output requests" % numberOfJobs)
@@ -414,8 +424,7 @@ class JobOutput:
 
         """
 
-        logging.debug("set done status for job %s.%s" % \
-                      (job['taskId'], job['jobId']))
+        logging.debug("Job %s: set done status" % cls.fullId( job ) )
 
         try :
             bossLiteSession = \
@@ -425,13 +434,13 @@ class JobOutput:
             job['processStatus'] = 'processed'
             bossLiteSession.updateDB( job )
         except DbError, msg:
-            logging.error('Error updating DB : %s ' % str(msg))
+            logging.error('Job %s: Error updating DB : %s ' % str(msg))
 
         except Exception, msg:
-            logging.error('Unknown Error updating DB : %s ' % str(msg))
+            logging.error('Job %s: Unknown Error updating DB : %s ' % \
+                          (cls.fullId( job ), str(msg)))
 
-        logging.debug("Output processing done for job %s.%s" % \
-                      (job['taskId'], job['jobId']))
+        logging.debug("Job %s: Output processing done" % cls.fullId( job ) )
 
 
 
@@ -450,7 +459,8 @@ class JobOutput:
         # try to compose the path from task
         else :
             # SE?
-            if cls.params['OutputLocation'] == "SE" :
+            if cls.params['OutputLocation'] == "SE" or \
+                cls.params['OutputLocation'] == "SEcopy" :
                 outdir = \
                        cls.params['dropBoxPath'] + '/' + task['name'] + '_spec'
 
@@ -469,7 +479,8 @@ class JobOutput:
                  (outdir, job['taskId'], job['jobId'], job['submissionNumber'])
 
         # make outdir
-        logging.info("Creating directory: " + outdir)
+        logging.info("Job %s: Creating directory %s" % \
+                     (cls.fullId( job ), outdir))
         try:
             os.makedirs( outdir )
         except OSError, err:
@@ -477,8 +488,22 @@ class JobOutput:
                 # existing dir
                 pass
             else :
-                logging.error("Cannot create directory : " + str(err))
+                logging.error("Job %s: Cannot create directory %s : %s" % \
+                     (cls.fullId( job ), outdir, str(err)))
                 raise err
 
         # return outdir
         return outdir
+
+
+    @classmethod
+    def fullId( cls, job ):
+        """
+        __fullId__
+
+        compose job primary keys in a string
+        """
+
+        return str( job['taskId'] ) + '.' \
+               + str( job['jobId'] ) + '.' \
+               + str( job['submissionNumber'] )

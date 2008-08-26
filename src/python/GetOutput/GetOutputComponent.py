@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.4 2008/08/21 16:38:22 gcodispo Exp $"
-__revision__ = "$Revision: 1.4 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.5 2008/08/22 15:31:16 gcodispo Exp $"
+__revision__ = "$Revision: 1.5 $"
 
 import os
 import logging
@@ -209,15 +209,15 @@ class GetOutputComponent:
                     self.bossLiteSession.updateDB( job )
                     self.pool.enqueue(job, job)
                 except BossLiteError, err:
-                    logging.error( "failed request for job %s:%s : %s" % \
-                                   (job['taskId'], job['jobId'], str(err) ) )
+                    logging.error( "failed request for job %s : %s" % \
+                                   (JobOutput.fullId(job), str(err) ) )
                 except Exception, err:
-                    logging.error( "failed enqueue for job %s:%s : %s" % \
-                                   (job['taskId'], job['jobId'], str(err) ) )
+                    logging.error( "failed enqueue for job %s : %s" % \
+                                   (JobOutput.fullId(job), str(err) ) )
                 except:
-                    logging.error( "failed enqueue job %s:%s : %s" % \
-                                   (job['taskId'], job['jobId'], \
-                                   str( traceback.format_exc() ) ) )
+                    logging.error( "failed enqueue job %s : %s" % \
+                                   (JobOutput.fullId(job), \
+                                    str( traceback.format_exc() ) ) )
 
                 # del( job )
 
@@ -264,11 +264,11 @@ class GetOutputComponent:
                     job = self.outputRequestedJobs.pop()
                     self.pool.enqueue(job, job)
                 except Exception, err:
-                    logging.error( "failed enqueue job %s:%s : %s" % \
-                                   (job['taskId'], job['jobId'], str(err) ) )
+                    logging.error( "failed enqueue job %s : %s" % \
+                                   (JobOutput.fullId(job), str(err) ) )
                 except :
-                    logging.error( "failed enqueue job %s:%s : %s" % \
-                                   (job['taskId'], job['jobId'], \
+                    logging.error( "failed enqueue job %s : %s" % \
+                                   (JobOutput.fullId(job), \
                                    str( traceback.format_exc() ) ) )
                 # del( job )
 
@@ -313,15 +313,15 @@ class GetOutputComponent:
 
         # bad entry
         elif self.jobFinished[1] is None:
-            logging.error( "Error in dequeue, got %s" % \
-                           str(self.jobFinished[0]) )
+            logging.error( "Job %s: Error in dequeue" % \
+                           JobOutput.fullId( self.jobFinished[0] ))
             return False
 
         # ok: job finished!
         else :
             job = self.jobFinished[1]
-            logging.debug("Processing output for job: %s.%s" % \
-                          ( job['taskId'], job['jobId'] ) )
+            logging.debug("Job %s: Processing output" % \
+                           JobOutput.fullId( job ) )
 
         # perform processing
         try :
@@ -331,18 +331,18 @@ class GetOutputComponent:
             job.runningJob['processStatus'] = 'processed'
             self.bossLiteSession.updateDB( job )
         except BossLiteError, err:
-            logging.error( "failed to process job %s:%s output : %s" % \
-                           (job['taskId'], job['jobId'], str(err) ) )
+            logging.error( "Job %s failed to process output : %s" % \
+                           (JobOutput.fullId( job ), str(err) ) )
         except Exception, err:
-            logging.error( "failed to process job %s:%s output : %s" % \
-                           (job['taskId'], job['jobId'], str(err) ) )
+            logging.error( "Job %s failed to process output : %s" % \
+                           (JobOutput.fullId( job ), str(err) ) )
         except :
-            logging.error( "failed to process job %s:%s output : %s" % \
-                           (job['taskId'], job['jobId'], \
+            logging.error( "Job %s failed to process output : %s" % \
+                           (JobOutput.fullId( job ), \
                             str( traceback.format_exc() )  ) )
 
-        logging.debug("Processing output for job %s.%s finished" % \
-                      ( job['taskId'], job['jobId'] ) )
+        logging.debug("Job %s : Processing output finished" % \
+                      JobOutput.fullId( job ) )
 
         return True
 
