@@ -369,7 +369,15 @@ if __name__ == '__main__':
     import time
     import StageOut.Impl
 
+    overrideParams = {
+        "command" : 'srmv2',
+        "option" : '-streams_num=1',
+        "se-name" : 'gfe02.hep.ph.ic.ac.uk',
+        "lfn-prefix" : 'srm://gfe02.hep.ph.ic.ac.uk:8443/srm/managerv2?SFN=/pnfs/hep.ph.ic.ac.uk/data/cms',
+        }
+
     mgr = StageOutMgr()
+    #mgr = StageOutMgr(**overrideParams)
     pfn = "/etc/hosts"
     lfn = "/store/test/stageOutTest-%s" % int(time.time())
 
