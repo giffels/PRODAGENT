@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.1.2.11 2008/08/22 11:30:55 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.11 $"
+__revision__ = "$Id: JobHandling.py,v 1.1.2.12 2008/08/22 13:46:34 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.12 $"
 
 import os
 import logging
@@ -72,7 +72,7 @@ class JobHandling:
         # get outdir and report file name
         outdir = job.runningJob['outputDirectory']
 
-        # if SE rebounce
+        # if SE rebounce fwjr
         if self.outputLocation == "SE" :
             try :
                 if job.runningJob['processStatus'] != 'failed':
@@ -84,10 +84,26 @@ class JobHandling:
                 import traceback
                 msg = traceback.format_exc()
                 output = str(msg)
-                logging.error("FAILED REBOUNCE for job %s.%s: %s" % \
-                              (job['taskId'], job['jobId'], output ) )
+                logging.error("Job %s FAILED REBOUNCE : %s" % \
+                              (self.fullId(job), output ) )
                 return
 
+        # if condorG rebounce full sandbox
+        elif self.outputLocation == "SEcopy" :
+            try :
+                if job.runningJob['processStatus'] != 'failed':
+                    self.rebounceOSB( job )
+                else :
+                    self.rebounceLoggingInfo( job )
+            except :
+                # as dirt as needed: any unknown error
+                import traceback
+                msg = traceback.format_exc()
+                output = str(msg)
+                logging.error("Job %s FAILED REBOUNCE : %s" % \
+                              (self.fullId(job), output ) )
+                return
+            
 
         # is the FwkJobReport there?
         reportfilename = outdir + '/FrameworkJobReport.xml'
@@ -97,8 +113,8 @@ class JobHandling:
             fwjrExists = os.path.exists(tmp)
             if fwjrExists:
                 reportfilename = tmp
-        logging.debug("report file name %s exists: %s" % \
-                      (reportfilename, str(fwjrExists)) )
+        logging.debug("Job %s : report file name %s exists: %s" % \
+                      (self.fullId(job), reportfilename, str(fwjrExists)) )
 
         # is the FwkJobReport there?
         if fwjrExists:
@@ -106,7 +122,8 @@ class JobHandling:
             # check success
             success, exitCode = self.parseFinalReport(reportfilename, job)
 
-            logging.debug("check Job Success: %s" % str(success))
+            logging.debug("Job %s check Job Success: %s" % \
+                          (self.fullId(job), str(success)) )
 
         # FwkJobReport not there: create one based on db or assume failed
         else:
@@ -123,7 +140,8 @@ class JobHandling:
                 exitCode = 50117
 
             # write fake fwjr
-            logging.debug("write fake fwjr: %s" % str(success))
+            logging.debug("Job %s : write fake fwjr: %s" % \
+                          (self.fullId(job), str(success)) )
             self.writeFwkJobReport( jobSpecId, exitCode, reportfilename )
 
 
@@ -231,8 +249,7 @@ class JobHandling:
             try :
                 self.bossLiteSession.archive( job )
             except JobError:
-                logging.error("Unable to archive job %s.%s" % \
-                              (job['taskId'], job['jobId'] ) )
+                logging.error("Job %s : Unable to archive" % self.fullId(job) )
 
         # publish success event
         self.ms.publish("JobSuccess", reportfilename)
@@ -256,15 +273,14 @@ class JobHandling:
             try :
                 self.bossLiteSession.archive( job )
             except JobError:
-                logging.error("Unable to archive job %s.%s" % \
-                              (job['taskId'], job['jobId'] ) )
+                logging.error("Job %s : Unable to archive" % self.fullId(job) )
 
         # publish job failed event
         self.ms.publish("JobFailed", reportfilename)
         self.ms.commit()
 
-        logging.info("published JobFailed with payload: %s" % \
-                     reportfilename)
+        logging.info("Job %s : published JobFailed with payload: %s" % \
+                     (self.fullId(job), reportfilename) )
 
         return
 
@@ -295,7 +311,8 @@ class JobHandling:
                 # existing dir
                 pass
             else :
-                logging.error("Cannot create directory : " + str(err))
+                logging.error("Job %s : Cannot create directory %s" % \
+                              (self.fullId(job), str(err)) )
 
         # move report file
         try:
@@ -303,8 +320,9 @@ class JobHandling:
             os.unlink(reportfilename)
 
         except StandardError, msg:
-            logging.error("failed to move %s to %s: %s" % \
-                          (reportfilename, newPath, str(msg)))
+            logging.error(
+                "Job %s : failed to move %s to %s: %s" % \
+                (self.fullId(job), reportfilename, newPath, str(msg)))
 
         # using new report path
         reportfilename = os.path.join( newPath,
@@ -332,7 +350,8 @@ class JobHandling:
                     # existing dir
                     pass
                 else :
-                    logging.error("Cannot create directory : " + str(err))
+                    logging.error("Job %s : Cannot create directory %s" % \
+                                  (self.fullId(job), str(err)) )
 
             except StandardError, msg:
                 pass
@@ -346,18 +365,19 @@ class JobHandling:
                 os.unlink( start )
 
             except StandardError, msg:
-                logging.error("failed to move %s to %s: %s" % \
-                              (os.path.join( jobOutDir, f), \
+                logging.error("Job %s : failed to move %s to %s: [%s]" % \
+                              (self.fullId(job), os.path.join( jobOutDir, f), \
                                os.path.join( newPath, ext), str(msg)))
 
         # remove original files
         try:
             os.rmdir(jobOutDir)
-            logging.debug("removing baseDir %s" % jobOutDir)
+            logging.debug("Job %s : removing baseDir %s" % \
+                          (self.fullId(job), jobOutDir) )
 
         except StandardError, msg:
-            logging.error("error removing baseDir %s: %s" % \
-                          (baseDir, str(msg)))
+            logging.error("Job %s : error removing baseDir %s: %s" % \
+                          (self.fullId(job), baseDir, str(msg)))
 
         # archive job
         try:
@@ -366,8 +386,8 @@ class JobHandling:
 
             # error, cannot archive job
         except JobError, msg:
-            logging.error("Failed to archive job %s.%s: %s" % \
-                                      (job['taskId'], job['jobId'], str(msg)))
+            logging.error("Job %s : Failed to archive : %s" % \
+                          (self.fullId(job), str(msg)))
 
 
         return reportfilename
@@ -443,8 +463,7 @@ class JobHandling:
 
         """
 
-        logging.info("Output rebounce: %s.%s " \
-                     % ( job['taskId'], job['jobId'] ) )
+        logging.info("Job %s : report rebounce" % self.fullId(job) )
 
         # loading task
         task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
@@ -471,14 +490,14 @@ class JobHandling:
 
         # transfer fwjr
         try:
-            logging.debug( 'REBOUNCE DBG %s, %s'%(source, dest) )
+            logging.debug( 'Job %s REBOUNCE DBG : %s, %s' % \
+                           (self.fullId(job), source, dest) )
             sbi.copy( source, dest, task['user_proxy'])
         except Exception, e:
-            logging.info("Report rebounce transfer fail for %s.%s: %s " \
-                         % ( job['taskId'], job['jobId'], str(e) ) )
+            logging.info("Job %s Report rebounce transfer fail : %s " \
+                         % ( self.fullId(job), str(e) ) )
 
-        logging.info("Report rebounce completed for %s.%s " \
-                     % ( job['taskId'], job['jobId'] ) )
+        logging.info("Job %s Report rebounce completed" % self.fullId(job) )
         return
 
     def rebounceLoggingInfo( self, job ):
@@ -486,14 +505,14 @@ class JobHandling:
         __rebounceLoggingInfo__
 
         """
+
+        logging.info("Job %s : loggingInfo.log rebounce" % self.fullId(job) )
+        
         localOutDir = job.runningJob['outputDirectory']
-        #logging.info("Using: " + str (localOutDir) + " - " + str ('loggingInfo.log') )
+
         source = os.path.join( localOutDir, 'loggingInfo.log' )
         if os.path.exists( source ):
             task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
-
-            logging.info("Output rebounce: %s.%s " \
-                         % ( job['taskId'], job['jobId'] ) )
 
             seEl = SElement( self.configs["storageName"], \
                              self.configs["Protocol"],    \
@@ -511,17 +530,79 @@ class JobHandling:
             dest = os.path.join(outputDirectory, 'loggingInfo_'+str(job['jobId'])+'.log' )
 
             try:
-                logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) )
+                logging.info( 'Job %s : REBOUNCE DBG %s, %s' % \
+                              (self.fullId(job), source, dest) )
                 sbi.copy( source, dest, task['user_proxy'])
                 #filesToClean.append(source)
             except Exception, e:
-                logging.info("Output rebounce transfer fail for %s.%s: %s " \
-                             % ( job['taskId'], job['jobId'], str(e) ) )
+                logging.error(
+                    "Job %s : loggingInfo.log rebounce transfer fail: %s " \
+                             % ( self.fullId(job), str(e) ) )
 
-            logging.info("Output rebounce completed for %s.%s " \
-                         % ( job['taskId'], job['jobId'] ) )
+            logging.info("Job %s : loggingInfo.log rebounce completed" \
+                         % self.fullId(job) )
         else:
-            logging.info("Output rebounce not completed for %s.%s " \
-                         % ( job['taskId'], job['jobId'] ) )
-            logging.error("Missing [%s] file" % source)
+            logging.info("Job %s : Missing [%s] file" \
+                         % ( self.fullId(job), source))
         return
+
+
+    def rebounceOSB( self, job ):
+        """
+        __rebounceOSB__
+
+        """
+         
+        logging.info("Job %s : Output rebounce" % self.fullId(job) )
+
+        localOutDir = job.runningJob['outputDirectory']
+        localOutputTgz = [ localOutDir +'/'+ f.split('/')[-1]
+                           for f in job['outputFiles'] if '.tgz' in f ]
+        localOutputTgz = [ f for f in localOutputTgz if os.path.exists(f) ]
+
+        logging.info( 'Job %s : REBOUNCE DBG %s, %s, %s' \
+                      % (self.fullId(job), localOutDir, localOutputTgz, \
+                         [ localOutDir +'/'+ f.split('/')[-1]
+                           for f in job['outputFiles'] ] ) )
+
+        if len(localOutputTgz)==0:
+            return   
+
+        task = self.bossLiteSession.loadTask( job['taskId'], deep=False )
+        seEl = SElement( self.configs["storageName"], \
+                         self.configs["Protocol"],    \
+                         self.configs["storagePort"] )
+        loc = SElement("localhost", "local")
+
+        ## copy OSB ##
+        sbi = SBinterface( loc, seEl )
+        filesToClean = []
+        for filetocopy in localOutputTgz:
+            source = os.path.abspath(filetocopy)
+            dest = os.path.join(
+                task['outputDirectory'], os.path.basename(filetocopy) )
+            try: 
+                ## logging.info( 'REBOUNCE DBG %s, %s'%(source, dest) ) 
+                sbi.copy( source, dest, task['user_proxy'])
+                filesToClean.append(source)
+            except Exception, e:
+                logging.info("Job %s : Output rebounce transfer fail: %s " \
+                             % ( self.fullId(job), str(e) ) )
+                continue 
+
+        logging.info("Job %s : Output rebounce completed" % self.fullId(job) )
+        for filetoclean in filesToClean:
+            try: 
+                os.remove( filetoclean )   
+
+            except Exception, e:
+                logging.info(
+                    "Job %s : Output rebounce local clean fail: %s " \
+                    % ( self.fullId(job), str(e) ) )
+                continue
+        logging.info("Job %s : Output rebounce cleaned" % self.fullId(job) )
+
+        return 
+    ######################
+
+
