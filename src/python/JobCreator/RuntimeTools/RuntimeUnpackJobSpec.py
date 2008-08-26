@@ -261,6 +261,9 @@ class JobSpecExpander:
         cfgDump.write(process.dumpConfig())
         cfgDump.close()
 
+        pycfgDump = open("PyCfgFileDump.log", 'w')
+        pycfgDump.write(process.dumpPython())
+        pycfgDump.close()
 
         handle = open(cfgFile, 'w')
         handle.write("import pickle\n")
