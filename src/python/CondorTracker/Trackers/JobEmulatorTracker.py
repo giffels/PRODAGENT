@@ -3,11 +3,10 @@
 _JobEmulatorTracker_
 
 Tracker for Job Emulator submissions.
-
 """
 
-__revision__ = "$Id: "
-__version__ = "$Revision: "
+__revision__ = "$Id: $"
+__version__ = "$Revision: $"
 
 import logging
 
@@ -50,7 +49,7 @@ class JobEmulatorTracker(TrackerPlugin):
             jobInfo = queryJobsByID(subId)
 
             if jobInfo == []:
-                self.TrackerDB.removeJob(subId)
+                logging.debug("Job %s not in job emulator table yet..." % subId)
                 continue
 
             if len(jobInfo) != 1:
@@ -65,11 +64,9 @@ class JobEmulatorTracker(TrackerPlugin):
             if jobState == "new":
                 self.TrackerDB.jobRunning(subId)
             elif jobState == "failed":
-                logging.debug("ggkk: %s failed" % subId)
                 self.TrackerDB.jobFailed(subId)
                 removeJob(subId)
             elif jobState == "finished":
-                logging.debug("ggkk: %s complete" % subId)
                 self.TrackerDB.jobComplete(subId)
                 removeJob(subId)                
             else:
@@ -90,7 +87,7 @@ class JobEmulatorTracker(TrackerPlugin):
             jobInfo = queryJobsByID(runId)
 
             if jobInfo == []:
-                self.TrackerDB.removeJob(runId)
+                logging.debug("Job %s not in job emulator table yet..." % subId)                
                 continue
 
             if len(jobInfo) != 1:
@@ -105,11 +102,9 @@ class JobEmulatorTracker(TrackerPlugin):
             if jobState == "new":
                 continue
             elif jobState == "failed":
-                logging.debug("ggkk: %s failed" % runId)
                 self.TrackerDB.jobFailed(runId)
                 removeJob(runId)                
             elif jobState == "finished":
-                logging.debug("ggkk: %s complete" % runId)
                 self.TrackerDB.jobComplete(runId)
                 removeJob(runId)                
             else:
