@@ -32,22 +32,24 @@ def findScriptSource(moduleName):
 
     Find the source file for the moduleName provided using import/inspect
 
-    """    
+    """
     mod = __import__(moduleName)
     components = moduleName.split('.')
     for comp in components[1:]:
         mod = getattr(mod, comp, None)
         if mod == None:
             break
-        
+
     if mod == None:
         msg = "Unable to import module named: %s" % moduleName
         raise RuntimeError, msg
-    
+
     modSrc = inspect.getsourcefile(mod)
+    if not os.access(modSrc, os.X_OK):
+        os.system("chmod +x %s" % modSrc)
     return modSrc
 
-    
+
 
 class InstallScriptControls:
     """
@@ -70,12 +72,12 @@ class InstallScriptControls:
             jobSpecNode = taskObject['PayloadNode']
 
         scriptControls = jobSpecNode.scriptControls
-        
+
         if taskObject['Type'] == "StageOut":
             preScripts = []
             preScripts.extend(scriptControls['PreTask'])
             preScripts.extend(scriptControls['PreExe'])
-                
+
             postScripts = []
             postScripts.extend(scriptControls['PostExe'])
             postScripts.extend(scriptControls['PostTask'])
@@ -90,10 +92,10 @@ class InstallScriptControls:
                 taskObject.attachFile(sourceFile)
                 taskObject['PostStageOutCommands'].append(
                     "./%s" % os.path.basename(sourceFile))
-                
+
             return
 
-        
+
         if taskObject['Type'] == "CleanUp":
             preScripts = []
             preScripts.extend(scriptControls['PreTask'])
@@ -102,7 +104,7 @@ class InstallScriptControls:
             postScripts = []
             postScripts.extend(scriptControls['PostExe'])
             postScripts.extend(scriptControls['PostTask'])
-                
+
 
             for item in preScripts:
                 sourceFile = findScriptSource(item)
@@ -114,7 +116,7 @@ class InstallScriptControls:
                 taskObject.attachFile(sourceFile)
                 taskObject['PostCleanUpCommands'].append(
                     "./%s" % os.path.basename(sourceFile))
-                
+
             return
 
         if taskObject['Type'] == "CMSSW":
@@ -140,11 +142,11 @@ class InstallScriptControls:
                     "./%s" % os.path.basename(sourceFile))
             return
 
-        
 
 
-    
-    
+
+
+
 
 
 
