@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.8 2008/08/22 15:31:16 gcodispo Exp $"
-__revision__ = "$Revision: 1.8 $"
+__version__ = "$Id: JobOutput.py,v 1.9 2008/08/26 16:11:19 gcodispo Exp $"
+__revision__ = "$Revision: 1.9 $"
 
 import logging
 import os
@@ -42,6 +42,9 @@ class JobOutput:
               'OutputLocation' : None,
               'dropBoxPath' : None
               }
+
+    schedulerConfig = { 'timeout' : 300,
+                        'skipWMSAuth' : 1 }
 
     def __init__(self):
         """
@@ -140,9 +143,8 @@ class JobOutput:
             try:
                 # both for failed and done, a scheduler instance is needed:
                 task = bossLiteSession.getTaskFromJob( job )
-                schedulerConfig = { 'timeout' : 300 }
                 schedSession = BossLiteAPISched( bossLiteSession, \
-                                                 schedulerConfig, task )
+                                                 cls.schedulerConfig, task )
 
                 # build needed output directory
                 job.runningJob['outputDirectory'] = cls.buildOutdir(job, task)
@@ -261,7 +263,7 @@ class JobOutput:
             # log warnings and errors collected by the scheduler session
             log = str(schedSession.getLogger())
             if log is not None:
-                    logging.info( log )
+                logging.info( log )
 
         except BossLiteError, err:
             logging.warning( "Job %s: Warning, failed to purge : %s" \
