@@ -6,7 +6,7 @@ Installation script for BossLite tables into prod agent database.
 
 """
 
-__revision__ = "$Id: prodAgent-install-bosslite-db,v 1.2 2008/05/15 15:08:39 gcodispo Exp $"
+__revision__ = "$Id: prodAgent-install-bosslite-db,v 1.3 2008/07/25 15:29:18 swakef Exp $"
 __version__ = "$version: $"
 
 from ProdAgentDB.Install import preInstall
@@ -32,9 +32,9 @@ bossLiteschemaLocation = bossLiteConfig['BossLiteschemaLocation']
 bossSession = BossLiteDB( "MySQL", dbConfig)
 try:
     bossSession.installDB(bossLiteschemaLocation)
-except:
-    msg = "Error with %s" % bossLiteschemaLocation
-    print msg
+except Exception, err:
+    print "Error with %s : " % bossLiteschemaLocation
+    print err
 
 
 
