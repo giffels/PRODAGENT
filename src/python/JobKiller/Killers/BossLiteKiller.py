@@ -6,12 +6,11 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.6 2008/05/14 13:59:11 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.6 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.7 2008/06/06 15:04:56 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.7 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
-import os
 import traceback
 
 from JobKiller.Registry import registerKiller
@@ -23,9 +22,7 @@ from ProdAgentCore.ProdAgentException import ProdAgentException
  
 # BossLite dependencies
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
-from ProdCommon.BossLite.Common.Exceptions import SchedulerError
-from ProdCommon.BossLite.Common.Exceptions import TaskError
-from ProdCommon.BossLite.Common.Exceptions import DbError
+from ProdCommon.BossLite.Common.Exceptions import BossLiteError, SchedulerError
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 
@@ -36,6 +33,9 @@ class BossLiteKiller:
     """
 
     componentDir = None
+    schedulerConfig = { 'timeout' : 300 }
+    # schedulerConfig = { 'timeout' : 300,
+    #                     'skipWMSAuth' : 1 }
 
     def __init__(self, args):
         """
@@ -51,7 +51,6 @@ class BossLiteKiller:
 
         # create here the BossSessions
         self.bliteSession = BossLiteAPI('MySQL', dbConfig)
-        pass  
 
 
     def killJob(self, jobSpecId, erase=False):
@@ -89,39 +88,39 @@ class BossLiteKiller:
         # load the job by name
         job = None
         try:
-            jobList = self.bliteSession.loadJobByName(jobSpecId)
+            job = self.bliteSession.loadJobByName(jobSpecId)
             # should be single unique item
-            if not len(jobList) == 1:
-                msg = "  Cannot get BOSS task information for %s\n" % jobSpecId
-                msg += "  This job has not been submitted or has finished\n"
-                msg += "  Any case, it will not be resubmitted"
-                logging.error(msg)
-                raise JobNotSubmittedException, msg
-            job = jobList[0]
+            # if not len(jobList) == 1:
+            #     msg = "  Cannot get BOSS task information for %s\n" % jobSpecId
+            #     msg += "  This job has not been submitted or has finished\n"
+            #     msg += "  Any case, it will not be resubmitted"
+            #     logging.error(msg)
+            #     raise JobNotSubmittedException, msg
 
-        # deal with BOSS specific error 
-        except (SchedulerError, DbError), err:
-            msg = "Cannot get information for task %s, BOSS error: %s" % \
+        # deal with BOSS specific error
+        except BossLiteError, err:
+            msg = "Cannot get information for job %s, BOSS error: %s" % \
                   (jobSpecId, str(err))
             logging.error(msg)
             raise Exception, msg
 
         # check for compatible status
-        if job.runningJob['status'] not in ['SS', 'R', 'SR', 'SU']:
+        if job.runningJob['status'] not in ['SW', 'SR', 'SS', 'R']:
             logging.info( "Unable to kill Job #" + str(job['jobId']) \
                           + " : Status is " \
                           + str(job.runningJob['statusScheduler']) )
             return
             
         # kill command through BOSS
-        task = self.bliteSession.loadTask(job['taskId'], False)
-        schedulerConfig = { \
-                          'name' : job.runningJob['scheduler'], \
-                          'user_proxy' : task['user_proxy'], \
-                          }
-        # kill
-        bliteSched = BossLiteAPISched(self.bliteSession, schedulerConfig)
-        bliteSched.kill(job['taskId'], [ job['jobId'] ])
+        try:
+            task = self.bliteSession.getTaskFromJob( job )
+            bliteSched = BossLiteAPISched( self.bliteSession, \
+                                           self.schedulerConfig, task )
+            bliteSched.kill(task, job['jobId'])
+        except SchedulerError, err:
+            msg = "Cannot kill job %s, BOSS error: %s" % (jobSpecId, str(err))
+            logging.error(msg)
+            raise Exception, msg
 
         # archive if requested
         if erase:
@@ -270,8 +269,8 @@ class BossLiteKiller:
 
             # not yet submitted, no need to kill it
             except JobNotSubmittedException, msg:
-                logging.debug("job %s not yet submitted, no need to kill it" % \
-                             jobName)
+                logging.debug(
+                    "job %s not yet submitted, no need to kill it" % jobName)
 
             # other error, stop
             except Exception, msg:
@@ -323,9 +322,10 @@ class BossLiteKiller:
         try: 
             task = self.bliteSession.loadTaskByName(taskSpecId, deep=False)
             task = self.bliteSession.load(task, jobsToKill)[0]
-        except Exception, e:
-            logging.info( traceback.format_exc() )
-            pass 
+        except BossLiteError, err:
+            msg = "Cannot get information for task %s, BOSS error: %s" % \
+                  (taskSpecId, str(err))
+            logging.error(msg)
 
         if task is None:
             # no, signal error
@@ -344,11 +344,7 @@ class BossLiteKiller:
 
         # filter the killing list according job statuses
         jobSpecId = []
-        scheduler = ''
         for j in task.jobs:
-
-            if j.runningJob['scheduler'] is not None:
-                scheduler = j.runningJob['scheduler']
                 
             if j['jobId'] not in jobsReadyToKill:
                 continue
@@ -370,7 +366,6 @@ class BossLiteKiller:
                 continue
 
             jobSpecId.append(j['name'])
-            pass
 
         if len(jobsReadyToKill) == 0:
             logging.info("No jobs to kill for BossLite")
@@ -379,13 +374,10 @@ class BossLiteKiller:
         ## perform the actual kill
         # do not allow resubmisions for them
         try:
-            schedulerConfig = { \
-                          'name' : scheduler, \
-                          'user_proxy' : task['user_proxy'], \
-                          } 
             # kill
-            bliteSched = BossLiteAPISched(self.bliteSession, schedulerConfig)
-            logging.info("Jobs to kill: "+ str(jobsReadyToKill) )
+            bliteSched = BossLiteAPISched( self.bliteSession, \
+                                           self.schedulerConfig, task )
+            logging.info("Jobs to kill: " + str(jobsReadyToKill) )
             bliteSched.kill(task['id'], jobsReadyToKill)
 
             # archive
@@ -399,10 +391,14 @@ class BossLiteKiller:
 
             logging.info("Jobs "+ str(jobsReadyToKill) +" killed and Archived")
 
-            # deal with BOSS specific error 
-        except (SchedulerError, DbError), err:
+        # deal with BOSS specific error
+        except SchedulerError, err:
+            logging.error( "Cannot kill task %s, BOSS error: %s" % \
+                           (taskSpecId, str(err)) )
+            raise Exception, msg
+        except BossLiteError, err:
             msg = "Cannot get information for task %s, BOSS error: %s" % \
-                  (jobSpecId, str(err))
+                  (taskSpecId, str(err))
             logging.error(msg)
             raise Exception, msg
 
