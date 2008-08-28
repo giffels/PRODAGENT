@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.71 2008/06/13 15:52:28 swakef Exp $"
-__version__ = "$Revision: 1.71 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.72 2008/08/21 15:09:28 ahmadh Exp $"
+__version__ = "$Revision: 1.72 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1272,7 +1272,9 @@ class MergeSensorComponent:
           if len(mypieces)>1:  
             remainingBits=mypieces[1].split("-unmerged",1)[0]
           else:
-            remainingBits=lastBit 
+            remainingBits=lastBit
+        else:
+            remainingBits = remainingBits.split("-unmerged",1)[0]
 
         extendedlfnBase = os.path.join(lfnBase,prim,tier,remainingBits,group)
         baseFileName = "%s-%s-%s.root" % (dataset[0], outputFile, tier)
