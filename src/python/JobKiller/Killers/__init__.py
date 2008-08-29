@@ -8,5 +8,7 @@ try:
     import BOSSKiller
 except ImportError:
     pass 
-
-
+try:
+    import BossLiteKiller
+except:
+    pass
