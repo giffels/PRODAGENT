@@ -24,7 +24,7 @@ valid = [
     'repack-threshold=',                        # standard thresholds
     'processing-throttle=',                      # standard throttles
     'merge-throttle=',                           # standard throttles
-    'min-submit=', 'max-submit='                 # for new site mode
+    'min-submit=', 'max-submit=',                # for new site mode
     'processing-throttle=', 'merge-throttle='   # new standard throttles 
     
     ]
