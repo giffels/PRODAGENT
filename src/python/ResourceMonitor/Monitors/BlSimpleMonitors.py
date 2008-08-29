@@ -129,19 +129,19 @@ class PABossLitePoll(PollInterface):
 
         sqlStr1 = \
         """
-        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.job_id and bl_runningjob.task_id=bl_job.task_id and bl_job.name not like '%merge%' and bl_job.name not like '%CleanUp%' and bl_job.name not like '%LogCollect%' and bl_runningjob.status not in ('C','A','SD');
+        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.job_id and bl_runningjob.task_id=bl_job.task_id and bl_job.name not like '%merge%' and bl_job.name not like '%CleanUp%' and bl_job.name not like '%LogCollect%' and bl_runningjob.status not in ('E','C','A','SD');
         """
         sqlStr2 = \
         """
-        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.job_id and bl_runningjob.task_id=bl_job.task_id and bl_job.name like '%merge%' and bl_runningjob.status not in ('C','SA','SD');
+        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.job_id and bl_runningjob.task_id=bl_job.task_id and bl_job.name like '%merge%' and bl_runningjob.status not in ('E','C','SA','SD');
         """
         sqlStr3 = \
         """
-        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.id and bl_runningjob.task_id=bl_job.task_id and bl_job.name like '%CleanUp%' and bl_runningjob.status not in ('C','SA','SD');
+        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.id and bl_runningjob.task_id=bl_job.task_id and bl_job.name like '%CleanUp%' and bl_runningjob.status not in ('E','C','SA','SD');
         """
         sqlStr4 = \
         """
-        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.id and bl_runningjob.task_id=bl_job.task_id and bl_job.name like '%LogCollect%' and bl_runningjob.status not in ('C','SA','SD');
+        select count(bl_job.id) from bl_job,bl_runningjob where bl_runningjob.job_id=bl_job.id and bl_runningjob.task_id=bl_job.task_id and bl_job.name like '%LogCollect%' and bl_runningjob.status not in ('E','C','SA','SD');
         """
         
 
