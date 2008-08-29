@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.7 2008/06/06 15:04:56 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.7 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.4 2008/08/28 09:32:45 gcodispo Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -19,7 +19,7 @@ from JobKiller.KillerExceptions import InvalidJobException, \
 
 from ProdAgent.WorkflowEntities import JobState
 from ProdAgentCore.ProdAgentException import ProdAgentException
- 
+
 # BossLite dependencies
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.Common.Exceptions import BossLiteError, SchedulerError
@@ -89,6 +89,7 @@ class BossLiteKiller:
         job = None
         try:
             job = self.bliteSession.loadJobByName(jobSpecId)
+            self.bliteSession.getRunningInstance( job )
             # should be single unique item
             # if not len(jobList) == 1:
             #     msg = "  Cannot get BOSS task information for %s\n" % jobSpecId
@@ -110,7 +111,7 @@ class BossLiteKiller:
                           + " : Status is " \
                           + str(job.runningJob['statusScheduler']) )
             return
-            
+
         # kill command through BOSS
         try:
             task = self.bliteSession.getTaskFromJob( job )
@@ -125,7 +126,7 @@ class BossLiteKiller:
         # archive if requested
         if erase:
             self.bliteSession.archive(job)
-        return 
+        return
 
 
     def killWorkflow(self, workflowSpecId):
@@ -162,7 +163,7 @@ class BossLiteKiller:
             # kill each one independently
             try:
                 self.killJob(jobName)
- 
+
             # if job is not found (may be finished right now), killJob()
             # has printed the error message. Try the next one
             except InvalidJobException, msg:
@@ -183,7 +184,7 @@ class BossLiteKiller:
                 logging.error(msg)
                 raise Exception, msg
 
-        # write information if skipped jobs 
+        # write information if skipped jobs
         if skippedJobs == totalJobs:
             logging.error("No jobs killed at all")
             return
@@ -192,7 +193,7 @@ class BossLiteKiller:
             logging.error("%s jobs skipped from a total of %s." % \
                           (skippedJobs, totalJobs))
             return
-                
+
     def eraseJob(self, jobSpecId):
         """
 
@@ -307,7 +308,7 @@ class BossLiteKiller:
         ### load task
         # set default selection for jobs to kill
         splittedPayload = taskSpecId.split(':')
-  
+
         taskSpecId = splittedPayload[0]
         # No more needed, already in task object # proxy = splittedPayload[1]
 
@@ -319,7 +320,7 @@ class BossLiteKiller:
 
         # get task specification
         task = None
-        try: 
+        try:
             task = self.bliteSession.loadTaskByName(taskSpecId, deep=False)
             task = self.bliteSession.load(task, jobsToKill)[0]
         except BossLiteError, err:
@@ -345,7 +346,7 @@ class BossLiteKiller:
         # filter the killing list according job statuses
         jobSpecId = []
         for j in task.jobs:
-                
+
             if j['jobId'] not in jobsReadyToKill:
                 continue
 
