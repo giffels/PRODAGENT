@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.4 2008/08/28 09:32:45 gcodispo Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.9 2008/08/29 11:14:39 gcodispo Exp $"
+__version__ = "$Revision: 1.1.2.9 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -394,8 +394,9 @@ class BossLiteKiller:
 
         # deal with BOSS specific error
         except SchedulerError, err:
-            logging.error( "Cannot kill task %s, BOSS error: %s" % \
-                           (taskSpecId, str(err)) )
+            msg = "Cannot kill task %s, BOSS error: %s" % \
+                           (taskSpecId, str(err)) 
+            logging.error(msg) 
             raise Exception, msg
         except BossLiteError, err:
             msg = "Cannot get information for task %s, BOSS error: %s" % \
