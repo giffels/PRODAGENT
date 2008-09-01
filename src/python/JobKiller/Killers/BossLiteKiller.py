@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.4 2008/08/28 09:32:45 gcodispo Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.5 2008/08/29 11:11:51 gcodispo Exp $"
+__version__ = "$Revision: 1.5 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -90,13 +90,6 @@ class BossLiteKiller:
         try:
             job = self.bliteSession.loadJobByName(jobSpecId)
             self.bliteSession.getRunningInstance( job )
-            # should be single unique item
-            # if not len(jobList) == 1:
-            #     msg = "  Cannot get BOSS task information for %s\n" % jobSpecId
-            #     msg += "  This job has not been submitted or has finished\n"
-            #     msg += "  Any case, it will not be resubmitted"
-            #     logging.error(msg)
-            #     raise JobNotSubmittedException, msg
 
         # deal with BOSS specific error
         except BossLiteError, err:
@@ -106,7 +99,7 @@ class BossLiteKiller:
             raise Exception, msg
 
         # check for compatible status
-        if job.runningJob['status'] not in ['SW', 'SR', 'SS', 'R']:
+        if job.runningJob['status'] not in ['SU', 'SW', 'SR', 'SS', 'R']:
             logging.info( "Unable to kill Job #" + str(job['jobId']) \
                           + " : Status is " \
                           + str(job.runningJob['statusScheduler']) )
@@ -394,8 +387,9 @@ class BossLiteKiller:
 
         # deal with BOSS specific error
         except SchedulerError, err:
-            logging.error( "Cannot kill task %s, BOSS error: %s" % \
-                           (taskSpecId, str(err)) )
+            msg = "Cannot kill task %s, BOSS error: %s" % \
+                  (taskSpecId, str(err))
+            logging.error( msg )
             raise Exception, msg
         except BossLiteError, err:
             msg = "Cannot get information for task %s, BOSS error: %s" % \
