@@ -10,7 +10,7 @@ from StageOut.Registry import registerStageOutImpl
 from StageOut.StageOutImpl import StageOutImpl
 from StageOut.StageOutError import StageOutError
 
-from StageOut.Execute import runCommand
+from StageOut.Execute import runCommandWithOutput as runCommand
 
 _CheckExitCodeOption = True
 
@@ -37,6 +37,7 @@ class SRMV2Impl(StageOutImpl):
             return "file:///%s" % pfn
         else:
             return pfn
+        
 
     def createOutputDirectory(self, targetPFN):
         """
@@ -54,19 +55,39 @@ class SRMV2Impl(StageOutImpl):
                 os.makedirs(targetdir)
             return
         
-        # create remote dirs
-        mkdircommand = "srmmkdir -retry_num=0 "
-        #checkdircmd="srmls -retry_num=0 "
+        mkdircommand = "srmmkdir -retry_num=%s " % self.numRetries
+        checkdircmd="srmls -retry_num=%s " % self.numRetries
         
-        #  //  Loop from root creating dirs
-        # //  would use srmls first but that returns 0 for (non) existing dirs
-        #//  assume first 4 slashes are from srm://host:8443/srm/managerv2?SFN=
-        print "Create directories - walk from root"
-        for i in range(targetdir.count("/") - 4):
-            dir = "/".join(targetdir.split("/")[0:6+i])
-            print "Create %s" % dir
+        #  // Loop from top level checking existence stop when directory exists
+        # // assume first 4 slashes are from srm://host:8443/srm/managerv2?SFN=
+        dirs = ["/".join(targetdir.split("/")[0:6+i]) \
+                                        for i in range(targetdir.count("/")-4)]
+        dirsToCheck = dirs[:]; dirsToCheck.reverse()
+        levelToCreateFrom = None
+        for count, dir in zip(range(len(dirsToCheck), 0, -1), dirsToCheck):
             try:
-                self.run(mkdircommand + dir)
+                exitCode, output = self.run(checkdircmd + dir)
+                if exitCode: # did srmls fail to execute properly?
+                    raise RuntimeError, "Error checking directory existence, %s" % str(output)
+                levelToCreateFrom = count # create dirs from this level
+                if not output.count('SRM_FAILURE'): # any other codes?
+                    break
+            except Exception, ex:
+                 msg = "Warning: Exception while invoking command:\n"
+                 msg += "%s\n" % checkdircmd + dir
+                 msg += "Exception: %s\n" % str(ex)
+                 msg += "Go on anyway..."
+                 print msg
+                 pass
+
+        #  // Create needed directory levels from end of previous loop
+        # //  to end of directory structure
+        for dir in dirs[levelToCreateFrom:]:
+            print "Create directory: %s" % dir
+            try:
+                exitCode, output = self.run(mkdircommand + dir)
+                if exitCode:
+                    raise RuntimeError, "Error creating directory, %s" % str(output)
             except Exception, ex:
                  msg = "Warning: Exception while invoking command:\n"
                  msg += "%s\n" % mkdircommand + dir
