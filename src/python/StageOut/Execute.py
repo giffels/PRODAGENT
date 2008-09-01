@@ -72,6 +72,54 @@ def runCommand(command):
     err = child.wait()
     return err
 
+def runCommandWithOutput(command):
+    """
+    _runCommand_
+
+    Run the command without deadlocking stdou and stderr,
+    echo all output to sys.stdout and sys.stderr
+
+    Returns the exitCode
+    
+    """
+    child = popen2.Popen3(command, 1) # capture stdout and stderr from command
+    child.tochild.close()             # don't need to talk to child
+    outfile = child.fromchild 
+    outfd = outfile.fileno()
+    errfile = child.childerr
+    errfd = errfile.fileno()
+    makeNonBlocking(outfd)            # don't deadlock!
+    makeNonBlocking(errfd)
+    outdata = errdata = ''
+    outeof = erreof = 0
+    output = ''
+    while 1:
+        ready = select.select([outfd,errfd],[],[]) # wait for input
+        if outfd in ready[0]:
+            try:
+                outchunk = outfile.read()
+            except Exception, ex:
+                msg = "Unable to read stdout chunk... skipping"
+                print msg
+                outchunk = ''
+            if outchunk == '': outeof = 1
+            output += outchunk
+        if errfd in ready[0]:
+            try:
+                errchunk = errfile.read()
+            except Exception, ex:
+                msg = "Unable to read stderr chunk... skipping"
+                print msg, str(ex)
+                errchunk = ""
+            if errchunk == '': erreof = 1
+            output += errchunk
+        if outeof and erreof: break
+        select.select([],[],[],.1) # give a little time for buffers to fill
+        
+    err = child.wait()
+    return err, output
+
+
 
 def execute(command):
     """
