@@ -63,13 +63,13 @@ class SRMV2Impl(StageOutImpl):
         dirs = ["/".join(targetdir.split("/")[0:6+i]) \
                                         for i in range(targetdir.count("/")-4)]
         dirsToCheck = dirs[:]; dirsToCheck.reverse()
-        levelToCreateFrom = None
+        levelToCreateFrom = len(dirs)
         for count, dir in zip(range(len(dirsToCheck), 0, -1), dirsToCheck):
             try:
                 exitCode, output = self.run(checkdircmd + dir)
+                levelToCreateFrom = count # create dirs from here (at least)
                 if exitCode: # did srmls fail to execute properly?
                     raise RuntimeError, "Error checking directory existence, %s" % str(output)
-                levelToCreateFrom = count # create dirs from this level
                 if not output.count('SRM_FAILURE'): # any other codes?
                     break
             except Exception, ex:
