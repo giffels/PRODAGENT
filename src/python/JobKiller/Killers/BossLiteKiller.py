@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.9 2008/08/29 11:14:39 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.9 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.1.2.10 2008/08/31 10:46:56 spiga Exp $"
+__version__ = "$Revision: 1.1.2.10 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -33,9 +33,9 @@ class BossLiteKiller:
     """
 
     componentDir = None
-    schedulerConfig = { 'timeout' : 300 }
-    # schedulerConfig = { 'timeout' : 300,
-    #                     'skipWMSAuth' : 1 }
+    # schedulerConfig = { 'timeout' : 300 }
+    schedulerConfig = { 'timeout' : 300,
+                        'skipWMSAuth' : 1 }
 
     def __init__(self, args):
         """
@@ -106,7 +106,7 @@ class BossLiteKiller:
             raise Exception, msg
 
         # check for compatible status
-        if job.runningJob['status'] not in ['SW', 'SR', 'SS', 'R']:
+        if job.runningJob['status'] not in ['SU', 'SW', 'SR', 'SS', 'R']:
             logging.info( "Unable to kill Job #" + str(job['jobId']) \
                           + " : Status is " \
                           + str(job.runningJob['statusScheduler']) )
@@ -352,7 +352,7 @@ class BossLiteKiller:
 
             logging.info("Working on job: %s.%s"%(j['taskId'], j['jobId']) )
 
-            if j.runningJob['status'] not in ['SS', 'R', 'SR', 'SU']:
+            if j.runningJob['status'] not in ['SU', 'SW', 'SR', 'SS', 'R']:
                 logging.info("Unable to kill Job #" + str(j['jobId']) \
                              + " : Status is " \
                              + str(j.runningJob['statusScheduler']) )
