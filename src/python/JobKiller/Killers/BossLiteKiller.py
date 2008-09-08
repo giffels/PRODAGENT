@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.5 2008/08/29 11:11:51 gcodispo Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.6 2008/09/01 11:12:09 gcodispo Exp $"
+__version__ = "$Revision: 1.6 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -345,7 +345,7 @@ class BossLiteKiller:
 
             logging.info("Working on job: %s.%s"%(j['taskId'], j['jobId']) )
 
-            if j.runningJob['status'] not in ['SS', 'R', 'SR', 'SU']:
+            if j.runningJob['status'] not in ['SU', 'SW', 'SR', 'SS', 'R']:
                 logging.info("Unable to kill Job #" + str(j['jobId']) \
                              + " : Status is " \
                              + str(j.runningJob['statusScheduler']) )
