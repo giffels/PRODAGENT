@@ -66,7 +66,7 @@ class T0LSFMonitor(MonitorInterface):
         # is merge job count, third element is cleanup jobs 
         # forth element is repack job count
         #
-        jobCountOverall = [0,0,0,0]
+        jobCountOverall = [0,0,0,0,0]
 
         #
         # the jobCount dictionary contains workflows as keys and
@@ -78,7 +78,7 @@ class T0LSFMonitor(MonitorInterface):
         jobCountByWorkflow = {}
         if not self.allSites.has_key(defaultSiteName):
             for workflowId in self.allSites.iterkeys():
-                jobCountByWorkflow[workflowId] = [0,0,0,0]
+                jobCountByWorkflow[workflowId] = [0,0,0,0,0]
 
         #
         # loop over output of bjobs
@@ -117,6 +117,11 @@ class T0LSFMonitor(MonitorInterface):
                             jobCountOverall[3] += 1
                         elif jobCountByWorkflow.has_key(workflowId):
                             jobCountByWorkflow[workflowId][3] += 1
+                    elif ( jobType == 'LogCollect' ):
+                        if self.allSites.has_key(defaultSiteName):
+                            jobCountOverall[4] += 1
+                        elif jobCountByWorkflow.has_key(workflowId):
+                            jobCountByWorkflow[workflowId][4] += 1
 
                 else:
                     logging.debug("No job %s found in WE table" % jobId)
@@ -126,12 +131,14 @@ class T0LSFMonitor(MonitorInterface):
             logging.info("Number of merge jobs is %d" % jobCountOverall[1])
             logging.info("Number of cleanup jobs is %d" % jobCountOverall[2])
             logging.info("Number of repack jobs is %d" % jobCountOverall[3])
+            logging.info("Number of logCollect jobs is %d" % jobCountOverall[4])
         else:
             for workflowId in self.allSites.iterkeys():
                 logging.info("Number of processing jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][0]))
                 logging.info("Number of merge jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][1]))
                 logging.info("Number of cleanup jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][2]))
                 logging.info("Number of repack jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][3]))
+                logging.info("Number of logCollect jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][4]))
 
         result = []
 
@@ -155,11 +162,13 @@ class T0LSFMonitor(MonitorInterface):
         mergeThreshold = siteThresholds.get("mergeThreshold")
         cleanupThreshold = siteThresholds.get("cleanupThreshold")
         repackThreshold = siteThresholds.get("repackThreshold")
+        collectThreshold = siteThresholds.get("logcollectThreshold")
         
         missingProcessingJobs = processingThreshold - jobCount[0]
         missingMergeJobs = mergeThreshold - jobCount[1]
         missingCleanupJobs = cleanupThreshold - jobCount[2]
         missingRepackJobs = repackThreshold - jobCount[3]
+        missingLogCollectJobs = collectThreshold - jobCount[4]
 
         minSubmit = siteThresholds.get("minimumSubmission")
         maxSubmit = siteThresholds.get("maximumSubmission")
@@ -260,6 +269,30 @@ class T0LSFMonitor(MonitorInterface):
 
             result.append(constraint)
 
+
+        # check if we should release logCollect jobs 
+        if ( missingLogCollectJobs >= minSubmit ):
+
+            constraint = self.newConstraint()
+
+            # determine number of jobs
+            if ( missingLogCollectJobs > maxSubmit ):
+                constraint['count'] = maxSubmit
+            else:
+                constraint['count'] = missingLogCollectJobs
+
+            # some more constraints
+            constraint['type'] = "LogCollect"
+            #constraint['site'] = self.allSites[siteName]['SiteIndex']
+
+            # constraint for workflow
+            if ( constrainWorkflow ):
+                constraint['workflow'] = siteName
+                logging.info("Releasing %d logCollect jobs for workflow %s" % (constraint['count'],siteName))
+            else:
+                logging.info("Releasing %d logCollect jobs" % constraint['count'])
+
+            result.append(constraint)
 
         return
 
