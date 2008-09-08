@@ -12,13 +12,14 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.1.2.34 2008/07/22 13:15:04 gcodispo Exp $"
-__version__ = "$Revision: 1.1.2.34 $"
+__revision__ = "$Id: JobStatus.py,v 1.3 2008/07/25 15:47:41 swakef Exp $"
+__version__ = "$Revision: 1.3 $"
 
+import threading
 from JobTracking.TrackingDB import TrackingDB
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.API.BossLitePoolDB import BossLitePoolDB
-from ProdCommon.BossLite.Common.Exceptions import DbError, TaskError, TimeOut
+from ProdCommon.BossLite.Common.Exceptions import BossLiteError, TimeOut
 #from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 #from ProdCommon.BossLite.Common.Exceptions import SchedulerError
 from ProdCommon.BossLite.Common.System import executeCommand
@@ -62,7 +63,8 @@ class JobStatus:
 
         """
 
-        logging.info("Getting job status for jobs in group " + str(group))
+        logging.info("%s Getting job status for jobs in group %s" \
+                     %( cls.fullId(), str(group) ) )
 
         try:
             # get DB sessions
@@ -73,12 +75,13 @@ class JobStatus:
             for taskId in tasks :
                 cls.bossQuery( bossSession, int(taskId) )
 
-        except DbError, ex:
-            logging.error( "JobTrackingThread exception: %s" % ex )
+        except BossLiteError, ex:
+            logging.error( "%s JobTrackingThread exception: %s" \
+                           %( cls.fullId(), ex ) )
 
         except Exception, ex:
-            logging.error( "JobTrackingThread exception: %s" \
-                           % str( traceback.format_exc() ) )
+            logging.error( "%s JobTrackingThread exception: %s" \
+                           % ( cls.fullId(), str( traceback.format_exc() ) ) )
 
         sleep(cls.params['delay'])
 
@@ -89,7 +92,8 @@ class JobStatus:
         Perform the LB query through BOSS
         """
 
-        logging.info('Retrieving status for jobs of task ' + str(taskId) )
+        logging.info('%s Retrieving status for jobs of task %s'  \
+                     % ( cls.fullId(), str(taskId) ) )
 
         # default values
         offset = 0
@@ -103,8 +107,10 @@ class JobStatus:
         db = TrackingDB( bossSession.bossLiteDB )
         scheduler = db.getTaskScheduler(taskId)
         if scheduler is None:
-            logging.error( 'Unable to retrieve Scheduler, ' + \
-                           'skip check for task ' + str(taskId) )
+            logging.error(
+                '%s Unable to retrieve Scheduler, skip check for task  %s' \
+                % ( cls.fullId(), str(taskId) )
+                )
             return
         del db
 
@@ -150,43 +156,36 @@ class JobStatus:
                         str(taskId) + ' ' + jobRange + ' ' + scheduler + \
                         ' ' + task['user_proxy']
 
-                logging.debug('EXECUTING: ' + str(command))
-                msg = executeCommand( command, len( task.jobs ) * 30 )
-                logging.debug( "SUBPROCESS MESSAGE : \n" + msg )
+                logging.debug('%s EXECUTING: %s' \
+                              % (cls.fullId(), str(command)))
+                msg, ret = executeCommand( command, len( task.jobs ) * 30 )
+                logging.debug( "%s SUBPROCESS MESSAGE : \n%s " % \
+                               (cls.fullId(), msg ) )
 
                 # log the end of the query
-                logging.info('LB status retrieved for jobs ' \
-                             + jobRange + ' of task ' + str(taskId) )
+                logging.info('%s LB status retrieved for jobs %s of task %s' \
+                             %(cls.fullId(), jobRange, str(taskId) ) )
                 del task, msg, command
 
-            except MemoryError, e:
-                logging.fatal("PROBLEM!!! " + \
-                         "Memory run out trying to retrieve status for jobs " \
-                              + jobRange + ' of task ' + str(taskId) \
-                              + ' : ' + str( e ) )
-                logging.error( "JobTrackingThread exception: %s" \
-                               % str( traceback.format_exc() ) )
-                break
-
             except TimeOut, e:
-                logging.error("Failed to retrieve status for jobs " \
-                              + jobRange + ' of task ' + str(taskId) \
-                              + ' : ' + str( e ) )
-                logging.error( "PARTIAL SUBPROCESS MESSAGE : \n" \
-                               + e.commandOutput() )
+                logging.error(
+                    "%s Failed to retrieve status for jobs of task %s : %s" \
+                    % (cls.fullId(), str(taskId), str( e ) ) )
+                logging.error( "%s PARTIAL SUBPROCESS MESSAGE : \n%s" \
+                               % (cls.fullId(),  e.commandOutput() ) )
                 offset += int(cls.params['jobsToPoll'])
 
-            except TaskError, e:
-                logging.error("Failed to retrieve status for jobs " \
-                              + jobRange + ' of task ' + str(taskId) \
-                              + ' : ' + str( e ) )
+            except BossLiteError, e:
+                logging.error(
+                    "%s Failed to retrieve status for jobs of task %s : %s" \
+                    % (cls.fullId(), str(taskId), str( e ) ) )
                 offset += int(cls.params['jobsToPoll'])
 
             except Exception, e:
-                logging.error("Failed to retrieve status for jobs " \
-                              + jobRange + ' of task ' + str(taskId) \
-                              + ' : ' + str( e ) )
-                logging.error( traceback.format_exc() )
+                logging.error(
+                    "%s Failed to retrieve status for jobs of task %s : %s" \
+                    % (cls.fullId(), str(taskId), str( e ) ) )
+                logging.error( cls.fullId() + traceback.format_exc() )
                 offset += int(cls.params['jobsToPoll'])
 
 
@@ -220,7 +219,7 @@ class JobStatus:
             session.close()
             del( joblist )
 
-        except DbError, ex:
+        except BossLiteError, ex:
             logging.error( 'Failed to remove jobs from queues: %s ' % ex )
 
         except Exception, ex:
@@ -258,10 +257,20 @@ class JobStatus:
             session.close()
             del( joblist )
 
-        except DbError, ex:
+        except BossLiteError, ex:
             logging.error( 'Failed to remove jobs from queues: %s ' % ex )
 
         except Exception, ex:
             logging.error( ex.__str__() )
             logging.error( traceback.format_exc() )
 
+
+    @classmethod
+    def fullId( cls ):
+        """
+        __fullId__
+
+        compose job primary keys in a string
+        """
+
+        return '[' + threading.currentThread().getName() + '] '

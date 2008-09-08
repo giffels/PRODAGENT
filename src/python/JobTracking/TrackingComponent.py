@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.47.2.38 2008/07/25 15:30:16 swakef Exp $"
-__version__ = "$Revision: 1.47.2.38 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.55 2008/07/25 15:47:41 swakef Exp $"
+__version__ = "$Revision: 1.55 $"
 
 import os
 import os.path
@@ -390,19 +390,21 @@ class TrackingComponent:
         # loading attributes
         offset = 0
         loop = True
-
+        from ProdCommon.BossLite.Common.Exceptions import BossLiteError
         while loop :
 
             logging.debug("Max finished jobs to be loaded %s:%s " % \
                          (str( offset ), str( offset + self.jobLimit) ) )
 
             # query finished jobs
-            self.finishedJobs = self.bossLiteSession.loadEnded(
-                attributes=self.runningAttrs, \
-                limit=self.jobLimit, offset=offset
-                )
-            logging.info("finished jobs : " + str( len(self.finishedJobs) ) )
-
+            try:
+                self.finishedJobs = self.bossLiteSession.loadEnded(
+                    attributes=self.runningAttrs, \
+                    limit=self.jobLimit, offset=offset
+                    )
+                logging.info("finished jobs : " + str( len(self.finishedJobs) ) )
+            except BossLiteError, msg:
+                logging.error(msg)
             # exit if no more jobs to query
             if self.finishedJobs == [] :
                 loop = False
