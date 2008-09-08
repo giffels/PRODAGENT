@@ -6,10 +6,10 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.10 2008/07/25 15:29:16 swakef Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.11 2008/08/21 16:11:06 gcodispo Exp $"
+__version__ = "$Revision: 1.11 $"
 
-import os, time
+import os
 import logging
 
 
@@ -17,10 +17,10 @@ from JobSubmitter.Submitters.BulkSubmitterInterface \
      import BulkSubmitterInterface
 from JobSubmitter.JSException import JSException
 
-from ProdAgentCore.Configuration import loadProdAgentConfiguration
-from ProdAgentCore.PluginConfiguration import loadPluginConfig
+# from ProdAgentCore.Configuration import loadProdAgentConfiguration
+# from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentCore.ProdAgentException import ProdAgentException
-from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo, extractDashboardID
+from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo #, extractDashboardID
 
 # Blite API import
 from ProdAgentDB.Config import defaultConfig as dbConfig
@@ -28,7 +28,7 @@ from ProdCommon.BossLite.API.BossLiteAPI import  BossLiteAPI
 from ProdCommon.BossLite.API.BossLiteAPISched import  BossLiteAPISched
 from ProdCommon.BossLite.DbObjects.Task import Task
 from ProdCommon.BossLite.DbObjects.Job import Job
-from ProdCommon.BossLite.DbObjects.RunningJob import RunningJob
+# from ProdCommon.BossLite.DbObjects.RunningJob import RunningJob
 from ProdCommon.BossLite.Common.Exceptions import TaskError
 from ProdCommon.BossLite.Common.Exceptions import JobError
 from ProdCommon.BossLite.Common.Exceptions import BossLiteError
@@ -69,6 +69,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
         self.submittedJobs = {}
         self.failedSubmission = []
         self.jobInputFiles = []
+        self.prodAgentName = self.primarySpecInstance.parameters['ProdAgentName']
 
         #  //
         # // Build a list of input files for every job
@@ -391,7 +392,6 @@ fi
         except Exception, ex:
             logging.error( "unable to build scheduler specific attributes" )
 #           raise JSException("Failed to createJDL", mainJobSpecName = self.mainJobSpecName))
-            pass
 
         # do we need to write the file?
         try :
@@ -403,7 +403,7 @@ fi
             declareClad.close()
         except:
             logging.error( "unable to build scheduler specific requirements" )
-            pass
+
 
         # // Executing BOSS Submit command
         try :
@@ -475,14 +475,13 @@ fi
                     logging.error("Reading dashboardInfoFile " + \
                                   dashboardInfoFile + " failed (jobId=" \
                                   + str(job['jobId']) + ")\n" + str(msg))
-                    continue
         
             # assign job dashboard id
-            if dashboardInfo.task == '' :
-                logging.error( "unable to retrieve DashboardId for job " + \
-                               job['name'] )
-                continue
+            dashboardInfo.task, dashboardInfo.job = \
+                                    self.generateDashboardID(job)
         
+            # jobSpec = os.path.join(outdir, "%s-JobSpec.xml" % job['name'])
+            # dashboardInfo.task, dashboardInfo.job = extractDashboardID(jobSpec)
             # job basic information
             dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
             dashboardInfo['Scheduler'] = self.__class__.__name__
@@ -490,9 +489,6 @@ fi
             dashboardInfo['SubTimeStamp'] = job.runningJob['submissionTime']
             dashboardInfo['ApplicationVersion'] = appData
             dashboardInfo['TargetCE'] = whitelist
-            jobSpec = os.path.join(outdir, "%s-JobSpec.xml" % job['name'])
-            dashboardInfo.task, dashboardInfo.job = extractDashboardID(jobSpec)
-
             try:
                 dashboardInfo.write( dashboardInfoFile )
                 logging.info("Created dashboardInfoFile " + dashboardInfoFile )
@@ -508,6 +504,30 @@ fi
             except Exception, ex:
                 logging.error("Error publishing to dashbaord: %s" % str(ex))
         return
+
+
+
+    def generateDashboardID(self, job):
+        """
+        _generateDashboardID_
+        
+        Generate a global job ID for the dashboard
+        
+        """
+
+        jobName = "ProdAgent_%s_%s_%s_%s" % (
+            self.prodAgentName, \
+            job['name'].replace("_", "-"), \
+            job['submissionNumber'], \
+            job.runningJob['schedulerId']
+            )
+
+        taskName = "ProdAgent_%s_%s" % (
+            self.workflowName.replace("_", "-"), \
+            self.prodAgentName
+            )
+    
+        return taskName, jobName
 
 
     def createSchedulerAttributes(self, jobType):
