@@ -12,12 +12,13 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.9 2008/08/26 16:11:19 gcodispo Exp $"
-__revision__ = "$Revision: 1.9 $"
+__version__ = "$Id: JobOutput.py,v 1.10 2008/08/27 13:21:36 gcodispo Exp $"
+__revision__ = "$Revision: 1.10 $"
 
 import logging
 import os
 import traceback
+import threading
 
 # BossLite import
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
@@ -43,8 +44,8 @@ class JobOutput:
               'dropBoxPath' : None
               }
 
-    schedulerConfig = { 'timeout' : 300,
-                        'skipWMSAuth' : 1 }
+    schedulerConfig = { 'timeout' : 300 } #,
+    #                    'skipWMSAuth' : 1 }
 
     def __init__(self):
         """
@@ -72,7 +73,7 @@ class JobOutput:
         # verify status
         if job.runningJob['processStatus'] != 'handled':
             logging.error(
-                "Job %s is in status %s, cannot request output" % \
+                "%s is in status %s, cannot request output" % \
                 ( cls.fullId( job ), job.runningJob['processStatus']))
             return
 
@@ -84,14 +85,14 @@ class JobOutput:
                            BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
             bossLiteSession.updateDB( job.runningJob )
         except JobError, err:
-            logging.error("Job %s: output for cannot be requested : %s" % \
+            logging.error("%s: output for cannot be requested : %s" % \
                           (cls.fullId( job ), str( err ) ) )
         except Exception, err:
             logging.error(
-                "Job %s: Unknown Error, output cannot be requested : %s" % \
+                "%s: Unknown Error, output cannot be requested : %s" % \
                           (cls.fullId( job ), str( err ) ) )
 
-        logging.debug("Job %s: getoutput request successfully enqueued" % \
+        logging.debug("%s: getoutput request successfully enqueued" % \
                       cls.fullId( job ) )
 
     @classmethod
@@ -109,7 +110,7 @@ class JobOutput:
 
         try:
 
-            logging.debug("Job %s: Getting output" % cls.fullId( job ) )
+            logging.debug("%s: Getting output" % cls.fullId( job ) )
 
             # open database
             bossLiteSession = \
@@ -120,20 +121,20 @@ class JobOutput:
 
             # output retrieved before, then recover interrupted operation
             if status == 'output_retrieved':
-                logging.warning("Job %s: Enqueuing previous ouput" % \
+                logging.warning("%s: Enqueuing previous ouput" % \
                                 cls.fullId( job ) )
                 return job
 
             # non expected status, abandon processing for job
             if status != 'in_progress' and status != 'failed':
-                logging.error("Job %s: Cannot get output, status is %s" % \
+                logging.error("%s: Cannot get output, status is %s" % \
                               (cls.fullId( job ), status) )
                 return
 
             # inconsistent status
             if status == 'in_progress' and job.runningJob['closed'] == 'Y':
                 logging.warning(
-                    "Job %s in status %s: Enqueuing previous output" % \
+                    "%s in status %s: Enqueuing previous output" % \
                     (cls.fullId( job ), status) )
                 job.runningJob['processStatus'] = 'output_retrieved'
                 bossLiteSession.updateDB( job )
@@ -170,7 +171,7 @@ class JobOutput:
                 return job
 
             except BossLiteError, err:
-                logging.error('Job %s: Can not get scheduler : [%s]' % \
+                logging.error('%s: Can not get scheduler : [%s]' % \
                               (cls.fullId( job ), str(err) ))
 
             # update
@@ -188,14 +189,14 @@ class JobOutput:
 
             # show error message
             logging.error(
-                'Job %s: GetOutputThread exception: [%s]\nTraceback: %s' % \
+                '%s: GetOutputThread exception: [%s]\nTraceback: %s' % \
                 ( cls.fullId( job ), str(ex), str( traceback.format_exc() ) ) )
 
         # thread has failed
         except :
 
             # show error message
-            logging.error( "Job %s: GetOutputThread traceback: %s" % \
+            logging.error( "%s: GetOutputThread traceback: %s" % \
                            ( cls.fullId( job ), traceback.format_exc() ) )
 
         # return also the id
@@ -222,10 +223,10 @@ class JobOutput:
         try:
             outfile = job.runningJob['outputDirectory'] + '/loggingInfo.log'
             schedSession.postMortem( task, outfile = outfile )
-            logging.info('Job %s: Retrieved logging info in %s' \
+            logging.info('%s: Retrieved logging info in %s' \
                          % (cls.fullId( job ), outfile ))
         except BossLiteError, err:
-            logging.info( 'Job %s: Can not get logging info : [%s]' % \
+            logging.info( '%s: Can not get logging info : [%s]' % \
                           ( cls.fullId( job ), str(err) ) )
 
             # proxy expired: invalidate job and empty return
@@ -266,7 +267,7 @@ class JobOutput:
                 logging.info( log )
 
         except BossLiteError, err:
-            logging.warning( "Job %s: Warning, failed to purge : %s" \
+            logging.warning( "%s: Warning, failed to purge : %s" \
                              % (cls.fullId( job ), str(err) ) )
             job.runningJob['processStatus'] = 'output_retrieved'
             
@@ -302,7 +303,7 @@ class JobOutput:
         while retry < int( cls.params['maxGetOutputAttempts'] ):
             retry += 1
 
-            logging.info("Job %s: retrieval attempt %d" % \
+            logging.info("%s: retrieval attempt %d" % \
                          (cls.fullId( job ), retry))
 
             #  perform get output operation
@@ -311,7 +312,7 @@ class JobOutput:
                 schedSession.getOutput( task, outdir=outdir)
                 job.runningJob['processStatus'] = 'output_retrieved'
 
-                logging.info('Job %s: Retrieved output in %s' % \
+                logging.info('%s: Retrieved output in %s' % \
                              (cls.fullId( job ), outdir ))
 
                 # log warnings and errors collected by the scheduler session
@@ -324,7 +325,7 @@ class JobOutput:
 
             # scheduler interaction error
             except BossLiteError, err:
-                logging.error("Job %s: retrieval failed: %s" % \
+                logging.error("%s: retrieval failed: %s" % \
                               (cls.fullId( job ), str(err) ) )
                 logging.error("%s" % job)
                 logging.error("%s" % job.runningJob)
@@ -348,14 +349,14 @@ class JobOutput:
                 # not ready for GO: waiting for next round
                 elif err.message().find( "Job current status doesn" ) != -1:
                     logging.error( 
-                        "Job %s in status %s: waiting next round" % \
+                        "%s in status %s: waiting next round" % \
                         (cls.fullId( job ), job.runningJob['status'])
                         )
                     return
 
                 else :
                     # oops: What to do?!?!
-                    logging.error("Job %s: no action taken: [%s]" % \
+                    logging.error("%s: no action taken: [%s]" % \
                                   (cls.fullId( job ), str(err) ) )
                     return
 
@@ -407,10 +408,10 @@ class JobOutput:
                 pool.enqueue(job, job)
 
             except Exception, err:
-                logging.error( "Job %s: failed restoring : %s" % \
+                logging.error( "%s: failed restoring : %s" % \
                                (cls.fullId( job ), str(err) ) )
             except:
-                logging.error( "Job %s: failed restoring: %s" % \
+                logging.error( "%s: failed restoring: %s" % \
                                (cls.fullId( job ), \
                                 str( traceback.format_exc() ) ) )
 
@@ -426,7 +427,7 @@ class JobOutput:
 
         """
 
-        logging.debug("Job %s: set done status" % cls.fullId( job ) )
+        logging.debug("%s: set done status" % cls.fullId( job ) )
 
         try :
             bossLiteSession = \
@@ -436,13 +437,13 @@ class JobOutput:
             job['processStatus'] = 'processed'
             bossLiteSession.updateDB( job )
         except DbError, msg:
-            logging.error('Job %s: Error updating DB : %s ' % str(msg))
+            logging.error('%s: Error updating DB : %s ' % str(msg))
 
         except Exception, msg:
-            logging.error('Job %s: Unknown Error updating DB : %s ' % \
+            logging.error('%s: Unknown Error updating DB : %s ' % \
                           (cls.fullId( job ), str(msg)))
 
-        logging.debug("Job %s: Output processing done" % cls.fullId( job ) )
+        logging.debug("%s: Output processing done" % cls.fullId( job ) )
 
 
 
@@ -481,7 +482,7 @@ class JobOutput:
                  (outdir, job['taskId'], job['jobId'], job['submissionNumber'])
 
         # make outdir
-        logging.info("Job %s: Creating directory %s" % \
+        logging.info("%s: Creating directory %s" % \
                      (cls.fullId( job ), outdir))
         try:
             os.makedirs( outdir )
@@ -490,7 +491,7 @@ class JobOutput:
                 # existing dir
                 pass
             else :
-                logging.error("Job %s: Cannot create directory %s : %s" % \
+                logging.error("%s: Cannot create directory %s : %s" % \
                      (cls.fullId( job ), outdir, str(err)))
                 raise err
 
@@ -506,6 +507,7 @@ class JobOutput:
         compose job primary keys in a string
         """
 
-        return str( job['taskId'] ) + '.' \
+        return '[' + threading.currentThread().getName() + \
+               '] Job ' + str( job['taskId'] ) + '.' \
                + str( job['jobId'] ) + '.' \
                + str( job['submissionNumber'] )
