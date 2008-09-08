@@ -26,7 +26,7 @@ from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=',
          'pileup-dataset=', 'pileup-files-per-job=','only-sites='
-         'selection-efficiency=','starting-run=','totalevents=','activity=',
+         'selection-efficiency=','starting-run=','starting-event=','totalevents=','activity=',
          'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=', 'stageout-intermediates='
          ]
 
@@ -39,6 +39,7 @@ usage += "                                  --group=<Physics Group>\n"
 usage += "                                  --category=<Production category>\n"
 usage += "                                  --stageout-intermediates=<true|false>\n"
 usage += "                                  --starting-run=<Starting run>\n"
+usage += "                                  --starting-event=<Starting event>\n"
 usage += "                                  --totalevents=<Total Events>\n"
 usage += "                                  --eventsperjob=<Events/job>\n"
 usage += "                                  --acquisition_era=<Acquisition Era>\n"
@@ -72,6 +73,7 @@ channel = None
 cfgTypes = []
 activity = None
 startingRun=1
+startingEvent=-1
 totalEvents=1000
 eventsPerJob=100
 acquisitionEra="Test"
@@ -112,6 +114,8 @@ for opt, arg in opts:
         activity = arg
     if opt == "--starting-run":
         startingRun = arg
+    if opt == "--starting-event":
+        startingEvent = arg
     if opt == "--totalevents":
         totalEvents = arg
     if opt == "--eventsperjob":
@@ -233,6 +237,10 @@ if activity is not None:
 spec.parameters['TotalEvents']=totalEvents
 spec.parameters['EventsPerJob']=eventsPerJob
 spec.parameters['InitialRun']=startingRun
+if startingEvent != -1 :
+	spec.parameters['InitialEvent']=startingEvent
+else :
+	print "Warning: InitialEvent parameter is not set!"
 if onlySites != None:
    spec.parameters['OnlySites']=onlySites
 
