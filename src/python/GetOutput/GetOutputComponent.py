@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.1.2.31 2008/08/22 15:31:51 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.31 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.1.2.32 2008/08/26 16:17:02 gcodispo Exp $"
+__revision__ = "$Revision: 1.1.2.32 $"
 
 import os
 import logging
@@ -44,7 +44,7 @@ class GetOutputComponent:
         self.args.setdefault("ComponentDir", "/tmp")
         self.args.setdefault("JobTrackingDir", None)
         self.args.setdefault("GetOutputPoolThreadsSize", 5)
-        self.args.setdefault("jobsToPoll", 50)
+        self.args.setdefault("jobsToPoll", 1000)
         self.args.setdefault("OutputLocation", "local")
         self.args.setdefault("dropBoxPath", None)
         self.args.setdefault("Logfile", None)
@@ -161,7 +161,45 @@ class GetOutputComponent:
         Poll the DB for jobs to get output from.
         """
 
+        import threading
+        # how many active threads?
+        logging.debug("ACTIVE THREADS when starting poll cycle: %s" \
+                     % threading.activeCount() )
         logging.info("Starting poll cycle")
+
+        # process jobs having 'processStatus' : 'output_requested'
+        self.scheduleEnded()
+
+        # process jobs having 'processStatus' : 'failed',
+        self.scheduleFailed()
+
+        # how many active threads?
+        logging.debug("ACTIVE THREADS when poll cycle finished: %s" \
+                     % threading.activeCount() )
+
+        # process outputs if ready
+        loop = True
+        while loop :
+
+            loop = self.processOutput()
+
+        # how many active threads?
+        logging.debug("ACTIVE THREADS after processing: %s" \
+                     % threading.activeCount() )
+        logging.debug("Finished processing of outputs and failed")
+
+        # generate next polling cycle
+        logging.info("Waiting %s for next get output polling cycle" % \
+                     self.pollDelay)
+        self.ms.publish("GetOutputComponent:pollDB", "", self.pollDelay)
+        self.ms.commit()
+
+
+    def scheduleEnded(self):
+        """
+        __scheduleEnded__
+
+        """
 
         # get jobs that require output
         logging.debug("Start processing of outputs")
@@ -174,7 +212,7 @@ class GetOutputComponent:
 
         while loop :
 
-            logging.debug("Max jobs number to be loaded %s:%s " % \
+            logging.debug("Range of job ids to be loaded %s:%s " % \
                           (str( offset ), str( offset + self.jobLimit) ) )
 
             try:
@@ -188,8 +226,8 @@ class GetOutputComponent:
                              str( numberOfJobs ) + " jobs")
 
             except DbError, err:
-                logging.error( "failed to load jobs in range %s:%s " % \
-                          (str( offset ), str( offset + self.jobLimit) ) )
+                logging.error( "failed to load jobs in range %s:%s : %s" % ( \
+                    str( offset ), str( offset + self.jobLimit), str(err) ) )
                 offset += self.jobLimit
                 continue
 
@@ -219,9 +257,12 @@ class GetOutputComponent:
                                    (JobOutput.fullId(job), \
                                     str( traceback.format_exc() ) ) )
 
-                # del( job )
 
-            # del self.outputRequestedJobs[:]
+    def scheduleFailed(self):
+        """
+        __scheduleFailed__
+
+        """
 
         # get jobs failed that require post-mortem operations
         logging.debug("Start processing of failed")
@@ -272,24 +313,6 @@ class GetOutputComponent:
                                    str( traceback.format_exc() ) ) )
                 # del( job )
 
-            # del self.outputRequestedJobs[:]
-
-        # del self.outputRequestedJobs[:]
-
-        # process outputs if ready
-        loop = True
-        while loop :
-
-            loop = self.processOutput()
-
-        logging.debug("Finished processing of outputs and failed")
-
-        # generate next polling cycle
-        logging.info("Waiting %s for next get output polling cycle" % \
-                     self.pollDelay)
-        self.ms.publish("GetOutputComponent:pollDB", "", self.pollDelay)
-        self.ms.commit()
-
 
     def processOutput(self):
         """
@@ -313,15 +336,14 @@ class GetOutputComponent:
 
         # bad entry
         elif self.jobFinished[1] is None:
-            logging.error( "Job %s: Error in dequeue" % \
+            logging.error( "%s: Error in dequeue" % \
                            JobOutput.fullId( self.jobFinished[0] ))
             return False
 
         # ok: job finished!
         else :
             job = self.jobFinished[1]
-            logging.debug("Job %s: Processing output" % \
-                           JobOutput.fullId( job ) )
+            logging.debug("%s: Processing output" % JobOutput.fullId( job ) )
 
         # perform processing
         try :
@@ -331,17 +353,17 @@ class GetOutputComponent:
             job.runningJob['processStatus'] = 'processed'
             self.bossLiteSession.updateDB( job )
         except BossLiteError, err:
-            logging.error( "Job %s failed to process output : %s" % \
+            logging.error( "%s failed to process output : %s" % \
                            (JobOutput.fullId( job ), str(err) ) )
         except Exception, err:
-            logging.error( "Job %s failed to process output : %s" % \
+            logging.error( "%s failed to process output : %s" % \
                            (JobOutput.fullId( job ), str(err) ) )
         except :
-            logging.error( "Job %s failed to process output : %s" % \
+            logging.error( "%s failed to process output : %s" % \
                            (JobOutput.fullId( job ), \
                             str( traceback.format_exc() )  ) )
 
-        logging.debug("Job %s : Processing output finished" % \
+        logging.debug("%s : Processing output finished" % \
                       JobOutput.fullId( job ) )
 
         return True
