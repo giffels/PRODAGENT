@@ -248,7 +248,8 @@ def main(argv) :
     # create workflows
     for sample in step1:
         command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
-        command += '--py-cfg=' + sample['outputname'] + ' \\\n'
+        command += '--version=' + version + ' \\\n'
+	command += '--py-cfg=' + sample['outputname'] + ' \\\n'
         command += '--version=' + version + ' \\\n'
         command += '--py-cfg=' + step2[sample['conditions']]['outputname']+ ' \\\n'
         command += '--stageout-intermediates=true \\\n'
