@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.12 2008/09/08 15:33:39 gcodispo Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.13 2008/09/09 12:36:58 gcodispo Exp $"
+__version__ = "$Revision: 1.13 $"
 
 import os
 import logging
@@ -21,6 +21,7 @@ from JobSubmitter.JSException import JSException
 # from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentCore.ProdAgentException import ProdAgentException
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo #, extractDashboardID
+from ProdCommon.MCPayloads.JobSpec import JobSpec
 
 # Blite API import
 from ProdAgentDB.Config import defaultConfig as dbConfig
@@ -69,8 +70,6 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
         self.submittedJobs = {}
         self.failedSubmission = []
         self.jobInputFiles = []
-        self.prodAgentName = \
-                           self.primarySpecInstance.parameters['ProdAgentName']
 
         #  //
         # // Build a list of input files for every job
@@ -458,8 +457,7 @@ fi
 
             # compose DashboardInfo.xml path
             dashboardInfo = DashboardInfo()
-            jobdir = job.runningJob['outputDirectory']
-            jobdir = jobdir[ : jobdir.rfind('/') ]
+            jobdir = self.toSubmit[ job['name'] ]
             dashboardInfoFile = os.path.join(jobdir, "DashboardInfo.xml" )
 
             if os.path.exists(dashboardInfoFile):
@@ -475,18 +473,17 @@ fi
                                   + str(job['jobId']) + ")\n" + str(msg))
 
             # assign job dashboard id
-            # jobSpec = os.path.join(jobdir, "%s-JobSpec.xml" % job['name'])
             dashboardInfo.task, dashboardInfo.job = \
-                                    self.generateDashboardID(job)
-            #                         extractDashboardID(jobSpec)
+                                self.generateDashboardID( job, jobdir )
 
             # job basic information
             dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
             dashboardInfo['Scheduler'] = self.__class__.__name__
-            dashboardInfo['GridJobID'] = job.runningJob['schedulerId']
-            dashboardInfo['SubTimeStamp'] = job.runningJob['submissionTime']
             dashboardInfo['ApplicationVersion'] = appData
             dashboardInfo['TargetCE'] = whitelist
+            dashboardInfo['GridJobID'] = job.runningJob['schedulerId']
+            dashboardInfo['SubTimeStamp'] = job.runningJob['submissionTime']
+            dashboardInfo['RBname'] = job.runningJob['service']
             dashboardInfo.addDestination(
                 self.usingDashboard['address'], self.usingDashboard['port']
                 )
@@ -509,24 +506,33 @@ fi
 
 
 
-    def generateDashboardID(self, job):
+    def generateDashboardID(self, job, jobdir):
         """
         _generateDashboardID_
 
         Generate a global job ID for the dashboard
 
         """
+        
+        jobSpecFile = os.path.join(jobdir, "%s-JobSpec.xml" % job['name'])
+        jobSpec = JobSpec()
+        jobSpec.load(jobSpecFile)
 
+        prodAgentName = jobSpec.parameters['ProdAgentName']
+        subCount = jobSpec.parameters.get('SubmissionCount', 0)
+        jobSpecId = jobSpec.parameters['JobName']
+        workflowName = jobSpec.payload.workflow
+        
         jobName = "ProdAgent_%s_%s_%s_%s" % (
-            self.prodAgentName, \
-            job['name'].replace("_", "-"), \
-            job['submissionNumber'], \
+            prodAgentName, \
+            jobSpecId.replace("_", "-"), \
+            subCount, \
             job.runningJob['schedulerId']
             )
 
         taskName = "ProdAgent_%s_%s" % (
-            self.workflowName.replace("_", "-"), \
-            self.prodAgentName
+            workflowName.replace("_", "-"), \
+            prodAgentName
             )
 
         return taskName, jobName
