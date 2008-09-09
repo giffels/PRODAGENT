@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.11 2008/08/21 16:11:06 gcodispo Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.12 2008/09/08 15:33:39 gcodispo Exp $"
+__version__ = "$Revision: 1.12 $"
 
 import os
 import logging
@@ -69,13 +69,14 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
         self.submittedJobs = {}
         self.failedSubmission = []
         self.jobInputFiles = []
-        self.prodAgentName = self.primarySpecInstance.parameters['ProdAgentName']
+        self.prodAgentName = \
+                           self.primarySpecInstance.parameters['ProdAgentName']
 
         #  //
         # // Build a list of input files for every job
         #//
         self.jobInputFiles.append(self.mainSandbox)
-        
+
         #  //
         # // For multiple bulk jobs there will be a tar of specs
         #//
@@ -90,7 +91,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
         # // check for dashboard usage
         #//
         self.usingDashboard = {'use' : 'True', \
-                               'address' : 'cms-jobmon.cern.ch', \
+                               'address' : 'cms-pamon.cern.ch', \
                                'port' : '8884'}
         try:
             dashboardCfg = self.pluginConfig.get('Dashboard', {})
@@ -101,13 +102,13 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
                 "DestinationHost"
                 )
             self.usingDashboard['port'] = dashboardCfg.get("DestinationPort")
-            logging.debug("dashboardCfg = " + self.usingDashboard.__str__() )
+            logging.debug("dashboardCfg = " + str(self.usingDashboard) )
         except:
             logging.info("No Dashboard section in SubmitterPluginConfig")
-        
+
         self.workingDir = os.path.dirname(self.mainSandbox)
         logging.debug("workingDir = %s" % self.workingDir)
-        
+
         #  //
         # // For single jobs there will be just one job spec
         #//
@@ -132,7 +133,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
 
                 # logging.info("resubmitting \"%s\"" % self.bossJob['name'])
             except JobError, ex:
-                raise JSException(str(ex), FailureList = self.toSubmit.keys()) 
+                raise JSException(str(ex), FailureList = self.toSubmit.keys())
         else :
             try :
                 self.bossTask = self.bossLiteSession.loadTaskByName(
@@ -141,9 +142,9 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
             except TaskError, ex:
                 # non instance in db: create it
                 pass
-        
+
         #  //
-        # // If already declared (i.e. resubmission), just submit 
+        # // If already declared (i.e. resubmission), just submit
         #//
         logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
         if self.bossJob is not None:
@@ -154,7 +155,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
 
         #generate unique wrapper script
         executable = self.mainJobSpecName + '-submit'
-        executablePath = "%s/%s" % (self.workingDir, executable) 
+        executablePath = "%s/%s" % (self.workingDir, executable)
         logging.debug("makeWrapperScript = %s" % executablePath)
         self.makeWrapperScript( executablePath, "$1" )
 
@@ -179,7 +180,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
                 job['standardOutput'] =  jobSpecId + '.log'
                 job['standardError']  =  jobSpecId + '.log'
                 job['executable']     =  executable
-                job['outputFiles'] = [ jobSpecId + '.log', 
+                job['outputFiles'] = [ jobSpecId + '.log', \
                                        jobSpecId + '.tgz', \
                                        'FrameworkJobReport.xml' ]
                 self.bossLiteSession.getNewRunningInstance( job )
@@ -189,7 +190,7 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
             self.bossLiteSession.updateDB( self.bossTask )
             logging.info( "Successfully Created task %s with %d jobs" % \
                           ( self.bossTask['id'], len(self.bossTask.jobs) ) )
-            
+
         except ProdAgentException, ex:
             raise JSException(str(ex), FailureList = self.toSubmit.keys())
 
@@ -240,13 +241,13 @@ EOF
 fi
 
 """
-  
+
     #  //
     # // Main executable script for job: missing fjr handling
     #//
     missingRepScript = \
                      """
-        
+
 if [ -e FrameworkJobReport.xml ]; then
    cp ./FrameworkJobReport.xml $PRODAGENT_JOB_INITIALDIR
    echo "FrameworkJobReport exists for job: $PRODAGENT_JOB_INITIALDIR/FrameworkJobReport.xml"
@@ -275,9 +276,9 @@ fi
 
         Make the main executable script for condor to execute the
         job
-        
+
         """
-        
+
         #  //
         # // Generate main executable script for job
         #//
@@ -295,9 +296,9 @@ fi
                           % self.singleSpecName
                 )
 
-            
+
         script.append(
-            "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName 
+            "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName
             )
         script.append("cd %s\n" % self.workflowName)
         script.append( "./run.sh $JOB_SPEC_FILE > %s.out 2> %s.err\n" \
@@ -315,7 +316,7 @@ fi
         handle.close()
         return
 
-    
+
     def checkPluginConfig(self):
         """
         _checkPluginConfig_
@@ -327,7 +328,7 @@ fi
             msg = "Failed to load Plugin Config for:\n"
             msg += self.__class__.__name__
             raise JSException( msg, ClassInstance = self)
-                             
+
 
     def doBOSSSubmit(self):
         """
@@ -383,7 +384,7 @@ fi
             logging.error( "########### Failed submission : %s" % str( err ) )
             raise JSException( "Unable to find a valid certificate", \
                                FailureList = self.toSubmit.keys() )
-        
+
         # // prepare extra jdl attributes
         logging.info("doBOSSSubmit : preparing jdl")
         try:
@@ -432,7 +433,7 @@ fi
         return
 
 
-    
+
     def publishSubmitToDashboard( self ):
         """
         _publishSubmitToDashboard_
@@ -443,8 +444,7 @@ fi
 
         if  self.usingDashboard['use'] != 'True':
             return
-        
-        dashboardInfo = DashboardInfo()
+
         appData = str(self.applicationVersions)
         appData = appData.replace("[", "")
         appData = appData.replace("]", "")
@@ -457,31 +457,29 @@ fi
                 continue
 
             # compose DashboardInfo.xml path
-            outdir = job.runningJob['outputDirectory']
-            outdir = outdir[ : outdir.rfind('/') ]
-            dashboardInfoFile = os.path.join(outdir, "DashboardInfo.xml" )
+            dashboardInfo = DashboardInfo()
+            jobdir = job.runningJob['outputDirectory']
+            jobdir = jobdir[ : jobdir.rfind('/') ]
+            dashboardInfoFile = os.path.join(jobdir, "DashboardInfo.xml" )
 
-            if  os.path.exists(dashboardInfoFile):
-                #logging.error("Unable to find dashboardInfoFile " + \
-                #              dashboardInfoFile )
-                #continue
+            if os.path.exists(dashboardInfoFile):
 
                 try:
                     # it exists, get dashboard information
                     dashboardInfo.read(dashboardInfoFile)
-    
+
                 except StandardError, msg:
                     # it does not work, abandon
                     logging.error("Reading dashboardInfoFile " + \
                                   dashboardInfoFile + " failed (jobId=" \
                                   + str(job['jobId']) + ")\n" + str(msg))
-        
+
             # assign job dashboard id
+            # jobSpec = os.path.join(jobdir, "%s-JobSpec.xml" % job['name'])
             dashboardInfo.task, dashboardInfo.job = \
                                     self.generateDashboardID(job)
-        
-            # jobSpec = os.path.join(outdir, "%s-JobSpec.xml" % job['name'])
-            # dashboardInfo.task, dashboardInfo.job = extractDashboardID(jobSpec)
+            #                         extractDashboardID(jobSpec)
+
             # job basic information
             dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
             dashboardInfo['Scheduler'] = self.__class__.__name__
@@ -489,20 +487,24 @@ fi
             dashboardInfo['SubTimeStamp'] = job.runningJob['submissionTime']
             dashboardInfo['ApplicationVersion'] = appData
             dashboardInfo['TargetCE'] = whitelist
+            dashboardInfo.addDestination(
+                self.usingDashboard['address'], self.usingDashboard['port']
+                )
+
+            # update dashboard info file
             try:
                 dashboardInfo.write( dashboardInfoFile )
                 logging.info("Created dashboardInfoFile " + dashboardInfoFile )
-            
-                dashboardInfo.addDestination(
-                    self.usingDashboard['address'], self.usingDashboard['port']
-                    )
-                # publish to Dashboard
-                logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
-                dashboardInfo.write( dashboardInfoFile )
-                
-                dashboardInfo.publish(1)
             except Exception, ex:
-                logging.error("Error publishing to dashbaord: %s" % str(ex))
+                logging.error("Error writing %s" % dashboardInfoFile)
+
+            # publish to Dashboard
+            try:
+                dashboardInfo.publish(1)
+                logging.info("Published to dashboard: %s" % str(dashboardInfo))
+            except Exception, ex:
+                logging.error("Error publishing to dashboard: %s" % str(ex))
+
         return
 
 
@@ -510,9 +512,9 @@ fi
     def generateDashboardID(self, job):
         """
         _generateDashboardID_
-        
+
         Generate a global job ID for the dashboard
-        
+
         """
 
         jobName = "ProdAgent_%s_%s_%s_%s" % (
@@ -526,14 +528,14 @@ fi
             self.workflowName.replace("_", "-"), \
             self.prodAgentName
             )
-    
+
         return taskName, jobName
 
 
     def createSchedulerAttributes(self, jobType):
         """
         _createSchedulerAttributes_
-    
+
         create the scheduler attributes
         Specific implementation in the Scheduler specific part
                  (e.g. BlGLiteBulkSubmitter)
