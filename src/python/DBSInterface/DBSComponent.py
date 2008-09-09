@@ -569,10 +569,6 @@ class DBSComponent:
             if len(jobreport.files)>0:
                for outFile in jobreport.files:
                    #
-                   #  remove lumi sections from mc data
-                   #
-                   outFile.lumisections = {}
-                   #
                    #  remove branches info (optionally)
                    #
                    if self.DropBranches:
