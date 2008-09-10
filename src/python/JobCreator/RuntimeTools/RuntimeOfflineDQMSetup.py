@@ -219,6 +219,7 @@ class OfflineDQMSetup:
             msg = "Unable to import %s\n" % harvestingModule
             msg += "%s\n" % str(ex)
             msg += "Falling Back to local definition"
+            print msg
             makeDQMHarvestingConfig = TEMP.makeDQMHarvestingConfig
 
         return makeDQMHarvestingConfig
