@@ -18,6 +18,47 @@ from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWAPILoader import CMSSWAPILoader
 import ProdCommon.MCPayloads.DatasetConventions as DatasetConventions
 
 
+def configOnFly(cmsPath, scramArch, cmsswVersion):
+    """
+    _configOnFly_
+
+    Generate dummy config for on-the-fly configuration on WN
+
+    """
+    loader = CMSSWAPILoader(scramArch,
+                            cmsswVersion,
+                            cmsPath)
+
+    try:
+        loader.load()
+    except Exception, ex:
+        msg = "Couldn't load CMSSW libraries: %s" % ex
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    import FWCore.ParameterSet.Config as cms
+
+    process = cms.Process("EDMtoMEConvert")
+    process.source = cms.Source("PoolSource",
+            fileNames = cms.untracked.vstring()
+                                )
+    process.configurationMetadata = cms.untracked(cms.PSet())
+    process.configurationMetadata.name = cms.untracked(
+            cms.string("TEMP_CONFIG_USED"))
+    process.configurationMetadata.version = cms.untracked(
+        cms.string(cmsswVersion))
+    process.configurationMetadata.annotation = cms.untracked(
+        cms.string("DQM Harvesting Configuration Placeholder"))
+    
+    
+    cfgWrapper = CMSSWConfig()
+    cfgInt = cfgWrapper.loadConfiguration(process)
+    cfgInt.validateForProduction()
+    loader.unload()
+
+    return cfgWrapper
+
+
 
 def configFromFile(cmsPath, scramArch, cmsswVersion, filename):
     """
@@ -92,8 +133,9 @@ def createHarvestingWorkflow(dataset, site, cmsPath, scramArch,
         cfgWrapper = configFromFile(cmsPath, scramArch,
                                     cmsswVersion, configFile)
     else:
-        cfgWrapper = CMSSWConfig()
-
+        cfgWrapper = configOnFly(cmsPath, scramArch,
+                                 cmsswVersion)
+        
     #  //
     # // Pass in global tag
     #//
