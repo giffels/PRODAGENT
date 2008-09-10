@@ -37,6 +37,8 @@ class DQMInjectorComponent:
         self.args['ScramArch'] = None
         self.args['CmsPath'] = None
         self.args['ConfigFile'] = None
+        self.args['OverrideCMSSW'] = None
+        self.args['OverrideGlobalTag'] = None
         self.args['Site'] = "srm.cern.ch"
         self.args.update(args)
         if self.args['Logfile'] == None:
@@ -52,7 +54,7 @@ class DQMInjectorComponent:
             self.args['ScramArch'] = os.environ.get("SCRAM_ARCH", None)
         if self.args['CmsPath'] == None:
             self.args['CmsPath'] = os.environ.get("CMS_PATH", None)
-
+            
 
         self.ms = None
         msg = "DQMInjector Component Started\n"
@@ -64,6 +66,17 @@ class DQMInjectorComponent:
             msg += " => ConfigFile : %s\n" % self.args['ConfigFile']
         else:
             msg += " => Configurations Generated on the fly"
+        if self.args['OverrideCMSSW'] != None:
+            msg += " => CMSSW Version Overridden: %s\n" % (
+                self.args['OverrideCMSSW'],)
+        else:
+            msg += " => CMSSW Version looked up by Plugin\n"
+        if self.args['OverrideGlobalTag'] != None:
+            msg += " => GlobalTag Version Overridden: %s\n" % (
+                self.args['OverrideGlobalTag'],)
+        else:
+            msg += " => GlobalTag Version looked up by Plugin\n"
+            
         logging.info(msg)
 
 

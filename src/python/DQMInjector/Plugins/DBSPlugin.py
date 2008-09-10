@@ -58,6 +58,16 @@ def findVersionForDataset(dbsUrl, primary, processed, tier, run):
 
 
 
+def findGlobalTagForDataset(dbsUrl, primary, processed, tier, run):
+    """
+    _findGlobalTagForDataset_
+
+    Look up the global tag for a DBS Dataset
+
+    """
+    msg = "TODO: Implement GlobalTag lookup from DBS"
+    raise NotImplementedError, msg
+
 
 
 class DBSPlugin(BasePlugin):
@@ -105,17 +115,34 @@ class DBSPlugin(BasePlugin):
                 collectPayload.datasetPath(),)
             msg += "Looking up software version and generating workflow..."
 
-            cmsswVersion = findVersionForDataset(
-                self.dbsUrl,
-                collectPayload['PrimaryDataset'],
-                collectPayload['ProcessedDataset'],
-                collectPayload['DataTier'],
-                collectPayload['RunNumber'])
-            msg = "Found CMSSW Version for dataset/run\n"
-            msg += " Dataset %s Run %s\n" % (collectPayload.datasetPath(),
-                                             collectPayload['RunNumber'])
-            msg += " CMSSW Version = %s\n " % cmsswVersion
-            logging.info(msg)
+            if self.args.get("OverrideGlobalTag", None) == None:
+                globalTag = findGlobalTagForDataset(
+                    self.dbsUrl,
+                    collectPayload['PrimaryDataset'],
+                    collectPayload['ProcessedDataset'],
+                    collectPayload['DataTier'],
+                    collectPayload['RunNumber'])
+            else:
+                globalTag = self.args['OverrideGlobalTag']
+
+
+            if self.args.get("OverrideCMSSW", None) != None:
+                cmsswVersion = self.args['OverrideCMSSW']
+                msg = "Using Override for CMSSW Version %s" % (
+                    self.args['OverrideCMSSW'],)
+                logging.info(msg)
+            else:
+                cmsswVersion = findVersionForDataset(
+                    self.dbsUrl,
+                    collectPayload['PrimaryDataset'],
+                    collectPayload['ProcessedDataset'],
+                    collectPayload['DataTier'],
+                    collectPayload['RunNumber'])
+                msg = "Found CMSSW Version for dataset/run\n"
+                msg += " Dataset %s Run %s\n" % (collectPayload.datasetPath(),
+                                                 collectPayload['RunNumber'])
+                msg += " CMSSW Version = %s\n " % cmsswVersion
+                logging.info(msg)
             
             workflowSpec = createHarvestingWorkflow(
                 collectPayload.datasetPath(),
@@ -123,6 +150,7 @@ class DBSPlugin(BasePlugin):
                 self.args['CmsPath'],
                 self.args['ScramArch'],
                 cmsswVersion,
+                globalTag,
                 self.args['ConfigFile'])
             
             workflowSpec.save(workflowFile)
