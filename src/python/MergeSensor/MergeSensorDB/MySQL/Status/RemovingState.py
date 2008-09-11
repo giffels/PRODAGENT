@@ -19,19 +19,20 @@ class RemovingState(MySQLBase):
         Flag the files listed as removing
 
       """
-      def execute (self, *files, conn = None, trans = False):
+      def execute (self, *files, **kwargs):
           """
           _execute_
           """
-
+          conn = kwargs.get('conn', None)
+          trans = kwargs.get('trans', False)
 
           self.sqlCommand = """ UPDATE merge_inputfile set status='removing'
           WHERE name IN ("""
 
           for fname in files:
-            sqlStr += "\'%s\'\n," % fname
-          sqlStr = sqlStr.rstrip(',')
-          sqlStr += ");"
+            self.sqlCommand += "\'%s\'\n," % fname
+          self.sqlCommand = self.sqlCommand.rstrip(',')
+          self.sqlCommand += ");"
 	
 	  try:
 	  		                    

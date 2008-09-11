@@ -25,11 +25,12 @@ class UnRemovedState(MySQLBase):
         to get started
 
       """
-      def execute (self, *files, conn = None, trans = False):
+      def execute (self, *files, **kwargs):
           """
           _execute_
           """
-
+          conn = kwargs.get('conn', None)
+          trans = kwargs.get('trans', False)
 
           numberOfFailuresMax = 3
         
@@ -46,7 +47,7 @@ class UnRemovedState(MySQLBase):
                         and name in %s""" % (
               numberOfFailuresMax, fileList)
         
-          self.sqlCommand = sqlStr.split(';')
+          self.sqlCommand = self.sqlCommand.split(';')
   
 	  result = None
 	  try:
