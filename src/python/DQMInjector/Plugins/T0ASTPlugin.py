@@ -15,6 +15,9 @@ from DQMInjector.HarvestWorkflow import createHarvestingWorkflow
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.LFNAlgorithm import DefaultLFNMaker
 
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
+
+
 
 class T0ASTRack:
     """
@@ -27,6 +30,30 @@ class T0ASTRack:
         self.run = run
         self.primary = primaryDataset
 
+        try:
+            from T0.GenericTier0.Tier0DB import Tier0DB
+            from T0.State.Database.Reader import ListRuns
+            from T0.State.Database.Reader import ListFiles
+        except Exception, ex:
+            msg = "Unable to import Tier 0 Python Libs"
+            raise RuntimeError, msg
+
+
+        paConfig = loadProdAgentConfiguration()
+        t0astDBConfig = paConfig.getConfig("Tier0DB")
+
+        t0astDBConn = Tier0DB.Tier0DB(t0astDBConfig)
+        t0astDBConn.connect()
+
+
+        self.recoVersion = ListRuns.listRecoVersionForRun(t0astDBConn, run)
+        self.globalTag = ListRuns.listGlobalTagForRun(t0astDBConn, run)
+        # reco files is an array of dictionaries
+        self.recoFiles = ListFiles.listFilesByRunAndDataset(
+            t0astDBConn,
+            "Reconstructed", run, primaryDataset)
+        
+                                                          
 
 
     def listFiles(self):
@@ -36,13 +63,8 @@ class T0ASTRack:
         return a list of LFNs for the run/dataset provided
 
         """
-        return [
-            "/store/data/Commissioning08/Cosmics/RECO/CRUZET4_v1/000/058/731/683755BB-5D72-DD11-AF6E-000423D952C0.root",
-            "/store/data/Commissioning08/Cosmics/RECO/CRUZET4_v1/000/058/731/205E050F-5D72-DD11-AA90-000423D6C8E6.root",
-            "/store/data/Commissioning08/Cosmics/RECO/CRUZET4_v1/000/058/731/AE597F53-6572-DD11-8590-000423D99660.root",
-            "/store/data/Commissioning08/Cosmics/RECO/CRUZET4_v1/000/058/731/3A499EC5-5D72-DD11-99DA-001617E30D0A.root",
-            "/store/data/Commissioning08/Cosmics/RECO/CRUZET4_v1/000/058/731/D6974AB0-7272-DD11-B4C1-000423D6AF24.root"
-            ]
+        return [ x['LFN'] for x in self.recoFiles ]
+            
 
 
 
@@ -53,7 +75,7 @@ class T0ASTRack:
         return the CMSSW Version used for the run/dataset provided
 
         """
-        return "CMSSW_2_1_7"
+        return self.recoVersion
     
 
     def globalTag(self):
@@ -63,7 +85,7 @@ class T0ASTRack:
         return the global Tag used for the run/dataset provided
 
         """
-        return "CRUZET4_V2P::All"
+        return self.globalTag
     
             
 
@@ -115,9 +137,14 @@ class T0ASTPlugin(BasePlugin):
             collectPayload['DataTier'])
             )
         
-        
-        t0ast = T0ASTRack(collectPayload['RunNumber'],
-                          collectPayload['PrimaryDataset'])
+        try:
+            t0ast = T0ASTRack(collectPayload['RunNumber'],
+                              collectPayload['PrimaryDataset'])
+        except Exception, ex:
+            msg = "Error connecting to T0AST Database and retrieving\n"
+            msg += "Information for %s\n" % str(collectPayload)
+            msg += str(ex)
+            raise RuntimeError, msg
         
         if not os.path.exists(workflowFile):
             msg = "No workflow found for dataset: %s\n " % (
