@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.57 2008/07/25 15:29:17 swakef Exp $"
+__revision__ = "$Id: setup.py,v 1.58 2008/08/21 15:55:56 ahmadh Exp $"
 
 from distutils.core import setup
 
@@ -19,6 +19,8 @@ packages = [
     'CondorTracker',
     'CondorTracker.Trackers',
     'DBSInterface',
+    'DQMInjector',
+    'DQMInjector.Plugins',
     'ErrorHandler',
     'ErrorHandler.Handlers',
     'GetOutput',
