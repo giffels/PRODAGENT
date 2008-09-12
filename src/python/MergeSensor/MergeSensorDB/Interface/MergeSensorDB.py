@@ -444,7 +444,7 @@ class MergeSensorDB:
         """
 	  
         removingState = self.factory(classname = "Status.RemovingState")	
-        rowcount = removingState.execute(files, conn = self.connection, trans = self.transaction)
+        rowcount = removingState.execute(conn = self.connection, trans = self.transaction, *files)
 
         return   #// End removingState
 
@@ -457,7 +457,7 @@ class MergeSensorDB:
         """
 	  
         removedState = self.factory(classname = "Status.RemovedState")	
-        rowcount = removedState.execute(files, conn = self.connection, trans = self.transaction)
+        rowcount = removedState.execute(conn = self.connection, trans = self.transaction, *files)
 
         return   #// End removingState
 
@@ -470,7 +470,7 @@ class MergeSensorDB:
         """
 	  
         unremovedState = self.factory(classname = "Status.UnRemovedState")	
-        rowcount = unremovedState.execute(files, conn = self.connection, trans = self.transaction)
+        rowcount = unremovedState.execute(conn = self.connection, trans = self.transaction, *files)
 
         return   #// End removingState
 	  
