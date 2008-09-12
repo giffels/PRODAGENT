@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.11 2008/03/13 18:34:38 swakef Exp $"
+__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.12 2008/04/07 20:44:04 evansde Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -53,7 +53,8 @@ class ProdMonComponent:
         self.args.setdefault("exportEnabled", False)
         self.args.setdefault("FailedDir", None)
         self.args.setdefault("expireEnabled", False)
-        self.args.setdefault("expireInterval", "96:00:00")
+        self.args.setdefault("expireInterval", "01:00:00")
+        self.args.setdefault("expireRecordAfter", "96:00:00")
         self.args.setdefault("expireUnexported", False)
         
         
@@ -308,7 +309,7 @@ class ProdMonComponent:
             return
         
         try:
-            deleteOldJobs(self.args['expireInterval'], self.args['expireUnexported'])
+            deleteOldJobs(self.args['expireRecordAfter'], self.args['expireUnexported'])
         except Exception, ex:
             logging.error("Error expiring jobs: %s" % str(ex))
         

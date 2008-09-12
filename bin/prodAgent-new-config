@@ -261,7 +261,8 @@ componentFields = {
     "exportEnabled" : "False",
     "DashboardURL" : "http://lxarda16.cern.ch/dashboard/request.py/getPAinfo",
     "expireEnabled" : False,
-    "expireInterval" : "96:00:00",
+    "expireInterval" : "01:00:00",
+    "expireRecordAfter" : "96:00:00",
     "expireUnexported" : False,
     },
 
@@ -442,7 +443,12 @@ internal database.
    -DisableExport: Set to true to disable monitoring data export.
    -DashboardURL: external monitoring export URL.
    -exportMaxBatchSize: Max number of jobs to export in each cycle.
-   -exportInterval: Time between export cycles in seconds.
+   -exportInterval: Time between export cycles in HH:MM:SS.
+   -expireEnabled: Remove old jobs from the local ProdMon Database.
+   -expireRecordAfter: Age before a job record is considered for deletion.
+   -expireUnexported: If False only consider records that have been
+     exported to dashboard for deletion.
+   -expireInterval: Time between expire cycles in HH:MM:SS.
    """,
   "JobEmulator"              :\
   """
