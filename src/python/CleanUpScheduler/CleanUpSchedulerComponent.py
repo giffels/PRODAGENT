@@ -322,10 +322,10 @@ class CleanUpSchedulerComponent:
                
                for i in range (0,njobs):
                                   
-                    
-                 logging.debug(siteTasks[x][ref:ref+self.lfnLimit]) 
-                 cleanUpJobSpec.append(CleanUpTools.createCleanupJobSpec(cleanUpWFs,x,*siteTasks[x][ref:ref+self.lfnLimit]))
-                 self.mergeDB.removingState(*siteTasks[x][ref:ref+self.lfnLimit])                                    
+                 lfns = siteTasks[x][ref:ref+self.lfnLimit]
+                 logging.debug("Cleaning: %s" % str(lfns)) 
+                 cleanUpJobSpec.append(CleanUpTools.createCleanupJobSpec(cleanUpWFs,x,*lfns))
+                 self.mergeDB.removingState(*lfns)                                    
                  self.mergeDB.commit()
 
                  ref=ref+self.lfnLimit 
