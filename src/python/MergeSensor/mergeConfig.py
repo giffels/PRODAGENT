@@ -3,10 +3,6 @@
 , 'main_input': {
 '@classname': ('string', 'tracked', 'PoolSource') }
  # end of main_input
-, 'looper': {
-} # end of looper
-, 'psets': {
-} #end of psets
 , 'modules': {
 #--------------------
 'Merged': {'@classname': ('string', 'tracked', 'PoolOutputModule') }
@@ -36,8 +32,5 @@
 , 'services': {
 'MessageLogger': {'@classname':('string', 'tracked', 'MessageLogger')
 , 'fwkJobReports': ('vstring', 'untracked', ['"FrameworkJobReport.xml"']) }
-, 'AdaptorConfig': {'@classname': ('string', 'tracked', 'AdaptorConfig')}
 } #end of es_modules
-# schedule
-, 'schedule': 'outpath'
 }

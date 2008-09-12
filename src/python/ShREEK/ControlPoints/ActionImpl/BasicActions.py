@@ -28,6 +28,10 @@ class KillJob(Action):
         Echo the logfile to stdout if it exists
         """
         controlPoint.killjob()
+        if os.path.exists("task-stdout-stderr.log"):
+            handle = open("task-stdout-stderr.log", 'r')
+            for line in handle:
+                print line
         return
 
 

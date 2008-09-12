@@ -33,20 +33,3 @@ class HandlerInterface:
          Call method
          """
          self.handleError()
-
-
-    def reSubmit(self, jobspecfile, generalInfo):
-        """
-        Either resubmit job or add back to jobQueue
-        """
-        if self.parameters.get("ReQueueFailures", False):
-            pass
-        else:
-            # a submit event with delay
-            delay = int(self.args['DelayFactor']) * \
-                            (int(generalInfo['Retries'] + 1))
-            delay = convertSeconds(delay) 
-            logging.debug(">RunFailureHandler<: re-submitting with delay (h:m:s) "+\
-                          str(delay))
-            self.publishEvent("SubmitJob",jobspecfile,delay)
-         

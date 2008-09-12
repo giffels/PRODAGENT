@@ -10,11 +10,9 @@ the common configuration file, which is accessed by environment variable
 import os
 import sys
 import getopt
-import logging
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
-from ProdAgentCore.PostMortem import runWithPostMortem
 from DBSInterface.DBSComponent import DBSComponent
 
 #  //
@@ -29,9 +27,12 @@ except StandardError, ex:
     msg += str(ex)
     raise RuntimeError, msg
 
-
+if os.environ.get("PRODAGENT_WORKDIR", None) == None:
+    msg = "ProdAgent environment not initialised properly"
+    msg += "$PRODAGENT_WORKDIR is not set"
+    raise RuntimeError, msg
 try:
-  from DBSAPI.dbsApi import DbsApi
+  import dbsApi
 except:
    msg = " No DBS API found "
    raise RuntimeError, msg
@@ -42,8 +43,8 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 #  //
 # // Initialise and start the component
 #//
+print "Starting JobSubmitter Component..."
 
 createDaemon(compCfg['ComponentDir'])
 component = DBSComponent(**dict(compCfg))
-runWithPostMortem(component, compCfg['ComponentDir'])
-
+component.startComponent()

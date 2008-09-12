@@ -3,14 +3,21 @@
 import logging
 
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
-from ProdCommon.FwkJobRep.ReportParser import readJobReport
-from ProdCommon.Core.GlobalRegistry import registerHandler
+from ErrorHandler.Registry import registerHandler
+from FwkJobRep.ReportParser import readJobReport
+from JobState.Database.Api.RetryException import RetryException
+from JobState.JobStateAPI import JobStateChangeAPI
+from JobState.JobStateAPI import JobStateInfoAPI
+
 
 class ProcessingRunFailureHandler(HandlerInterface):
     """
     _ProcessingRunFailureHandler_
 
-    Handles processing specific errors.
+    Processing error handler that either generates a new submit event
+    or cleans out the job information if the maximum number of retries
+    has been reached (and generates a general failure event).
+
     """
 
     def __init__(self):
@@ -18,11 +25,26 @@ class ProcessingRunFailureHandler(HandlerInterface):
 
     def handleError(self,payload):
          jobReport=readJobReport(payload)
-         jobId  = jobReport[0].jobSpecId
-         # do nothing for the moment.
-         logging.debug(">ProcessingRunFailureHandler< do nothing 4 the moment")
+         jobId  = jobReport[0].name
 
-registerHandler(ProcessingRunFailureHandler(),"ProcessingRunFailureHandler","ErrorHandler")
+         try:
+              JobStateChangeAPI.runFailure(jobId,jobReportLocation= payload)
+
+              logging.debug(">ProcessingRunFailureHandler<: Registered "+\
+                            "a job run failure,"\
+                            "publishing a submit job event")
+              self.publishEvent("SubmitJob",(jobId))
+         except RetryException:
+              JobStateChangeAPI.cleanout(jobId)
+              logging.debug(">ProcessingRunFailureHandler<: Registered "+\
+                            "a job run failure "+ \
+                            "Maximum number of retries reached!" +\
+                            " Submitting a failure job event to be handled"+\
+                            " by the prodmanager")
+
+              self.publishEvent("GeneralJobFailure",(jobId))
+
+registerHandler(ProcessingRunFailureHandler(),"processingRunFailureHandler")
 
 
 

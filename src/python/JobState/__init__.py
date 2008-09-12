@@ -9,8 +9,8 @@ keep track of any information regarding a running job. This is the
 task of the job tracker.
 
 """
-__revision__ = "$Id: __init__.py,v 1.1 2006/04/10 17:06:16 fvlingen Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: __init__.py,v 1.2 2006/03/24 19:21:30 fvlingen Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "fvlingen@caltech.edu"
 
 

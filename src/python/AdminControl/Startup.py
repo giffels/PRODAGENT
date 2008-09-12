@@ -14,7 +14,6 @@ import getopt
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
 from AdminControl.AdminControlComponent import AdminControlComponent
-from ProdAgentCore.PostMortem import runWithPostMortem
 
 #  //
 # // Find and load the Configuration
@@ -28,7 +27,10 @@ except StandardError, ex:
     msg += str(ex)
     raise RuntimeError, msg
 
-
+if os.environ.get("PRODAGENT_WORKDIR", None) == None:
+    msg = "ProdAgent environment not initialised properly"
+    msg += "$PRODAGENT_WORKDIR is not set"
+    raise RuntimeError, msg
 
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 
@@ -38,4 +40,4 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 print "Starting AdminControl Component..."
 createDaemon(compCfg['ComponentDir'])
 component = AdminControlComponent(**dict(compCfg))
-runWithPostMortem(component, compCfg['ComponentDir'])
+component.startComponent()

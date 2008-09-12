@@ -11,8 +11,8 @@ support.
 
 """
 
-__revision__ = "$Id: MessageService.py,v 1.11 2008/02/04 15:30:30 swakef Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: MessageService.py,v 1.4 2006/04/10 10:38:24 ckavka Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import time
@@ -79,12 +79,12 @@ class MessageService:
         self.transaction = []
 
         # parameters
-        self.refreshPeriod = 60 * 60 * 12
+        self.maxConnectionAttemps = 5
+        self.dbWaitingTime = 10
         self.pollTime = 5
 
-        # force open connection
-        self.connectionTime = 0
-        self.conn = self.connect(invalidate = True)
+        # open connection
+        self.conn = self.connect()
         
         # logging
         logging.debug("MS: initialization OK")
@@ -272,7 +272,7 @@ class MessageService:
     # publish method 
     ##########################################################################
 
-    def publish(self, name, payload, delay="00:00:00", cursor=None):
+    def publish(self, name, payload):
         """
         _publish_
         
@@ -289,14 +289,36 @@ class MessageService:
         # logging
         logging.debug("MS: publish requested")
 
+        # get cursor
+        cursor = self.conn.cursor()
+
         # check if message type is in database
         sqlCommand = """
                      SELECT typeid
                        FROM ms_type
                        WHERE name = '""" + name + """'
                      """
-                     
-        cursor = self.executeSQLwithRetry(sqlCommand, cursor)
+        try:
+            cursor.execute(sqlCommand)
+        except:
+
+            # logging
+            logging.warning("MS: connection to database lost")
+
+            # if it does not work, we lost connection to database.
+            self.conn = self.connect()
+
+            # logging
+            logging.warning("MS: connection to database recovered")
+                                                                                
+            # redo operations in interrupted transaction
+            self.redo()
+            
+            # get cursor
+            cursor = self.conn.cursor()
+
+            # retry
+            cursor.execute(sqlCommand)
 
         rows = cursor.rowcount
 
@@ -342,24 +364,22 @@ class MessageService:
             sqlCommand = """
                          INSERT
                            INTO ms_message
-                             (type, source, dest, payload,delay)
+                             (type, source, dest, payload)
                            VALUES ('""" + str(typeid) + """',
                                    '""" + str(self.procid) + """',
                                    '""" + str(dest) + """',
-                                   '""" + payload + """',
-                                   '""" + str(delay)+ """')
+                                   '""" + payload + """')
                          """
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
             sqlCommand = """
                          INSERT
                            INTO ms_history
-                             (type, source, dest, payload,delay)
+                             (type, source, dest, payload)
                            VALUES ('""" + str(typeid) + """',
                                    '""" + str(self.procid) + """',
                                    '""" + str(dest) + """',
-                                   '""" + payload + """',
-                                   '""" + str(delay)+ """')
+                                   '""" + payload + """')
                          """
             cursor.execute(sqlCommand)
             self.transaction.append(sqlCommand)
@@ -368,56 +388,7 @@ class MessageService:
         # return
         cursor.close()
         return destCount
-    
-    
-    def publishUnique(self, name, payload, delay="00:00:00", cursor=None):
-        """
-            publish method that only publishes if no
-            messages of the same type type exist
-        """
         
-        # logging
-        logging.debug("MS: publishUnique requested")
-
-        # check if message type is in database
-        sqlCommand = """
-                     SELECT typeid
-                       FROM ms_type
-                       WHERE name = '""" + name + """'
-                     """
-        cursor = self.executeSQLwithRetry(sqlCommand, cursor)
-
-        rows = cursor.rowcount
-
-        if rows == 0:
-            # not registered before, so cant have any instances
-            return self.publish(name, payload, delay, cursor)
-        
-        # message type was registered before, get id
-        row = cursor.fetchone()
-        typeid = row[0]
-                        
-        # message known - how many in queue?
-        sqlCommand = """
-                     SELECT COUNT(*)
-                       FROM ms_message
-                       WHERE type = '""" + str(typeid) + """'
-                     """
-    
-        cursor.execute(sqlCommand)
-        
-        num = cursor.fetchone()[0]
-        
-        if num == 0:
-            # no messages - so publish
-            return self.publish(name, payload, delay, cursor)
-        
-        # message exists - do not publish another
-        cursor.close()
-        return 0
-    
-
-
     ##########################################################################
     # get method 
     ##########################################################################
@@ -436,15 +407,17 @@ class MessageService:
         # logging
         logging.debug("MS: get requested")
 
+        # get cursor
+        cursor = self.conn.cursor()
+
         # get messages command
         sqlCommand = """
                      SELECT messageid, name, payload
                        FROM ms_message, ms_type
                        WHERE
                          typeid=type and
-                         ADDTIME(time,delay) <= CURRENT_TIMESTAMP and
                          dest='""" + str(self.procid) + """'
-                       ORDER BY time,messageid
+                       ORDER BY(time)
                        LIMIT 1
                        
                      """
@@ -454,10 +427,6 @@ class MessageService:
 
             # get messsages
             try:
-                # get cursor
-                cursor = self.conn.cursor()
-
-                # execute command
                 cursor.execute(sqlCommand)
             except:
 
@@ -465,7 +434,7 @@ class MessageService:
                 logging.warning("MS: connection to database lost")
 
                 # if it does not work, we lost connection to database.
-                self.conn = self.connect(invalidate = True)
+                self.conn = self.connect()
                                                                                 
                 # logging
                 logging.warning("MS: connection to database recovered")
@@ -483,9 +452,6 @@ class MessageService:
             if cursor.rowcount == 1:
                 break
 
-            # close cursor
-            cursor.close()
-                
             # no messages yet
             if not wait:
 
@@ -538,7 +504,7 @@ class MessageService:
             logging.warning("MS: connection to database lost")
 
             # lost connection with database, reopen it
-            self.conn = self.connect(invalidate = True)
+            self.conn = self.connect()
 
             # logging
             logging.warning("MS: connection to database recovered")
@@ -600,9 +566,7 @@ class MessageService:
         an interrupted transaction.
 
         If it cannot be done, the component can safely be restarted and
-        transaction will be automatically rolled back
-        
-        Only called with a fresh valid connection
+        transaction will be automatically rolled back                                                                         
         """
 
         # get cursor
@@ -613,154 +577,13 @@ class MessageService:
 
         # perform all operations in current newly created transaction
         for sqlOperation in self.transaction:
-            cursor.execute(sqlOperation)
+             cursor.execute(sqlOperation)
 
         # logging
         logging.warning("MS: transaction recovered")
 
         # close cursor
         cursor.close()
-
-    ##########################################################################
-    # purgeMessages method 
-    ##########################################################################
-
-    def purgeMessages(self):
-        """
-        __purgeMessages__
-        
-        Drop all messages to be delivered. 
-        """
-
-        # logging
-        logging.debug("MS: purgeMessages requested")
-
-        # get cursor
-        cursor = self.conn.cursor()
-
-        # remove all messsages
-        sqlCommand = """
-                     DELETE 
-                       FROM ms_message
-                     """
-        cursor.execute(sqlCommand)
-
-        # drop transaction status, no recover possible
-        self.transaction = []
-
-        # commit
-        self.conn.commit()
-
-        # return 
-        cursor.close()
-        return 
-
-    ##########################################################################
-    # remove messages of a certain time addressed to me
-    ##########################################################################
-
-    def remove(self, messageType):
-        """
-        __remove__
-
-        Remove all messages of a certain type addressed to me.
-        """
-
-        # logging
-        logging.debug("MS: remove messages of type %s." % messageType)
-
-        # get cursor
-        cursor = self.conn.cursor()
-
-        # get message type (if it is in database)
-        sqlCommand = """
-                     SELECT typeid
-                       FROM ms_type
-                       WHERE name = '""" + messageType + """'
-                     """
-        cursor.execute(sqlCommand)
-        rows = cursor.rowcount
-
-        # no rows, nothing to do
-        if rows == 0:
-
-            return
-
-        # get type
-        row = cursor.fetchone()
-        typeid = row[0]
-
-        # remove all messsages
-        sqlCommand = """
-                     DELETE
-                       FROM ms_message
-                      WHERE type='""" + str(typeid) + """'
-                        AND dest='""" + str(self.procid) + """'
-                     """
-        cursor.execute(sqlCommand)
-
-        # drop transaction status, no recover possible
-        self.transaction = []
-
-        # commit
-        self.conn.commit()
-
-        # return
-        cursor.close()
-        return
-
-    ##########################################################################
-    # remove messages in history
-    ##########################################################################
-
-    def cleanHistory(self, hours):
-        """
-        __cleanHistory__
-        
-        Delete history messages older than the number of hours
-        specified.
-        
-        Performs an implicit commit operation.
-        
-        Arguments:
-        
-            hours -- the number of hours.
-        
-        """
-
-        # logging
-        logging.debug("MS: clean history requested")
-
-        # get cursor
-        cursor = self.conn.cursor()
-
-        timeval = "-%s:00:00" % hours
-
-        # remove all messsages
-        sqlCommand = """
-                     DELETE 
-                       FROM ms_history
-                       WHERE
-                          time < ADDTIME(CURRENT_TIMESTAMP,'-%s');
-                          
-                          """ % timeval
-
-        #"""
-        #TIMESTAMPADD(HOUR,""" + \
-        #str(-1 * hours) + \
-        #       """,CURRENT_TIMESTAMP);
-        #       """
-        cursor.execute(sqlCommand)
-
-        # drop transaction status, no recover possible
-        self.transaction = []
-
-        # commit
-        self.conn.commit()
-
-        # return 
-        cursor.close()
-        return 
 
     ##########################################################################
     # get a list from elements in a row
@@ -786,100 +609,56 @@ class MessageService:
     # get an open connection to the database
     ##########################################################################
                                                                                 
-    def connect(self, invalidate = False): 
+    def connect(self): 
         """
         __connect__
                                                                                 
-        return a DB connection, reusing old one if still valid. Create a new
-        one if requested so or if old one expired.
+        Refresh the connection to the database, re-attempting a maximum of
+        maxConnection attempts, waiting for dbWaitingTime between attempts.
                                                                                 
         """
 
-        # is it necessary to refresh the connection?
-        
-        if (time.time() - self.connectionTime > self.refreshPeriod or invalidate):
-            
-            #  close current connection (if any)
+        # get a connection
+        for attempt in range(self.maxConnectionAttemps):
+
             try:
-                self.conn.close()
+                #  try to get one
+                conn = connect()#dbName = "ProdAgentDB",\
+                                #host = "cmslcgco01.cern.ch",\
+                                #user = "Proddie",\
+                                #passwd = "ProddiePass",\
+                                #socketFileLocation = "",\
+                                #dbPortNr = "")
+
+                # set transaction properties
+                cursor = conn.cursor()
+                cursor.execute(\
+                     "SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
+                cursor.execute("SET AUTOCOMMIT=0")
+                cursor.close()
+                break
+
             except:
-                pass
-            
-            # create a new one    
-            conn = connect(False)
-            self.connectionTime = time.time()
-                
-            # set transaction properties
-            cursor = conn.cursor()
-            cursor.execute(\
-                 "SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
-            cursor.execute("SET AUTOCOMMIT=0")
-            cursor.close()
-            
-            # logging
-            logging.debug("MS: got connection to database")
+                # logging
+                logging.warning("MS: cannot connect to database, waiting")
 
-            # return connection handler
-            return conn
-        
-        # return old one
-        return self.conn
+                # failed, wait before trying again
+                time.sleep(self.dbWaitingTime)
+                conn = None
 
-
-    ##########################################################################
-    # close connection to the database
-    ##########################################################################
-
-    def close(self):
-        """
-        __close__
-
-        close the DB connection
-
-        """
-
-        try:
-            self.conn.close()
-        except:
-            pass
- 
- 
-    #############################################################################
-    # execute given sql, reconnect to db if neccesary
-    #############################################################################
- 
-    def executeSQLwithRetry(self, sqlCommand, cursor = None):
-        """
-            Helper function that:
-                creates cursor (Optionally)
-                execute SQL with error handling
-                return cursor
-        """
-        
-        try:
-            if cursor is None:
-                cursor = self.conn.cursor()
-                
-            cursor.execute(sqlCommand)
-            
-        except:
-            
-            # logging
-            logging.warning("MS: connection to database lost")
-
-            # if it does not work, we lost connection to database.
-            self.conn = self.connect(invalidate = True)
+        # failed, abort
+        if conn == None:
 
             # logging
-            logging.warning("MS: connection to database recovered")
-                                                                                
-            # redo operations in interrupted transaction
-            self.redo()
-            
-            # get cursor
-            cursor = self.conn.cursor()
+            logging.error("MS: cannot connec to database, aborting")
 
-            # retry
-            cursor.execute(sqlCommand)
-        
-        return cursor
+            # abort
+            raise
+
+        # logging
+        logging.debug("MS: got connection to database")
+
+        # return connection handler
+        return conn
+
+

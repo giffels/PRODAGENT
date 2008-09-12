@@ -9,12 +9,14 @@ as it includes no job tracking.
 
 """
 
-__revision__ = "$Id:$"
 
 import os
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.SubmitterInterface import SubmitterInterface
+
+
+
 
 class CondorSubmitter(SubmitterInterface):
     """

@@ -17,6 +17,8 @@ def preTests():
     print "with the data in the database!"
     print " "
     print "Make sure the database (and client) are properly"
+    print "configured. (see ...JobState/Database/Config and"
+    print "..../JobState/Database/Schema dirs.)"
     print " "
 
     print "*****************START TEST*******************"
@@ -43,11 +45,10 @@ def postTests(testResult):
 
     print "******************IMPORTANT*****************"
     print "Please read the componentLog to check for anomalies"
-    print "The component might have logged errors as part of its "
-    print "internal error handling."
+    print "The component might have logged errors as part of its internal"
+    print "error handling."
     print ""
     print "The log file can contain Failed messages "
-    print "This might be  intended behaviour depending on some "
-    print "of the tests."
+    print "This might be  intended behaviour depending on the tests."
 
 

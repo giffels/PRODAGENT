@@ -11,13 +11,15 @@ can be used to configure the ShREEK system.
 
 """
 __version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: ShREEKExecutor.py,v 1.2 2007/03/07 22:54:19 evansde Exp $"
+__revision__ = "$Id: ShREEKExecutor.py,v 1.2 2006/02/15 21:00:03 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 import signal
 from ShREEK.ExecutionManager import ExecutionManager
 from ShREEK.MonitorThread import MonitorThread
 from ShREEK.ShREEKException import ShREEKException
+
+from ShLogger.LogStates import LogStates
 
 
 class ShREEKExecutor:
@@ -29,9 +31,10 @@ class ShREEKExecutor:
 
     """
     def __init__(self):
-        for signum in (1, 2, 3, 6, 15):
+        for signum in (1, 3, 6, 15):
             signal.signal(signum, self.safeShutdown)
         self.executionMgr = ExecutionManager()
+        self.executionMgr.logSilence()
         self.monitorThread = MonitorThread(self.executionMgr)
         self.pluginModules = []
         self.monitorConfigs = []
@@ -56,9 +59,7 @@ class ShREEKExecutor:
         reliably propagates signals to child processes
 
         """
-        msg = "Shutdown Signal recieved: %s\n" % signalNumber
-        msg += "Sending killjob..."
-        print msg
+        
         self.executionMgr.killjob()
         return
     
@@ -91,6 +92,16 @@ class ShREEKExecutor:
         flags provided in this instance
 
         """
+        self.executionMgr.addLogVeto(LogStates.Info)
+        self.executionMgr.clearLogVeto(LogStates.Error)
+        self.executionMgr.clearLogVeto(LogStates.Alert)
+        if self.verbose:
+            self.executionMgr.clearLogVeto(LogStates.Info)
+        if self.debug:
+            self.executionMgr.clearLogVeto(LogStates.Dbg_lo)
+            self.executionMgr.clearLogVeto(LogStates.Dbg_med)
+            self.executionMgr.clearLogVeto(LogStates.Dbg_hi)
+
         for plugin in self.pluginModules:
             self.loadShREEKPlugin(plugin)
             

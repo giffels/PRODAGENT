@@ -11,8 +11,7 @@ import operator
 import types
 from MessageService.MessageService import MessageService
 from MessageService.MessageServiceStatus import MessageServiceStatus
-import ProdAgent.WorkflowEntities.Job as WEJobState
-
+import JobState.JobStateAPI.JobStateInfoAPI as JobStateStatus
 
 from xmlrpclib import Fault
 
@@ -182,7 +181,7 @@ class AdminControlInterface:
 
         """
         try:
-            return WEJobState.jobSpecTotal()
+            return JobStateStatus.jobSpecTotal()
         except StandardError, ex:
             msg = "Error retrieving JobSpec count:\n"
             msg += str(ex)
@@ -200,31 +199,6 @@ class AdminControlInterface:
         well not be performant.
 
         """
-        return WEJobState.rangeGeneral(offset, total)
+        return JobStateStatus.rangeGeneral(offset, total)
     
-        
-    def purgeProdAgentDB(self):
-        """
-        _purgeProdAgentDB_
-
-        Remove all pending messages from the message service and wipe out
-        all JobStates information.
-
-        Only use this method if you are sure you know what you are doing
-
-        """
-        try:
-            self.ms.purgeMessages()
-        except StandardError, ex:
-            msg = "Failed to Purge Messages:\n"
-            msg += str(ex)
-            return Fault(1, msg)
-        try:
-            WEJobState.purgeStates()
-        except StandardError, ex:
-            msg = "Failed to Purge States:\n"
-            msg += str(ex)
-            return Fault(1, msg)
-        return 0
-
         

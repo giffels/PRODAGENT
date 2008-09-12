@@ -13,7 +13,6 @@ import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
-from ProdAgentCore.PostMortem import runWithPostMortem
 from JobSubmitter.JobSubmitterComponent import JobSubmitterComponent
 
 #  //
@@ -28,7 +27,10 @@ except StandardError, ex:
     msg += str(ex)
     raise RuntimeError, msg
 
-
+if os.environ.get("PRODAGENT_WORKDIR", None) == None:
+    msg = "ProdAgent environment not initialised properly"
+    msg += "$PRODAGENT_WORKDIR is not set"
+    raise RuntimeError, msg
 
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 
@@ -38,5 +40,4 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 print "Starting JobSubmitter Component..."
 createDaemon(compCfg['ComponentDir'])
 component = JobSubmitterComponent(**dict(compCfg))
-
-runWithPostMortem(component, compCfg['ComponentDir'])
+component.startComponent()

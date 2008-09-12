@@ -3,13 +3,17 @@
 import logging
 
 from ErrorHandler.Handlers.HandlerInterface import HandlerInterface
-from ProdCommon.Core.GlobalRegistry import registerHandler
+from ErrorHandler.Registry import registerHandler
+from JobState.Database.Api.RetryException import RetryException
+from JobState.JobStateAPI import JobStateChangeAPI
 
 class MergingSubmitFailureHandler(HandlerInterface):
     """
     _MergingSubmitFailureHandler_
 
-    Handler for dealing with specific submit failures of merge type jobs.
+    Merging submit error handler that either generates a new submit event
+    or cleans out the job information if the maximum number of retries
+    has been reached (and generates a general failure event).
 
     """
 
@@ -18,8 +22,23 @@ class MergingSubmitFailureHandler(HandlerInterface):
 
     def handleError(self,payload):
          jobId = payload
-         logging.debug(">MergeSubmitFailureHandler<: do nothing 4 the moment")
 
-registerHandler(MergingSubmitFailureHandler(),"MergeSubmitFailureHandler","ErrorHandler")
+         try:
+              JobStateChangeAPI.submitFailure(jobId)
+              logging.debug(">MergingSubmitFailureHandler<: Registered a "+\
+                            " job submit failure,"\
+                            "publishing a submit job event")
+              self.publishEvent("SubmitJob",(jobId))
+         except RetryException:
+              JobStateChangeAPI.cleanout(jobId)
+              logging.debug(">ProcessingRunFailureHandler<: Registered "+\
+                            "a job submit failure "+ \
+                            "Maximum number of retries reached!" +\
+                            " Submitting a general failure job event to be handled"+\
+                            " by the prodmanager")
+              JobStateChangeAPI.cleanout(jobId)
+              self.publishEvent("GeneralJobFailure",(jobId))
+
+registerHandler(MergingSubmitFailureHandler(),"mergingSubmitFailureHandler")
 
 

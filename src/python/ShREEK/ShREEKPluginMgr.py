@@ -7,7 +7,7 @@ ShREEK Plugin modules.
 
 """
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: ShREEKPluginMgr.py,v 1.1 2006/04/10 17:38:42 evansde Exp $"
+__revision__ = "$Id: ShREEKPluginMgr.py,v 1.1 2005/12/30 18:54:25 evansde Exp $"
 
 import inspect
 
@@ -202,7 +202,7 @@ class ShREEKPlugins:
 
     _ShREEKUpdators = {}
     _ShREEKControlPoints = {}
-    
+
     
     listUpdators = staticmethod(listUpdatorPlugins)
     listMonitors = staticmethod(listMonitorPlugins)

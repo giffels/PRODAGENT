@@ -6,11 +6,8 @@ Unittest JobState.JobStateAPI module
 
 import unittest
 
-from ProdAgentDB.Config import defaultConfig as dbConfig
-from ProdAgent.WorkflowEntities import JobState 
-from ProdAgent.WorkflowEntities import Job
-from ProdCommon.Core.ProdException import ProdException
-from ProdCommon.Database import Session
+from JobState.JobStateAPI import JobStateChangeAPI
+from JobState.JobStateAPI import JobStateInfoAPI
 
 
 class JobStateUnitTests(unittest.TestCase):
@@ -19,86 +16,81 @@ class JobStateUnitTests(unittest.TestCase):
     """
 
     def setUp(self):
-        print "\n**************Start JobStateUnitTests**********"
+        print "**************NOTE JobStateUnitTests***********"
+        print "Make sure the test input does not conflict"
+        print "with the data in the database!"
+        print " "
+        print "Make sure the database (and client) are properly"
+        print "configured."
+        print " "
 
     def testA(self):
         """change state test"""
-        Session.set_database(dbConfig)
-        Session.connect()
-        Session.start_transaction()
         try:
          # illegal state transitions:
          try:
-            JobState.create("jobClassID1","cacheDir/location/1somewhere")
-         except ProdException, ex:
-            print('>>>Test succeeded for exception 1/3 in testA of JobState_t.py\n')
-         self.assertEqual(JobState.isRegistered("jobClassID1"),False)
-         JobState.register("jobClassID1","Processing",3,1,"myWorkflowID")
-         self.assertEqual(JobState.isRegistered("jobClassID1"),True)
+            JobStateChangeAPI.create("jobClassID1","cacheDir/location/1somewhere")
+         except Exception, ex:
+            print('Testing exception 1/2 in testA of JobState_t.py')
+            self.assertEqual(ex[1],'Illegal state transition: Undefined-->create')
+         JobStateChangeAPI.register("jobClassID1","processing",3,1)
 
-         # register again (illegal):
-         try:
-             JobState.register("jobClassID1","Processing",3,1,"myWorkflowID")
-             print('>>>Test ERROR \n')
-         except ProdException, ex:
-             print('>>>Test succeeded for exception 2/3 in testA of JobState_t.py\n')
          try:
          # illegal state transitions:
-            JobState.inProgress("jobClassID1")
-         except ProdException, ex:
-            print('>>>Test succeeded for exception 3/3 in testA of JobState_t.py\n')
-         JobState.create("jobClassID1","cacheDir/location/1somewhere")
-         JobState.inProgress("jobClassID1")
+            JobStateChangeAPI.inProgress("jobClassID1")
+         except Exception, ex:
+            print('Testing exception 2/2 in testA of JobState_t.py')
+            self.assertEqual(ex[1],'Illegal state transition: register-->inProgress')
+         JobStateChangeAPI.create("jobClassID1","cacheDir/location/1somewhere")
+         JobStateChangeAPI.inProgress("jobClassID1")
+
          # retries=racers=0;
-         self.assertEqual(JobState.general("jobClassID1"), {'Retries': 0, 'CacheDirLocation': 'cacheDir/location/1somewhere', 'MaxRacers': 1, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 3, 'JobType': 'Processing'}
+         self.assertEqual(JobStateInfoAPI.general("jobClassID1"), {'Retries': 0, 'CacheDirLocation': 'cacheDir/location/1somewhere', 'MaxRacers': 1, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 3, 'JobType': 'processing'}
 )
 
 
-         JobState.submit("jobClassID1")
+         JobStateChangeAPI.submit("jobClassID1")
 
          # retries=0, racers=1;
-         self.assertEqual(JobState.general("jobClassID1"), {'Retries': 0L, 'CacheDirLocation': 'cacheDir/location/1somewhere', 'MaxRacers': 1L, 'Racers': 1L, 'State': 'inProgress', 'MaxRetries': 3L, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID1"), {'Retries': 0L, 'CacheDirLocation': 'cacheDir/location/1somewhere', 'MaxRacers': 1L, 'Racers': 1L, 'State': 'inProgress', 'MaxRetries': 3L, 'JobType': 'processing'})
 
-         JobState.runFailure("jobClassID1","jobInstanceID1.1",
+         JobStateChangeAPI.runFailure("jobClassID1","jobInstanceID1.1",
               "some.location1.1","job/Report/Location1.1.xml")
-         JobState.submit("jobClassID1")
+         JobStateChangeAPI.submit("jobClassID1")
         except StandardError, ex:
             msg = "Failed State Change TestA:\n"
             msg += str(ex)
             self.fail(msg)
-        Session.commit_all()
-        Session.close_all()
-
 
 
     def testB(self):
         """change state test"""
         try:
-         JobState.register("jobClassID2","Processing",2,1,"myWorkflowID")
-         JobState.create("jobClassID2","cacheDir/location/2somewhere")
-         JobState.inProgress("jobClassID2")
+         JobStateChangeAPI.register("jobClassID2","processing",2,1)
+         JobStateChangeAPI.create("jobClassID2","cacheDir/location/2somewhere")
+         JobStateChangeAPI.inProgress("jobClassID2")
 
          # retries=racers=0
-         self.assertEqual(JobState.general("jobClassID2"), {'Retries': 0, 'CacheDirLocation': 'cacheDir/location/2somewhere', 'MaxRacers': 1, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 2, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID2"), {'Retries': 0, 'CacheDirLocation': 'cacheDir/location/2somewhere', 'MaxRacers': 1, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 2, 'JobType': 'processing'})
 
-         JobState.submit("jobClassID2")
+         JobStateChangeAPI.submit("jobClassID2")
 
          # retries0,=racers=1
-         self.assertEqual(JobState.general("jobClassID2"),{'Retries': 0, 'CacheDirLocation': 'cacheDir/location/2somewhere', 'MaxRacers': 1, 'Racers': 1, 'State': 'inProgress', 'MaxRetries': 2, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID2"),{'Retries': 0, 'CacheDirLocation': 'cacheDir/location/2somewhere', 'MaxRacers': 1, 'Racers': 1, 'State': 'inProgress', 'MaxRetries': 2, 'JobType': 'processing'})
 
-         JobState.runFailure("jobClassID2","jobInstanceID2.1",
+         JobStateChangeAPI.runFailure("jobClassID2","jobInstanceID2.1",
               "some.location2.1","job/Report/Location2.1.xml")
 
          # retries= 1, racers=0
-         self.assertEqual(JobState.general("jobClassID2"),
+         self.assertEqual(JobStateInfoAPI.general("jobClassID2"),
               {'CacheDirLocation': 'cacheDir/location/2somewhere', 
                'MaxRacers': 1, 'Racers': 0, 'State': 'inProgress', 
-               'MaxRetries': 2, 'Retries': 1, 'JobType': 'Processing'})
+               'MaxRetries': 2, 'Retries': 1, 'JobType': 'processing'})
 
-         JobState.submit("jobClassID2")
+         JobStateChangeAPI.submit("jobClassID2")
 
          # retries= 1, racers=1
-         self.assertEqual(JobState.general("jobClassID2"),{'Retries': 1L, 'CacheDirLocation': 'cacheDir/location/2somewhere', 'MaxRacers': 1L, 'Racers': 1L, 'State': 'inProgress', 'MaxRetries': 2L, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID2"),{'Retries': 1L, 'CacheDirLocation': 'cacheDir/location/2somewhere', 'MaxRacers': 1L, 'Racers': 1L, 'State': 'inProgress', 'MaxRetries': 2L, 'JobType': 'processing'})
 
         except StandardError, ex:
             msg = "Failed State Change TestB:\n"
@@ -108,35 +100,39 @@ class JobStateUnitTests(unittest.TestCase):
     def testC(self):
         """change state test"""
         try:
-         JobState.register("jobClassID3","Merge",5,1,"myWorkflowID")
-         JobState.create("jobClassID3","cacheDir/location/3somewhere")
-         JobState.inProgress("jobClassID3")
-         JobState.submit("jobClassID3")
+         JobStateChangeAPI.register("jobClassID3","merging",5,1)
+         JobStateChangeAPI.create("jobClassID3","cacheDir/location/3somewhere")
+         JobStateChangeAPI.inProgress("jobClassID3")
+         JobStateChangeAPI.submit("jobClassID3")
 
          # try an illegal state transition:
          try:
-              JobState.create("jobClassID3","cacheDir/location3somewhere")
-         except ProdException, ex:
-              print('>>>Test succeeded for  exception 1/3 in testC of JobState_t.py\n')
+              JobStateChangeAPI.create("jobClassID3","cacheDir/location3somewhere")
+         except Exception, ex:
+              print('Testing exception 1/3 in testC of JobState_t.py')
+              self.assertEqual(str(ex[1]),'Illegal state transition: inProgress-->create')
+
         # try to submit another job while the first one has not finished (we only are allowed one racer)
          try:
-              JobState.submit("jobClassID3")
-         except ProdException, ex:
-              print('>>>Test succeeded for  exception 2/3 in testC of JobState_t.py\n')
+              JobStateChangeAPI.submit("jobClassID3")
+         except Exception, ex:
+              print('Testing exception 2/3 in testC of JobState_t.py')
+              self.assertEqual(str(ex[1]),'reached maximum number of racers 1 wait until one of the jobs finishes  and try again. ')
 
         # set the maximum number of racers higher and submit again.
-         JobState.setRacer("jobClassID3",50)
-         JobState.submit("jobClassID3")
-         JobState.submit("jobClassID3")
-         JobState.submit("jobClassID3")
-         JobState.submit("jobClassID3")
+         JobStateChangeAPI.setRacer("jobClassID3",50)
+         JobStateChangeAPI.submit("jobClassID3")
+         JobStateChangeAPI.submit("jobClassID3")
+         JobStateChangeAPI.submit("jobClassID3")
+         JobStateChangeAPI.submit("jobClassID3")
 
         # althought the number of racers has been set higher, we are now
         # bound by the maximum number of retries.
          try:
-              JobState.submit("jobClassID3")
-         except ProdException, ex:
-              print('>>>Test succeeded for exception 3/3 in testC of JobState_t.py\n')
+              JobStateChangeAPI.submit("jobClassID3")
+         except Exception, ex:
+              print('Testing exception 3/3 in testC of JobState_t.py')
+              self.assertEqual(str(ex[1]),'reached maximum number of retries 5 (this includes running jobs)')
 
         except StandardError, ex:
             msg = "Failed State Change TestC:\n"
@@ -146,46 +142,46 @@ class JobStateUnitTests(unittest.TestCase):
     def testD(self):
         """change state test"""
         try:
-         JobState.register("jobClassID4","Processing",6,2,"myWorkflowID")
-         JobState.create("jobClassID4","cacheDir/location/4somewhere")
-         JobState.inProgress("jobClassID4")
+         JobStateChangeAPI.register("jobClassID4","processing",6,2)
+         JobStateChangeAPI.create("jobClassID4","cacheDir/location/4somewhere")
+         JobStateChangeAPI.inProgress("jobClassID4")
 
          # retries=racers=0
-         self.assertEqual(JobState.general("jobClassID4"),{'Retries': 0L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 0L, 'State': 'inProgress', 'MaxRetries': 6L, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID4"),{'Retries': 0L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 0L, 'State': 'inProgress', 'MaxRetries': 6L, 'JobType': 'processing'})
 
-         JobState.submit("jobClassID4")
+         JobStateChangeAPI.submit("jobClassID4")
 
          # retries=0, racers=1
-         self.assertEqual(JobState.general("jobClassID4"),{'Retries': 0L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 1L, 'State': 'inProgress', 'MaxRetries': 6L, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID4"),{'Retries': 0L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 1L, 'State': 'inProgress', 'MaxRetries': 6L, 'JobType': 'processing'})
 
 
-         JobState.runFailure("jobClassID4","jobInstanceID4.0",
+         JobStateChangeAPI.runFailure("jobClassID4","jobInstanceID4.0",
               "some.location4.0","job/Report/Location4.0.xml")
 
          # retries=1, racers=0
-         self.assertEqual(JobState.general("jobClassID4"),{'Retries': 1L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 0L, 'State': 'inProgress', 'MaxRetries': 6L, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID4"),{'Retries': 1L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 0L, 'State': 'inProgress', 'MaxRetries': 6L, 'JobType': 'processing'})
 
-         JobState.submit("jobClassID4")
+         JobStateChangeAPI.submit("jobClassID4")
 
          # retries=1, racers=1
-         self.assertEqual(JobState.general("jobClassID4"),{'Retries': 1L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 1L, 'State': 'inProgress', 'MaxRetries': 6L, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID4"),{'Retries': 1L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 1L, 'State': 'inProgress', 'MaxRetries': 6L, 'JobType': 'processing'})
 
 
-         JobState.runFailure("jobClassID4","jobInstanceID4.1",
+         JobStateChangeAPI.runFailure("jobClassID4","jobInstanceID4.1",
               "some.location4.1","job/Report/Location4.1.xml")
          # retries=2, racers=0
-         JobState.submit("jobClassID4")
+         JobStateChangeAPI.submit("jobClassID4")
          # retries=2, racers=1
-         JobState.submit("jobClassID4")
+         JobStateChangeAPI.submit("jobClassID4")
          # retries=2, racers=2
-         JobState.runFailure("jobClassID4","jobInstanceID4.2",
+         JobStateChangeAPI.runFailure("jobClassID4","jobInstanceID4.2",
               "some.location4.2","job/Report/Location4.2.xml")
          # retries=3, racers=1
-         JobState.submit("jobClassID4")
+         JobStateChangeAPI.submit("jobClassID4")
          # retries=3, racers=2
-         self.assertEqual(JobState.general("jobClassID4"),{'Retries': 3L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 2L, 'State': 'inProgress', 'MaxRetries': 6L, 'JobType': 'Processing'})
-         JobState.finished("jobClassID4")
-         self.assertEqual(JobState.general("jobClassID4"),{'Retries': 3L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 2L, 'State': 'finished', 'MaxRetries': 6L, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID4"),{'Retries': 3L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 2L, 'State': 'inProgress', 'MaxRetries': 6L, 'JobType': 'processing'})
+         JobStateChangeAPI.finished("jobClassID4")
+         self.assertEqual(JobStateInfoAPI.general("jobClassID4"),{'Retries': 3L, 'CacheDirLocation': 'cacheDir/location/4somewhere', 'MaxRacers': 2L, 'Racers': 2L, 'State': 'finished', 'MaxRetries': 6L, 'JobType': 'processing'})
         except StandardError, ex:
             msg = "Failed State Change TestD:\n"
             msg += str(ex)
@@ -193,22 +189,23 @@ class JobStateUnitTests(unittest.TestCase):
 
     def testE(self):
         try:
-         JobState.register("jobClassID5","Processing",2,2,"myWorkflowID")
-         JobState.create("jobClassID5","cacheDir/location/5somewhere")
-         JobState.inProgress("jobClassID5")
-         JobState.submit("jobClassID5")
+         JobStateChangeAPI.register("jobClassID5","processing",2,2)
+         JobStateChangeAPI.create("jobClassID5","cacheDir/location/5somewhere")
+         JobStateChangeAPI.inProgress("jobClassID5")
+         JobStateChangeAPI.submit("jobClassID5")
 
         # now introduce some failures until we have more failures
         # then retries (this raises an error)
 
-         JobState.runFailure("jobClassID5","jobInstanceID5.1",
+         JobStateChangeAPI.runFailure("jobClassID5","jobInstanceID5.1",
               "some.location5.1","job/Report/Location5.1.xml")
          try:
-              JobState.runFailure("jobClassID5","jobInstanceID5.2",
+              JobStateChangeAPI.runFailure("jobClassID5","jobInstanceID5.2",
                    "some.location5.1","job/Report/Location5.1.xml")
-         except ProdException, ex:
-              print('>>>Test succeeded for exception 1/1 in testE of JobState_t.py\n')
-         JobState.finished("jobClassID5")
+         except Exception, ex:
+              print('Testing exception 1/1 in testE of JobState_t.py')
+              self.assertEqual(ex[1],'Negative number of racers, is not possible, will not update ')
+         JobStateChangeAPI.finished("jobClassID5")
 
         except StandardError, ex:
             msg = "Failed State Change TestE:\n"
@@ -217,9 +214,9 @@ class JobStateUnitTests(unittest.TestCase):
 
     def testF(self):
         try:
-         self.assertEqual(JobState.lastLocations("jobClassID4"),\
+         self.assertEqual(JobStateInfoAPI.lastLocations("jobClassID4"),\
            ["some.location4.0","some.location4.1","some.location4.2"])    
-         self.assertEqual(JobState.lastLocations("jobClassID2"),\
+         self.assertEqual(JobStateInfoAPI.lastLocations("jobClassID2"),\
            ["some.location2.1"])
         except StandardError, ex:
             msg = "Failed State Change TestF:\n"
@@ -228,8 +225,8 @@ class JobStateUnitTests(unittest.TestCase):
 
     def testG(self):
         try:
-         reportList=JobState.jobReports("jobClassID4")
-         self.assertEqual(JobState.jobReports("jobClassID4"), \
+         reportList=JobStateInfoAPI.jobReports("jobClassID4")
+         self.assertEqual(JobStateInfoAPI.jobReports("jobClassID4"), \
               ['job/Report/Location4.0.xml','job/Report/Location4.1.xml', 'job/Report/Location4.2.xml'])
         except StandardError, ex:
             msg = "Failed State Change TestG:\n"
@@ -237,80 +234,60 @@ class JobStateUnitTests(unittest.TestCase):
             self.fail(msg)
 
     def testH(self):
-         JobState.register("jobClassID7","Processing",8,2,"myWorkflowID")
-         JobState.register("jobClassID8","Processing",8,2,"myWorkflowID")
-         JobState.register("jobClassID9","Processing",8,2,"myWorkflowID")
+         JobStateChangeAPI.register("jobClassID7","processing",8,2)
+         JobStateChangeAPI.register("jobClassID8","processing",8,2)
+         JobStateChangeAPI.register("jobClassID9","processing",8,2)
 
     def testI(self):
-         JobState.register("jobClassID10","Processing",8,2,"myWorkflowID")
+         JobStateChangeAPI.register("jobClassID10","processing",8,2)
          #retries=racer=0
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 0, 'CacheDirLocation': None, 'MaxRacers': 2, 'Racers': 0, 'State': 'register', 'MaxRetries': 8, 'JobType': 'Processing'})
-         JobState.createFailure("jobClassID10")
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 0, 'CacheDirLocation': None, 'MaxRacers': 2, 'Racers': 0, 'State': 'register', 'MaxRetries': 8, 'JobType': 'processing'})
+         JobStateChangeAPI.createFailure("jobClassID10")
          #retries=1, racer=0
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 1, 'CacheDirLocation': None, 'MaxRacers': 2, 'Racers': 0, 'State': 'register', 'MaxRetries': 8, 'JobType': 'Processing'})
-         JobState.createFailure("jobClassID10")
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 1, 'CacheDirLocation': None, 'MaxRacers': 2, 'Racers': 0, 'State': 'register', 'MaxRetries': 8, 'JobType': 'processing'})
+         JobStateChangeAPI.createFailure("jobClassID10")
          #retries=2, racer=0
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 2, 'CacheDirLocation': None, 'MaxRacers': 2, 'Racers': 0, 'State': 'register', 'MaxRetries': 8, 'JobType': 'Processing'})
-         JobState.create("jobClassID10","cacheDir/location/10somewhere")
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 2, 'CacheDirLocation': None, 'MaxRacers': 2, 'Racers': 0, 'State': 'register', 'MaxRetries': 8, 'JobType': 'processing'})
+         JobStateChangeAPI.create("jobClassID10","cacheDir/location/10somewhere")
          #retries=2, racer=0
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 2, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 0, 'State': 'create', 'MaxRetries': 8, 'JobType': 'Processing'})
-         JobState.inProgress("jobClassID10")
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 2, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 0, 'State': 'create', 'MaxRetries': 8, 'JobType': 'processing'})
+         JobStateChangeAPI.inProgress("jobClassID10")
          #retries=2, racer=0
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 2, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'Processing'})
-         JobState.submitFailure("jobClassID10")
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 2, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'processing'})
+         JobStateChangeAPI.submitFailure("jobClassID10")
          #retries=3, racer=0
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 3, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'Processing'})
-         JobState.submit("jobClassID10")
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 3, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'processing'})
+         JobStateChangeAPI.submit("jobClassID10")
          #retries=3, racer=1
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 3, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 1, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'Processing'})
-         JobState.submitFailure("jobClassID10")
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 3, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 1, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'processing'})
+         JobStateChangeAPI.submitFailure("jobClassID10")
          #retries=4, racer=1
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 4, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 1, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'Processing'})
-         JobState.submit("jobClassID10")
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 4, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 1, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'processing'})
+         JobStateChangeAPI.submit("jobClassID10")
          #retries=4, racer=2
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 4, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 2, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 4, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 2, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'processing'})
 
          # on purpose we introduce an error:
          try:
-             JobState.submit("jobClassID10")
-         except ProdException, ex:
-             print('>>>Test succeeded for exception 1/1 in testH of JobState_t.py\n')
-         JobState.runFailure("jobClassID10","jobInstanceID10.1",
+             JobStateChangeAPI.submit("jobClassID10")
+         except Exception, ex:
+             print('Testing exception 1/1 in testH of JobState_t.py')
+             self.assertEqual(ex[1],'reached maximum number of racers 2 wait until one of the jobs finishes  and try again. ')
+         JobStateChangeAPI.runFailure("jobClassID10","jobInstanceID10.1",
               "some.location10.1","job/Report/Location10.1.xml")
          #retries=5, racer=1
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 5, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 1, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'Processing'})
-         JobState.runFailure("jobClassID10","jobInstanceID10.2",
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 5, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 1, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'processing'})
+         JobStateChangeAPI.runFailure("jobClassID10","jobInstanceID10.2",
               "some.location10.2","job/Report/Location10.2.xml")
          #retries=6, racer=0
-         self.assertEqual(JobState.general("jobClassID10"),{'Retries': 6, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'Processing'})
+         self.assertEqual(JobStateInfoAPI.general("jobClassID10"),{'Retries': 6, 'CacheDirLocation': 'cacheDir/location/10somewhere', 'MaxRacers': 2, 'Racers': 0, 'State': 'inProgress', 'MaxRetries': 8, 'JobType': 'processing'})
 
     def testJ(self):
-        pass
-        #self.assertEqual(JobState.jobSpecTotal(),9)
 
-    def testK(self):
-        jobIDs=[]
-        for i in xrange(0,20):
-            JobState.register("jobClassID_0."+str(i),"Processing",30,1)
-            JobState.register("jobClassID_1."+str(i),"Processing",30,1,"myWorkflowID1")
-            JobState.register("jobClassID_2."+str(i),"Processing",30,1,"myWorkflowID2")
-            JobState.register("jobClassID_3."+str(i),"Processing",30,1,"myWorkflowID3")
-            jobIDs.append("jobClassID_1."+str(i))
-            jobIDs.append("jobClassID_2."+str(i))
-            jobIDs.append("jobClassID_3."+str(i))
-        JobState.setMaxRetries(jobIDs,2)
-        self.assertEqual(JobState.general("jobClassID_1.1")['MaxRetries'],2)
-        JobState.setMaxRetries("jobClassID_1.1",3)
-        self.assertEqual(JobState.general("jobClassID_1.1")['MaxRetries'],3)
-        jobIDs=JobState.retrieveJobIDs("myWorkflowID1")
-        self.assertEqual(len(jobIDs),20)
-        jobIDs=JobState.retrieveJobIDs(["myWorkflowID1","myWorkflowID2","myWorkflowID3"])
-        self.assertEqual(len(jobIDs),60)
-        jobs=JobState.rangeGeneral(0,10)
-        print(str(jobs))
+         self.assertEqual(JobStateInfoAPI.jobSpecTotal(),9)
+         print(str(JobStateInfoAPI.rangeGeneral()))
 
     def runTest(self):
-        # testA-K are also used for the error handler test
         self.testA()
         self.testB()
         self.testC()
@@ -320,9 +297,6 @@ class JobStateUnitTests(unittest.TestCase):
         self.testG()
         self.testH()
         self.testI()
-        self.testJ()
-        self.testK()
-        
             
 if __name__ == '__main__':
     unittest.main()

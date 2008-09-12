@@ -13,7 +13,6 @@ import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
-from ProdAgentCore.PostMortem import runWithPostMortem
 from JobCreator.JobCreatorComponent import JobCreatorComponent
 
 #  //
@@ -21,18 +20,17 @@ from JobCreator.JobCreatorComponent import JobCreatorComponent
 #//
 
 try:
-    
     config = loadProdAgentConfiguration()
-    jobStatesCfg = config.getConfig("JobStates")
     compCfg = config.getConfig("JobCreator")
-    #NOTE: this works only if we assume that there are no
-    #NOTE: duplicate names in the different configurations
-    compCfg.update(jobStatesCfg)
 except StandardError, ex:
     msg = "Error reading configuration:\n"
     msg += str(ex)
     raise RuntimeError, msg
 
+if os.environ.get("PRODAGENT_WORKDIR", None) == None:
+    msg = "ProdAgent environment not initialised properly"
+    msg += "$PRODAGENT_WORKDIR is not set"
+    raise RuntimeError, msg
 
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 
@@ -42,6 +40,4 @@ compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 print "Starting JobCreator Component..."
 createDaemon(compCfg['ComponentDir'])
 component = JobCreatorComponent(**dict(compCfg))
-
-runWithPostMortem(component, compCfg['ComponentDir'])
-
+component.startComponent()

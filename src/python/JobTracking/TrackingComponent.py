@@ -2,167 +2,92 @@
 """
 _TrackingComponent_
 
-Tracking component implemented with a pool of threads for paraller polling
-of job information.
+Skeleton for a standalone server object that implements the ProdAgentClient
+as a daemonised thread, while it polls the BOSSDB to watch for
+jobs that complete.
 
-When a job is completed, this component publish one of two events:
+When a job is completed this component should create one of two events.
 
-JobSuccess - The job completed successfully, the job report is extracted
-job and made available. The location of the job report is the payload
+
+JobSuccess - The job completed successfully, extract the job report for that
+job and make it available, the location of the job report should be the payload
 for the JobSuccess event.
 
-JobFailure - The job failed in someway and is abandoned, debug information
-is retrieved and made available. The location of the error report is the
-payload of the JobFailure event
+JobFailure - The job failed in someway and was abandoned. Retrieve debug
+information and make it available. The location of the error report should
+be the payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.55 2008/07/25 15:47:41 swakef Exp $"
-__version__ = "$Revision: 1.55 $"
-
+import socket
+import time
 import os
-import os.path
 import logging
+from logging.handlers import RotatingFileHandler
 
-# PA configuration
+
 from MessageService.MessageService import MessageService
-import ProdAgentCore.LoggingUtils as LoggingUtils
-from ProdAgentDB.Config import defaultConfig as dbConfig
-from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
+from FwkJobRep.ReportState import checkSuccess
 
-## other dependencies
-from GetOutput.JobOutput import JobOutput
 
-# to be substituted with a BossLite implementation
-from JobTracking.TrackingDB import TrackingDB
-
-# BossLite support
-from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
-
-# Threads pool
-from JobTracking.PoolScheduler import PoolScheduler
-from JobTracking.JobStatus import JobStatus
-from ProdCommon.ThreadTools.WorkQueue import WorkQueue
-
-###############################################################################
-# Class: TrackingComponent                                                    #
-###############################################################################
 
 class TrackingComponent:
     """
     _TrackingComponent_
 
-    Server that periodically polls the BOSSDB to search for completed jobs,
-    generating JobSuccess or JobFailed events.
+    Really rudimentary server that runs a ComponentThread and periodically
+    polls the BOSSDB to search for completed jobs that it hasnt found yet.
 
+    This is a really quick and nasty placeholder for proof of principle/
+    example, and should probably be something much more involved...
+    
     """
-
     def __init__(self, **args):
-
-        # set default values for parameters
+        
         self.args = {}
-        self.args.setdefault("PollInterval", 300)
-        self.args.setdefault("QueryInterval", 3)
-        self.args.setdefault("jobsToPoll", 300)
-        self.args.setdefault("ComponentDir", "/tmp")
-        self.args.setdefault("configDir", None)
-        self.args.setdefault("ProdAgentWorkDir", None)
-        self.args.setdefault("PoolThreadsSize", 5)
-        self.args.setdefault("Logfile", None)
-        self.args.setdefault("verbose", 0)
-        self.args.setdefault("JobCreatorComponentDir", None)
-        self.args.setdefault("dashboardInfo", \
-                             {'use' : 'True', \
-                              'address' : 'cms-jobmon.cern.ch', \
-                              'port' : '8884'})
+        self.args.setdefault("PollInterval", 10 )
+        self.args.setdefault("ComponentDir","/tmp")
+        self.args['Logfile'] = None
+        self.args.setdefault("verbose",0)
         self.args.update(args)
 
-        # set up logging for this component
+        
+
+        
+        os.environ["BOSSDIR"]=self.args["BOSSDIR"]
+        os.environ["BOSSVERSION"]=self.args["BOSSVERSION"]
+        if self.args["BOSSPATH"]!="":
+            try:
+                os.environ["PATH"]+=":"+self.args["BOSSPATH"]
+            except StandardError, ex:
+                os.environ["PATH"]=self.args["BOSSPATH"]
+            
+        #number of iterations after which failed jobs are purged from DB
+        self.failedJobsPublishedTTL = 180
+        #dictionary containing failed jobs: the key is jobid and value is a counter
+        self.failedJobsPublished = {}
+        self.cmsErrorJobs = {}
+        self.directory=self.args["ComponentDir"]
+        self.loadDict(self.failedJobsPublished,"failedJobsPublished")
+        self.loadDict(self.cmsErrorJobs,"cmsErrorJobs")
+        self.verbose=(self.args["verbose"]==1)
+
         if self.args['Logfile'] == None:
-            self.args['Logfile'] = os.path.join(self.args['ComponentDir'], \
+            self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
-        LoggingUtils.installLogHandler(self)
-        logging.getLogger().setLevel(logging.DEBUG)
-
-        logging.info("JobTracking Component Initializing...")
-
-        # compute delay for get output operations
-        delay = int(self.args['PollInterval'])
-        if delay < 1:
-            delay = 1 # a minimum value
-
-        seconds = str(delay % 60)
-        minutes = str((delay / 60) % 60)
-        hours = str(delay / 3600)
-
-        self.pollDelay = hours.zfill(2) + ':' + \
-                         minutes.zfill(2) + ':' + \
-                         seconds.zfill(2)
-
-        # get configuration information
-        if self.args["JobCreatorComponentDir"] is None:
-            self.args["JobCreatorComponentDir"] = self.args["ComponentDir"]
-        self.args["JobCreatorComponentDir"] = \
-                        os.path.expandvars(self.args["JobCreatorComponentDir"])
-
-        # compute delay for get output operations
-        sleepTime = int(self.args['QueryInterval'])
-        if sleepTime < 15:
-            sleepTime = 15 # a minimum value
-
-        # initialize members
-        self.ms = None
-        self.database = dbConfig
-
-        # initialize Session
-        self.bossLiteSession = \
-                             BossLiteAPI('MySQL', self.database, makePool=True)
-        self.sessionPool = self.bossLiteSession.bossLiteDB.getPool()
-
-        # create pool thread
-        params = {}
-        params['delay'] = sleepTime
-        params['jobsToPoll'] = int(self.args['jobsToPoll'])
-        params['sessionPool'] = self.sessionPool
-        JobStatus.setParameters(params)
-        pool = \
-             WorkQueue([JobStatus.doWork] * int(self.args["PoolThreadsSize"]))
-
-        # create pool scheduler
-        params = {}
-        params['delay'] = delay
-        params['jobsToPoll'] = int( self.args['jobsToPoll'] )
-        params['sessionPool'] = self.sessionPool
-        PoolScheduler(pool, params)
-
-        # set parameters for getoutput operations
-        params = {}
-        params['componentDir'] = self.args['ComponentDir']
-        params['sessionPool'] = self.sessionPool
-        JobOutput.setParameters(params)
-
-        # check for dashboard usage
-        self.usingDashboard = self.args['dashboardInfo']
-        logging.debug("DashboardInfo = %s" % str(self.usingDashboard))
-
-        # some initializations
-        self.jobLimit = int(self.args['jobsToPoll'])
-        self.newJobs = []
-        self.failedJobs = []
-        self.finishedJobs = []
-        self.counters = ['pending', 'submitted', 'waiting', 'ready', \
-                         'scheduled', 'running', 'cleared', 'created', 'other']
-
-        # ended/failed attributes
-        self.runningAttrs = { 'processStatus' : 'handled',
-                              'closed' : 'N' }
-        # component running, display info
+            
+        logHandler = RotatingFileHandler(self.args['Logfile'],
+                                         "a", 1000000, 3)
+        logFormatter = logging.Formatter("%(asctime)s:%(message)s")
+        logHandler.setFormatter(logFormatter)
+        logging.getLogger().addHandler(logHandler)
+        logging.getLogger().setLevel(logging.INFO)
         logging.info("JobTracking Component Started...")
-
+        
 
     def __call__(self, event, payload):
         """
-        __operator()__
+        _operator()_
 
         Respond to events to control debug level for this component
 
@@ -173,418 +98,358 @@ class TrackingComponent:
         elif event == "TrackingComponent:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
             return
-        elif event == "TrackingComponent:pollDB":
-            self.checkJobs()
-            return
-
-        # wrong event
-        logging.info("Unexpected event %s(%), ignored" % \
-                     (str(event), str(payload)))
         return
+        
+        
+    def pollBOSSDB(self):
+        """
+        _pollBOSSDB_
+
+        Poll the BOSSDB for completed job ids, making sure that
+        only newly completed jobs are retrieved
+
+        return two lists, one of successful job Ids, one of failed
+        job Ids
+        """
+
+#lists containing jobs in a particular status        
+        success= []
+        failure = []
+        running = []
+        waiting = []
+        pending = []
+        scheduled = []
+        unknown = []
+        aborted = []
+        submitted = []
+        cancelled = []
+        cleared = []
+        checkpointed = []
+
+# query boss Database to get jobs status
+
+        infile,outfile=os.popen4("boss RTupdate -jobid all")
+        infile,outfile=os.popen4("boss q -statusOnly -all")
+        lines=outfile.readlines()
+
+# fill job lists
+        for j in lines:
+            j=j.strip()
+            try:
+                jid=j.split(' ')[0]
+                st=j.split(' ')[1]
+            except StandardError, ex:
+                #               print "splitting error"
+                return ""
+            if st == 'E':
+                try:
+                    self.failedJobsPulished.pop(jid)
+                    self.cmsErrorJobs.pop(jid)
+                except StandardError, ex:
+                    pass
+            elif st == 'OR' or st == 'SD' or st == 'O?':
+                try:
+                    self.failedJobsPulished.pop(jid)                
+                    self.cmsErrorJobs.pop(jid)
+                except StandardError, ex:
+                    pass
+                success.append([jid,st])
+            elif st == 'R' or st == 'SR':
+                try:
+                    self.failedJobsPulished.pop(jid)                
+                    self.cmsErrorJobs.pop(jid)
+                except StandardError, ex:
+                    pass
+                running.append([jid,st])
+            elif st == 'I':
+                try:
+                    self.failedJobsPulished.pop(jid)                
+                    self.cmsErrorJobs.pop(jid)
+                except StandardError, ex:
+                    pass
+                pending.append([jid,st])
+            elif st == 'SW' or st == 'W':
+                try:
+                    self.failedJobsPulished.pop(jid)                
+                    self.cmsErrorJobs.pop(jid)
+                except StandardError, ex:
+                    pass
+                waiting.append([jid,st])
+            elif st == 'SS':
+                try:
+                    self.failedJobsPulished.pop(jid)                
+                    self.cmsErrorJobs.pop(jid)
+                except StandardError, ex:
+                    pass
+                scheduled.append([jid,st])
+            elif st == 'SA' or  st == 'A?':
+                failure.append([jid,st])
+            elif st == 'SK' or st=='K':
+                failure.append([jid,st])
+            elif st == 'SU':
+                try:
+                    self.failedJobsPulished.pop(jid)                
+                    self.cmsErrorJobs.pop(jid)
+                except StandardError, ex:
+                    pass
+                submitted.append([jid,st])
+            elif st == 'SE':
+                try:
+                    self.failedJobsPulished.pop(jid)                
+                    self.cmsErrorJobs.pop(jid)
+                except StandardError, ex:
+                    pass
+                cleared.append([jid,st])
+            elif st == 'SC':
+                try:
+                    self.failedJobsPulished.pop(jid)                
+                    self.cmsErrorJobs.pop(jid)
+                except StandardError, ex:
+                    pass
+                checkpointed.append([jid,st])
+            else:
+                try:
+                    self.failedJobsPulished.pop(jid)                
+                    self.cmsErrorJobs.pop(jid)
+                except StandardError, ex:
+                    pass
+                unknown.append([jid,st])
+       
+
+        return success, failure, running, pending, waiting, scheduled, submitted, cleared, checkpointed, unknown 
 
 
     def checkJobs(self):
         """
-        __checkJobs__
+        _checkJobs_
 
         Poll the DB and call the appropriate handler method for each
         jobId that is returned.
 
         """
+# if BOSS db is empty there is an exception but you just don't have anything to do
+        try:
+            goodJobs, badJobs,rJobs,pJobs,wJobs,sJobs,subJobs,cJobs,chJobs,uJobs = self.pollBOSSDB()
+        except StandardError, ex:
+#            print "pollBossDB Error"
+            return 0
+# here we manage jobs
+        
+        logging.debug("Success Jobs "+  str(len(goodJobs)))
+        
+        for jobId in goodJobs:
+        
+            #if the job is ok for the scheduler retrieve output
 
-        # log the status of the jobs
-        self.getStatistic()
-
-        # get finished and failed jobs and handle them
-        self.handleFinished()
-        self.handleFailed()
-
-        # notify new jobs
-        self.pollNewJobs()
-
-        # generate next polling cycle
-        logging.info("Waiting %s for next get output polling cycle" % \
-                     self.pollDelay)
-        self.ms.publish("TrackingComponent:pollDB", "", self.pollDelay)
-        self.ms.commit()
-
-
-    def getStatistic(self):
-        """
-        __getStatistics__
-
-        Poll the BOSS DB for a summary of the job status
-
-        """
-
-        # summary of the jobs in the DB
-        db = TrackingDB( self.bossLiteSession.bossLiteDB )
-        result = db.getJobsStatistic()
-
-        if result is not None:
-
-            counter = {}
-            for ctr in self.counters:
-                counter[ctr] = 0
-
-            for pair in result :
-                status, count = pair
-                if status == 'E':
-                    continue
-                elif status == 'R' :
-                    counter['running'] = count
-                elif status == 'I':
-                    counter['pending'] = count
-                elif status == 'SW' :
-                    counter['waiting'] = count
-                elif status == 'SR':
-                    counter['ready'] = count
-                elif status == 'SS':
-                    counter['scheduled'] = count
-                elif status == 'SU':
-                    counter['submitted'] = count
-                elif status == 'SE':
-                    counter['cleared'] = count
-                elif status == 'C':
-                    counter['created'] = count
+            infile,outfile=os.popen4("boss getOutput -outdir "+self.directory+ "/BossJob_" + jobId[0] + " -jobid "+jobId[0])
+            outp=outfile.read()
+            if (outp.find("-force")<0 and outp.find("error")< 0):
+                reportfilename="%s/BossJob_%s/FrameworkJobReport.xml" %(self.directory, jobId[0])
+                if os.path.exists(reportfilename):
+                    if checkSuccess(reportfilename):
+                        self.jobSuccess(jobId[0])
+                    else:
+                        try:
+                            self.cmsErrorJobs[jobId[0]]+=0
+                        except StandardError:
+                            self.cmsErrorJobs[jobId[0]]=0
+                            logging.error("%s - %d" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
+                            self.jobFailed(jobId,"file://"+self.directory+"/BossJob_%s/FrameworkJobReport.xml" % jobId[0] )
+                            self.saveDict(self.cmsErrorJobs,"cmsErrorJobs")
+                            
+                            
                 else:
-                    counter['other'] += count
+                    try:
+                        self.cmsErrorJobs[jobId[0]]+=0
+                    except StandardError:
+                        self.cmsErrorJobs[jobId[0]]=0
+                      #  print "JobSuccess but no FrameworkJobReport!\n"
+                    
+                        logging.error("%s - %d" % (jobId.__str__() , self.cmsErrorJobs[jobId[0]]))
+                        self.jobFailed(jobId,"Output retrieved but no FrameworkJobReport!")
+                        self.saveDict(self.cmsErrorJobs,"cmsErrorJobs")
+#after publishing JobSuccess event the job is purged from BOSS db. We can decide to wait some time as for failed jobs.
 
-            # display counters
-            for ctr, value in counter.iteritems():
-                logging.info(ctr + " jobs : " + str(value))
-            logging.info("....................")
+#            infile,outfile=os.popen4("boss p -before "+ time.strftime("%Y-%m-%d",time.localtime(time.time()+87000)) +" -jobid "+jobId[0]+" -noprompt")
 
-            del( result )
+        
 
+        logging.info("failed Jobs "+ str( len(badJobs)))
+             
+        for jobId in badJobs:
+            self.jobFailed(jobId,"Output not retrieved")
+            
+            #if there aren't failed jobs don't print anything
 
-    def pollNewJobs(self):
-        """
-        __pollNewJobs__
-
-        Poll the BOSS DB for new job ids and handle they registration
-
-        """
-
-        # loading attributes
-        runningAttrs = { 'processStatus' : 'not_handled',
-                         'closed' : 'N' }
-        offset = 0
-        loop = True
-
-        while loop :
-
-            logging.debug("Max new jobs to be loaded %s:%s " % \
-                         (str( offset ), str( offset + self.jobLimit) ) )
-
-            # self.newJobs = self.bossLiteSession.loadJobsByRunningAttr(
-            #     { 'processStatus' : 'not_handled' }, \
-            #     limit=self.jobLimit, offset=offset
-            #     )
-
-            self.newJobs = self.bossLiteSession.loadJobsByRunningAttr(
-                runningAttrs=runningAttrs, \
-                limit=self.jobLimit, offset=offset
-                )
-
-            logging.info("new jobs : " + str( len(self.newJobs) ) )
-
-            # exit if no more jobs to query
-            if self.newJobs == [] :
-                loop = False
-                break
-            else :
-                offset += self.jobLimit
-
-            while self.newJobs != [] :
-
-                job = self.newJobs.pop()
-
-                # FIXME: temp hack
-                if job.runningJob['status'] == 'C' or \
-                       job.runningJob['status'] == 'S' :
-                    del( job )
-                    continue
-
-                job.runningJob['processStatus'] = 'handled'
-                self.bossLiteSession.updateDB( job )
-
-                # publish information to dashboard
-                try:
-                    self.dashboardPublish( job )
-                except Exception, msg:
-                    logging.error("Cannot publish to dashboard:%s" % msg)
-
-                del( job )
-
-            del self.newJobs[:]
-
-        del self.newJobs[:]
-
-
-    def handleFailed( self ):
-        """
-        __handleFailed__
-
-        handle failed jobs
-
-        """
-
-        # loading attributes
-        offset = 0
-        loop = True
-
-        while loop :
-
-            logging.debug("Max failed jobs to be loaded %s:%s " % \
-                         (str( offset ), str( offset + self.jobLimit) ) )
-
-            # query failed jobs
-            self.failedJobs = self.bossLiteSession.loadFailed(
-                attributes=self.runningAttrs, \
-                limit=self.jobLimit, offset=offset
-                )
-            logging.info("failed jobs : " + str( len(self.failedJobs) ) )
-
-            # exit if no more jobs to query
-            if self.failedJobs == [] :
-                loop = False
-                break
-            else :
-                offset += self.jobLimit
-
-                # process all jobs
-            while self.failedJobs != [] :
-
-                job = self.failedJobs.pop()
-
-                # publish information to the dashboard
-                try:
-                    self.dashboardPublish(job)
-                except Exception, msg:
-                    logging.error("Cannot publish to dashboard:%s" % msg)
-
-
-                # enqueue the get output operation
-                logging.debug("Enqueing failure handling request for %s" % \
-                              self.fullId(job))
-
-                job.runningJob['processStatus'] = 'failed'
-                self.bossLiteSession.updateDB( job.runningJob )
-                del( job )
-
-            del self.failedJobs[:]
-
-        del self.failedJobs[:]
-
-
-    def handleFinished(self):
-        """
-        __handleFinished__
-
-        handle finished jobs: retrieve output and notify execution
-        failure or success
-
-        """
-
-        # loading attributes
-        offset = 0
-        loop = True
-        from ProdCommon.BossLite.Common.Exceptions import BossLiteError
-        while loop :
-
-            logging.debug("Max finished jobs to be loaded %s:%s " % \
-                         (str( offset ), str( offset + self.jobLimit) ) )
-
-            # query finished jobs
             try:
-                self.finishedJobs = self.bossLiteSession.loadEnded(
-                    attributes=self.runningAttrs, \
-                    limit=self.jobLimit, offset=offset
-                    )
-                logging.info("finished jobs : " + str( len(self.finishedJobs) ) )
-            except BossLiteError, msg:
-                logging.error(msg)
-            # exit if no more jobs to query
-            if self.finishedJobs == [] :
-                loop = False
-                break
-            else :
-                offset += self.jobLimit
+                logging.debug("%s - %d" % (jobId.__str__() , self.failedJobsPublished[jobId[0]]))
+            except StandardError,ex:
+                pass
+            self.saveDict(self.failedJobsPublished,"failedJobsPublished")
+            
+        logging.debug("Running Jobs "+ str( len(rJobs)))
+            
+        for jobId in rJobs:
+            logging.debug(jobId)
+                    
+            
+        logging.debug("Pending Jobs "+ str( len(pJobs)))
+            
+        for jobId in pJobs:
+            logging.debug(jobId)
 
-            # process all jobs
-            # for job in self.finishedJobs:
-            while self.finishedJobs != [] :
+            
+        logging.debug("Waiting Jobs "+str( len(wJobs)))
+        for jobId in wJobs:
+            logging.debug(jobId)
+            
+        logging.debug("Scheduled Jobs "+  str(len(sJobs)))
+        for jobId in sJobs:
+            logging.debug(jobId)
+                
+        logging.debug("Submitted Jobs "+  str(len(subJobs)))
+        for jobId in subJobs:
+            logging.debug(jobId)
 
-                job = self.finishedJobs.pop()
 
-                # publish information to the dashboard
-                try:
-                    self.dashboardPublish(job)
-                except Exception, msg:
-                    logging.error("Cannot publish to dashboard:%s" % msg)
+        logging.debug("Cleared Jobs "+  str(len(cJobs)))
+        for jobId in cJobs:
+            logging.debug(jobId)
 
-                # enqueue the get output operation
-                logging.debug("Enqueing getoutput request for %s" % \
-                              self.fullId(job))
+        logging.debug("Checkpointed Jobs "+ str( len(chJobs)))
+        for jobId in chJobs:
+            logging.debug(jobId)
 
-                JobOutput.requestOutput(job)
-                del( job )
+        logging.debug("Unknown Jobs "+ str(len(uJobs)))
+        for jobId in uJobs:
+            logging.debug(jobId)
+        #a=self.cmsErrorJobs.copy()
+        #for  i in self.cmsErrorJobs.keys():
+            #self.cmsErrorJobs[i]+=1
+            #if self.cmsErrorJobs[i] > self.failedJobsPublishedTTL:
+              #  print "job %s deleted from db"%i
+                #infile,outfile=os.popen4("boss d -jobid %s -noprompt"%i)
+                #del self.cmsErrorJobs[i]
 
-            del self.finishedJobs[:]
+        self.saveDict(self.cmsErrorJobs,"cmsErrorJobs")
 
-        del self.finishedJobs[:]
+        time.sleep(self.args["PollInterval"])
+        return
+    
+     
+        
+    def eventCallback(self, event, handler):
+        """
+        _eventCallback_
 
+        This method is called whenever an event is sent to this component,
+        but since this component publishes events rather than recieves
+        them, there is really nothing to do here.
+        
+        """
+        pass
+    
+    
+    def jobSuccess(self, jobId):
+        """
+        _jobSuccess_
+        
+        Pull the JobReport for the jobId from the DB,
+        present it in some way that the rest
+        of the prodAgent components can find it and transmit the 
+        JobSuccess event to the prodAgent
+        
+        """
+        
+        jobReportLocation = "file://"+self.directory+"/BossJob_%s/FrameworkJobReport.xml" % jobId
+        self.ms.publish("JobSuccess", jobReportLocation)
+        self.ms.commit()
+                                                                                
+        logging.debug("JobSuccess:%s" % jobReportLocation)
+       
+        
+        return
+    
+    def jobFailed(self, jobId, msg):
+        """
+        _jobFailed_
+        
+        Pull the error report for the jobId from the DB, 
+        present it in some way that the rest
+        of the prodAgent components can find it and transmit the 
+        JobFailure event to the prodAgent
+        
+        """
+        
+        #if it's the first time we see this failed job we  publish JobFailed event and add the job in failedJobsPublished dict
+        try:
+            self.failedJobsPublished[jobId[0]] += 0
+        except StandardError:
+            #errReportLocation = "file://"+self.directory+"/BossJob_%s/FrameworkJobReport.xml" % jobId[0] 
+            logging.debug("JobFailed: %s" % msg)
+            self.ms.publish("JobFailed", msg)
+            self.ms.commit()
+                                                                                
+            self.failedJobsPublished[jobId[0]] = 1
+            #print "messaggio pubblicato %s\n"%msg;
+            #Count down for job purge
+           
+        #if self.failedJobsPublished[jobId[0]] > self.failedJobsPublishedTTL:
+            #purge
+#            infile,outfile=os.popen4("boss p -before "+ time.strftime("%Y-%m-%d",time.localtime(time.time()+87000)) +" -jobid "+jobId[0]+" -noprompt")
+         #   infile,outfile=os.popen4("boss d -jobid "+jobId[0]+" -noprompt")
+
+          #  self.failedJobsPublished.pop(jobId[0])
+        return
+    
+    
+    def saveDict(self,d,filename):
+        
+        f=open("%s/%s"%(self.directory,filename),'w')
+        for i in d:
+            t="%s %s\n" % (i,d[i])
+            f.write(t)
+        f.close()
+            
+    def loadDict(self,d,filename):
+        try:
+            f=open("%s/%s"%(self.directory,filename),'r')
+        except StandardError, ex:
+            return
+        lines=f.readlines()
+        for l in lines:
+            k,v=(l.strip()).split(' ')
+            d[k]=int(v)
+        f.close()
+        
+        
+    
+    
 
     def startComponent(self):
         """
-        __startComponent__
+        _startComponent_
 
-        Start up this component,
+        Start up this component, start the ComponentThread and then
+        commence polling the DB
 
         """
-
-        # create message server instances
+       
+        # create message server
         self.ms = MessageService()
-
+                                                                                
         # register
         self.ms.registerAs("TrackingComponent")
-
-        # subscribe to messages
         self.ms.subscribeTo("TrackingComponent:StartDebug")
         self.ms.subscribeTo("TrackingComponent:EndDebug")
-        self.ms.subscribeTo("TrackingComponent:pollDB")
 
-        # generate first polling cycle
-        self.ms.remove("TrackingComponent:pollDB")
-        self.ms.publish("TrackingComponent:pollDB", "")
-        self.ms.commit()
-
-        # wait for messages
+        
         while True:
-
-            # get a message
-            mtype, payload = self.ms.get()
+            type, payload = self.ms.get()
             self.ms.commit()
-            logging.debug("TrackingComponent: %s, %s" % (mtype, payload))
-
-            # process it
-            self.__call__(mtype, payload)
-
-
-    def dashboardPublish(self, job):
-        """
-        __dashboardPublish__
-
-        publishes dashboard info
-        """
-
-        # using Dashboard?
-        if self.usingDashboard['use'] == "False" :
-            return
-
-        # initialize
-        dashboardInfo = DashboardInfo()
-        dashboardInfoFile = None
-
-        # looking for dashboardInfoFile
-        try :
-            dashboardInfoFile = \
-                              os.path.join(job.runningJob['outputDirectory'], \
-                                           "DashboardInfo.xml" )
-        except :
-            pass
-
-        useFile = False
-        # if the dashboardInfoFile is not there, this is a crab job
-        if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
-            task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
-            dashboardInfo.task = task['name'][: task['name'].rfind('_')]
-            dashboardInfo.job = str(job['jobId']) + '_' + \
-                                job.runningJob['schedulerId']
-            dashboardInfo['JSTool'] = 'crab'
-            dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
-            dashboardInfo['User'] = task['name'].split('_')[0]
-            dashboardInfo['TaskType'] =  'analysis'
-            dashboardInfo.addDestination(self.usingDashboard['address'],
-                                         self.usingDashboard['port'])
-
-        # otherwise, ProdAgent job: everything is stored in the file
-        else:
-            useFile = True
-            try:
-                # it exists, get dashboard information
-                dashboardInfo.read(dashboardInfoFile)
-
-            except Exception, msg:
-                # it does not work, abandon
-                logging.error("Reading dashboardInfoFile " + \
-                              dashboardInfoFile + " failed (jobId=" \
-                              + str(job['jobId']) + ")\n" + str(msg))
-                return
-            if not dashboardInfo.destinations.has_key('cms-pamon.cern.ch'):
-                dashboardInfo.addDestination('cms-pamon.cern.ch', '8884')
-
-        # write dashboard information
-        dashboardInfo['GridJobID'] = job.runningJob['schedulerId']
-
-        try :
-            dashboardInfo['StatusEnterTime'] = \
-                                             str(job.runningJob['lbTimestamp'])
-        except Exception:
-            pass
-
-        try :
-            dashboardInfo['StatusValue'] = job.runningJob['statusScheduler']
-        except KeyError:
-            pass
-
-        try :
-            dashboardInfo['StatusValueReason'] = job.runningJob['statusReason']
-        except KeyError:
-            pass
-
-        try :
-            dashboardInfo['StatusDestination'] = job.runningJob['destination']
-        except KeyError:
-            pass
-
-        try :
-            dashboardInfo['RBname'] = job.runningJob['service']
-        except KeyError:
-            pass
-
-        # publish it
-        try:
-            # logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
-            dashboardInfo.publish(1)
-            logging.info("dashboard info sent for job %s" % self.fullId(job) )
-
-        # error, cannot publish it
-        except Exception, msg:
-            logging.error("Cannot publish dashboard information: " + \
-                          dashboardInfo.__str__() + "\n" + str(msg))
-
-        ### # create/update info file
-        if useFile:
-            logging.info("Creating dashboardInfoFile " + dashboardInfoFile )
-            dashboardInfo.write( dashboardInfoFile )
-
-        return
-
-
-    def fullId( self, job ):
-        """
-        __fullId__
-
-        compose job primary keys in a string
-        """
-
-        return str( job['taskId'] ) + '.' \
-               + str( job['jobId'] ) + '.' \
-               + str( job['submissionNumber'] )
-
-
-
-
-
+            logging.debug("TrackingComponent: %s, %s" % (type, payload))
+            self.__call__(type, payload)
+            self.checkJobs()
+            
+    
+        

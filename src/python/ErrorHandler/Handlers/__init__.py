@@ -1,9 +1,9 @@
-#!/usr/bin/env python
+#!/user/bin/env python
 
 """
 This module contains the various handlers that can be called when receiving an
 error event. The some handlers are composite, in that events might first go 
-through one handler and then through another.
+through one hander and then through another.
 
 Error handling propagation hierarchy (this not inheritance!!)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from ProdAgentCore.ProdAgentException import ProdAgentException
-class RetryException(ProdAgentException):
-   pass
+class RetryException(Exception):
 
+   def __init__(self,errorStr,errorMsg):
+       self.args=(errorStr,errorMsg)
 

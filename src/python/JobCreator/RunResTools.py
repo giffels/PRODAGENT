@@ -12,10 +12,7 @@ from RunRes.RunResComponent import RunResComponent
 from IMProv.IMProvNode import IMProvNode
 from IMProv.IMProvDoc import IMProvDoc
 
-from ProdCommon.MCPayloads.DatasetTools import getOutputDatasetDetails
-from ProdCommon.MCPayloads.DatasetTools import getOutputDatasets
-from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
-from ProdCommon.MCPayloads.MergeTools import getSizeBasedMergeDatasetsFromNode
+from MCPayloads.DatasetTools import getOutputDatasetDetails
 
 
 def unquote(strg):
@@ -52,19 +49,15 @@ class InstallRunResComponent:
         objName = taskObject['Name']
         workflow = taskObject['RequestName']
         jobspec = taskObject['JobName']
-        jobtype = taskObject['JobType']
-        
 
         newComponent.addPath(objName)
         newComponent.addData("/%s/WorkflowSpecID" % objName, workflow)
         newComponent.addData("/%s/JobSpecID" % objName, jobspec)
-        newComponent.addData("/%s/JobType" % objName, jobtype)
         newComponent.addPath("/%s/Type" % objName)
         newComponent.addPath("/%s/Configuration" % objName)
         newComponent.addPath("/%s/Application" % objName)
         newComponent.addPath("/%s/Input" % objName)
         newComponent.addPath("/%s/Output" % objName)
-        newComponent.addPath("/%s/SizeBasedMerge" % objName)
 
 
         taskObject['RunResDB'] = newComponent
@@ -82,21 +75,6 @@ class CMSSWRunResDB:
     This makes it easy to find output, catalogs, job reports etc at runtime.
 
     """
-    def __init__(self, **compArgs):
-        self.args = compArgs
-        self.mergeThresh = self.args.get("MinMergeFileSize", 2000000000)
-        self.doSizeMerge = self.args.get("SizeBasedMerge", False)
-        self.dropNonLFNInputs = self.args.get("DropNonLFNInputs", False)
-        if str(self.doSizeMerge).lower() == "true":
-            self.doSizeMerge = True
-        else:
-            self.doSizeMerge = False
-        if str(self.dropNonLFNInputs).lower() in ("true", "yes"):
-            self.dropNonLFNInputs = True
-        else:
-            self.dropNonLFNInputs = False
-        
-    
     def __call__(self, taskObject):
         """
         _operator()_
@@ -116,7 +94,7 @@ class CMSSWRunResDB:
         runresComp.addData("/%s/Application/Executable" % objName, 
                            taskObject['CMSExecutable'])
         runresComp.addData("/%s/Configuration/CfgFile" % objName,
-                           "PSet.py")
+                           "PSet.cfg")
         runresComp.addData("/%s/Configuration/PyCfgFile" % objName,
                            "PSet.py")
 
@@ -125,71 +103,43 @@ class CMSSWRunResDB:
                                         taskObject['RuntimeDirectory'],
                                         "FrameworkJobReport.xml"))
 
-        if taskObject['JobType'] == "Processing":
-            runresComp.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
-                               self.doSizeMerge)
-            runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
-                               self.mergeThresh)
-            
-            # dropping non-LFN inputs only applies to processing
-            runresComp.addData("/%s/DropNonLFNInputs" % objName,
-                                                        self.dropNonLFNInputs)
         #  //
         # // Datasets
         #//
-        payloadNode = taskObject.get("JobSpecNode", None)
-        if payloadNode == None:
-            payloadNode = taskObject["PayloadNode"]
-
         runresComp.addPath("/%s/Output/Datasets" % objName)
-##        datasets = getOutputDatasetDetails(payloadNode)
-##        datasets.extend(getSizeBasedMergeDatasetsFromNode(payloadNode))
-##        for dataset in datasets:
-##            if dataset['DataTier'] == "":
-##                continue
-##            dsPath = "/%s/Output/Datasets%s" % (
-##                objName, dataset.name())
-##            runresComp.addPath(dsPath)
-##            for key, val in dataset.items():
-##                runresComp.addData("/%s/%s" % (dsPath, key), unquote(str(val)))
-##        #  //
-##        # // Output Catalogs
-##        #//
-##        runresComp.addPath("/%s/Output/Catalogs" % objName)
-##        cfgInt = payloadNode.cfgInterface
-##        for modName, item in cfgInt.outputModules.items():
-##            if item.get('catalog', None) == None:
-##                continue
-##            catalog = unquote(item['catalog'])
-##            catPath = "/%s/Output/Catalogs/%s" % (objName, modName)
-##            runresComp.addData(
-##                catPath,
-##                os.path.join("$PRODAGENT_JOB_DIR",
-##                             taskObject['RuntimeDirectory'],
-##                             catalog)
-##                )
+        datasets = getOutputDatasetDetails(taskObject['JobSpecNode'])
+        for dataset in datasets:
+            dsPath = "/%s/Output/Datasets/%s" % (
+                objName, dataset['OutputModuleName'])
+            runresComp.addPath(dsPath)
+            for key, val in dataset.items():
+                runresComp.addData("/%s/%s" % (dsPath, key), unquote(str(val)))
+        #  //
+        # // Output Catalogs
+        #//
+        runresComp.addPath("/%s/Output/Catalogs" % objName)
+        cfgInt = taskObject['JobSpecNode'].cfgInterface
+        for modName, item in cfgInt.outputModules.items():
+            if item.catalog() == None:
+                continue
+            catalog = unquote(item.catalog())
+            catPath = "/%s/Output/Catalogs/%s" % (objName, modName)
+            runresComp.addData(
+                catPath,
+                os.path.join("$PRODAGENT_JOB_DIR",
+                             taskObject['RuntimeDirectory'],
+                             catalog)
+                )
             
         #  //
         # // Number of Events from Source
         #//
-        cfgInt = payloadNode.cfgInterface
-        inpSrc = cfgInt.sourceParams
-        runresComp.addData("/%s/Input/SourceType" % objName, cfgInt.sourceType)
+        cfgInt = taskObject['JobSpecNode'].cfgInterface
+        inpSrc = cfgInt.inputSource 
+        runresComp.addData("/%s/Input/MaxEvents" % objName, inpSrc.maxevents())
+        runresComp.addData("/%s/Input/FirstRun" % objName, inpSrc.firstRun())
+        runresComp.addData("/%s/Input/SourceType" % objName, inpSrc.sourceType)
         
-        runresComp.addData("/%s/Input/MaxEvents" % objName,
-                           cfgInt.maxEvents['input'])
-        if inpSrc.has_key('firstRun'):
-            runresComp.addData("/%s/Input/FirstRun" % objName,
-                               inpSrc['firstRun'])
-        runresComp.addPath("/%s/Input/InputFiles" % objName)
-        #  //
-        # // List of input files
-        #//
-        inpFileList = cfgInt.inputFiles
-
-        for inpFile in inpFileList:
-            runresComp.addData("/%s/Input/InputFiles/InputFile" % objName,
-                               inpFile.replace("\'", ""))
         return
 
 class InsertDirInRunRes:
@@ -217,91 +167,6 @@ class InsertDirInRunRes:
                 )
         return
     
-class BulkCMSSWRunResDB:
-    """
-    _CMSSWRunResDB_
-
-    Insert information about a CMSSW Type JobSpecNode into its TaskObjects
-    RunResComponent instance.
-
-    This makes it easy to find output, catalogs, job reports etc at runtime.
-
-    """
-    def __init__(self, **compArgs):
-        self.args = compArgs
-        self.mergeThresh = self.args.get("MinMergeFileSize", 2000000000)
-        self.doSizeMerge = self.args.get("SizeBasedMerge", False)
-        self.dropNonLFNInputs = self.args.get("DropNonLFNInputs", False)
-        if str(self.doSizeMerge).lower() == "true":
-            self.doSizeMerge = True
-        else:
-            self.doSizeMerge = False
-        if str(self.dropNonLFNInputs).lower() in ("true", "yes"):
-            self.dropNonLFNInputs = True
-        else:
-            self.dropNonLFNInputs = False
-            
-    def __call__(self, taskObject):
-        """
-        _operator()_
-
-        Define operation on a CMSSW type TaskObject
-
-        """
-        toType = taskObject.get("Type", None)
-        if toType != "CMSSW":
-            return
-        runresComp = taskObject['RunResDB']
-        objName = taskObject['Name']
-
-        #  // 
-        # // Application Data
-        #// 
-        runresComp.addData("/%s/Application/Executable" % objName, 
-                           taskObject['CMSExecutable'])
-        runresComp.addData("/%s/Configuration/CfgFile" % objName,
-                           "PSet.py")
-        runresComp.addData("/%s/Configuration/PyCfgFile" % objName,
-                           "PSet.py")
-
-        runresComp.addData("/%s/Output/FrameworkJobReport" % objName,
-                           os.path.join("$PRODAGENT_JOB_DIR",
-                                        taskObject['RuntimeDirectory'],
-                                        "FrameworkJobReport.xml"))
-
-        if taskObject['JobType'] == "Processing":
-            runresComp.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
-                               self.doSizeMerge)
-            runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
-                               self.mergeThresh)
-            
-            # dropping non-LFN inputs only applies to processing
-            runresComp.addData("/%s/DropNonLFNInputs" % objName,
-                                                        self.dropNonLFNInputs)
-        #  //
-        # // Datasets
-        #//
-        payloadNode = taskObject["PayloadNode"]
-            
-        runresComp.addPath("/%s/Output/Datasets" % objName)
-##        datasets = getOutputDatasets(payloadNode)
-
-##        datasets.extend(getSizeBasedMergeDatasetsFromNode(payloadNode))
-##        for dataset in datasets:
-##            if dataset['DataTier'] == "":
-##                continue
-##            dsPath = "/%s/Output/Datasets%s" % (
-##                objName, dataset.name())
-##            runresComp.addPath(dsPath)
-##            for key, val in dataset.items():
-##                runresComp.addData("/%s/%s" % (dsPath, key), unquote(str(val)))
-        #  //
-        # // Output Catalogs
-        #//
-        runresComp.addPath("/%s/Output/Catalogs" % objName)
-        
-        
-        return
             
         
 class AccumulateRunResDB:

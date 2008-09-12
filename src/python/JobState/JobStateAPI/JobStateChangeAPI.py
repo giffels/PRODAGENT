@@ -11,7 +11,7 @@ from JobState.Database.Api.RetryException import RetryException
 # the methods.
 
 
-def register(jobSpecId, jobType, maxRetries, maxRacers,workflowID=' '):
+def register(jobSpecId, jobType, maxRetries, maxRacers):
        """
        _register_
 
@@ -32,13 +32,12 @@ def register(jobSpecId, jobType, maxRetries, maxRacers,workflowID=' '):
        us the result (remaining jobs would be aborted). Setting the 
        maximum number of racers to 1 means effictively turning this
        feature off.
-       -workflowID the id of the associated workflow
 
        output: nothing, or an exception
        """
 
        JobStateChangeAPIMySQL.register(jobSpecId, jobType, maxRetries, \
-                                       maxRacers,workflowID)
+                                       maxRacers)
 
 def create(jobSpecId,cacheDir):
        """
@@ -226,33 +225,4 @@ def setRacer(jobSpecId, maxRacers):
       effictively turning this feature off.
       """
       JobStateChangeAPIMySQL.setRacer(jobSpecId, maxRacers)
-
-def purgeStates():
-      """
-      _purgeStates_
- 
-      purges all state information (including trigger information) 
-
-      """
-      JobStateChangeAPIMySQL.purgeStates()
-
-def setMaxRetries(jobSpecIds=[],maxRetries=1):
-      """
-      _setMaxRetries_
-
-      Sets the number of max retries.
-
-      """
-      if maxRetries<1:
-         raise Exception("MaxRetries value should be larger than 0") 
-      JobStateChangeAPIMySQL.setMaxRetries(jobSpecIds,maxRetries)
-
-def doNotAllowMoreSubmissions(jobSpecIds=[]):
-      """
-      _doNotAllowRetries_
-
-      Sets racers to maxRacers + 1 and retries to maxRetries+1
-
-      """
-      JobStateChangeAPIMySQL.doNotAllowMoreSubmissions(jobSpecIds)
 

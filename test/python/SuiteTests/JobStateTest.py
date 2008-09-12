@@ -4,9 +4,8 @@ A test suite that runs a number of tests that depend
 on eachother.
 
 """
-import time
-import unittest
 
+import unittest
 
 from Test import preTests
 from Test import postTests
@@ -23,3 +22,4 @@ testSuite.addTest(JobStateUnitTests2())
 testResult= unittest.TestResult()
 testResult=testSuite.run(testResult)
 postTests(testResult)
+

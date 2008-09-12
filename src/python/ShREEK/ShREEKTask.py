@@ -9,7 +9,7 @@ Can be serialised as XML.
 
 """
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: ShREEKTask.py,v 1.1 2006/04/10 17:38:42 evansde Exp $"
+__revision__ = "$Id: ShREEKTask.py,v 1.1 2005/12/30 18:54:25 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 from IMProv.IMProvNode import IMProvNode
@@ -75,13 +75,7 @@ class ShREEKTask:
     def executable(self):
         """return executable script"""
         return self.attrs['Executable']
-
-    def active(self):
-        """return True if this task is active, False if not"""
-        active = self.attrs["Active"]
-        if str(active).lower() == "false":
-            return False
-        return True
+    
 
     def addChild(self, childTask):
         """

@@ -30,8 +30,8 @@ intParamValue = int( componentSettings["SomeInteger"] )
 
 
 """
-__revision__ = "$Id: Configuration.py,v 1.10 2007/03/07 19:57:03 afanfani Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: Configuration.py,v 1.3 2006/04/13 14:35:09 evansde Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -69,24 +69,6 @@ def loadProdAgentConfiguration():
     config.loadFromFile(envVar)
     return config
 
-
-def prodAgentName():
-    """
-    _prodAgentName_
-
-    Return the Name of this PA instance
-
-    """
-    try:
-        prodAgentConfig = loadProdAgentConfiguration()
-        prodAgentName = prodAgentConfig['ProdAgent']['ProdAgentName']
-    except StandardError:
-        prodAgentName = "ProdAgent" 
-        
-    hostname = socket.gethostname()
-    if hostname not in prodAgentName:
-        prodAgentName = "%s@%s" % (prodAgentName, socket.gethostname())
-    return prodAgentName
     
 
 class ProdAgentConfiguration(dict):
@@ -118,12 +100,9 @@ class ProdAgentConfiguration(dict):
         #//
         self.setdefault("ProdAgent", ConfigBlock("ProdAgent"))
         self.setdefault("ProdAgentDB", ConfigBlock("ProdAgentDB"))
-        self.setdefault("BOSS", ConfigBlock("BOSS"))
         self.setdefault("JobStates", ConfigBlock("JobStates"))
         self.setdefault("MessageService", ConfigBlock("MessageService"))
         self.setdefault("LocalDBS", ConfigBlock("LocalDBS"))
-        self.setdefault("GlobalDBSDLS", ConfigBlock("GlobalDBSDLS"))
-        self.setdefault("PhEDExConfig", ConfigBlock("PhEDExConfig"))
         
     def save(self):
         """

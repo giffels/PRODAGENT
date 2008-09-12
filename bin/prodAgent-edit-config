@@ -83,12 +83,6 @@ if parameter == None:
     usage()
     sys.exit(1)
 
-if parameter == "ComponentDir":
-    print "Error: ComponentDir is generated automatically and should not be"
-    print "set by prodAgent-edit-config"
-    sys.exit(1)
-    
-
 if value == None:
     print "Error: --value not provided"
     usage()
@@ -108,33 +102,6 @@ if not cfgBlock.has_key(parameter):
     sys.exit(1)
 
 cfgBlock[parameter] = value
-
-def generateCompDirs():
-    """
-    _generateCompDirs_
-
-    Regenerate all the settings for ComponentDir
-
-    """
-    prodAgentBlock = config.getConfig("ProdAgent")
-    prodAgentWork = prodAgentBlock['ProdAgentWorkDir']
-    for comp in config.components:
-        compBlock = config.getConfig(comp)
-        compBlock['ComponentDir'] = os.path.join(prodAgentWork, comp)
-    # NOTE: changes so boss settings are updated.
-    # NOTE: needs to be done better (how, without making BOSS a component?).
-    compBlock = config.getConfig("BOSS")
-    compBlock['tmpDir'] = os.path.join(prodAgentWork, "BOSS/tmp")
-    compBlock['configDir'] = os.path.join(prodAgentWork, "BOSS/config")
-    
-    return
-
-#  //
-# // If the parameter being set is ProdAgent.ProdAgentWorkDir, propagate
-#//  that change to all ComponentDir settings
-if (component == "ProdAgent") and (parameter == "ProdAgentWorkDir"):
-    generateCompDirs()
-
 
 config.saveToFile(configFile)
 

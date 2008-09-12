@@ -10,14 +10,11 @@ of the configuration file being created
 """
 
 import os
-import socket
 import sys
 import getopt
-import time
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 
-_Timestamp = time.strftime("%d-%M-%Y")
 
 def usage():
     """print usage info"""
@@ -60,11 +57,12 @@ if configFile == None:
         print "Or via --config option"
         sys.exit(1)
 
-homeDir=os.environ.get("PRODAGENT_ROOT")
+homeDir=os.environ.get("PRODAGENT_HOME")
 if  homeDir == None:
-    print "PRODAGENT_ROOT variable not found:"
-    print "Must be provided either via $PRODAGENT_ROOT env var"
+    print "PRODAGENT_HOME variable not found:"
+    print "Must be provided either via $PRODAGENT_HOME env var"
     sys.exit(1)
+
 
 
 coreFields = {
@@ -72,16 +70,10 @@ coreFields = {
     # // Core pieces: ProdAgent, ProdAgentDB, MessageService, JobStates
     #//               Local scope DBS
     "ProdAgent": {
-    "ProdAgentWorkDir": os.getcwd(),
-    "ProdAgentName" : "ProdAgent@%s" % socket.gethostname(),
-    "ProdAgentCert" : "/home/fvlingen/.globus/client.pem",
-    "ProdAgentKey"  : "/home/fvlingen/.globus/clientkey.pem",
-    "ProdAgentRunOffset": '10',
+    "ProdAgentDir": os.getcwd(),
     },
-        
-
+    
     "ProdAgentDB": {
-    'dbType' : 'mysql',
     'dbName':'ProdAgentDB',
     'host':'localhost',
     'user':'ProdAgentUser',
@@ -89,13 +81,10 @@ coreFields = {
     'socketFileLocation':'/var/lib/mysql/mysql.sock',
     'portNr':'',
     'refreshPeriod' : 4*3600 ,
+    'checkConnectionPeriod' : 3*60,
     'maxConnectionAttempts' : 5,
     'dbWaitingTime' : 10 ,
-    'schemaLocation': "$PRODAGENT_ROOT/share/ProdAgentDB.sql"
-    },
-
-    "BOSS": {
-    'BossLiteschemaLocation': "$PRODCOMMON_ROOT/share/setupDatabase.sql"
+    'schemaLocation': "$PRODAGENT_HOME/src/sql/ProdAgentDB/ProdAgentDB.sql"
     },
     
     "MessageService" : {
@@ -103,23 +92,12 @@ coreFields = {
     },
 
     "JobStates" : {
-    "maxRetries":10,
-    "mergeMaxRetries":10
+    # no parameters yet
     },
 
     'LocalDBS' :{
-    "DBSURL": "None",
-    "ReadDBSURL": "None",
-    },
-
-    "GlobalDBSDLS" : {
-    "DBSURL": "https://cmsdbsprod.cern.ch:8443/cms_dbs_prod_global_writer/servlet/DBSServlet",
-    "ReadDBSURL": "http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet", 
-    },
-
-    "PhEDExConfig" : {
-    "PhEDExDropBox" : None,
-    "DBPARAM" : None,
+    "DBSAddress": None,
+    "DBSType" : "CGI",
     },
     
     }# end core Fields
@@ -127,191 +105,55 @@ coreFields = {
 
 componentFields = {
 
-    "JobCreator" : {
-    "ComponentDir" : None,
-    "CreatorName" : "testCreator",
-    "GeneratorName" : "Default",
-    "CreatorPluginConfig": os.path.join(os.path.dirname(configFile), "CreatorPluginConfig.xml"),
-    "RssFeed": "no",
+    "RequestInjector" : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/RequestInjector",
+    },
 
+    "JobCreator" : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/JobCreator",
+    "CreatorName" : "testCreator",
     },
     "JobSubmitter" : {
-    "ComponentDir" : None,
+    "ComponentDir" : "$PRODAGENT_WORKDIR/JobSubmitter",
     "SubmitterName" : "noSubmit",
-    "SubmitterPluginConfig" : os.path.join(os.path.dirname(configFile),"SubmitterPluginConfig.xml"),
-    "RssFeed": "no",
     },
-
-    "CleanUpScheduler" : {
-    "ComponentDir" : None,
-    "QueueJobMode" : "True",
-    "PollActive"   : "True",
-    "LFNLimit"     : "10",
-    "CleanUpInterval" : "3600"
-    },
-
 
     "DBSInterface" : {
-    "ComponentDir" : None,
+    "ComponentDir" : "$PRODAGENT_WORKDIR/DBSInterface",
     # Local DBS settings come from LocalDBS core block 
-    "CloseBlockSize" : None,
-    "CloseBlockFiles": 100,
-    "skipPhEDExInjection" : "True",
-    "skipGlobalMigration" : "False",
-    "DropBranches"        : "True",
-    "RssFeed": "no",
     },
 
-  
+    "DLSInterface" : {
+    "ComponentDir" : "$PRODAGENT_WORKDIR/DLSInterface",
+    "DLSAddress" : None,
+    "DLSType" : None,
+    },
 
     "JobTracking" : {
-    "ComponentDir" : None,
-    "PollInterval" : 300,
-    "QueryInterval" : 3,
-    "jobsToPoll" : 300,
-    "PoolThreadsSize" : 5,
-    "RssFeed": "no",
+    "ComponentDir" : "$PRODAGENT_WORKDIR/JobTracking",
+    "BOSSDIR" : None,
+    "BOSSPATH" : None,
+    "BOSSVERSION" : None,
+    "PollInterval" : 10,
     },
 
     'MergeSensor' : {
-    "ComponentDir" : None,
-    "StartMode" : "warm",
-    "PollInterval" : 60,
-    "MaxMergeFileSize" : 2000000000,
-    "MinMergeFileSize" : 1500000000,
-    "MergeSiteWhitelist" : None,
-    "MergeSiteBlacklist" : None,
-    "FastMerge" : "no",
-    "CleanUp" : "no",
-    "MaxInputAccessFailures" : 1,
-    "QueueJobMode": "True",
-    "MergePolicy": "SizePolicy",
-    "RssFeed": "no",
+    "ComponentDir" : "$PRODAGENT_WORKDIR/MergeSensor",
+    "PollInterval": 30,
     # Local DBS settings come from LocalDBS core block 
     },
 
-    'MergeAccountant' : {
-    "ComponentDir" : None,
-    "Enabled" : "yes",
-    "RssFeed": "no",
-    },
-
     'ErrorHandler' : {
-    "ComponentDir" : None,
-    "MaxCacheDirSizeMB" : 80,
-    "DelayFactor" : 100,
-    "ReportAction" : "noMove",
-    "RssFeed": "no",
-    "QueueFailures": False,
+    "ComponentDir" : "$PRODAGENT_WORKDIR/ErrorHandler",
+    'jobReportLocation' : "$PRODAGENT_WORKDIR/ErrorHandler/JobReports",
+    
     },
-
-    'JobCleanup'   : {
-    "ComponentDir" : None,
-    "FailureArchive":None,
-    "SuccessArchive":None,
-    "RssFeed": "no",
-    },
-
     'AdminControl' : {
-    "ComponentDir" : None,
+    "ComponentDir" : "$PRODAGENT_WORKDIR/AdminControl",
     "AdminControlHost" : "127.0.0.1",
     "AdminControlPort" : 8081,
-    "RssFeed": "no",
-    },
-
-
-    "ProdMgrInterface" : {
-    "ComponentDir" : None,
-    "JobSpecDir" : '/tmp',
-    "WorkflowSpecDir" : '/tmp',
-    "JobSize" : '10',
-    "JobCutSize" : '500',
-    "JobInjection" : 'buffer',
-    "ParallelRequests" : "1",
-    "ProdMgrs":'https://lxgate42.cern.ch:8443/clarens/',
-    "QueueLow" : "100",
-    "QueueHigh" : "1000",
-    "RetrievalInterval":"01:00:00",
-    "QueueInterval":"00:01:00",
-    "AllocationSize" : "10",
-    "AgentTag":"please insert a proper value",
-    "Locations":"please insert a proper value",
-    "ProdMgrFeedback":"direct",
-    "RssFeed": "no",
-    },
-
-    "JobQueue" : {
-    "ComponentDir" : None,
-    "BulkMode": "False",
-    "VerifySites": "False",
-    },
-                                                                                
-    "RssFeeder" : {
-    "ComponentDir" : None,
-    "ItemListLength" : 100,
-    "Port" : 8100,
     },
     
-    "ProdMon" : {
-    "ComponentDir" : None,
-    "RssFeed" : "no",
-    "Team" : "Unknown",
-    "exportMaxBatchSize" : "500",
-    "exportInterval" : "00:05:00",
-    "exportEnabled" : "False",
-    "DashboardURL" : "http://lxarda16.cern.ch/dashboard/request.py/getPAinfo",
-    "expireEnabled" : False,
-    "expireInterval" : "96:00:00",
-    "expireUnexported" : False,
-    },
-
-    "JobKiller" : {
-    "ComponentDir" : None,
-    "KillerName" : None,
-    "RssFeed" : "no",
-    },
-
-	"ResourceMonitor" : {
-	"ComponentDir" : None,
-	"MonitorPluginConfig" : os.path.join(os.path.dirname(configFile),"MonitorPluginConfig.xml"),
-	"MonitorName" : None,
-	"PollInterval" : "01:00:00",
-	},
-
-    "GetOutput" : {
-    "ComponentDir" : None,
-    "PollInterval" : 300,
-    "GetOutputPoolThreadsSize" : 5,
-    "OutputLocation" : "local",
-    'maxGetOutputAttempts' : 3,
-    "RssFeed" : "no",
-    },
-
-	"JobEmulator" : {
-	"ComponentDir" : None,
-	"JobAllocationPlugin" : "LoadBalanceAllocationPlugin",
-	"JobCompletionPlugin" : "RandomCompletionPlugin",
-	"JobReportPlugin" : "EmulatorReportPlugin",
-	"avgCompletionTime" : "01:00:00",
-	"avgCompletionPercentage" : "0.90",
-	"avgEventProcessingRate" : "0.95",
-	},
-	
-	"LogCollector" : {
-	"ComponentDir" : None,
-	"Enabled" : False,
-	"QueueJobMode" : False,
-	"pollInterval" : "96:00:00",
-	"logLifetime" : "24:00:00",
-	"maxErrors" : 3,
-	"maxLogs" : 200,
-	},
-	
-	"WorkflowInjector" : {
-	  "ComponentDir" : None,
-	  "Plugin" : "RequestFeeder"
-	  },
-	
     }# end componentFields
 
 #  //
@@ -324,156 +166,8 @@ comments = {
     "ProdAgentDB" : \
 """
 You should only supply either the portNr OR socketFileLocation
-If you use ports put either leave the value parameter in 
-'prodAgent-edit-config' of socketFileLocation empty, or if
-you directly edit the xml config file, use a double double quote in the value attribute
-of the socketFileLocation parameter.
+""",
 
-If the mysqldb is not on the same machine, make sure the 
-permissions are set correctly (
-grant all privileges on *.* to 'root'@'machine.domain' identified by 
-'pass' with grant option;
-flush privileges;
-show grants for 'root'@'machine.domain';
-
-Beware usernames in mysql can be too long.
-""",
-   "JobSubmitter" : \
-"""
-SubmitterName values you can use: condorg, condor, lcg, lsf, lxb1125, and noSubmit
-""",
-   "CleanUpScheduler" : \
-"""
-Configuration for cleanupscheduler component to initiate cleanup jobs
--PollActive : If True then this component will be enabled otherwise it won't initiate any cleanup job
--QueueJobMode :  If True then cleanup jobs will run through JobQueue component
--cleanUpInterval : Number of seconds after which cleanup cycle be recalled
--LFNLimit : Number of max lfn's in one cleanup jobspec      
-
-""",      
-
-   "ErrorHandler" : \
-"""
--MaxCacheDirSizeMB : The maximum size a cache dir can have 
-before it is pruned, to prevent taking up to much space.
-If it reaches this size the next submision/run failure will
--trigger an intermediate cleanup event.
--DelayFactor: A factor (in seconds) multiplied with the number of failure
-of the job that is used to submit new submission events with a delay.
--ReportAction: When a framework report comes in the error handler can decide
-to ignore it (noMove), or to move it (move). Default is set to "noMove".
-Caution! when setting it to: "move". Multiple components might read the 
-FrameworkJobReport.xml. This action is not yet secured using the trigger
-synchronization.
-""",
-  "JobStates"      : \
-"""
-maxRetries: The maximum number of retries for a certain job(spec). If there
-is a failure in creation,submission,running,etc.. a failure event will be triggered
-and the job will restart (retry). Once the maximum is reached a general job failure
-will be triggered. NOTE: this number needs to be bigger than 0 (1 and up). 
-mergeMaxRetries: The maximum number of retries for a certain merge job(spec). If there
-is a failure in creation,submission,running,etc.. a failure event will be triggered
-and the job will restart (retry). Once the maximum is reached a general job failure
-will be triggered. NOTE: this number needs to be bigger than 0 (1 and up). 
-""" ,
-  "JobCleanup"     :\
-"""
-FailureArchive : If jobs fail to many times you want to tar the job cache and move it
-to another location (dir) for post mortem inspection and to minimize the risk of the 
-job cache directory growing to large (to many files) and slowing down production.
-SuccessArchive : After a job successfully finishes remainders of its log files
-are tarred and moved to an archive for possible post mortem analysis.
-"""  ,
-  "ProdMgrInterface":\
-"""
--JobSpecDir: The location to which the job specs will be downloaded created
-at the prodmgr.
--(deprecated!) JobSize: size (in events). ProdAgent retrieves jobspecs from the prodmgr 
-associated to an allocation. If the JobSize is set the jobspecs associated
-to an allocation will have this number of events (or less if there are not
-enough events in the allocation. If the parameter is set to -1 it will use the 
-size of the allocation the job is associated to.
--JobCutSize: size (in events) the job associated to an allocation, retrieved
- from the prodmgr will be cut to. E.g.: If JobCutSize=12, and the jobspec
-retrieved from the prodmgr associated to an allocation is 100, this will result
-in 9 jobs. 8 with 12 events and one with 4 events.
--ProdMgrs: The prodmgrs this prodagent will receive requests from. This is a comma
-separated list of urls.
--JobInjection : If set to 'direct' , CreateJob events are thrown when retrieving
-work from the prodmanager (retrieved work goes directly to the submission queue. 
-If set to 'buffer', QueueJob events are thrown when retrieving
-work form the prodmganager (retrieved work is buffered in the jobqueue.
--RetrievalInterval: The time between retrievals of requests from prodmgrs using the 
-HH:MM:SS format. Every so often the prodagent will contact its associated prodmgrs
-to retrieve requests if available. 
--QueueInterval. The time between two events that check the queue lenght for 
-determining if we need to acquire more work.
--AllcoationSize. The maximum number of jobs per allocation. This is to prevent
-large allocations (unless this is set to very large), and prevent slow updates
-at the prodmgr level.
--ParallelRequests : The number of requests the prodagent will process in parallel.
-e.g. if it is 4, it will acquire requests from the prodmgr using a round robin 
-approach on the requests.
--QueueLow : the threshold after which the queue will be automatically filled by the 
-ProdMgrInterface
--QueueHigh: the maximum number of jobs allowed in the queue.
--AgentTag: the id used to identify the agent. Although the DN of the ProdAgent certificate
-uniquely identifies the prodagent, the AgentTag is a short hand version that is used for
-request retrieval. Potentially multiple prodagents can have the same agent tag (which means
-they will be handling the same requests)
--Locations: This parameter contains a comma separated lists of locations (storage elements)
-this prodagent has access to. The elements in this list have to correspond with the entries
-found in the DLS associated to fileblocks (otherwise this prodagent will not get work
-for file based requests).
--ProdMgrFeedback: This parameters if set to "direct" will imediately relay information back
-to the prodmgr after a job is successfully processed and before the data is safely stored. If
-it is set to "delay" it will wait until the data is properly merged.
-""",
-  "MergeAccountant"     :\
-"""
--Enabled: Set this parameter to -yes- to get full accounting support. When it is set to
--no-, only triggering for cleanups of files will be generated, with no updates on
-internal database.
-""",
-  "ProdMon"              :\
-  """
-   -Team: production team name 
-   -DisableExport: Set to true to disable monitoring data export.
-   -DashboardURL: external monitoring export URL.
-   -exportMaxBatchSize: Max number of jobs to export in each cycle.
-   -exportInterval: Time between export cycles in seconds.
-   """,
-  "JobEmulator"              :\
-  """
-  To run job emulator, JobSumitter component's SubmitterName need to be set to JobEmulatorBulkSubmitter.
-  Also, CondorTracker component's TrackerPlugin has to be set to JobEmulatorTracker.
-  Followings are parameters for JobEmulator component.
-   -JobReportPlugin: Set Job report format for jobEmulator, currently support EmulatorReportPlugin 
-   which uses framework report.
-   -JobAllocationPlugin: production team name 
-   -JobCompletionPlugin: two options are Available RandomCompletionPlugin and BlakHoleNodePlugin.
-   RandomCompletion Plugin completes the job with a given average completion time (avgCompletionTime)
-   and a given average completion percentage (avgCompletionPercentage).
-   BlackHoleNodePlugin is the same as RandomeCompletionPlugin except jobs fail right away all the time
-   in one node.
-   -avgCompletionTime: average job completion time. Format: "00:02:00" - 2 minutes.
-   -avgCompletionPercentage: average job completion percentage. Format: "0.9" - 90 %
-   -avgEventProcessingRate: the rate indicates the rate of the number of jobs completing all the events
-    among all the successful jobs. The number of incomplete events among the jobs follows the gauss distribution 
-    with maximun number (totalEvent -1, minimun 1) the mean value (70% of total event) and 
-    standard deviation (15% of the width of total event) is hard coded. If it is necessary they can be parameterized. 
-   """,
-   "LogCollector"			:\
-   """
-   Will periodically poll for logs that can be collected at sites for the active workflows
-    -Enabled: Whether or not to poll ofr logs to collect
-    -QueueJobMode: Set to True to use the JobQueue
-    -pollInterval: How often to poll for logs
-    -logLifetime: The period of time for which a log will be left at a site
-    -maxErrors: The number of jobs which will attmept to collect a log before it is considered lost
-    -maxLogs: How many logs to collect in one job
-   """,
     }
 
 if componentList == []:
@@ -484,33 +178,9 @@ print "Using Components:"
 for item in componentList:
     print "  ",item
 
-if os.path.exists(configFile):
-    print "Config File Already Exists: %s" % configFile
-    backup = "%s.BAK.%s" % (configFile, _Timestamp)
-    os.system("/bin/cp %s %s" % (configFile, backup))
-    print "Config File backed up to:"
-    print " ", backup
-
 
 
 config = ProdAgentConfiguration()
-
-#  //
-# // Process core fields
-#//
-for name, values in coreFields.items():
-    cfgDict = config.getConfig(name)
-    cfgDict.update(values)
-    if comments.has_key(name):
-        cfgDict.comment = comments[name]
-
-
-prodAgentBlock = config.getConfig("ProdAgent")
-
-# NOTE: boss post processing
-# NOTE: needs to be done better (how, withouth designating BOSS a component?)
-cfgDict = config.getConfig("BOSS")
-cfgDict['configDir']=os.path.join(prodAgentBlock['ProdAgentWorkDir'],"BOSS/config")
 
 
 def processField(fieldName, fieldDict):
@@ -524,17 +194,16 @@ def processField(fieldName, fieldDict):
     cfg.update(fieldDict)
     if comments.has_key(fieldName):
         cfg.comment = comments[fieldName]
-
-    #  //
-    # // Ensure that ComponentDir param is always the unholy
-    #//  union of ProdAgent['ProdAgentWorkDir'] and the component
-    #  //name. That is it cannot be set by the user.
-    # //
-    #//
-    cfg['ComponentDir'] = os.path.join(prodAgentBlock['ProdAgentWorkDir'],
-                                       fieldName)
-    
     return
+
+#  //
+# // Process core fields
+#//
+for name, values in coreFields.items():
+    cfgDict = config.getConfig(name)
+    cfgDict.update(values)
+    if comments.has_key(name):
+        cfgDict.comment = comments[name]
 
 #  //
 # // Process components
@@ -559,10 +228,6 @@ config.saveToFile(configFile)
 
 
 
-#  //
-# // Generate plugin configs
-#//
-os.system("prodAgent-new-pluginconfig")
 
 
 

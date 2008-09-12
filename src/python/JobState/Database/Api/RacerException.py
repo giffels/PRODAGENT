@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
-from ProdAgentCore.ProdAgentException import ProdAgentException
+class RacerException(Exception):
 
-class RacerException(ProdAgentException):
-   pass
-
+   def __init__(self,errorStr,errorMsg):
+       self.args=(errorStr,errorMsg)
 

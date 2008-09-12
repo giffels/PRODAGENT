@@ -1,10 +1,4 @@
 
+   $Id: README,v 1.1.1.1 2006/04/07 16:05:59 elmer Exp $
 
-   $Id: README,v 1.6 2006/12/31 14:27:47 elmer Exp $
-
-Exception Codes:
-------------
-3000  : No result in local last service call table with for a certain component. 
-3001  : General database error
-3002  : No connection when trying to start transaction
-3003  : No transaction has started when trying to get a cursor
+   Dummy file 

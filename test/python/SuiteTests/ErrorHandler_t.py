@@ -5,9 +5,8 @@ on eachother.
 
 """
 
-import sys
-import time
 import unittest
+import time
 
 from Test import preTests
 from Test import postTests
@@ -16,21 +15,15 @@ from UnitTests.JobState_t2 import JobStateUnitTests2
 from UnitTests.FwkJobReport_t import FwkJobReportTests 
 from IntTests.ErrorHandler_Message_t import ComponentServerTest
 
-preTests()
-
-userInput=raw_input("Is the error handler (and only the error handler) "+\
-                    " component running (JobCleanup can be active too)? Y/n ")
-if userInput!="Y":
-   print "Make sure ONLY the ErrorHandler component is running!"
-   sys.exit()
-
+print "Make sure ONLY the ErrorHandler component is running"
 testSuite = unittest.TestSuite()
+preTests()
 # this is the order in which they will be tested
 testSuite.addTest(JobStateUnitTests2())
 testSuite.addTest(FwkJobReportTests())
 testSuite.addTest(JobStateUnitTests())
 testSuite.addTest(ComponentServerTest())
-#testSuite.addTest(JobStateUnitTests2())
+testSuite.addTest(JobStateUnitTests2())
 testResult= unittest.TestResult()
 testResult=testSuite.run(testResult)
 postTests(testResult)

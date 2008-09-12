@@ -18,20 +18,16 @@ def usage():
     Usage: TestComponent.py <opts>
     Start this component interactively for development testing
     Options:
-    DBSURL , DBSAddress, DBSType ComponentDir
+    DBSAddress, DBSType ComponentDir
     """
     print usage
 
-argsDict = {
-            "DBSURL" : None,
-            "DBSAddress" : None,
+argsDict = {"DBSAddress" : None,
             "DBSType" : "CGI",
-            "DLSAddress" : None,
-            "DLSType" : "DLS_TYPE_MYSQL",
             "ComponentDir" : os.getcwd(),
             }
 
-valid = ['DBSURL=', 'DBSAddress=', 'DBSType=', 'DLSAddress=', 'DLSType=', 'ComponentDir=']
+valid = ['DBSAddress=', 'DBSType=', 'ComponentDir=']
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)

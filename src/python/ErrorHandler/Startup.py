@@ -13,7 +13,6 @@ import getopt
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.CreateDaemon import createDaemon
-from ProdAgentCore.PostMortem import runWithPostMortem
 from ErrorHandler.ErrorHandlerComponent import ErrorHandlerComponent
 
 #  //
@@ -28,12 +27,16 @@ except StandardError, ex:
     msg += str(ex)
     raise RuntimeError, msg
 
-compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
-compCfg['jobReportLocation'] = compCfg['ComponentDir']+'/JobReports' 
+if os.environ.get("PRODAGENT_WORKDIR", None) == None:
+    msg = "ProdAgent environment not initialised properly"
+    msg += "$PRODAGENT_WORKDIR is not set"
+    raise RuntimeError, msg
 
+compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
+compCfg['jobReportLocation'] = os.path.expandvars(compCfg['jobReportLocation']) 
 #  //
 # // Initialise and start the component
 #//
 createDaemon(compCfg['ComponentDir'])
 component = ErrorHandlerComponent(**dict(compCfg))
-runWithPostMortem(component, compCfg['ComponentDir'])
+component.startComponent()

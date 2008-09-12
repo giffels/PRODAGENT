@@ -1,20 +1,11 @@
 #!/usr/bin/env python
-import datetime
-import logging
-
-from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Connect import connect
 
-def general(JobSpecId,dbCur1 = None):
-   try:
-       #NOTE we should put this in separte commit,rollback and connect methods
-      
-       if(dbCur1==None):
-           conn=connect(False)
+def general(JobSpecId,dbCur = None):
+       if(dbCur==None):
+           conn=connect()
            dbCur=conn.cursor()
-           dbCur.execute("START TRANSACTION")
-       else:
-           dbCur=dbCur1
+       dbCur.execute("START TRANSACTION")
 
        sqlStr='SELECT JobType,MaxRetries,Retries, '+\
               'State,CacheDirLocation, MaxRacers, Racers '+ \
@@ -23,14 +14,13 @@ def general(JobSpecId,dbCur1 = None):
        dbCur.execute(sqlStr)
        #due to the schema we either get 0 or 1 row back.
        rows=dbCur.fetchall()
+       dbCur.execute("COMMIT")
+       if(dbCur==None):
+          dbCur.close()
        if len(rows)==0:
-           raise ProdAgentException("Job with JobID "+str(JobSpecId)+ \
+           raise Exception("ERROR:", "Job with JobID "+str(JobSpecId)+ \
                            " does not exists")
        # format it in a dictionary
-       if dbCur1==None:
-           dbCur.execute("COMMIT")
-           dbCur.close()
-           conn.close()
        return {'JobType':rows[0][0], \
                'MaxRetries':rows[0][1], \
                'Retries':rows[0][2], \
@@ -39,82 +29,34 @@ def general(JobSpecId,dbCur1 = None):
                'MaxRacers':rows[0][5], \
                'Racers':rows[0][6] \
               }
-   except:
-       if dbCur1==None:
-           dbCur.execute("ROLLBACK")
-           dbCur.close()
-           conn.close()
-       raise
 
-
-def isRegistered(JobSpecId,dbCur1 = None):
-   try:
-       if(dbCur1==None):
-           conn=connect(False)
-           dbCur=conn.cursor()
-           dbCur.execute("START TRANSACTION")
-       else:
-           dbCur=dbCur1
-
-       sqlStr='SELECT JobType FROM js_JobSpec WHERE '+  \
-              'JobSpecID="'+JobSpecId+'";'
-       dbCur.execute(sqlStr)
-       #due to the schema we either get 0 or 1 row back.
-       rows=dbCur.fetchall()
-       if dbCur1==None:
-           dbCur.execute("COMMIT")
-           dbCur.close()
-           conn.close()
-       if len(rows)==0:
-           return False
-       return True
-   except:
-       if dbCur1==None:
-           dbCur.execute("ROLLBACK")
-           dbCur.close()
-           conn.close()
-       raise
-
-def lastLocations(JobSpecId,dbCur1 = None):
-   try:
+def lastLocations(JobSpecId,dbCur = None):
        sqlStr='SELECT Location from js_JobInstance WHERE JobSpecID="'+\
                JobSpecId+'";'
 
-       if(dbCur1==None):
-           conn=connect(False)
+       if(dbCur==None):
+           conn=connect()
            dbCur=conn.cursor()
-           dbCur.execute("START TRANSACTION")
-       else:
-           dbCur=dbCur1
+       dbCur.execute("START TRANSACTION")
 
        dbCur.execute(sqlStr)
        rows=dbCur.fetchall()
        if len(rows)==0:
-           raise ProdAgentException("Job with JobID "+str(JobSpecId)+ \
+           raise Exception("ERROR:", "Job with JobID "+str(JobSpecId)+ \
                            " has no jobs running yet")
-       if dbCur1==None:
-           dbCur.execute("COMMIT")
-           dbCur.close()
-           conn.close()
+       dbCur.execute("COMMIT")
+       if(dbCur==None):
+          dbCur.close()
        result=[]
        for i in rows:
            result.append(i[0])
        return result
-   except:
-       if dbCur1==None:
-           dbCur.execute("ROLLBACK")
-           dbCur.close()
-           conn.close()
-       raise
           
-def jobReports(JobSpecId, dbCur1 = None):
-   try:
-       if(dbCur1==None):
-           conn=connect(False)
+def jobReports(JobSpecId, dbCur = None):
+       if(dbCur==None):
+           conn=connect()
            dbCur=conn.cursor()
-           dbCur.execute("START TRANSACTION")
-       else:
-           dbCur=dbCur1
+       dbCur.execute("START TRANSACTION")
        sqlStr='SELECT JobReportLocation FROM js_JobInstance WHERE '+ \
               'JobSpecID="'+JobSpecId+'" AND JobReportLocation<>"NULL";'
        dbCur.execute(sqlStr)
@@ -127,59 +69,39 @@ def jobReports(JobSpecId, dbCur1 = None):
        for i in rows:
           result.append(i[0])
 
-       if dbCur1==None:
-           dbCur.execute("COMMIT")
-           dbCur.close()
-           conn.close()
+       dbCur.execute("COMMIT")
+       if(dbCur==None):
+          dbCur.close()
        return result
-   except:
-       if dbCur1==None:
-           dbCur.execute("ROLLBACK")
-           dbCur.close()
-           conn.close()
-       raise
 
-def jobSpecTotal(dbCur1 = None):
-   try:
-       if(dbCur1==None):
-           conn=connect(False)
+def jobSpecTotal(dbCur = None):
+       if(dbCur==None):
+           conn=connect()
            dbCur=conn.cursor()
-           dbCur.execute("START TRANSACTION")
-       else:
-           dbCur=dbCur1
+       dbCur.execute("START TRANSACTION")
        sqlStr='SELECT COUNT(JobSpecID) FROM js_JobSpec;'
        dbCur.execute(sqlStr)
        #this query will not return many (= thousands) of results.
        rows=dbCur.fetchall()
        result=rows[0][0]
-       if dbCur1==None:
-           dbCur.execute("COMMIT")
-           dbCur.close()
-           conn.close()
+       dbCur.execute("COMMIT")
+       if(dbCur==None):
+          dbCur.close()
        return result
-   except:
-       if dbCur1==None:
-           dbCur.execute("ROLLBACK")
-           dbCur.close()
-           conn.close()
-       raise
 
-def rangeGeneral(start = -1 , nr = -1 ,dbCur1 = None):
-   try:
-       if(dbCur1==None):
-           conn=connect(False)
+def rangeGeneral(start = -1 , nr = -1 ,dbCur = None):
+       if(dbCur==None):
+           conn=connect()
            dbCur=conn.cursor()
-           dbCur.execute("START TRANSACTION")
-       else:
-           dbCur=dbCur1
+       dbCur.execute("START TRANSACTION")
 
        if ( (start == -1) and (nr == -1) ):
            start=0
            nr=jobSpecTotal()
        if start<0:
-           raise ProdAgentException('Start should be larger than 0!')
+           raise Exception('JobStateInfoAPI: Start should be larger than 0!')
        elif nr<0:
-           raise ProdAgentException('Number should be larger than 0!')
+           raise Exception('JobStateInfoAPI: Number should be larger than 0!')
 
        sqlStr='SELECT JobSpecID, JobType,MaxRetries,Retries, '+\
               'State,CacheDirLocation, MaxRacers, Racers '+ \
@@ -187,10 +109,9 @@ def rangeGeneral(start = -1 , nr = -1 ,dbCur1 = None):
        dbCur.execute(sqlStr)
        #NOTE: we kind off assume that we only deal with small subsets.
        rows=dbCur.fetchall()
-       if dbCur1==None:
-           dbCur.execute("COMMIT")
-           dbCur.close()
-           conn.close()
+       dbCur.execute("COMMIT")
+       if(dbCur==None):
+          dbCur.close()
        result=[]
        resultDescription=['JobSpecID','JobType','MaxRetries','Retries','State','CacheDirLocation','MaxRacers','Racers']
        result.append(resultDescription)
@@ -204,67 +125,3 @@ def rangeGeneral(start = -1 , nr = -1 ,dbCur1 = None):
                resultRow.append(entry)
            result.append(resultRow)
        return result    
-   except:
-       if dbCur1==None:
-           dbCur.execute("ROLLBACK")
-           dbCur.close()
-           conn.close()
-       raise
-
-def startedJobs(daysBack,dbCur1 = None):
-   if(dbCur1==None):
-       conn=connect(False)
-       dbCur=conn.cursor()
-       dbCur.execute("START TRANSACTION")
-   else:
-       dbCur=dbCur1
-
-   now=datetime.datetime.now()
-   delta=datetime.timedelta(days=int(daysBack))
-   daysBack=now-delta
-   try:
-       sqlStr='SELECT JobSpecID from js_JobSpec WHERE Time<"'+str(daysBack)+'";'
-       # NOTE:this can be potentially large, but we assume it will be not larger than
-       # NOTE: several mbs.
-       dbCur.execute(sqlStr)
-       result=dbCur.fetchall()
-       if dbCur1==None:
-           dbCur.execute("COMMIT")
-           dbCur.close()
-           conn.close()
-       return result
-   except:
-       if dbCur1==None:
-           dbCur.execute("ROLLBACK")
-           dbCur.close()
-           conn.close()
-       raise
-
-def retrieveJobIDs(workflowIDs=[]):
-  conn=connect(False)
-  dbCur=conn.cursor()
-
-  try:
-    if type(workflowIDs)==list:
-       if len(workflowIDs)==1:
-          workflowIDs=workflowIDs[0]
-       if len(workflowIDs)==0:
-           return
-    dbCur.execute("START TRANSACTION")
-    if type(workflowIDs)==list:
-       sqlStr=""" SELECT JobSpecID FROM js_JobSpec WHERE WorkflowID IN %s
-           """ %(str(tuple(workflowIDs)))
-    else:
-       sqlStr=""" SELECT JobSpecID FROM js_JobSpec WHERE WorkflowID="%s"
-           """ %(str(workflowIDs))
-    dbCur.execute(sqlStr)
-    result=dbCur.fetchall()
-    dbCur.execute("COMMIT")
-    dbCur.close()
-    conn.close()
-    return result
-  except Exception,ex:
-    dbCur.execute("ROLLBACK")
-    dbCur.close()
-    conn.close()
-    raise

@@ -5,7 +5,6 @@ starting the component as an interactive process so that you can get
 stdout/stderr etc
 
 """
-__revision__ = "$Id: TestComponent.py,v 1.2.14.1 2008/03/28 15:35:25 gcodispo Exp $"
 
 import os
 import sys
@@ -23,7 +22,9 @@ def usage():
     """
     print usage
 
-argsDict = {
+argsDict = {"BOSSDIR" : os.environ.get("BOSSDIR", None),
+            "BOSSPATH" : os.environ.get("BOSSPATH", None),
+            "BOSSVERSION" : os.environ.get("BOSSVERSION", None),
             "ComponentDir" : os.getcwd(),
             }
 

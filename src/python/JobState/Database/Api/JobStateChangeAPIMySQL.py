@@ -1,40 +1,34 @@
 #!/usr/bin/env python
-
-
 from JobState.Database.Api import JobStateInfoAPIMySQL
-from JobState.Database.Api.RacerException import RacerException
 from JobState.Database.Api.RetryException import RetryException
-from JobState.Database.Api.RunException import RunException
-from JobState.Database.Api.SubmitException import SubmitException
+from JobState.Database.Api.RacerException import RacerException
 from JobState.Database.Api.TransitionException import TransitionException
-from ProdAgentCore.ProdAgentException import ProdAgentException
 from ProdAgentDB.Connect import connect 
 
-import logging
 
 ##########################################################################
 # register method
 ##########################################################################
 
-def register(jobSpecId, jobType, maxRetries, maxRacers = 1,workflowID=''):   
-       conn=connect(False)
+def register(jobSpecId, jobType, maxRetries, maxRacers = 1):   
+       conn=connect()
        dbCur=conn.cursor()
        try:
-           sqlStr="""INSERT INTO js_JobSpec(JobSpecID,JobType,MaxRetries, MaxRacers,
-               Retries,State,WorkflowID) VALUES("%s","%s","%s","%s","0","register","%s")
-               """ %(str(jobSpecId),str(jobType),str(maxRetries),str(maxRacers),str(workflowID)) 
+           sqlStr="INSERT INTO js_JobSpec(JobSpecID,                   \
+                   JobType,MaxRetries, MaxRacers,\
+                   Retries,State) VALUES(\""+jobSpecId+"\",             \
+                                             \""+jobType+"\",           \
+                                             \""+str(maxRetries)+"\",   \
+                                             \""+str(maxRacers)+"\",    \
+                                             \"0\",                     \
+                                             \"register\");"
            dbCur.execute("START TRANSACTION")
-           try:
-               dbCur.execute(sqlStr)
-           except Exception,ex:
-               raise ProdAgentException("Error registering job. You probably are trying to register a job using an job id/job name that has already been used for registration. Your job id/job name is: "+str(jobSpecId)+". Original error: "+str(ex[1]))
+           dbCur.execute(sqlStr)
            dbCur.execute("COMMIT")
            dbCur.close()
-           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
-           conn.close()
            raise 
 
 ##########################################################################
@@ -42,7 +36,7 @@ def register(jobSpecId, jobType, maxRetries, maxRacers = 1,workflowID=''):
 ##########################################################################
       
 def create(jobSpecId, cacheDir): 
-       conn=connect(False)
+       conn=connect()
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -56,22 +50,20 @@ def create(jobSpecId, cacheDir):
                   state=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)['State']
                except:
                   state="Undefined"
-               raise TransitionException("Illegal state "+\
+               raise TransitionException("ERROR:", "Illegal state "+\
                      "transition: "+ state+ "-->create")
            dbCur.execute("COMMIT")
            dbCur.close()
-           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
-           conn.close()
            raise
 
 ##########################################################################
 # createFailure method
 ##########################################################################
 def createFailure(jobSpecId):
-       conn=connect(False)
+       conn=connect()
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -86,16 +78,16 @@ def createFailure(jobSpecId):
                except:
                    state="Undefined"
                if  not state in ['create']:
-                   raise TransitionException("Illegal state "+  
+                   raise TransitionException("ERROR:", "Illegal state "+  
                          "transition: "+state+"-->createFailure")
                # now check if we need to raise a sumit exception as
                # we have reached the maximum number of retries:
                #check if we have not reach the maximum number of retries
                if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1) ):
-                   raise RetryException("reached "+ \
+                   raise RetryException("ERROR:", "reached "+ \
                        "maximum number of retries "+
                        str(generalState['MaxRetries']))
-               raise SubmitException("SubmitFailure failed, please try again")
+               raise Exception("ERROR","SubmitFailure failed, please try again")
            dbCur.execute("COMMIT")
            dbCur.execute("START TRANSACTION")
            # now check if we need to raise a retry exception as
@@ -103,17 +95,15 @@ def createFailure(jobSpecId):
            generalState=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)
            #check if we have not reach the maximum number of retries
            if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1)): 
-               raise RetryException("reached "+
+               raise RetryException("ERROR:", "reached "+
                    "maximum number of retries "+
                    str(generalState['MaxRetries']))
 
            dbCur.execute("COMMIT")
            dbCur.close()
-           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
-           conn.close()
            raise
 
 
@@ -122,7 +112,7 @@ def createFailure(jobSpecId):
 ##########################################################################
 
 def inProgress(jobSpecId): 
-       conn=connect(False)
+       conn=connect()
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -134,16 +124,14 @@ def inProgress(jobSpecId):
                    state=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)['State']
                except:
                    state="Undefined"
-               raise TransitionException("Illegal state "+ \
+               raise TransitionException("ERROR:", "Illegal state "+ \
                                          "transition: "+ state+ \
                                           "-->inProgress")
            dbCur.execute("COMMIT")
            dbCur.close()
-           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
-           conn.close()
            raise
 
 ##########################################################################
@@ -151,7 +139,7 @@ def inProgress(jobSpecId):
 ##########################################################################
 
 def submit(jobSpecId):
-       conn=connect(False)
+       conn=connect()
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -167,28 +155,29 @@ def submit(jobSpecId):
               except:
                  state="Undefined"
               if  not state in ['inProgress']:
-                 raise TransitionException("Illegal state "+\
+                 raise TransitionException("ERROR:", "Illegal state "+\
                                            "transition: "+state+ \
                                           "-->submit")
               #check if we have not reach the maximum number of retries
               if( (int(generalState['Retries'])+int(generalState['Racers']))> (int(generalState['MaxRetries'])-1)):
-                 raise RetryException("reached "+
+                 raise RetryException("ERROR:", "reached "+
                                        "maximum number of retries "+
                                         str(generalState['MaxRetries'])+ \
                                        " (this includes running jobs)")
                #check if we have not reach the maximum number of simulatneous 
                #jobs 
               if(int(generalState['Racers'])> (int(generalState['MaxRacers'])-1)):
-                  raise RacerException("job with id: "+str(jobSpecId)+
-                                        " is already submitted will not resubmit")
-              raise SubmitException("Submit failed, please try again")
+                  raise RacerException("ERROR:", "reached "+
+                                        "maximum number of racers "+
+                                        str(generalState['MaxRacers'])+
+                                        " wait until one of the jobs finishes "+
+                                        " and try again. ")
+              raise Exception("ERROR","Submit failed, please try again")
            dbCur.execute("COMMIT")
            dbCur.close()
-           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
-           conn.close()
            raise
          
 ##########################################################################
@@ -196,7 +185,7 @@ def submit(jobSpecId):
 ##########################################################################
 
 def submitFailure(jobSpecId):
-       conn=connect(False)
+       conn=connect()
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -211,13 +200,13 @@ def submitFailure(jobSpecId):
                except:
                    state="Undefined"
                if  not state in ['inProgress']:
-                   raise TransitionException("Illegal state "+  
+                   raise TransitionException("ERROR:", "Illegal state "+  
                          "transition: "+state+"-->submitFailure")
                if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1)):
-                   raise RetryException("reached "+
+                   raise RetryException("ERROR:", "reached "+
                        "maximum number of retries "+
                        str(generalState['MaxRetries']))
-               raise SubmitException("SubmitFailure failed, please try again")
+               raise Exception("ERROR","SubmitFailure failed, please try again")
 
            dbCur.execute("COMMIT")
 
@@ -227,17 +216,15 @@ def submitFailure(jobSpecId):
            generalState=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)
            #check if we have not reach the maximum number of retries
            if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1)): 
-               raise RetryException("reached "+
+               raise RetryException("ERROR:", "reached "+
                    "maximum number of retries "+
                    str(generalState['MaxRetries']))
 
            dbCur.execute("COMMIT")
            dbCur.close()
-           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
-           conn.close()
            raise
          
 ##########################################################################
@@ -245,7 +232,7 @@ def submitFailure(jobSpecId):
 ##########################################################################
 
 def runFailure(jobSpecId, jobInstanceId = None, runLocation = None, jobReportLocation = None):
-       conn=connect(False)
+       conn=connect()
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -261,17 +248,17 @@ def runFailure(jobSpecId, jobInstanceId = None, runLocation = None, jobReportLoc
                except:
                    state="Undefined"
                if(state!='inProgress'):
-                   raise TransitionException("Illegal state "+ \
+                   raise TransitionException("ERROR:", "Illegal state "+ \
                        "transition: "+state+ "-->runFailure")
                racers=int(generalState['Racers'])
                if(racers == 0):
-                   raise RacerException("Negative number of racers, "+\
+                   raise Exception("ERROR","Negative number of racers, "+\
                        "is not possible, will not update ")
                if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1)): 
-                   raise RetryException("reached "+
+                   raise RetryException("ERROR:", "reached "+
                        "maximum number of retries "+
                        str(generalState['MaxRetries']))
-               raise RunException("runFailure failed, please try again")
+               raise Exception("ERROR","runFailure failed, please try again")
 
            # NOTE: we make these exceptions as we are waiting to 
            # extract some of this information from the job report.
@@ -299,18 +286,16 @@ def runFailure(jobSpecId, jobInstanceId = None, runLocation = None, jobReportLoc
            generalState=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)
            #check if we have not reach the maximum number of retries
            if(int(generalState['Retries'])>(int(generalState['MaxRetries'])-1)): 
-               raise RetryException("reached "+
+               raise RetryException("ERROR:", "reached "+
                    "maximum number of retries "+
                    str(generalState['MaxRetries']))
 
            dbCur.execute("COMMIT")
 
            dbCur.close()
-           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
-           conn.close()
            raise
 
 ##########################################################################
@@ -318,7 +303,7 @@ def runFailure(jobSpecId, jobInstanceId = None, runLocation = None, jobReportLoc
 ##########################################################################
 
 def finished(jobSpecId): 
-       conn=connect(False)
+       conn=connect()
        dbCur=conn.cursor()
        try:
            dbCur.execute("START TRANSACTION")
@@ -330,15 +315,13 @@ def finished(jobSpecId):
                   state=JobStateInfoAPIMySQL.general(jobSpecId,dbCur)['State']
                except:
                   state="Undefined"
-               raise TransitionException("Illegal state "+\
+               raise TransitionException("ERROR:", "Illegal state "+\
                   "transition: "+state+"-->finished")
            dbCur.execute("COMMIT")
            dbCur.close()
-           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
-           conn.close()
            raise
 
 ##########################################################################
@@ -346,31 +329,25 @@ def finished(jobSpecId):
 ##########################################################################
 
 def cleanout(jobSpecId): 
-       conn=connect(False)
+       conn=connect()
        dbCur=conn.cursor()
        try:
-           logging.info("test0 cleanout jobSPecID: "+str(jobSpecId))
            dbCur.execute("START TRANSACTION")
-           sqlStr4="""DELETE FROM js_JobSpec WHERE 
+           sqlStr1="""DELETE FROM js_JobSpec WHERE 
                      JobSpecID="%s";""" %(jobSpecId)
            # not every mysql version supports cascade and foreign keys
-           sqlStr3="""DELETE FROM js_JobInstance WHERE 
+           sqlStr2="""DELETE FROM js_JobInstance WHERE 
                       JobSpecID="%s";""" %(jobSpecId)
-           sqlStr2="""DELETE FROM tr_Trigger WHERE 
-                      JobSpecID="%s";""" %(jobSpecId)
-           sqlStr1="""DELETE FROM tr_Action WHERE 
-                      JobSpecID="%s";""" %(jobSpecId)
-           dbCur.execute(sqlStr1)
+           rowsModified=dbCur.execute(sqlStr1)
            dbCur.execute(sqlStr2)
-           dbCur.execute(sqlStr3)
-           dbCur.execute(sqlStr4)
+           if rowsModified!=1:
+              raise Exception("ERROR","This jobspec with ID "+\
+                              str(jobSpecId)+" does not exist")
            dbCur.execute("COMMIT")
            dbCur.close()
-           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
-           conn.close()
            raise
 
 ##########################################################################
@@ -382,132 +359,21 @@ def setRacer(jobSpecId,maxRacers):
        Sets the maximum number of the same jobs that can be run at the
        same time (number of racers).
        """
-       conn=connect(False)
+       conn=connect()
        dbCur=conn.cursor()
        try:
 
            dbCur.execute("START TRANSACTION")
-           if maxRacers == 'max':
-               sqlStr1="""UPDATE js_JobSpec SET Racers=MaxRacers+1,
-Retries=MaxRetries+1 WHERE
-                   JobSpecID="%s"; """ %(str(jobSpecId)) 
-           else:
-               sqlStr1="""UPDATE js_JobSpec SET MaxRacers="%s" WHERE
-                   JobSpecID="%s"; """ %(str(maxRacers),str(jobSpecId)) 
+           sqlStr1="""UPDATE js_JobSpec SET MaxRacers="%s" WHERE
+                      JobSpecID="%s"; """ %(str(maxRacers),str(jobSpecId)) 
            rowsModified=dbCur.execute(sqlStr1)
            if rowsModified!=1:
-              raise ProdAgentException("This jobspec with ID "+\
+              raise Exception("ERROR","This jobspec with ID "+\
                               str(jobSpecId)+" does not exist")
            dbCur.execute("COMMIT")
            dbCur.close()
-           conn.close()
        except:
            dbCur.execute("ROLLBACK")
            dbCur.close()
-           conn.close()
            raise
-
-def purgeStates():
-   conn=connect(False)
-   dbCur=conn.cursor()
-   try:
-       logging.info("test1 purging states")
-       dbCur.execute("START TRANSACTION")
-       sqlStr1="""DELETE FROM js_JobSpec;"""
-       sqlStr2="""DELETE FROM js_JobInstance;"""
-       sqlStr3="""DELETE FROM tr_Trigger;"""
-       sqlStr4="""DELETE FROM tr_Action;"""
-       dbCur.execute(sqlStr1)
-       # if cascacding is suported the next
-       # queries are not needed.
-       dbCur.execute(sqlStr2)
-       dbCur.execute(sqlStr3)
-       dbCur.execute(sqlStr4)
-       dbCur.execute("COMMIT")
-       dbCur.close()
-       conn.close()
-   except:
-       dbCur.execute("ROLLBACK")
-       dbCur.close()
-       conn.close()
-       raise
-
-def startedJobs(daysBack):
-   conn=connect(False)
-   dbCur=conn.cursor()
-
-   now=datetime.datetime.now()
-   delta=datetime.timedelta(days=int(daysBack))
-   daysBack=now-delta
-   try:
-       dbCur.execute("START TRANSACTION")
-       sqlStr='SELECT JobSpecID from js_JobSpec WHERE Time<"'+str(daysBack)+'";'
-       # NOTE:this can be potentially large, but we assume it will be not larger than
-       # NOTE: several mbs.
-       dbCur.execute(sqlStr)
-       result=dbCur.fetchall() 
-       dbCur.execute("COMMIT")
-       dbCur.close()
-       conn.close()
-       return result
-   except:
-       dbCur.execute("ROLLBACK")
-       dbCur.close()
-       conn.close()
-       raise
-
-def setMaxRetries(jobSpecIds=[],maxRetries=1):
-   conn=connect(False)
-   dbCur=conn.cursor()
-
-   try:
-       if type(jobSpecIds)==list:
-          if len(jobSpecIds)==1:
-              jobSpecIds=jobSpecIds[0]
-          if len(jobSpecIds)==0:
-              return 
-       dbCur.execute("START TRANSACTION")
-       if type(jobSpecIds)==list:
-          sqlStr=""" UPDATE js_JobSpec SET MaxRetries="%s" WHERE JobSpecID IN %s
-              """ %(str(maxRetries),str(tuple(jobSpecIds)))
-       else:
-          sqlStr=""" UPDATE js_JobSpec SET MaxRetries="%s" WHERE JobSpecID="%s"
-              """ %(str(maxRetries),str(jobSpecIds))
-       dbCur.execute(sqlStr)
-       dbCur.execute("COMMIT")
-       dbCur.close()
-       conn.close()
-   except Exception,ex:
-       dbCur.execute("ROLLBACK")
-       dbCur.close()
-       conn.close()
-       raise
-
-def doNotAllowMoreSubmissions(jobSpecIds=[]):
-      """
-      _doNotAllowSubmission_
-
-      Set racers to maxRacers + 1 and retries to maxRetries + 1
-
-      """
-      conn=connect(False)
-      dbCur=conn.cursor()
-
-      try:
-          dbCur.execute("START TRANSACTION")
-          for jobSpecId in jobSpecIds:
-
-              sqlStr="UPDATE js_JobSpec SET "+    \
-                     "Racers=MaxRacers+1, Retries=MaxRetries+1 "+ \
-                     "WHERE JobSpecID=\""+ str(jobSpecId)+ "\";"
-              rowsModified=dbCur.execute(sqlStr)
-      except:
-          dbCur.execute("ROLLBACK")
-          dbCur.close()
-          conn.close()
-          raise
-
-      dbCur.execute("COMMIT")
-      dbCur.close()
-      conn.close()
 
