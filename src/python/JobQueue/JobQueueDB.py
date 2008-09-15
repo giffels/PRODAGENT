@@ -664,18 +664,6 @@ class JobQueueDB:
         Session.execute(sqlStr)
         return
 
-    def removeHoldForWorkflow(self, workflowSpecId):
-        """
-        _removeHoldForWorkflow_
-
-        Change the status of all jobs that have a particular workflow ID from
-        "held" to "new" so that they can be released and run.
-        """
-        sqlStr = "update jq_queue set status = \"new\" where workflow_id=\"%s\";" % \
-                 (workflowSpecId)
-        Session.execute(sqlStr)
-        return    
-        
     def retrieveJobsAtSitesNotWorkflow(self, count = 1, jobType = None,
                                        notWFL = None, *sites):
         """
@@ -1187,4 +1175,92 @@ class JobQueueDB:
         
         return result
 
+# sfoulkes: The following functions are used by the Tier0.  These functions
+# differ from the methods in the JobQueueDB class in that they use the WMCore
+# database wrapper and also use bind variables for their queries.  Another
+# difference is that validateJobSpecDict() does not validate the site list.
+
+# These functions should go away once this code is migrated to WMCore.
+
+# Note that the code the updates the jq_site table has been removed.  I didn't want
+# migrate all the ResourceControl code to use the new database wrappers so I just
+# removed all that.  The Tier0 only talks to one site, so this doesn't matter.
+
+def validateJobSpecDict(dictInstance):
+    """
+    _validateJobSpecDict_
+    
+    Check that all required fields for inserting a job spec into the queue
+    are present in the dictionary provided.
+    """
+    reqKeys = ["JobSpecId", "JobSpecFile", "JobType", "WorkflowSpecId",
+               "WorkflowPriority"]
+    
+    for key in reqKeys:
+        if dictInstance.get(key, None) == None:
+            msg = "Missing field %s required to insert job spec\n" % key
+            msg += "Cannot queue job spec without proper information\n"
+            raise JobQueueDBError(msg, MissingKey = key,
+                                  RequiredKeys = reqKeys)
+
+    return
+
+def insertJobSpec(dbInterface, jobSpecId, jobSpecFile, jobType, workflowId,
+                  workflowPriority, sitesList, status = "new"):
+    """
+    _insertJobSpec_
+    
+    Insert a single job spec entry with a list of sites into the job queue.
+    """
+    logging.debug("insertJobSpec(): Running...")
+    
+    jobSpecDict = {"JobSpecId": jobSpecId, "JobSpecFile": jobSpecFile,
+                   "JobType": jobType, "WorkflowSpecId": workflowId,
+                   "WorkflowPriority": workflowPriority, "SiteList": sitesList}
+    validateJobSpecDict(jobSpecDict)
         
+    queueQuery = """INSERT INTO jq_queue (job_spec_id, job_spec_file, job_type,
+                    workflow_id, priority, status) VALUES (:p_1, :p_2, :p_3,
+                    :p_4, :p_5, :p_6)"""
+    bindVars = {"p_1": jobSpecId, "p_2": jobSpecFile, "p_3": jobType,
+                "p_4": workflowId, "p_5": workflowPriority, "p_6": status}
+    dbInterface.processData(queueQuery, bindVars, transaction = True)
+
+    result = dbInterface.processData("SELECT LAST_INSERT_ID()",
+                                     transaction = True)
+
+    logging.debug("insertJobSpec(): result %s" % result)
+    
+    jobIndex = result[0].fetchone()[0]
+
+    siteQuery = "INSERT INTO jq_site (job_index) VALUES (:p_1)"        
+    bindVars = {"p_1": jobIndex}
+    dbInterface.processData(siteQuery, bindVars, transaction = True)
+
+    return
+
+def removeHoldForWorkflow(dbInterface, workflowSpecId):
+    """
+    _removeHoldForWorkflow_
+    
+    Change the status of all jobs that have a particular workflow ID from
+    "held" to "new" so that they can be released and run.
+    """
+    sqlQuery = "UPDATE jq_queue SET STATUS = 'new' WHERE WORKFLOW_ID = :p_1"
+    bindVars = {"p_1": workfowSpecId}
+    
+    dbInterface.processData(sqlQuery, bindVars, transaction = True)
+    return
+
+def removeHoldForJob(dbInterface, jobSpecId):
+    """
+    _removeHoldForJob_
+    
+    Change the status of a single job from "held" to "new" so that it can be
+    released and run.
+    """
+    sqlQuery = "UPDATE jq_queue SET STATUS = 'new' WHERE JOB_SPEC_ID = :p_1"
+    bindVars = {"p_1": jobSpecId}
+    
+    dbInterface.processData(sqlQuery, bindVars, transaction = True)
+    return    
