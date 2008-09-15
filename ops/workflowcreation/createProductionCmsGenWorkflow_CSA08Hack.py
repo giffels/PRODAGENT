@@ -9,7 +9,7 @@ runtime environment must be setup to use this script.
 
 """
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: createProductionWorkflow_CSA08Hack.py,v 1.1 2008/06/18 20:00:42 dmason Exp $"
+__revision__ = "$Id: createProductionCmsGenWorkflow_CSA08Hack.py,v 1.1 2008/09/12 14:50:09 ceballos Exp $"
 
 
 import os
@@ -28,7 +28,8 @@ valid = ['cfg=', 'py-cfg=', 'cmsGenCfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=',
          'pileup-dataset=', 'pileup-files-per-job=','only-sites=',
          'selection-efficiency=','starting-run=','totalevents=',
-         'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version='
+         'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=',
+         'workflow_tag='
          ]
 
 usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
@@ -46,6 +47,7 @@ usage += "                                  --acquisition_era=<Acquisition Era>\
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
 usage += "                                  --only-sites=<Site>\n"
+usage += "                                  --workflow_tag=<Workflow tag>\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -78,6 +80,7 @@ acquisitionEra="Test"
 conditions="Bad"
 processingVersion=666
 onlySites=None
+workflow_tag=None
 
 pileupDS = None
 pileupFilesPerJob = 1
@@ -127,6 +130,8 @@ for opt, arg in opts:
         pileupFilesPerJob = arg   
     if opt == '--only-sites':
         onlySites = arg
+    if opt == '--workflow_tag':
+        workflow_tag = arg
    
     
 if cfgFile == None:
@@ -145,7 +150,12 @@ if cmsGenCfg == None:
     msg = "--cmsGenCfg option not provided: This is required"
     raise RuntimeError, msg
 
-requestId="%s_%s" % (conditions,processingVersion)
+if workflow_tag in (None,""):
+   requestId="%s_%s" % (conditions,processingVersion)
+else:
+   requestId="%s_%s_%s" % (conditions,workflow_tag,processingVersion)
+
+#requestId="%s_%s" % (conditions,processingVersion)
 label=acquisitionEra
 
 if not os.path.exists(cfgFile):
@@ -228,6 +238,7 @@ spec = maker.makeWorkflow()
 
 spec.parameters['TotalEvents']=totalEvents
 spec.parameters['EventsPerJob']=eventsPerJob
+spec.parameters['InitialEvent']=1
 spec.parameters['InitialRun']=startingRun
 if onlySites != None:
    spec.parameters['OnlySites']=onlySites
