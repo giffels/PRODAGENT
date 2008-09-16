@@ -763,7 +763,7 @@ class DBSComponent:
         DBSConf= getGlobalDBSDLSConfig()
         GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
                                                                                                 
-        logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblock,datasetPath))
+        logging.info(">> Migrating FileBlocks %s in Dataset %s"%(str(fileblockList),datasetPath))
         logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
         logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))
                                                                                                 
@@ -899,18 +899,18 @@ class DBSComponent:
                 self.BadTMDBInject.write("%s\n" % payload)
                 self.BadTMDBInject.flush()
                 return
-        except StandardError, ex:
-                logging.error("Failed to PhEDExInjectBlock")
-                logging.error("Details: %s" % str(ex))
-                self.BadTMDBInject.write("%s\n" % payload)
-                self.BadTMDBInject.flush()
-                return
         except RuntimeError, ex:
                 logging.error("Failed to PhEDExInjectBlock")
                 logging.error("Details: %s" % str(ex))
                 self.BadTMDBInject.write("%s\n" % payload)
                 self.BadTMDBInject.flush()
                 return
+        except StandardError, ex:
+            logging.error("Failed to PhEDExInjectBlock")
+            logging.error("Details: %s" % str(ex))
+            self.BadTMDBInject.write("%s\n" % payload)
+            self.BadTMDBInject.flush()
+            return
         return
 
 
@@ -931,10 +931,10 @@ class DBSComponent:
         except DBSReaderError, ex:
                 logging.error("Failed to PhEDExInjectDataset: %s" % datasetPath)
                 logging.error("Details: %s" % str(ex))
-        except StandardError, ex:
+        except RuntimeError, ex:
                 logging.error("Failed to PhEDExInjectDataset: %s" % datasetPath)
                 logging.error("Details: %s" % str(ex))
-        except RuntimeError, ex:
+        except StandardError, ex:
                 logging.error("Failed to PhEDExInjectDataset: %s" % datasetPath)
                 logging.error("Details: %s" % str(ex))
 
