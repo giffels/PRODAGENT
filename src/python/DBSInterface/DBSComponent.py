@@ -588,7 +588,7 @@ class DBSComponent:
          # // Insert Files to block and datasets 
          #//
          logging.info(">>>>> inserting Files")
-         MergedBlockList=dbswriter.insertFiles(jobreport) 
+         MergedBlockList=dbswriter.insertFiles(jobreport, True) 
 
          # Check to see if the processing job produced merged output so
          # we can trigger the block close out code.
