@@ -1247,7 +1247,7 @@ def removeHoldForWorkflow(dbInterface, workflowSpecId):
     "held" to "new" so that they can be released and run.
     """
     sqlQuery = "UPDATE jq_queue SET STATUS = 'new' WHERE WORKFLOW_ID = :p_1"
-    bindVars = {"p_1": workfowSpecId}
+    bindVars = {"p_1": workflowSpecId}
     
     dbInterface.processData(sqlQuery, bindVars, transaction = True)
     return
