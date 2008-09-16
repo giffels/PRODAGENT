@@ -5,8 +5,8 @@ _JobEmulatorTracker_
 Tracker for Job Emulator submissions.
 """
 
-__revision__ = "$Id: $"
-__version__ = "$Revision: $"
+__revision__ = "$Id: JobEmulatorTracker.py,v 1.2 2008/08/26 17:17:06 sfoulkes Exp $"
+__version__ = "$Revision: 1.2 $"
 
 import logging
 
@@ -87,7 +87,7 @@ class JobEmulatorTracker(TrackerPlugin):
             jobInfo = queryJobsByID(runId)
 
             if jobInfo == []:
-                logging.debug("Job %s not in job emulator table yet..." % subId)                
+                logging.debug("Job %s not in job emulator table yet..." % runId)                
                 continue
 
             if len(jobInfo) != 1:
