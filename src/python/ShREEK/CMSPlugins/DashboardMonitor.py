@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.13 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.13 2008/02/11 18:58:45 swakef Exp $"
+__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.14 2008/05/06 11:12:53 swakef Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -248,7 +248,7 @@ class DashboardMonitor(ShREEKMonitor):
         newInfo.addDestination(self.destHost, self.destPort)
         try:
             reports = readJobReport("FrameworkJobReport.xml")
-            newInfo['JobExitStatus'] = reports[0].exitCode
+            newInfo['JobExitStatus'] = reports[-1].exitCode
         except:
             newInfo['JobExitStatus'] = 50116
         newInfo['JobFinished'] = time.time()
@@ -302,7 +302,7 @@ class DashboardMonitor(ShREEKMonitor):
 
         try:
             self.eventLogger()
-        except Exception:
+        except Exception, ex:
             print "Error Calling Event Logger:", ex
             pass
         return 
