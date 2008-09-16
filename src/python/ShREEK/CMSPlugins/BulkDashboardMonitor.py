@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: BulkDashboardMonitor.py,v 1.5 2008/05/06 11:12:53 swakef Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: BulkDashboardMonitor.py,v 1.6 2008/08/07 09:38:31 edelmann Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -21,6 +21,7 @@ from ShREEK.CMSPlugins.EventLogger import EventLogger
 from IMProv.IMProvQuery import IMProvQuery
 
 from ProdCommon.MCPayloads.JobSpec import JobSpec
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 import os
 import time
@@ -257,7 +258,11 @@ class BulkDashboardMonitor(ShREEKMonitor):
             return
         newInfo = self.dashboardInfo.emptyClone()
         newInfo.addDestination(self.destHost, self.destPort)
-        newInfo['JobExitStatus'] = self.lastExitCode
+        try:
+            reports = readJobReport("FrameworkJobReport.xml")
+            newInfo['JobExitStatus'] = reports[-1].exitCode
+        except:
+            newInfo['JobExitStatus'] = 50116
         newInfo['JobFinished'] = time.time()
         newInfo.publish(1)
 
@@ -307,7 +312,7 @@ class BulkDashboardMonitor(ShREEKMonitor):
 
         try:
             self.eventLogger()
-        except Exception:
+        except Exception, ex:
             print "Error Calling Event Logger:", ex
             pass
         return 
