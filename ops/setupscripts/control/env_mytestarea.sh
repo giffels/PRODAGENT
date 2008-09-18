@@ -7,17 +7,18 @@ export PRODAGENT_USER=cmsprod
 export PRODAGENT_INITIAL=c
 
 #The version you want to install
-export PAVERSION=0_11_7
+export PAVERSION=0_12_1
+export PCVERSION=0_12_0
 #The DBS version we want to install
-export DBSVERSION=1_2_3
+export DBSVERSION=2_0_2
 
 #Note, don't change this!
 #export PBIN=$HOME/public/bin/PRODAGENT_$PAVERSION
-export PBIN=/data/cmsprod/PAProd/prod/control
+export PBIN=/data/cmsprod/PAProd/dev/control
 
 #Don't change this!
-export MYTESTAREA=/data/$PRODAGENT_USER/PAProd/prod/install
-export PRODAGENT_WORKDIR=/data/$PRODAGENT_USER/PAProd/prod/prodAgent
+export MYTESTAREA=/data/$PRODAGENT_USER/PAProd/dev/install
+export PRODAGENT_WORKDIR=/data/$PRODAGENT_USER/PAProd/dev/prodAgent
 export APT_VER=0.5.15lorg3.2-cmp
 export VO_CMS_SW_DIR=$MYTESTAREA
 export SCRAM_ARCH_INSTALL=slc4_amd64_gcc345

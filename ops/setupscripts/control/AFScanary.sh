@@ -20,7 +20,7 @@ do
 
  #cat /tmp/canaryfile
 
- TO='dmason@fnal.gov,mlmiller@mit.edu'
+ TO='dmason@fnal.gov'
  #TO='dmason@fnal.gov'
 
  

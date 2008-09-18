@@ -19,7 +19,7 @@ rm -rf lib/RepackerInjector
 # again for PRODCOMMON
 
 cd $MYTESTAREA
-cvs co -r PRODCOMMON_$PAVERSION PRODCOMMON
+cvs co -r PRODCOMMON_$PCVERSION PRODCOMMON
 cd PRODCOMMON
 make
 
@@ -29,7 +29,7 @@ cvs co -r DBS_$DBSVERSION DBS
 
 # T0 specific components
 
-cvs co -r T0_0_0_2_pre14 T0
-cvs co -r WMCORE_REQMGR_0_0_1 WMCORE
+cvs co -r T0_0_0_2_pre23 T0
+#cvs co -r WMCORE_REQMGR_0_0_1 WMCORE
 cvs co -r LUMIDB_0_0_2 LUMIDB/LumiWebService/Client/LumiWebClient
 

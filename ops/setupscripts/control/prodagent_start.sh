@@ -10,5 +10,5 @@ prodAgentd --restart
 prodAgentd --status
 reauth 43200 $PRODAGENT_USER --fork
 
-killall -e AFScanary.sh
-/data/cmsprod/PAProd/prod/control/AFScanary.sh &
+#killall -e AFScanary.sh
+#/data/cmsprod/PAProd/prod/control/AFScanary.sh &
