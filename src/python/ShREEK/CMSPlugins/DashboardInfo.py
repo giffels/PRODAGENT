@@ -258,6 +258,7 @@ class DashboardInfo(dict):
 
         """
         result = DashboardInfo()
+        result.clear()
         result.task = self.task
         result.job = self.job = self.job
         result.destinations = self.destinations
