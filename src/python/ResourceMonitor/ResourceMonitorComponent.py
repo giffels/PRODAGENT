@@ -56,6 +56,7 @@ class ResourceMonitorComponent:
         msg += " ==> Monitor = %s\n" % self.args['MonitorName']
         msg += " ==> PollInterval = %s s\n" % self.args['PollInterval']
         logging.info(msg)
+
         
     def __call__(self, event, payload):
         """
@@ -213,6 +214,8 @@ class ResourceMonitorComponent:
                 logging.debug("pollResources:Active")
                 monitor = self.loadMonitor()
                 if monitor != None:
+
+                    publishMessage = True
                     try:
                         resourceConstraints = monitor()
                     except Exception, ex:
@@ -222,13 +225,11 @@ class ResourceMonitorComponent:
                         logging.error(msg)
                         dbgMsg = str(traceback.format_exc())
                         logging.debug(dbgMsg)
-                        
-                        resourceConstr = ResourceConstraint()
-                        resourceConstr['count'] = 0
-                        resourceConstraints = [resourceConstr]
-                    logging.debug("%s Resources Available" % resourceConstraints)
-                    
-                    self.publishResources(resourceConstraints)
+                        publishMessage = False
+
+                    if publishMessage:
+                        self.publishResources(resourceConstraints)
+                        logging.debug("%s Resources Available" % resourceConstraints)
         finally:
             # generate new polling cycle
             self.ms.publishUnique('ResourceMonitor:Poll', '', self.pollDelay)
