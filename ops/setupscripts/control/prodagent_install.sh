@@ -9,6 +9,12 @@ cd $MYTESTAREA
 
 cvs co -r PRODAGENT_$PAVERSION PRODAGENT
 
+# follwoing twiki at https://twiki.cern.ch/twiki/bin/view/CMS/CMST0Repacker:
+
+cvs update -r 1.10 PRODAGENT/src/python/ResourceMonitor/ResourceMonitorComponent.py
+cvs update -r 1.12 PRODAGENT/src/python/ResourceMonitor/Monitors/T0LSFMonitor.py
+
+
 cd PRODAGENT
 source $PBIN/prodagent_init.sh
 make
