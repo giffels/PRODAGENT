@@ -158,11 +158,11 @@ class T0LSFMonitor(MonitorInterface):
         siteThresholds = self.siteThresholds[siteName]
         #siteAttrs = self.siteAttributes[siteName]
 
-        processingThreshold = siteThresholds.get("processingThreshold")
-        mergeThreshold = siteThresholds.get("mergeThreshold")
-        cleanupThreshold = siteThresholds.get("cleanupThreshold")
-        repackThreshold = siteThresholds.get("repackThreshold")
-        collectThreshold = siteThresholds.get("logcollectThreshold")
+        processingThreshold = siteThresholds.get("processingThreshold", 1000000)
+        mergeThreshold = siteThresholds.get("mergeThreshold", 1000000)
+        cleanupThreshold = siteThresholds.get("cleanupThreshold", 1000000)
+        repackThreshold = siteThresholds.get("repackThreshold", 10000000)
+        collectThreshold = siteThresholds.get("logcollectThreshold", 1000000)
         
         missingProcessingJobs = processingThreshold - jobCount[0]
         missingMergeJobs = mergeThreshold - jobCount[1]
@@ -170,8 +170,8 @@ class T0LSFMonitor(MonitorInterface):
         missingRepackJobs = repackThreshold - jobCount[3]
         missingLogCollectJobs = collectThreshold - jobCount[4]
 
-        minSubmit = siteThresholds.get("minimumSubmission")
-        maxSubmit = siteThresholds.get("maximumSubmission")
+        minSubmit = siteThresholds.get("minimumSubmission", 1)
+        maxSubmit = siteThresholds.get("maximumSubmission", 100)
 
         # check if we should release processing jobs
         if ( missingProcessingJobs >= minSubmit ):
