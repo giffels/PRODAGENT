@@ -6,3 +6,5 @@ sqlplus CMS_T0AST/PlumJ4m791@DEVDB10 @TOAST_Oracle
 #sqlplus CMS_T0AST_SIMON/PlumJ4m791@DEVDB10 @TOAST_Oracle
 cd $PBIN
 
+python t0astgrants.py
+
