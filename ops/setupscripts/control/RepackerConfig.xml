@@ -2,7 +2,7 @@
 <ProdAgentConfig>
 	<ProdAgentConfiguration>
 		<Component Name="CondorTracker"/>
-		<!-- <Component Name="DBSInterface"/> -->
+		<!--<Component Name="DBSInterface"/> -->
 		<!--Component Name="RssFeeder"/-->
 		<Component Name="ErrorHandler"/>
 		<Component Name="JobCleanup"/>
@@ -19,21 +19,50 @@
 		<Component Name="RepackerAccountant"/>
 		<Component Name="RepackerMerger"/>
                 <Component Name="RepackerAuditor"/>
-                <Component Name="PromptRecoInjector"/>
+                <Component Name="PromptRecoInjector"/>     
+                <Component Name="PromptRecoManager"/>
+                <Component Name="BlockInjector"/> 
+                <Component Name="BlockAuditor"/> 
+                <ConfigBlock Name="BlockInjector">
+                  <Parameter Name="LogLevel" Value="Debug"/>
+                  <Parameter Name="LogSize" Value="1073741824"/>
+                  <Parameter Name="LogRotate" Value="9"/>
+                  <Parameter Name="ComponentDir"  Value="/data/cmsprod/PAProd/prod/prodAgent/BlockInjector"/>
+                  <Parameter Name="blockSizeThreshold" Value="100000000000"/>
+                  <Parameter Name="numOfFilesThreshold" Value="10000"/>
+                  <Parameter Name="PollInterval" Value="00:05:00"/>
+                  <Parameter Name="PhEDExInjectionFlag" Value="On"/>
+                </ConfigBlock>
+                <ConfigBlock Name="BlockAuditor">
+                  <Parameter Name="LogSize" Value="1073741824"/>
+                  <Parameter Name="LogRotate" Value="9"/>
+                  <Parameter Name="LogLevel" Value="Debug"/>
+                  <Parameter Name="DBSMigrationFlag" Value="On"/>
+                  <Parameter Name="SkipBlockTransferCheck" Value="On"/>
+                  <Parameter Name="ComponentDir"  Value="/data/cmsprod/PAProd/prod/prodAgent/BlockAuditor"/>
+                </ConfigBlock>
+                <ConfigBlock Name="PromptRecoManager">
+                        <Parameter Name="LogLevel" Value="Debug"/>
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/PromptRecoManager"/>
+                        <Parameter Name="recoTimeout" Value="300"/>
+                </ConfigBlock>
                 <ConfigBlock Name="PromptRecoInjector">
                         <Parameter Name="LogLevel" Value="Debug"/>
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/PromptRecoInjector"/>
-                        <Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/PromptRecoInjector"/>
-                        <Parameter Name="datasetsToReco" Value="Cosmics,BarrelMuon"/>
-                        <Parameter Name="cmsswVer" Value="CMSSW_2_1_3"/>
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/PromptRecoInjector"/> 
+                        <Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCache/PromptRecoInjector"/>
+                        <Parameter Name="datasetsToReco" Value="BeamHalo,ZeroBias,TriggerTest,Cosmics,BarrelMuon,EndcapsMuon"/>
+                        <Parameter Name="cmsswVer" Value="CMSSW_2_1_8"/>
                         <Parameter Name="cmsPath" Value="/afs/cern.ch/cms/sw"/>
                         <Parameter Name="scramArch" Value="slc4_ia32_gcc345"/>
-                        <Parameter Name="t0astPollInterval" Value="00:01:00"/>
-                        <Parameter Name="recoConfig" Value="/data/cmsprod/CMSSW/CMSSW_2_1_3/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py"/>
+                        <Parameter Name="t0astPollInterval" Value="00:05:00"/>
+<!--                        <Parameter Name="recoConfig" Value="/data/cmsprod/CMSSW/CMSSW_2_1_8/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_30T_cfg.py"/> -->
+<!--                        <Parameter Name="recoConfig" Value="/data/cmsprod/CMSSW/CMSSW_2_1_8/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_38T_cfg.py"/> -->
+                        <Parameter Name="recoConfig" Value="/data/cmsprod/CMSSW/CMSSW_2_1_8/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py"/>
                 </ConfigBlock>
+
                 <ConfigBlock Name="RepackerAuditor">
                         <Parameter Name="LogLevel" Value="Debug"/>
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/RepackerAuditor"/>
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/RepackerAuditor"/>
                         <Parameter Name="runTimeout" Value="1200"/>
                         <Parameter Name="stateMachinePeriod" Value="00:02:00"/>
                         <Parameter Name="closeOutPollInterval" Value="00:02:00"/>
@@ -45,7 +74,7 @@
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
 			<Parameter Name="TrackOnEvent" Value="TrackJob"/>
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/CondorTracker"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/CondorTracker"/>
 			<Parameter Name="TrackerPlugin" Value="T0LSFTracker"/>
 		</ConfigBlock>
 		<ConfigBlock Name="DBSInterface">
@@ -53,7 +82,7 @@
 			<Parameter Name="DBSDataTier" Value="GEN,SIM,DIGI,HLT,RECO,AOD,RAW,USER,FEVT,FEVTSIM,RECOSIM,AODSIM"/>
 			<Parameter Name="RssFeed" Value="no"/>
 			<Parameter Name="CloseBlockSize" Value="None"/>
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/DBSInterface"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/DBSInterface"/>
 			<Parameter Name="CloseBlockFiles" Value="5"/>
 			<Parameter Name="skipGlobalMigration" Value="False"/>
 			<Parameter Name="skipPhEDExInjection" Value="False"/>-->
@@ -66,12 +95,14 @@
 		<ConfigBlock Name="RssFeeder">
 			<Parameter Name="ItemListLength" Value="100"/>
 			<Parameter Name="Port" Value="8100"/>
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/RssFeeder"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/RssFeeder"/>
 		</ConfigBlock>
 		<ConfigBlock Name="PhEDExConfig">
 			<Parameter Name="DBPARAM" Value="/data/cmsprod/phedex/DBParam:Prod/TIER0"/>
-			<Parameter Name="PhEDExDropBox" Value="/data/cmsprod/PAProd/dev/prodAgent/PhEDExDropBox"/>
+			<Parameter Name="PhEDExDropBox" Value="/data/cmsprod/PAProd/prod/prodAgent/PhEDExDropBox"/>
 			<Parameter Name="Nodes" Value="T0_CH_CERN_Export"/>
+                        <Parameter Name="DataServiceURL" Value="http://cmswttest.cern.ch:7701/phedex/datasvc/xml/tbedi"/>
+
 		</ConfigBlock>
 		<ConfigBlock Name="JobCleanup">
 			<Comment>
@@ -82,9 +113,9 @@
 				are tarred and moved to an archive for possible post mortem analysis.
 			</Comment>
 			<Parameter Name="RssFeed" Value="no"/>
-			<Parameter Name="FailureArchive" Value="/data/cmsprod/PAProd/dev/prodAgent/archive/failure"/>
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCleanup"/>
-			<Parameter Name="SuccessArchive" Value="/data/cmsprod/PAProd/dev/prodAgent/archive/success"/>
+			<Parameter Name="FailureArchive" Value="/data/cmsprod/PAProd/prod/prodAgent/archive/failure"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCleanup"/>
+			<Parameter Name="SuccessArchive" Value="/data/cmsprod/PAProd/prod/prodAgent/archive/success"/>
 		</ConfigBlock>
 		<ConfigBlock Name="GlobalDBSDLS">
 			<Parameter Name="DBSURL" Value="https://cmsdbsprod.cern.ch:8443/cms_dbs_prod_global_writer/servlet/DBSServlet"/>
@@ -94,7 +125,7 @@
 			<Parameter Name="ProdAgentName" Value="Tier0Repacker"/>
 			<Parameter Name="ProdAgentKey" Value="/home/fvlingen/.globus/clientkey.pem"/>
 			<Parameter Name="ProdAgentCert" Value="/home/fvlingen/.globus/client.pem"/>
-			<Parameter Name="ProdAgentWorkDir" Value="/data/cmsprod/PAProd/dev/prodAgent"/>
+			<Parameter Name="ProdAgentWorkDir" Value="/data/cmsprod/PAProd/prod/prodAgent"/>
 			<Parameter Name="ProdAgentRunOffset" Value="0"/>
 		</ConfigBlock>
 		<ConfigBlock Name="ErrorHandler">
@@ -108,7 +139,7 @@
 			</Comment>
 			<Parameter Name="DelayFactor" Value="100"/>
 			<Parameter Name="MaxCacheDirSizeMB" Value="128"/>
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/ErrorHandler"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/ErrorHandler"/>
 			<Parameter Name="RssFeed" Value="no"/>
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
@@ -117,11 +148,11 @@
 		<ConfigBlock Name="AdminControl">
 			<Parameter Name="AdminControlPort" Value="8081"/>
 			<Parameter Name="AdminControlHost" Value="127.0.0.1"/>
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/AdminControl"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/AdminControl"/>
 			<Parameter Name="RssFeed" Value="no"/>
 		</ConfigBlock>
 		<ConfigBlock Name="StatTracker">
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/StatTracker"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/StatTracker"/>
 			<Parameter Name="RssFeed" Value="no"/>
 		</ConfigBlock>
 		<ConfigBlock Name="LocalDBS">
@@ -177,24 +208,23 @@
 			<Parameter Name="dbWaitingTime" Value="10"/>
 			<Parameter Name="host" Value="localhost"/>
 			<Parameter Name="user" Value="root"/>
-			<Parameter Name="socketFileLocation" Value="/data/cmsprod/PAProd/dev/prodAgent/mysqldata/mysql.sock"/>
+			<Parameter Name="socketFileLocation" Value="/data/cmsprod/PAProd/prod/prodAgent/mysqldata/mysql.sock"/>
 			<Parameter Name="portNr" Value=""/>
 			<Parameter Name="dbName" Value="ProdAgentDB"/>
 			<Parameter Name="schemaLocation" Value="$PRODAGENT_ROOT/share/ProdAgentDB.sql"/>
 		</ConfigBlock>
                 <ConfigBlock Name="Tier0DB">
+			<!-- <Parameter Name="user" Value="CMS_T0AST"/> -->
 			<Parameter Name="user" Value="CMS_T0AST_WRITER"/> 
-<!--			<Parameter Name="user" Value="CMS_T0AST_SIMON"/> -->
-                        <Parameter Name="passwd" Value="m4rm4l4d3"/>
-                        <!--<Parameter Name="passwd" Value="PlumJ4m791"/> -->
+                        <Parameter Name="passwd" Value="PlumJ4m791"/>
                         <Parameter Name="dbName" Value="TOAST_0_0_1"/>
                         <Parameter Name="dbType" Value="oracle"/>
-<!--                        <Parameter Name="tnsName" Value="CMS_T0AST"/> -->
-                        <Parameter Name="tnsName" Value="DEVDB10"/>
+                        <Parameter Name="tnsName" Value="CMS_T0AST"/> 
+                       <!--    <Parameter Name="tnsName" Value="DEVDB10"/> -->
 			<Parameter Name="schemaLocation" Value="/afs/cern.ch/user/h/hufnagel/w0/tier0inject/TOAST_Oracle.sql"/>
                 </ConfigBlock>
 		<ConfigBlock Name="JobCreator">
-			<Parameter Name="CreatorPluginConfig" Value="/data/cmsprod/PAProd/dev/control/CreatorPluginConfig.xml"/>
+			<Parameter Name="CreatorPluginConfig" Value="/data/cmsprod/PAProd/prod/control/CreatorPluginConfig.xml"/>
                         <Parameter Name="LogArchStageOut" Value="True"/>
 			<Parameter Name="CreatorName" Value="T0LSFCreator"/>
 			<Parameter Name="GeneratorName" Value="Bulk"/>
@@ -202,7 +232,7 @@
 			<Parameter Name="MultipleJobsPerRun" Value="True"/>
 			<Parameter Name="MinMergeFileSize" Value="2000000000"/>
 			<Parameter Name="SizeBasedMerge"  Value="True"/>
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCreator"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCreator"/>
 			<Parameter Name="RssFeed" Value="no"/>
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
@@ -214,42 +244,42 @@
                         <Parameter Name="LogLevel" Value="Debug"/>
 			<Parameter Name="RssFeed" Value="no"/>
 			<Parameter Name="SubmitterName" Value="T0LSFSubmitter"/>
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobSubmitter"/>
-			<Parameter Name="SubmitterPluginConfig" Value="/data/cmsprod/PAProd/dev/control/SubmitterPluginConfig.xml"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobSubmitter"/>
+			<Parameter Name="SubmitterPluginConfig" Value="/data/cmsprod/PAProd/prod/control/SubmitterPluginConfig.xml"/>
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
 		</ConfigBlock>
 		<ConfigBlock Name="JobQueue">
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobQueue"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobQueue"/>
 			<Parameter Name="ExpireConstraints" Value="20"/>
 		</ConfigBlock>
 		<ConfigBlock Name="ResourceMonitor">
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/ResourceMonitor"/>
+			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/ResourceMonitor"/>
+			<Parameter Name="LogSize" Value="1073741824"/>
+			<Parameter Name="LogRotate" Value="9"/>
 			<Parameter Name="PollInterval" Value="30"/>
 			<Parameter Name="MonitorName" Value="T0LSFMonitor"/>
 		</ConfigBlock>
                 <ConfigBlock Name="SegmentInjector">
 			<Parameter Name="LogLevel" Value="Debug"/>
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/SegmentInjector"/>
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/SegmentInjector"/>
                         <Parameter Name="PollInterval" Value="120"/>
 			<Parameter Name="NumberOfLoggerNodes" Value="4"/>
-                        <Parameter Name="ReleaseCheckoutArea" Value="/data/cmsprod/PAProd/dev/releases"/>
-                        <Parameter Name="CreateReleaseScript" Value="/data/cmsprod/PAProd/dev/scripts/createRelease.sh"/>
-                        <Parameter Name="ParseIndexFileScript" Value="/data/cmsprod/PAProd/dev/scripts/parseIndexFile.sh"/>
+                        <Parameter Name="StreamerTimeout" Value="186"/> 
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
                 </ConfigBlock>
                 <ConfigBlock Name="RepackerScheduler">
                         <Parameter Name="LogLevel" Value="Debug"/>
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/RepackerScheduler"/>
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/RepackerScheduler"/>
                         <Parameter Name="PollInterval" Value="00:00:20"/>
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
                 </ConfigBlock>
                 <ConfigBlock Name="RepackerInjector">
                         <Parameter Name="LogLevel" Value="Debug"/>
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/RepackerInjector"/>
-                        <Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/RepackerInjector"/>
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/RepackerInjector"/>
+                        <Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCache/RepackerInjector"/>
 			<Parameter Name="cmsPath" Value="/afs/cern.ch/cms/sw"/>
 			<Parameter Name="scramArch" Value="slc4_ia32_gcc345"/>
 			<Parameter Name="LogSize" Value="1073741824"/>
@@ -257,19 +287,20 @@
                 </ConfigBlock> 
                 <ConfigBlock Name="RepackerAccountant"> 
                         <Parameter Name="LogLevel" Value="Debug"/>  
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/RepackerAccountant"/> 
-                        <Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache"/> 
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/RepackerAccountant"/> 
+                        <Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCache"/> 
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
 			<Parameter Name="mergeThreshold" Value="2000000000"/>
                 </ConfigBlock> 
                 <ConfigBlock Name="RepackerMerger"> 
                         <Parameter Name="LogLevel" Value="Debug"/>  
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/RepackerMerger"/> 
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/RepackerMerger"/> 
                         <Parameter Name="minMergeSize" Value="2000000000"/> 
                         <Parameter Name="maxMergeSize" Value="4100000000"/> 
                         <Parameter Name="t0astPollInterval" Value="00:00:20"/>
-			<Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/RepackerMerger"/>
+			<Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCache/RepackerMerger"/>
+                       <!-- <Parameter Name="UseLazyDownload" Value="On"/> -->
 			<Parameter Name="cmsPath" Value="/afs/cern.ch/cms/sw"/>
                         <Parameter Name="scramArch" Value="slc4_ia32_gcc345"/> 
 			<Parameter Name="LogSize" Value="1073741824"/>
@@ -288,7 +319,7 @@
                         <Parameter Name="QueueJobMode" Value="True"/>
                         <Parameter Name="LogLevel" Value="Debug"/>
                         <Parameter Name="MaxInputAccessFailures" Value="1"/>
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/MergeSensor"/>
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCache/MergeSensor"/>
                         <Parameter Name="MergeSiteBlacklist" Value="None"/>
                         <Parameter Name="RssFeed" Value="no"/>
                         <Parameter Name="MergeSiteWhitelist" Value="None"/>
@@ -302,7 +333,7 @@ l accounting support. When it is set to
  be generated, with no updates on
                                 internal database.
                         </Comment>
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/MergeAccountant"/>
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCache/MergeAccountant"/>
                         <Parameter Name="Enabled" Value="yes"/>
                         <Parameter Name="MaxInputAccessFailures" Value="1"/>
                         <Parameter Name="RssFeed" Value="no"/>
