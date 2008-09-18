@@ -2,13 +2,10 @@
 <ProdAgentConfig>
 	<ProdAgentConfiguration>
 		<Component Name="CondorTracker"/>
-		<!--<Component Name="DBSInterface"/> -->
 		<!--Component Name="RssFeeder"/-->
 		<Component Name="ErrorHandler"/>
 		<Component Name="JobCleanup"/>
-		<!--Component Name="PhEDExInterface"/-->
 		<!--Component Name="AdminControl"/-->
-		<!--Component Name="StatTracker"/-->
 		<Component Name="JobCreator"/>
 		<Component Name="JobSubmitter"/>
 		<Component Name="JobQueue"/>
@@ -16,7 +13,7 @@
                 <Component Name="SegmentInjector"/> 
 		<Component Name="RepackerScheduler"/>
 		<Component Name="RepackerInjector"/>
-		<Component Name="RepackerAccountant"/>
+		<Component Name="Tier0Accountant"/>
 		<Component Name="RepackerMerger"/>
                 <Component Name="RepackerAuditor"/>
                 <Component Name="PromptRecoInjector"/>     
@@ -76,21 +73,6 @@
 			<Parameter Name="TrackOnEvent" Value="TrackJob"/>
 			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/CondorTracker"/>
 			<Parameter Name="TrackerPlugin" Value="T0LSFTracker"/>
-		</ConfigBlock>
-		<ConfigBlock Name="DBSInterface">
-			<Parameter Name="LogLevel" Value="Debug"/> 
-			<Parameter Name="DBSDataTier" Value="GEN,SIM,DIGI,HLT,RECO,AOD,RAW,USER,FEVT,FEVTSIM,RECOSIM,AODSIM"/>
-			<Parameter Name="RssFeed" Value="no"/>
-			<Parameter Name="CloseBlockSize" Value="None"/>
-			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/DBSInterface"/>
-			<Parameter Name="CloseBlockFiles" Value="5"/>
-			<Parameter Name="skipGlobalMigration" Value="False"/>
-			<Parameter Name="skipPhEDExInjection" Value="False"/>-->
-<!--    			<Parameter Name="skipGlobalMigration" Value="True"/>
-			<Parameter Name="skipPhEDExInjection" Value="True"/>-->
-			<Parameter Name="DataMode" Value="data"/>
-			<Parameter Name="LogSize" Value="1073741824"/>
-			<Parameter Name="LogRotate" Value="9"/>
 		</ConfigBlock>
 		<ConfigBlock Name="RssFeeder">
 			<Parameter Name="ItemListLength" Value="100"/>
@@ -275,6 +257,7 @@
                         <Parameter Name="PollInterval" Value="00:00:20"/>
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
+                        <Parameter Name="MaxEventsPerFile" Value="50000"/>
                 </ConfigBlock>
                 <ConfigBlock Name="RepackerInjector">
                         <Parameter Name="LogLevel" Value="Debug"/>
@@ -285,9 +268,9 @@
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
                 </ConfigBlock> 
-                <ConfigBlock Name="RepackerAccountant"> 
+                <ConfigBlock Name="Tier0Accountant"> 
                         <Parameter Name="LogLevel" Value="Debug"/>  
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/RepackerAccountant"/> 
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/Tier0Accountant"/> 
                         <Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCache"/> 
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
@@ -300,7 +283,7 @@
                         <Parameter Name="maxMergeSize" Value="4100000000"/> 
                         <Parameter Name="t0astPollInterval" Value="00:00:20"/>
 			<Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCache/RepackerMerger"/>
-                       <!-- <Parameter Name="UseLazyDownload" Value="On"/> -->
+                        <Parameter Name="UseLazyDownload" Value="On"/> 
 			<Parameter Name="cmsPath" Value="/afs/cern.ch/cms/sw"/>
                         <Parameter Name="scramArch" Value="slc4_ia32_gcc345"/> 
 			<Parameter Name="LogSize" Value="1073741824"/>
@@ -309,35 +292,5 @@
 		<ConfigBlock Name="LSF">
 			<Parameter Name="JobGroup" Value="/groups/tier0/repackerProd"/>
 		</ConfigBlock>
-<!--                <ConfigBlock Name="MergeSensor">
-                        <Parameter Name="PollInterval" Value="120"/>
-                        <Parameter Name="StartMode" Value="warm"/>
-                        <Parameter Name="MaxMergeFileSize" Value="4100000000"/>
-                        <Parameter Name="MinMergeFileSize" Value="2000000000"/>
-                        <Parameter Name="FastMerge" Value="False"/>
-                        <Parameter Name="CleanUp" Value="False"/>
-                        <Parameter Name="QueueJobMode" Value="True"/>
-                        <Parameter Name="LogLevel" Value="Debug"/>
-                        <Parameter Name="MaxInputAccessFailures" Value="1"/>
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCache/MergeSensor"/>
-                        <Parameter Name="MergeSiteBlacklist" Value="None"/>
-                        <Parameter Name="RssFeed" Value="no"/>
-                        <Parameter Name="MergeSiteWhitelist" Value="None"/>
-                </ConfigBlock>
-
-                <ConfigBlock Name="MergeAccountant">
-                        <Comment>
-                                -Enabled: Set this parameter to -yes- to get ful
-l accounting support. When it is set to
-                                -no-, only triggering for cleanups of files will
- be generated, with no updates on
-                                internal database.
-                        </Comment>
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/prod/prodAgent/JobCache/MergeAccountant"/>
-                        <Parameter Name="Enabled" Value="yes"/>
-                        <Parameter Name="MaxInputAccessFailures" Value="1"/>
-                        <Parameter Name="RssFeed" Value="no"/>
-                </ConfigBlock>  -->
-
 	</ProdAgentConfiguration>
 </ProdAgentConfig>
