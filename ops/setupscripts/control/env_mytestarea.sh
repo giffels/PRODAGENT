@@ -35,4 +35,6 @@ export PRODAGENT_CONFIG=$PBIN/RepackerConfig.xml
 #If you are unsure, contact Markus Klute and Mike Miller
 
 #export STAGE_SVCCLASS=cmsprod 
+# t0input for replays only!!!  doesn't write to tape
+#export STAGE_SVCCLASS=t0input
 export STAGE_SVCCLASS=t0export
