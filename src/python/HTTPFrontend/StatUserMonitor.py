@@ -32,14 +32,6 @@ def make_time_data(length,span ):
     return begin_time, end_time
 
 
-def splitter(proxy):
-    tmp = string.split(str(proxy[1]),'/')
-    cn=[]
-    for t in tmp:
-        if t[:2]== 'CN':
-            cn.append(t[3:])
-    return cn
-
 def dataCreate(from_time,begin,end,span):
     data=API.getUser(from_time)
     user = []
@@ -105,25 +97,22 @@ class StatUserMonitor:
 	
         user = getData_andDraw(self.length,self.span,self.from_time)
 
-
 	page = [_header]
         page.append('<img src="showimage" width="800" height="500" />' )
 	table_user = "<br/><table>\n"
 	table_user += "<tr colspan=2><b>CrabServer usage by user :</b></tr>"
 	sum = 0
 	for row in user:
-		name = API.getNameFromProxy(row[1])
-		name = splitter(name)
-       		table_user += "<tr><td align=\"right\">From "+str(row[0])+": </td><td><b>"+str(name[0])+"</b></td></tr>\n"
+		name = API.getName(row[1])
+                if len(name) > 0:
+       		    table_user += "<tr><td align=\"right\">From "+str(row[0])+": </td><td><b>"+str(name[0][0])+"</b></td></tr>\n"
 		sum +=1
-
 
 	table_user += '<tr><td align="right"><b>Total</b>:&nbsp;</td><td><b>'+str(sum)+"</b></td></tr>\n"
        	table_user += "</table>\n"
         page.append(table_user)
 
         page.append(_footer)
-   	
 
         return page
 

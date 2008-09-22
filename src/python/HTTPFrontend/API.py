@@ -522,17 +522,13 @@ def getUser(from_time):
     taskCheck = queryMethod(queryString)
     return taskCheck
 
-
-def getNameFromProxy(path):
-   cmd="voms-proxy-info -file "+path+" -subject"
-   if os.path.exists(path) == True:
-       name = commands.getstatusoutput(cmd)
-   else:
-       name=[1,'/CN=Proxy not found']
-
-   return name
-
-
+def getName(proxy):
+    queryString = "select user_name from js_taskInstance "+\
+                  "where proxy = '"+str(proxy)+"' "+\
+                  "ORDER BY ID DESC "+\
+                  "LIMIT 1;"
+    name = queryMethod(queryString)
+    return name
 
 
 # Componets Monitor
