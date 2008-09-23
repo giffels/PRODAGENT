@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.3 2008/08/22 15:31:16 gcodispo Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: JobHandling.py,v 1.4 2008/08/26 16:11:19 gcodispo Exp $"
+__version__ = "$Revision: 1.4 $"
 
 import os
 import logging
@@ -164,7 +164,7 @@ class JobHandling:
         """
         __writeFwkJobReport__
 
-        write a fajke reportfilename based on the statu reported
+        write a fake reportfilename based on the status reported
         """
 
         # create job report
@@ -198,18 +198,12 @@ class JobHandling:
 
         if os.path.getsize(reportfilename) == 0 :
             return( success, -1 )
-            ### 50117 -
-            ### cmsRun did not produce a valid/readable job report at runtime
-            # job.runningJob["applicationReturnCode"] = str(50117)
-            # job.runningJob["wrapperReturnCode"] = str(50117)
-            # self.writeFwkJobReport( job['name'], 50117, reportfilename )
-            # return ( False, 50117 )
 
         # read standard info
         try :
             jobReport = readJobReport(reportfilename)[0]
-            success = ( jobReport.status == "Success" )
-            exitCode = jobReport.exitCode
+            # success = ( jobReport.status == "Success" )
+            # exitCode = jobReport.exitCode
         except Exception, err:
             logging.error('Invalid Framework Job Report : %s' %str(err) )
             return( success, -1 )
@@ -229,9 +223,14 @@ class JobHandling:
             pass
 
         if job.runningJob["wrapperReturnCode"] is None and \
-           job.runningJob["applicationReturnCode"] is None :
-            job.runningJob["wrapperReturnCode"] = exitCode
-            job.runningJob["applicationReturnCode"] = exitCode
+               job.runningJob["applicationReturnCode"] is None :
+            success = checkSuccess(jobReport)
+            if success :
+                exitCode = 0
+            else:
+                exitCode = -1
+            # job.runningJob["wrapperReturnCode"] = exitCode
+            # job.runningJob["applicationReturnCode"] = exitCode
 
         return( success, exitCode )
 
