@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.55 2008/07/25 15:47:41 swakef Exp $"
-__version__ = "$Revision: 1.55 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.56 2008/09/08 15:56:04 gcodispo Exp $"
+__version__ = "$Revision: 1.56 $"
 
 import os
 import os.path
@@ -30,14 +30,12 @@ import ProdAgentCore.LoggingUtils as LoggingUtils
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo
 
-## other dependencies
-from GetOutput.JobOutput import JobOutput
-
 # to be substituted with a BossLite implementation
 from JobTracking.TrackingDB import TrackingDB
 
 # BossLite support
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
+from ProdCommon.BossLite.Common.Exceptions import BossLiteError
 
 # Threads pool
 from JobTracking.PoolScheduler import PoolScheduler
@@ -139,7 +137,6 @@ class TrackingComponent:
         params = {}
         params['componentDir'] = self.args['ComponentDir']
         params['sessionPool'] = self.sessionPool
-        JobOutput.setParameters(params)
 
         # check for dashboard usage
         self.usingDashboard = self.args['dashboardInfo']
@@ -390,21 +387,19 @@ class TrackingComponent:
         # loading attributes
         offset = 0
         loop = True
-        from ProdCommon.BossLite.Common.Exceptions import BossLiteError
+
         while loop :
 
             logging.debug("Max finished jobs to be loaded %s:%s " % \
                          (str( offset ), str( offset + self.jobLimit) ) )
 
             # query finished jobs
-            try:
-                self.finishedJobs = self.bossLiteSession.loadEnded(
-                    attributes=self.runningAttrs, \
-                    limit=self.jobLimit, offset=offset
-                    )
-                logging.info("finished jobs : " + str( len(self.finishedJobs) ) )
-            except BossLiteError, msg:
-                logging.error(msg)
+            self.finishedJobs = self.bossLiteSession.loadEnded(
+                attributes=self.runningAttrs, \
+                limit=self.jobLimit, offset=offset
+                )
+            logging.info("finished jobs : " + str( len(self.finishedJobs) ) )
+
             # exit if no more jobs to query
             if self.finishedJobs == [] :
                 loop = False
@@ -428,7 +423,15 @@ class TrackingComponent:
                 logging.debug("Enqueing getoutput request for %s" % \
                               self.fullId(job))
 
-                JobOutput.requestOutput(job)
+                try:
+                    job.runningJob['processStatus'] = 'output_requested'
+                    self.bossLiteSession.updateDB( job )
+                except BossLiteError, err:
+                    logging.error("%s: output for cannot be requested : %s" % \
+                                  (self.fullId( job ), str( err ) ) )
+
+                logging.debug("%s: getoutput request successfully enqueued" % \
+                              self.fullId( job ) )
                 del( job )
 
             del self.finishedJobs[:]
