@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.13 2008/09/09 12:36:58 gcodispo Exp $"
-__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.14 2008/09/09 14:59:19 gcodispo Exp $"
+__version__ = "$Revision: 1.14 $"
 
 import os
 import logging
@@ -353,7 +353,7 @@ fi
 
             # load the task ans append the job
             self.bossTask = self.bossLiteSession.loadTask(
-                self.bossJob['taskId'], False )
+                self.bossJob['taskId'], jobRange=None )
             self.bossTask.appendJob( self.bossJob )
 
         # still no task? Something bad happened
