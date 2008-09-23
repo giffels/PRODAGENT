@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.4 2008/08/26 16:11:19 gcodispo Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: JobHandling.py,v 1.5 2008/09/23 13:04:06 gcodispo Exp $"
+__version__ = "$Revision: 1.5 $"
 
 import os
 import logging
@@ -26,7 +26,7 @@ from ProdCommon.Database import Session
 from ProdCommon.BossLite.Common.Exceptions import JobError
 
 # Framework Job Report handling
-#from ProdCommon.FwkJobRep.ReportState import checkSuccess
+from ProdCommon.FwkJobRep.ReportState import checkSuccess
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
