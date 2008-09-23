@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.10 2008/08/27 13:21:36 gcodispo Exp $"
-__revision__ = "$Revision: 1.10 $"
+__version__ = "$Id: JobOutput.py,v 1.11 2008/09/08 15:56:22 gcodispo Exp $"
+__revision__ = "$Revision: 1.11 $"
 
 import logging
 import os
@@ -173,6 +173,11 @@ class JobOutput:
             except BossLiteError, err:
                 logging.error('%s: Can not get scheduler : [%s]' % \
                               (cls.fullId( job ), str(err) ))
+                job.runningJob['processStatus'] = 'output_requested'
+                try :
+                    bossLiteSession.updateDB( job )
+                except:
+                    pass
 
             # update
             #try:
@@ -187,6 +192,13 @@ class JobOutput:
         # thread has failed
         except Exception, ex :
 
+            # allow job to be reprocessed
+            job.runningJob['processStatus'] = 'output_requested'
+            try :
+                bossLiteSession.updateDB( job )
+            except:
+                pass
+
             # show error message
             logging.error(
                 '%s: GetOutputThread exception: [%s]\nTraceback: %s' % \
@@ -194,6 +206,13 @@ class JobOutput:
 
         # thread has failed
         except :
+
+            # allow job to be reprocessed
+            job.runningJob['processStatus'] = 'output_requested'
+            try :
+                bossLiteSession.updateDB( job )
+            except:
+                pass
 
             # show error message
             logging.error( "%s: GetOutputThread traceback: %s" % \
@@ -325,6 +344,12 @@ class JobOutput:
 
             # scheduler interaction error
             except BossLiteError, err:
+
+                # if the job has not to be reprocessed
+                if retry >= int( cls.params['maxGetOutputAttempts'] ) :
+                    job.runningJob['processStatus'] = 'output_requested'
+                    job.runningJob['status'] = 'DA'
+                
                 logging.error("%s: retrieval failed: %s" % \
                               (cls.fullId( job ), str(err) ) )
                 logging.error("%s" % job)
@@ -352,6 +377,7 @@ class JobOutput:
                         "%s in status %s: waiting next round" % \
                         (cls.fullId( job ), job.runningJob['status'])
                         )
+                    job.runningJob['processStatus'] = 'output_requested'
                     return
 
                 else :
