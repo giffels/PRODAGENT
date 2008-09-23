@@ -1264,3 +1264,15 @@ def removeHoldForJob(dbInterface, jobSpecId):
     
     dbInterface.processData(sqlQuery, bindVars, transaction = True)
     return    
+
+def removeWorkflowFromQueue(dbInterface, workflowSpecId):
+    """
+    _removeWorkflowFromQueue_
+    
+    Remove all jobs resulting from a particular workflow from the job queue.
+    """
+    sqlQuery = "DELETE FROM jq_queue WHERE WORKFLOW_ID = :p_1"
+    bindVars = {"p_1": workflowSpecId}
+    
+    dbInterface.processData(sqlQuery, bindVars, transaction = True)
+    return
