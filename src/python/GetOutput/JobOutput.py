@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.11 2008/09/08 15:56:22 gcodispo Exp $"
-__revision__ = "$Revision: 1.11 $"
+__version__ = "$Id: JobOutput.py,v 1.12 2008/09/23 13:05:39 gcodispo Exp $"
+__revision__ = "$Revision: 1.12 $"
 
 import logging
 import os
@@ -23,7 +23,6 @@ import threading
 # BossLite import
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
-from ProdCommon.BossLite.Common.Exceptions import JobError
 from ProdCommon.BossLite.Common.Exceptions import DbError
 from ProdCommon.BossLite.Common.Exceptions import BossLiteError
 
@@ -61,39 +60,6 @@ class JobOutput:
 
         cls.params.update( params )
 
-    @classmethod
-    def requestOutput(cls, job):
-        """
-        __requestOutput__
-
-        request output for job.
-
-        """
-
-        # verify status
-        if job.runningJob['processStatus'] != 'handled':
-            logging.error(
-                "%s is in status %s, cannot request output" % \
-                ( cls.fullId( job ), job.runningJob['processStatus']))
-            return
-
-        job.runningJob['processStatus'] = 'output_requested'
-
-        # commit and close session
-        try :
-            bossLiteSession = \
-                           BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
-            bossLiteSession.updateDB( job.runningJob )
-        except JobError, err:
-            logging.error("%s: output for cannot be requested : %s" % \
-                          (cls.fullId( job ), str( err ) ) )
-        except Exception, err:
-            logging.error(
-                "%s: Unknown Error, output cannot be requested : %s" % \
-                          (cls.fullId( job ), str( err ) ) )
-
-        logging.debug("%s: getoutput request successfully enqueued" % \
-                      cls.fullId( job ) )
 
     @classmethod
     def doWork(cls, job):
@@ -442,35 +408,6 @@ class JobOutput:
                                 str( traceback.format_exc() ) ) )
 
         logging.debug("Recreated %s get output requests" % numberOfJobs)
-
-
-    @classmethod
-    def setDoneStatus(cls, job):
-        """
-        __setDoneStatus__
-
-        signal finished status for get output operation
-
-        """
-
-        logging.debug("%s: set done status" % cls.fullId( job ) )
-
-        try :
-            bossLiteSession = \
-                           BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
-
-            # update job status
-            job['processStatus'] = 'processed'
-            bossLiteSession.updateDB( job )
-        except DbError, msg:
-            logging.error('%s: Error updating DB : %s ' % str(msg))
-
-        except Exception, msg:
-            logging.error('%s: Unknown Error updating DB : %s ' % \
-                          (cls.fullId( job ), str(msg)))
-
-        logging.debug("%s: Output processing done" % cls.fullId( job ) )
-
 
 
     @classmethod
