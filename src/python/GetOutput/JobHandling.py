@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.5 2008/09/23 13:04:06 gcodispo Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: JobHandling.py,v 1.6 2008/09/23 13:08:35 gcodispo Exp $"
+__version__ = "$Revision: 1.6 $"
 
 import os
 import logging
@@ -224,7 +224,7 @@ class JobHandling:
 
         if job.runningJob["wrapperReturnCode"] is None and \
                job.runningJob["applicationReturnCode"] is None :
-            success = checkSuccess(jobReport)
+            success = checkSuccess(reportfilename)
             if success :
                 exitCode = 0
             else:
