@@ -32,16 +32,33 @@ class StageOutImpl:
         self.retryPause = 600
         self.stageIn = stagein
 
+
     def createSourceName(self, protocol, pfn):
         """
-        _createSource_
+        _createSourceName_
 
         construct a source URL/PFN for the pfn provided based on the
-        protocol that can be passed to the stage out command that this
+        protocol that can be passed to the stage command that this
         implementation uses.
 
         """
         raise NotImplementedError, "StageOutImpl.createSourceName"
+
+
+    def createTargetName(self, protocol, pfn):
+        """
+        _createTargetName_
+
+        construct a target URL/PFN for the pfn provided based on the
+        protocol that can be passed to the stage command that this
+        implementation uses.
+
+        By default this is the same as createSourceName (in cases
+        of stage ins the 'local' file is the target). Override this
+        in your implementation of this is not the case.
+
+        """
+        return self.createSourceName(protocol, pfn)
 
 
     def createOutputDirectory(self, targetPFN):
@@ -106,13 +123,26 @@ class StageOutImpl:
 
         # destination may also need PFN changed
         # i.e. if we are staging in a file from an SE
-        targetPFN = self.createSourceName(protocol, targetPFN)
-
+        targetPFN = self.createTargetName(protocol, targetPFN)
 
         #  //
         # // Create the output directory if implemented
         #//
-        self.createOutputDirectory(targetPFN)
+        for retryCount in range(1, self.numRetries + 1):
+            try:
+                self.createOutputDirectory(targetPFN)
+                break
+            except StageOutError, ex:
+                msg = "Attempted directory creation for stageout %s failed\n" % retryCount
+                msg += "Automatically retrying in %s secs\n " % self.retryPause
+                msg += "Error details:\n%s\n" % str(ex)
+                print msg
+                if retryCount == self.numRetries :
+                    #  //
+                    # // last retry, propagate exception
+                    #//
+                    raise ex
+                time.sleep(self.retryPause)
 
         #  //
         # // Create the command to be used.
@@ -138,9 +168,6 @@ class StageOutImpl:
                     #//
                     raise ex
                 time.sleep(self.retryPause)
-                continue
-                
-                
-        return
 
-        
+        # should never reach this point
+        return
