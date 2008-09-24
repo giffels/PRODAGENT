@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.3 2008/07/25 15:47:41 swakef Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: JobStatus.py,v 1.4 2008/09/08 15:56:04 gcodispo Exp $"
+__version__ = "$Revision: 1.4 $"
 
 import threading
 from JobTracking.TrackingDB import TrackingDB
@@ -120,7 +120,7 @@ class JobStatus:
                 task = bossSession.load(
                     taskId, runningAttrs=runningAttrs, \
                     strict=False, \
-                    limit=jobsToPoll, offset=offset )[0]
+                    limit=jobsToPoll, offset=offset )
 
                 if task.jobs == [] :
                     loop = False
