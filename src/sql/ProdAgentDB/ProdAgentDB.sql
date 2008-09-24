@@ -590,6 +590,22 @@ CREATE TABLE ct_job_attr(
  * WorkflowEntities
  */
 
+/*
+CREATE TABLE we_Job_State(
+   status               varchar(40),
+   primary key(status)
+   ) TYPE=InnoDB;
+
+INSERT INTO we_Job_State(status) VALUES('register') ON DUPLICATE KEY UPDATE status='register';
+INSERT INTO we_Job_State(status) VALUES('released') ON DUPLICATE KEY UPDATE status='released';
+INSERT INTO we_Job_State(status) VALUES('create') ON DUPLICATE KEY UPDATE status='create';
+INSERT INTO we_Job_State(status) VALUES('submit') ON DUPLICATE KEY UPDATE status='submit';
+INSERT INTO we_Job_State(status) VALUES('inProgress') ON DUPLICATE KEY UPDATE status='inProgress';
+INSERT INTO we_Job_State(status) VALUES('finished') ON DUPLICATE KEY UPDATE status='finished';
+INSERT INTO we_Job_State(status) VALUES('reallyFinished') ON DUPLICATE KEY UPDATE status='reallyFinished';
+INSERT INTO we_Job_State(status) VALUES('failed') ON DUPLICATE KEY UPDATE status='failed';
+*/
+
 CREATE TABLE we_Job(
    allocation_id        varchar(255),
    bulk_id              varchar(255),
@@ -604,7 +620,9 @@ CREATE TABLE we_Job(
    owner                varchar(150)    default 'no owner',
    retries              int             default 0,
    racers               int             default 0,
-   status enum('register','released','create','submit','inProgress','finished','reallyFinished','failed') default 'register',
+/*   status               varchar(40), */
+   status   enum("register","released","create","submit","inProgress","finished","reallyFinished","failed") default 'register',
+/*   CONSTRAINT `we_Job1` FOREIGN KEY(status) REFERENCES we_Job_State(status), */
    Time timestamp                       default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
    workflow_id          varchar(150),
    index(workflow_id),

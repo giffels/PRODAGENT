@@ -34,7 +34,7 @@ def exists(jobID):
       return True
    return False
   
-def get(jobID=[]):
+def get(jobID=[], makeList = False):
    """
    __get__
 
@@ -55,7 +55,7 @@ def get(jobID=[]):
    result=Session.convert(description,Session.fetchall())
    if len(result)==0:
       return None
-   if len(result)==1:
+   if len(result) == 1 and not makeList :
       return result[0]
    return result
 
@@ -185,18 +185,23 @@ def registerFailure(jobID,failureState,parameters={}):
    __registerFailure__
 
    registers a failure of a job and take appropiate actions.
+
+   Note: it is possible to define multiple states, however 
+   retry information is only updated if there is a failure of type:
+   'create','submit', or 'run'
+
    """
    if(failureState=='create'):
        sqlStr="""UPDATE we_Job SET retries=retries+1 WHERE
-       id='%s' AND retries<max_retries AND status='register'
+       id='%s' AND retries<max_retries 
        """ %(str(jobID))
    elif(failureState=='submit'):
        sqlStr="""UPDATE we_Job SET retries=retries+1 WHERE
-       id='%s' AND retries<max_retries AND status='inProgress'
+       id='%s' AND retries<max_retries 
        """ %(str(jobID))
    elif(failureState=='run'):
        sqlStr="""UPDATE we_Job SET retries=retries+1,racers=racers-1 WHERE
-       id='%s' AND racers>0 AND retries<max_retries AND status='inProgress'
+       id='%s' AND racers>0 AND retries<max_retries 
        """ %(str(jobID))
    rowsModified=Session.execute(sqlStr)
    jobDetails=get(jobID)
@@ -209,8 +214,6 @@ def registerFailure(jobID,failureState,parameters={}):
        raise ProdException(exceptions[3014],3014)
 
    if failureState=='run' and rowsModified!=1:
-       if jobDetails['status']!='inProgress':
-           raise ProdException(exceptions[3018]+str(jobDetails['status']),3018)
        if int(jobDetails['racers'])==0:
            raise ProdException(exceptions[3016]+str(jobDetails['status']),3016)
        raise ProdException(exceptions[3017]+str(generalState['max_retries']),3017)
@@ -287,7 +290,13 @@ def setState(jobID,state,parameters={}):
    """
    __setState__
 
-   sets the state of a job (inProgress,submitted,finished)
+   sets the state of a job (inProgress,submitted,finished, etc..)
+   There are 8 'base' states: 'register','released','create','submit',
+   'inProgress','finished','reallyFinished','failed' which can be extended 
+   by defining additional states.
+
+   Note: that retry information is only updated in the submit state
+   (check also the registerFailure method for documentation).
    """
 
 
@@ -301,114 +310,51 @@ def setState(jobID,state,parameters={}):
       for parameter in parameters.keys():
           sqlSetStr+=','+parameter+'='+parameters[parameter]
 
-   if state=="released":
-       sqlStr="""UPDATE we_Job SET status="released" """
+   # set state is less restrictive. It does not change its pervious state
+   if state != "submit":
+       sqlStr="""UPDATE we_Job SET status="%s" """ %(state)
        if sqlSetStr!='':
             sqlStr+=sqlSetStr
        if len(jobID) == 1:
-           sqlStr+=""" WHERE id="%s" AND status="register" """ %(str(jobID[0]))
+           sqlStr+=""" WHERE id="%s" """ %(str(jobID[0]))
        else:
-           sqlStr+=""" WHERE id in %s AND status="register" """ %(str(tuple(jobID)))
+           sqlStr+=""" WHERE id in %s """ %(str(tuple(jobID)))
        rowsModified=Session.execute(sqlStr)
        if rowsModified!=len(jobID):
-            job=get(jobID)
-            if not job:
+            jobs = get(jobID, makeList = True)
+            if not jobs:
                 raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
-            raise ProdException(exceptions[3007]+':'+str(jobID),3007)
-       return
-   if state=="create":
-       sqlStr="""UPDATE we_Job SET status="create" """
-       if sqlSetStr!='':
-            sqlStr+=sqlSetStr
-       if len(jobID) == 1:
-            sqlStr+=""" WHERE id="%s" AND (status="register" or status="released") """ %(str(jobID[0]))
-       else:
-           sqlStr+=""" WHERE id in %s AND (status="register" or status="released") """ %(str(tuple(jobID)))
-       rowsModified=Session.execute(sqlStr)
-       if rowsModified!=len(jobID):
-            job=get(jobID)
-            if not job:
+            if len(jobs) != len(jobID):
                 raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
-            raise ProdException(exceptions[3007]+':'+str(jobID),3007)
+            for job in jobs:   
+                if (job['retries']+job['racers']>(job['max_racers']-1)):
+                    raise ProdException(exceptions[3011]+':'+str(jobID),3011)
+                if (job['racers']>(job['max_racers']-1)):
+                    raise ProdException(exceptions[3011]+':'+str(jobID),3011) 
        return
-   elif state=="inProgress":
-       sqlStr="""UPDATE we_Job SET status="inProgress" """
-       if sqlSetStr!='':
-            sqlStr+=sqlSetStr
-       if len(jobID) == 1:
-            sqlStr+=""" WHERE id="%s" AND status="create" """ %(str(jobID[0])) 
-       else:
-           sqlStr+=""" WHERE id in %s AND status="create" """ %(str(tuple(jobID)))
-       rowsModified=Session.execute(sqlStr)
-       if rowsModified!=len(jobID):
-            job=get(jobID)
-            if not job:
-                raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
-            raise ProdException(exceptions[3008]+':'+str(jobID),3008)
-       return
-   elif state=="submit":
+   elif state == "submit":
        sqlStr="""UPDATE we_Job SET racers=racers+1 """
        if sqlSetStr!='':
             sqlStr+=sqlSetStr
        if len(jobID) == 1:
             sqlStr+=""" WHERE id="%s" AND racers+retries<max_retries AND 
-       racers<max_racers AND status="inProgress" """ %(str(jobID[0]))
+       racers<max_racers """ %(str(jobID[0]))
        else:
             sqlStr+=""" WHERE id in %s AND racers+retries<max_retries AND 
-       racers<max_racers AND status="inProgress" """ %(str(tuple(jobID)))
+       racers<max_racers """ %(str(tuple(jobID)))
        rowsModified=Session.execute(sqlStr)
        if rowsModified!=len(jobID):
-            job=get(jobID)
-            if not job:
+            jobs = get(jobID, makeList = True)
+            if not jobs:
                 raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
-            if not job['status']=='inProgress':
-               raise ProdException(exceptions[3010]+':'+str(jobID),3010) 
-            if (job['retries']+job['racers']>(job['max_racers']-1)):
-                raise ProdException(exceptions[3011]+':'+str(jobID),3011)
-            if (job['racers']>(job['max_racers']-1)):
-                raise ProdException(exceptions[3011]+':'+str(jobID),3011) 
-       return
-   elif state=="finished": 
-       sqlStr="""UPDATE we_Job SET status='finished' """
-       if sqlSetStr!='':
-            sqlStr+=sqlSetStr
-       if len(jobID) == 1:
-            sqlStr+="""WHERE id='%s' AND (status='inProgress' or status='finished') """ %(str(jobID[0]))
-       else:
-           sqlStr+=""" WHERE id in %s AND (status='inProgress' or status='finished')""" %(str(tuple(jobID)))
-       rowsModified=Session.execute(sqlStr)
-#       if rowsModified!=len(jobID):
-#            job=get(jobID)
-#            if not job:
-#                raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
-#            raise ProdException(exceptions[3010]+':'+str(jobID),3010)
-       return
-   elif state=="failed": 
-       sqlStr="""UPDATE we_Job SET status='finished' """
-       if sqlSetStr!='':
-            sqlStr+=sqlSetStr
-       if len(jobID) == 1:
-            sqlStr+="""WHERE id='%s' AND status='inProgress' """ %(str(jobID[0]))
-       else:
-           sqlStr+=""" WHERE id in %s AND status="inProgress" """ %(str(tuple(jobID)))
-       rowsModified=Session.execute(sqlStr)
-       if rowsModified!=len(jobID):
-            raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
-       return
-   elif state=="reallyFinished": 
-       sqlStr="""UPDATE we_Job SET status='reallyFinished' """
-       if sqlSetStr!='':
-            sqlStr+=sqlSetStr
-       if len(jobID) == 1:
-            sqlStr+="""WHERE id='%s' """ %(str(jobID[0]))
-       else:
-           sqlStr+=""" WHERE id in %s AND status="reallyFinished" """ %(str(tuple(jobID)))
-       rowsModified=Session.execute(sqlStr)
-       if rowsModified!=len(jobID):
-            job=get(jobID)
-            if not job:
+            if len(jobs) != len(jobID):
                 raise ProdException(exceptions[3009]+':'+str(jobID),3009) 
-            raise ProdException(exceptions[3010]+':'+str(jobID),3010)
+            for job in jobs:   
+                if (job['retries']+job['racers']>(job['max_racers']-1)):
+                    raise ProdException(exceptions[3011]+':'+str(jobID),3011)
+                if (job['racers']>(job['max_racers']-1)):
+                    raise ProdException(exceptions[3011]+':'+str(jobID),3011) 
+       return
 
 def setEventsProcessedIncrement(jobID,eventsProcessed=0):
    """
