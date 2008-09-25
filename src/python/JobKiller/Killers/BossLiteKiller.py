@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.8 2008/09/23 12:34:55 gcodispo Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.9 2008/09/25 13:31:06 gcodispo Exp $"
+__version__ = "$Revision: 1.9 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -116,6 +116,10 @@ class BossLiteKiller:
             msg = "Cannot kill job %s, BOSS error: %s" % (jobSpecId, str(err))
             logging.error(msg)
             raise Exception, msg
+
+        if job.runningJob['status'] != 'K' :
+            logging.info('Warning: job %s is in status: %s' % \
+                         (jobSpecId, job.runningJob['statusScheduler'] ) )
 
         # archive if requested
         if erase:
@@ -353,7 +357,11 @@ class BossLiteKiller:
                     self.bliteSession.archive(job)
                     killedJobs.append(job['jobId'])
                     jobSpecId.append(job['name'])
-
+                else:
+                    logging.info('Warning: job %s in status %s' % \
+                                 ( job['name'], \
+                                   job.runningJob['statusScheduler'] ) )
+    
             logging.info("JobSpecId list: "+ str(jobSpecId) + "\n")
             JobState.doNotAllowMoreSubmissions(jobSpecId)
 
@@ -365,6 +373,7 @@ class BossLiteKiller:
                   (taskSpecId, str(err))
             logging.error( msg )
             raise Exception, msg
+
         except BossLiteError, err:
             msg = "Cannot get information for task %s, BOSS error: %s" % \
                   (taskSpecId, str(err))
@@ -385,7 +394,7 @@ class BossLiteKiller:
 
         # updating task status, avoiding kill of not finished jobs
         command = 'python $PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' + \
-                  str(task['taskId']) + ' ' + jobRange + ' ' \
+                  str(task['id']) + ' ' + str(jobRange) + ' ' \
                   + scheduler + ' ' + task['user_proxy']
 
         msg, ret = executeCommand( command, len( task.jobs ) * 30 )
