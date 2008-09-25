@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.9 2008/09/25 13:31:06 gcodispo Exp $"
-__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.10 2008/09/25 14:36:14 gcodispo Exp $"
+__version__ = "$Revision: 1.10 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -355,7 +355,7 @@ class BossLiteKiller:
             for job in task.jobs:
                 if job.runningJob['status'] == 'K':
                     self.bliteSession.archive(job)
-                    killedJobs.append(job['jobId'])
+                    killedJobs.append(str(job['jobId']))
                     jobSpecId.append(job['name'])
                 else:
                     logging.info('Warning: job %s in status %s' % \
