@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.12 2008/09/23 13:05:39 gcodispo Exp $"
-__revision__ = "$Revision: 1.12 $"
+__version__ = "$Id: JobOutput.py,v 1.13 2008/09/23 15:53:59 gcodispo Exp $"
+__revision__ = "$Revision: 1.13 $"
 
 import logging
 import os
@@ -139,31 +139,15 @@ class JobOutput:
             except BossLiteError, err:
                 logging.error('%s: Can not get scheduler : [%s]' % \
                               (cls.fullId( job ), str(err) ))
-                job.runningJob['processStatus'] = 'output_requested'
-                try :
-                    bossLiteSession.updateDB( job )
-                except:
-                    pass
 
-            # update
-            #try:
-            #    bossLiteSession.updateDB( job )
-            #except JobError, msg:
-            #    logging.error("WARNING, job %s.%s UPDATE failed: %s" % \
-            #                  (job['taskId'], job['jobId'], str(msg) ) )
-
-            # return job info
-            #return job
+                # allow job to be reprocessed
+                cls.recoverStatus( job, bossLiteSession )
 
         # thread has failed
         except Exception, ex :
 
             # allow job to be reprocessed
-            job.runningJob['processStatus'] = 'output_requested'
-            try :
-                bossLiteSession.updateDB( job )
-            except:
-                pass
+            cls.recoverStatus( job, bossLiteSession )
 
             # show error message
             logging.error(
@@ -174,11 +158,7 @@ class JobOutput:
         except :
 
             # allow job to be reprocessed
-            job.runningJob['processStatus'] = 'output_requested'
-            try :
-                bossLiteSession.updateDB( job )
-            except:
-                pass
+            cls.recoverStatus( job, bossLiteSession )
 
             # show error message
             logging.error( "%s: GetOutputThread traceback: %s" % \
@@ -196,14 +176,6 @@ class JobOutput:
         perform postmortem and archive for failed jobs
 
         """
-
-        if len( task.jobs ) != 1 :
-            logging.error( "ERROR: too many jobs loaded %s" % len( task.jobs ))
-            return
-
-        if id( task.jobs[0] ) != id( job ) :
-            logging.error( "Fatal ERROR: mismatching job" )
-            return
 
         try:
             outfile = job.runningJob['outputDirectory'] + '/loggingInfo.log'
@@ -231,14 +203,6 @@ class JobOutput:
         clean up for jobs already retrieved
 
         """
-
-        if len( task.jobs ) != 1 :
-            logging.error( "ERROR: too many jobs loaded %s" % len( task.jobs ))
-            return
-
-        if id( task.jobs[0] ) != id( job ) :
-            logging.error( "Fatal ERROR: mismatching job" )
-            return
 
         try :
             statusSched = job.runningJob['status']
@@ -274,14 +238,6 @@ class JobOutput:
 
         """
 
-        if len( task.jobs ) != 1 :
-            logging.error( "ERROR: too many jobs loaded %s" % len( task.jobs ))
-            return
-
-        if id( task.jobs[0] ) != id( job ) :
-            logging.error( "Fatal ERROR: mismatching job" )
-            return
-
         #  get output, trying at most maxGetOutputAttempts
         retry = 0
 
@@ -313,37 +269,32 @@ class JobOutput:
 
                 # if the job has not to be reprocessed
                 if retry >= int( cls.params['maxGetOutputAttempts'] ) :
-                    job.runningJob['processStatus'] = 'output_requested'
+
+                    logging.error( "%s: LAST ATTEMPT RETRIEVAL FAILED!!!" % \
+                                   cls.fullId( job ) )
+
+                    # set as failed
+                    job.runningJob['processStatus'] = 'failed'
                     job.runningJob['status'] = 'DA'
+                    cls.handleFailed( job, task, schedSession )
                 
                 logging.error("%s: retrieval failed: %s" % \
                               (cls.fullId( job ), str(err) ) )
-                logging.error("%s" % job)
-                logging.error("%s" % job.runningJob)
                 logging.info( "BossLiteLogger : %s " % \
                               str(schedSession.getLogger()) )
 
-                logging.error( str( traceback.format_exc() ) )
                 # proxy expired: invalidate job and empty return
                 if err.value.find( "Proxy Expired" ) != -1 :
                     job.runningJob['closed'] = 'Y'
                     return
 
-                # purged: probably already retrieved. Archive
-                elif err.message().find( "has been purged" ) != -1 :
-                    job.runningJob['status'] = 'E'
-                    job.runningJob['statusScheduler'] = 'Cleared'
-                    job.runningJob['closed'] = 'Y'
-                    job.runningJob['processStatus'] = 'output_retrieved'
-                    break
-
                 # not ready for GO: waiting for next round
                 elif err.message().find( "Job current status doesn" ) != -1:
-                    logging.error( 
-                        "%s in status %s: waiting next round" % \
-                        (cls.fullId( job ), job.runningJob['status'])
-                        )
-                    job.runningJob['processStatus'] = 'output_requested'
+                    logging.error("%s in status %s: waiting next round" % \
+                                  (cls.fullId( job ), job.runningJob['status'])
+                                  )
+                    # allow job to be reprocessed
+                    job.runningJob['processStatus'] = 'handled'
                     return
 
                 else :
@@ -408,6 +359,27 @@ class JobOutput:
                                 str( traceback.format_exc() ) ) )
 
         logging.debug("Recreated %s get output requests" % numberOfJobs)
+
+
+
+    @classmethod
+    def recoverStatus( cls, job, bossLiteSession ) :
+        """
+        __recoverStatus__
+
+        allow job to be reprocessed
+        to be used in case of not job related failures
+        """
+
+        # allow job to be reprocessed
+        try :
+            job.runningJob['processStatus'] = 'output_requested'
+            bossLiteSession.updateDB( job )
+        except:
+            logging.warning(
+               '%s: unable to recover job status, restart component to retry' \
+               %  cls.fullId( job ) )
+
 
 
     @classmethod
