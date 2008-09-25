@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.7 2008/09/08 15:59:16 gcodispo Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.8 2008/09/23 12:34:55 gcodispo Exp $"
+__version__ = "$Revision: 1.8 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -25,6 +25,7 @@ from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.Common.Exceptions import BossLiteError, SchedulerError
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
+from ProdCommon.BossLite.Common.System import executeCommand
 
 class BossLiteKiller:
     """
@@ -98,19 +99,19 @@ class BossLiteKiller:
             logging.error(msg)
             raise Exception, msg
 
-        # check for compatible status
-        if job.runningJob['status'] not in ['SU', 'SW', 'SR', 'SS', 'R']:
-            logging.info( "Unable to kill Job #" + str(job['jobId']) \
-                          + " : Status is " \
-                          + str(job.runningJob['statusScheduler']) )
-            return
-
         # kill command through BOSS
         try:
             task = self.bliteSession.getTaskFromJob( job )
-            bliteSched = BossLiteAPISched( self.bliteSession, \
-                                           self.schedulerConfig, task )
-            bliteSched.kill(task, job['jobId'])
+            schedSession = BossLiteAPISched( self.bliteSession, \
+                                             self.schedulerConfig, task )
+
+            # updating task status, avoiding kill of not finished jobs
+            # task = schedSession.query( task, jobsToKill, queryType='parent' )
+            self.updateStatus( task, job['jobId'], schedSession )
+
+            # actual kill
+            schedSession.kill(task, job['jobId'])
+
         except SchedulerError, err:
             msg = "Cannot kill job %s, BOSS error: %s" % (jobSpecId, str(err))
             logging.error(msg)
@@ -329,60 +330,34 @@ class BossLiteKiller:
         ## build list of jobs to be killed
         logging.info("Taskid: "+ taskSpecId )
 
-        jobsReadyToKill = []
-        if str(jobsToKill) == "all":
-            jobsReadyToKill += range(len(task.jobs))
-        else:
-            jobsReadyToKill += jobsToKill
-
-        # filter the killing list according job statuses
-        jobSpecId = []
-        for j in task.jobs:
-
-            if j['jobId'] not in jobsReadyToKill:
-                continue
-
-            logging.info("Working on job: %s.%s"%(j['taskId'], j['jobId']) )
-
-            if j.runningJob['status'] not in ['SU', 'SW', 'SR', 'SS', 'R']:
-                logging.info("Unable to kill Job #" + str(j['jobId']) \
-                             + " : Status is " \
-                             + str(j.runningJob['statusScheduler']) )
-                jobsReadyToKill.remove(j['jobId'])
-                continue
-
-            if JobState.general(j['name'])['State'] in ['finished']:
-                msg = "Job %s is terminated, cannot be killed\n" % \
-                      str(j['jobId'])
-                logging.info(msg)
-                jobsReadyToKill.remove(j['jobId'])
-                continue
-
-            jobSpecId.append(j['name'])
-
-        if len(jobsReadyToKill) == 0:
-            logging.info("No jobs to kill for BossLite")
-            return
-
         ## perform the actual kill
         # do not allow resubmisions for them
         try:
             # kill
-            bliteSched = BossLiteAPISched( self.bliteSession, \
-                                           self.schedulerConfig, task )
-            logging.info("Jobs to kill: " + str(jobsReadyToKill) )
-            bliteSched.kill(task['id'], jobsReadyToKill)
+            schedSession = BossLiteAPISched( self.bliteSession, \
+                                             self.schedulerConfig, task )
+
+            # updating task status, avoiding kill of not finished jobs
+            # task = schedSession.query( task, jobsToKill, queryType='parent' )
+            self.updateStatus( task, jobsToKill, schedSession )
+
+            # actual kill
+            logging.info("Jobs to kill: " + str(jobsToKill) )
+            schedSession.kill(task, jobsToKill)
 
             # archive
-            for j in task.jobs:
-                if j['jobId'] in jobsReadyToKill \
-                       and j.runningJob['status'] == 'K':
-                    self.bliteSession.archive(j)
+            killedJobs = []
+            jobSpecId = []
+            for job in task.jobs:
+                if job.runningJob['status'] == 'K':
+                    self.bliteSession.archive(job)
+                    killedJobs.append(job['jobId'])
+                    jobSpecId.append(job['name'])
 
             logging.info("JobSpecId list: "+ str(jobSpecId) + "\n")
             JobState.doNotAllowMoreSubmissions(jobSpecId)
 
-            logging.info("Jobs "+ str(jobsReadyToKill) +" killed and Archived")
+            logging.info("Jobs "+ str(killedJobs) +" killed and Archived")
 
         # deal with BOSS specific error
         except SchedulerError, err:
@@ -397,6 +372,25 @@ class BossLiteKiller:
             raise Exception, msg
 
         return
+
+
+    def updateStatus(self, task, jobRange, schedSession):
+        """
+        update jobs status, bypasing UI bug
+        """
+
+        scheduler = schedSession.schedConfig['name']
+        if task['user_proxy'] is None :
+            task['user_proxy'] = ''
+
+        # updating task status, avoiding kill of not finished jobs
+        command = 'python $PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' + \
+                  str(task['taskId']) + ' ' + jobRange + ' ' \
+                  + scheduler + ' ' + task['user_proxy']
+
+        msg, ret = executeCommand( command, len( task.jobs ) * 30 )
+        logging.debug( "QUERY MESSAGE : \n%s " % msg )
+
 
 # register the killer plugin
 registerKiller(BossLiteKiller, BossLiteKiller.__name__)
