@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.10 2008/09/25 14:36:14 gcodispo Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.11 2008/09/25 14:48:35 gcodispo Exp $"
+__version__ = "$Revision: 1.11 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -343,7 +343,7 @@ class BossLiteKiller:
 
             # updating task status, avoiding kill of not finished jobs
             # task = schedSession.query( task, jobsToKill, queryType='parent' )
-            self.updateStatus( task, jobsToKill, schedSession )
+            task = self.updateStatus( task, schedSession )
 
             # actual kill
             logging.info("Jobs to kill: " + str(jobsToKill) )
@@ -383,7 +383,7 @@ class BossLiteKiller:
         return
 
 
-    def updateStatus(self, task, jobRange, schedSession):
+    def updateStatus(self, task, schedSession):
         """
         update jobs status, bypasing UI bug
         """
@@ -392,6 +392,8 @@ class BossLiteKiller:
         if task['user_proxy'] is None :
             task['user_proxy'] = ''
 
+        jobRange = ','.join( job['jobId'] for job in task.jobs )
+
         # updating task status, avoiding kill of not finished jobs
         command = 'python $PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' + \
                   str(task['id']) + ' ' + str(jobRange) + ' ' \
@@ -399,6 +401,10 @@ class BossLiteKiller:
 
         msg, ret = executeCommand( command, len( task.jobs ) * 30 )
         logging.debug( "QUERY MESSAGE : \n%s " % msg )
+
+        task = self.bliteSession.loadTask(task['id'], jobRange)
+
+        return task
 
 
 # register the killer plugin
