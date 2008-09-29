@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.14 2008/09/29 12:15:26 gcodispo Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.15 2008/09/29 14:43:15 gcodispo Exp $"
+__version__ = "$Revision: 1.15 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -359,7 +359,6 @@ class BossLiteKiller:
                 msg = "Cannot kill task %s, BOSS error: %s" % \
                       (taskSpecId, str(err))
             logging.error( msg )
-            raise Exception, msg
 
         # deal with BOSS specific error
         except BossLiteError, err:
@@ -371,6 +370,7 @@ class BossLiteKiller:
         # archive
         killedJobs = []
         jobSpecId = []
+        failed = []
         for job in task.jobs:
 
             jobSpecId.append(job['name'])
@@ -386,6 +386,7 @@ class BossLiteKiller:
                           (job['name'], str(err))
                     logging.error(msg)
             else:
+                failed.append( ( job['name'], job.runningJob.errors ) )
                 logging.info('Warning: job %s in status %s' % \
                              ( job['name'], \
                                job.runningJob['statusScheduler'] ) )
@@ -395,6 +396,10 @@ class BossLiteKiller:
         JobState.doNotAllowMoreSubmissions(jobSpecId)
         logging.info("Jobs %s are not allowed for further resubmission" \
                      % str(jobSpecId))
+
+        # report failed operations
+        if failed != []:
+            raise Exception( failed )
 
         return
 
