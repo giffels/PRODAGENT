@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.13 2008/09/29 12:14:11 gcodispo Exp $"
-__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.14 2008/09/29 12:15:26 gcodispo Exp $"
+__version__ = "$Revision: 1.14 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -349,36 +349,52 @@ class BossLiteKiller:
             logging.info("Jobs to kill: " + str(jobsToKill) )
             schedSession.kill(task, jobsToKill)
 
-            # archive
-            killedJobs = []
-            jobSpecId = []
-            for job in task.jobs:
-                jobSpecId.append(job['name'])
-                if job.runningJob['status'] == 'K':
-                    self.bliteSession.archive(job)
-                    killedJobs.append(str(job['jobId']))
-                else:
-                    logging.info('Warning: job %s in status %s' % \
-                                 ( job['name'], \
-                                   job.runningJob['statusScheduler'] ) )
-    
-            logging.info("JobSpecId list: "+ str(jobSpecId) + "\n")
-            JobState.doNotAllowMoreSubmissions(jobSpecId)
-
-            logging.info("Jobs "+ str(killedJobs) +" killed and Archived")
-
-        # deal with BOSS specific error
+        # deal with scheduler error
         except SchedulerError, err:
-            msg = "Cannot kill task %s, BOSS error: %s" % \
-                  (taskSpecId, str(err))
+            if err.value.find( 'Invalid scheduler' ) != -1 :
+                msg = \
+                    "No jobs submitted in task %s in the specified range: %s" \
+                    % (taskSpecId, jobsToKill)
+            else:
+                msg = "Cannot kill task %s, BOSS error: %s" % \
+                      (taskSpecId, str(err))
             logging.error( msg )
             raise Exception, msg
 
+        # deal with BOSS specific error
         except BossLiteError, err:
             msg = "Cannot get information for task %s, BOSS error: %s" % \
                   (taskSpecId, str(err))
             logging.error(msg)
             raise Exception, msg
+
+        # archive
+        killedJobs = []
+        jobSpecId = []
+        for job in task.jobs:
+
+            jobSpecId.append(job['name'])
+
+            if job.runningJob['status'] == 'K':
+
+                killedJobs.append(str(job['jobId']))
+                # BossLite archive
+                try :
+                    self.bliteSession.archive(job)
+                except BossLiteError, err:
+                    msg = "Cannot update job %s, BOSS error: %s" % \
+                          (job['name'], str(err))
+                    logging.error(msg)
+            else:
+                logging.info('Warning: job %s in status %s' % \
+                             ( job['name'], \
+                               job.runningJob['statusScheduler'] ) )
+    
+        logging.info("Jobs "+ str(killedJobs) +" killed and Archived")
+        logging.info("JobSpecId list: "+ str(jobSpecId) + "\n")
+        JobState.doNotAllowMoreSubmissions(jobSpecId)
+        logging.info("Jobs %s are not allowed for further resubmission" \
+                     % str(jobSpecId))
 
         return
 
