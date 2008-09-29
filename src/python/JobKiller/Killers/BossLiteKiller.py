@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.12 2008/09/29 12:10:30 gcodispo Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.13 2008/09/29 12:14:11 gcodispo Exp $"
+__version__ = "$Revision: 1.13 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -392,7 +392,7 @@ class BossLiteKiller:
         if task['user_proxy'] is None :
             task['user_proxy'] = ''
 
-        jobRange = ','.join( (job['jobId']) for job in task.jobs )
+        jobRange = ','.join( str(job['jobId']) for job in task.jobs )
 
         # updating task status, avoiding kill of not finished jobs
         command = 'python $PRODAGENT_ROOT/lib/JobTracking/QueryStatus.py ' + \
