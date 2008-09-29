@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.15 2008/09/29 14:43:15 gcodispo Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.16 2008/09/29 16:18:40 gcodispo Exp $"
+__version__ = "$Revision: 1.16 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -385,16 +385,20 @@ class BossLiteKiller:
                     msg = "Cannot update job %s, BOSS error: %s" % \
                           (job['name'], str(err))
                     logging.error(msg)
-            else:
+            elif job.runningJob['status'] not in ['C', 'A', 'E']:
                 failed.append( ( job['name'], job.runningJob.errors ) )
+                logging.info('Skipped job %s in status %s' % \
+                             ( job['name'], job.runningJob['statusScheduler'] )
+                             )
+            else:
                 logging.info('Warning: job %s in status %s' % \
-                             ( job['name'], \
-                               job.runningJob['statusScheduler'] ) )
+                             ( job['name'], job.runningJob['statusScheduler'] )
+                             )
     
-        logging.info("Jobs "+ str(killedJobs) +" killed and Archived")
-        logging.info("JobSpecId list: "+ str(jobSpecId) + "\n")
+        logging.debug("JobSpecId list: "+ str(jobSpecId) + "\n")
         JobState.doNotAllowMoreSubmissions(jobSpecId)
-        logging.info("Jobs %s are not allowed for further resubmission" \
+        logging.info("Jobs "+ str(killedJobs) +" killed and Archived")
+        logging.debug("Jobs %s are not allowed for further resubmission" \
                      % str(jobSpecId))
 
         # report failed operations
