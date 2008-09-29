@@ -69,8 +69,8 @@ class HandleJobReport :
 
           #// Handle Merge Job Report. Insert & update Merge DB
 
-      if self.enableMergeHandling:
-         self.handleMergeJobReport ()
+          if self.enableMergeHandling:
+              self.handleMergeJobReport ()
 
           return self.jobName
 
@@ -226,7 +226,7 @@ class HandleJobReport :
 
                     self.mergeDB.commit()
                     self.insertedLFNs.append(ofile['LFN'])
-                logging.info('All merge data inserted successfully')
+                    logging.info('All merge data inserted successfully')
 
                 except DuplicateLFNError, ex:
                     msg = "Not registering duplicate unmerged file:\n"
