@@ -90,6 +90,10 @@ class PopulateCleanUp:
         taskObject.attachFile(srcfile)
         exeScript = taskObject[taskObject['Executable']]
 
+        envScript = taskObject[taskObject["BashEnvironment"]]
+        envCommand = "%s %s" % (envScript.interpreter, envScript.name)
+        exeScript.append(envCommand)
+
         for precomm in precomms:
             exeScript.append(str(precomm))
         exeScript.append("./RuntimeCleanUp.py")

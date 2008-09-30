@@ -125,6 +125,10 @@ class NewPopulateStageOut:
         
         exeScript = taskObject[taskObject['Executable']]
         
+        envScript = taskObject[taskObject["BashEnvironment"]]
+        envCommand = "%s %s" % (envScript.interpreter, envScript.name)
+        exeScript.append(envCommand)
+        
         for precomm in precomms:
             exeScript.append(str(precomm))
         exeScript.append("chmod +x ./RuntimeStageOut.py")   
@@ -163,7 +167,7 @@ class NewPopulateStageOut:
         try:
             creatorCfg = loadPluginConfig("JobCreator", "Creator")
             stageOutCfg = creatorCfg.get("StageOut", {})
-            numRetres = int(stageOutCfg.get("NumberOfRetries", 3))
+            numRetries = int(stageOutCfg.get("NumberOfRetries", 3))
             retryPause = int(stageOutCfg.get("RetryPauseTime", 600))
             runres.addData("%s/RetryPauseTime" % paramBase, retryPause)
             runres.addData("%s/NumberOfRetries" % paramBase, numRetries)
