@@ -60,6 +60,12 @@ class ErrorHandlerComponent:
          self.args['MaxCacheDirSizeMB'] = 100
          self.args['DelayFactor'] = 60
          self.args['QueueFailures'] = "False"
+         # set default handler names which can be overwritten 
+         # by config defined handlers.
+         self.args['RunHandlerName'] = 'runFailureHandler'
+         self.args['SubmitHandlerName'] = 'submitFailureHandler'
+         self.args['CreateHandlerName'] = 'createFailureHandler'
+
          self.args.update(args)
 
          if self.args['QueueFailures'].lower() in ('true', 'yes'):
@@ -69,9 +75,9 @@ class ErrorHandlerComponent:
 
          # the error events this components subscribes to
          # that invoke an error handler
-         self.args['Events']={'JobFailed':'runFailureHandler', \
-                              'SubmissionFailed':'submitFailureHandler', \
-                              'CreateFailed':'createFailureHandler'}
+         self.args['Events']={'JobFailed':self.args['RunHandlerName'], \
+                              'SubmissionFailed': self.args['SubmitHandlerName'], \
+                              'CreateFailed': self.args['CreateHandlerName']}
 
          # check if we need to use non default handlers
          for handler in self.args['Events'].keys():
