@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.16 2008/09/29 16:18:40 gcodispo Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.17 2008/09/29 16:31:18 gcodispo Exp $"
+__version__ = "$Revision: 1.17 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -387,11 +387,11 @@ class BossLiteKiller:
                     logging.error(msg)
             elif job.runningJob['status'] not in ['C', 'A', 'E']:
                 failed.append( ( job['name'], job.runningJob.errors ) )
-                logging.info('Skipped job %s in status %s' % \
+                logging.info('Warning: job %s in status %s' % \
                              ( job['name'], job.runningJob['statusScheduler'] )
                              )
             else:
-                logging.info('Warning: job %s in status %s' % \
+                logging.info('Skipped job %s in status %s' % \
                              ( job['name'], job.runningJob['statusScheduler'] )
                              )
     
