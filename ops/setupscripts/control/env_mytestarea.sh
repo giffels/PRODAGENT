@@ -10,7 +10,9 @@ export PRODAGENT_INITIAL=c
 export PAVERSION=0_12_1
 export PCVERSION=0_12_0
 #The DBS version we want to install
-export DBSVERSION=2_0_2
+export DBSVERSION=1_2_4
+#The WMCORE version required
+export WMCOREVERSION=0_0_4
 
 #Note, don't change this!
 #export PBIN=$HOME/public/bin/PRODAGENT_$PAVERSION
