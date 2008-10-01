@@ -47,7 +47,7 @@ mergeThreshold = 10
 cleanThreshold = 10
 repThreshold = 100
 minSubmit = 1
-maxSubmit = 500
+maxSubmit = 50
 
 procThrottle = 10000000
 mergeThrottle = 10000000
