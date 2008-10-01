@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.17 2008/09/29 16:31:18 gcodispo Exp $"
-__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.18 2008/09/30 07:26:44 gcodispo Exp $"
+__version__ = "$Revision: 1.18 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -107,7 +107,7 @@ class BossLiteKiller:
 
             # updating task status, avoiding kill of not finished jobs
             # task = schedSession.query( task, jobsToKill, queryType='parent' )
-            self.updateStatus( task, job['jobId'], schedSession )
+            self.updateStatus( task, schedSession )
 
             # actual kill
             schedSession.kill(task, job['jobId'])
