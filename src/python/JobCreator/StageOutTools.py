@@ -58,7 +58,7 @@ class NewInsertStageOut:
             # parent isnt a CMSSW node, dont know what it does...
             return
         stageOutFor = parent['Name']
-        taskObject['StageOutFor'] = stageOutFor
+        taskObject['StageOutFor'] = taskObject['PayloadNode'].configuration
         return
 
 _StageOutFailureScript = \
@@ -155,11 +155,11 @@ class NewPopulateStageOut:
         #//
         runres = taskObject['RunResDB']
         toName = taskObject['Name']
-        stageOutFor = taskObject['StageOutFor']
         paramBase = "/%s/StageOutParameters" % toName
         runres.addPath(paramBase)
 
-        runres.addData("/%s/StageOutFor" % paramBase, stageOutFor)
+        for stageOutFor in taskObject['PayloadNode'].configuration.split():
+            runres.addData("/%s/StageOutFor" % paramBase, stageOutFor)
 
         #  //
         # // Configuration for retries?

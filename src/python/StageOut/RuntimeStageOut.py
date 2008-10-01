@@ -75,13 +75,24 @@ class StageOutManager:
         self.tfc = None
         self.siteCfg = self.state.getSiteConfig()
 
-        self.numberOfRetries = int(
-            self.config['StageOutParameters'].get('NumberOfRetries', 3)
+        try:
+            self.numberOfRetries = int(
+                self.config['StageOutParameters'].get('NumberOfRetries', 3)
             )
-        self.retryPauseTime = int(
-            self.config['StageOutParameters'].get('NumberOfRetries', 600)
+        except TypeError:
+            self.numberOfRetries = int(
+              self.config['StageOutParameters'].get('NumberOfRetries', [3])[0]
             )
-        
+
+        try:
+            self.retryPauseTime = int(
+                self.config['StageOutParameters'].get('RetryPauseTime', 600)
+            )
+        except TypeError:
+            self.retryPauseTime = int(
+              self.config['StageOutParameters'].get('RetryPauseTime', [600])[0]
+            )
+
         #  //
         # // If override isnt None, we dont need SiteCfg, if it is
         #//  then we need siteCfg otherwise we are dead.
@@ -423,33 +434,37 @@ def stageOut():
     #  //
     # // find inputs by locating the task for which we are staging out
     #//  and loading its TaskState
-    inputTask = config['StageOutParameters']['StageOutFor'][0]
-    inputState = getTaskState(inputTask)
-    try:
-        manager = StageOutManager(state, inputState)
-        exitCode = manager()
-        reportToUpdate = state.getJobReport() 
-    except StageOutInitError, ex:
-        exitCode = ex.data['ErrorCode']
-        inputReport = inputState.getJobReport()
-        errRep = inputReport.addError(
-            ex.data['ErrorCode'], ex.data['ErrorType'])
-        errRep['Description'] = ex.message
-        inputReport.status = "Failed"
-        inputReport.exitCode = ex.data['ErrorCode']
-        inputState.saveJobReport()
-        reportToUpdate = inputState.getJobReport()
+    for inputTask in config['StageOutParameters']['StageOutFor']:
+        inputState = getTaskState(inputTask)
+        try:
+            manager = StageOutManager(state, inputState)
+            exitCode = manager()
+            reportToUpdate = state.getJobReport() 
+        except StageOutInitError, ex:
+            exitCode = ex.data['ErrorCode']
+            inputReport = inputState.getJobReport()
+            errRep = inputReport.addError(
+                ex.data['ErrorCode'], ex.data['ErrorType'])
+            errRep['Description'] = ex.message
+            inputReport.status = "Failed"
+            inputReport.exitCode = ex.data['ErrorCode']
+            inputState.saveJobReport()
+            reportToUpdate = inputState.getJobReport()
         
-    #  //
-    # // Update primary job report
-    #//
-
-    toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
-                                  "FrameworkJobReport.xml")
+        #  //
+        # // Update primary job report
+        #//
     
-    
-    updateReport(toplevelReport, reportToUpdate)
-    print "Stage Out Complete: Exiting: %s " % exitCode
+        toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
+                                      "FrameworkJobReport.xml")
+        
+        
+        updateReport(toplevelReport, reportToUpdate)
+        print "Stage Out for %s complete: Return code: %s " % \
+                                                    (inputTask, exitCode)
+        if exitCode:
+            break
+    print "All StageOuts complete: Exiting %s" % exitCode
     return exitCode
     
 
