@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.18 2008/09/30 07:26:44 gcodispo Exp $"
-__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.19 2008/10/01 12:37:20 gcodispo Exp $"
+__version__ = "$Revision: 1.19 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -113,17 +113,27 @@ class BossLiteKiller:
             schedSession.kill(task, job['jobId'])
 
         except SchedulerError, err:
-            msg = "Cannot kill job %s, BOSS error: %s" % (jobSpecId, str(err))
+            
+            if err.value.find( 'Invalid scheduler' ) != -1 :
+                msg = \
+                    "Job %s not submitted" % jobSpecId
+            else:
+                msg = "Cannot kill job %s, BOSS error: %s" % \
+                      (jobSpecId, str(err))
             logging.error(msg)
             raise Exception, msg
 
         if job.runningJob['status'] != 'K' :
             logging.info('Warning: job %s is in status: %s' % \
                          (jobSpecId, job.runningJob['statusScheduler'] ) )
+        else:
+            logging.info( 'Job %s killed' % jobSpecId )
+            
 
         # archive if requested
         if erase:
             self.bliteSession.archive(job)
+            logging.info( 'Job %s archived' % jobSpecId )
         return
 
 
