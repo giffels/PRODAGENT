@@ -231,7 +231,8 @@ VALUES """
             Session.execute(sqlStr)
         except Exception,ex:
             msg = ":"+str(jobSpecId)+","+str(triggerId)+","+str(actionName)
-            raise ProdException(exceptions[3002]+msg+str(ex), 3002)
+            logging.error(exceptions[3002]+msg+str(ex), 3002)
+#            raise ProdException(exceptions[3002]+msg+str(ex), 3002)
 
     def cleanout(self, jobSpecId):
         """
