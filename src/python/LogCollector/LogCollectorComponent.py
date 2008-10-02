@@ -232,7 +232,7 @@ class LogCollectorComponent:
                                                     logCollectorWorkflow, 
                                                     wf, 
                                                     se,
-                                                    "%s/%s" % (lfnBase, wf), 
+                                                    "%s/%s/%s" % (lfnBase, wf, now[2]), 
                                                     self.stageOutOverride,
                                                     *logs[ref:ref+self.args['maxLogs']])
                     jobspec = os.path.join(self.args['LogArchiveSpecs'], \
