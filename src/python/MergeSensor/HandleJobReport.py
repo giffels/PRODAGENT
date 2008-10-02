@@ -194,7 +194,7 @@ class HandleJobReport :
 
                 logging.info('output lumi Run Info')
                 logging.info(ofile.runs)
-                logging.info(ofile.lumisections)
+                logging.info(ofile.getLumiSections())
 
 
                 try:
@@ -222,7 +222,7 @@ class HandleJobReport :
                         self.mergeDB.addInputLumiInfo(ifile.getLumiSections(), inputId)
                         logging.info('input lumi Run Info')
                         logging.info(ifile.runs)
-                        logging.info(ifile.lumisections)
+                        logging.info(ifile.getLumiSections())
 
                     self.mergeDB.commit()
                     self.insertedLFNs.append(ofile['LFN'])
