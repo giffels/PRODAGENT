@@ -151,11 +151,25 @@ class LogArchMgr:
             print msg
             return
 
+        run = self.state.jobSpec.parameters.get('RunNumber', None)
+        if run is not None:
+            runNum = int(run)
+            runPadding = str(runNum // 1000).zfill(4)
+        else:
+            runPadding = ''
+            run = self.jobSpecId
+
+        reqtime = self.state.jobSpec.parameters.get('RequestTimestamp', None)
+        if reqtime is not None:
+            reqtime = time.gmtime(int(reqtime))
+        else:
+            reqtime = time.gmtime()
+        year, month, day = reqtime[:3]
+        
         fileInfo = {
-            'LFN' : "/store/unmerged/logs/prod/%s/%s/%s/%s/%s" % \
-                                        (time.gmtime()[0], time.gmtime()[1],
-                                         self.workflowSpecId, self.jobSpecId,
-                                        tarName),
+            'LFN' : "/store/unmerged/logs/prod/%s/%s/%s/%s/%s/%s/%s" % \
+                                        (year, month, day, self.workflowSpecId,
+                                         runPadding, run, tarName),
             'PFN' : os.path.join(os.getcwd(), tarName),
             'SEName' : None,
             'GUID' : None,
