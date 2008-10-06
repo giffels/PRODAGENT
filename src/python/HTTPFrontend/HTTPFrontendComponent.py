@@ -15,117 +15,12 @@ import logging
 import os
 import cherrypy
 from cherrypy.lib.static import serve_file
-from ProdAgentCore.Configuration import prodAgentName
-from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 import ProdAgentCore.LoggingUtils as LoggingUtils
 
-from HTTPFrontend.WorkflowMonitor import WorkflowMonitor,WorkflowGraph
-from HTTPFrontend.JobQueueMonitor import JobQueueMonitor
-from HTTPFrontend.MergeMonitor import MergeDatasetMonitor, MergeMonitor, MergeGraph
-from HTTPFrontend.DatasetsMonitor import DatasetMonitor
-from HTTPFrontend.ResourceMonitors import ResourceDetails,ResourceStatus
-from HTTPFrontend.LogViewer import LogViewer
-from HTTPFrontend.AlertMonitor import AlertMonitor, CurrentAlert, HistoryAlert
-from HTTPFrontend.ConfDBEmulator import ConfDBEmulator
-
-def getLocalDBSURL():
-    try:
-        config = loadProdAgentConfiguration()
-    except StandardError, ex:
-        msg = "Error reading configuration:\n"
-        msg += str(ex)
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    try:
-        dbsConfig = config.getConfig("LocalDBS")
-    except StandardError, ex:
-        msg = "Error reading configuration for LocalDBS:\n"
-        msg += str(ex)
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    return dbsConfig.get("DBSURL", None)
 
 
-class Root:
-    """
-    _Root_
 
-    Main index page for the component, will appear as the index page
-    of the toplevel address
-
-    """
-    def __init__(self, myUrl):
-        self.myUrl = myUrl
-        
-    def index(self):
-        html = """<html><body><h2>ProdAgent Instance: %s </h2>\n """ % (
-            
-            prodAgentName(), )
-
-        html += "<table>\n"
-        html += "<tr><th>Service</th><th>Description</th></tr>\n"
-        html += "<tr><td><a href=\"%s/workflows\">Workflows</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>Workflow Entities data in this ProdAgent</td></td>\n"
-
-        html += "<tr><td><a href=\"%s/merges\">Merges</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>Merge Subsystem data in this ProdAgent</td></td>\n"
-        html += "<tr><td><a href=\"%s/jobqueue\">JobQueue</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>Job Queue state in this ProdAgent</td></td>\n"
-        html += "<tr><td><a href=\"%s/resources\">ResourceMonitor</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>Resource information for this ProdAgent</td></td>\n"
-        
-        html += "<tr><td><a href=\"%s/logs\">Logs</a></td>\n" % (
-            self.myUrl,)
-        html += "<td>Production logs</td></td>\n"
-
-        html += "<tr><td><a href=\"%s/alertmonitor\">AlertMonitor</a></td>"%(self.myUrl) + "<td>Alerts published by prodagent components</td></tr>"
-        html += "<tr><td><a href=\"%s/confdbemu\">ConfDBEmulator</a></td>"%(self.myUrl) + "<td>ConfDB Emulator</td></tr>"        
-        html += """</table></body></html>"""
-        return html
-    index.exposed = True
-
-
-class Downloader:
-    """
-    _Downloader_
-
-    Serve files from the JobCreator Cache via HTTP
-
-    """
-    def __init__(self, rootDir):
-        self.rootDir = rootDir
-
-    def index(self, filepath):
-        """
-        _index_
-
-        index response to download URL, serves the file
-        requested
-
-        """
-        pathInCache = os.path.join(self.rootDir, filepath)
-        logging.debug("Download Agent serving file: %s" % pathInCache)
-        return serve_file(pathInCache, "application/x-download", "attachment")
-    index.exposed = True
-
-
-class ImageServer:
-
-    def __init__(self, rootDir):
-        self.rootDir = rootDir
-
-    def index(self, filepath):
-        pathInCache = os.path.join(self.rootDir, filepath)
-        logging.debug("ImageServer serving file: %s" % pathInCache)
-        return serve_file(pathInCache, content_type="image/png")
-    index.exposed = True
 
 class HTTPFrontendComponent:
 
@@ -146,7 +41,7 @@ class HTTPFrontendComponent:
         self.staticDir = os.path.join(self.args['ComponentDir'], "static")
         if not os.path.exists(self.staticDir):
             os.makedirs(self.staticDir)
-        
+
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
@@ -182,43 +77,45 @@ class HTTPFrontendComponent:
         "server.socket_port" :  self.args['Port'],
         "server.thread_pool" :  self.args['ThreadPool'],
         }})
-        
+
         baseUrl = "http://%s:%s" % (
             self.args['Host'], self.args['Port'])
-        
-        
-        root = Root(baseUrl)
-        root.download = Downloader(self.args['JobCreatorCache'])
-        root.images = ImageServer(self.staticDir)
-        root.workflowgraph = WorkflowGraph(
-            "%s/images" % baseUrl,
-            self.staticDir)
-        
-            
-        root.workflows = WorkflowMonitor(
-            "%s/workflowgraph" % baseUrl
-            )
-        root.jobqueue = JobQueueMonitor()
-        root.datasets = DatasetMonitor(getLocalDBSURL())
 
-        root.resources = ResourceDetails()
-        root.resourcestate = ResourceStatus()
-        root.mergedataset = MergeMonitor()
-        root.mergedgraph = MergeGraph(
-            "%s/images" % baseUrl,
-            self.staticDir)
-        root.merges = MergeDatasetMonitor(
-            "%s/mergedataset" % baseUrl,
-            "%s/mergedgraph" % baseUrl,
-            "%s/datasets" % baseUrl
-            )
-        root.alertmonitor = AlertMonitor(baseUrl)
-        root.alertmonitor.currentalert = CurrentAlert (baseUrl)
-        root.alertmonitor.historyalert=HistoryAlert(baseUrl)
+        self.args['StaticDir'] = self.staticDir
+        self.args['BaseUrl'] = baseUrl
 
-        root.confdbemu = ConfDBEmulator()
-        
-        root.logs = LogViewer()
-        
-        cherrypy.quickstart(root)
-        
+
+        installerModule = self.args.get(
+            "InstallerModule", "HTTPFrontend.ProductionTools")
+
+        #Import module and call installer from it
+        try:
+            modRef = __import__(installerModule, globals(), locals(), "installer")
+        except Exception, ex:
+            msg = "Unable to load module:\n"
+            msg += "%s\n" % installerModule
+            msg += "Due to error:\n"
+            msg += str(ex)
+            logging.error(msg)
+            raise RuntimeError, msg
+
+        installer = getattr(modRef, "installer", None)
+
+
+        try:
+            root = installer(**self.args)
+        except Exception, ex:
+            msg = "Unable to call installer\n"
+            msg += str(ex)
+            msg += "\n"
+            import traceback
+            msg += traceback.format_exc()
+            logging.error(msg)
+            raise RuntimeError(msg)
+
+        try:
+            cherrypy.quickstart(root)
+        except Exception, ex:
+            msg = "Error starting CherryPy:\n%s\n" % str(ex)
+            logging.error(msg)
+            cherrypy.engine.stop()
