@@ -3,15 +3,16 @@
 _MergeAccountant_
 
 Component that deals with success and failures of merge jobs, keeping
-input and output file accounting. 
+input and output file accounting.
 
 """
 
-__revision__ = "$Id: MergeAccountantComponent.py,v 1.11 2008/01/17 14:08:39 afanfani Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: MergeAccountantComponent.py,v 1.13 2008/08/21 16:04:52 ahmadh Exp $"
+__version__ = "$Revision: 1.13 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
+import traceback
 
 from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
 from MergeSensor.InsertReport import ReportHandler
@@ -43,13 +44,13 @@ from ProdAgent.WorkflowEntities import File
 ##############################################################################
 # MergeAccountantComponent class
 ##############################################################################
-                                                                                
+
 class MergeAccountantComponent:
     """
     _MergeAccountantComponent_
 
     Component that deals with success and failures of merge jobs, keeping
-    input and output file accounting. 
+    input and output file accounting.
 
     """
 
@@ -59,41 +60,41 @@ class MergeAccountantComponent:
 
     def __init__(self, **args):
         """
-        
+
         Arguments:
-        
+
           args -- all arguments from StartComponent.
-          
+
         Return:
-            
+
           none
 
         """
-        
+
         # initialize the server
         self.args = {}
         self.args.setdefault("ComponentDir", None)
         self.args.setdefault("Logfile", None)
         self.args.setdefault("Enabled", "yes")
-        self.args.setdefault("MaxInputAccessFailures", 1)        
-        
+        self.args.setdefault("MaxInputAccessFailures", 1)
+
         # update parameters
         self.args.update(args)
 
         # update Enabled parameter
         self.args['Enabled'] = str(self.args['Enabled']).lower()
-        
+
         if self.args['Enabled'] == "none" or \
            self.args['Enabled'] == "y" or \
            self.args['Enabled'] == "yes":
             self.enabled = True
         else:
             self.enabled = False
-            
+
 
         # define log file
         if self.args['Logfile'] == None:
-            self.args['Logfile'] = os.path.join(self.args['ComponentDir'], 
+            self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
         # create log handler
         LoggingUtils.installLogHandler(self)
@@ -105,16 +106,16 @@ class MergeAccountantComponent:
         else:
             status = "disabled"
         logging.info("File accounting is " + status + ".")
-                
+
         # database connection not initialized
         self.database = None
-        
+
         # message service instance
-        self.ms = None 
-        
+        self.ms = None
+
         # trigger
         self.trigger = None
-        
+
     ##########################################################################
     # handle events
     ##########################################################################
@@ -126,16 +127,16 @@ class MergeAccountantComponent:
         Used as callback to handle events that have been subscribed to
 
         Arguments:
-            
+
           event -- the event name
           payload -- its arguments
-          
+
         Return:
-            
+
           none
-          
+
         """
-        
+
         logging.debug("Received Event: %s" % event)
         logging.debug("Payload: %s" % payload)
 
@@ -164,12 +165,11 @@ class MergeAccountantComponent:
             try:
                 self.jobSuccess(payload)
             except Exception, ex:
-                import traceback
                 msg = "Unexpected error when handling a "
                 msg += "JobSuccess event: " + str(ex)
                 msg += traceback.format_exc()
                 logging.error(msg)
-                              
+
                 return
 
         # a job has failed
@@ -220,16 +220,18 @@ class MergeAccountantComponent:
 
         jobName = None
         try:
-	
-	    #// Invoke job report handler with jobReport location and flag to enable/disable merge job report handling
-	    
-            handler = ReportHandler(jobReport, int(self.args['MaxInputAccessFailures']), enableMergeHandling=self.enabled)	    
+
+        #// Invoke job report handler with jobReport location and flag to enable/disable merge job report handling
+
+            handler = ReportHandler(jobReport, int(self.args['MaxInputAccessFailures']), enableMergeHandling=self.enabled)
             jobName = handler()
-	    logging.info('this is jobname'+ str(jobName))
+        logging.info('this is jobname'+ str(jobName))
         except Exception, ex:
             msg = "Failed to handle job report from job:\n"
             msg += "%s\n" % jobReport
             msg += str(ex)
+            msg += "\n"
+            msg += traceback.format_exc()
             logging.error(msg)
 
         #// Failed to read job report
@@ -243,13 +245,13 @@ class MergeAccountantComponent:
             self.trigger.setFlag("cleanup", jobName, "MergeAccountant")
         except (ProdAgentException, ProdException):
             logging.error("trying to continue processing success event")
-	    
- 
 
-     
+
+
+
         return #// END jobSuccess
-        
- 
+
+
 
     ##########################################################################
     # handle a general failure job event
@@ -301,7 +303,7 @@ class MergeAccountantComponent:
         if not self.enabled:
             return
 
-        # open a DB connection 
+        # open a DB connection
         database = MergeSensorDB()
 
         # start a transaction
@@ -375,23 +377,23 @@ class MergeAccountantComponent:
         _startComponent_
 
         Fire up the two main threads
-        
+
         Arguments:
-        
+
           none
-          
+
         Return:
-        
+
           none
 
         """
-       
+
         # create message service instance
         self.ms = MessageService()
-        
+
         # register
         self.ms.registerAs("MergeAccountant")
-        
+
         # subscribe to messages
         self.ms.subscribeTo("MergeAccountant:StartDebug")
         self.ms.subscribeTo("MergeAccountant:EndDebug")
@@ -400,13 +402,13 @@ class MergeAccountantComponent:
         self.ms.subscribeTo("JobSuccess")
         self.ms.subscribeTo("GeneralJobFailure")
         self.ms.subscribeTo("MergeAccountant:SetJobCleanupFlag")
-       
+
         # set trigger access for cleanup
-        self.trigger = Trigger(self.ms) 
+        self.trigger = Trigger(self.ms)
 
         # set message service instance for PM interaction
         File.ms = self.ms
-        
+
         # wait for messages
         while True:
 
@@ -428,7 +430,7 @@ class MergeAccountantComponent:
             # commit and close session
             Session.commit_all()
             Session.close_all()
-        
+
     ##########################################################################
     # get version information
     ##########################################################################
@@ -437,9 +439,9 @@ class MergeAccountantComponent:
     def getVersionInfo(cls):
         """
         _getVersionInfo_
-        
+
         return version information
         """
-        
+
         return __version__  + "\n"
-    
+
