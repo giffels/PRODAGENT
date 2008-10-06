@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.6 2008/09/23 13:08:35 gcodispo Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: JobHandling.py,v 1.7 2008/09/23 15:01:41 gcodispo Exp $"
+__version__ = "$Revision: 1.7 $"
 
 import os
 import logging
@@ -66,7 +66,6 @@ class JobHandling:
         jobSpecId = job['name']
 
         # job status
-        exitCode = -1
         success = False
 
         # get outdir and report file name
@@ -120,23 +119,22 @@ class JobHandling:
         if fwjrExists:
 
             # check success
-            success, exitCode = self.parseFinalReport(reportfilename, job)
+            success = self.parseFinalReport(reportfilename, job)
 
             logging.debug("Job %s check Job Success: %s" % \
                           (self.fullId(job), str(success)) )
 
         # FwkJobReport not there: create one based on db or assume failed
         else:
+            success = False
             # May be the job is aborted
             if job.runningJob['processStatus'] == 'failed' :
-                success = False
                 exitCode = -1
 
             # otherwise, missing just missing fwjr
             else :
                 job.runningJob["applicationReturnCode"] = str(50117)
                 job.runningJob["wrapperReturnCode"] = str(50117)
-                success = False
                 exitCode = 50117
 
             # write fake fwjr
@@ -194,23 +192,33 @@ class JobHandling:
 
         # defaults
         success = False
-        exitCode = 0
 
+        # skip empty files
         if os.path.getsize(reportfilename) == 0 :
-            return( success, -1 )
+            return False
+
+        # check for success (needed for chain jobs
+        success = checkSuccess(reportfilename)
 
         # read standard info
+        # FIXME: avoid reading twice the same file!
         try :
-            jobReport = readJobReport(reportfilename)[0]
-            # success = ( jobReport.status == "Success" )
-            # exitCode = jobReport.exitCode
+            reports = readJobReport(reportfilename)
         except Exception, err:
             logging.error('Invalid Framework Job Report : %s' %str(err) )
-            return( success, -1 )
+            return False
 
+        # if more than one fwjr (chain jobs) is enough!
+        if len(reports) != 1 :
+            return success
 
         # read CS specific info
         try :
+            jobReport = reports[0]
+            success = ( jobReport.status == "Success" )
+            exitCode = jobReport.exitCode
+            job.runningJob["wrapperReturnCode"] = exitCode
+            job.runningJob["applicationReturnCode"] = exitCode
             for report in jobReport.errors:
                 if report['Type'] == 'WrapperExitCode':
                     job.runningJob["wrapperReturnCode"] = report['ExitStatus']
@@ -218,21 +226,10 @@ class JobHandling:
                     job.runningJob["applicationReturnCode"] = report['ExitStatus']
                 else:
                     continue
-            return( success, exitCode )
         except:
             pass
 
-        if job.runningJob["wrapperReturnCode"] is None and \
-               job.runningJob["applicationReturnCode"] is None :
-            success = checkSuccess(reportfilename)
-            if success :
-                exitCode = 0
-            else:
-                exitCode = -1
-            # job.runningJob["wrapperReturnCode"] = exitCode
-            # job.runningJob["applicationReturnCode"] = exitCode
-
-        return( success, exitCode )
+        return success
 
 
     def publishJobSuccess(self, job, reportfilename):
