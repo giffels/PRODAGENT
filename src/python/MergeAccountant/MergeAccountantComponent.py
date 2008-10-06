@@ -7,8 +7,8 @@ input and output file accounting.
 
 """
 
-__revision__ = "$Id: MergeAccountantComponent.py,v 1.13 2008/08/21 16:04:52 ahmadh Exp $"
-__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: MergeAccountantComponent.py,v 1.14 2008/10/06 17:31:35 evansde Exp $"
+__version__ = "$Revision: 1.14 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -225,7 +225,7 @@ class MergeAccountantComponent:
 
             handler = ReportHandler(jobReport, int(self.args['MaxInputAccessFailures']), enableMergeHandling=self.enabled)
             jobName = handler()
-        logging.info('this is jobname'+ str(jobName))
+            logging.info('this is jobname'+ str(jobName))
         except Exception, ex:
             msg = "Failed to handle job report from job:\n"
             msg += "%s\n" % jobReport
@@ -236,7 +236,7 @@ class MergeAccountantComponent:
 
         #// Failed to read job report
         if jobName is None:
-           return
+            return
 
         # files can be cleaned up now
         logging.info("trigger cleanup for: %s" % jobName)
