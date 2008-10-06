@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.6 2008/08/26 16:11:19 gcodispo Exp $"
-__revision__ = "$Revision: 1.6 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.7 2008/09/08 15:56:22 gcodispo Exp $"
+__revision__ = "$Revision: 1.7 $"
 
 import os
 import logging
@@ -350,6 +350,7 @@ class GetOutputComponent:
 
             # update status
             job.runningJob['processStatus'] = 'processed'
+            job.runningJob['closed'] = 'Y'
             self.bossLiteSession.updateDB( job )
         except BossLiteError, err:
             logging.error( "%s failed to process output : %s" % \
