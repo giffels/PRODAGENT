@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.7 2008/09/08 15:56:22 gcodispo Exp $"
-__revision__ = "$Revision: 1.7 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.8 2008/10/06 10:53:42 gcodispo Exp $"
+__revision__ = "$Revision: 1.8 $"
 
 import os
 import logging
@@ -121,9 +121,13 @@ class GetOutputComponent:
 
         # some initializations
         self.jobLimit = int(self.args['jobsToPoll'])
-        self.outputRequestedJobs = []
-        self.jobFinished = []
+        self.newJobs = []
         self.jobHandling = None
+        self.jobFinished = None
+        self.finishedAttrs = {'processStatus': 'output_requested',
+                              'closed' : 'N'}
+        self.failedAttrs = { 'processStatus' : 'failed',
+                             'closed' : 'N' }
 
         # component running, display info
         logging.info("GetOutput Component Started...")
@@ -167,25 +171,26 @@ class GetOutputComponent:
         logging.info("Starting poll cycle")
 
         # process jobs having 'processStatus' : 'output_requested'
-        self.scheduleEnded()
-
-        # process jobs having 'processStatus' : 'failed',
-        self.scheduleFailed()
-
-        # how many active threads?
-        logging.debug("ACTIVE THREADS when poll cycle finished: %s" \
-                     % threading.activeCount() )
+        self.pollJobs( self.finishedAttrs )
 
         # process outputs if ready
         loop = True
         while loop :
+            loop = self.processOutput(self.jobHandling.performOutputProcessing)
+        logging.debug("Finished processing of outputs")
 
-            loop = self.processOutput()
+        # process jobs having 'processStatus' : 'failed',
+        self.pollJobs( self.failedAttrs )
+
+        # process failure reports if ready
+        loop = True
+        while loop :
+            loop = self.processOutput(self.jobHandling.performErrorProcessing)
+        logging.debug("Finished processing of failed")
 
         # how many active threads?
         logging.debug("ACTIVE THREADS after processing: %s" \
                      % threading.activeCount() )
-        logging.debug("Finished processing of outputs and failed")
 
         # generate next polling cycle
         logging.info("Waiting %s for next get output polling cycle" % \
@@ -194,57 +199,49 @@ class GetOutputComponent:
         self.ms.commit()
 
 
-    def scheduleEnded(self):
+    def pollJobs(self, runningAttrs, action=None ):
         """
-        __scheduleEnded__
+        __pollJobs__
+
+        basic structure for jobs polling
 
         """
 
-        # get jobs that require output
-        logging.debug("Start processing of outputs")
         offset = 0
         loop = True
 
-        # loading attributes
-        runningAttrs = {'processStatus': 'output_requested',
-                        'closed' : 'N'}
-
         while loop :
 
-            logging.debug("Range of job ids to be loaded %s:%s " % \
-                          (str( offset ), str( offset + self.jobLimit) ) )
+            logging.debug("Max jobs to be loaded %s:%s " % \
+                         (str( offset ), str( offset + self.jobLimit) ) )
 
-            try:
-                self.outputRequestedJobs = \
-                                   self.bossLiteSession.loadJobsByRunningAttr(
-                                   runningAttrs=runningAttrs, \
-                                   limit=self.jobLimit, offset=offset )
+            self.newJobs = self.bossLiteSession.loadJobsByRunningAttr(
+                runningAttrs=runningAttrs, \
+                limit=self.jobLimit, offset=offset
+                )
 
-                numberOfJobs = len(self.outputRequestedJobs)
-                logging.info("Output requested for " + \
-                             str( numberOfJobs ) + " jobs")
-
-            except DbError, err:
-                logging.error( "failed to load jobs in range %s:%s : %s" % ( \
-                    str( offset ), str( offset + self.jobLimit), str(err) ) )
-                offset += self.jobLimit
-                continue
+            logging.info("Polled jobs : " + str( len(self.newJobs) ) )
 
             # exit if no more jobs to query
-            if self.outputRequestedJobs == [] :
+            if self.newJobs == [] :
                 loop = False
                 break
             else :
                 offset += self.jobLimit
 
-            while self.outputRequestedJobs != [] :
+            while self.newJobs != [] :
 
-                # change status for jobs that require get output operations
-                try:
-                    job = self.outputRequestedJobs.pop()
+                try :
+                    job = self.newJobs.pop()
+
+                    if action is not None:
+                        action( job )
+
                     job.runningJob['processStatus'] = 'in_progress'
                     self.bossLiteSession.updateDB( job )
+
                     self.pool.enqueue(job, job)
+
                 except BossLiteError, err:
                     logging.error( "failed request for job %s : %s" % \
                                    (JobOutput.fullId(job), str(err) ) )
@@ -256,64 +253,14 @@ class GetOutputComponent:
                                    (JobOutput.fullId(job), \
                                     str( traceback.format_exc() ) ) )
 
+                del( job )
 
-    def scheduleFailed(self):
-        """
-        __scheduleFailed__
+            del self.newJobs[:]
 
-        """
-
-        # get jobs failed that require post-mortem operations
-        logging.debug("Start processing of failed")
-
-        # loading attributes
-        runningAttrs = { 'processStatus' : 'failed',
-                         'closed' : 'N' }
-        offset = 0
-        loop = True
-
-        while loop :
-
-            try:
-                self.outputRequestedJobs = \
-                                    self.bossLiteSession.loadJobsByRunningAttr(
-                                           runningAttrs=runningAttrs, \
-                                           limit=self.jobLimit, offset=offset )
-
-                numberOfJobs = len(self.outputRequestedJobs)
-                logging.info("Notify failure for " + \
-                             str( numberOfJobs ) + " jobs")
-
-            except DbError, err:
-                logging.error( "failed to load jobs in range %s:%s : %s" % ( \
-                    str( offset ), str( offset + self.jobLimit), str(err) ) )
-                offset += self.jobLimit
-                continue
-
-            # exit if no more jobs to query
-            if self.outputRequestedJobs == [] :
-                loop = False
-                break
-            else :
-                offset += self.jobLimit
-
-            while self.outputRequestedJobs != [] :
-
-                # change status for jobs that require get output operations
-                try:
-                    job = self.outputRequestedJobs.pop()
-                    self.pool.enqueue(job, job)
-                except Exception, err:
-                    logging.error( "failed enqueue job %s : %s" % \
-                                   (JobOutput.fullId(job), str(err) ) )
-                except :
-                    logging.error( "failed enqueue job %s : %s" % \
-                                   (JobOutput.fullId(job), \
-                                   str( traceback.format_exc() ) ) )
-                # del( job )
+        del self.newJobs[:]
 
 
-    def processOutput(self):
+    def processOutput(self, action):
         """
         __processOutput__
         """
@@ -346,7 +293,7 @@ class GetOutputComponent:
 
         # perform processing
         try :
-            self.jobHandling.performOutputProcessing(job)
+            action(job)
 
             # update status
             job.runningJob['processStatus'] = 'processed'

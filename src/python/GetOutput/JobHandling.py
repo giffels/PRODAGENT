@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.7 2008/09/23 15:01:41 gcodispo Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: JobHandling.py,v 1.8 2008/10/06 09:22:08 gcodispo Exp $"
+__version__ = "$Revision: 1.8 $"
 
 import os
 import logging
@@ -74,10 +74,7 @@ class JobHandling:
         # if SE rebounce fwjr
         if self.outputLocation == "SE" :
             try :
-                if job.runningJob['processStatus'] != 'failed':
-                    self.reportRebounce( job )
-                else :
-                    self.rebounceLoggingInfo( job )
+                self.reportRebounce( job )
             except :
                 # as dirt as needed: any unknown error
                 import traceback
@@ -90,10 +87,7 @@ class JobHandling:
         # if condorG rebounce full sandbox
         elif self.outputLocation == "SEcopy" :
             try :
-                if job.runningJob['processStatus'] != 'failed':
-                    self.rebounceOSB( job )
-                else :
-                    self.rebounceLoggingInfo( job )
+                self.rebounceOSB( job )
             except :
                 # as dirt as needed: any unknown error
                 import traceback
@@ -127,15 +121,9 @@ class JobHandling:
         # FwkJobReport not there: create one based on db or assume failed
         else:
             success = False
-            # May be the job is aborted
-            if job.runningJob['processStatus'] == 'failed' :
-                exitCode = -1
-
-            # otherwise, missing just missing fwjr
-            else :
-                job.runningJob["applicationReturnCode"] = str(50117)
-                job.runningJob["wrapperReturnCode"] = str(50117)
-                exitCode = 50117
+            job.runningJob["applicationReturnCode"] = str(50117)
+            job.runningJob["wrapperReturnCode"] = str(50117)
+            exitCode = 50117
 
             # write fake fwjr
             logging.debug("Job %s : write fake fwjr: %s" % \
@@ -156,6 +144,47 @@ class JobHandling:
             self.publishJobFailed(job, reportfilename)
 
         return
+
+
+    def performErrorProcessing(self, job):
+        """
+        __performErrorProcessing__
+        """
+
+        logging.info( "Evaluate job %s and publish the job results" \
+                      % self.fullId(job) )
+
+        # get job information
+        jobSpecId = job['name']
+        reportfilename = os.path.join(job.runningJob['outputDirectory'], \
+                                      'FrameworkJobReport.xml')
+
+        # job status
+        exitCode = -1
+
+        # if SE rebounce fwjr
+        if self.outputLocation in ["SE", "SEcopy"] :
+            try :
+                    self.rebounceLoggingInfo( job )
+            except :
+                # as dirt as needed: any unknown error
+                import traceback
+                msg = traceback.format_exc()
+                output = str(msg)
+                logging.error("Job %s FAILED REBOUNCE : %s" % \
+                              (self.fullId(job), output ) )
+                return
+
+        # write fake fwjr
+        logging.debug("Job %s : write fake fwjr %s" % \
+                      (self.fullId(job), reportfilename) )
+        self.writeFwkJobReport( jobSpecId, exitCode, reportfilename )
+
+        # generate a job failure message
+        self.publishJobFailed(job, reportfilename)
+
+        return
+
 
 
     def writeFwkJobReport( self, jobSpecId, exitCode, reportfilename ):

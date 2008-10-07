@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.1.2.3 2008/07/22 13:18:12 gcodispo Exp $"
-__revision__ = "$Revision: 1.1.2.3 $"
+__version__ = "$Id: TrackingDB.py,v 1.3 2008/07/25 15:47:41 swakef Exp $"
+__revision__ = "$Revision: 1.3 $"
 
 
 class TrackingDB:
@@ -196,4 +196,28 @@ class TrackingDB:
               ' where task_id in (' + taskList  + ')'
 
         self.bossSession.modify(query)
+
+
+    def getStuckJobs( self, status, timeout, begin, end='CURRENT_TIMESTAMP' ) :
+        """
+        __setTaskGroup__
+
+        assign tasks to a given group
+        """
+
+        states = ','.join( [ "'%s'" % s for s in status ] )
+
+        query = '''
+              select j.name from bl_job j, bl_runningjob r
+              where r.status in (%s) and r.process_status="handled"
+              and (%s-%s)>%s and j.task_id=r.task_id and j.job_id=r.job_id and
+              j.submission_number=r.submission''' \
+        % ( states, end, begin, timeout )
+
+        rows = self.bossSession.select(query)
+
+        if rows is None:
+            return []
+
+        return [str(key[0]) for key in rows ]
 

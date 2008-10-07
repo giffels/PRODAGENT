@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.13 2008/09/23 15:53:59 gcodispo Exp $"
-__revision__ = "$Revision: 1.13 $"
+__version__ = "$Id: JobOutput.py,v 1.14 2008/09/25 13:04:45 gcodispo Exp $"
+__revision__ = "$Revision: 1.14 $"
 
 import logging
 import os
@@ -42,6 +42,8 @@ class JobOutput:
               'OutputLocation' : None,
               'dropBoxPath' : None
               }
+
+    failureCodes = ['A', 'K', 'SA']
 
     schedulerConfig = { 'timeout' : 300 } #,
     #                    'skipWMSAuth' : 1 }
@@ -92,7 +94,7 @@ class JobOutput:
                 return job
 
             # non expected status, abandon processing for job
-            if status != 'in_progress' and status != 'failed':
+            if status != 'in_progress' :
                 logging.error("%s: Cannot get output, status is %s" % \
                               (cls.fullId( job ), status) )
                 return
@@ -117,7 +119,7 @@ class JobOutput:
                 job.runningJob['outputDirectory'] = cls.buildOutdir(job, task)
 
                 # job failed: perform postMortem operations and notify failure
-                if status == 'failed':
+                if status in cls.failureCodes:
                     job = cls.handleFailed( job, task, schedSession)
 
                 # output at destination: just purge service
@@ -373,7 +375,10 @@ class JobOutput:
 
         # allow job to be reprocessed
         try :
-            job.runningJob['processStatus'] = 'output_requested'
+            if job.runningJob['status'] == 'SD':
+                job.runningJob['processStatus'] = 'output_requested'
+            else:
+                job.runningJob['processStatus'] = 'failed'
             bossLiteSession.updateDB( job )
         except:
             logging.warning(
