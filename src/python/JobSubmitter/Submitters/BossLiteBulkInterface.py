@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.15 2008/09/23 12:37:44 gcodispo Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.16 2008/10/08 14:31:45 gcodispo Exp $"
+__version__ = "$Revision: 1.16 $"
 
 import os
 import logging
@@ -109,56 +109,95 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
         logging.debug("workingDir = %s" % self.workingDir)
 
         #  //
-        # // For single jobs there will be just one job spec
+        # // Handle submission/resubmission
         #//
-        if not self.isBulk:
-            self.jobInputFiles.append(self.specFiles[self.mainJobSpecName])
-            self.singleSpecName = os.path.basename(
-                self.specFiles[self.mainJobSpecName])
-            self.singleSpecName = \
-                 self.singleSpecName[:self.singleSpecName.find('-JobSpec.xml')]
-            logging.debug("singleSpecName \"%s\"" % self.singleSpecName)
-            try :
-                # loading the job
-                self.bossJob = self.bossLiteSession.loadJobByName(
-                    self.singleSpecName )
-
-                # FIXME : find a way to log an error if it is a resubmission
-                # FIXME : but the job is no more in the DB
-                # // handle failures
-                #if self.bossJob is None :
-                #    raise JSException("no jobs matching in the BossLite DB", \
-                #                      FailureList = self.toSubmit.keys())
-
-                # logging.info("resubmitting \"%s\"" % self.bossJob['name'])
-            except JobError, ex:
-                raise JSException(str(ex), FailureList = self.toSubmit.keys())
-        else :
+        if self.isBulk:
             try :
                 self.bossTask = self.bossLiteSession.loadTaskByName(
                     self.mainJobSpecName
                     )
             except TaskError, ex:
                 # non instance in db: create it
-                pass
+                self.prepareSubmission()
 
+        # For single jobs there will be just one job spec
+        else:
+            # loading the job
+            self.jobInputFiles.append(self.specFiles[self.mainJobSpecName])
+            self.singleSpecName = os.path.basename(
+                self.specFiles[self.mainJobSpecName])
+            self.singleSpecName = \
+                 self.singleSpecName[:self.singleSpecName.find('-JobSpec.xml')]
+            logging.info("singleSpecName \"%s\"" % self.singleSpecName)
+            try :
+                self.bossJob = self.bossLiteSession.loadJobByName(
+                    self.singleSpecName
+                    )
+                self.prepareResubmission()
+
+            except JobError, ex:
+
+                # FIXME : find a way to log an error if it is a resubmission
+                # FIXME : but the job is no more in the DB
+                raise JSException(str(ex), FailureList = self.toSubmit.keys())
+
+        self.doBOSSSubmit()
+
+        return
+
+    
+
+    def prepareResubmission(self):
+        """
+        __prepareResubmission__
+
+        If already declared (i.e. resubmission), just submit
+        """
+
+
+        # check if the wrapper is actually there
+        executable = os.path.join(self.workingDir, self.bossJob['executable'] )
+
+        if not os.path.exists( executable ):
+            logging.info("missing wrapper script %s: recreating it!" \
+                          % executable)
+            self.makeWrapperScript( executable, "$1" )
+
+        logging.debug( "BossLiteBulkInterface.doSubmit bossJobId = %s.%s" \
+                       % (self.bossJob['taskId'], self.bossJob['jobId']) )
+
+        # is there a job? build a task!
+        logging.info( "Loading task for job resubmission..."  )
+        self.bossLiteSession.getRunningInstance( self.bossJob )
+
+        # close previous instance and set up the outdir
+        if self.bossJob.runningJob['closed'] == 'Y' :
+            outdir = self.toSubmit[ self.singleSpecName ] + '/Submission'
+            self.bossLiteSession.getNewRunningInstance( self.bossJob )
+            self.bossJob.runningJob['outputDirectory'] = outdir \
+                                   + str(self.bossJob.runningJob['submission'])
+            self.bossLiteSession.updateDB( self.bossJob )
+
+        # load the task ans append the job
+        self.bossTask = self.bossLiteSession.loadTask(
+            self.bossJob['taskId'], jobRange=None )
+        self.bossTask.appendJob( self.bossJob )
+
+
+
+    def prepareSubmission(self):
+        """
+        __prepareSubmission__
+
+        register task in the BossLite tables
+        """
 
         #generate unique wrapper script
+        logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
         executable = self.mainJobSpecName + '-submit'
         executablePath = "%s/%s" % (self.workingDir, executable)
-        if not os.path.exists( executablePath ):
-            logging.debug("makeWrapperScript = %s" % executablePath)
-            self.makeWrapperScript( executablePath, "$1" )
-
-        #  //
-        # // If already declared (i.e. resubmission), just submit
-        #//
-        logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
-        if self.bossJob is not None:
-            logging.debug( "BossLiteBulkInterface.doSubmit bossJobId = %s.%s" \
-                           % (self.bossJob['taskId'], self.bossJob['jobId']) )
-            self.doBOSSSubmit()
-            return
+        logging.debug("makeWrapperScript = %s" % executablePath)
+        self.makeWrapperScript( executablePath, "$1" )
 
         inpSandbox = ','.join( self.jobInputFiles )
         logging.debug("Declaring to BOSS")
@@ -195,9 +234,6 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
         except ProdAgentException, ex:
             raise JSException(str(ex), FailureList = self.toSubmit.keys())
 
-        self.doBOSSSubmit()
-
-        return
 
 
     #  //
@@ -338,25 +374,6 @@ fi
         Build and run a submit command
 
         """
-
-        # is there a job? build a task!
-        if self.bossTask is None and self.bossJob is not None:
-
-            logging.info( "Loading task for job resubmission..."  )
-            self.bossLiteSession.getRunningInstance( self.bossJob )
-
-            # close previous instance and set up the outdir
-            if self.bossJob.runningJob['closed'] == 'Y' :
-                outdir = self.toSubmit[ self.singleSpecName ] + '/Submission'
-                self.bossLiteSession.getNewRunningInstance( self.bossJob )
-                self.bossJob.runningJob['outputDirectory'] = outdir \
-                         + str(self.bossJob.runningJob['submission'])
-                self.bossLiteSession.updateDB( self.bossJob )
-
-            # load the task ans append the job
-            self.bossTask = self.bossLiteSession.loadTask(
-                self.bossJob['taskId'], jobRange=None )
-            self.bossTask.appendJob( self.bossJob )
 
         # still no task? Something bad happened
         if self.bossTask is not None :
