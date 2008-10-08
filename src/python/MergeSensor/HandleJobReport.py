@@ -42,7 +42,7 @@ class HandleJobReport :
         self.enableMergeHandling = enableMergeHandling
         self.maxInputAccessFailures = maxInputAccessFailures
         self.reportInstance = reportInstance
-     #   self.reportFile = reportFile
+        #   self.reportFile = reportFile
         self.jobName = None
         self.mergedLfn = None
 
@@ -57,30 +57,30 @@ class HandleJobReport :
         #// Read job report file from the jobreport location provided
         result  = self.initialiseReport()
         if result is False:
-           return None
+            return None
 
 
 
         try:
-          #// Handle Processing jobs's report
-          if self.jobName.find ('merge') == -1:
-             self.handleProcessingJobReport()
-             return self.jobName
+            #// Handle Processing jobs's report
+            if self.jobName.find ('merge') == -1:
+                self.handleProcessingJobReport()
+                return self.jobName
 
-          #// Handle Merge Job Report. Insert & update Merge DB
+            #// Handle Merge Job Report. Insert & update Merge DB
 
-          if self.enableMergeHandling:
-              self.handleMergeJobReport ()
+            if self.enableMergeHandling:
+                self.handleMergeJobReport ()
 
-          return self.jobName
+            return self.jobName
 
         except Exception, ex:
 
-             msg = "Failed to handle job report from processing job:\n"
-             msg += "%s\n" % self.reportFile
-             msg += str(ex)
-             logging.error(msg)
-             return self.jobName
+            msg = "Failed to handle job report from processing job:\n"
+            msg += "%s\n" % self.reportFile
+            msg += str(ex)
+            logging.error(msg)
+            return self.jobName
 
 
 

@@ -19,21 +19,21 @@ from MergeSensor.HandleJobReport import HandleJobReport
 class ReportHandler (list):
     """
     _ReportHandler_
-    
-    Handles the Framework job report for both processing and merge jobs. 
+
+    Handles the Framework job report for both processing and merge jobs.
     Helper class to insert data from a physical job report file
     into the MergeSensor DB
-    
+
     """
     def __init__(self, repFile, maxInputAccessFailures, enableMergeHandling = False):
         """
         _init_
         Initialization function
         """
-	
-	#// Base class constructor	
+
+    #// Base class constructor
         list.__init__ (self)
-	
+
 
         self.reportFile = repFile
         self.enableMergeHandling = enableMergeHandling
@@ -42,16 +42,16 @@ class ReportHandler (list):
     def __call__(self):
         """
         _operator()_
-	
-	Callable funtions to handle job report
 
-        """     
-		
-        logging.info ('read job report.......') 
-	 
-	#  remove file:// from file name (if any)
-        
-	jobReport = self.reportFile.replace('file://','')
+        Callable funtions to handle job report
+
+        """
+
+        logging.info ('read job report.......')
+
+        #  remove file:// from file name (if any)
+
+        jobReport = self.reportFile.replace('file://','')
 
         # verify the file exists
         if not os.path.exists(jobReport):
@@ -68,28 +68,30 @@ class ReportHandler (list):
             logging.error("Cannot process JobSuccess event for %s: %s" \
                            % (jobReport, msg))
             return None
-	
-	
-	result = None
-			
-	try:
-	
-	
+
+
+        result = None
+
+        try:
+
+
            for report in self:
-               handler = HandleJobReport(report, jobReport, self.maxInputAccessFailures, self.enableMergeHandling)
-	       result = handler()
+               handler = HandleJobReport(
+                   report, jobReport,
+                   self.maxInputAccessFailures, self.enableMergeHandling)
+               result = handler()
                logging.info(handler.summarise())
-	       
-	
-	except Exception, ex:
-	   
-           msg = "Failed to handle job report from processing job:\n"
-           msg += "%s\n" % self.reportFile
-           msg += str(ex)
-           logging.error(msg)
-	   return result
-	
-	return result   #// End __call__
+
+
+        except Exception, ex:
+
+            msg = "Failed to handle job report from processing job:\n"
+            msg += "%s\n" % self.reportFile
+            msg += str(ex)
+            logging.error(msg)
+            return result
+
+        return result   #// End __call__
 
 
 
