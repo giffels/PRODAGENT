@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.8 2008/10/06 10:53:42 gcodispo Exp $"
-__revision__ = "$Revision: 1.8 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.9 2008/10/07 17:07:27 gcodispo Exp $"
+__revision__ = "$Revision: 1.9 $"
 
 import os
 import logging
@@ -168,16 +168,30 @@ class GetOutputComponent:
         # how many active threads?
         logging.debug("ACTIVE THREADS when starting poll cycle: %s" \
                      % threading.activeCount() )
+        logging.debug(
+            "JOBS IN QUEUE when starting poll cycle: PENDING %d, READY %d" \
+            % (len(self.pool.callQueue), len(self.pool.resultsQueue) )
+            )
         logging.info("Starting poll cycle")
 
         # process jobs having 'processStatus' : 'output_requested'
         self.pollJobs( self.finishedAttrs )
+
+        logging.debug(
+            "JOBS IN QUEUE when enqueued finished jobs: PENDING %d, READY %d" \
+            % (len(self.pool.callQueue), len(self.pool.resultsQueue) )
+            )
 
         # process outputs if ready
         loop = True
         while loop :
             loop = self.processOutput(self.jobHandling.performOutputProcessing)
         logging.debug("Finished processing of outputs")
+
+        logging.debug(
+            "JOBS IN QUEUE when handled finished jobs: PENDING %d, READY %d" \
+            % (len(self.pool.callQueue), len(self.pool.resultsQueue) )
+            )
 
         # process jobs having 'processStatus' : 'failed',
         self.pollJobs( self.failedAttrs )
@@ -191,6 +205,10 @@ class GetOutputComponent:
         # how many active threads?
         logging.debug("ACTIVE THREADS after processing: %s" \
                      % threading.activeCount() )
+        logging.debug(
+            "JOBS IN QUEUE when finished poll cycle: PENDING %d, READY %d" \
+            % (len(self.pool.callQueue), len(self.pool.resultsQueue) )
+            )
 
         # generate next polling cycle
         logging.info("Waiting %s for next get output polling cycle" % \
