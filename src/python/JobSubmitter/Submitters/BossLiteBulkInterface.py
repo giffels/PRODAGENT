@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.14 2008/09/09 14:59:19 gcodispo Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.15 2008/09/23 12:37:44 gcodispo Exp $"
+__version__ = "$Revision: 1.15 $"
 
 import os
 import logging
@@ -142,6 +142,14 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
                 # non instance in db: create it
                 pass
 
+
+        #generate unique wrapper script
+        executable = self.mainJobSpecName + '-submit'
+        executablePath = "%s/%s" % (self.workingDir, executable)
+        if not os.path.exists( executablePath ):
+            logging.debug("makeWrapperScript = %s" % executablePath)
+            self.makeWrapperScript( executablePath, "$1" )
+
         #  //
         # // If already declared (i.e. resubmission), just submit
         #//
@@ -151,12 +159,6 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
                            % (self.bossJob['taskId'], self.bossJob['jobId']) )
             self.doBOSSSubmit()
             return
-
-        #generate unique wrapper script
-        executable = self.mainJobSpecName + '-submit'
-        executablePath = "%s/%s" % (self.workingDir, executable)
-        logging.debug("makeWrapperScript = %s" % executablePath)
-        self.makeWrapperScript( executablePath, "$1" )
 
         inpSandbox = ','.join( self.jobInputFiles )
         logging.debug("Declaring to BOSS")
