@@ -14,6 +14,17 @@ from StageOut.StageOutImpl import StageOutImpl
 _CheckExitCodeOption = True
 
 
+def pnfsPfn(pfn):
+    """
+    _pnfsPfn_
+
+    Convert a dcap PFN to a PNFS PFN
+
+    """
+    pfnSplit = pfn.split("WAX/11/store/", 1)[1]
+    filePath = "/pnfs/cms/WAX/11/store/%s" % pfnSplit
+    return filePath
+
 
 class DCCPFNALImpl(StageOutImpl):
     """
@@ -91,10 +102,39 @@ class DCCPFNALImpl(StageOutImpl):
             optionsStr = str(options)
         dirname = os.path.dirname(targetPFN)
         result = "#!/bin/sh\n"
-        result += "export DCACHE_IO_TUNNEL=/opt/d-cache/dcap/lib/libtelnetTunnel.so\n"
-        result += "export DCACHE_IO_TUNNEL_TELNET_PWD=/home/cmsprod/passwd4dCapDoor.cmsprod\n"
+        result += ". /opt/d-cache/dcap/bin/setenv-cmsprod.sh\n"
+        result += "dccp -d 0 -X -role=cmsprod %s %s %s" % ( optionsStr, sourcePFN, targetPFN)
+        
+        result += \
+"""
+EXIT_STATUS=$?
+echo "dccp exit status: $EXIT_STATUS"
+if [[ $EXIT_STATUS != 0 ]]; then
+   echo "Non-zero dccp Exit status!!!"
+   echo "Cleaning up failed file:"
+   /bin/rm %s
+   exit 60311
+fi
+"""  % pnfsPfn(targetPFN)
 
-        result += "dccp -d 255 -X -role=cmsprod %s %s %s" % ( optionsStr, sourcePFN, targetPFN)
+        #  //
+        # //  CRC check
+        #//
+        result += \
+"""
+/opt/d-cache/dcap/bin/check_dCachefilecksum.sh %s %s
+EXIT_STATUS=$?
+echo "CRC Check Exit status: $EXIT_STATUS"
+if [[ $EXIT_STATUS != 0 ]]; then
+   echo "Non-zero CRC Check Exit status!!!"
+   echo "Cleaning up failed file:"
+   /bin/rm %s
+   exit 60311
+fi
+
+""" % (pnfsPfn(targetPFN), sourcePFN, pnfsPfn(targetPFN))
+        
+        print "Executing:\n", result
         return result
 
 
