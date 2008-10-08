@@ -32,3 +32,9 @@ import SubmitFailureHandler
 import MergingSubmitFailureHandler
 import ProcessingSubmitFailureHandler
 import CreateFailureHandler
+
+## CrabServer plugin
+try:
+    import Plugins.ErrorHandler.CrabRunFailureHandler
+except ImportError:
+    pass
