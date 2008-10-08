@@ -13,12 +13,16 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from HTTPFrontend.WorkflowMonitor import WorkflowMonitor,WorkflowGraph
 from HTTPFrontend.JobQueueMonitor import JobQueueMonitor
 from HTTPFrontend.MergeMonitor import MergeDatasetMonitor, MergeMonitor, MergeGraph
-from HTTPAFrontend.DatasetsMonitor import DatasetMonitor
+from HTTPFrontend.DatasetsMonitor import DatasetMonitor
 from HTTPFrontend.ResourceMonitors import ResourceDetails,ResourceStatus
 from HTTPFrontend.LogViewer import LogViewer
 from HTTPFrontend.AlertMonitor import AlertMonitor, CurrentAlert, HistoryAlert
 from HTTPFrontend.ConfDBEmulator import ConfDBEmulator
 
+from cherrypy.lib.static import serve_file
+
+import logging
+import os
 
 def getLocalDBSURL():
     try:
