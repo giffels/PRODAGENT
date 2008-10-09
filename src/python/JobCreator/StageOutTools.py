@@ -160,6 +160,7 @@ class NewPopulateStageOut:
 
         for stageOutFor in taskObject['PayloadNode'].configuration.split():
             runres.addData("/%s/StageOutFor" % paramBase, stageOutFor)
+        taskObject['PayloadNode'].configuration = ""
 
         #  //
         # // Configuration for retries?
