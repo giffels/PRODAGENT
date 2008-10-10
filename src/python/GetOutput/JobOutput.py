@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.17 2008/10/08 13:05:21 gcodispo Exp $"
-__revision__ = "$Revision: 1.17 $"
+__version__ = "$Id: JobOutput.py,v 1.18 2008/10/10 09:00:41 gcodispo Exp $"
+__revision__ = "$Revision: 1.18 $"
 
 import logging
 import os
@@ -120,7 +120,7 @@ class JobOutput:
                 job.runningJob['outputDirectory'] = cls.buildOutdir(job, task)
 
                 # job failed: perform postMortem operations and notify failure
-                if status in cls.failureCodes:
+                if job.runningJob['status'] in cls.failureCodes:
                     job = cls.handleFailed( job, task, schedSession)
 
                 # output at destination: just purge service
@@ -384,10 +384,10 @@ class JobOutput:
 
         # allow job to be reprocessed
         try :
-            if job.runningJob['status'] == 'SD':
-                job.runningJob['processStatus'] = 'output_requested'
-            else:
+            if job.runningJob['status'] in cls.failureCodes:
                 job.runningJob['processStatus'] = 'failed'
+            else:
+                job.runningJob['processStatus'] = 'output_requested'
             bossLiteSession.updateDB( job )
         except:
             logging.warning(
