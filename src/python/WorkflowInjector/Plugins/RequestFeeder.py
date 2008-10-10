@@ -56,17 +56,21 @@ class RequestFeeder(PluginInterface):
         self.totalEvents = None
         self.eventsPerJob = None
         self.initialRun = None
+        self.initialEvent = None
+        self.overrideInitialEvent = None
         self.sites = []
         self.loadPayload(payload)
         self.publishWorkflow(payload, self.workflow.workflowName())
         self.publishNewDataset(payload) 
 
-        factory = RequestJobFactory(self.workflow,
-                                    self.workingDir,
-                                    self.totalEvents,
-                                    InitialRun = self.initialRun,
-                                    InitialEvent = self.initialEvent,
-                                    EventsPerJob = self.eventsPerJob)
+        factory = RequestJobFactory(
+            self.workflow,
+            self.workingDir,
+            self.totalEvents,
+            InitialRun = self.initialRun,
+            InitialEvent = self.initialEvent,
+            OverrideFirstEvent = self.overrideInitialEvent,
+            EventsPerJob = self.eventsPerJob)
         jobsList = factory()
 
         bulkQueueJobs(self.sites, *jobsList)
@@ -93,12 +97,18 @@ class RequestFeeder(PluginInterface):
         self.eventsPerJob = self.workflow.parameters.get('EventsPerJob', None)
         self.initialRun = self.workflow.parameters.get("InitialRun", 1)
         self.initialEvent = self.workflow.parameters.get("InitialEvent", 1)
+        self.overrideInitialEvent = \
+                 self.workflow.parameters.get("OverrideInitialEvent", None)
 
         siteList = self.workflow.parameters.get("Sites", "")
         [ self.sites.append(x) for x in siteList.split(",") if x != "" ] 
 
-        msg = "Total Events: %s  EventsPerJob: %s  InitialRun: %s  InitialEvent %s" % (
-            self.totalEvents, self.eventsPerJob, self.initialRun, self.initialEvent)
+        msg = "Total Events: %s  \n" %  self.totalEvents
+        msg += "EventsPerJob: %s  InitialRun: %s  \n" % (
+             self.eventsPerJob, self.initialRun)
+        msg += " InitialEvent %s OverrideInitial Event %s\n" % (
+             self.initialEvent, self.overrideInitialEvent)
+        
         logging.info(msg)
         
         if self.totalEvents == None:
@@ -112,6 +122,7 @@ class RequestFeeder(PluginInterface):
         self.eventsPerJob = int(self.eventsPerJob)
         self.initialRun = int(self.initialRun)
         self.initialEvent = int(self.initialEvent)
+        
 
         #  //
         # // in case of PU
