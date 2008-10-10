@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.16 2008/10/08 14:31:45 gcodispo Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.17 2008/10/08 16:17:12 gcodispo Exp $"
+__version__ = "$Revision: 1.17 $"
 
 import os
 import logging
@@ -44,197 +44,6 @@ class BossLiteBulkInterface(BulkSubmitterInterface):
 
     # selected BossLite scheduler
     scheduler = ''
-
-    def doSubmit(self):
-        """
-        _doSubmit_
-
-        Perform bulk or single submission as needed based on the class data
-        populated by the component that is invoking this plugin
-        """
-        logging.debug("<<<<<<<<<<<<<<<<<BossLiteBulkSubmitter>>>>>>>>>>>>>>..")
-
-        self.workflowName = self.primarySpecInstance.payload.workflow
-        self.mainJobSpecName = self.primarySpecInstance.parameters['JobName']
-        if not self.primarySpecInstance.parameters.has_key('BulkInputSandbox'):
-            msg = "There is no BulkInputSandbox defined in the JobSpec. Submission cant go on..."
-            logging.error(msg)
-            return
-        self.mainSandbox = \
-                   self.primarySpecInstance.parameters['BulkInputSandbox']
-        self.mainSandboxName = os.path.basename(self.mainSandbox)
-        self.singleSpecName = None
-        self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
-        self.bossJob = None
-        self.bossTask = None
-        self.submittedJobs = {}
-        self.failedSubmission = []
-        self.jobInputFiles = []
-
-        #  //
-        # // Build a list of input files for every job
-        #//
-        self.jobInputFiles.append(self.mainSandbox)
-
-        #  //
-        # // For multiple bulk jobs there will be a tar of specs
-        #//
-        if self.primarySpecInstance.parameters.has_key('BulkInputSpecSandbox'):
-            self.specSandboxName = os.path.basename(
-                self.primarySpecInstance.parameters['BulkInputSpecSandbox']
-                )
-            self.jobInputFiles.append(
-                self.primarySpecInstance.parameters['BulkInputSpecSandbox'])
-
-        #  //
-        # // check for dashboard usage
-        #//
-        self.usingDashboard = {'use' : 'True', \
-                               'address' : 'cms-pamon.cern.ch', \
-                               'port' : '8884'}
-        try:
-            dashboardCfg = self.pluginConfig.get('Dashboard', {})
-            self.usingDashboard['use'] = dashboardCfg.get(
-                "UseDashboard", "False"
-                )
-            self.usingDashboard['address'] = dashboardCfg.get(
-                "DestinationHost"
-                )
-            self.usingDashboard['port'] = dashboardCfg.get("DestinationPort")
-            logging.debug("dashboardCfg = " + str(self.usingDashboard) )
-        except:
-            logging.info("No Dashboard section in SubmitterPluginConfig")
-
-        self.workingDir = os.path.dirname(self.mainSandbox)
-        logging.debug("workingDir = %s" % self.workingDir)
-
-        #  //
-        # // Handle submission/resubmission
-        #//
-        if self.isBulk:
-            try :
-                self.bossTask = self.bossLiteSession.loadTaskByName(
-                    self.mainJobSpecName
-                    )
-            except TaskError, ex:
-                # non instance in db: create it
-                self.prepareSubmission()
-
-        # For single jobs there will be just one job spec
-        else:
-            # loading the job
-            self.jobInputFiles.append(self.specFiles[self.mainJobSpecName])
-            self.singleSpecName = os.path.basename(
-                self.specFiles[self.mainJobSpecName])
-            self.singleSpecName = \
-                 self.singleSpecName[:self.singleSpecName.find('-JobSpec.xml')]
-            logging.info("singleSpecName \"%s\"" % self.singleSpecName)
-            try :
-                self.bossJob = self.bossLiteSession.loadJobByName(
-                    self.singleSpecName
-                    )
-                self.prepareResubmission()
-
-            except JobError, ex:
-
-                # FIXME : find a way to log an error if it is a resubmission
-                # FIXME : but the job is no more in the DB
-                raise JSException(str(ex), FailureList = self.toSubmit.keys())
-
-        self.doBOSSSubmit()
-
-        return
-
-    
-
-    def prepareResubmission(self):
-        """
-        __prepareResubmission__
-
-        If already declared (i.e. resubmission), just submit
-        """
-
-
-        # check if the wrapper is actually there
-        executable = os.path.join(self.workingDir, self.bossJob['executable'] )
-
-        if not os.path.exists( executable ):
-            logging.info("missing wrapper script %s: recreating it!" \
-                          % executable)
-            self.makeWrapperScript( executable, "$1" )
-
-        logging.debug( "BossLiteBulkInterface.doSubmit bossJobId = %s.%s" \
-                       % (self.bossJob['taskId'], self.bossJob['jobId']) )
-
-        # is there a job? build a task!
-        logging.info( "Loading task for job resubmission..."  )
-        self.bossLiteSession.getRunningInstance( self.bossJob )
-
-        # close previous instance and set up the outdir
-        if self.bossJob.runningJob['closed'] == 'Y' :
-            outdir = self.toSubmit[ self.singleSpecName ] + '/Submission'
-            self.bossLiteSession.getNewRunningInstance( self.bossJob )
-            self.bossJob.runningJob['outputDirectory'] = outdir \
-                                   + str(self.bossJob.runningJob['submission'])
-            self.bossLiteSession.updateDB( self.bossJob )
-
-        # load the task ans append the job
-        self.bossTask = self.bossLiteSession.loadTask(
-            self.bossJob['taskId'], jobRange=None )
-        self.bossTask.appendJob( self.bossJob )
-
-
-
-    def prepareSubmission(self):
-        """
-        __prepareSubmission__
-
-        register task in the BossLite tables
-        """
-
-        #generate unique wrapper script
-        logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
-        executable = self.mainJobSpecName + '-submit'
-        executablePath = "%s/%s" % (self.workingDir, executable)
-        logging.debug("makeWrapperScript = %s" % executablePath)
-        self.makeWrapperScript( executablePath, "$1" )
-
-        inpSandbox = ','.join( self.jobInputFiles )
-        logging.debug("Declaring to BOSS")
-
-        wrapperName = "%s/%s" % (self.workingDir, self.mainJobSpecName)
-        try :
-
-            self.bossTask = Task()
-            self.bossTask['name'] = self.mainJobSpecName
-            self.bossTask['globalSandbox'] = executablePath + ',' + inpSandbox
-            self.bossTask['jobType'] = \
-                                 self.primarySpecInstance.parameters['JobType']
-
-            for jobSpecId, jobCacheDir in self.toSubmit.items():
-                if len(jobSpecId) == 0 :#or jobSpecId in jobSpecUsedList :
-                    continue
-                job = Job()
-                job['name'] = jobSpecId
-                job['arguments'] =  jobSpecId
-                job['standardOutput'] =  jobSpecId + '.log'
-                job['standardError']  =  jobSpecId + '.log'
-                job['executable']     =  executable
-                job['outputFiles'] = [ jobSpecId + '.log', \
-                                       jobSpecId + '.tgz', \
-                                       'FrameworkJobReport.xml' ]
-                self.bossLiteSession.getNewRunningInstance( job )
-                job.runningJob['outputDirectory'] = jobCacheDir \
-                                                    + '/Submission1'
-                self.bossTask.addJob( job )
-            self.bossLiteSession.updateDB( self.bossTask )
-            logging.info( "Successfully Created task %s with %d jobs" % \
-                          ( self.bossTask['id'], len(self.bossTask.jobs) ) )
-
-        except ProdAgentException, ex:
-            raise JSException(str(ex), FailureList = self.toSubmit.keys())
-
-
 
     #  //
     # // Main executable script for job: tarball unpaker
@@ -307,6 +116,244 @@ fi
 
 """
 
+    def __init__(self):
+        """
+        __init__
+
+        overload to add further internal members
+        """
+
+        BulkSubmitterInterface.__init__( self  )
+        self.bossLiteSession = None
+        self.bossTask = None
+        self.bulkSize = 300
+        self.failedSubmission = None
+        self.jobInputFiles = None
+        self.mainJobSpecName = None
+        self.mainSandbox = None
+        self.singleSpecName = None
+        self.specSandboxName = None
+        self.usingDashboard = None
+        self.workflowName = None
+        self.workingDir = None
+
+
+    def doSubmit(self):
+        """
+        __doSubmit__
+
+        Perform bulk or single submission as needed based on the class data
+        populated by the component that is invoking this plugin
+        """
+
+        # // basic check
+        logging.debug("<<<<<<<<<<<<<<<<<BossLiteBulkSubmitter>>>>>>>>>>>>>>..")
+        if not self.primarySpecInstance.parameters.has_key('BulkInputSandbox'):
+            msg = "There is no BulkInputSandbox defined in the JobSpec." + \
+                  "Submission cant go on..."
+            logging.error(msg)
+            return
+
+        # // check for dashboard usage
+        self.usingDashboard = {'use' : 'True', \
+                               'address' : 'cms-pamon.cern.ch', \
+                               'port' : '8884'}
+        try:
+            dashboardCfg = self.pluginConfig.get('Dashboard', {})
+            self.usingDashboard['use'] = dashboardCfg.get(
+                "UseDashboard", "False"
+                )
+            self.usingDashboard['address'] = dashboardCfg.get(
+                "DestinationHost"
+                )
+            self.usingDashboard['port'] = dashboardCfg.get("DestinationPort")
+            logging.debug("dashboardCfg = " + str(self.usingDashboard) )
+        except:
+            logging.info("No Dashboard section in SubmitterPluginConfig")
+
+        # // reset some internal variables
+        self.bossTask = None
+        self.failedSubmission = []
+        self.singleSpecName = None
+        self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
+        self.bulkSize = int(self.pluginConfig['GLITE'].get('BulkSize', 300))
+
+        # // specific submission parameters
+        self.workflowName = self.primarySpecInstance.payload.workflow
+        self.mainJobSpecName = self.primarySpecInstance.parameters['JobName']
+        self.mainSandbox = \
+                   self.primarySpecInstance.parameters['BulkInputSandbox']
+        self.workingDir = os.path.dirname(self.mainSandbox)
+        logging.debug("workingDir = %s" % self.workingDir)
+
+        # //  Build scheduler configuration
+        schedSession, submissionAttrs = self.configureScheduler()
+
+        # // Handle submission
+        if self.isBulk:
+            # try loading the task
+            try :
+                self.bossTask = self.bossLiteSession.loadTaskByName(
+                    self.mainJobSpecName
+                    )
+            except TaskError, ex:
+                # no task instance in db: create it
+                self.prepareSubmission()
+
+            # now submit!!!
+            self.submitJobs( schedSession, submissionAttrs )
+
+        # // Handle reSubmission
+        else:
+            # loading the job
+            self.singleSpecName = os.path.basename(
+                self.specFiles[self.mainJobSpecName])
+            self.singleSpecName = \
+                 self.singleSpecName[:self.singleSpecName.find('-JobSpec.xml')]
+            logging.info("singleSpecName \"%s\"" % self.singleSpecName)
+            try :
+                bossJob = self.bossLiteSession.loadJobByName(
+                    self.singleSpecName
+                    )
+                self.prepareResubmission(bossJob)
+
+            except JobError, ex:
+
+                # FIXME : find a way to log an error if it is a resubmission
+                # FIXME : but the job is no more in the DB
+                msg = 'Failed to retrieve job %s : [%s]' % \
+                      (self.singleSpecName, str(ex))
+                logging.error( msg )
+                raise JSException(msg, FailureList = self.toSubmit.keys())
+
+            # now submit!!!
+            self.submitSingleJob( schedSession, submissionAttrs )
+
+        # // check for not submitted and eventually raise Submission Failed
+        for job in self.bossTask.jobs :
+            if job.runningJob['schedulerId'] is None:
+                self.failedSubmission.append( job['name'] )
+
+        if self.failedSubmission != []:
+            raise JSException("Submission Failed", \
+                              FailureList = self.failedSubmission)
+
+        return
+
+    
+
+    def prepareResubmission(self, bossJob):
+        """
+        __prepareResubmission__
+
+        If already declared (i.e. resubmission), just submit
+        """
+
+        # check for loaded job
+        if bossJob is None:
+            msg = 'Failed to retrieve job %s' % self.singleSpecName
+            logging.error( msg )
+            raise JSException(msg, FailureList = self.toSubmit.keys())
+
+        # check if the wrapper is actually there
+        executable = os.path.join(self.workingDir, bossJob['executable'] )
+        if not os.path.exists( executable ):
+            logging.info("missing wrapper script %s: recreating it!" \
+                          % executable)
+            self.makeWrapperScript( executable, "$1" )
+
+        logging.debug( "BossLiteBulkInterface.doSubmit bossJobId = %s.%s" \
+                       % (bossJob['taskId'], bossJob['jobId']) )
+
+        # is there a job? build a task!
+        logging.info( "Loading task for job resubmission..."  )
+        self.bossLiteSession.getRunningInstance( bossJob )
+
+        # close previous instance and set up the outdir
+        if bossJob.runningJob['closed'] == 'Y' :
+            outdir = self.toSubmit[ self.singleSpecName ] + '/Submission'
+            self.bossLiteSession.getNewRunningInstance( bossJob )
+            bossJob.runningJob['outputDirectory'] = outdir \
+                                   + str(bossJob.runningJob['submission'])
+            self.bossLiteSession.updateDB( bossJob )
+
+        # load the task ans append the job
+        self.bossTask = self.bossLiteSession.loadTask(
+            bossJob['taskId'], jobRange=None )
+
+        # still no task? Something bad happened
+        if self.bossTask is not None :
+            logging.debug( "BossLiteBulkInterface: Submit bossTask = %s" \
+                           % self.bossTask['id'] )
+        else:
+            raise JSException("Failed to find Job", \
+                              FailureList = self.toSubmit.keys())
+
+        self.bossTask.appendJob( bossJob )
+
+
+    def prepareSubmission(self):
+        """
+        __prepareSubmission__
+
+        register task in the BossLite tables
+        """
+
+        # // Build a list of input files for every job
+        #//  For multiple bulk jobs there will be a tar of specs
+        self.specSandboxName = os.path.basename(
+            self.primarySpecInstance.parameters['BulkInputSpecSandbox']
+            )
+        self.jobInputFiles = [
+            self.mainSandbox, 
+            self.primarySpecInstance.parameters['BulkInputSpecSandbox']
+            ]
+
+        # // generate unique wrapper script
+        logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
+        executable = self.mainJobSpecName + '-submit'
+        executablePath = "%s/%s" % (self.workingDir, executable)
+        logging.debug("makeWrapperScript = %s" % executablePath)
+        self.makeWrapperScript( executablePath, "$1" )
+
+        inpSandbox = ','.join( self.jobInputFiles )
+        logging.debug("Declaring to BOSS")
+
+        wrapperName = "%s/%s" % (self.workingDir, self.mainJobSpecName)
+        try :
+
+            self.bossTask = Task()
+            self.bossTask['name'] = self.mainJobSpecName
+            self.bossTask['globalSandbox'] = executablePath + ',' + inpSandbox
+            self.bossTask['jobType'] = \
+                                 self.primarySpecInstance.parameters['JobType']
+
+            for jobSpecId, jobCacheDir in self.toSubmit.items():
+                if len(jobSpecId) == 0 :#or jobSpecId in jobSpecUsedList :
+                    continue
+                job = Job()
+                job['name'] = jobSpecId
+                job['arguments'] =  jobSpecId
+                job['standardOutput'] =  jobSpecId + '.log'
+                job['standardError']  =  jobSpecId + '.log'
+                job['executable']     =  executable
+                job['outputFiles'] = [ jobSpecId + '.log', \
+                                       jobSpecId + '.tgz', \
+                                       'FrameworkJobReport.xml' ]
+                self.bossLiteSession.getNewRunningInstance( job )
+                job.runningJob['outputDirectory'] = jobCacheDir \
+                                                    + '/Submission1'
+                self.bossTask.addJob( job )
+            self.bossLiteSession.updateDB( self.bossTask )
+            logging.info( "Successfully Created task %s with %d jobs" % \
+                          ( self.bossTask['id'], len(self.bossTask.jobs) ) )
+
+        except ProdAgentException, ex:
+            raise JSException(str(ex), FailureList = self.toSubmit.keys())
+
+        return
+
+
     def makeWrapperScript(self, filename, jobName):
         """
         _makeWrapperScript_
@@ -316,36 +363,33 @@ fi
 
         """
 
-        #  //
         # // Generate main executable script for job
-        #//
         script = ["#!/bin/sh\n\n"]
         script.append("PRODAGENT_JOB_INITIALDIR=`pwd`\n")
         script.append("JOB_SPEC_NAME=%s\n" % jobName)
         if self.isBulk:
             script.append("BULK_SPEC_NAME=\"%s\"\n" % self.specSandboxName )
             script.append( self.bulkUnpackerScript )
-#            script.extend(bulkUnpackerScript(self.specSandboxName))
+            ### script.extend(bulkUnpackerScript(self.specSandboxName))
         else:
-#AF            script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
             script.append(
                 "JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s-JobSpec.xml\n" \
                           % self.singleSpecName
                 )
 
 
-        script.append(
-            "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName
-            )
+        script.append( "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % \
+                       os.path.basename(self.mainSandbox) )
         script.append("cd %s\n" % self.workflowName)
         script.append( "./run.sh $JOB_SPEC_FILE > %s.out 2> %s.err\n" \
                        % ( jobName, jobName ) )
-
-        script.append( "tar cvzf $PRODAGENT_JOB_INITIALDIR/%s.tgz  %s.out %s.err\n" \
-                       % ( jobName, jobName, jobName ) )
+        script.append(
+            "tar cvzf $PRODAGENT_JOB_INITIALDIR/%s.tgz  %s.out %s.err\n" \
+            % ( jobName, jobName, jobName )
+            )
 
         # Handle missing FrameworkJobReport
-#        script.extend(missingJobReportCheck(jobName))
+        ### script.extend(missingJobReportCheck(jobName))
         script.append(self.missingRepScript)
 
         handle = open(filename, 'w')
@@ -354,43 +398,22 @@ fi
         return
 
 
-    def checkPluginConfig(self):
+    def configureScheduler(self):
         """
-        _checkPluginConfig_
+        __configureScheduler__
 
-        Make sure config has what is required for this submitter
-
-        """
-        if self.pluginConfig == None:
-            msg = "Failed to load Plugin Config for:\n"
-            msg += self.__class__.__name__
-            raise JSException( msg, ClassInstance = self)
-
-
-    def doBOSSSubmit(self):
-        """
-        _doSubmit_
-
-        Build and run a submit command
+        Build scheduler configuration
 
         """
-
-        # still no task? Something bad happened
-        if self.bossTask is not None :
-            logging.debug( "BossLiteBulkInterface.doSubmit bossTask = %s" \
-                           % self.bossTask['id'] )
-        else:
-            raise JSException("Failed to find Job", \
-                              FailureList = self.toSubmit.keys())
 
         #  // retrieve scheduler additiona info
         # //  and eventually change the RB
         #//   according to user provided configuration files
+        logging.info("Building up scheduler configuration")
         schedulerConfig = self.getSchedulerConfig()
 
         #  // build scheduler sedssion, which also checks proxy validity
         # //  an exception raised will stop the submission
-        #//
         try:
             schedulerCladFile = self.getSchedulerConfig()
             schedulerConfig = { 'name' : self.scheduler,
@@ -404,13 +427,25 @@ fi
                                FailureList = self.toSubmit.keys() )
 
         # // prepare extra jdl attributes
-        logging.info("doBOSSSubmit : preparing jdl")
+        logging.info("Preparing scheduler specific attributes")
         try:
             jobType = self.primarySpecInstance.parameters['JobType']
             submissionAttrs = self.createSchedulerAttributes(jobType)
         except Exception, ex:
-            logging.error( "unable to build scheduler specific attributes" )
-#           raise JSException("Failed to createJDL", mainJobSpecName = self.mainJobSpecName))
+            msg = "Unable to build scheduler specific attributes"
+            logging.error( msg )
+            raise JSException( msg, FailureList = self.toSubmit.keys() )
+
+        # return scheduler session and configuration
+        return ( schedSession, submissionAttrs )
+
+
+    def writeJdl(self, schedSession, submissionAttrs):
+        """
+        __writeJdl__
+
+        writes jdl in a file
+        """
 
         # do we need to write the file?
         try :
@@ -418,37 +453,66 @@ fi
                                 (self.workingDir , self.mainJobSpecName )
             declareClad = open(schedulercladfile,"w")
             declareClad.write( schedSession.jobDescription( self.bossTask, \
-                                                    requirements=submissionAttrs ) )
+                                               requirements=submissionAttrs ) )
             declareClad.close()
         except:
             logging.error( "unable to build scheduler specific requirements" )
 
 
+    def submitSingleJob(self, schedSession, submissionAttrs ):
+        """
+        __submitJob__
+
+        submit for single job
+        """
+        
         # // Executing BOSS Submit command
+        logging.info("Resubmitting job %s" % self.singleSpecName)
         try :
-            logging.debug ("BossLiteBulkInterface.doSubmit" )
             self.bossTask = schedSession.submit( self.bossTask, \
                                                  requirements=submissionAttrs )
         except BossLiteError, err:
             logging.error( "########### Failed submission : %s" % \
                            str(schedSession.getLogger()) )
-            raise JSException( "Submission Failed", FailureList = \
-                               [ job['name'] for job in self.bossTask.jobs ] )
 
 
-        # check for not submitted jobs
-        for job in self.bossTask.jobs :
-            if job.runningJob['schedulerId'] is None:
-                self.failedSubmission.append( job['name'] )
+    def submitJobs(self, schedSession, submissionAttrs ):
+        """
+        __submitJobs__
 
-        #  //
-        # // Raise Submission Failed
-        #//
-        if self.failedSubmission != []:
-            raise JSException("Submission Failed", \
-                              FailureList = self.failedSubmission)
+        submit for range of jobs
+        """
 
-        return
+        offset = 0
+        loop = True
+
+        while loop :
+
+            logging.debug("Max bulk size: %s:%s " % \
+                          (str( offset ), str( offset + self.bulkSize) ) )
+
+            task = self.bossLiteSession.load( self.bossTask['id'], \
+                                              limit=self.bulkSize, \
+                                              offset=offset )
+
+            # exit if no more jobs to query
+            if task.jobs == [] :
+                loop = False
+                break
+            else :
+                offset += self.bulkSize
+
+            # // Executing BOSS Submit command
+            try :
+                logging.info ("Submit jobs from %s to %s" % \
+                               (task.jobs[0]['jobId'], task.jobs[-1]['jobId']))
+                schedSession.submit(task, requirements=submissionAttrs)
+            except BossLiteError, err:
+                logging.error( "########### Failed submission : %s" % \
+                               str(schedSession.getLogger()) )
+
+        self.bossTask = self.bossLiteSession.load(self.bossTask['id'])
+        
 
 
 
@@ -555,6 +619,19 @@ fi
             )
 
         return taskName, jobName
+
+
+    def checkPluginConfig(self):
+        """
+        _checkPluginConfig_
+
+        Make sure config has what is required for this submitter
+
+        """
+        if self.pluginConfig == None:
+            msg = "Failed to load Plugin Config for:\n"
+            msg += self.__class__.__name__
+            raise JSException( msg, ClassInstance = self)
 
 
     def createSchedulerAttributes(self, jobType):
