@@ -21,11 +21,17 @@ from HTTPFrontend.HTTPFrontendComponent import HTTPFrontendComponent
 #//
 
 try:
-    
+
     config = loadProdAgentConfiguration()
     compCfg = config.getConfig("HTTPFrontend")
+    if compCfg == None:
+        msg = "No HTTPFrontend in Configuration"
+        raise RuntimeError, msg
     jobCreatorConfig = config.getConfig("JobCreator")
-    compCfg['JobCreatorCache'] = jobCreatorConfig.get("ComponentDir", None)
+    if jobCreatorConfig != None:
+        compCfg['JobCreatorCache'] = jobCreatorConfig.get("ComponentDir", None)
+    else:
+        compCfg['JobCreatorCache'] = None
 
 except StandardError, ex:
     msg = "Error reading configuration:\n"
