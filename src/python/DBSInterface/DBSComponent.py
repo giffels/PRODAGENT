@@ -824,13 +824,16 @@ class DBSComponent:
         DBSConf= getGlobalDBSDLSConfig()
         GlobalDBSURL=DBSConf['DBSURL']
         ReadGlobalDBSURL=DBSConf['ReadDBSURL']
-
+        ReadLocalDBSurl=self.args['ReadDBSURL']
+        
         phedexConfig,dropdir,Nodes=self.getPhEDExConfig() 
         #  //
         # // Get the datasetPath the block belong to
         #//
         reader = DBSReader(ReadGlobalDBSURL)
         datasetPath= reader.blockToDatasetPath(fileBlockName)
+        localReader = DBSReader(ReadLocalDBSurl,level='ERROR')
+        hosts = localReader.listFileBlockLocation(fileBlockName)
         #  //
         # // Inject that block to PhEDEx
         #//
@@ -839,7 +842,9 @@ class DBSComponent:
             raise RuntimeError, msg
         workingdir="/tmp"
         if dropdir != "None": workingdir=dropdir 
-        tmdbInjectBlock(GlobalDBSURL, datasetPath, fileBlockName, phedexConfig, workingDir=workingdir,nodes=Nodes)
+
+        tmdbInjectBlock(GlobalDBSURL, datasetPath, fileBlockName, phedexConfig,
+                    workingDir=workingdir,nodes=Nodes, storageElements=hosts)
         return
 
     def getPhEDExConfig(self):
