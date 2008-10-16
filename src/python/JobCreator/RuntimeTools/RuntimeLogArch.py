@@ -151,12 +151,17 @@ class LogArchMgr:
             print msg
             return
 
-        run = self.state.jobSpec.parameters.get('RunNumber', None)
-        if run is not None:
-            runNum = int(run)
-            runPadding = str(runNum // 1000).zfill(4)
-        else:
-            runPadding = ''
+        runNum = runPadding = None
+        runNum1 = self.state.jobSpec.parameters.get('RunNumber', None)
+        runNum2 = self.state.jobSpec.parameters.get('MergeJobNumber', None)
+        for run in (runNum1, runNum2):
+            if run is not None:
+                runNum = int(run)
+                runPadding = str(runNum // 1000).zfill(4)
+                break
+        if runNum is None:
+            # no jobNumber - use day and hope for no collisions
+            runPadding = time.gmtime()[7] # what day is it?
             run = self.jobSpecId
 
         reqtime = self.state.jobSpec.parameters.get('RequestTimestamp', None)
@@ -169,7 +174,7 @@ class LogArchMgr:
         fileInfo = {
             'LFN' : "/store/unmerged/logs/prod/%s/%s/%s/%s/%s/%s/%s" % \
                                         (year, month, day, self.workflowSpecId,
-                                         runPadding, run, tarName),
+                                         runPadding, runNum, tarName),
             'PFN' : os.path.join(os.getcwd(), tarName),
             'SEName' : None,
             'GUID' : None,
