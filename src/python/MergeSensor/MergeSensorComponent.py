@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.72 2008/08/21 15:09:28 ahmadh Exp $"
-__version__ = "$Revision: 1.72 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.73 2008/08/28 17:25:57 swakef Exp $"
+__version__ = "$Revision: 1.73 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1243,6 +1243,7 @@ class MergeSensorComponent:
         jobSpec = spec.createJobSpec()
         jobSpec.setJobName(jobId)
         jobSpec.setJobType("Merge")
+        jobSpec.parameters['MergeJobNumber'] = outputFile.split('set')[1]
 
         # add SE list
         for storageElement in seList:
