@@ -56,18 +56,21 @@ class RFCPCERNImpl(StageOutImpl):
 
         if targetdir == None:
             regExpParser = re.compile('/+castor/(.*)')
-            if ( regExpParser.match(targetPFN) != None ):
+            match = regExpParser.match(targetPFN)
+            if ( match != None ):
                 targetdir = os.path.dirname(targetPFN)
 
         if targetdir == None:
             regExpParser = re.compile('rfio:/+castor/(.*)')
-            if ( regExpParser.match(targetPFN) != None ):
-                targetdir = os.path.dirname('/castor/' + regExpParser.group(1))
+            match = regExpParser.match(targetPFN)
+            if ( match != None ):
+                targetdir = os.path.dirname('/castor/' + match.group(1))
 
         if targetdir == None:
             regExpParser = re.compile('rfio:.*path=/+castor/(.*)')
-            if ( regExpParser.match(targetPFN) != None ):
-                targetdir = os.path.dirname('/castor/' + regExpParser.group(1))
+            match = regExpParser.match(targetPFN)
+            if ( match != None ):
+                targetdir = os.path.dirname('/castor/' + match.group(1))
 
         # raise exception if we have no rule that can parse the target dir
         if targetdir == None:
