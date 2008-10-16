@@ -31,7 +31,8 @@ def getLogsToArchive(age = None, update = True):
     """
     get the list of logs older than age to archive
     
-    return format: {"workflow" : "se" : (lfns)}
+    return format: id, {"workflow" : "se" : (lfns)}
+
     """
     
     sqlStr = """SELECT id, workflow, se_name, lfn FROM log_input 
@@ -46,6 +47,7 @@ def getLogsToArchive(age = None, update = True):
     
     result = {}
     logs_to_archive = []
+    id = temp[0][0]
     for log_id, wf, se, log in temp:
         result.setdefault(wf, {}).setdefault(se, []).append(log)
         logs_to_archive.append(log_id)
@@ -57,7 +59,7 @@ def getLogsToArchive(age = None, update = True):
                 WHERE id IN (%s)""" % str(reduce(reduceList, logs_to_archive))
     Session.execute(sqlStr)
     
-    return result
+    return id, result
         
     
 def logCollectFailed(errorLimit, logs):

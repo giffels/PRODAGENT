@@ -203,7 +203,7 @@ class LogCollectorComponent:
         """
         logging.debug("look for logs to archive")
         
-        toArchive = getLogsToArchive(self.args['logLifetime'])
+        first_id, toArchive = getLogsToArchive(self.args['logLifetime'])
         
         if not toArchive:
             logging.debug("no un-archived logs found")
@@ -226,15 +226,16 @@ class LogCollectorComponent:
                     njobs = njobs + 1
                
                 ref = 0
-                for i in range (0, njobs):         
+                for i in range (0, njobs):
+                    runPadding = str(first_id + i // 1000).zfill(4)
                     #create jobs
                     spec = LogCollectorTools.createLogCollectorJobSpec(\
-                                                    logCollectorWorkflow, 
-                                                    wf, 
-                                                    se,
-                                                    "%s/%s/%s" % (lfnBase, wf, now[2]), 
-                                                    self.stageOutOverride,
-                                                    *logs[ref:ref+self.args['maxLogs']])
+                                    logCollectorWorkflow, 
+                                    wf, 
+                                    se,
+                                    "%s/%s/%s/%s" % (lfnBase, wf, runPadding, i),
+                                    self.stageOutOverride,
+                                    *logs[ref:ref+self.args['maxLogs']])
                     jobspec = os.path.join(self.args['LogArchiveSpecs'], \
                                            spec.parameters["JobName"] + ".xml") 
                     spec.save(jobspec)
