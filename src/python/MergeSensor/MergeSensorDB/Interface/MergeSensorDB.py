@@ -80,6 +80,7 @@ class MergeSensorDB:
         try:
           if self.connection is not None and self.trans is not None:
                self.trans.commit()
+               self.connection.close()
                self.connection = None
                self.transaction = False
                self.trans = None
