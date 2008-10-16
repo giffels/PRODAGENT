@@ -36,7 +36,6 @@ class InsertInputLumiInfo(MySQLBase):
               raise MergeSensorDBError, msg
 	  
 
-         
-          return result[0].cursor.rowcount #//END
+          return len(result)
 
  
