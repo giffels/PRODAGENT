@@ -50,8 +50,28 @@ class RFCPCERNImpl(StageOutImpl):
 
         create dir with group permission
         """
-        
-        targetdir= os.path.dirname(targetPFN)
+
+        # check how the targetPFN looks like and parse out the target dir
+        targetdir = None
+
+        if targetdir == None:
+            regExpParser = re.compile('/+castor/(.*)')
+            if ( regExpParser.match(targetPFN) != None ):
+                targetdir = os.path.dirname(targetPFN)
+
+        if targetdir == None:
+            regExpParser = re.compile('rfio:/+castor/(.*)')
+            if ( regExpParser.match(targetPFN) != None ):
+                targetdir = os.path.dirname('/castor/' + regExpParser.group(1))
+
+        if targetdir == None:
+            regExpParser = re.compile('rfio:.*path=/+castor/(.*)')
+            if ( regExpParser.match(targetPFN) != None ):
+                targetdir = os.path.dirname('/castor/' + regExpParser.group(1))
+
+        # raise exception if we have no rule that can parse the target dir
+        if targetdir == None:
+            raise StageOutError("Cannot parse directory out of targetPFN")
 
         # remove multi-slashes from path
         while ( targetdir.find('//') > -1 ):
@@ -109,8 +129,8 @@ class RFCPCERNImpl(StageOutImpl):
         result = "rfcp "
         if options != None:
             result += " %s " % options
-        result += " %s " % sourcePFN
-        result += " %s " % targetPFN
+        result += " '%s' " % sourcePFN
+        result += " '%s' " % targetPFN
         
         if self.stageIn:
             remotePFN, localPFN = sourcePFN, targetPFN
@@ -119,7 +139,7 @@ class RFCPCERNImpl(StageOutImpl):
         
         result += "\nFILE_SIZE=`stat -c %s"
         result += " %s `;\n" % localPFN
-        result += " echo \"Local File Size is: $FILE_SIZE\"; DEST_SIZE=`rfstat %s | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ $FILE_SIZE == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (remotePFN)
+        result += " echo \"Local File Size is: $FILE_SIZE\"; DEST_SIZE=`rfstat '%s' | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ $FILE_SIZE == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % remotePFN
 
         return result
 
