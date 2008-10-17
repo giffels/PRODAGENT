@@ -26,13 +26,13 @@ import time
 
 from StageOut.StageOutError import StageOutFailure
 from StageOut.StageOutError import StageOutInitError
-
+from StageOut.DeleteMgr import DeleteMgr
 from StageOut.Registry import retrieveStageOutImpl
 
 from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
 from ProdCommon.FwkJobRep.MergeReports import updateReport
 
-
+completedFiles = []
 
 class StageOutSuccess(Exception):
     """
@@ -316,6 +316,7 @@ class StageOutManager:
         
         try:
             impl(fbParams['command'], localPfn, pfn, fbParams['option'])
+            completedFiles.append((fbParams['command'], pfn, lfn))
         except Exception, ex:
             msg = "Failure for fallback stage out:\n"
             msg += str(ex)
@@ -355,6 +356,7 @@ class StageOutManager:
         
         try:
             impl(protocol, localPfn, pfn, options)
+            completedFiles.append((protocol, pfn, lfn))
         except Exception, ex:
             msg = "Failure for local stage out:\n"
             msg += str(ex)
@@ -458,13 +460,23 @@ def stageOut():
         toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
                                       "FrameworkJobReport.xml")
         
-        
         updateReport(toplevelReport, reportToUpdate)
         print "Stage Out for %s complete: Return code: %s " % \
                                                     (inputTask, exitCode)
         if exitCode:
+            print "StageOut failed - cleanup earlier files"
+            for command, pfn, lfn in completedFiles:
+                manager = DeleteMgr()
+                try:
+                    print "Removing %s" % pfn
+                    manager.deletePFN(pfn, lfn, command)
+                except StageOutFailure, ex:
+                    msg = "Failed to cleanup staged out file after error:"
+                    msg += " %s\n%s" % (lfn, str(ex))
+                    print msg
+                    # TODO: report this in fjr
             break
-    print "All StageOuts complete: Exiting %s" % exitCode
+    print "All StageOuts finished: Exiting %s" % exitCode
     return exitCode
     
 

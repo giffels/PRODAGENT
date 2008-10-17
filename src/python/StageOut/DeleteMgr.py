@@ -234,6 +234,13 @@ class DeleteMgr:
             msg = "Unable to match lfn to pfn: \n  %s" % lfn
             raise StageOutFailure(msg, LFN = lfn, TFC = str(self.tfc))
         
+        return self.deletePFN(pfn, lfn, command)
+        
+
+    def deletePFN(self, pfn, lfn, command):
+        """
+        Delete the given PFN
+        """
         try:
             impl = retrieveStageOutImpl(command)
         except Exception, ex:
@@ -255,12 +262,10 @@ class DeleteMgr:
                 msg += traceback.format_exc()
             except AttributeError, ex:
                 msg += "Traceback unavailable\n"
-            raise StageOutFailure(msg, Command = command, Protocol = protocol,
+            raise StageOutFailure(msg, Command = command, Protocol = command,
                                   LFN = lfn, TargetPFN = pfn)
         
         return pfn
-
-
     
 #    def reportStageOutFailure(self, stageOutExcep):
 #        """
