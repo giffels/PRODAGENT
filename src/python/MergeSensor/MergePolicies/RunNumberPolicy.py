@@ -6,8 +6,8 @@ Policy for merge based on run numbers
 
 """
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
+__revision__ = "$Id: RunNumberPolicy.py,v 1.2 2007/06/08 10:30:47 ckavka Exp $"
+__version__ = "$Revision: 1.2 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -72,12 +72,12 @@ class RunNumberPolicy:
 
             # get run numbers
             try:
-                runs = set([eval(f['run'])[0]  for f in files])
+                runs = set([f['run'][0]  for f in files])
 
                 # organize files by runs
                 run = {}
                 for r in runs:
-                    run[r] = [f for f in files if eval(f['run'])[0] == r]
+                    run[r] = [f for f in files if f['run'][0] == r]
             except Exception, msg:
                 logging.error("Problems getting run numbers: %s" % str(msg))
                 return ([], 0)
