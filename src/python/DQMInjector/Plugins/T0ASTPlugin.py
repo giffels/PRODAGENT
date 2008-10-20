@@ -191,7 +191,7 @@ class T0ASTPlugin(BasePlugin):
         jobName = "%s-%s-%s" % (
             workflowSpec.workflowName(),
             collectPayload['RunNumber'],
-            time.strftime("%H-%M-%d-%m-%y")
+            time.strftime("%H-%M-%S-%d-%m-%y")
             )
 
         jobSpec.setJobName(jobName)

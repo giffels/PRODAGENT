@@ -8,6 +8,7 @@ Plugin for retrieving files to harvest from DBS
 
 import logging
 import os
+import time
 
 from DQMInjector.Plugins.BasePlugin import BasePlugin
 from DQMInjector.HarvestWorkflow import createHarvestingWorkflow
@@ -188,7 +189,7 @@ class DBSPlugin(BasePlugin):
         jobName = "%s-%s-%s" % (
             workflowSpec.workflowName(),
             collectPayload['RunNumber'],
-            time.strftime("%H-%M-%d-%m-%y")
+            time.strftime("%H-%M-%S-%d-%m-%y")
             )
 
         jobSpec.setJobName(jobName)
