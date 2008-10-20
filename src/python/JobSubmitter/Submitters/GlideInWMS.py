@@ -15,7 +15,7 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.7 2008/05/07 18:44:32 sfiligoi Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.8 2008/05/26 15:09:59 dmason Exp $"
 
 import os
 import logging
@@ -198,6 +198,7 @@ class GlideInWMS(BulkSubmitterInterface):
         jdl.append('+JOB_GLIDEIN_ClusterId = "$$(GLIDEIN_ClusterId:Unknown)"\n')
         jdl.append('+JOB_GLIDEIN_ProcId = "$$(GLIDEIN_ProcId:Unknown)"\n')
         jdl.append('+JOB_GLIDEIN_Frontend = "$$(GLIDEIN_Client:Unknown)"\n')
+        jdl.append('+JOB_GLIDEIN_Gatekeeper = "$$(GLIDEIN_Gatekeeper:Unknown)"\n')
         jdl.append('+JOB_Slot = "$$(Name:Unknown)"\n')
 
         # log glidein benchmark numbers
@@ -240,10 +241,16 @@ class GlideInWMS(BulkSubmitterInterface):
 
         
         #  //
-        # // Add in parameters that indicate prodagent job types etc
+        # // Add in parameters that indicate prodagent job types, priority etc
         #//
         jdl.append("+ProdAgent_JobID = \"%s\"\n" % jobID)
         jdl.append("+ProdAgent_JobType = \"%s\"\n" % self.primarySpecInstance.parameters['JobType'])
+
+	if self.primarySpecInstance.parameters['JobType'].lower() == "merge":
+            jdl.append("priority = 10")
+
+        if self.primarySpecInstance.parameters['JobType'].lower() == "cleanup":
+            jdl.append("priority = 5")
 
         jdl.append("Arguments = %s-JobSpec.xml \n" % jobID)
         jdl.append("Queue\n")

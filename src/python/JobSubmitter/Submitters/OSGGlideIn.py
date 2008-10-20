@@ -6,7 +6,7 @@ Globus Universe Condor Submitter implementation.
 
 """
 
-__revision__ = "$Id: OSGGlideIn.py,v 1.3 2008/01/23 12:53:43 dmason Exp $"
+__revision__ = "$Id: OSGGlideIn.py,v 1.4 2008/02/12 20:05:46 dmason Exp $"
 
 import os
 import logging
@@ -200,6 +200,7 @@ class OSGGlideIn(BulkSubmitterInterface):
         jdl.append("+JOB_GLIDEIN_Factory=\"$$(GLIDEIN_Factory:Unknown)\"\n") 
         jdl.append("+JOB_GLIDEIN_Name=\"$$(GLIDEIN_Name:Unknown)\"\n") 
         jdl.append("+JOB_GLIDEIN_Frontend=\"$$(GLIDEIN_Client:Unknown)\" \n") 
+        jdl.append('+JOB_GLIDEIN_Gatekeeper = "$$(GLIDEIN_Gatekeeper:Unknown)"\n')
         return jdl
     
         
@@ -223,10 +224,16 @@ class OSGGlideIn(BulkSubmitterInterface):
         jdl.append("Log = condor.log\n")
         
         #  //
-        # // Add in parameters that indicate prodagent job types etc
+        # // Add in parameters that indicate prodagent job types, priority etc
         #//
         jdl.append("+ProdAgent_JobID = \"%s\"\n" % jobID)
         jdl.append("+ProdAgent_JobType = \"%s\"\n" % self.primarySpecInstance.parameters['JobType'])
+
+        if self.primarySpecInstance.parameters['JobType'].lower() == "merge":
+            jdl.append("priority = 10")
+
+        if self.primarySpecInstance.parameters['JobType'].lower() == "cleanup":
+            jdl.append("priority = 5")
 
         jdl.append("Arguments = %s-JobSpec.xml \n" % jobID)
         jdl.append("Queue\n")
