@@ -8,6 +8,7 @@ and generate a DQM Harvesting workflow/job
 """
 import logging
 import os
+import time
 
 from DQMInjector.Plugins.BasePlugin import BasePlugin
 from DQMInjector.HarvestWorkflow import createHarvestingWorkflow
@@ -131,12 +132,12 @@ class RelValPlugin(BasePlugin):
     def __init__(self):
         BasePlugin.__init__(self)
         self.dbsUrl = "http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet"
-        
+
     def __call__(self, collectPayload):
         """
         _operator(collectPayload)_
 
-	Given the dataset and run in the payload, callout to DBS
+    Given the dataset and run in the payload, callout to DBS
         to find the files to be harvested
 
         """
@@ -146,8 +147,8 @@ class RelValPlugin(BasePlugin):
         #  //
         # // There is only one location for the T0
         #//
-        site = "srm.cern.ch" 
-        
+        site = "srm.cern.ch"
+
         baseCache = os.path.join(self.args['ComponentDir'],
                                  "RelValPlugin")
         if not os.path.exists(baseCache):
@@ -157,7 +158,7 @@ class RelValPlugin(BasePlugin):
                                     collectPayload['PrimaryDataset'],
                                     collectPayload['ProcessedDataset'],
                                     collectPayload['DataTier'])
-        
+
         if not os.path.exists(datasetCache):
             os.makedirs(datasetCache)
 
@@ -168,7 +169,7 @@ class RelValPlugin(BasePlugin):
             collectPayload['ProcessedDataset'],
             collectPayload['DataTier'])
             )
-        
+
         if not os.path.exists(workflowFile):
             msg = "No workflow found for dataset: %s\n " % (
                 collectPayload.datasetPath(),)
@@ -228,7 +229,8 @@ class RelValPlugin(BasePlugin):
         jobSpec = workflowSpec.createJobSpec()
         jobName = "%s-%s" % (
             workflowSpec.workflowName(),
-            collectPayload['RunNumber']
+            collectPayload['RunNumber'],
+            time.strftime("%H-%M-%d-%m-%y")
             )
 
         jobSpec.setJobName(jobName)
@@ -238,14 +240,14 @@ class RelValPlugin(BasePlugin):
         jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
 #        jobSpec.payload.cfgInterface.inputFiles.extend(t0ast.listFiles())
         jobSpec.payload.cfgInterface.inputFiles.extend(getLFNForDataset(self.dbsUrl,collectPayload['PrimaryDataset'],collectPayload['ProcessedDataset'],collectPayload['DataTier']))
-        
+
         specCacheDir =  os.path.join(
             datasetCache, str(int(collectPayload['RunNumber']) // 1000).zfill(4))
         if not os.path.exists(specCacheDir):
             os.makedirs(specCacheDir)
         jobSpecFile = os.path.join(specCacheDir,
                                    "%s-JobSpec.xml" % jobName)
-        
+
         jobSpec.save(jobSpecFile)
 
 
@@ -267,6 +269,6 @@ class RelValPlugin(BasePlugin):
         msg += " => Job:       %s\n" % job['JobSpecId']
         msg += " => Site:      %s\n" % job['Sites']
         logging.info(msg)
-        
+
         return [job]
-            
+

@@ -8,6 +8,7 @@ and generate a DQM Harvesting workflow/job
 """
 import logging
 import os
+import time
 
 from DQMInjector.Plugins.BasePlugin import BasePlugin
 from DQMInjector.HarvestWorkflow import createHarvestingWorkflow
@@ -52,8 +53,8 @@ class T0ASTRack:
         self.recoFiles = ListFiles.listFilesByRunAndDataset(
             t0astDBConn,
             "Reconstructed", run, primaryDataset)
-        
-                                                          
+
+
 
 
     def listFiles(self):
@@ -64,7 +65,7 @@ class T0ASTRack:
 
         """
         return [ x['LFN'] for x in self.recoFiles ]
-            
+
 
 
 
@@ -76,7 +77,7 @@ class T0ASTRack:
 
         """
         return self.recoVersion
-    
+
 
     def globalTag(self):
         """
@@ -86,19 +87,19 @@ class T0ASTRack:
 
         """
         return self.globalTag
-    
-            
 
 
 
-        
+
+
+
 
 class T0ASTPlugin(BasePlugin):
 
     def __init__(self):
         BasePlugin.__init__(self)
-        
-        
+
+
 
     def __call__(self, collectPayload):
         """
@@ -114,8 +115,8 @@ class T0ASTPlugin(BasePlugin):
         #  //
         # // There is only one location for the T0
         #//
-        site = "srm.cern.ch" 
-        
+        site = "srm.cern.ch"
+
         baseCache = os.path.join(self.args['ComponentDir'],
                                  "T0ASTPlugin")
         if not os.path.exists(baseCache):
@@ -125,7 +126,7 @@ class T0ASTPlugin(BasePlugin):
                                     collectPayload['PrimaryDataset'],
                                     collectPayload['ProcessedDataset'],
                                     collectPayload['DataTier'])
-        
+
         if not os.path.exists(datasetCache):
             os.makedirs(datasetCache)
 
@@ -136,7 +137,7 @@ class T0ASTPlugin(BasePlugin):
             collectPayload['ProcessedDataset'],
             collectPayload['DataTier'])
             )
-        
+
         try:
             t0ast = T0ASTRack(collectPayload['RunNumber'],
                               collectPayload['PrimaryDataset'])
@@ -145,7 +146,7 @@ class T0ASTPlugin(BasePlugin):
             msg += "Information for %s\n" % str(collectPayload)
             msg += str(ex)
             raise RuntimeError, msg
-        
+
         if not os.path.exists(workflowFile):
             msg = "No workflow found for dataset: %s\n " % (
                 collectPayload.datasetPath(),)
@@ -161,7 +162,7 @@ class T0ASTPlugin(BasePlugin):
                 cmsswVersion = self.args['OverrideCMSSW']
             else:
                 cmsswVersion = t0ast.cmsswVersion()
-            
+
             workflowSpec = createHarvestingWorkflow(
                 collectPayload.datasetPath(),
                 site,
@@ -170,7 +171,7 @@ class T0ASTPlugin(BasePlugin):
                 cmsswVersion,
                 globalTag,
                 self.args['ConfigFile'])
-            
+
             workflowSpec.save(workflowFile)
             msg = "Created Harvesting Workflow:\n %s" % workflowFile
             logging.info(msg)
@@ -187,9 +188,10 @@ class T0ASTPlugin(BasePlugin):
 
         job = {}
         jobSpec = workflowSpec.createJobSpec()
-        jobName = "%s-%s" % (
+        jobName = "%s-%s-%s" % (
             workflowSpec.workflowName(),
-            collectPayload['RunNumber']
+            collectPayload['RunNumber'],
+            time.strftime("%H-%M-%d-%m-%y")
             )
 
         jobSpec.setJobName(jobName)
@@ -198,14 +200,14 @@ class T0ASTPlugin(BasePlugin):
         jobSpec.addWhitelistSite(site)
         jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
         jobSpec.payload.cfgInterface.inputFiles.extend(t0ast.listFiles())
-        
+
         specCacheDir =  os.path.join(
             datasetCache, str(int(collectPayload['RunNumber']) // 1000).zfill(4))
         if not os.path.exists(specCacheDir):
             os.makedirs(specCacheDir)
         jobSpecFile = os.path.join(specCacheDir,
                                    "%s-JobSpec.xml" % jobName)
-        
+
         jobSpec.save(jobSpecFile)
 
 
@@ -227,6 +229,6 @@ class T0ASTPlugin(BasePlugin):
         msg += " => Job:       %s\n" % job['JobSpecId']
         msg += " => Site:      %s\n" % job['Sites']
         logging.info(msg)
-        
+
         return [job]
-            
+

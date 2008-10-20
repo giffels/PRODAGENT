@@ -14,8 +14,22 @@ from DQMInjector.HarvestWorkflow import createHarvestingWorkflow
 
 from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-from ProdCommon.JobFactory.RunJobFactory import RunJobFactory
 
+from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
+from ProdCommon.MCPayloads.LFNAlgorithm import DefaultLFNMaker
+
+
+def listFilesInRun(reader, primary, processed, tier, runNumber):
+    """
+    _listFilesInRun_
+
+
+    """
+    datasetName = "/%s/%s/%s" % (primary, processed, tier)
+    fileList = reader.dbs.listFiles(
+        path = datasetName,
+        runNumber = runNumber)
+    return [ x['LogicalFileName'] for x in fileList]
 
 
 
@@ -27,8 +41,8 @@ def findVersionForDataset(dbsUrl, primary, processed, tier, run):
     """
     reader  = DBSReader(dbsUrl)
     datasetName = "/%s/%s/%s" % (primary, processed, tier)
- 
-    
+
+
     try:
         fileList = reader.dbs.listFiles(
             path = datasetName,
@@ -99,7 +113,7 @@ class DBSPlugin(BasePlugin):
                                     collectPayload['PrimaryDataset'],
                                     collectPayload['ProcessedDataset'],
                                     collectPayload['DataTier'])
-        
+
         if not os.path.exists(datasetCache):
             os.makedirs(datasetCache)
 
@@ -143,7 +157,7 @@ class DBSPlugin(BasePlugin):
                                                  collectPayload['RunNumber'])
                 msg += " CMSSW Version = %s\n " % cmsswVersion
                 logging.info(msg)
-            
+
             workflowSpec = createHarvestingWorkflow(
                 collectPayload.datasetPath(),
                 site,
@@ -152,7 +166,7 @@ class DBSPlugin(BasePlugin):
                 cmsswVersion,
                 globalTag,
                 self.args['ConfigFile'])
-            
+
             workflowSpec.save(workflowFile)
             msg = "Created Harvesting Workflow:\n %s" % workflowFile
             logging.info(msg)
@@ -167,29 +181,63 @@ class DBSPlugin(BasePlugin):
             workflowSpec.load(workflowFile)
 
 
-        #  //
-        # //  Callout to create the harvesting job for the run
-        #//
-        factory = RunJobFactory(workflowSpec,
-                                datasetCache,
-                                self.dbsUrl, SiteName = site,
-                                FilterRuns = [int(collectPayload['RunNumber'])],
-                                )
 
 
-        jobs = factory()
+        job = {}
+        jobSpec = workflowSpec.createJobSpec()
+        jobName = "%s-%s-%s" % (
+            workflowSpec.workflowName(),
+            collectPayload['RunNumber'],
+            time.strftime("%H-%M-%d-%m-%y")
+            )
 
-        for job in jobs:
-            job['WorkflowSpecFile'] = workflowFile
-            msg = "Harvesting Job Created for\n"
-            msg += " => Run:       %s\n" % collectPayload['RunNumber']
-            msg += " => Primary:   %s\n" % collectPayload['PrimaryDataset']
-            msg += " => Processed: %s\n" % collectPayload['ProcessedDataset']
-            msg += " => Tier:      %s\n" % collectPayload['DataTier']
-            msg += " => Workflow:  %s\n" % job['WorkflowSpecId']
-            msg += " => Job:       %s\n" % job['JobSpecId']
-            msg += " => Site:      %s\n" % job['Sites']
-            logging.info(msg)
+        jobSpec.setJobName(jobName)
+        jobSpec.setJobType("Processing")
+        jobSpec.parameters['RunNumber'] = collectPayload['RunNumber']
+        jobSpec.addWhitelistSite(site)
+        jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
 
-        return jobs
+
+
+        jobSpec.payload.cfgInterface.inputFiles.extend(
+            listFilesInRun(
+            DBSReader(self.dbsUrl),
+            collectPayload['PrimaryDataset'],
+            collectPayload['ProcessedDataset'],
+            collectPayload['DataTier'],
+            collectPayload['RunNumber'])
+            )
+
+        specCacheDir =  os.path.join(
+            datasetCache, str(int(collectPayload['RunNumber']) // 1000).zfill(4))
+        if not os.path.exists(specCacheDir):
+            os.makedirs(specCacheDir)
+        jobSpecFile = os.path.join(specCacheDir,
+                                   "%s-JobSpec.xml" % jobName)
+
+        jobSpec.save(jobSpecFile)
+
+
+        job["JobSpecId"] = jobName
+        job["JobSpecFile"] = jobSpecFile
+        job['JobType'] = "Processing"
+        job["WorkflowSpecId"] = workflowSpec.workflowName(),
+        job["WorkflowPriority"] = 10
+        job["Sites"] = [site]
+        job["Run"] = collectPayload['RunNumber']
+        job['WorkflowSpecFile'] = workflowFile
+
+
+
+        msg = "Harvesting Job Created for\n"
+        msg += " => Run:       %s\n" % collectPayload['RunNumber']
+        msg += " => Primary:   %s\n" % collectPayload['PrimaryDataset']
+        msg += " => Processed: %s\n" % collectPayload['ProcessedDataset']
+        msg += " => Tier:      %s\n" % collectPayload['DataTier']
+        msg += " => Workflow:  %s\n" % job['WorkflowSpecId']
+        msg += " => Job:       %s\n" % job['JobSpecId']
+        msg += " => Site:      %s\n" % job['Sites']
+        logging.info(msg)
+
+        return [job]
 
