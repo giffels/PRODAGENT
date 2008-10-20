@@ -149,9 +149,9 @@ fi
         CleanUp pfn provided
 
         """
-        pfnSplit = pfnToRemove.split("WAX/11/store/", 1)[1]
+        pfnSplit = pfnToRemove.split("/store/", 1)[1]
         filePath = "/pnfs/cms/WAX/11/store/%s" % pfnSplit
-        command = "rm -f %s" % pfnToRemove
+        command = "rm  %s" %filePath
         self.executeCommand(command)
 
 
