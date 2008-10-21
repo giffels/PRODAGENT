@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: BulkDashboardMonitor.py,v 1.6 2008/08/07 09:38:31 edelmann Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: BulkDashboardMonitor.py,v 1.7 2008/09/16 10:42:41 swakef Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -31,6 +31,7 @@ import popen2
 _GridJobIDPriority = [
     'EDG_WL_JOBID',
     'GLITE_WMS_JOBID',
+    'CONDOR_JOBID',
     'GLOBUS_GRAM_JOB_CONTACT',
     'ARCSUBMITTER_JOBID',
     ]
@@ -67,8 +68,8 @@ def getSyncCE():
         pop.wait()
         exitCode = pop.poll()
         if exitCode:
-            return result 
-        
+            return result
+
         content = pop.fromchild.read()
         result = content.strip()
         return result
@@ -96,7 +97,7 @@ def loadJobSpec():
         print "ERROR: Cannot load JobSpec file!!!"
         jobSpec = None
     return jobSpec
-    
+
 
 
 class BulkDashboardMonitor(ShREEKMonitor):
@@ -106,7 +107,7 @@ class BulkDashboardMonitor(ShREEKMonitor):
     ShREEK Monitor that broadcasts data to the CMS Dashboard using ApMon
 
     """
-    
+
     def __init__(self):
         ShREEKMonitor.__init__(self)
         self.destPort = None
@@ -130,7 +131,7 @@ class BulkDashboardMonitor(ShREEKMonitor):
         dashboardInfoFile = os.path.expandvars(dashboardInfoFile)
         self.dashboardInfo = DashboardInfo()
         self.dashboardInfo.read(dashboardInfoFile)
-        
+
         jobSpec = loadJobSpec()
         if jobSpec == None:
             msg = "ERROR: Unable to load Job Spec File:\n"
@@ -140,12 +141,12 @@ class BulkDashboardMonitor(ShREEKMonitor):
             return
         dashboardTask, dashboardJob = generateDashboardID(jobSpec)
 
-        
+
         self.dashboardInfo.task = dashboardTask
         self.dashboardInfo.job = dashboardJob
-        
+
         self.dashboardInfo.addDestination(self.destHost, self.destPort)
-        
+
         cluster = dashboardTask
         node = dashboardJob
         self.apmon = ApMonDestMgr(cluster, node)
@@ -156,15 +157,15 @@ class BulkDashboardMonitor(ShREEKMonitor):
             destHost = str(dest.attrs['Host'])
             self.apmon.newDestination(destHost, destPort)
 
-            
-            
+
+
     def shutdown(self):
         """
         Shutdown method, will be called before object is deleted
         at end of job.
-        """  
+        """
         del self.dashboardInfo
-        
+
     def jobStart(self):
         """
         Job start notifier.
@@ -172,7 +173,7 @@ class BulkDashboardMonitor(ShREEKMonitor):
         if self.dashboardInfo == None:
             return
 
-       
+
         gridJobId = None
         for envVar in _GridJobIDPriority:
             val = os.environ.get(envVar, None)
@@ -193,7 +194,7 @@ class BulkDashboardMonitor(ShREEKMonitor):
     #//
     def taskStart(self, task):
         """
-        Tasked started notifier. 
+        Tasked started notifier.
         """
         if self.dashboardInfo == None:
             return
@@ -204,7 +205,7 @@ class BulkDashboardMonitor(ShREEKMonitor):
         newInfo['ExeStartTime'] = time.time()
         newInfo.publish(1)
         return
-    
+
     def taskEnd(self, task, exitCode):
         """
         Tasked ended notifier.
@@ -220,8 +221,8 @@ class BulkDashboardMonitor(ShREEKMonitor):
                 exitValue = int(content)
             except ValueError:
                 exitValue = exitCode
-                
-                
+
+
         self.lastExitCode = exitValue
         newInfo = self.dashboardInfo.emptyClone()
         newInfo.addDestination(self.destHost, self.destPort)
@@ -239,15 +240,15 @@ class BulkDashboardMonitor(ShREEKMonitor):
         if self.eventLogger != None:
             lastRun = self.eventLogger.latestRun
             lastEvent = self.eventLogger.latestEvent
-            
+
         self.eventLogger = None
         self.apmon.connect()
         for i in range(0, 5):
             self.apmon.send(
                  SyncCE = self.syncCE,
-                 NEvents = lastEvent)            
+                 NEvents = lastEvent)
         self.apmon.disconnect()
-        
+
         return
 
     def jobEnd(self):
@@ -284,7 +285,7 @@ class BulkDashboardMonitor(ShREEKMonitor):
         #RunNumber = self.eventLogger.latestRun,
         self.apmon.disconnect()
         return
-    
+
     def _LoadEventLogger(self):
         """
         _LoadEventLogger_
@@ -315,8 +316,8 @@ class BulkDashboardMonitor(ShREEKMonitor):
         except Exception, ex:
             print "Error Calling Event Logger:", ex
             pass
-        return 
+        return
 
 
-        
+
 registerShREEKMonitor(BulkDashboardMonitor, 'bulk-dashboard')

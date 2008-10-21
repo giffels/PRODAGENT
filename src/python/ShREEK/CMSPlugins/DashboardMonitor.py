@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.14 $"
-__revision__ = "$Id: DashboardMonitor.py,v 1.14 2008/05/06 11:12:53 swakef Exp $"
+__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: DashboardMonitor.py,v 1.15 2008/09/16 10:42:01 swakef Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -30,6 +30,7 @@ import popen2
 _GridJobIDPriority = [
     'EDG_WL_JOBID',
     'GLITE_WMS_JOBID',
+    'CONDOR_JOBID',
     'GLOBUS_GRAM_JOB_CONTACT',
     ]
 
@@ -65,8 +66,8 @@ def getSyncCE():
         pop.wait()
         exitCode = pop.poll()
         if exitCode:
-            return result 
-        
+            return result
+
         content = pop.fromchild.read()
         result = content.strip()
         return result
@@ -79,7 +80,7 @@ class DashboardMonitor(ShREEKMonitor):
     ShREEK Monitor that broadcasts data to the CMS Dashboard using ApMon
 
     """
-    
+
     def __init__(self):
         ShREEKMonitor.__init__(self)
         self.destPort = None
@@ -109,7 +110,7 @@ class DashboardMonitor(ShREEKMonitor):
             print msg
             return
 
-        
+
         self.dashboardInfo = DashboardInfo()
         try:
             self.dashboardInfo.read(dashboardInfoFile)
@@ -118,10 +119,10 @@ class DashboardMonitor(ShREEKMonitor):
             msg += "%s\n" % str(ex)
             msg += "Some information may be missing..."
             print msg
-            
+
         self.dashboardInfo.task, self.dashboardInfo.job = \
                                  extractDashboardID(jobSpecFile)
-        
+
         try:
             self.dashboardInfo.addDestination(self.destHost, self.destPort)
         except Exception, ex:
@@ -143,14 +144,14 @@ class DashboardMonitor(ShREEKMonitor):
             destPort = int(dest.attrs['Port'])
             destHost = str(dest.attrs['Host'])
             self.apmon.newDestination(destHost, destPort)
-            
+
     def shutdown(self):
         """
         Shutdown method, will be called before object is deleted
         at end of job.
-        """  
+        """
         del self.dashboardInfo
-        
+
     def jobStart(self):
         """
         Job start notifier.
@@ -158,7 +159,7 @@ class DashboardMonitor(ShREEKMonitor):
         if self.dashboardInfo == None:
             return
 
-       
+
         gridJobId = None
         for envVar in _GridJobIDPriority:
             val = os.environ.get(envVar, None)
@@ -179,7 +180,7 @@ class DashboardMonitor(ShREEKMonitor):
     #//
     def taskStart(self, task):
         """
-        Tasked started notifier. 
+        Tasked started notifier.
         """
         if self.dashboardInfo == None:
             return
@@ -190,7 +191,7 @@ class DashboardMonitor(ShREEKMonitor):
         newInfo['ExeStartTime'] = time.time()
         newInfo.publish(1)
         return
-    
+
     def taskEnd(self, task, exitCode):
         """
         Tasked ended notifier.
@@ -206,8 +207,8 @@ class DashboardMonitor(ShREEKMonitor):
                 exitValue = int(content)
             except ValueError:
                 exitValue = exitCode
-                
-                
+
+
         self.lastExitCode = exitValue
         newInfo = self.dashboardInfo.emptyClone()
         newInfo.addDestination(self.destHost, self.destPort)
@@ -225,7 +226,7 @@ class DashboardMonitor(ShREEKMonitor):
         if self.eventLogger != None:
             lastRun = self.eventLogger.latestRun
             lastEvent = self.eventLogger.latestEvent
-            
+
         self.eventLogger = None
         if self.apmon == None:
             return
@@ -233,9 +234,9 @@ class DashboardMonitor(ShREEKMonitor):
         for i in range(0, 1):
             self.apmon.send(
                  SyncCE = self.syncCE,
-                 NEvents = lastEvent)            
+                 NEvents = lastEvent)
         self.apmon.disconnect()
-        
+
         return
 
     def jobEnd(self):
@@ -274,7 +275,7 @@ class DashboardMonitor(ShREEKMonitor):
         #RunNumber = self.eventLogger.latestRun,
         self.apmon.disconnect()
         return
-    
+
     def _LoadEventLogger(self):
         """
         _LoadEventLogger_
@@ -305,8 +306,8 @@ class DashboardMonitor(ShREEKMonitor):
         except Exception, ex:
             print "Error Calling Event Logger:", ex
             pass
-        return 
+        return
 
 
-        
+
 registerShREEKMonitor(DashboardMonitor, 'dashboard')
