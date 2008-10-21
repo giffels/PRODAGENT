@@ -22,6 +22,7 @@ from JobQueue.JobQueueAPI import bulkQueueJobs
 from DQMInjector.CollectPayload import CollectPayload
 from DQMInjector.Plugins.DBSPlugin import DBSPlugin
 from DQMInjector.Plugins.T0ASTPlugin import T0ASTPlugin
+from DQMInjector.Plugins.RelValPlugin import RelValPlugin
 
 class DQMInjectorComponent:
     """
@@ -49,6 +50,7 @@ class DQMInjectorComponent:
         self.pluginRegistry = {}
         self.pluginRegistry['DBSPlugin'] = DBSPlugin
         self.pluginRegistry['T0ASTPlugin'] = T0ASTPlugin
+        self.pluginRegistry['RelValPlugin'] = RelValPlugin
 
         if self.args['ScramArch'] == None:
             self.args['ScramArch'] = os.environ.get("SCRAM_ARCH", None)
