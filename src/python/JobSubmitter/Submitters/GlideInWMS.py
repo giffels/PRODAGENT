@@ -15,7 +15,7 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.8 2008/05/26 15:09:59 dmason Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.9 2008/10/20 18:12:05 gutsche Exp $"
 
 import os
 import logging
@@ -199,6 +199,7 @@ class GlideInWMS(BulkSubmitterInterface):
         jdl.append('+JOB_GLIDEIN_ProcId = "$$(GLIDEIN_ProcId:Unknown)"\n')
         jdl.append('+JOB_GLIDEIN_Frontend = "$$(GLIDEIN_Client:Unknown)"\n')
         jdl.append('+JOB_GLIDEIN_Gatekeeper = "$$(GLIDEIN_Gatekeeper:Unknown)"\n')
+        jdl.append('environment = CONDOR_JOBID=$$([GlobalJobId])\n')
         jdl.append('+JOB_Slot = "$$(Name:Unknown)"\n')
 
         # log glidein benchmark numbers
@@ -247,10 +248,10 @@ class GlideInWMS(BulkSubmitterInterface):
         jdl.append("+ProdAgent_JobType = \"%s\"\n" % self.primarySpecInstance.parameters['JobType'])
 
 	if self.primarySpecInstance.parameters['JobType'].lower() == "merge":
-            jdl.append("priority = 10")
+            jdl.append("priority = 10\n")
 
         if self.primarySpecInstance.parameters['JobType'].lower() == "cleanup":
-            jdl.append("priority = 5")
+            jdl.append("priority = 5\n")
 
         jdl.append("Arguments = %s-JobSpec.xml \n" % jobID)
         jdl.append("Queue\n")

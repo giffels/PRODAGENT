@@ -6,7 +6,7 @@ Globus Universe Condor Submitter implementation.
 
 """
 
-__revision__ = "$Id: OSGGlideIn.py,v 1.4 2008/02/12 20:05:46 dmason Exp $"
+__revision__ = "$Id: OSGGlideIn.py,v 1.5 2008/10/20 18:12:05 gutsche Exp $"
 
 import os
 import logging
@@ -201,6 +201,7 @@ class OSGGlideIn(BulkSubmitterInterface):
         jdl.append("+JOB_GLIDEIN_Name=\"$$(GLIDEIN_Name:Unknown)\"\n") 
         jdl.append("+JOB_GLIDEIN_Frontend=\"$$(GLIDEIN_Client:Unknown)\" \n") 
         jdl.append('+JOB_GLIDEIN_Gatekeeper = "$$(GLIDEIN_Gatekeeper:Unknown)"\n')
+        jdl.append('environment = CONDOR_JOBID=$$([GlobalJobId])\n')
         return jdl
     
         
@@ -230,10 +231,10 @@ class OSGGlideIn(BulkSubmitterInterface):
         jdl.append("+ProdAgent_JobType = \"%s\"\n" % self.primarySpecInstance.parameters['JobType'])
 
         if self.primarySpecInstance.parameters['JobType'].lower() == "merge":
-            jdl.append("priority = 10")
+            jdl.append("priority = 10\n")
 
         if self.primarySpecInstance.parameters['JobType'].lower() == "cleanup":
-            jdl.append("priority = 5")
+            jdl.append("priority = 5\n")
 
         jdl.append("Arguments = %s-JobSpec.xml \n" % jobID)
         jdl.append("Queue\n")
