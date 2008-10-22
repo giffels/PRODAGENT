@@ -16,6 +16,7 @@ from ProdCommon.Database import Session
 
 
 from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
+from MergeSensor.MergeSensorError import MergeSensorError
 from MergeSensor.MergeCrossCheck import MergeSensorCrossCheck
 from MergeSensor.MergeCrossCheck import listAllMergeDatasets 
 import ProdCommon.MCPayloads.CleanUpTools as CleanUpTools
@@ -211,139 +212,142 @@ class CleanUpSchedulerComponent:
         Do a single update
 
         """
-        # //
-        # // Check LFN Threshold set by user
-        # //
-        if self.lfnLimit<=0:
-               logging.info("No Job Generated, LFNLimit set less than or equal to 0")
-               return
-
-        # //
-        # //Connect to DBS
-        # //
-        self.connectToDBS()
-        
-        #  //
-        # // file block names in MergeSensor Db are actually the SENames
-        #//
-        siteTasks = CleanUpTasks()
-            
-               
         try:
-           # //
-           # // Retrive list of Datasets currently being watched by MergeSensor
-           # //
-           listAllMergeDataset = listAllMergeDatasets()
-        except Exception, ex:
-           logging.error("DBSReader Error: LIST DATASET failed, Exception: %s " % ex) 
-           return  
-        for unmergedDataset in listAllMergeDataset:
-                           
-            mergedDataset = unmergedDataset.replace("-unmerged", "")                      
-            mergeXCheck = MergeSensorCrossCheck(unmergedDataset)            
-            unmergedToMergeFiles = mergeXCheck.getFileMap()                    
+            # //
+            # // Check LFN Threshold set by user
+            # //
+            if self.lfnLimit<=0:
+                   logging.info("No Job Generated, LFNLimit set less than or equal to 0")
+                   return
+    
+            # //
+            # //Connect to DBS
+            # //
+            self.connectToDBS()
             
             #  //
-            # // List of all merged LFNs known to merge sensor
+            # // file block names in MergeSensor Db are actually the SENames
             #//
-            mergedLFNs = [ v for v in unmergedToMergeFiles.values() 
-                           if v != None ]
-           
-              
-
-            #  //
-            # // List of all merged LFNS that are known to DBS
-            #//
-            goodMerges = None
-            try:
-             goodMerges = self.dbsReader.crossCheck(mergedDataset, *mergedLFNs)
-            except Exception, ex:
-             logging.error("DBSReader crosscheck for goodmerges failed Exception: %s" % ex)
-             continue  
-                      
-
-            doneUnmergedFiles = []
-            doneMergedFiles = []
-            for unmerged, merged in unmergedToMergeFiles.items():
-                if merged in goodMerges:
-                    doneUnmergedFiles.append(unmerged)
-                    doneMergedFiles.append(merged)
-                                           
-
-            #  //
-            # // Get a list of block/site names for each LFN
-            #//
-            blockMap = mergeXCheck.getBlocksMap()           
-            i=0             
-            for lfn in doneUnmergedFiles:
-                i=i+1
-                siteTasks.addFiles(blockMap[lfn], lfn)          
-           
-          
-        #  //For each site in siteTasks, generate a cleanup job spec with 
-        # // the list of files to be cleaned, then publish the
-        #//  cleanup workflow, job spec etc
-        
-        # //
-        # //generate cleanup workflow spec
-        # //
-        
-         
-        cleanUpWFs = CleanUpTools.createCleanupWorkflowSpec()    
-
-        if (len(siteTasks) != 0):
- 
-            wfspec=os.path.join(self.args['CleanupJobSpecs'],cleanUpWFs.payload.workflow + '-workflow.xml' )
-            cleanUpWFs.save(wfspec)
-
-        # //
-        # //Publishing newworkflow event
-        # //
-            self.ms.publish("NewWorkflow", wfspec)
-            self.ms.commit() 
-
-        # //
-        # //Generating cleanup jobspecs with list of lfns to be deleted
-        # //
-
-        cleanUpJobSpec = [] 
-
-        # //
-        # //generate cleanup jobspec having inputfiles lfns
-        # //
-        for x in siteTasks.keys():        
-
-               njobs = len(siteTasks[x])/self.lfnLimit
+            siteTasks = CleanUpTasks()
                 
-               if (len(siteTasks[x])%self.lfnLimit) > 0 :               
-                njobs = njobs + 1
+                   
+            try:
+               # //
+               # // Retrive list of Datasets currently being watched by MergeSensor
+               # //
+               listAllMergeDataset = listAllMergeDatasets()
+            except Exception, ex:
+               logging.error("DBSReader Error: LIST DATASET failed, Exception: %s " % ex) 
+               return  
+            for unmergedDataset in listAllMergeDataset:
+                               
+                mergedDataset = unmergedDataset.replace("-unmerged", "")                      
+                mergeXCheck = MergeSensorCrossCheck(unmergedDataset)            
+                unmergedToMergeFiles = mergeXCheck.getFileMap()                    
+                
+                #  //
+                # // List of all merged LFNs known to merge sensor
+                #//
+                mergedLFNs = [ v for v in unmergedToMergeFiles.values() 
+                               if v != None ]
                
-               ref=0
+                  
+    
+                #  //
+                # // List of all merged LFNS that are known to DBS
+                #//
+                goodMerges = None
+                try:
+                 goodMerges = self.dbsReader.crossCheck(mergedDataset, *mergedLFNs)
+                except Exception, ex:
+                 logging.error("DBSReader crosscheck for goodmerges failed Exception: %s" % ex)
+                 continue  
+                          
+    
+                doneUnmergedFiles = []
+                doneMergedFiles = []
+                for unmerged, merged in unmergedToMergeFiles.items():
+                    if merged in goodMerges:
+                        doneUnmergedFiles.append(unmerged)
+                        doneMergedFiles.append(merged)
+                                               
+    
+                #  //
+                # // Get a list of block/site names for each LFN
+                #//
+                blockMap = mergeXCheck.getBlocksMap()           
+                i=0             
+                for lfn in doneUnmergedFiles:
+                    i=i+1
+                    siteTasks.addFiles(blockMap[lfn], lfn)          
                
-               for i in range (0,njobs):
-                                  
-                 lfns = siteTasks[x][ref:ref+self.lfnLimit]
-                 logging.debug("Cleaning: %s" % str(lfns)) 
-                 cleanUpJobSpec.append(CleanUpTools.createCleanupJobSpec(cleanUpWFs,x,*lfns))
-                 self.mergeDB.removingState(*lfns)                                    
-                 self.mergeDB.commit()
-
-                 ref=ref+self.lfnLimit 
+              
+            #  //For each site in siteTasks, generate a cleanup job spec with 
+            # // the list of files to be cleaned, then publish the
+            #//  cleanup workflow, job spec etc
+            
+            # //
+            # //generate cleanup workflow spec
+            # //
+            
+             
+            cleanUpWFs = CleanUpTools.createCleanupWorkflowSpec()    
+    
+            if (len(siteTasks) != 0):
+     
+                wfspec=os.path.join(self.args['CleanupJobSpecs'],cleanUpWFs.payload.workflow + '-workflow.xml' )
+                cleanUpWFs.save(wfspec)
+    
+            # //
+            # //Publishing newworkflow event
+            # //
+                self.ms.publish("NewWorkflow", wfspec)
+                self.ms.commit() 
+    
+            # //
+            # //Generating cleanup jobspecs with list of lfns to be deleted
+            # //
+    
+            cleanUpJobSpec = [] 
+    
+            # //
+            # //generate cleanup jobspec having inputfiles lfns
+            # //
+            for x in siteTasks.keys():        
+    
+                   njobs = len(siteTasks[x])/self.lfnLimit
                     
+                   if (len(siteTasks[x])%self.lfnLimit) > 0 :               
+                    njobs = njobs + 1
+                   
+                   ref=0
+                   
+                   for i in range (0,njobs):
+                                      
+                     lfns = siteTasks[x][ref:ref+self.lfnLimit]
+                     logging.debug("Cleaning: %s" % str(lfns)) 
+                     cleanUpJobSpec.append(CleanUpTools.createCleanupJobSpec(cleanUpWFs,x,*lfns))
+                     self.mergeDB.removingState(*lfns)                                    
+                     self.mergeDB.commit()
+    
+                     ref=ref+self.lfnLimit 
+                        
+            
+              
+            for i in range (0,len(cleanUpJobSpec)):
+              
+              jobspec=os.path.join(self.args['CleanupJobSpecs'],cleanUpJobSpec[i].parameters["JobName"] + ".xml") 
+              cleanUpJobSpec[i].save(jobspec)
+              logging.debug('JobSpec Saved')
+    
+              # //
+              # //publishing jobspec
+              # //
+              self.publishCreateJob(jobspec)
         
-          
-        for i in range (0,len(cleanUpJobSpec)):
-          
-          jobspec=os.path.join(self.args['CleanupJobSpecs'],cleanUpJobSpec[i].parameters["JobName"] + ".xml") 
-          cleanUpJobSpec[i].save(jobspec)
-          logging.debug('JobSpec Saved')
-
-          # //
-          # //publishing jobspec
-          # //
-          self.publishCreateJob(jobspec)
-         
-               
+        except (MergeSensorError, StandardError), ex:
+            logging.error("Error during poll: %s" % str(ex))
+            return
    
         return
 
