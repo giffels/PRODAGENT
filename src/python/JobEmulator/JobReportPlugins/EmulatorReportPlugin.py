@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.16 2008/07/11 19:26:12 sfoulkes Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.17 2008/08/05 15:49:00 sryu Exp $"
+__version__ = "$Revision: 1.17 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -20,6 +20,7 @@ from random import gauss
 from random import choice
 
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+from ProdCommon.FwkJobRep.RunInfo import RunInfo
 from ProdCommon.MCPayloads.DatasetTools import getOutputDatasetDetails
 from ProdCommon.MCPayloads.MergeTools import getSizeBasedMergeDatasetsFromNode
 from ProdCommon.MCPayloads.UUID import makeUUID
@@ -98,7 +99,10 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             theFile['ModuleLabel'] = outName
             # basic measurement is byte (minumum 4MB, max 4GB)
             theFile['Size'] = 4000000 * randrange(1, 1000)
-            theFile.runs.append(jobSpecLoaded.parameters["RunNumber"])
+            runNum = jobSpecLoaded.parameters["RunNumber"]
+            # need to get lumi
+            lumiList = jobSpecLoaded.parameters.get("LumiSections", [])
+            theFile.runs[runNum] = RunInfo(runNum,lumiList)
             #check if the maxEvents['output'] is set if not set totalEvent using maxEvents['input']
             totalEvent = jobSpecPayload.cfgInterface.maxEvents['output']
             if totalEvent == None:

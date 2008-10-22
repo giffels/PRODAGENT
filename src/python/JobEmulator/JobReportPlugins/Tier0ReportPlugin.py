@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: Tier0ReportPlugin.py,v 1.3 2008/08/05 15:47:18 sryu Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: Tier0ReportPlugin.py,v 1.4 2008/08/11 18:11:16 sryu Exp $"
+__version__ = "$Revision: 1.4 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -20,6 +20,7 @@ from random import gauss
 from random import choice
 
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+from ProdCommon.FwkJobRep.RunInfo import RunInfo
 from ProdCommon.MCPayloads.DatasetTools import getOutputDatasetDetails
 from ProdCommon.MCPayloads.MergeTools import getSizeBasedMergeDatasetsFromNode
 from ProdCommon.MCPayloads.UUID import makeUUID
@@ -105,8 +106,10 @@ class Tier0ReportPlugin(JobReportPluginInterface):
             
             theFile['GUID'] = guid
             theFile['ModuleLabel'] = outName
-            
-            theFile.runs.append(jobSpecLoaded.parameters["RunNumber"])
+            runNum = jobSpecLoaded.parameters["RunNumber"]
+            # need to get lumi
+            lumiList = jobSpecLoaded.parameters.get("LumiSections", [])
+            theFile.runs[runNum] = RunInfo(runNum,lumiList)
             #check if the maxEvents['output'] iE    s set if not set totalEvent using maxEvents['input']
             totalEvent = jobSpecPayload.cfgInterface.maxEvents['output']
             if totalEvent == None:
