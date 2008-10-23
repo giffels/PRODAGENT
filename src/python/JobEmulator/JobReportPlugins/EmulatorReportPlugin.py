@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.17 2008/08/05 15:49:00 sryu Exp $"
-__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.18 2008/10/22 21:04:39 sryu Exp $"
+__version__ = "$Revision: 1.18 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -102,7 +102,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             runNum = jobSpecLoaded.parameters["RunNumber"]
             # need to get lumi
             lumiList = jobSpecLoaded.parameters.get("LumiSections", [])
-            theFile.runs[runNum] = RunInfo(runNum,lumiList)
+            theFile.runs[runNum] = RunInfo(runNum, *lumiList)
             #check if the maxEvents['output'] is set if not set totalEvent using maxEvents['input']
             totalEvent = jobSpecPayload.cfgInterface.maxEvents['output']
             if totalEvent == None:
