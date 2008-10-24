@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.18 2008/10/22 21:04:39 sryu Exp $"
-__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.19 2008/10/23 16:03:53 sryu Exp $"
+__version__ = "$Revision: 1.19 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -113,12 +113,17 @@ class EmulatorReportPlugin(JobReportPluginInterface):
                                            "maxEvent['input' and 'output']",
                                             totalEvent,
                                             100)
-
+            
             try:
                 totalEvent = int(totalEvent)
             except ValueError, ex:
                 logging.error("totalEvent is not a number. \n%s" % ex)
 
+            # event size should be  >= 0
+            # totalEvent is  -1 process all event 
+            if totalEvent < 0:
+                totalEvent = 200
+                
             if (random() > self.avgEventProcessingRate):
                 # Gauss distribution of totalEvent.
                 meanEvent = int(totalEvent * 0.7)
