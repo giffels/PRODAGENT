@@ -16,7 +16,7 @@ from ProdCommon.Database import Session
 
 
 from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
-from MergeSensor.MergeSensorError import MergeSensorError
+from MergeSensor.MergeSensorError import MergeSensorError, MergeSensorDBError
 from MergeSensor.MergeCrossCheck import MergeSensorCrossCheck
 from MergeSensor.MergeCrossCheck import listAllMergeDatasets 
 import ProdCommon.MCPayloads.CleanUpTools as CleanUpTools
@@ -345,7 +345,7 @@ class CleanUpSchedulerComponent:
               # //
               self.publishCreateJob(jobspec)
         
-        except (MergeSensorError, StandardError), ex:
+        except (MergeSensorDBError, MergeSensorError, StandardError), ex:
             logging.error("Error during poll: %s" % str(ex))
             return
    
