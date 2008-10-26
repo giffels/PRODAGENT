@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.19 2008/10/26 10:31:15 gcodispo Exp $"
-__version__ = "$Revision: 1.19 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.20 2008/10/26 10:38:18 gcodispo Exp $"
+__version__ = "$Revision: 1.20 $"
 
 import os
 import logging
@@ -220,7 +220,7 @@ fi
 
                 # maybe not needed... extra check!
                 if bossJob is None:
-                    raise JobError
+                    raise JobError('')
 
                 # job loaded, prepare resubmission
                 self.prepareResubmission(bossJob)
