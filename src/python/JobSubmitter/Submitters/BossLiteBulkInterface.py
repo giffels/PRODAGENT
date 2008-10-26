@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.17 2008/10/08 16:17:12 gcodispo Exp $"
-__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.18 2008/10/10 13:55:57 gcodispo Exp $"
+__version__ = "$Revision: 1.18 $"
 
 import os
 import logging
@@ -203,7 +203,7 @@ fi
             # now submit!!!
             self.submitJobs( schedSession, submissionAttrs )
 
-        # // Handle reSubmission
+        # // Handle single job submission and reSubmission 
         else:
             # loading the job
             self.singleSpecName = os.path.basename(
@@ -212,19 +212,23 @@ fi
                  self.singleSpecName[:self.singleSpecName.find('-JobSpec.xml')]
             logging.info("singleSpecName \"%s\"" % self.singleSpecName)
             try :
+
+                # load the job if it exists in the bl tables (resubmission)
                 bossJob = self.bossLiteSession.loadJobByName(
                     self.singleSpecName
                     )
+
+                # maybe not needed... extra check!
+                #if bossJob is None:
+                raise JobError
+
+                # job loaded, prepare resubmission
                 self.prepareResubmission(bossJob)
 
             except JobError, ex:
 
-                # FIXME : find a way to log an error if it is a resubmission
-                # FIXME : but the job is no more in the DB
-                msg = 'Failed to retrieve job %s : [%s]' % \
-                      (self.singleSpecName, str(ex))
-                logging.error( msg )
-                raise JSException(msg, FailureList = self.toSubmit.keys())
+                # no job instance in db: create a task with a job
+                self.prepareSubmission()
 
             # now submit!!!
             self.submitSingleJob( schedSession, submissionAttrs )
