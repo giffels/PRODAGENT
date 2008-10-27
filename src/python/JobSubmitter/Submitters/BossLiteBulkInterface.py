@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.21 2008/10/26 12:32:56 gcodispo Exp $"
-__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.22 2008/10/27 08:47:25 gcodispo Exp $"
+__version__ = "$Revision: 1.22 $"
 
 import os
 import logging
@@ -219,8 +219,8 @@ fi
                     )
 
                 # maybe not needed... extra check!
-                if bossJob is None:
-                    raise JobError('')
+                #if bossJob is None:
+                raise JobError('')
 
                 # job loaded, prepare resubmission
                 self.prepareResubmission(bossJob)
@@ -321,7 +321,7 @@ fi
         logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
         executable = self.mainJobSpecName + '-submit'
         executablePath = "%s/%s" % (self.workingDir, executable)
-        logging.debug("makeWrapperScript = %s" % executablePath)
+        logging.info("makeWrapperScript = %s" % executablePath)
         self.makeWrapperScript( executablePath, "$1" )
 
         inpSandbox = ','.join( self.jobInputFiles )
