@@ -47,10 +47,10 @@ class GetUnmergedFiles(MySQLBase):
 	     
           rows = self.format (result, dictionary= True)
 
-          return __arrangeRuns(rows)
+          return _arrangeRuns(rows)
 
 
-def __arrangeRuns(file_list):
+def _arrangeRuns(file_list):
     """
     
     Takes a list of files with duplicates for each run/lumi combination,
