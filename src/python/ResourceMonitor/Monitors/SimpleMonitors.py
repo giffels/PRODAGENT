@@ -35,6 +35,7 @@ class PollInterface(dict):
         self.setdefault("Processing", None)
         self.setdefault("CleanUp", None)
         self.setdefault("LogCollect", None)
+        self.setdefault("Repack", None)        
     
     def __call__(self):
         """
@@ -88,6 +89,12 @@ class PAJobStatePoll(PollInterface):
         SELECT COUNT(id) FROM we_Job
            WHERE job_type="LogCollect" AND status='inProgress';
         """
+
+        sqlStr5 = \
+        """
+        SELECT COUNT(id) FROM we_Job
+           WHERE job_type="Repack" AND status='inProgress';
+        """        
         
         Session.execute(sqlStr1)
         numProcessing = Session.fetchone()[0]
@@ -97,14 +104,18 @@ class PAJobStatePoll(PollInterface):
         numClean = Session.fetchone()[0]
         Session.execute(sqlStr4)
         numLog = Session.fetchone()[0]
+        Session.execute(sqlStr5)
+        numRepack = Session.fetchone()[0]        
         Session.close_all()
         
-        total = numProcessing + numMerge
+        total = numProcessing + numMerge + numRepack
         self['Total'] = total
         self['Processing'] = numProcessing
         self['Merge'] = numMerge
         self['CleanUp'] = numClean
         self['LogCollect'] = numLog
+        self['Repack'] = numRepack
+
         return
     
 
@@ -172,12 +183,13 @@ class PABOSSPoll(PollInterface):
         #numMerge = Session.fetchone()[0]
         #Session.close_all()
                                                                                                                            
-        total = numProcessing + numMerge
+        total = numProcessing + numMerge + numRepack
         self['Total'] = total
         self['Processing'] = numProcessing
         self['Merge'] = numMerge
         self['CleanUp'] = numClean
         self['LogCollect'] = numLog
+        self['Repack'] = numRepack
 
         return
         
@@ -222,6 +234,11 @@ class PAJobStateMonitor(MonitorInterface):
             msg = "No processingThreshold found for site entry: %s\n" % (
                 siteName,)
             raise RuntimeError, msg
+        repackThresh = siteThresholds.get("repackThreshold", None)
+        if repackThresh == None:
+            msg = "No repackThreshold found for site entry: %s\n" % (
+                siteName,)
+            raise RuntimeError, msg        
         mergeThresh = siteThresholds.get("mergeThreshold", None)
         if mergeThresh == None:
             msg = "No mergeThreshold found for site entry: %s\n" % (
@@ -242,7 +259,9 @@ class PAJobStateMonitor(MonitorInterface):
         # // Poll the JobStatesDB
         #//
         poller = PAJobStatePoll()
+        logging.debug("Calling poller()")
         poller()
+        logging.debug("Back from calling poller()")
 
         #  //
         # // check the counts against the thresholds and make
@@ -255,6 +274,14 @@ class PAJobStateMonitor(MonitorInterface):
                 constraint['count'] = abs(test)
                 constraint['type'] = "Processing"
                 result.append(constraint)
+        if poller['Repack'] != None:
+            logging.info(" Repack jobs are: %s Threshold: %s"%(poller['Repack'],repackThresh))
+            test = poller['Repack'] - repackThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "Repack"
+                result.append(constraint)                
         if poller['Merge'] != None:
             logging.info(" Merge jobs are: %s Threshold: %s"%(poller['Merge'],mergeThresh))
             test = poller['Merge'] - mergeThresh
