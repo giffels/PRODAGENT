@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.22 2008/10/27 08:47:25 gcodispo Exp $"
-__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.23 2008/10/27 17:28:18 gcodispo Exp $"
+__version__ = "$Revision: 1.23 $"
 
 import os
 import logging
@@ -79,7 +79,7 @@ if [ $PROCEED_WITH_SPEC != 1 ]; then
 <ExitCode Value="60998"/>
    hostname="`hostname -f`"
    jobspecfile="$JOB_SPEC_FILE"
-   available_specs="`/bin/ls ./BulkSpecs`"
+   available_specs="`/bin/ls ./BulkSpecs 2> /dev/null`"
 </FrameworkError>
 </FrameworkJobReport>
 EOF
