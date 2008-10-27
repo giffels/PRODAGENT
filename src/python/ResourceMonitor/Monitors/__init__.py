@@ -12,6 +12,7 @@ import CondorMonitor
 import GlideinWMSMonitor
 import T0LSFMonitor
 import ARCMonitor
+import SimpleMonitors
 try:
     import LCGAdvanced
 except:
