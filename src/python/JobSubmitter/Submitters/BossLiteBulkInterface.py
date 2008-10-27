@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.20 2008/10/26 10:38:18 gcodispo Exp $"
-__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.21 2008/10/26 12:32:56 gcodispo Exp $"
+__version__ = "$Revision: 1.21 $"
 
 import os
 import logging
@@ -305,13 +305,17 @@ fi
 
         # // Build a list of input files for every job
         #//  For multiple bulk jobs there will be a tar of specs
-        self.specSandboxName = os.path.basename(
-            self.primarySpecInstance.parameters['BulkInputSpecSandbox']
-            )
-        self.jobInputFiles = [
-            self.mainSandbox, 
-            self.primarySpecInstance.parameters['BulkInputSpecSandbox']
-            ]
+        if self.isBulk:
+            self.specSandboxName = os.path.basename(
+                self.primarySpecInstance.parameters['BulkInputSpecSandbox']
+                )
+            self.jobInputFiles = [
+                self.mainSandbox, 
+                self.primarySpecInstance.parameters['BulkInputSpecSandbox']
+                ]
+        else:
+            self.jobInputFiles = [ self.mainSandbox ]
+            
 
         # // generate unique wrapper script
         logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
