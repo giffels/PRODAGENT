@@ -125,7 +125,8 @@ class CMSSWRunResDB:
                                         taskObject['RuntimeDirectory'],
                                         "FrameworkJobReport.xml"))
 
-        if taskObject['JobType'] == "Processing":
+        if taskObject['JobType'] == "Processing" or \
+               taskObject['JobType'] == "Repack":
             runresComp.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
                                self.doSizeMerge)
             runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
@@ -269,7 +270,8 @@ class BulkCMSSWRunResDB:
                                         taskObject['RuntimeDirectory'],
                                         "FrameworkJobReport.xml"))
 
-        if taskObject['JobType'] == "Processing":
+        if taskObject['JobType'] == "Processing" or \
+               taskObject['JobType'] == "Repack":            
             runresComp.addData("/%s/SizeBasedMerge/DoSizeMerge" % objName,
                                self.doSizeMerge)
             runresComp.addData("/%s/SizeBasedMerge/MinMergeFileSize" % objName,
