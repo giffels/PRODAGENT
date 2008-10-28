@@ -85,21 +85,21 @@ class AlertMonitor:
              tableName = "alert_current"
             
              #// Fetching record to insert into history table
-             sqlStr = "select * from " + tableName + " where type not in ('critical','error') and  time<date_sub(current_timestamp,interval %s second)" % str(self.args['MoveAlertTime'])
+             sqlStr = "select * from " + tableName + " where severity not in ('critical','error') and  time<date_sub(current_timestamp,interval %s second)" % str(self.args['MoveAlertTime'])
   
              alertDBOperations.execute(sqlStr)
              records = alertDBOperations.connection.convert(rows=alertDBOperations.connection.fetchall())
 
              #// Delete that record from current alerts table
              if len(records) != 0 :  
-                sqlStr = "delete  from " + tableName + " where type not in ('critical','error') and  time<date_sub(current_timestamp,interval %s second)" % str(self.args['MoveAlertTime']) 
+                sqlStr = "delete  from " + tableName + " where severity not in ('critical','error') and  time<date_sub(current_timestamp,interval %s second)" % str(self.args['MoveAlertTime']) 
                 alertDBOperations.execute(sqlStr)
                 alertDBOperations.commit()
 
                 #// Insert record into history table
                 tableName = "alert_history"
                 for record in records:
-                   sqlStr = "Insert into " + tableName +"(type, message, component,generationtime,historytime) values("+"\'"+str(record['type'])+"\',\'"+str(record['message'])+"\',\'"+str(record['component'])+"\',\'"+str(record['time'])+"\',"+'current_timestamp'+")"
+                   sqlStr = "Insert into " + tableName +"(severity, message, component,generationtime,historytime) values("+"\'"+str(record['severity'])+"\',\'"+str(record['message'])+"\',\'"+str(record['component'])+"\',\'"+str(record['time'])+"\',"+'current_timestamp'+")"
              
                    alertDBOperations.execute(sqlStr)
                 alertDBOperations.commit()
@@ -266,17 +266,17 @@ class CurrentAlert:
 	      
 
           for item in records:
-            if item['type'].lower() == 'critical':
+            if item['severity'].lower() == 'critical':
               bg = bgArray[0]
-            elif item['type'].lower() == 'error':
+            elif item['severity'].lower() == 'error':
               bg =bgArray[1]
-	    elif item['type'].lower() == 'warning':
+	    elif item['severity'].lower() == 'warning':
               bg =bgArray[2]
-	    elif item['type'].lower() == 'minor':
+	    elif item['severity'].lower() == 'minor':
               bg =bgArray[3]
             
-            html+="<tr bgcolor="+bg+"><td width=65% colspan=1 align= left>"+str(item['message'])+"</td><td align=center width=5%><font size=2>"+str(item['component'])+"</font></td><td width=10% align=center><font size=2>"+str(item['type'])+"</font></td><td width=10% align=center><font size=1>"+str(item['time'])+"</font></td><td width=10% align=center><font size=1>"
-            if str(item['type']).lower() in ['critical','error']:
+            html+="<tr bgcolor="+bg+"><td width=65% colspan=1 align= left>"+str(item['message'])+"</td><td align=center width=5%><font size=2>"+str(item['component'])+"</font></td><td width=10% align=center><font size=2>"+str(item['severity'])+"</font></td><td width=10% align=center><font size=1>"+str(item['time'])+"</font></td><td width=10% align=center><font size=1>"
+            if str(item['severity']).lower() in ['critical','error']:
               html+="<a href="+ self.args['ComponentURL']+"/updateDB?id="+str(item['id'])+"> Move</a> </font></td></tr>"
             else:
               html+= "Automatic</font></td></tr>"  
@@ -310,7 +310,7 @@ class CurrentAlert:
 
                 #// Insert record into history table 
                 tableName = "alert_history"
-                sqlStr = "Insert into " + tableName +"(type, message, component,generationtime,historytime) values("+"\'"+str(records[0]['type'])+"\',\'"+str(records[0]['message'])+"\',\'"+str(records[0]['component'])+"\',\'"+str(records[0]['time'])+"\',"+'current_timestamp'+")" 
+                sqlStr = "Insert into " + tableName +"(severity, message, component,generationtime,historytime) values("+"\'"+str(records[0]['severity'])+"\',\'"+str(records[0]['message'])+"\',\'"+str(records[0]['component'])+"\',\'"+str(records[0]['time'])+"\',"+'current_timestamp'+")" 
          
                 self.alertDBOperations.execute(sqlStr)
                 self.alertDBOperations.commit()  
@@ -391,17 +391,17 @@ class HistoryAlert:
 
 
           for item in records:
-            if item['type'].lower() == 'critical':
+            if item['severity'].lower() == 'critical':
               bg = bgArray[0]
-            elif item['type'].lower() == 'error':
+            elif item['severity'].lower() == 'error':
               bg =bgArray[1]
-	    elif item['type'].lower() == 'warning':
+	    elif item['severity'].lower() == 'warning':
               bg =bgArray[2]
-	    elif item['type'].lower() == 'minor':
+	    elif item['severity'].lower() == 'minor':
               bg =bgArray[3]         
 
 
-            html+="<tr bgcolor="+bg+"><td width=65% colspan=1 align=left>"+str(item['message'])+"</td><td width=5% align=center><font size=2>"+str(item['component'])+"</font></td><td width=10% align=center><font size=2>"+str(item['type'])+"</font></td><td width=10% align=center><font size=1>"+str(item['generationtime'])+"</font></td><td width=10% align=center><font size=1>"+str(item['historytime'])+"</font></td></tr>"
+            html+="<tr bgcolor="+bg+"><td width=65% colspan=1 align=left>"+str(item['message'])+"</td><td width=5% align=center><font size=2>"+str(item['component'])+"</font></td><td width=10% align=center><font size=2>"+str(item['severity'])+"</font></td><td width=10% align=center><font size=1>"+str(item['generationtime'])+"</font></td><td width=10% align=center><font size=1>"+str(item['historytime'])+"</font></td></tr>"
 
           html+="</table></body></html>"
 	    
