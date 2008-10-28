@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.24 2008/10/27 17:41:12 gcodispo Exp $"
-__version__ = "$Revision: 1.24 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.25 2008/10/28 10:42:10 gcodispo Exp $"
+__version__ = "$Revision: 1.25 $"
 
 import os
 import logging
@@ -58,9 +58,12 @@ echo "===Available JobSpecs:==="
 /bin/ls `pwd`/BulkSpecs
 echo "========================="
 
-
 JOB_SPEC_FILE="`pwd`/BulkSpecs/$JOB_SPEC_NAME-JobSpec.xml"
 
+"""
+
+    scriptEnd = \
+"""
 PROCEED_WITH_SPEC=0
 
 if [ -e "$JOB_SPEC_FILE" ]; then
@@ -314,14 +317,15 @@ fi
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox']
                 ]
         else:
-            self.jobInputFiles = [ self.mainSandbox ]
+            self.jobInputFiles = [ self.specFiles[self.mainJobSpecName],
+                                   self.mainSandbox ]
             
 
         # // generate unique wrapper script
         logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
         executable = self.mainJobSpecName + '-submit'
         executablePath = "%s/%s" % (self.workingDir, executable)
-        logging.info("makeWrapperScript = %s" % executablePath)
+        logging.debug("makeWrapperScript = %s" % executablePath)
         self.makeWrapperScript( executablePath, "$1" )
 
         inpSandbox = ','.join( self.jobInputFiles )
@@ -385,7 +389,7 @@ fi
                           % self.singleSpecName
                 )
 
-
+        script.append( self.scriptEnd )
         script.append( "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % \
                        os.path.basename(self.mainSandbox) )
         script.append("cd %s\n" % self.workflowName)
