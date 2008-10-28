@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.20 2008/10/24 16:01:31 sryu Exp $"
-__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.21 2008/10/28 20:24:13 sryu Exp $"
+__version__ = "$Revision: 1.21 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -214,6 +214,8 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             newReport.siteDetails['HostName'] = workerNodeInfo['HostName']
             newReport.siteDetails['se-name'] = workerNodeInfo['se-name']
             newReport.siteDetails['ce-name'] = workerNodeInfo['ce-name']
+            newReport.addLogFile("/path/to/log/archive", "some.random.se.cern.ch")
+            
             return jobSpecPayload, newReport
 
         except Exception, ex:
