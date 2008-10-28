@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.19 2008/10/23 16:03:53 sryu Exp $"
-__version__ = "$Revision: 1.19 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.20 2008/10/24 16:01:31 sryu Exp $"
+__version__ = "$Revision: 1.20 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -148,7 +148,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             theFile.branches.extend(["fakeBranch_%d-%s.Rec" % (num, guid)
                                   for num in range(randrange(5,20))])
             #theFile.load(theFile.save())
-
+            theFile["BranchHash"] = randrange(2000000, 30000000)
             [ theFile.addInputFile("fakefile:%s" % x , "%s" % x )
               for x in inputFiles ]
 

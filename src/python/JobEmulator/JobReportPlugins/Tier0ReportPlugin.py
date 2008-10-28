@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: Tier0ReportPlugin.py,v 1.5 2008/10/22 21:04:39 sryu Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: Tier0ReportPlugin.py,v 1.6 2008/10/23 16:05:20 sryu Exp $"
+__version__ = "$Revision: 1.6 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -150,7 +150,7 @@ class Tier0ReportPlugin(JobReportPluginInterface):
             theFile.branches.extend(["fakeBranch_%d-%s.Rec" % (num, guid)
                                   for num in range(randrange(5,20))])
             #theFile.load(theFile.save())
-
+            theFile["BranchHash"] = randrange(2000000, 30000000)
             [ theFile.addInputFile("fakefile:%s" % x , "%s" % x )
               for x in inputFiles ]
 
@@ -178,7 +178,7 @@ class Tier0ReportPlugin(JobReportPluginInterface):
                 # parse dataset name set the size according to the threshold
                 if len(theFile.dataset) == 0:
                     continue
-            
+
                 datasetNameParts = theFile.dataset[0]["PrimaryDataset"].split('_')
                 # need to add sanity check
                 if self.thresholdForMerge > int(datasetNameParts[2]):
