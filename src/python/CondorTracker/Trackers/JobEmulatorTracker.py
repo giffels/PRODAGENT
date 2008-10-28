@@ -5,8 +5,8 @@ _JobEmulatorTracker_
 Tracker for Job Emulator submissions.
 """
 
-__revision__ = "$Id: JobEmulatorTracker.py,v 1.2 2008/08/26 17:17:06 sfoulkes Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: JobEmulatorTracker.py,v 1.3 2008/09/16 13:18:11 sfoulkes Exp $"
+__version__ = "$Revision: 1.3 $"
 
 import logging
 
@@ -63,12 +63,9 @@ class JobEmulatorTracker(TrackerPlugin):
 
             if jobState == "new":
                 self.TrackerDB.jobRunning(subId)
-            elif jobState == "failed":
-                self.TrackerDB.jobFailed(subId)
-                removeJob(subId)
-            elif jobState == "finished":
+            elif jobState == "failed" or jobState == "finished":
                 self.TrackerDB.jobComplete(subId)
-                removeJob(subId)                
+                removeJob(subId)
             else:
                 logging.error("Unknown job state: %s" % jobState)
     
