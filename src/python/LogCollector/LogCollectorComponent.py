@@ -203,7 +203,11 @@ class LogCollectorComponent:
         """
         logging.debug("look for logs to archive")
         
-        first_id, toArchive = getLogsToArchive(self.args['logLifetime'])
+        try:
+            first_id, toArchive = getLogsToArchive(self.args['logLifetime'])
+        except StandardError, ex:
+            logging.error("Error talking to database: %s" % str(ex))
+            return
         
         if not toArchive:
             logging.debug("no un-archived logs found")
