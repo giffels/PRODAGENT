@@ -45,6 +45,9 @@ def getLogsToArchive(age = None, update = True):
     Session.execute(sqlStr)
     temp = Session.fetchall()
     
+    if not temp:
+        return 0, temp
+    
     result = {}
     logs_to_archive = []
     id = temp[0][0]
@@ -53,7 +56,7 @@ def getLogsToArchive(age = None, update = True):
         logs_to_archive.append(log_id)
     
     if not result or not update:
-        return result
+        return id, result
 
     sqlStr = """UPDATE log_input SET status = 'inprogress'
                 WHERE id IN (%s)""" % str(reduce(reduceList, logs_to_archive))
