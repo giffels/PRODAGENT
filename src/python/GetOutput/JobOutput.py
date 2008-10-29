@@ -12,14 +12,13 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.18 2008/10/10 09:00:41 gcodispo Exp $"
-__revision__ = "$Revision: 1.18 $"
+__version__ = "$Id: JobOutput.py,v 1.16 2008/10/08 09:24:08 gcodispo Exp $"
+__revision__ = "$Revision: 1.16 $"
 
 import logging
 import os
 import traceback
 import threading
-from time import sleep
 
 # BossLite import
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
@@ -44,7 +43,7 @@ class JobOutput:
               'dropBoxPath' : None
               }
 
-    failureCodes = ['A', 'K']
+    failureCodes = ['A', 'K', 'SA']
 
     schedulerConfig = { 'timeout' : 300 } #,
     #                    'skipWMSAuth' : 1 }
@@ -120,7 +119,7 @@ class JobOutput:
                 job.runningJob['outputDirectory'] = cls.buildOutdir(job, task)
 
                 # job failed: perform postMortem operations and notify failure
-                if job.runningJob['status'] in cls.failureCodes:
+                if status in cls.failureCodes:
                     job = cls.handleFailed( job, task, schedSession)
 
                 # output at destination: just purge service
@@ -181,19 +180,13 @@ class JobOutput:
         """
 
         try:
-            logging.info('%s: Retrieving logging info' % cls.fullId( job ))
             outfile = job.runningJob['outputDirectory'] + '/loggingInfo.log'
             schedSession.postMortem( task, outfile = outfile )
-            if not os.path.exists(outfile) :
-                logging.error( '%s: Can not get logging info' % \
-                               cls.fullId( job  ) )
-                return
-                
             logging.info('%s: Retrieved logging info in %s' \
                          % (cls.fullId( job ), outfile ))
         except BossLiteError, err:
-            logging.error( '%s: Can not get logging info : [%s]' % \
-                           ( cls.fullId( job ), str(err) ) )
+            logging.info( '%s: Can not get logging info : [%s]' % \
+                          ( cls.fullId( job ), str(err) ) )
 
             # proxy expired: invalidate job and empty return
             if err.value.find( "Proxy Expired" ) != -1 :
@@ -284,9 +277,9 @@ class JobOutput:
 
                     # set as failed
                     job.runningJob['processStatus'] = 'failed'
-                    job.runningJob['status'] = 'A'
+                    job.runningJob['status'] = 'DA'
                     job.runningJob['statusReason'] = 'GetOutput failed 3 times'
-                    # cls.handleFailed( job, task, schedSession )
+                    cls.handleFailed( job, task, schedSession )
                 
                 logging.error("%s: retrieval failed: %s" % \
                               (cls.fullId( job ), str(err) ) )
@@ -311,7 +304,6 @@ class JobOutput:
                     # oops: What to do?!?!
                     logging.error("%s: no action taken: [%s]" % \
                                   (cls.fullId( job ), str(err) ) )
-                    sleep(3)
                     continue
 
         return job
@@ -384,10 +376,10 @@ class JobOutput:
 
         # allow job to be reprocessed
         try :
-            if job.runningJob['status'] in cls.failureCodes:
-                job.runningJob['processStatus'] = 'failed'
-            else:
+            if job.runningJob['status'] == 'SD':
                 job.runningJob['processStatus'] = 'output_requested'
+            else:
+                job.runningJob['processStatus'] = 'failed'
             bossLiteSession.updateDB( job )
         except:
             logging.warning(
