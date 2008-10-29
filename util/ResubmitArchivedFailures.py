@@ -79,7 +79,8 @@ def ResubmitJobs(TarFileList,FailureDir,ResubDir):
    #
    if tarfile.is_tarfile(ResubTarFile):
       jobtarfile = tarfile.open(ResubTarFile, 'r:gz')
-      specFileList=[tf for tf in jobtarfile.getnames() if tf.count("JobSpec.xml")]
+      specFileList=[tf for tf in jobtarfile.getnames() if (tf.count("JobSpec.xml") and not tf.count("BULK"))]
+
       tarspecFile=specFileList[0]
       #jobspecFile=os.path.join(ResubDir,os.path.basename(tarspecFile))  
       jobspecFile="%s/%s_%s"%(ResubDir,os.path.basename(tarspecFile),time.time())
