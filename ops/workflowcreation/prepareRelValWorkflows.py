@@ -93,6 +93,7 @@ def main(argv) :
     onestep = []
     step1 = []
     step2 = {}
+    step3 = {}
     parsedConditions = []
 
     try:
@@ -100,12 +101,15 @@ def main(argv) :
     except IOError:
         print 'file with list of parameter-sets cannot be opened!'
         sys.exit(1)
+    n_line = 0
     for line in file.readlines():
+        n_line += 1
         if line != '' and line != '\n' and line.find("#") != 0 and line.find('//') != 0 :
             # parse
-            primary = 'RelVal'+line.split('@@@')[0].strip()
-            array = line.split('@@@')[1].strip().split()
+            primary = 'RelVal' + line.split('@@@')[0].split('++')[1].strip()
             command = line.split('@@@')[1].strip()
+            if command.count('=') > 0 : command=command.replace('=',' ')
+            array = command.split()
             if '--conditions' in array:
                 conditions = array[array.index('--conditions')+1].split(',')[1].split('::')[0].strip()
                 if conditions not in parsedConditions: parsedConditions.append(conditions)
@@ -114,7 +118,9 @@ def main(argv) :
             if '--relval' in array :
                 totalEvents = array[array.index('--relval')+1].split(',')[0].strip()
                 eventsPerJob = array[array.index('--relval')+1].split(',')[1].strip()
-            outputname = primary + '_' + conditions + '.py'
+            SimType = ''
+            if command.find('FASTSIM') != -1 : SimType = '_FastSim'
+            outputname = primary + '_' + conditions + SimType + '.py'
 
             # add command options
             if command.find('no_exec') < 0:
@@ -130,7 +136,10 @@ def main(argv) :
                     dict['outputname'] = outputname
                     step2[conditions] = dict
                 elif primary.find('ALCA') >= 0 :
-                    # do nothing for now
+                    dict = {}
+                    dict['command'] = command
+                    dict['outputname'] = outputname
+                    step3[conditions] = dict
                     a=1
                 else :
                     dict = {}
@@ -140,9 +149,21 @@ def main(argv) :
                     dict['totalEvents'] = totalEvents
                     dict['eventsPerJob'] = eventsPerJob
                     dict['outputname'] = outputname
+                    dict['version'] = ""
+                    if SimType == '_FastSim' :
+                        dict['version'] = 'FastSim_'
                     onestep.append(dict)
             else :
                 dict = {}
+                chain = line.split('@@@')[0].split('++')[-1].split(',')
+                if chain[0].strip()[-1] != chain[-1].strip()[-1] :
+                    print "The second and the third step should have the same number"
+                    print "Error: File " + samples +  ", Line " + n_line + "."
+                    sys.exit(1)
+                if len(chain) >= 2 :
+                    dict['steps'] = 3
+                else :
+                    dict['steps'] = 2
                 dict['command'] = command
                 dict['primary'] = primary
                 dict['conditions'] = conditions
@@ -178,7 +199,11 @@ def main(argv) :
             print ''
         print 'collected information step 2'
         for condition in step2.keys() :
-            print 'step 2 condition:',condition,'command:',step2[condition]['command'],'outputname:',step2[condition]['outputname']
+            print 'step 2 condition:',condition,' command:',step2[condition]['command'],' outputname:',step2[condition]['outputname']
+            print ''
+        print 'collected information step 3'
+        for condition in step3.keys() :
+            print 'step 3 condition:',condition,' command:',step3[condition]['command'],' outputname:',step3[condition]['outputname']
             print ''
         print 'collected information onestep'
         for sample in onestep:
@@ -196,30 +221,35 @@ def main(argv) :
     print ''
     for sample in step1:
         proc = popen2.Popen3(sample['command'])
-        proc.wait()
-        exitCode = proc.fromchild.close()
-        if exitCode == None :
-            exitValue = 0
-            print 'cmsDriver command for step 1 to produce:',sample['outputname'],'exited with ExitCode:',exitValue
+        exitCode = proc.wait()
+        if exitCode == 0 :
+            print 'cmsDriver command for step 1 to produce:',sample['outputname'],'exited with ExitCode:',exitCode
         else :
-            exitValue = exitCode
-            print 'cmsDriver command for step 1 to produce:',sample['outputname'],'failed with ExitCode:',exitValue
+            print 'cmsDriver command for step 1 to produce:',sample['outputname'],'failed with ExitCode:',exitCode
             sys.exit(1)
-
 
     print ''
     print 'Executing cmsDriver commands for step 2 configurations'
     print ''
     for condition in step2.keys() :
         proc = popen2.Popen3(step2[condition]['command'])
-        proc.wait()
-        exitCode = proc.fromchild.close()
-        if exitCode == None :
-            exitValue = 0
-            print 'cmsDriver command for step 2 to produce:',step2[condition]['outputname'],'exited with ExitCode:',exitValue
+        exitCode = proc.wait()
+        if exitCode == 0 :
+            print 'cmsDriver command for step 2 to produce:',step2[condition]['outputname'],'exited with ExitCode:',exitCode
         else :
-            exitValue = exitCode
-            print 'cmsDriver command for step 2 to produce:',step2[condition]['outputname'],'failed with ExitCode:',exitValue
+            print 'cmsDriver command for step 2 to produce:',step2[condition]['outputname'],'failed with ExitCode:',exitCode
+            sys.exit(1)
+
+    print ''
+    print 'Executing cmsDriver commands for step 3 configurations'
+    print ''
+    for condition in step3.keys() :
+        proc = popen2.Popen3(step3[condition]['command'])
+        exitCode = proc.wait()
+        if exitCode == 0 :
+            print 'cmsDriver command for step 3 to produce:',step3[condition]['outputname'],'exited with ExitCode:',exitCode
+        else :
+            print 'cmsDriver command for step 3 to produce:',step3[condition]['outputname'],'failed with ExitCode:',exitCode
             sys.exit(1)
 
     print ''
@@ -227,14 +257,11 @@ def main(argv) :
     print ''
     for sample in onestep:
         proc = popen2.Popen3(sample['command'])
-        proc.wait()
-        exitCode = proc.fromchild.close()
-        if exitCode == None :
-            exitValue = 0
-            print 'cmsDriver command for onestep to produce:',sample['outputname'],'exited with ExitCode:',exitValue
+        exitCode = proc.wait()
+        if exitCode == 0 :
+            print 'cmsDriver command for onestep to produce:',sample['outputname'],'exited with ExitCode:',exitCode
         else :
-            exitValue = exitCode
-            print 'cmsDriver command for onestep to produce:',sample['outputname'],'failed with ExitCode:',exitValue
+            print 'cmsDriver command for onestep to produce:',sample['outputname'],'failed with ExitCode:',exitCode
             sys.exit(1)
 
     print ''
@@ -247,51 +274,75 @@ def main(argv) :
 
     # create workflows
     for sample in step1:
-        command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
-        command += '--version=' + version + ' \\\n'
-	command += '--py-cfg=' + sample['outputname'] + ' \\\n'
-        command += '--version=' + version + ' \\\n'
-        command += '--py-cfg=' + step2[sample['conditions']]['outputname']+ ' \\\n'
-        command += '--stageout-intermediates=true \\\n'
-        command += '--group=RelVal \\\n'
-        command += '--category=relval \\\n'
-        command += '--activity=RelVal \\\n'
-        command += '--acquisition_era=' + version + ' \\\n'
-        command += '--conditions=' + sample['conditions'] + ' \\\n'
-        command += '--processing_version=' + processing_version + ' \\\n'
-        command += '--only-sites=srm.cern.ch \\\n'
-        command += '--starting-run=' + initial_run + ' \\\n'
-	if initial_event != None :
-		command += '--starting-event=' + initial_event + ' \\\n'
-        command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
-        command += '--eventsperjob=' + sample['eventsPerJob']
+        if sample['steps'] == 2 :
+            command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
+            command += '--version=' + version + ' \\\n'
+            command += '--py-cfg=' + sample['outputname'] + ' \\\n'
+            command += '--version=' + version + ' \\\n'
+            command += '--py-cfg=' + step2[sample['conditions']]['outputname']+ ' \\\n'
+            command += '--stageout-intermediates=true \\\n'
+            command += '--group=RelVal \\\n'
+            command += '--category=relval \\\n'
+            command += '--activity=RelVal \\\n'
+            command += '--acquisition_era=' + version + ' \\\n'
+            command += '--conditions=' + sample['conditions'] + ' \\\n'
+            command += '--processing_version=' + processing_version + ' \\\n'
+            command += '--only-sites=srm.cern.ch \\\n'
+            command += '--starting-run=' + initial_run + ' \\\n'
+            if initial_event != None :
+                command += '--starting-event=' + initial_event + ' \\\n'
+            command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
+            command += '--eventsperjob=' + sample['eventsPerJob']
+        else :
+            command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
+            command += '--version=' + version + ' \\\n'
+            command += '--py-cfg=' + sample['outputname'] + ' \\\n'
+            command += '--version=' + version + ' \\\n'
+            command += '--py-cfg=' + step2[sample['conditions']]['outputname']+ ' \\\n'
+            command += '--stageout-intermediates=true \\\n'
+            command += '--version=' + version + ' \\\n'
+            command += '--py-cfg=' + step3[sample['conditions']]['outputname']+ ' \\\n'
+            command += '--stageout-intermediates=true \\\n'
+            command += '--group=RelVal \\\n'
+            command += '--category=relval \\\n'
+            command += '--activity=RelVal \\\n'
+            command += '--acquisition_era=' + version + ' \\\n'
+            command += '--conditions=' + sample['conditions'] + ' \\\n'
+            command += '--processing_version=' + processing_version + ' \\\n'
+            command += '--only-sites=srm.cern.ch \\\n'
+            command += '--starting-run=' + initial_run + ' \\\n'
+            if initial_event != None :
+                command += '--starting-event=' + initial_event + ' \\\n'
+            command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
+            command += '--eventsperjob=' + sample['eventsPerJob']
 
         if debug == 1 :
             print command
             print ''
         
         proc = popen2.Popen3(command)
-        proc.wait()
+        ExitCode = proc.wait()
         output = proc.fromchild.readlines()
 
         if debug == 1 :
             print output
             print ''
 
-        exitCode = proc.fromchild.close()
-        if exitCode == None :
-            exitValue = 0
+        if exitCode == 0 :
             # parse output
             tmp = []
-            tmp.append(output[-2].strip())
-            tmp.append(output[-1].strip())
+            index = FindIndex(output,'Output Datasets')
+            for dataset in output[index+1:] : tmp.append(dataset.strip())
             tmp.sort()
             unmergedDatasets.append(tmp)
-            workflow = output[-5].strip().split()[1]
+            index = FindIndex(output,'Created')
+            if index == -1 :
+                print "No workflow was created by createProductionWorkflow_CSAi08Hack.py"
+                sys.exit(1)
+            workflow = output[index].split()[1].strip()
             workflows.append(workflow)
-            print 'workflow creation command for workflow:',workflow,'exited with ExitCode:',exitValue
+            print 'workflow creation command for workflow:',workflow,'exited with ExitCode:',exitCode
         else :
-            exitValue = exitCode
             print 'workflow creation command:'
             print command
             print 'failed'
@@ -307,11 +358,11 @@ def main(argv) :
         command += '--activity=RelVal \\\n'
         command += '--acquisition_era=' + version + ' \\\n'
         command += '--conditions=' + sample['conditions'] + ' \\\n'
-        command += '--processing_version=' + processing_version + ' \\\n'
+        command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
         command += '--only-sites=srm.cern.ch \\\n'
         command += '--starting-run=' + initial_run + ' \\\n'
-	if initial_event != None :
-		command += '--starting-event=' + initial_event + ' \\\n'
+        if initial_event != None :
+            command += '--starting-event=' + initial_event + ' \\\n'
         command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
         command += '--eventsperjob=' + sample['eventsPerJob']
 
@@ -320,29 +371,40 @@ def main(argv) :
             print ''
         
         proc = popen2.Popen3(command)
-        proc.wait()
+        exitCode = proc.wait()
         output = proc.fromchild.readlines()
 
         if debug == 1 :
             print output
             print ''
         
-        exitCode = proc.fromchild.close()
-        if exitCode == None :
-            exitValue = 0
+        if exitCode == 0 :
             # parse output
-            tmp = [output[-1].strip()]
+            tmp = []
+            index = FindIndex(output,'Output Datasets')
+            for dataset in output[index+1:] : tmp.append(dataset.strip())
+            tmp.sort()
             unmergedDatasets.append(tmp)
-            workflow = output[-4].strip().split()[1]
-            workflows.append(workflow)
-            print 'workflow creation command for workflow:',workflow,'exited with ExitCode:',exitValue
+            index = FindIndex(output,'Created')
+            if index == -1 :
+                print "No workflow was created by createProductionWorkflow_CSAi08Hack.py"
+                sys.exit(1)
+            workflow = output[index].split()[1].strip()
+            workflows.append(workflow) 
+            print 'workflow creation command for workflow:',workflow,'exited with ExitCode:',exitCode
         else :
             exitValue = exitCode
             print 'workflow creation command:'
             print command
             print 'failed'
             sys.exit(1)
-
+    
+    if debug == 1 :
+        print 'Created workflows:'
+        print workflows	
+        print ''
+        print "Unmerged datasets:"
+        print unmergedDatasets
 
     # extract merged datasets
     for sample in unmergedDatasets:
@@ -353,7 +415,7 @@ def main(argv) :
 
     print ''
     print 'Write helper scripts'
-    print
+    print ''
 
     # WorkflowInjector:Input script
     inputScript = open('input.sh','w')
@@ -379,11 +441,6 @@ def main(argv) :
     migrateScript = open('migrateToGlobal.sh','w')
     migrateScript.write('#!/bin/bash\n')
     for sample in mergedDatasets :
-        if len(sample) > 1 :
-            migrateScript.write('python2.4 $DBS_CLIENT_ROOT/Clients/Python/DBSAPI/UserExamples/dbsRemap.py ' + sample[0] + ' ' + sample[1] + '\n')
-        else :
-            migrateScript.write('python2.4 $DBS_CLIENT_ROOT/Clients/Python/DBSAPI/UserExamples/dbsRemapOnelevel.py ' + sample[0] + '\n')
-    for sample in mergedDatasets :
         for dataset in sample :
             migrateScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py DBSInterface:MigrateDatasetToGlobal ' + dataset + '\n')
     migrateScript.close()
@@ -404,7 +461,9 @@ def main(argv) :
     queryUnmergedScript = open('queryUnmerged.sh','w')
     queryUnmergedScript.write('#!/bin/bash\n')
     for sample in unmergedDatasets :
-        queryUnmergedScript.write('python2.4 $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + sample[0] + ' | grep total\n')
+        for dataset in sample :
+            if dataset.find('-RECO') == -1 or len(sample) == 1 :
+                queryUnmergedScript.write('python2.4 $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + dataset + ' | grep total\n')
     queryUnmergedScript.close()
     os.chmod('queryUnmerged.sh',0755)
     print 'Wrote DBS query script for unmerged datasets to:',os.path.join(os.getcwd(),'queryUnmerged.sh')
@@ -413,12 +472,35 @@ def main(argv) :
     queryMergedScript = open('queryMerged.sh','w')
     queryMergedScript.write('#!/bin/bash\n')
     for sample in mergedDatasets :
-        queryMergedScript.write('python2.4 $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL + ' --datasetPath=' + sample[0] + ' | grep total\n')
+        for dataset in sample :
+            if dataset.find('-RECO') == -1 or len(sample) == 1 :
+                queryMergedScript.write('python2.4 $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + dataset + ' | grep total\n')
     queryMergedScript.close()
     os.chmod('queryMerged.sh',0755)
     print 'Wrote DBS query script for merged datasets to:',os.path.join(os.getcwd(),'queryMerged.sh')
 
+    # DQMHarvesting
+    DQMinputScript = open('DQMinput.sh','w')
+    DQMinputScript.write("#!/bin/bash\n")
+    for sample in mergedDatasets :
+        for dataset in sample :
+            if dataset.find('RECO') != -1 :
+                primary = dataset.split("/")[1]
+                processed = dataset.split("/")[2]
+                tier = dataset.split("/")[3]
+                DQMinputScript.write('python2.4 $PRODAGENT_ROOT/util/harvestDQM.py  --run=1 --primary=' + primary  + ' --processed=' + processed + ' --tier=' + tier + '\n' )
+    os.chmod('DQMinput.sh',0755)
+    print 'Wrote DQMHarvesting script for merged datasets to:', os.path.join(os.getcwd(),'DQMinput.sh')
+
     print ''
 
+def FindIndex(output,string) :
+    index = -1
+    counter = 0
+    for field in output :
+        if field.find(string) != -1 : index = counter
+        counter += 1
+    return index
+ 
 if __name__ == '__main__' :
     main(sys.argv[1:])
