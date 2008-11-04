@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.10 2008/10/08 13:17:43 gcodispo Exp $"
-__revision__ = "$Revision: 1.10 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.11 2008/10/09 07:33:14 gcodispo Exp $"
+__revision__ = "$Revision: 1.11 $"
 
 import os
 import logging
@@ -16,6 +16,7 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 from MessageService.MessageService import MessageService
 import ProdAgentCore.LoggingUtils as LoggingUtils
 from ProdCommon.Database import Session
+from ProdAgent.WorkflowEntities import JobState
 
 # GetOutput
 from GetOutput.JobOutput import JobOutput
@@ -23,7 +24,7 @@ from GetOutput.JobHandling import JobHandling
 
 # BossLite support
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
-from ProdCommon.BossLite.Common.Exceptions import BossLiteError, DbError
+from ProdCommon.BossLite.Common.Exceptions import BossLiteError, JobError
 
 # Threads
 from ProdCommon.ThreadTools.WorkQueue import WorkQueue
@@ -48,9 +49,10 @@ class GetOutputComponent:
         self.args.setdefault("OutputLocation", "local")
         self.args.setdefault("dropBoxPath", None)
         self.args.setdefault("Logfile", None)
-        self.args.setdefault("verbose", 0)
+        self.args.setdefault("verbose", 1) # tmp for testing
         self.args.setdefault("configDir", None)
         self.args.setdefault('maxGetOutputAttempts', 3)
+        self.args.setdefault('skipWMSAuth', None)
         self.args.update(args)
 
        # set up logging for this component
@@ -58,7 +60,6 @@ class GetOutputComponent:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'], \
                                                 "ComponentLog")
         LoggingUtils.installLogHandler(self)
-        logging.getLogger().setLevel(logging.DEBUG)
 
         logging.info("GetOutput Component Initializing...")
 
@@ -76,33 +77,37 @@ class GetOutputComponent:
                          seconds.zfill(2)
 
         # get configuration information
-        #workingDir = self.args['ProdAgentWorkDir']
-        #workingDir = os.path.expandvars(workingDir)
-        self.verbose = (self.args["verbose"] == 1)
+        if self.args["verbose"] == 1 :
+            logging.getLogger().setLevel(logging.DEBUG)
 
         # temp for rebounce
         try :
-            self.outputParams = {}
-            self.outputParams["storageName"] = self.args["storageName"]
-            self.outputParams["Protocol"]    = self.args["Protocol"]
-            self.outputParams["storagePort"] = self.args["storagePort"]
+            outputParams = {}
+            outputParams["storageName"] = self.args["storageName"]
+            outputParams["Protocol"]    = self.args["Protocol"]
+            outputParams["storagePort"] = self.args["storagePort"]
         except KeyError:
-            self.outputParams = None
+            outputParams = None
 
         # initialize members
         self.ms = None
-        self.maxGetOutputAttempts = 3
         self.database = dbConfig
         self.bossLiteSession = \
                              BossLiteAPI('MySQL', self.database, makePool=True)
         self.sessionPool = self.bossLiteSession.bossLiteDB.getPool()
 
+        # set job handling parameters
+        jobHandlingParams = {}
+        jobHandlingParams['componentDir'] = self.args['JobTrackingDir']
+        jobHandlingParams['dropBoxPath'] = self.args['dropBoxPath']
+        jobHandlingParams['OutputLocation'] = self.args['OutputLocation']
+        jobHandlingParams['OutputParams'] = outputParams
+
         # create pool thread for get output operations
         params = {}
-        params['componentDir'] = self.args['JobTrackingDir']
+        params['skipWMSAuth'] = self.args['skipWMSAuth']
         params['sessionPool'] = self.sessionPool
-        params['OutputLocation'] = self.args['OutputLocation']
-        params['dropBoxPath'] = self.args['dropBoxPath']
+        params['jobHandlingParams'] = jobHandlingParams
         params['maxGetOutputAttempts'] = \
                                        int( self.args['maxGetOutputAttempts'] )
 
@@ -111,6 +116,11 @@ class GetOutputComponent:
         JobOutput.setParameters(params)
         self.pool = WorkQueue([JobOutput.doWork] * \
                               int(self.args["GetOutputPoolThreadsSize"]))
+        
+        # initialize job handling object
+        jobHandlingParams['bossLiteSession'] = self.bossLiteSession
+        logging.info("handleeee")
+        self.jobHandling = JobHandling(jobHandlingParams)
 
         # recreate interrupted get output operations
         JobOutput.recreateOutputOperations(self.pool)
@@ -122,7 +132,6 @@ class GetOutputComponent:
         # some initializations
         self.jobLimit = int(self.args['jobsToPoll'])
         self.newJobs = []
-        self.jobHandling = None
         self.jobFinished = None
         self.finishedAttrs = {'processStatus': 'output_requested',
                               'closed' : 'N'}
@@ -185,7 +194,7 @@ class GetOutputComponent:
         # process outputs if ready
         loop = True
         while loop :
-            loop = self.processOutput(self.jobHandling.performOutputProcessing)
+            loop = self.processOutput()
         logging.debug("Finished processing of outputs")
 
         logging.debug(
@@ -199,7 +208,7 @@ class GetOutputComponent:
         # process failure reports if ready
         loop = True
         while loop :
-            loop = self.processOutput(self.jobHandling.performErrorProcessing)
+            loop = self.processOutput()
         logging.debug("Finished processing of failed")
 
         # how many active threads?
@@ -278,7 +287,7 @@ class GetOutputComponent:
         del self.newJobs[:]
 
 
-    def processOutput(self, action):
+    def processOutput(self):
         """
         __processOutput__
         """
@@ -306,32 +315,112 @@ class GetOutputComponent:
 
         # ok: job finished!
         else :
-            job = self.jobFinished[1]
-            logging.debug("%s: Processing output" % JobOutput.fullId( job ) )
-
-        # perform processing
-        try :
-            action(job)
-
-            # update status
-            job.runningJob['processStatus'] = 'processed'
-            job.runningJob['closed'] = 'Y'
-            self.bossLiteSession.updateDB( job )
-        except BossLiteError, err:
-            logging.error( "%s failed to process output : %s" % \
-                           (JobOutput.fullId( job ), str(err) ) )
-        except Exception, err:
-            logging.error( "%s failed to process output : %s" % \
-                           (JobOutput.fullId( job ), str(err) ) )
-        except :
-            logging.error( "%s failed to process output : %s" % \
-                           (JobOutput.fullId( job ), \
-                            str( traceback.format_exc() )  ) )
-
-        logging.debug("%s : Processing output finished" % \
-                      JobOutput.fullId( job ) )
+            job, success, reportfilename = self.jobFinished[1]
+            if success :
+                self.publishJobSuccess( job, reportfilename )
+            else:
+                self.publishJobFailed( job, reportfilename )
+            logging.debug("%s: Finished" % JobOutput.fullId( job ) )
 
         return True
+
+
+    def publishJobSuccess(self, job, reportfilename):
+        """
+        __publishJobSuccess__
+        """
+
+        # publish success event
+        self.ms.publish("JobSuccess", reportfilename)
+        self.ms.commit()
+
+        logging.info("Published JobSuccess with payload :%s" % \
+                     reportfilename)
+        self.notifyJobState(job)
+        
+        return
+
+
+    def publishJobFailed(self, job, reportfilename):
+        """
+        __publishJobFailed__
+        """
+
+        # set failed job status
+        if self.args['OutputLocation'] != "SE" :
+            reportfilename = \
+                          JobHandling.archiveJob("Failed", job, reportfilename)
+        else :
+            # archive job
+            try :
+                self.bossLiteSession.archive( job )
+            except JobError:
+                logging.error("Job %s : Unable to archive in BossLite" % \
+                              JobOutput.fullId(job) )
+
+        # publish job failed event
+        self.ms.publish("JobFailed", reportfilename)
+        self.ms.commit()
+
+        logging.info("Job %s : published JobFailed with payload: %s" % \
+                     (JobOutput.fullId(job), reportfilename) )
+
+        return
+    
+
+    def notifyJobState(self, job):
+        """
+        __notifyJobState__
+
+        Notify the JobState DB of finished jobs
+        """
+
+        # set finished job state
+        try:
+            try:
+                JobState.finished(job['name'])
+                Session.commit()
+            except :
+                logging.warning(
+                    "failed connection for JobState Notify, trying recovery" )
+                self.recreateSession()
+                JobState.finished(job['name'])
+                Session.commit()
+
+            logging.info("Job %s finished: JobState DB Notified" % \
+                         JobOutput.fullId(job) )
+        # error
+        except Exception, ex:
+            msg = "Error setting job state to finished for job: %s\n" \
+                  % str(job['name'])
+            msg += str(ex)
+            logging.error(msg)
+        except :
+            msg = "Error setting job state to finished for job: %s\n" \
+                  % str(job['name'])
+            msg += traceback.format_exc()
+            logging.error(msg)
+
+        return
+
+
+    def recreateSession(self):
+        """
+        __recreateSession__
+
+        fix to recreate standard default session object
+        """
+
+        Session.set_database(self.database)
+
+        # force a re connect operation
+        try:
+            Session.session['default']['connection'].close()
+        except:
+            pass
+        Session.session = {}
+        Session.set_database(self.database)
+        Session.connect()
 
 
     def startComponent(self):
@@ -357,19 +446,6 @@ class GetOutputComponent:
         self.ms.remove("GetOutputComponent:pollDB")
         self.ms.publish("GetOutputComponent:pollDB", "")
         self.ms.commit()
-
-        # initialize job handling object
-        params = {}
-        params['baseDir'] = self.args['JobTrackingDir']
-        params['jobCreatorDir'] = self.args["ComponentDir"]
-        params['usingDashboard'] = None
-        params['messageServiceInstance'] = self.ms
-        params['OutputLocation'] = self.args['OutputLocation']
-        params['OutputParams'] = self.outputParams
-        params['bossLiteSession'] = self.bossLiteSession
-        params['database'] = self.database
-        logging.info("handleeee")
-        self.jobHandling = JobHandling(params)
 
         # wait for messages
         logging.info("waiting for mexico" )

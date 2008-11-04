@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.18 2008/10/10 09:00:41 gcodispo Exp $"
-__revision__ = "$Revision: 1.18 $"
+__version__ = "$Id: JobOutput.py,v 1.19 2008/10/10 13:24:49 gcodispo Exp $"
+__revision__ = "$Revision: 1.19 $"
 
 import logging
 import os
@@ -26,6 +26,7 @@ from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
 from ProdCommon.BossLite.API.BossLiteAPISched import BossLiteAPISched
 from ProdCommon.BossLite.Common.Exceptions import DbError
 from ProdCommon.BossLite.Common.Exceptions import BossLiteError
+from GetOutput.JobHandling import JobHandling
 
 ###############################################################################
 # Class: JobOutput                                                            #
@@ -38,16 +39,16 @@ class JobOutput:
 
     # default parameters
     params = {'maxGetOutputAttempts' : 3,
-              'componentDir' : None,
               'sessionPool' : None,
+              'skipWMSAuth' : None,
               'OutputLocation' : None,
-              'dropBoxPath' : None
+              'jobHandlingParams' : None
               }
 
     failureCodes = ['A', 'K']
 
-    schedulerConfig = { 'timeout' : 300 } #,
-    #                    'skipWMSAuth' : 1 }
+    schedulerConfig = { 'timeout' : 300 }
+
 
     def __init__(self):
         """
@@ -55,13 +56,20 @@ class JobOutput:
         """
         pass
 
+
     @classmethod
     def setParameters(cls, params):
         """
         set parameters
         """
 
+        if params['skipWMSAuth'] is not None :
+            cls.schedulerConfig['skipWMSAuth'] = 1
+            logging.info('Skipping WMS ssl authentication')
+
         cls.params.update( params )
+        cls.params['OutputLocation'] = \
+                              cls.params['jobHandlingParams']['OutputLocation']
 
 
     @classmethod
@@ -85,17 +93,25 @@ class JobOutput:
             bossLiteSession = \
                            BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
 
+            # instantiate JobHandling object
+            cls.params['jobHandlingParams']['bossLiteSession'] = \
+                                                               bossLiteSession
+            jobHandling = JobHandling(cls.params['jobHandlingParams'])
+
             # verify the status
             status = job.runningJob['processStatus']
+
+            # a variable to check if the output already retrieved
+            skipRetrieval = False            
 
             # output retrieved before, then recover interrupted operation
             if status == 'output_retrieved':
                 logging.warning("%s: Enqueuing previous ouput" % \
                                 cls.fullId( job ) )
-                return job
+                skipRetrieval = True
 
             # non expected status, abandon processing for job
-            if status != 'in_progress' :
+            elif status != 'in_progress' :
                 logging.error("%s: Cannot get output, status is %s" % \
                               (cls.fullId( job ), status) )
                 return
@@ -107,44 +123,45 @@ class JobOutput:
                     (cls.fullId( job ), status) )
                 job.runningJob['processStatus'] = 'output_retrieved'
                 bossLiteSession.updateDB( job )
-                return job
+                skipRetrieval = True
 
-            schedSession = None
-            try:
-                # both for failed and done, a scheduler instance is needed:
-                task = bossLiteSession.getTaskFromJob( job )
-                schedSession = BossLiteAPISched( bossLiteSession, \
-                                                 cls.schedulerConfig, task )
-
-                # build needed output directory
-                job.runningJob['outputDirectory'] = cls.buildOutdir(job, task)
-
+            if skipRetrieval :
                 # job failed: perform postMortem operations and notify failure
                 if job.runningJob['status'] in cls.failureCodes:
-                    job = cls.handleFailed( job, task, schedSession)
+                    ret = jobHandling.performErrorProcessing(job)
+                else:
+                    ret = jobHandling.performOutputProcessing(job)
 
-                # output at destination: just purge service
-                elif cls.params['OutputLocation'] == 'SE' or \
-                         cls.params['OutputLocation'] == 'SEcopy':
-                    cls.purgeService( job, task, schedSession)
+            else :
+                ret = cls.action( bossLiteSession, job, jobHandling )
 
-                # get output, trying at most maxGetOutputAttempts
-                else :
-                    job = cls.getOutput( job, task, schedSession)
+            if ret is not None:
 
-                # if success, the job is returned: update and return!
-                if job is not None:
+                job, success, reportfilename = ret
+                
+                logging.debug("%s: Processing output" % cls.fullId( job ) )
+                
+                # perform processing
+                try :
+                    # update status
+                    job.runningJob['processStatus'] = 'processed'
+                    job.runningJob['closed'] = 'Y'
                     bossLiteSession.updateDB( job )
+                except BossLiteError, err:
+                    logging.error( "%s failed to process output : %s" % \
+                                   (cls.fullId( job ), str(err) ) )
+                except Exception, err:
+                    logging.error( "%s failed to process output : %s" % \
+                                   (cls.fullId( job ), str(err) ) )
+                except :
+                    logging.error( "%s failed to process output : %s" % \
+                                   (cls.fullId( job ), \
+                                    str( traceback.format_exc() )  ) )
 
-                # return job info
-                return job
+                logging.debug("%s : Processing output finished" % \
+                              cls.fullId( job ) )
 
-            except BossLiteError, err:
-                logging.error('%s: Can not get scheduler : [%s]' % \
-                              (cls.fullId( job ), str(err) ))
-
-                # allow job to be reprocessed
-                cls.recoverStatus( job, bossLiteSession )
+                return (job, success, reportfilename)
 
         # thread has failed
         except Exception, ex :
@@ -167,8 +184,60 @@ class JobOutput:
             logging.error( "%s: GetOutputThread traceback: %s" % \
                            ( cls.fullId( job ), traceback.format_exc() ) )
 
-        # return also the id
-        # return job
+            
+
+    @classmethod
+    def action(cls, bossLiteSession, job, jobHandling):
+        """
+        perform an action on the configuration bases
+        """
+
+        schedSession = None
+        try:
+            # both for failed and done, a scheduler instance is needed:
+            task = bossLiteSession.getTaskFromJob( job )
+            schedSession = BossLiteAPISched( bossLiteSession, \
+                                             cls.schedulerConfig, task )
+
+            # build needed output directory
+            job.runningJob['outputDirectory'] = \
+                                            jobHandling.buildOutdir(job, task)
+
+            # job failed: perform postMortem operations and notify failure
+            if job.runningJob['status'] in cls.failureCodes:
+                job = cls.handleFailed( job, task, schedSession)
+                if job is None:
+                    return
+                ret = jobHandling.performErrorProcessing(job)
+
+            # output at destination: just purge service
+            elif cls.params['OutputLocation'] == 'SE' or \
+                     cls.params['OutputLocation'] == 'SEcopy':
+                job = cls.purgeService( job, task, schedSession)
+                if job is None:
+                    return
+                ret = jobHandling.performOutputProcessing(job)
+
+            # get output, trying at most maxGetOutputAttempts
+            else :
+                job = cls.getOutput( job, task, schedSession)
+                if job is None:
+                    return
+                ret = jobHandling.performOutputProcessing(job)
+
+            # if success, the job is returned: update and return!
+            bossLiteSession.updateDB( job )
+
+            # return job info
+            return ret
+
+        except BossLiteError, err:
+            logging.error('%s: Can not get scheduler : [%s]' % \
+                          (cls.fullId( job ), str(err) ))
+
+            # allow job to be reprocessed
+            cls.recoverStatus( job, bossLiteSession )
+
 
 
     @classmethod
@@ -222,7 +291,7 @@ class JobOutput:
             # log warnings and errors collected by the scheduler session
             log = str(schedSession.getLogger())
             if log is not None:
-                logging.info( log )
+                logging.info( str(log ) )
 
         except BossLiteError, err:
             logging.warning( "%s: Warning, failed to purge : %s" \
@@ -234,6 +303,7 @@ class JobOutput:
                 job.runningJob['closed'] = 'Y'
 
             return
+
 
         return job
 
@@ -393,59 +463,6 @@ class JobOutput:
             logging.warning(
                '%s: unable to recover job status, restart component to retry' \
                %  cls.fullId( job ) )
-
-
-
-    @classmethod
-    def buildOutdir( cls, job, task ) :
-        """
-        __buildOutdir__
-
-        compose outdir name and make the directory
-        """
-
-        # try with boss db
-        if job.runningJob['outputDirectory'] is not None :
-            outdir = job.runningJob['outputDirectory']
-
-        # try to compose the path from task
-        else :
-            # SE?
-            if cls.params['OutputLocation'] == "SE" or \
-                cls.params['OutputLocation'] == "SEcopy" :
-                outdir = \
-                       cls.params['dropBoxPath'] + '/' + task['name'] + '_spec'
-
-            # fallback to task directory
-            elif task['outputDirectory'] is not None \
-                   and task['outputDirectory'] != '' :
-                outdir = task['outputDirectory']
-
-            # fallback to the component directory
-            else :
-                outdir = cls.params['componentDir']
-
-
-            # FIXME: get outdir
-            outdir = "%s/BossJob_%s_%s/Submission_%s/" % \
-                 (outdir, job['taskId'], job['jobId'], job['submissionNumber'])
-
-        # make outdir
-        logging.info("%s: Creating directory %s" % \
-                     (cls.fullId( job ), outdir))
-        try:
-            os.makedirs( outdir )
-        except OSError, err:
-            if  err.errno == 17:
-                # existing dir
-                pass
-            else :
-                logging.error("%s: Cannot create directory %s : %s" % \
-                     (cls.fullId( job ), outdir, str(err)))
-                raise err
-
-        # return outdir
-        return outdir
 
 
     @classmethod

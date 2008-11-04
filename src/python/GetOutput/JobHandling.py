@@ -5,19 +5,16 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.8 2008/10/06 09:22:08 gcodispo Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: JobHandling.py,v 1.9 2008/10/07 17:07:27 gcodispo Exp $"
+__version__ = "$Revision: 1.9 $"
 
 import os
 import logging
 import re
 from shutil import copy
-#from shutil import rmtree
+import threading
 
 # PA configuration
-from ProdAgent.WorkflowEntities import JobState
-#from ProdAgent.WorkflowEntities import Job as WEJob
-from ProdCommon.Database import Session
 #from ProdAgentCore.ProdAgentException import ProdAgentException
 
 # Blite API import
@@ -44,12 +41,10 @@ class JobHandling:
         """
 
         # store parameters and open a connection
-        self.baseDir = params['baseDir']
-        self.jobCreatorDir = params['jobCreatorDir']
-        self.ms = params['messageServiceInstance']
+        self.componentDir = params['componentDir']
+        self.dropBoxPath = params['dropBoxPath']
         self.outputLocation = params['OutputLocation']
         self.bossLiteSession = params['bossLiteSession']
-        self.database = params['database']
         self.configs = params['OutputParams']
         self.ft = re.compile( 'gsiftp://[-\w.]+[:\d]*/*' )
 
@@ -132,18 +127,18 @@ class JobHandling:
 
 
         # in both cases: is the job successful?
-        if success:
+        #if success:
 
             # yes, generate a job successful message and change status
-            self.publishJobSuccess(job, reportfilename)
-            self.notifyJobState(jobSpecId)
+            #self.publishJobSuccess(job, reportfilename)
+            #self.notifyJobState(jobSpecId)
 
-        else:
+        #else:
 
             # no, generate a job failure message
-            self.publishJobFailed(job, reportfilename)
+            #self.publishJobFailed(job, reportfilename)
 
-        return
+        return (job, success, reportfilename)
 
 
     def performErrorProcessing(self, job):
@@ -165,7 +160,7 @@ class JobHandling:
         # if SE rebounce fwjr
         if self.outputLocation in ["SE", "SEcopy"] :
             try :
-                    self.rebounceLoggingInfo( job )
+                self.rebounceLoggingInfo( job )
             except :
                 # as dirt as needed: any unknown error
                 import traceback
@@ -181,9 +176,9 @@ class JobHandling:
         self.writeFwkJobReport( jobSpecId, exitCode, reportfilename )
 
         # generate a job failure message
-        self.publishJobFailed(job, reportfilename)
+        # self.publishJobFailed(job, reportfilename)
 
-        return
+        return (job, False, reportfilename)
 
 
 
@@ -261,53 +256,6 @@ class JobHandling:
         return success
 
 
-    def publishJobSuccess(self, job, reportfilename):
-        """
-        __publishJobSuccess__
-        """
-
-        # set success job status
-        if self.outputLocation != "SE" :
-            reportfilename = self.archiveJob("Success", job, reportfilename)
-        else :
-            # archive job
-            try :
-                self.bossLiteSession.archive( job )
-            except JobError:
-                logging.error("Job %s : Unable to archive" % self.fullId(job) )
-
-        # publish success event
-        self.ms.publish("JobSuccess", reportfilename)
-        self.ms.commit()
-
-        logging.info("Published JobSuccess with payload :%s" % \
-                     reportfilename)
-        return
-
-
-    def publishJobFailed(self, job, reportfilename):
-        """
-        __publishJobFailed__
-        """
-
-        # set failed job status
-        if self.outputLocation != "SE" :
-            reportfilename = self.archiveJob("Failed", job, reportfilename)
-        else :
-            # archive job
-            try :
-                self.bossLiteSession.archive( job )
-            except JobError:
-                logging.error("Job %s : Unable to archive" % self.fullId(job) )
-
-        # publish job failed event
-        self.ms.publish("JobFailed", reportfilename)
-        self.ms.commit()
-
-        logging.info("Job %s : published JobFailed with payload: %s" % \
-                     (self.fullId(job), reportfilename) )
-
-        return
 
 
     def archiveJob(self, success, job, reportfilename):
@@ -418,68 +366,6 @@ class JobHandling:
         return reportfilename
 
 
-    def notifyJobState(self, job):
-        """
-        __notifyJobState__
-
-        Notify the JobState DB of finished jobs
-        """
-
-        # set finished job state
-        try:
-            try:
-                JobState.finished(job)
-                Session.commit()
-            except :
-                logging.warning(
-                    "failed connection for JobState Notify, trying recovery" )
-                self.recreateSession()
-                JobState.finished(job)
-                Session.commit()
-
-        # error
-        except Exception, ex:
-            msg = "Error setting job state to finished for job: %s\n" \
-                  % str(job)
-            msg += str(ex)
-            logging.error(msg)
-        except :
-            msg = "Error setting job state to finished for job: %s\n" \
-                  % str(job)
-            import traceback
-            msg += traceback.format_exc()
-            logging.error(msg)
-
-        return
-
-    def recreateSession(self):
-        """
-        __recreateSession__
-
-        fix to recreate standard default session object
-        """
-
-        Session.set_database(self.database)
-
-        # force a re connect operation
-        try:
-            Session.session['default']['connection'].close()
-        except:
-            pass
-        Session.session = {}
-        Session.set_database(self.database)
-        Session.connect()
-
-    def fullId( self, job ):
-        """
-        __fullId__
-
-        compose job primary keys in a string
-        """
-
-        return str( job['taskId'] ) + '.' \
-               + str( job['jobId'] ) + '.' \
-               + str( job['submissionNumber'] )
 
 
     def reportRebounce( self, job ):
@@ -552,7 +438,8 @@ class JobHandling:
             out = self.ft.match( outputDirectory )
             if out is not None :
                 outputDirectory = outputDirectory[out.end()-1:]
-            dest = os.path.join(outputDirectory, 'loggingInfo_'+str(job['jobId'])+'.log' )
+            dest = os.path.join(
+                outputDirectory, 'loggingInfo_' + str(job['jobId']) + '.log' )
 
             try:
                 logging.info( 'Job %s : REBOUNCE DBG %s, %s' % \
@@ -629,5 +516,71 @@ class JobHandling:
 
         return 
     ######################
+
+
+    def buildOutdir( self, job, task ) :
+        """
+        __buildOutdir__
+
+        compose outdir name and make the directory
+        """
+
+        # try with boss db
+        if job.runningJob['outputDirectory'] is not None :
+            outdir = job.runningJob['outputDirectory']
+
+        # try to compose the path from task
+        else :
+            # SE?
+            if self.outputLocation in ["SE", "SEcopy"] :
+                outdir = self.dropBoxPath + '/' + task['name'] + '_spec'
+
+            # fallback to task directory
+            elif task['outputDirectory'] is not None \
+                   and task['outputDirectory'] != '' :
+                outdir = task['outputDirectory']
+
+            # fallback to the component directory
+            else :
+                outdir = self.componentDir
+
+
+            # FIXME: get outdir
+            outdir = "%s/BossJob_%s_%s/Submission_%s/" % \
+                 (outdir, job['taskId'], job['jobId'], job['submissionNumber'])
+
+        # make outdir
+        logging.info("%s: Creating directory %s" % \
+                     (self.fullId( job ), outdir))
+        try:
+            os.makedirs( outdir )
+        except OSError, err:
+            if  err.errno == 17:
+                # existing dir
+                pass
+            else :
+                logging.error("%s: Cannot create directory %s : %s" % \
+                     (self.fullId( job ), outdir, str(err)))
+                raise err
+
+        # return outdir
+        return outdir
+
+
+    def fullId( self, job ):
+        """
+        __fullId__
+
+        compose job primary keys in a string
+        """
+
+        return '[' + threading.currentThread().getName() + \
+               '] Job ' + str( job['taskId'] ) + '.' \
+               + str( job['jobId'] ) + '.' \
+               + str( job['submissionNumber'] )
+
+
+
+
 
 
