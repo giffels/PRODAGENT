@@ -11,7 +11,6 @@ Will do one/both of the following:
 """
 import os
 import sys
-from urllib2   import Request, build_opener, HTTPError, URLError
 from mimetypes import guess_type
 from gzip      import GzipFile
 from cStringIO import StringIO
@@ -30,26 +29,18 @@ import StageOut.Impl
 
 _DoHTTPPost = True
 _DoStageOut = True
-_HTTPPostURL = 'https://vocms33.cern.ch/dqm/dev'  # test instance
-##'https://cmsweb.cern.ch/dqm/dev/data/put' #test instance
+_HTTPPostURL = 'https://vocms33.cern.ch/dqm/dev' #test instance
 #_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/tier-0/data/put' # prod instance
+#_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/relval/data/put' # RelVal instance
 
 
-__revision__ = "$Id$"
-__version__ = "$Revision$"
-
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.11 2008/10/16 14:16:41 evansde Exp $"
+__version__ = "$Revision: 1.11 $"
 
 
 HTTPS = httplib.HTTPS
 if sys.version_info[:3] >= (2, 4, 0):
     HTTPS = httplib.HTTPSConnection
-
-
-
-
-
-
-
 
 
 class HarvesterImpl:
@@ -69,8 +60,6 @@ class HarvesterImpl:
         self.mssNames = {}
         self.doStageOut = _DoStageOut
         self.doHttpPost = _DoHTTPPost
-
-
 
 
     def __call__(self, aFile):
@@ -105,7 +94,6 @@ class HarvesterImpl:
                 print msg
                 return 2
         return 0
-
 
 
     def stageOut(self, analysisFile):
@@ -151,7 +139,6 @@ class HarvesterImpl:
         return
 
 
-
     def httpPost(self, analysisFile):
         """
         _httpPost_
@@ -163,6 +150,7 @@ class HarvesterImpl:
 
         args = {}
         args['producer'] = 'ProdSys'
+        args['step'] = 'Pass-1'
         args['url'] = self.uploadUrl
         args['workflow'] = self.inputDataset
         args['mssname'] = self.mssNames[filename]
@@ -174,8 +162,12 @@ class HarvesterImpl:
         print msg
 
         try:
-            self.upload(args, filename)
-        except HTTPError, e:
+            (headers, data) = self.upload(args, filename)
+            print 'Status code: ', headers.get("Dqm-Status-Code", "None")
+            print 'Message:     ', headers.get("Dqm-Status-Message", "None")
+            print 'Detail:      ', headers.get("Dqm-Status-Detail", "None")
+            print data
+        except urllib2.HTTPError, e:
             print 'Automated upload of %s failed' % filename
             print "ERROR", e
             print 'Status code: ', e.hdrs.get("Dqm-Status-Code", "None")
@@ -185,11 +177,6 @@ class HarvesterImpl:
             print 'Automated upload of %s failed' % filename
             print 'problem unknown'
             print ex
-
-
-
-
-
 
 
     def encode(self, args, files):
@@ -215,7 +202,6 @@ class HarvesterImpl:
         return ('multipart/form-data; boundary=' + boundary, body)
 
 
-
     def upload(self, args, file):
         """
         _upload_
@@ -238,6 +224,7 @@ class HarvesterImpl:
         args['checksum'] = 'md5:' + m.hexdigest()
         args['size']     = str(os.stat(file)[6])
         proxyLoc = self.proxyLocation
+
         class HTTPSCertAuth(HTTPS):
             def __init__(self, host):
                 HTTPS.__init__(self, host,
@@ -247,7 +234,6 @@ class HarvesterImpl:
         class HTTPSCertAuthenticate(urllib2.AbstractHTTPHandler):
             def default_open(self, req):
                 return self.do_open(HTTPSCertAuth, req)
-
 
         #
         # HTTPS see : http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/VisMonitoring/DQMServer/scripts/visDQMUpload?r1=1.1&r2=1.2
@@ -278,7 +264,7 @@ class HarvesterImpl:
 
         # open a connection and upload the file
         url = args.pop('url') + "/data/put"
-        request = Request(url)
+        request = urllib2.Request(url)
         (type, body) = self.encode(args, {'file': file})
         request.add_header('Accept-encoding', 'gzip')
         request.add_header('User-agent', ident)
@@ -286,11 +272,12 @@ class HarvesterImpl:
         request.add_header('Content-type',    type)
         request.add_header('Content-length',  str(len(body)))
         request.add_data(body)
-        result = build_opener().open(request)
+        result = urllib2.build_opener().open(request)
         data   = result.read()
         if result.headers.get('Content-encoding', '') == 'gzip':
             data = GzipFile(fileobj=StringIO(data)).read()
         return (result.headers, data)
+
 
 
 class OfflineDQMHarvester:
@@ -298,8 +285,7 @@ class OfflineDQMHarvester:
     _OfflineDQMHarvester_
 
     Util to trawl through a Framework Job Report to find analysis
-    files and invoke a HarvestingImpl object to upload the files to the server
-    from within the harvesting job runtime environment
+    files and copy them to some DQM server
 
     """
     def __init__(self):
@@ -318,23 +304,27 @@ class OfflineDQMHarvester:
 
         self.state.loadJobSpecNode()
 
-        self.uploadUrl = _HTTPPostUrl
+        self.uploadUrl = _HTTPPostURL
         workflow = WorkflowSpec()
         workflow.load(os.environ['PRODAGENT_WORKFLOW_SPEC'])
-        if workflowSpec.parameters.has_key("DQMServer"):
-            self.uploadUrl = workflowSpec.parameters['DQMServer']
+        if workflow.parameters.has_key("DQMServer"):
+            self.uploadUrl = workflow.parameters['DQMServer']
 
-        self.proxyLocation = workflow.parameters['DQMUploadProxy'] # = /afs/cern.ch/user/cmsprod/.globus/x509thing
+        self.proxyLocation = workflow.parameters['proxyLocation']
 
         jobSpecNode = self.state.jobSpecNode
         inputDataset = jobSpecNode._InputDatasets[0]
 
-        self.impl = HarvestingImpl()
+        self.impl = HarvesterImpl()
         self.impl.inputDataset = inputDataset.name()
         self.impl.proxyLocation = self.proxyLocation
         self.impl.uploadUrl = self.uploadUrl
         self.impl.workflowSpecId = self.workflowSpecId
         self.impl.jobSpecId = self.jobSpecId
+
+        # map local to storage PFN
+        #self.mssNames = {}
+
 
     def __call__(self):
         """
