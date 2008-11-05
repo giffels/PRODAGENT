@@ -40,6 +40,8 @@ class DQMInjectorComponent:
         self.args['ConfigFile'] = None
         self.args['OverrideCMSSW'] = None
         self.args['OverrideGlobalTag'] = None
+        self.args['DQMServer'] = None
+        self.args['proxyLocation'] = None
         self.args['Site'] = "srm.cern.ch"
         self.args.update(args)
         if self.args['Logfile'] == None:

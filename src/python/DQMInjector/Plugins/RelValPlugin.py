@@ -137,17 +137,14 @@ class RelValPlugin(BasePlugin):
         """
         _operator(collectPayload)_
 
-    Given the dataset and run in the payload, callout to DBS
+        Given the dataset and run in the payload, callout to DBS
         to find the files to be harvested
 
         """
         msg = "RelValPlugin invoked for %s" % str(collectPayload)
         logging.info(msg)
 
-        #  //
-        # // There is only one location for the T0
-        #//
-        site = "srm.cern.ch"
+        site = self.args.get("Site", "srm.cern.ch")
 
         baseCache = os.path.join(self.args['ComponentDir'],
                                  "RelValPlugin")
@@ -210,7 +207,9 @@ class RelValPlugin(BasePlugin):
                 self.args['ScramArch'],
                 cmsswVersion,
                 globalTag,
-                self.args['ConfigFile'])
+                self.args['ConfigFile'],
+                self.args['DQMServer'],
+                self.args['proxyLocation'])
 
             workflowSpec.save(workflowFile)
             msg = "Created Harvesting Workflow:\n %s" % workflowFile
@@ -227,7 +226,7 @@ class RelValPlugin(BasePlugin):
 
         job = {}
         jobSpec = workflowSpec.createJobSpec()
-        jobName = "%s-%s" % (
+        jobName = "%s-%s-%s" % (
             workflowSpec.workflowName(),
             collectPayload['RunNumber'],
             time.strftime("%H-%M-%S-%d-%m-%y")
@@ -238,7 +237,6 @@ class RelValPlugin(BasePlugin):
         jobSpec.parameters['RunNumber'] = collectPayload['RunNumber']  # How should we manage the run numbers?
         jobSpec.addWhitelistSite(site)
         jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
-#        jobSpec.payload.cfgInterface.inputFiles.extend(t0ast.listFiles())
         jobSpec.payload.cfgInterface.inputFiles.extend(getLFNForDataset(self.dbsUrl,collectPayload['PrimaryDataset'],collectPayload['ProcessedDataset'],collectPayload['DataTier']))
 
         specCacheDir =  os.path.join(
