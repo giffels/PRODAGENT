@@ -107,7 +107,7 @@ def configFromFile(cmsPath, scramArch, cmsswVersion, filename):
 
 
 def createHarvestingWorkflow(dataset, site, cmsPath, scramArch,
-                             cmsswVersion, globalTag, configFile = None):
+                             cmsswVersion, globalTag, configFile = None, DQMServer = None, proxyLocation = None):
     """
     _createHarvestingWorkflow_
 
@@ -153,8 +153,10 @@ def createHarvestingWorkflow(dataset, site, cmsPath, scramArch,
     spec = maker.makeWorkflow()
     spec.parameters['DBSURL'] = "http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet"
     spec.parameters['OnlySites'] = site
-
-
+    if DQMServer != None :
+        spec.parameters['DQMServer'] = DQMServer
+    if proxyLocation != None :
+        spec.parameters['proxyLocation'] = proxyLocation
 
     spec.payload.scriptControls['PostTask'].append(
         "JobCreator.RuntimeTools.RuntimeOfflineDQM")
