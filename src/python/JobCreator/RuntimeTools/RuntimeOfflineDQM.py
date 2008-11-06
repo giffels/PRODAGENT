@@ -34,8 +34,8 @@ _HTTPPostURL = 'https://vocms33.cern.ch/dqm/dev' #test instance
 #_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/relval/data/put' # RelVal instance
 
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.11 2008/10/16 14:16:41 evansde Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.12 2008/11/05 22:11:14 direyes Exp $"
+__version__ = "$Revision: 1.12 $"
 
 
 HTTPS = httplib.HTTPS
@@ -310,7 +310,38 @@ class OfflineDQMHarvester:
         if workflow.parameters.has_key("DQMServer"):
             self.uploadUrl = workflow.parameters['DQMServer']
 
-        self.proxyLocation = workflow.parameters['proxyLocation']
+        #  //
+        # // Lookup proxy, first from workflow for explicit path
+        #//  Fallback to X509_PROXY as defined in grid jobs
+        self.proxyLocation = workflow.parameters.get('proxyLocation', None)
+        possibleProxyVars = [
+            "X509_PROXY",
+            "X509_USER_PROXY",
+            ]
+        if self.proxyLocation == None:
+            for ppv in possibleProxyVars:
+                value = os.environ.get(ppv, None)
+                if value == None:
+                    continue
+                if not os.path.exists(value):
+                    continue
+                self.proxyLocation = value
+                break
+        if self.proxyLocation == None:
+            msg = "===PROXY FAIL===\n"
+            msg += "Unable to find proxy for HTTPS Upload\n"
+            msg += "Cannot determine location of proxy"
+            raise RuntimeError, msg
+
+        if not os.path.exists(self.proxyLocation):
+            msg = "===PROXY FAIL===\n"
+            msg += "Proxy file does not exist:\n"
+            msg += "%\n" % self.proxyLocation
+            msg += "Cannot proceed with HTTPS Upload without proxy\n"
+            raise RuntimeError, msg
+
+
+
 
         jobSpecNode = self.state.jobSpecNode
         inputDataset = jobSpecNode._InputDatasets[0]
