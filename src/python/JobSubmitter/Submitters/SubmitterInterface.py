@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.24 2007/07/13 21:21:49 afanfani Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.25 2008/07/25 15:29:17 swakef Exp $"
 
 import os
 import logging
@@ -271,8 +271,12 @@ class SubmitterInterface:
         # // Invoke whatever is needed to do the submission
         #//
         self.doSubmit(wrapperName, tarball)
-        self.editDashboardInfo(self.parameters['DashboardInfo'])
-        self.publishSubmitToDashboard(self.parameters['DashboardInfo'])
+        
+        try:
+            self.editDashboardInfo(self.parameters['DashboardInfo'])
+            self.publishSubmitToDashboard(self.parameters['DashboardInfo'])
+        except Exception, ex:
+            logging.error("Error publishing to dashboard: %s" % str(ex))
         
         return
 

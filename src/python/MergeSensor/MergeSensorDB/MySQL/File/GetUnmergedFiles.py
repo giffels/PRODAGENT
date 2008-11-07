@@ -65,25 +65,38 @@ def _arrangeRuns(file_list):
     [{'run': [1], 'id': 1}, {'run': [2, 3, 4], 'id': 2}]
     """
     output = []
-    index = 0
+    runmap = {}
+    ids = {}
 
-    # insert each run/lumi section once
-    for this_file in file_list:
-        subindex = index
-        this_file['run'] = [this_file['run']]
-        output.append(this_file)
+    for file in file_list:
+        runmap.setdefault(file['id'], set())
+        runmap[file['id']].add(file['run'])
+    for file in file_list:
+        if runmap.has_key(file['id']):
+            file['run'] = list(runmap[file['id']])
+            output.append(file)
+            runmap.pop(file['id'])
+    return output
+#    output = []
+#    index = 0
 
-        # find all runs for this file
-        for other_file in file_list[index+1:]:
-            if other_file['id'] == this_file['id']:
-                this_file['run'].append(other_file['run'])
-                # once the run is recorded remove the duplicate file
-                file_list.pop(subindex)
-                # dont increase subindex as next element will take this place
-            else:
-                subindex += 1
-        index += 1
-    return output #//END
+#    # insert each run/lumi section once
+#    for this_file in file_list:
+#        subindex = index
+#        this_file['run'] = [this_file['run']]
+#        output.append(this_file)
+#
+#        # find all runs for this file
+#        for other_file in file_list[index+1:]:
+#            if other_file['id'] == this_file['id']:
+#                this_file['run'].append(other_file['run'])
+#                # once the run is recorded remove the duplicate file
+#                file_list.pop(subindex)
+#                # dont increase subindex as next element will take this place
+#            else:
+#                subindex += 1
+#        index += 1
+#    return output #//END
 
 
 if __name__ == "__main__":

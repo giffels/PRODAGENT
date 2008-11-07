@@ -1378,7 +1378,7 @@ class MergeSensorDB:
 
         # remove now all orphan fileblocks
         removeOrphanBlocks = self.factory(classname = "Dataset.RemoveOrphanBlocks")	
-        rowcount = removeOrphanBlocks.execute(prim, processed, tier, conn = self.connection, trans = self.transaction) 
+        rowcount = removeOrphanBlocks.execute(conn = self.connection, trans = self.transaction) 
 	 
         return  #// removeDataset
 	

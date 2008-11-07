@@ -51,6 +51,62 @@ class PollInterface(dict):
         """
         raise NotImplementedError, "PollInterface.__call__()"
 
+
+class PAJobStatePoll(PollInterface):
+    """
+    _PAJobStatePoll_
+
+    Get job counts from JobStates DB
+
+    """
+    def __call__(self):
+        """
+        Query PA DB for jobs
+
+        """
+        Session.set_database(dbConfig)
+        Session.connect()
+        Session.start_transaction()
+
+        sqlStr1 = \
+        """
+        SELECT COUNT(id) FROM we_Job
+           WHERE job_type="Processing" AND status='inProgress';
+        """
+        sqlStr2 = \
+        """
+        SELECT COUNT(id) FROM we_Job
+           WHERE job_type="Merge" AND status='inProgress';
+        """
+        sqlStr3 = \
+        """
+        SELECT COUNT(id) FROM we_Job
+           WHERE job_type="CleanUp" AND status='inProgress';
+        """
+        sqlStr4 = \
+        """
+        SELECT COUNT(id) FROM we_Job
+           WHERE job_type="LogCollect" AND status='inProgress';
+        """
+        Session.execute(sqlStr1)
+        numProcessing = Session.fetchone()[0]
+        Session.execute(sqlStr2)
+        numMerge = Session.fetchone()[0]
+        Session.execute(sqlStr3)
+        numClean = Session.fetchone()[0]
+        Session.execute(sqlStr4)
+        numCollect = Session.fetchone()[0]
+        Session.close_all()
+        
+        total = numProcessing + numMerge
+        self['Total'] = total
+        self['Processing'] = numProcessing
+        self['Merge'] = numMerge
+        self['CleanUp'] = numClean
+        self['LogCollect'] = numCollect
+        return
+    
+
 class PABossLitePoll(PollInterface):
     """
     _PABossLiteDBPoll_
@@ -131,6 +187,116 @@ class PABossLitePoll(PollInterface):
 
         return
         
+
+
+
+class PAJobStateMonitor(MonitorInterface):
+    """
+    _PAJobStateMonitor_
+
+    Basic Monitor plugin that uses a very simple threshold system
+    for a "Default" site to release jobs without site preferences
+    based on data from the PA JobState DB
+    
+    """
+    def __call__(self):
+        """
+        _operator()_
+
+        Get the default thresholds from the ResourceControlDB,
+        poll the JobStates DB and calculate the difference
+
+        """
+        result = []
+
+        #  //
+        # // Get information for Default site
+        #//
+        siteName = "Default"
+        if self.allSites.get(siteName, None) == None:
+            #  //
+            # // Cant do much if we can find a Default
+            #//
+            msg = "ERROR: No Resource Control Entry for site: %s \n" % siteName
+            msg += "Need to have a site with this name defined..."
+            raise RuntimeError, msg
+        siteData = self.allSites[siteName]
+        siteThresholds = self.siteThresholds[siteName]
+
+        procThresh = siteThresholds.get("processingThreshold", None)
+        if procThresh == None:
+            msg = "No processingThreshold found for site entry: %s\n" % (
+                siteName,)
+            raise RuntimeError, msg
+        mergeThresh = siteThresholds.get("mergeThreshold", None)
+        if mergeThresh == None:
+            msg = "No mergeThreshold found for site entry: %s\n" % (
+                siteName,)
+            raise RuntimeError, msg
+        cleanThresh = siteThresholds.get("cleanupThreshold", None)
+        if cleanThresh == None:
+            msg = "No cleanupThreshold found for site entry: %s\n" % (
+                siteName,)
+            raise RuntimeError, msg
+
+
+        #  //
+        # // Poll the JobStatesDB
+        #//
+        poller = PAJobStatePoll()
+        poller()
+
+        #  //
+        # // check the counts against the thresholds and make
+        #//  resource constraints as needed
+        if poller['Processing'] != None:
+            logging.info(" Processing jobs are: %s Threshold: %s" % \
+                         (poller['Processing'], procThresh) )
+            test = poller['Processing'] - procThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "Processing"
+                result.append(constraint)
+        if poller['Merge'] != None:
+            logging.info(" Merge jobs are: %s Threshold: %s" % \
+                         (poller['Merge'], mergeThresh) )
+            test = poller['Merge'] - mergeThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "Merge"
+                result.append(constraint)
+        
+        if poller['CleanUp'] != None:
+            logging.info(" CleanUp jobs are: %s Threshold: %s" % \
+                         (poller['CleanUp'], cleanThresh) )
+            test = poller['CleanUp'] - cleanThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "CleanUp"
+                result.append(constraint)
+
+
+        if (poller['Merge'] == None) and (poller['Processing'] == None) and (poller['CleanUp'] == None):
+            test = poller['Processing'] - procThresh
+            if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                result.append(constraint)
+
+        #  //
+        # // return the contstraints
+        #//
+        return result
+    
+            
+        
+    
+    
+
+
 class PABossLiteMonitor(MonitorInterface):
     """
     _PABossLiteMonitor_
@@ -273,4 +439,13 @@ class PABossLiteMonitor(MonitorInterface):
         #//
         return result
 
+
+
+
+
+
+
+
+
+registerMonitor(PAJobStateMonitor, PAJobStateMonitor.__name__)
 registerMonitor(PABossLiteMonitor, PABossLiteMonitor.__name__)
