@@ -18,6 +18,7 @@ from HTTPFrontend.ResourceMonitors import ResourceDetails,ResourceStatus
 from HTTPFrontend.LogViewer import LogViewer
 from HTTPFrontend.AlertMonitor import AlertMonitor, CurrentAlert, HistoryAlert
 from HTTPFrontend.ConfDBEmulator import ConfDBEmulator
+from HTTPFrontend.ComponentStatus import ComponentStatus,ComponentLogs,WriteLog,PostMorten
 
 from cherrypy.lib.static import serve_file
 
@@ -83,6 +84,8 @@ class Root:
 
         html += "<tr><td><a href=\"%s/alertmonitor\">AlertMonitor</a></td>"%(self.myUrl) + "<td>Alerts published by prodagent components</td></tr>"
         html += "<tr><td><a href=\"%s/confdbemu\">ConfDBEmulator</a></td>"%(self.myUrl) + "<td>ConfDB Emulator</td></tr>"
+        html += "<tr><td><a href=\"%s/componentstatus\">ComponentStatus</a></td>"%(self.myUrl)
+        html += "<td>ProdAgent Components Status</td></tr>\n"
         html += """</table></body></html>"""
         return html
     index.exposed = True
@@ -168,5 +171,17 @@ def installer(**args):
     root.confdbemu = ConfDBEmulator()
 
     root.logs = LogViewer()
+
+    root.writelog = WriteLog()
+    root.complog = ComponentLogs(
+        "%s/writelog" % baseUrl
+        )
+    root.postmorten = PostMorten(
+        "%s/writelog" % baseUrl
+        )
+    root.componentstatus = ComponentStatus(
+        "%s/complog" % baseUrl,
+        "%s/postmorten" % baseUrl
+        )
 
     return root
