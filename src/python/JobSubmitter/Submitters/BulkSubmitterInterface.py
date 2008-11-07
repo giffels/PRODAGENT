@@ -110,7 +110,11 @@ class BulkSubmitterInterface:
         #  //
         # // Publish submissions to dashboard
         #//
-        self.publishSubmitToDashboard()
+        try:
+            self.publishSubmitToDashboard()
+        except Exception, ex:
+            logging.error("Error publishing to dashboard: %s" % str(ex))
+
         return
     
     def checkPluginConfig(self):
