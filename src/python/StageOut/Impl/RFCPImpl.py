@@ -88,7 +88,7 @@ class RFCPImpl(StageOutImpl):
         
         result += "\nFILE_SIZE=`stat -c %s"
         result += " %s ;`\n" % localPFN
-        result += " echo \"Local File Size is: $FILE_SIZE\"; DEST_SIZE=`rfstat %s | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ $FILE_SIZE == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (remotePFN)
+        result += " echo \"Local File Size is: $FILE_SIZE\"; DEST_SIZE=`rfstat \"%s\" | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ $FILE_SIZE == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (remotePFN)
         return result
 
     
