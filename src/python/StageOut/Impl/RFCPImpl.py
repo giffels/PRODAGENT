@@ -40,7 +40,7 @@ class RFCPImpl(StageOutImpl):
 
         targetdir= os.path.dirname(targetPFN)
 
-        checkdircmd="rfstat %s > /dev/null " % targetdir
+        checkdircmd="rfstat \"%s\" > /dev/null " % targetdir
         print "Check dir existence : %s" %checkdircmd 
         try:
           checkdirexitCode = self.run(checkdircmd)
@@ -79,7 +79,7 @@ class RFCPImpl(StageOutImpl):
         if options != None:
             result += " %s " % options
         result += " %s " % sourcePFN
-        result += " %s " % targetPFN
+        result += " \"%s\" " % targetPFN
         
         if self.stageIn:
             remotePFN, localPFN = sourcePFN, targetPFN
@@ -99,7 +99,7 @@ class RFCPImpl(StageOutImpl):
         CleanUp pfn provided
 
         """
-        command = "rfrm %s" % pfnToRemove
+        command = "rfrm \"%s\"" % pfnToRemove
         self.executeCommand(command)
 
 
