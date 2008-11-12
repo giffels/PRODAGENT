@@ -3,12 +3,12 @@
 _T0ASTPlugin_
 
 Plugin to pull in files for a dataset/run from the Tier 0 DB
-and generate a DQM Harvesting workflow/job
-
+and generate a DQM Harvesting workflow/job.
 """
+
 import logging
 import os
-import time
+import threading
 
 from DQMInjector.Plugins.BasePlugin import BasePlugin
 from DQMInjector.HarvestWorkflow import createHarvestingWorkflow
@@ -18,219 +18,220 @@ from ProdCommon.MCPayloads.LFNAlgorithm import DefaultLFNMaker
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
-
-
-class T0ASTRack:
+class T0ASTWrapper:
     """
-    _T0ASTRack_
+    _T0ASTWrapper_
 
-    Wrapper for T0AST API and imports
-
+    Wrapper for T0AST API and imports.
     """
-    def __init__(self, run, primaryDataset):
-        self.run = run
-        self.primary = primaryDataset
+    def __init__(self):
+        """
+        ___init___
 
+        Create a database connection to T0AST.
+        """
         try:
             from T0.GenericTier0.Tier0DB import Tier0DB
-            from T0.State.Database.Reader import ListRuns
-            from T0.State.Database.Reader import ListFiles
         except Exception, ex:
             msg = "Unable to import Tier 0 Python Libs"
             raise RuntimeError, msg
 
-
         paConfig = loadProdAgentConfiguration()
         t0astDBConfig = paConfig.getConfig("Tier0DB")
 
-        t0astDBConn = Tier0DB.Tier0DB(t0astDBConfig)
-        t0astDBConn.connect()
+        self.t0astDBConn = Tier0DB(t0astDBConfig)
+        self.t0astDBConn.connect()
 
-
-        self.recoVersion = ListRuns.listRecoVersionForRun(t0astDBConn, run)
-        self.globalTag = ListRuns.listGlobalTagForRun(t0astDBConn, run)
-        # reco files is an array of dictionaries
-        self.recoFiles = ListFiles.listFilesByRunAndDataset(
-            t0astDBConn,
-            "Reconstructed", run, primaryDataset)
-
-
-
-
-    def listFiles(self):
+    def listFiles(self, runNumber, primaryDataset):
         """
         _listFiles_
 
-        return a list of LFNs for the run/dataset provided
-
+        Retrieve all of the RECO files from T0AST for a given primary dataset
+        and run.  Files are returned in the form of LFNs.
         """
-        return [ x['LFN'] for x in self.recoFiles ]
+        try:
+            from T0.State.Database.Reader import ListFiles
+        except Exception, ex:
+            msg = "Unable to import Tier 0 Python Libs"
+            raise RuntimeError, msg
+        
+        files = ListFiles.listFilesByRunAndDataset(self.t0astDBConn,
+                                                   "Reconstructed", runNumber,
+                                                   primaryDataset)
+        return [x["LFN"] for x in files]
 
-
-
-
-    def cmsswVersion(self):
+    def listRecoConfig(self, runNumber, primaryDataset):
         """
-        _cmsswVersion_
-
-        return the CMSSW Version used for the run/dataset provided
-
+        _listRecoConfig_
+    
+        Retrieve the reco configuration for a given run and dataset from
+        T0AST.  The configuration is returned in the form of a dictionary
+        with the following keys:
+          DO_RECO - Bool, determines if reconstruction is enabled for the
+                    dataset.
+          GLOBAL_TAG - Global tag used for reconstruction. 
+          PROC_VER - Processing version.
+          CMSSW_VERSION - Framework version used for reconstruction.
+          CONFIG_URL - URL to the framework config file.
         """
-        return self.recoVersion
-
-
-    def globalTag(self):
-        """
-        _globalTag_
-
-        return the global Tag used for the run/dataset provided
-
-        """
-        return self.globalTag
-
-
-
-
-
-
+        try:
+            from T0.State.Database.Reader import ListRunConfig
+        except Exception, ex:
+            msg = "Unable to import Tier 0 Python Libs"
+            raise RuntimeError, msg
+        
+        return ListRunConfig.retrieveRecoConfigForDataset(self.t0astDBConn,
+                                                          runNumber,
+                                                          primaryDataset)
 
 class T0ASTPlugin(BasePlugin):
+    """
+    _T0ASTPlugin_
 
+    DQMInjector plugin used for offline DQM in the Tier0.
+    """
     def __init__(self):
+        """
+        ___init___
+
+        Call the base constructor and initialize some attributes.
+        """
         BasePlugin.__init__(self)
+        self.t0astWrapper = None
 
-
+        # The Tier0 only submits jobs to CERN...
+        self.site = "Default"
 
     def __call__(self, collectPayload):
         """
-        _operator(collectPayload)_
+        ___call___
 
-        Given the dataset and run in the payload, callout to T0AST
-        to find the files to be harvested
-
+        Create a DQM job for then given run/dataset.
         """
-        msg = "T0ASTPlugin invoked for %s" % str(collectPayload)
-        logging.info(msg)
-
-        #  //
-        # // There is only one location for the T0
-        #//
-        site = "srm.cern.ch"
-
-        baseCache = os.path.join(self.args['ComponentDir'],
-                                 "T0ASTPlugin")
-        if not os.path.exists(baseCache):
-            os.makedirs(baseCache)
-
-        datasetCache = os.path.join(baseCache,
-                                    collectPayload['PrimaryDataset'],
-                                    collectPayload['ProcessedDataset'],
-                                    collectPayload['DataTier'])
-
-        if not os.path.exists(datasetCache):
-            os.makedirs(datasetCache)
-
-        workflowFile = os.path.join(
-            datasetCache,
-            "%s-%s-%s-DQMHarvest-Workflow.xml" % (
-            collectPayload['PrimaryDataset'],
-            collectPayload['ProcessedDataset'],
-            collectPayload['DataTier'])
-            )
-
+        myThread = threading.currentThread()
+        
         try:
-            t0ast = T0ASTRack(collectPayload['RunNumber'],
-                              collectPayload['PrimaryDataset'])
+            if "t0astWrapper" not in dir(myThread):
+                self.t0astWrapper = T0ASTWrapper()
+                myThread.t0astWrapper = self.t0astWrapper
+            else:
+                self.t0astWrapper = myThread.t0astWrapper
         except Exception, ex:
             msg = "Error connecting to T0AST Database and retrieving\n"
             msg += "Information for %s\n" % str(collectPayload)
             msg += str(ex)
             raise RuntimeError, msg
 
-        if not os.path.exists(workflowFile):
-            msg = "No workflow found for dataset: %s\n " % (
-                collectPayload.datasetPath(),)
-            msg += "Looking up software version and generating workflow..."
+        (workflowSpec, workflowSpecFile) = \
+                       self.createWorkflow(collectPayload["RunNumber"],
+                                           collectPayload["PrimaryDataset"],
+                                           collectPayload["ProcessedDataset"],
+                                           collectPayload["DataTier"])
 
-            if self.args.get("OverrideGlobalTag", None) == None:
-                globalTag = t0ast.globalTag()
-            else:
-                globalTag = self.args['OverrideGlobalTag']
+        if workflowSpec == None:
+            return []
 
-
-            if self.args.get("OverrideCMSSW", None) != None:
-                cmsswVersion = self.args['OverrideCMSSW']
-            else:
-                cmsswVersion = t0ast.cmsswVersion()
-
-            workflowSpec = createHarvestingWorkflow(
-                collectPayload.datasetPath(),
-                site,
-                self.args['CmsPath'],
-                self.args['ScramArch'],
-                cmsswVersion,
-                globalTag,
-                self.args['ConfigFile'],
-                self.args['DQMServer'],
-                self.args['proxyLocation'])
-
-            workflowSpec.save(workflowFile)
-            msg = "Created Harvesting Workflow:\n %s" % workflowFile
-            logging.info(msg)
-            self.publishWorkflow(workflowFile, workflowSpec.workflowName())
-        else:
-            msg = "Loading existing workflow for dataset: %s\n " % (
-                collectPayload.datasetPath(),)
-            msg += " => %s\n" % workflowFile
-            logging.info(msg)
-
-            workflowSpec = WorkflowSpec()
-            workflowSpec.load(workflowFile)
-
+        (jobSpec, jobSpecFile) = \
+                  self.createJob(workflowSpec,
+                                 collectPayload["RunNumber"],
+                                 collectPayload["PrimaryDataset"])
 
         job = {}
-        jobSpec = workflowSpec.createJobSpec()
-        jobName = "%s-%s-%s" % (
-            workflowSpec.workflowName(),
-            collectPayload['RunNumber'],
-            time.strftime("%H-%M-%S-%d-%m-%y")
-            )
-
-        jobSpec.setJobName(jobName)
-        jobSpec.setJobType("Processing")
-        jobSpec.parameters['RunNumber'] = collectPayload['RunNumber']
-        jobSpec.addWhitelistSite(site)
-        jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
-        jobSpec.payload.cfgInterface.inputFiles.extend(t0ast.listFiles())
-
-        specCacheDir =  os.path.join(
-            datasetCache, str(int(collectPayload['RunNumber']) // 1000).zfill(4))
-        if not os.path.exists(specCacheDir):
-            os.makedirs(specCacheDir)
-        jobSpecFile = os.path.join(specCacheDir,
-                                   "%s-JobSpec.xml" % jobName)
-
-        jobSpec.save(jobSpecFile)
-
-
-        job["JobSpecId"] = jobName
+        job["JobSpecId"] = jobSpec.parameters["JobName"]
         job["JobSpecFile"] = jobSpecFile
-        job['JobType'] = "Processing"
+        job["JobType"] = "Processing"
         job["WorkflowSpecId"] = workflowSpec.workflowName(),
         job["WorkflowPriority"] = 10
-        job["Sites"] = [site]
-        job["Run"] = collectPayload['RunNumber']
-        job['WorkflowSpecFile'] = workflowFile
+        job["Sites"] = [self.site]
+        job["Run"] = collectPayload["RunNumber"]
+        job["WorkflowSpecFile"] = workflowSpecFile
 
         msg = "Harvesting Job Created for\n"
-        msg += " => Run:       %s\n" % collectPayload['RunNumber']
-        msg += " => Primary:   %s\n" % collectPayload['PrimaryDataset']
-        msg += " => Processed: %s\n" % collectPayload['ProcessedDataset']
-        msg += " => Tier:      %s\n" % collectPayload['DataTier']
-        msg += " => Workflow:  %s\n" % job['WorkflowSpecId']
-        msg += " => Job:       %s\n" % job['JobSpecId']
-        msg += " => Site:      %s\n" % job['Sites']
+        msg += " => Run:       %s\n" % collectPayload["RunNumber"]
+        msg += " => Primary:   %s\n" % collectPayload["PrimaryDataset"]
+        msg += " => Processed: %s\n" % collectPayload["ProcessedDataset"]
+        msg += " => Tier:      %s\n" % collectPayload["DataTier"]
+        msg += " => Workflow:  %s\n" % job["WorkflowSpecId"]
+        msg += " => Job:       %s\n" % job["JobSpecId"]
+        msg += " => Site:      %s\n" % job["Sites"]
         logging.info(msg)
 
         return [job]
+        
+    def createWorkflow(self, runNumber, primaryDataset,
+                       processedDataset, dataTier):
+        """
+        _createWorkflow_
 
+        Create a workflow for a given run and primary dataset.  If the workflow
+        has been created previously, load it and use it.
+        """
+        jobCache = os.path.join(self.args["ComponentDir"], "T0ASTPlugin",
+                                "Run" + runNumber)
+        if not os.path.exists(jobCache):
+            os.makedirs(jobCache)
+
+        workflowSpecFileName = "DQMHarvest-Run%s-%s-workflow.xml" % (runNumber, primaryDataset)
+        workflowSpecPath = os.path.join(jobCache, workflowSpecFileName)
+
+        if os.path.exists(workflowSpecPath):
+            msg = "Loading existing workflow for dataset: %s\n " % primaryDataset
+            msg += " => %s\n" % workflowSpecPath
+            logging.info(msg)
+
+            workflowSpec = WorkflowSpec()
+            workflowSpec.load(workflowSpecPath)
+            return (workflowSpec, workflowSpecPath)
+            
+        msg = "No workflow found for dataset: %s\n " % primaryDataset
+        msg += "Looking up software version and generating workflow..."
+
+        recoConfig = self.t0astWrapper.listRecoConfig(runNumber, primaryDataset)
+
+        if not recoConfig["DO_RECO"]:
+            logging.info("RECO disabled for dataset %s" % primaryDataset)
+            return (None, None)
+
+        globalTag = self.args.get("OverrideGlobalTag", None)
+        if globalTag == None:
+            globalTag = recoConfig["GLOBAL_TAG"]
+            
+        cmsswVersion = self.args.get("OverrideCMSSW", None)
+        if cmsswVersion == None:
+            cmsswVersion = recoConfig["CMSSW_VERSION"]
+
+        datasetPath = "/%s/%s/%s" % (primaryDataset, processedDataset, dataTier)
+        workflowSpec = createHarvestingWorkflow(datasetPath, self.site, 
+                                                self.args["CmsPath"],
+                                                self.args["ScramArch"],
+                                                cmsswVersion, globalTag,
+                                                self.args["ConfigFile"])
+        
+        workflowSpec.save(workflowSpecPath)
+        msg = "Created Harvesting Workflow:\n %s" % workflowSpecPath
+        logging.info(msg)
+        self.publishWorkflow(workflowSpecPath, workflowSpec.workflowName())
+        return (workflowSpec, workflowSpecPath)
+        
+    def createJob(self, workflowSpec, runNumber, primaryDataset):
+        """
+        _createJob_
+
+        Given a workflow spec, run number and primaryDataset, create a DQM
+        harvesting job.
+        """
+        jobSpec = workflowSpec.createJobSpec()
+        jobName = "DQMHarvest-Run%s-%s" % (runNumber, primaryDataset)
+        jobSpec.setJobName(jobName)
+        jobSpec.setJobType("Processing")
+        jobSpec.parameters["RunNumber"] = runNumber
+        jobSpec.addWhitelistSite(self.site)
+        jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
+        jobSpec.payload.cfgInterface.inputFiles.extend(self.t0astWrapper.listFiles(runNumber, primaryDataset))
+
+        jobCache = os.path.join(self.args["ComponentDir"], "T0ASTPlugin",
+                                "Run" + runNumber)            
+        jobSpecFile = os.path.join(jobCache, "%s-JobSpec.xml" % jobName)
+
+        jobSpec.save(jobSpecFile)
+        return (jobSpec, jobSpecFile)
