@@ -95,6 +95,8 @@ def main(argv) :
     step2 = {}
     step3 = {}
     parsedConditions = []
+    parsedRECOTags = []
+    parsedALCATags = []
 
     try:
         file = open(samples)
@@ -128,19 +130,25 @@ def main(argv) :
             if command.find('python_filename') < 0:
                 command += ' --python_filename ' + outputname
 
+            chain = line.split('@@@')[0].split('++')[-1].split(',')
+            ALCAtag = RECOtag = None
+            if len(chain) >= 1 :
+                RECOtag = chain[0].strip()
+            if len(chain) >= 2 :
+                ALCAtag = chain[1].strip()
+
             # distinguish two-step and one-step processes (one step always has RECO in process list)
             if command.find('RECO') >= 0 :
                 if primary.find('RECO') >= 0 :
                     dict = {}
                     dict['command'] = command
                     dict['outputname'] = outputname
-                    step2[conditions] = dict
+                    step2[line.split('@@@')[0].split('++')[1].strip()] = dict
                 elif primary.find('ALCA') >= 0 :
                     dict = {}
                     dict['command'] = command
                     dict['outputname'] = outputname
-                    step3[conditions] = dict
-                    a=1
+                    step3[line.split('@@@')[0].split('++')[1].strip()] = dict
                 else :
                     dict = {}
                     dict['command'] = command
@@ -155,15 +163,12 @@ def main(argv) :
                     onestep.append(dict)
             else :
                 dict = {}
-                chain = line.split('@@@')[0].split('++')[-1].split(',')
-                if chain[0].strip()[-1] != chain[-1].strip()[-1] :
-                    print "The second and the third step should have the same number"
-                    print "Error: File " + samples +  ", Line " + n_line + "."
-                    sys.exit(1)
                 if len(chain) >= 2 :
                     dict['steps'] = 3
+                    dict['ALCAtag'] = ALCAtag
                 else :
                     dict['steps'] = 2
+                dict['RECOtag'] = RECOtag
                 dict['command'] = command
                 dict['primary'] = primary
                 dict['conditions'] = conditions
@@ -180,11 +185,18 @@ def main(argv) :
                 if '--relval' in array :
                     print 'totalEvents:',totalEvents
                     print 'eventsPerJob:',eventsPerJob
+                print 'RECOtag:',RECOtag
+                print 'ALCAtag:',ALCAtag
+                print 'Steps:',chain
                 print ''
 
-    for conditions in parsedConditions:
-        if conditions not in step2.keys():
-            print 'Step 2 cmsDriver command for conditions: ',conditions,'not included in sample file:',samples
+    for tag in parsedRECOTags:
+        if tag not in step2.keys():
+            print 'Step 2 cmsDriver command for: ',tag,' not included in sample file:',samples
+            sys.exit(1)
+    for tag in parsedALCATags:
+        if tag not in step2.keys():
+            print 'Step 2 cmsDriver command for: ',tag,' not included in sample file:',samples
             sys.exit(1)
 
     if debug == 1:
@@ -198,12 +210,12 @@ def main(argv) :
             print 'outputname:',sample['outputname']
             print ''
         print 'collected information step 2'
-        for condition in step2.keys() :
-            print 'step 2 condition:',condition,' command:',step2[condition]['command'],' outputname:',step2[condition]['outputname']
+        for tag in step2.keys() :
+            print 'step 2 condition:',tag,' command:',step2[tag]['command'],' outputname:',step2[tag]['outputname']
             print ''
         print 'collected information step 3'
-        for condition in step3.keys() :
-            print 'step 3 condition:',condition,' command:',step3[condition]['command'],' outputname:',step3[condition]['outputname']
+        for tag in step3.keys() :
+            print 'step 3 condition:',tag,' command:',step3[tag]['command'],' outputname:',step3[tag]['outputname']
             print ''
         print 'collected information onestep'
         for sample in onestep:
@@ -272,6 +284,7 @@ def main(argv) :
     mergedDatasets = []
     workflows = []
 
+
     # create workflows
     for sample in step1:
         if sample['steps'] == 2 :
@@ -279,7 +292,7 @@ def main(argv) :
             command += '--version=' + version + ' \\\n'
             command += '--py-cfg=' + sample['outputname'] + ' \\\n'
             command += '--version=' + version + ' \\\n'
-            command += '--py-cfg=' + step2[sample['conditions']]['outputname']+ ' \\\n'
+            command += '--py-cfg=' + step2[sample['RECOtag']]['outputname']+ ' \\\n'
             command += '--stageout-intermediates=true \\\n'
             command += '--group=RelVal \\\n'
             command += '--category=relval \\\n'
@@ -298,10 +311,10 @@ def main(argv) :
             command += '--version=' + version + ' \\\n'
             command += '--py-cfg=' + sample['outputname'] + ' \\\n'
             command += '--version=' + version + ' \\\n'
-            command += '--py-cfg=' + step2[sample['conditions']]['outputname']+ ' \\\n'
+            command += '--py-cfg=' + step2[sample['RECOtag']]['outputname']+ ' \\\n'
             command += '--stageout-intermediates=true \\\n'
             command += '--version=' + version + ' \\\n'
-            command += '--py-cfg=' + step3[sample['conditions']]['outputname']+ ' \\\n'
+            command += '--py-cfg=' + step3[sample['ALCAtag']]['outputname']+ ' \\\n'
             command += '--stageout-intermediates=true \\\n'
             command += '--group=RelVal \\\n'
             command += '--category=relval \\\n'
