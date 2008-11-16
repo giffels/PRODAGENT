@@ -34,8 +34,8 @@ _HTTPPostURL = 'https://vocms33.cern.ch/dqm/dev' #test instance
 #_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/relval/data/put' # RelVal instance
 
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.12 2008/11/05 22:11:14 direyes Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.13 2008/11/06 15:13:10 evansde Exp $"
+__version__ = "$Revision: 1.13 $"
 
 
 HTTPS = httplib.HTTPS
@@ -336,7 +336,7 @@ class OfflineDQMHarvester:
         if not os.path.exists(self.proxyLocation):
             msg = "===PROXY FAIL===\n"
             msg += "Proxy file does not exist:\n"
-            msg += "%\n" % self.proxyLocation
+            msg += "%s\n" % self.proxyLocation
             msg += "Cannot proceed with HTTPS Upload without proxy\n"
             raise RuntimeError, msg
 
