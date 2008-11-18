@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.3 2008/07/25 15:47:41 swakef Exp $"
-__revision__ = "$Revision: 1.3 $"
+__version__ = "$Id: TrackingDB.py,v 1.4 2008/10/07 17:07:27 gcodispo Exp $"
+__revision__ = "$Revision: 1.4 $"
 
 
 class TrackingDB:
@@ -221,3 +221,25 @@ class TrackingDB:
 
         return [str(key[0]) for key in rows ]
 
+
+
+    def processBulkUpdate( self, jobList, processStatus, skipStatus=None ) :
+        """
+        __setTaskGroup__
+
+        assign tasks to a given group
+        """
+
+        jlist = ','.join( [ str(job.runningJob['id']) for job in jobList ] )
+
+        if skipStatus is not None:
+            toSkip = " and status not in ('" +  "','".join( skipStatus ) + "')"
+        else :
+            toSkip = '' 
+
+
+        query = \
+              "update bl_runningjob set process_status='" + processStatus + \
+              "' where id in (" + jlist + ")" + toSkip
+
+        self.bossSession.modify(query)

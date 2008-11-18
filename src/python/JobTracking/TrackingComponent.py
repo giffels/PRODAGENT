@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.57 2008/09/23 15:52:27 gcodispo Exp $"
-__version__ = "$Revision: 1.57 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.58 2008/10/07 17:07:27 gcodispo Exp $"
+__version__ = "$Revision: 1.58 $"
 
 import os
 import os.path
@@ -118,6 +118,7 @@ class TrackingComponent:
         self.bossLiteSession = \
                              BossLiteAPI('MySQL', self.database, makePool=True)
         self.sessionPool = self.bossLiteSession.bossLiteDB.getPool()
+        self.db = TrackingDB( self.bossLiteSession.bossLiteDB )
 
         # create pool thread
         params = {}
@@ -160,12 +161,12 @@ class TrackingComponent:
 
         # ended/failed attributes
         self.newAttrs = { 'processStatus' : 'not_handled',
-                         'closed' : 'N' }
+                          'closed' : 'N' }
         self.failedAttrs = { 'processStatus' : 'handled',
                              'status' : 'A', 'closed' : 'N' }
         self.killedAttrs = { 'processStatus' : 'handled',
                              'status' : 'K', 'closed' : 'N' }
-        self.finishedAttrs =  {'processStatus' : 'handled',
+        self.finishedAttrs = { 'processStatus' : 'handled',
                                'status' : 'SD', 'closed' : 'N' }
 
         # component running, display info
@@ -210,10 +211,9 @@ class TrackingComponent:
             (self.timeoutEvent, self.toDelay)
             )
 
-        db = TrackingDB( self.bossLiteSession.bossLiteDB )
-        result = db.getStuckJobs( ['SU'], self.timeout, \
-                                  begin='submission_time', \
-                                  end='CURRENT_TIMESTAMP' )
+        result = self.db.getStuckJobs( ['SU'], self.timeout, \
+                                       begin='submission_time', \
+                                       end='CURRENT_TIMESTAMP' )
 
         for jobSpec in result :
             logging.info( "perform %s for job %s" % \
@@ -226,82 +226,7 @@ class TrackingComponent:
         self.ms.commit()
 
 
-    def handleNew(self, job):
-        """
-        __handleNew__
-
-        Poll the BOSS DB for new job ids and handle they registration
-
-        """
-
-        # FIXME: temp hack
-        if job.runningJob['status'] == 'C' or \
-               job.runningJob['status'] == 'S' :
-            del( job )
-            return False
-        try :
-            job.runningJob['processStatus'] = 'handled'
-            self.bossLiteSession.updateDB( job )
-            logging.debug("%s: enabled for further handling" % \
-                          self.fullId( job ) )
-
-        except BossLiteError, err:
-            logging.error("%s: error handling new job : %s" % \
-                          (self.fullId( job ), str( err ) ) )
-
-        return True
-
-
-    def handleFinished(self, job):
-        """
-        __handleFinished__
-
-        handle finished jobs: retrieve output and notify execution
-        failure or success
-
-        """
-
-
-        # enqueue the get output operation
-        logging.debug("Enqueing getoutput request for %s" % \
-                      self.fullId(job))
-
-        try:
-            job.runningJob['processStatus'] = 'output_requested'
-            self.bossLiteSession.updateDB( job )
-
-            logging.debug("%s: getoutput request successfully enqueued" % \
-                          self.fullId( job ) )
-        except BossLiteError, err:
-            logging.error("%s: output cannot be requested : %s" % \
-                          (self.fullId( job ), str( err ) ) )
-
-        return True
-
-
-    def handleFailed( self, job ):
-        """
-        __handleFailed__
-
-        handle failed jobs
-
-        """
-
-        # enqueue the get output operation
-        logging.debug("Enqueing failure handling request for %s" % \
-                      self.fullId(job))
-
-        try:
-            job.runningJob['processStatus'] = 'failed'
-            self.bossLiteSession.updateDB( job.runningJob )
-        except BossLiteError, err:
-            logging.error("%s: failure handling cannot be requested : %s" % \
-                          (self.fullId( job ), str( err ) ) )
-
-        return True
-
-
-    def pollJobs(self, runningAttrs, action ):
+    def pollJobs(self, runningAttrs, processStatus, skipStatus=None ):
         """
         __pollJobs__
 
@@ -322,7 +247,7 @@ class TrackingComponent:
                 limit=self.jobLimit, offset=offset
                 )
 
-            logging.info("polled jobs : " + str( len(self.newJobs) ) )
+            logging.info("Polled jobs : " + str( len(self.newJobs) ) )
 
             # exit if no more jobs to query
             if self.newJobs == [] :
@@ -331,17 +256,27 @@ class TrackingComponent:
             else :
                 offset += self.jobLimit
 
+            try:
+                self.db.processBulkUpdate( self.newJobs, processStatus, \
+                                           skipStatus )
+                logging.info( "Changed status to %s for %s loaded jobs" \
+                              % ( processStatus, str( len(self.newJobs) ) ) )
+
+            except BossLiteError, err:
+                logging.error(
+                    "Failed handling %s loaded jobs, waiting next round: %s" \
+                    % ( processStatus, str( err ) ) )
+                continue
+
             while self.newJobs != [] :
 
                 job = self.newJobs.pop()
 
-                if action( job ) :
-
-                    # publish information to dashboard
-                    try:
-                        self.dashboardPublish( job )
-                    except Exception, msg:
-                        logging.error("Cannot publish to dashboard:%s" % msg)
+                # publish information to dashboard
+                try:
+                    self.dashboardPublish( job )
+                except Exception, msg:
+                    logging.error("Cannot publish to dashboard:%s" % msg)
 
                 del( job )
 
@@ -364,22 +299,22 @@ class TrackingComponent:
 
         # get finished jobs and handle them
         logging.info( 'Load Finished Jobs' )
-        self.pollJobs(self.finishedAttrs, self.handleFinished)
+        self.pollJobs( self.finishedAttrs, 'output_requested' )
 
         # get jobs and handle them
         logging.info( 'Load Failed Jobs' )
-        self.pollJobs(self.failedAttrs, self.handleFailed)
+        self.pollJobs( self.failedAttrs, 'failed' )
         logging.info( 'Load Killed Jobs' )
-        self.pollJobs(self.killedAttrs, self.handleFailed)
+        self.pollJobs( self.killedAttrs, 'failed' )
 
         # notify new jobs
         logging.info( 'Load New Jobs' )
-        self.pollJobs(self.newAttrs, self.handleNew)
+        self.pollJobs( self.newAttrs, 'handled' , ['C', 'S'] )
 
         # generate next polling cycle
-        logging.info("Waiting %s for next get output polling cycle" % \
-                     self.pollDelay)
-        self.ms.publish("TrackingComponent:pollDB", "", self.pollDelay)
+        logging.info( "Waiting %s for next get output polling cycle" % \
+                      self.pollDelay )
+        self.ms.publish( "TrackingComponent:pollDB", "", self.pollDelay )
         self.ms.commit()
 
 
@@ -392,8 +327,7 @@ class TrackingComponent:
         """
 
         # summary of the jobs in the DB
-        db = TrackingDB( self.bossLiteSession.bossLiteDB )
-        result = db.getJobsStatistic()
+        result = self.db.getJobsStatistic()
 
         if result is not None:
 
