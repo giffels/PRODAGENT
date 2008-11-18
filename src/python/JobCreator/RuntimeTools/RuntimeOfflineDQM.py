@@ -29,13 +29,24 @@ import StageOut.Impl
 
 _DoHTTPPost = True
 _DoStageOut = True
+_DoCERNCopy  = False
 _HTTPPostURL = 'https://vocms33.cern.ch/dqm/dev' #test instance
 #_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/tier-0/data/put' # prod instance
 #_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/relval/data/put' # RelVal instance
 
+#  //
+# // Parameters used to control the stage out of DQM histograms back to CERN
+#//
+CERNStageOut = {
+    "command" : "srmv2",
+    "option" : [],
+    "se-name" : "srm.cern.ch",
+    "lfn-prefix" : "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms/",
+    }
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.13 2008/11/06 15:13:10 evansde Exp $"
-__version__ = "$Revision: 1.13 $"
+
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.14 2008/11/16 13:03:55 direyes Exp $"
+__version__ = "$Revision: 1.14 $"
 
 
 HTTPS = httplib.HTTPS
@@ -57,9 +68,11 @@ class HarvesterImpl:
         self.workflowSpecId = None
         self.jobSpecId = None
         self.inputDataset = None
+        self.thisSite = None
         self.mssNames = {}
         self.doStageOut = _DoStageOut
         self.doHttpPost = _DoHTTPPost
+        self.doCernCopy = _DoCERNCopy
 
 
     def __call__(self, aFile):
@@ -93,6 +106,16 @@ class HarvesterImpl:
                 msg += "%s\n" % str(ex)
                 print msg
                 return 2
+        if self.doCernCopy:
+            try:
+                self.cernStageOut(aFile)
+            except Exception, ex:
+                msg = "Failure to do copy to CERN\n"
+                msg += "For File: %s\n" % aFile['FileName']
+                msg += "%s\n" % str(ex)
+                print msg
+                return 3
+
         return 0
 
 
@@ -107,7 +130,7 @@ class HarvesterImpl:
         try:
             stager = StageOutMgr()
         except Exception, ex:
-            msg = "Unable to stage out log archive:\n"
+            msg = "Unable to stage out DQM File:\n"
             msg += str(ex)
             raise RuntimeError, msg
 
@@ -136,6 +159,56 @@ class HarvesterImpl:
         storagePFN = stager.searchTFC(fileInfo['LFN'])
         self.mssNames[filename] = storagePFN
         analysisFile['StoragePFN'] = storagePFN
+        return
+
+
+    def cernStageOut(self, analysisFile):
+        """
+        _stageOut_
+
+        stage out the DQM Histogram to local storage
+
+        """
+        filename = analysisFile['FileName']
+        try:
+            stager = StageOutMgr(**CERNStageOut)
+        except Exception, ex:
+            msg = "Unable to stage out DQM File to CERN:\n"
+            msg += str(ex)
+            raise RuntimeError, msg
+
+
+        filebasename = os.path.basename(filename)
+        filebasename = filebasename.replace(".root", "")
+
+        if self.siteName != None:
+            lfn = "/store/unmerged/dqm/%s/%s/%s/%s" % (
+                self.siteName,
+                self.workflowSpecId,
+                self.jobSpecId,
+                filebasename)
+        else:
+            "/store/unmerged/dqm/%s/%s/%s" % (
+            self.workflowSpecId,
+            self.jobSpecId,
+            filebasename)
+
+        fileInfo = {
+            'LFN' : lfn,
+            'PFN' : os.path.join(os.getcwd(), filename),
+            'SEName' : None,
+            'GUID' : filebasename,
+            }
+
+        try:
+            stager(**fileInfo)
+        except Exception, ex:
+            msg = "Unable to stage out DQM File To CERN:\n"
+            msg += str(ex)
+            raise RuntimeError, msg
+
+        analysisFile['CERNLFN'] = fileInfo['LFN']
+        analysisFile['CERNPFN'] = fileInfo['PFN']
         return
 
 
@@ -310,6 +383,13 @@ class OfflineDQMHarvester:
         if workflow.parameters.has_key("DQMServer"):
             self.uploadUrl = workflow.parameters['DQMServer']
 
+
+        cernStageOut = False
+        if workflow.parameters.has_key("DQMCopyToCERN"):
+            if str(workflow.parameters['DQMCopyToCERN']).lower() == "true":
+                cernStageOut = True
+
+
         #  //
         # // Lookup proxy, first from workflow for explicit path
         #//  Fallback to X509_PROXY as defined in grid jobs
@@ -346,15 +426,20 @@ class OfflineDQMHarvester:
         jobSpecNode = self.state.jobSpecNode
         inputDataset = jobSpecNode._InputDatasets[0]
 
+        siteConf = self.state.getSiteConfig()
+        siteName = self.siteConf.siteName
+
+
         self.impl = HarvesterImpl()
         self.impl.inputDataset = inputDataset.name()
         self.impl.proxyLocation = self.proxyLocation
         self.impl.uploadUrl = self.uploadUrl
         self.impl.workflowSpecId = self.workflowSpecId
         self.impl.jobSpecId = self.jobSpecId
+        self.impl.thisSite = siteName
+        self.impl.doCernCopy = cernStageOut
 
-        # map local to storage PFN
-        #self.mssNames = {}
+
 
 
     def __call__(self):
