@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.73 2008/08/28 17:25:57 swakef Exp $"
-__version__ = "$Revision: 1.73 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.74 2008/10/16 12:19:35 swakef Exp $"
+__version__ = "$Revision: 1.74 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -39,11 +39,6 @@ from ProdCommon.MCPayloads.MergeTools import createMergeJobWorkflow
 # logging
 import logging
 import ProdAgentCore.LoggingUtils as LoggingUtils
-
-# DBS2
-from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
-from ProdCommon.DataMgmt.DBS.DBSErrors import DBSReaderError
-from DBSAPI.dbsApiException import DbsConnectionError
 
 ##############################################################################
 # MergeSensorComponent class
@@ -192,11 +187,6 @@ class MergeSensorComponent:
             logging.info("Using Auto CleanUp")
         else:
             logging.info("Auto CleanUp disabled.")
-
-        # get DBS reader
-        self.dbsReader = None
-        self.delayDBS = 120
-        self.connectToDBS()
         
         # merge workflow specification
         thisModule = os.path.abspath(
@@ -240,41 +230,7 @@ class MergeSensorComponent:
 
         # trigger
         self.trigger = None
-       
-    ##########################################################################
-    # Connect to DBS waiting if necessary
-    ##########################################################################
- 
-    def connectToDBS(self):
-        """
-        _connectToDBS_
 
-        connect to DBS
-
-        Arguments:
-
-          none
-
-        Return:
-
-          none
-
-        """
-
-        connected = False
-
-        while not connected:
-            try:
-                self.dbsReader = DBSReader(self.args["ReadDBSURL"])
-
-            except (DBSReaderError, DbsConnectionError), ex:
-                logging.error("""Failing to connect to DBS: (exception: %s)
-                                 trying again in %s seconds""" % \
-                                 (str(ex), self.delayDBS))
-                time.sleep(self.delayDBS)
-
-            else:
-                connected = True
 
     ##########################################################################
     # add SE names to white list
@@ -1047,27 +1003,6 @@ class MergeSensorComponent:
             logging.info("Forced merge on dataset %s" % datasetPath)
  
         # get file list in dataset
-        ###fileList = self.getFileListFromDBS(datasetPath)
-
-        # ignore empty sets
-        ###if fileList == {}:
-
-        ###    # reset force merge status if set
-        ###    if (forceMerge):
-
-        ###        logging.info( \
-        ###          "Forced merge does not apply to dataset %s due to %s" \
-        ###                     % (datasetPath, "empty file condition"))
-
-        ###        # remove dataset from forced merged datasets
-        ###        self.forceMergeList.remove(datasetPath)
-
-        ###    # just return
-        ###    return
-        
-        # update file information
-        #self.datasets.updateFiles(datasetPath, fileList)
-        
         # verify if it can be merged
         (mergeable,
          fileBlockId,
@@ -1485,77 +1420,7 @@ class MergeSensorComponent:
         self.ms.commit()
         return
    
-    ##########################################################################
-    # get list of unmerged files associated to a dataset from DBS
-    ##########################################################################
-    
-    def getFileListFromDBS(self, datasetId):
-        """
-        _getFileListFromDBS_
-        
-        Get the list of files of the dataset from DBS
-        
-        Arguments:
-            
-          datasetId -- the name of the dataset
-          
-        Return:
-            
-          dictionary with index 'file block' and ech value defined as 
-          a dictionary with index 'file name' and each value defined
-          as a dictionary with at least 'NumberOfEvents', 'FileSize'.
-          
-        """
-
-        # list of files
-        fileList = {}
-
-        # get list of files      
-        while True:
- 
-            try:
-                blocks = self.dbsReader.getFiles(datasetId)
-                break
-
-            # cannot get information from DBS, ignore then
-            except DBSReaderError, ex:
-                logging.error("DBS error: %s, cannot get files for %s" % \
-                              (str(ex), str(datasetId)))
-                return fileList
-
-            # connection error, retry
-            except DbsConnectionError, ex:
-                logging.error("DBS connection lost, retrying: " + \
-                              str(ex))
-                self.connectToDBS()
-
-        # check for empty datasets
-        if blocks == {}:
-            return fileList
-
-        # get all file blocks
-        blockList = blocks.keys()
-
-        # process all file blocks
-        for fileBlock in blockList:
-
-            # get fileBlockId SE information
-            seList = blocks[fileBlock]['StorageElements']
-
-            # apply restrictions
-            seList = self.processSElist(seList)
-            
-            # add files for non blocked SE
-            if seList != [] or seList == None:
-           
-                # add block to result
-                fileList[fileBlock] = blocks[fileBlock]
-   
-            else:
-                logging.info("fileblock %s blocked" % fileBlock)
-
-        # return list
-        return fileList
+  
        
     ##########################################################################
     # load policy plugin
@@ -1706,6 +1571,6 @@ class MergeSensorComponent:
         
         return "MergeSensor: " + __version__ + \
             "\nWatchedDatasets: " + WatchedDatasets.getVersionInfo() + \
-            "\nDataset: " + Dataset.getVersionInfo() + \
-            "\nMergeSensorDB: " + MergeSensorDB.getVersionInfo() + "\n"
+            "\nDataset: " + Dataset.getVersionInfo() + "\n"#+ \
+            #"\nMergeSensorDB: " + MergeSensorDB.getVersionInfo() + "\n"
     
