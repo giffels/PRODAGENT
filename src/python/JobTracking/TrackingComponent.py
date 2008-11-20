@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.58 2008/10/07 17:07:27 gcodispo Exp $"
-__version__ = "$Revision: 1.58 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.59 2008/11/18 18:08:23 gcodispo Exp $"
+__version__ = "$Revision: 1.59 $"
 
 import os
 import os.path
@@ -194,7 +194,7 @@ class TrackingComponent:
             return
 
         # wrong event
-        logging.info("Unexpected event %s(%), ignored" % \
+        logging.info("Unexpected event %s(%s), ignored" % \
                      (str(event), str(payload)))
         return
 
