@@ -45,16 +45,15 @@
                 </ConfigBlock>
                 <ConfigBlock Name="PromptRecoInjector">
                         <Parameter Name="LogLevel" Value="Debug"/>
+                        <Parameter Name="LogSize" Value="1073741824"/>
+                        <Parameter Name="UseLazyDownload" Value="On"/>
+                        <Parameter Name="LogRotate" Value="9"/>
                         <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/PromptRecoInjector"/> 
                         <Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/PromptRecoInjector"/>
-                        <Parameter Name="datasetsToReco" Value="BeamHalo,ZeroBias,TriggerTest,Cosmics,BarrelMuon,EndcapsMuon"/>
-                        <Parameter Name="cmsswVer" Value="CMSSW_2_1_8"/>
                         <Parameter Name="cmsPath" Value="/afs/cern.ch/cms/sw"/>
                         <Parameter Name="scramArch" Value="slc4_ia32_gcc345"/>
                         <Parameter Name="t0astPollInterval" Value="00:05:00"/>
-<!--                        <Parameter Name="recoConfig" Value="/data/cmsprod/CMSSW/CMSSW_2_1_8/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_30T_cfg.py"/> -->
-<!--                        <Parameter Name="recoConfig" Value="/data/cmsprod/CMSSW/CMSSW_2_1_8/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_38T_cfg.py"/> -->
-                        <Parameter Name="recoConfig" Value="/data/cmsprod/CMSSW/CMSSW_2_1_8/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py"/>
+                        <Parameter Name="RecoConfigFile" Value="/data/cmsprod/PAProd/dev/control/OfflineConfiguration.py"/>
                 </ConfigBlock>
 
                 <ConfigBlock Name="RepackerAuditor">
@@ -139,10 +138,10 @@
 		</ConfigBlock>
 		<ConfigBlock Name="LocalDBS">
 
-
-                  <Parameter Name="DBSURL" Value="https://cmst0dbs.cern.ch:8443/cms_dbs_prod_tier0_writer/servlet/DBSServlet"/> 
+                  <Parameter Name="DBSURL" Value="https://cmst0dbs.cern.ch:8443/cms_dbs_prod_tier0_writer/servlet/DBSServlet"/>
                   <Parameter Name="ReadDBSURL" Value="http://cmst0dbs.cern.ch/cms_dbs_prod_tier0/servlet/DBSServlet"/>
-                        <!--<Parameter Name="DBSURL" Value="https://cmsdbsprod.cern.ch:8443/cms_dbs_prod_tier0_writer/servlet/DBSServlet"/>
+
+<!--                        <Parameter Name="DBSURL" Value="https://cmsdbsprod.cern.ch:8443/cms_dbs_prod_tier0_writer/servlet/DBSServlet"/>
                         <Para$meter Name="ReadDBSURL" Value="http://cmsdbsprod.cern.ch:8443/cms_dbs_prod_tier0/servlet/DBSServlet"/> -->
 <!--
 			<Parameter Name="DBSURL" Value="https://cmsdbsprod.cern.ch:8443/cms_dbs_int_tier0_writer/servlet/DBSServlet"/>
@@ -185,7 +184,7 @@
 			</Comment>
                         <Parameter Name="dbType" Value="mysql"/>
 			<Parameter Name="maxConnectionAttempts" Value="5"/>
-			<Parameter Name="passwd" Value="98passwd"/>
+			<Parameter Name="passwd" Value=""/>
 			<Parameter Name="refreshPeriod" Value="14400"/>
 			<Parameter Name="dbWaitingTime" Value="10"/>
 			<Parameter Name="host" Value="localhost"/>
@@ -196,14 +195,14 @@
 			<Parameter Name="schemaLocation" Value="$PRODAGENT_ROOT/share/ProdAgentDB.sql"/>
 		</ConfigBlock>
                 <ConfigBlock Name="Tier0DB">
-			<Parameter Name="user" Value="CMS_T0AST"/> 
-			<!-- <Parameter Name="user" Value="CMS_T0AST_WRITER"/> -->
-                        <Parameter Name="passwd" Value="PlumJ4m791"/>
+			<!-- <Parameter Name="user" Value="CMS_T0AST"/> --> 
+			<Parameter Name="user" Value="CMS_T0AST_WRITER"/>
+                        <Parameter Name="passwd" Value=""/>
                         <Parameter Name="dbName" Value="TOAST_0_0_1"/>
                         <Parameter Name="dbType" Value="oracle"/>
-                        <!-- <Parameter Name="tnsName" Value="CMS_T0AST"/> -->
-                        <Parameter Name="tnsName" Value="DEVDB10"/> 
-			<Parameter Name="schemaLocation" Value="/afs/cern.ch/user/h/hufnagel/w0/tier0inject/TOAST_Oracle.sql"/>
+                        <Parameter Name="tnsName" Value="CMS_T0AST"/>
+                        <!-- <Parameter Name="tnsName" Value="DEVDB10"/> --> 
+			<Parameter Name="schemaLocation" Value="/data/cmsprod/PAProd/dev/install/T0/sql/tier0inject/TOAST_Oracle.sql"/>
                 </ConfigBlock>
 		<ConfigBlock Name="JobCreator">
 			<Parameter Name="CreatorPluginConfig" Value="/data/cmsprod/PAProd/dev/control/CreatorPluginConfig.xml"/>
@@ -239,7 +238,7 @@
 			<Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/ResourceMonitor"/>
 			<Parameter Name="LogSize" Value="1073741824"/>
 			<Parameter Name="LogRotate" Value="9"/>
-			<Parameter Name="PollInterval" Value="30"/>
+			<Parameter Name="PollInterval" Value="500"/>
 			<Parameter Name="MonitorName" Value="T0LSFMonitor"/>
 		</ConfigBlock>
                 <ConfigBlock Name="SegmentInjector">
@@ -281,6 +280,7 @@
                         <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/RepackerMerger"/> 
                         <Parameter Name="minMergeSize" Value="2000000000"/> 
                         <Parameter Name="maxMergeSize" Value="4100000000"/> 
+                        <Parameter Name="maxMergeEvents" Value="50000"/> 
                         <Parameter Name="t0astPollInterval" Value="00:00:20"/>
 			<Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/RepackerMerger"/>
                         <Parameter Name="UseLazyDownload" Value="On"/> 
