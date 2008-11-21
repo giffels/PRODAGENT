@@ -168,7 +168,8 @@ class DBSPlugin(BasePlugin):
                 globalTag,
                 self.args['ConfigFile'],
                 self.args['DQMServer'],
-                self.args['proxyLocation'])
+                self.args['proxyLocation'],
+                self.args['DQMCopyToCERN'])
 
             workflowSpec.save(workflowFile)
             msg = "Created Harvesting Workflow:\n %s" % workflowFile
