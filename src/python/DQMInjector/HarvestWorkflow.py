@@ -107,7 +107,9 @@ def configFromFile(cmsPath, scramArch, cmsswVersion, filename):
 
 
 def createHarvestingWorkflow(dataset, site, cmsPath, scramArch,
-                             cmsswVersion, globalTag, configFile = None, DQMServer = None, proxyLocation = None):
+                             cmsswVersion, globalTag, configFile = None,
+                             DQMServer = None, proxyLocation = None, 
+                             DQMCopyToCERN = None):
     """
     _createHarvestingWorkflow_
 
@@ -157,6 +159,8 @@ def createHarvestingWorkflow(dataset, site, cmsPath, scramArch,
         spec.parameters['DQMServer'] = DQMServer
     if proxyLocation != None :
         spec.parameters['proxyLocation'] = proxyLocation
+    if DQMCopyToCERN != None :
+        spec.parameters['DQMCopyToCERN'] = DQMCopyToCERN
 
     spec.payload.scriptControls['PostTask'].append(
         "JobCreator.RuntimeTools.RuntimeOfflineDQM")
