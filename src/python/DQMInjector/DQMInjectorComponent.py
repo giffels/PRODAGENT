@@ -42,7 +42,8 @@ class DQMInjectorComponent:
         self.args['OverrideGlobalTag'] = None
         self.args['DQMServer'] = None
         self.args['proxyLocation'] = None
-        self.args['Site'] = "srm.cern.ch"
+        self.args['DQMCopyToCERN'] = None
+        self.args['Site'] = "srm-cms.cern.ch"
         self.args.update(args)
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(
@@ -80,6 +81,9 @@ class DQMInjectorComponent:
                 self.args['OverrideGlobalTag'],)
         else:
             msg += " => GlobalTag Version looked up by Plugin\n"
+        msg += " => Server: %s\n" % (self.args['DQMServer'])
+        msg += " => proxyLocation: %s\n" % (self.args['proxyLocation'])
+        msg += " => Copy to CERN: %s\n" % (self.args['DQMCopyToCERN'])
             
         logging.info(msg)
 
