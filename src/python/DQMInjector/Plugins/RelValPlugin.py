@@ -88,13 +88,14 @@ def findGlobalTagForDataset(dbsUrl, primary, processed, tier):
     tag = lastFile['LogicalFileName'].split("/")[6].split("_")[0]
     version = lastFile['LogicalFileName'].split("/")[6].split("_")[1]
 
-    if tag != "IDEAL" and tag != "STARTUP" :
-        msg = "Dataset %s is not IDEAL nor STARTUP\n" % (
-            datasetName)
-        raise RuntimeError, msg
-
     GlobalTag = tag + "_" + version + "::All"
 
+    if tag != "IDEAL" and tag != "STARTUP" :
+        msg = "Warning: Dataset %s has not IDEAL nor STARTUP Global Tag.\n" % (
+            datasetName)
+        logging.info(msg)
+        GlobalTag = None
+        
     return GlobalTag
 
 
@@ -171,6 +172,7 @@ class RelValPlugin(BasePlugin):
             msg = "No workflow found for dataset: %s\n " % (
                 collectPayload.datasetPath(),)
             msg += "Looking up software version and generating workflow..."
+            logging.info(msg)
 
 #            if self.args.get("OverrideGlobalTag", None) == None:
             if 1 :
@@ -179,6 +181,15 @@ class RelValPlugin(BasePlugin):
                     collectPayload['PrimaryDataset'],
                     collectPayload['ProcessedDataset'],
                     collectPayload['DataTier'])
+                if globalTag == None :
+                    msg = "OverrideGlobalTag parameter will be used...\n"
+                    if self.args.get("OverrideGlobalTag", None) != None :
+                        globalTag = self.args['OverrideGlobalTag']
+                        msg += "=> GlobalTag: %s\n" % (globalTag)
+                        logging.info(msg)
+                    else :
+                        msg += "OverrideGlobalTag parameter is not defined in Configuration.\n"
+                        raise RuntimeError, msg                        
 #            else:
 #                globalTag = self.args['OverrideGlobalTag']
 
@@ -209,10 +220,15 @@ class RelValPlugin(BasePlugin):
                 globalTag,
                 self.args['ConfigFile'],
                 self.args['DQMServer'],
-                self.args['proxyLocation'])
-
+                self.args['proxyLocation'],
+                self.args['DQMCopyToCERN'])
+            
             workflowSpec.save(workflowFile)
             msg = "Created Harvesting Workflow:\n %s" % workflowFile
+            msg += "\nThe following parameters were used:\n"
+            msg += "DQMserver     ==> %s\n" % (self.args['DQMServer'])
+            msg += "proxyLocation ==> %s\n" % (self.args['proxyLocation'])
+            msg += "DQMCopyToCERN ==> %s\n" % (self.args['DQMCopyToCERN'])
             logging.info(msg)
             self.publishWorkflow(workflowFile, workflowSpec.workflowName())
         else:
