@@ -45,8 +45,8 @@ CERNStageOut = {
     }
 
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.14 2008/11/16 13:03:55 direyes Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.15 2008/11/18 19:42:21 evansde Exp $"
+__version__ = "$Revision: 1.15 $"
 
 
 HTTPS = httplib.HTTPS
@@ -89,14 +89,17 @@ class HarvesterImpl:
         for key, value in aFile.items():
             msg += " => %s: %s\n" % (key, value)
         print msg
-        try:
-            self.stageOut(aFile)
-        except Exception, ex:
-            msg = "Failure processing stage out:\n"
-            msg += "For File: %s\n" % aFile['FileName']
-            msg += "%s\n" % str(ex)
-            print msg
-            return 1
+        if self.doStageOut:
+            try:
+                self.stageOut(aFile)
+            except Exception, ex:
+                msg = "Failure processing stage out:\n"
+                msg += "For File: %s\n" % aFile['FileName']
+                msg += "%s\n" % str(ex)
+                print msg
+                return 1
+        else :
+            print "Info: doStageOut flag is set to False, not staging out.\n"
         if self.doHttpPost:
             try:
                 self.httpPost(aFile)
@@ -106,6 +109,8 @@ class HarvesterImpl:
                 msg += "%s\n" % str(ex)
                 print msg
                 return 2
+        else :
+            print "Info: doHttpPost flag is set to False, not posting.\n"
         if self.doCernCopy:
             try:
                 self.cernStageOut(aFile)
@@ -115,7 +120,8 @@ class HarvesterImpl:
                 msg += "%s\n" % str(ex)
                 print msg
                 return 3
-
+        else :
+            print "Info: doCernCopy flag is set to False, not copying files to CERN.\n"
         return 0
 
 
@@ -133,7 +139,6 @@ class HarvesterImpl:
             msg = "Unable to stage out DQM File:\n"
             msg += str(ex)
             raise RuntimeError, msg
-
         filebasename = os.path.basename(filename)
         filebasename = filebasename.replace(".root", "")
 
@@ -181,17 +186,17 @@ class HarvesterImpl:
         filebasename = os.path.basename(filename)
         filebasename = filebasename.replace(".root", "")
 
-        if self.siteName != None:
+        if self.thisSite != None:
             lfn = "/store/unmerged/dqm/%s/%s/%s/%s" % (
-                self.siteName,
+                self.thisSite,
                 self.workflowSpecId,
                 self.jobSpecId,
                 filebasename)
         else:
-            "/store/unmerged/dqm/%s/%s/%s" % (
-            self.workflowSpecId,
-            self.jobSpecId,
-            filebasename)
+            lfn = "/store/unmerged/dqm/%s/%s/%s" % (
+                self.workflowSpecId,
+                self.jobSpecId,
+                filebasename)
 
         fileInfo = {
             'LFN' : lfn,
@@ -378,11 +383,13 @@ class OfflineDQMHarvester:
         self.state.loadJobSpecNode()
 
         self.uploadUrl = _HTTPPostURL
+        doHttpPost = _DoHTTPPost
         workflow = WorkflowSpec()
         workflow.load(os.environ['PRODAGENT_WORKFLOW_SPEC'])
         if workflow.parameters.has_key("DQMServer"):
             self.uploadUrl = workflow.parameters['DQMServer']
-
+        else :
+            doHttpPost = False
 
         cernStageOut = False
         if workflow.parameters.has_key("DQMCopyToCERN"):
@@ -394,31 +401,32 @@ class OfflineDQMHarvester:
         # // Lookup proxy, first from workflow for explicit path
         #//  Fallback to X509_PROXY as defined in grid jobs
         self.proxyLocation = workflow.parameters.get('proxyLocation', None)
-        possibleProxyVars = [
-            "X509_PROXY",
-            "X509_USER_PROXY",
-            ]
-        if self.proxyLocation == None:
-            for ppv in possibleProxyVars:
-                value = os.environ.get(ppv, None)
-                if value == None:
-                    continue
-                if not os.path.exists(value):
-                    continue
-                self.proxyLocation = value
-                break
-        if self.proxyLocation == None:
-            msg = "===PROXY FAIL===\n"
-            msg += "Unable to find proxy for HTTPS Upload\n"
-            msg += "Cannot determine location of proxy"
-            raise RuntimeError, msg
+        if doHttpPost : 
+            possibleProxyVars = [
+                "X509_PROXY",
+                "X509_USER_PROXY",
+                ]
+            if self.proxyLocation == None:
+                for ppv in possibleProxyVars:
+                    value = os.environ.get(ppv, None)
+                    if value == None:
+                        continue
+                    if not os.path.exists(value):
+                        continue
+                    self.proxyLocation = value
+                    break
+            if self.proxyLocation == None:
+                msg = "===PROXY FAIL===\n"
+                msg += "Unable to find proxy for HTTPS Upload\n"
+                msg += "Cannot determine location of proxy"
+                raise RuntimeError, msg
 
-        if not os.path.exists(self.proxyLocation):
-            msg = "===PROXY FAIL===\n"
-            msg += "Proxy file does not exist:\n"
-            msg += "%s\n" % self.proxyLocation
-            msg += "Cannot proceed with HTTPS Upload without proxy\n"
-            raise RuntimeError, msg
+            if not os.path.exists(self.proxyLocation):
+                msg = "===PROXY FAIL===\n"
+                msg += "Proxy file does not exist:\n"
+                msg += "%s\n" % self.proxyLocation
+                msg += "Cannot proceed with HTTPS Upload without proxy\n"
+                raise RuntimeError, msg
 
 
 
@@ -427,7 +435,7 @@ class OfflineDQMHarvester:
         inputDataset = jobSpecNode._InputDatasets[0]
 
         siteConf = self.state.getSiteConfig()
-        siteName = self.siteConf.siteName
+        siteName = siteConf.siteName
 
 
         self.impl = HarvesterImpl()
@@ -438,7 +446,7 @@ class OfflineDQMHarvester:
         self.impl.jobSpecId = self.jobSpecId
         self.impl.thisSite = siteName
         self.impl.doCernCopy = cernStageOut
-
+        self.impl.doHttpPost = doHttpPost
 
 
 
