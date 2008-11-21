@@ -45,8 +45,8 @@ CERNStageOut = {
     }
 
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.15 2008/11/18 19:42:21 evansde Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.16 2008/11/21 16:13:46 direyes Exp $"
+__version__ = "$Revision: 1.16 $"
 
 
 HTTPS = httplib.HTTPS
@@ -89,17 +89,16 @@ class HarvesterImpl:
         for key, value in aFile.items():
             msg += " => %s: %s\n" % (key, value)
         print msg
-        if self.doStageOut:
-            try:
-                self.stageOut(aFile)
-            except Exception, ex:
-                msg = "Failure processing stage out:\n"
-                msg += "For File: %s\n" % aFile['FileName']
-                msg += "%s\n" % str(ex)
-                print msg
-                return 1
-        else :
-            print "Info: doStageOut flag is set to False, not staging out.\n"
+
+        try:
+            self.stageOut(aFile)
+        except Exception, ex:
+            msg = "Failure processing stage out:\n"
+            msg += "For File: %s\n" % aFile['FileName']
+            msg += "%s\n" % str(ex)
+            print msg
+            return 1
+        
         if self.doHttpPost:
             try:
                 self.httpPost(aFile)
@@ -111,6 +110,7 @@ class HarvesterImpl:
                 return 2
         else :
             print "Info: doHttpPost flag is set to False, not posting.\n"
+        
         if self.doCernCopy:
             try:
                 self.cernStageOut(aFile)
