@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.9 2008/10/07 17:07:27 gcodispo Exp $"
-__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: JobHandling.py,v 1.10 2008/11/04 13:37:53 gcodispo Exp $"
+__version__ = "$Revision: 1.10 $"
 
 import os
 import logging
@@ -561,7 +561,7 @@ class JobHandling:
             else :
                 logging.error("%s: Cannot create directory %s : %s" % \
                      (self.fullId( job ), outdir, str(err)))
-                raise err
+                raise
 
         # return outdir
         return outdir
