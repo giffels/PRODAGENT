@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.10 2008/11/04 13:37:53 gcodispo Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: JobHandling.py,v 1.11 2008/11/22 14:42:01 gcodispo Exp $"
+__version__ = "$Revision: 1.11 $"
 
 import os
 import logging
@@ -280,10 +280,8 @@ class JobHandling:
         try:
             os.makedirs(newPath)
         except OSError, err:
-            if  err.errno == 17:
-                # existing dir
-                pass
-            else :
+            if err.errno != 17:
+                # not existing dir
                 logging.error("Job %s : Cannot create directory %s" % \
                               (self.fullId(job), str(err)) )
 
@@ -319,10 +317,8 @@ class JobHandling:
             try:
                 os.makedirs( os.path.join( newPath, ext) )
             except OSError, err:
-                if  err.errno == 17:
-                    # existing dir
-                    pass
-                else :
+                if  err.errno != 17:
+                    # not existing dir
                     logging.error("Job %s : Cannot create directory %s" % \
                                   (self.fullId(job), str(err)) )
 
@@ -555,10 +551,8 @@ class JobHandling:
         try:
             os.makedirs( outdir )
         except OSError, err:
-            if  err.errno == 17:
-                # existing dir
-                pass
-            else :
+            # unless for existing dir
+            if err.errno != 17:
                 logging.error("%s: Cannot create directory %s : %s" % \
                      (self.fullId( job ), outdir, str(err)))
                 raise
