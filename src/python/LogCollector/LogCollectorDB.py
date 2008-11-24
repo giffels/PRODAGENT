@@ -38,7 +38,7 @@ def getLogsToArchive(age = None, update = True):
     sqlStr = """SELECT id, workflow, se_name, lfn FROM log_input 
                 WHERE status = 'new' """
     if age:
-        sqlStr += " AND insert_time < ADDTIME(NOW(), SEC_TO_TIME(-'%s'))" % age
+        sqlStr += " AND insert_time < ADDTIME(NOW(), '-%s')" % age
         
     sqlStr += " ORDER BY workflow, se_name"
         
