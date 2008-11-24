@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.25 2008/10/28 10:42:10 gcodispo Exp $"
-__version__ = "$Revision: 1.25 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.26 2008/10/28 11:59:31 gcodispo Exp $"
+__version__ = "$Revision: 1.26 $"
 
 import os
 import logging
@@ -256,6 +256,8 @@ fi
         If already declared (i.e. resubmission), just submit
         """
 
+        logging.info("Resubmitting job %s" % self.singleSpecName)
+
         # check for loaded job
         if bossJob is None:
             msg = 'Failed to retrieve job %s' % self.singleSpecName
@@ -479,7 +481,7 @@ fi
         """
         
         # // Executing BOSS Submit command
-        logging.info("Resubmitting job %s" % self.singleSpecName)
+        logging.info("Submitting job %s" % self.singleSpecName)
         try :
             self.bossTask = schedSession.submit( self.bossTask, \
                                                  requirements=submissionAttrs )
