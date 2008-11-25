@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.12 2008/11/04 13:37:53 gcodispo Exp $"
-__revision__ = "$Revision: 1.12 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.13 2008/11/25 14:17:40 gcodispo Exp $"
+__revision__ = "$Revision: 1.13 $"
 
 import os
 import logging
@@ -332,8 +332,8 @@ class GetOutputComponent:
 
         # set failed job status
         if self.args['OutputLocation'] != "SE" :
-            reportfilename = \
-                         JobHandling.archiveJob("Success", job, reportfilename)
+            reportfilename = self.jobHandling.archiveJob(
+                "Success", job, reportfilename )
         else :
             # archive job
             try :
@@ -361,8 +361,8 @@ class GetOutputComponent:
 
         # set failed job status
         if self.args['OutputLocation'] != "SE" :
-            reportfilename = \
-                          JobHandling.archiveJob("Failed", job, reportfilename)
+            reportfilename = self.jobHandling.archiveJob(
+                "Failed", job, reportfilename )
         else :
             # archive job
             try :
