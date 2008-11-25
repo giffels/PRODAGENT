@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.11 2008/10/09 07:33:14 gcodispo Exp $"
-__revision__ = "$Revision: 1.11 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.12 2008/11/04 13:37:53 gcodispo Exp $"
+__revision__ = "$Revision: 1.12 $"
 
 import os
 import logging
@@ -329,6 +329,19 @@ class GetOutputComponent:
         """
         __publishJobSuccess__
         """
+
+        # set failed job status
+        if self.args['OutputLocation'] != "SE" :
+            reportfilename = \
+                         JobHandling.archiveJob("Success", job, reportfilename)
+        else :
+            # archive job
+            try :
+                self.bossLiteSession.archive( job )
+            except JobError:
+                logging.error("Job %s : Unable to archive in BossLite" % \
+                              JobOutput.fullId(job) )
+
 
         # publish success event
         self.ms.publish("JobSuccess", reportfilename)
