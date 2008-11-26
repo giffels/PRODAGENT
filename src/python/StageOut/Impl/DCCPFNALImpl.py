@@ -57,7 +57,7 @@ class DCCPFNALImpl(StageOutImpl):
         filePath = "/pnfs/cms/WAX/11/store/%s" % pfnSplit
         directory = os.path.dirname(filePath)
         command = "#!/bin/sh\n"
-        command += "/opt/d-cache/dcap/bin/setenv-cmsprod.sh\n"
+        command += " . /opt/d-cache/dcap/bin/setenv-cmsprod.sh\n"
         command += "if [ ! -e \"%s\" ]; then\n" % directory
         command += "  mkdir -p %s\n" % directory
         command += "fi\n"
