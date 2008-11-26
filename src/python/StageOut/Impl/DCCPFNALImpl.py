@@ -34,7 +34,7 @@ class DCCPFNALImpl(StageOutImpl):
 
     """
 
-    
+
     def createOutputDirectory(self, targetPFN):
         """
         _createOutputDirectory_
@@ -57,6 +57,7 @@ class DCCPFNALImpl(StageOutImpl):
         filePath = "/pnfs/cms/WAX/11/store/%s" % pfnSplit
         directory = os.path.dirname(filePath)
         command = "#!/bin/sh\n"
+        command += "/opt/d-cache/dcap/bin/setenv-cmsprod.sh\n"
         command += "if [ ! -e \"%s\" ]; then\n" % directory
         command += "  mkdir -p %s\n" % directory
         command += "fi\n"
@@ -76,14 +77,14 @@ class DCCPFNALImpl(StageOutImpl):
         print "Translating PFN: %s\n To use dcache door" % pfn
         dcacheDoor = commands.getoutput(
             "/opt/d-cache/dcap/bin/setenv-cmsprod.sh; /opt/d-cache/dcap/bin/select_RdCapDoor.sh")
-        
-        
+
+
         pfn = pfn.split("/store/")[1]
         pfn = "%s%s" % (dcacheDoor, pfn)
-        
-        
+
+
         print "Created Target PFN with dCache Door: ", pfn
-        
+
         return pfn
 
 
@@ -104,7 +105,7 @@ class DCCPFNALImpl(StageOutImpl):
         result = "#!/bin/sh\n"
         result += ". /opt/d-cache/dcap/bin/setenv-cmsprod.sh\n"
         result += "dccp -d 0 -X -role=cmsprod %s %s %s" % ( optionsStr, sourcePFN, targetPFN)
-        
+
         result += \
 """
 EXIT_STATUS=$?
@@ -133,7 +134,7 @@ if [[ $EXIT_STATUS != 0 ]]; then
 fi
 
 """ % (pnfsPfn(targetPFN), sourcePFN, pnfsPfn(targetPFN))
-        
+
         print "Executing:\n", result
         return result
 
