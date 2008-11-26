@@ -17,6 +17,8 @@ import BlockFeeder
 import OfflineDQM
 import OfflineDQMPerRun
 import ReRecoFeeder
+import ADSFeeder
+
 
 
 
