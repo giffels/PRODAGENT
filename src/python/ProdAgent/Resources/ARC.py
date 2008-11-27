@@ -215,6 +215,8 @@ def getJobs():
     jobIds = jobIdMap()
     ids = ""
     for id in jobIds.keys():
+        if id.find(" ") >= 0:
+            id = '"' + id.strip() + '"'
         ids += id.strip() + " "
 
     msg = "getJobs: Id:s to check:\n -> " + ids.strip().replace(" ", "\n -> ")
