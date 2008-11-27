@@ -15,7 +15,7 @@
           
 """
 
-
+import os
 from MergeSensor.MergeSensorDB.MySQL.Base import MySQLBase
 from MergeSensor.MergeSensorError import MergeSensorDBError
 
@@ -43,7 +43,7 @@ class UpdateInputDatasetInfo(MySQLBase):
                           instanceUpdate + \
                           failuresUpdate + """
                       WHERE dataset='""" + str(datasetId) + """'
-                        AND name='""" + fileName + """'
+                        AND guid='""" + os.path.basename(fileName) + """'
                      """
 			
 	  try:

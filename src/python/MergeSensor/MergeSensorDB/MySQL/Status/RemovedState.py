@@ -7,7 +7,7 @@
           
 """
 
-
+import os
 from MergeSensor.MergeSensorDB.MySQL.Base import MySQLBase
 from MergeSensor.MergeSensorError import MergeSensorDBError
 
@@ -26,10 +26,10 @@ class RemovedState(MySQLBase):
           trans = kwargs.get('trans', False)
 
           self.sqlCommand = """ UPDATE merge_inputfile set status='removed'
-            WHERE name IN ("""
+            WHERE guid IN ("""
 
           for fname in files:
-              self.sqlCommand += "\'%s\'\n," % fname
+              self.sqlCommand += "\'%s\'\n," % os.path.basename(fname)
           self.sqlCommand = self.sqlCommand.rstrip(',')
           self.sqlCommand += ");"
 

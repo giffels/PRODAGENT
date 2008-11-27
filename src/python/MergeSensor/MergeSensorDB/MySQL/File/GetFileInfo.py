@@ -16,7 +16,7 @@
           
 """
 
-
+import os
 from MergeSensor.MergeSensorDB.MySQL.Base import MySQLBase
 from MergeSensor.MergeSensorError import MergeSensorDBError
 
@@ -46,7 +46,7 @@ class GetFileInfo(MySQLBase):
                      SELECT status, failures
                        FROM merge_inputfile
                       WHERE dataset='""" + str(datasetId) + """'
-                        AND name='""" + fileName + """'
+                        AND guid='""" + os.path.basename(fileName) + """'
                      """
 
 			

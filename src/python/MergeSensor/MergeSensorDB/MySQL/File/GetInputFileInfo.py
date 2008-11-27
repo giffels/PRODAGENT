@@ -7,7 +7,7 @@
           
 """
 
-
+import os
 from MergeSensor.MergeSensorDB.MySQL.Base import MySQLBase
 from MergeSensor.MergeSensorError import MergeSensorDBError
 
@@ -38,7 +38,7 @@ class GetInputFileInfo(MySQLBase):
                             merge_dataset,
                             merge_fileblock
                       WHERE merge_inputfile.dataset='""" + str(datasetId) + """'
-                        AND merge_inputfile.name='""" + fileName + """'
+                        AND merge_inputfile.guid='""" + os.path.basename(fileName) + """'
                         AND merge_inputfile.dataset=merge_dataset.id
                         AND merge_inputfile.block=merge_fileblock.id
                      """

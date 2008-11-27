@@ -8,7 +8,7 @@
           
 """
 
-
+import os
 from MergeSensor.MergeSensorDB.MySQL.Base import MySQLBase
 from MergeSensor.MergeSensorError import MergeSensorDBError
 
@@ -27,7 +27,7 @@ class UpdateInputFileStatus(MySQLBase):
           self.sqlCommand = """
                      UPDATE merge_inputfile
                         SET status='"""+status+"""'   WHERE dataset='""" + str(datasetId) + """'
-                        AND name='""" + fileName + """'
+                        AND guid='""" + os.path.basename(fileName) + """'
                      """
           result = None
 			

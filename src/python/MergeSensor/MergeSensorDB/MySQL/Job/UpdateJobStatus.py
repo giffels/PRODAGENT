@@ -5,7 +5,7 @@
 
 """
 
-
+import os
 from MergeSensor.MergeSensorDB.MySQL.Base import MySQLBase
 from MergeSensor.MergeSensorError import MergeSensorDBError
 
@@ -25,7 +25,7 @@ class UpdateJobStatus(MySQLBase):
                         SET status='undermerge',
                             mergedfile=last_insert_id()
                       WHERE dataset='""" + str(datasetId) + """'
-                        AND name='""" + aFile + """'
+                        AND guid='""" + os.path.basename(aFile) + """'
                      """
 
           result = None

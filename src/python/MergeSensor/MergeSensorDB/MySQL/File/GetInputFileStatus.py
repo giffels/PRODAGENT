@@ -7,7 +7,7 @@
           
 """
 
-
+import os
 from MergeSensor.MergeSensorDB.MySQL.Base import MySQLBase
 from MergeSensor.MergeSensorError import MergeSensorDBError
 
@@ -28,7 +28,7 @@ class GetInputFileStatus(MySQLBase):
                      SELECT id, status
                        FROM merge_inputfile
                       WHERE dataset='""" + str(datasetId) + """'
-                        AND name='""" + fileName + """'
+                        AND guid='""" + os.path.basename(fileName) + """'
                      """
         
           result = None			

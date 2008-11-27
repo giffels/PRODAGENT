@@ -10,7 +10,7 @@
         to get started
 """
 
-
+import os
 from MergeSensor.MergeSensorDB.MySQL.Base import MySQLBase
 from MergeSensor.MergeSensorError import MergeSensorDBError
 
@@ -36,15 +36,15 @@ class UnRemovedState(MySQLBase):
         
           fileList = "("
           for fname in files:
-              fileList += "\'%s\'\n," % fname 
+              fileList += "\'%s\'\n," % os.path.basename(fname) 
           fileList = fileList.rstrip(',')
           fileList += ")"
         
           self.sqlCommand = """ update merge_inputfile set status='unremoved', remove_failures = remove_failures+1
-            WHERE name IN %s;""" % fileList
-          self.sqlCommand += """update merge_inputfile set status="removefailed"
+            WHERE guid IN %s;""" % fileList
+          self.sqlCommand += """update merge_inputfile set status='removefailed'
                        where remove_failures >= %s
-                        and name in %s""" % (
+                        and guid in %s""" % (
               numberOfFailuresMax, fileList)
         
           self.sqlCommand = self.sqlCommand.split(';')
