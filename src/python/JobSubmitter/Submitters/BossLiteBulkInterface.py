@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.26 2008/10/28 11:59:31 gcodispo Exp $"
-__version__ = "$Revision: 1.26 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.27 2008/11/24 15:25:19 gcodispo Exp $"
+__version__ = "$Revision: 1.27 $"
 
 import os
 import logging
@@ -217,21 +217,27 @@ fi
             try :
 
                 # load the job if it exists in the bl tables (resubmission)
-                bossJob = self.bossLiteSession.loadJobByName(
+                bossJob = self.bossLiteSession.loadLastJobByName(
                     self.singleSpecName
                     )
 
-                # maybe not needed... extra check!
+                # is there any job?
                 if bossJob is None:
-                    raise JobError('')
+                    logging.info('Jobs does not exists in db "%s": create it' \
+                                 % self.singleSpecName)
+                    # no job instance in db: create a task with a job
+                    self.prepareSubmission()
 
+                logging.info('Jobs exists in db "%s"' % self.singleSpecName)
                 # job loaded, prepare resubmission
                 self.prepareResubmission(bossJob)
 
             except JobError, ex:
 
-                # no job instance in db: create a task with a job
-                self.prepareSubmission()
+                logging.info('Jobs does not exists in db "%s": %s' \
+                             % (self.singleSpecName, str(ex)) )
+                raise JSException("Failed to find Job", \
+                                  FailureList = self.toSubmit.keys())
 
             # now submit!!!
             self.submitSingleJob( schedSession, submissionAttrs )
