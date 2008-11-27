@@ -122,9 +122,10 @@ class LogArchMgr:
         if not os.path.exists(self.tarfile):
             os.makedirs(self.tarfile)
             
-        # add job/workflow spec
-        for spec in ("PRODAGENT_WORKFLOW_SPEC", "PRODAGENT_JOBSPEC"):
-            src = os.getenv(spec, '')
+        # add job/workflow spec and fjr
+        for src in (os.getenv("PRODAGENT_WORKFLOW_SPEC", ''),
+                     os.getenv("PRODAGENT_JOBSPEC", ''),
+                     os.path.join(os.getenv("PRODAGENT_JOB_DIR", ''), "FrameworkJobReport.xml")):
             if os.path.exists(src):
                 print "Archiving File: %s" % src
                 command = "/bin/cp -f %s %s" % (src, self.tarfile)
@@ -214,6 +215,13 @@ class LogArchMgr:
         print  "Archiving task logs: %s" % task
         taskDir =   os.path.join(os.environ['PRODAGENT_JOB_DIR'],
                                  task)
+        # create sub directory for this tasks files to go in
+        taskArchiveDir = os.path.join(self.tarfile, task)
+        try:
+            os.makedirs(taskArchiveDir)
+        except OSError, ex:
+            print "Error creating directory %s: %s" % (taskArchiveDir, str(ex))
+
         toArchive = []
         taskContents = os.listdir(taskDir)
 
@@ -223,7 +231,7 @@ class LogArchMgr:
         for item in toArchive:
             src = os.path.join(taskDir, item)
             print "Archiving File: %s" % src
-            command = "/bin/cp -f %s %s" % (src, self.tarfile)
+            command = "/bin/cp -f %s %s" % (src, taskArchiveDir)
             os.system(command)
             #self.tarfile.add(src, "%s/%s/%s" % (self.jobSpecId, task, item))
             
