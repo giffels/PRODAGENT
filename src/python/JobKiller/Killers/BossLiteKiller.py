@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.20 2008/10/01 15:27:56 gcodispo Exp $"
-__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.21 2008/11/27 16:29:07 gcodispo Exp $"
+__version__ = "$Revision: 1.21 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -90,7 +90,6 @@ class BossLiteKiller:
         job = None
         try:
             job = self.bliteSession.loadLastJobByName(jobSpecId)
-            self.bliteSession.getRunningInstance( job )
 
         # deal with BOSS specific error
         except BossLiteError, err:
