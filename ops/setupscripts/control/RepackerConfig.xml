@@ -184,7 +184,7 @@
 			</Comment>
                         <Parameter Name="dbType" Value="mysql"/>
 			<Parameter Name="maxConnectionAttempts" Value="5"/>
-			<Parameter Name="passwd" Value=""/>
+			<Parameter Name="passwd" Value="98passwd"/>
 			<Parameter Name="refreshPeriod" Value="14400"/>
 			<Parameter Name="dbWaitingTime" Value="10"/>
 			<Parameter Name="host" Value="localhost"/>
@@ -195,14 +195,14 @@
 			<Parameter Name="schemaLocation" Value="$PRODAGENT_ROOT/share/ProdAgentDB.sql"/>
 		</ConfigBlock>
                 <ConfigBlock Name="Tier0DB">
-			<!-- <Parameter Name="user" Value="CMS_T0AST"/> --> 
-			<Parameter Name="user" Value="CMS_T0AST_WRITER"/>
+			<Parameter Name="user" Value="CMS_T0AST"/>  
+			<!-- <Parameter Name="user" Value="CMS_T0AST_WRITER"/> -->
                         <Parameter Name="passwd" Value=""/>
                         <Parameter Name="dbName" Value="TOAST_0_0_1"/>
                         <Parameter Name="dbType" Value="oracle"/>
-                        <Parameter Name="tnsName" Value="CMS_T0AST"/>
-                        <!-- <Parameter Name="tnsName" Value="DEVDB10"/> --> 
-			<Parameter Name="schemaLocation" Value="/data/cmsprod/PAProd/dev/install/T0/sql/tier0inject/TOAST_Oracle.sql"/>
+                        <!-- <Parameter Name="tnsName" Value="CMS_T0AST"/> -->
+                        <Parameter Name="tnsName" Value="DEVDB10"/>
+   			<Parameter Name="schemaLocation" Value="/data/cmsprod/PAProd/dev/install/T0/sql/tier0inject/TOAST_Oracle.sql"/>
                 </ConfigBlock>
 		<ConfigBlock Name="JobCreator">
 			<Parameter Name="CreatorPluginConfig" Value="/data/cmsprod/PAProd/dev/control/CreatorPluginConfig.xml"/>
