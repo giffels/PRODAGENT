@@ -2,19 +2,22 @@
 
 export STAGER_TRACE=3
 export PRODAGENT_USER=cmsprod
+export INSTALL_TYPE=dev
 
 #This next one is the first letter of your username
 export PRODAGENT_INITIAL=c
 
 #The version you want to install
-export PAVERSION=0_12_1
-export PCVERSION=0_12_0
+export PAVERSION=0_12_7
+export PCVERSION=0_12_7
 #The DBS version we want to install
 export DBSVERSION=2_0_4_patch1
 #THe DLS version we want to install
 export DLSVERSION=1_1_0
 #The WMCORE version required
-export WMCOREVERSION=0_0_4
+export WMCOREVERSION=0_0_2_pre28
+#The T0 version we need
+export T0VERSION=0_0_2_pre29
 
 # This is probably the only one to change
 export PRODAGENT_TOP=/data/$PRODAGENT_USER/PAProd/dev
