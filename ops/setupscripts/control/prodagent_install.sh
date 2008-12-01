@@ -9,12 +9,8 @@ cd $MYTESTAREA
 
 cvs co -r PRODAGENT_$PAVERSION PRODAGENT
 
-# follwoing twiki at https://twiki.cern.ch/twiki/bin/view/CMS/CMST0Repacker:
 
-#cvs update -r 1.10 PRODAGENT/src/python/ResourceMonitor/ResourceMonitorComponent.py
-#cvs update -r 1.12 PRODAGENT/src/python/ResourceMonitor/Monitors/T0LSFMonitor.py
-cvs update -r 1.15 PRODCOMMON/src/python/ProdCommon/MCPayloads/WorkflowSpec.py 
-cvs update -r 1.9 PRODCOMMON/src/python/ProdCommon/MCPayloads/JobSpecNode.py
+# follwoing twiki at https://twiki.cern.ch/twiki/bin/view/CMS/CMST0Repacker:
 cvs update -r 1.8 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py
 
 cd PRODAGENT
@@ -28,19 +24,17 @@ rm -rf lib/RepackerInjector
 
 cd $MYTESTAREA
 cvs co -r PRODCOMMON_$PCVERSION PRODCOMMON
+
+# follwoing twiki at https://twiki.cern.ch/twiki/bin/view/CMS/CMST0Repacker:
+cvs update -r 1.15 PRODCOMMON/src/python/ProdCommon/MCPayloads/WorkflowSpec.py 
+cvs update -r 1.9 PRODCOMMON/src/python/ProdCommon/MCPayloads/JobSpecNode.py
+
 cd PRODCOMMON
 make
 
 cd $MYTESTAREA
 # pull the DBS client out of DBS
 cvs co -r DBS_$DBSVERSION DBS
-
-#pull the DLS client out of CVS
-cvs co -r DLS_$DLSVERSION DLS/Client
-cd DLS/Client
-make
-cd $MYTESTAREA
-
 
 # T0 specific components
 
