@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.29 2008/12/02 11:08:05 gcodispo Exp $"
-__version__ = "$Revision: 1.29 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.30 2008/12/02 11:50:14 gcodispo Exp $"
+__version__ = "$Revision: 1.30 $"
 
 import os
 import logging
@@ -297,7 +297,8 @@ fi
             self.bossLiteSession.updateDB( bossJob )
 
         # one more check...
-        if bossJob.runningJob['processStatus'] != 'created' :
+        if bossJob.runningJob['processStatus'] != 'created' \
+               and bossJob.runningJob['processStatus'] is not None :
             logging.error( "Invalid processStatus for job %s.%s.%s : %s" % \
                            (bossJob['taskId'], bossJob['jobId'], \
                             bossJob.runningJob['submission'], \
