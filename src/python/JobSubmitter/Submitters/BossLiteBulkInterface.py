@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.27 2008/11/24 15:25:19 gcodispo Exp $"
-__version__ = "$Revision: 1.27 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.28 2008/11/27 16:25:40 gcodispo Exp $"
+__version__ = "$Revision: 1.28 $"
 
 import os
 import logging
@@ -236,15 +236,17 @@ fi
 
                 logging.info('Jobs does not exists in db "%s": %s' \
                              % (self.singleSpecName, str(ex)) )
+                self.failedSubmission = self.toSubmit.keys()
                 raise JSException("Failed to find Job", \
-                                  FailureList = self.toSubmit.keys())
+                                  FailureList = self.failedSubmission)
 
             # now submit!!!
             self.submitSingleJob( schedSession, submissionAttrs )
 
         # // check for not submitted and eventually raise Submission Failed
         for job in self.bossTask.jobs :
-            if job.runningJob['schedulerId'] is None:
+            if job.runningJob['schedulerId'] is None \
+                   and job['name'] not in self.failedSubmission:
                 self.failedSubmission.append( job['name'] )
 
         if self.failedSubmission != []:
@@ -268,7 +270,8 @@ fi
         if bossJob is None:
             msg = 'Failed to retrieve job %s' % self.singleSpecName
             logging.error( msg )
-            raise JSException(msg, FailureList = self.toSubmit.keys())
+            self.failedSubmission = self.toSubmit.keys()
+            raise JSException(msg, FailureList = self.failedSubmission)
 
         # check if the wrapper is actually there
         executable = os.path.join(self.workingDir, bossJob['executable'] )
@@ -292,6 +295,11 @@ fi
                                    + str(bossJob.runningJob['submission'])
             self.bossLiteSession.updateDB( bossJob )
 
+        # one more check...
+        if bossJob.runningJob['processStatus'] != 'not_handled' :
+            logging.error( "Invalid processStatus for job %s.%s" % \
+                           (bossJob['taskId'], bossJob['jobId']))
+
         # load the task ans append the job
         self.bossTask = self.bossLiteSession.loadTask(
             bossJob['taskId'], jobRange=None )
@@ -301,8 +309,9 @@ fi
             logging.debug( "BossLiteBulkInterface: Submit bossTask = %s" \
                            % self.bossTask['id'] )
         else:
+            self.failedSubmission = self.toSubmit.keys()
             raise JSException("Failed to find Job", \
-                              FailureList = self.toSubmit.keys())
+                              FailureList = self.failedSubmission)
 
         self.bossTask.appendJob( bossJob )
 
@@ -369,7 +378,8 @@ fi
                           ( self.bossTask['id'], len(self.bossTask.jobs) ) )
 
         except ProdAgentException, ex:
-            raise JSException(str(ex), FailureList = self.toSubmit.keys())
+            self.failedSubmission = self.toSubmit.keys()
+            raise JSException(str(ex), FailureList = self.failedSubmission)
 
         return
 
@@ -443,8 +453,9 @@ fi
 
         except BossLiteError, err:
             logging.error( "########### Failed submission : %s" % str( err ) )
+            self.failedSubmission = self.toSubmit.keys()
             raise JSException( "Unable to find a valid certificate", \
-                               FailureList = self.toSubmit.keys() )
+                               FailureList = self.failedSubmission )
 
         # // prepare extra jdl attributes
         logging.info("Preparing scheduler specific attributes")
@@ -454,7 +465,8 @@ fi
         except Exception, ex:
             msg = "Unable to build scheduler specific attributes"
             logging.error( msg )
-            raise JSException( msg, FailureList = self.toSubmit.keys() )
+            self.failedSubmission = self.toSubmit.keys()
+            raise JSException( msg, FailureList = self.failedSubmission )
 
         # return scheduler session and configuration
         return ( schedSession, submissionAttrs )
@@ -528,6 +540,7 @@ fi
                                (task.jobs[0]['jobId'], task.jobs[-1]['jobId']))
                 schedSession.submit(task, requirements=submissionAttrs)
             except BossLiteError, err:
+                self.failedSubmission.append( self.toSubmit.keys() )
                 logging.error( "########### Failed submission : %s" % \
                                str(schedSession.getLogger()) )
 
@@ -555,7 +568,8 @@ fi
         whitelist = whitelist.replace("]", "")
 
         for job in self.bossTask.jobs :
-            if job.runningJob['schedulerId'] is None:
+            if job.runningJob['schedulerId'] is None \
+                   or job['name'] in self.failedSubmission:
                 continue
 
             # compose DashboardInfo.xml path
