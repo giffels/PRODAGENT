@@ -320,7 +320,6 @@ CREATE TABLE merge_inputfile
     dataset int NOT NULL default '0',
     mergedfile int default NULL,
     filesize int NOT NULL default '0',
-    run text,
     failures int NOT NULL default '0',
     instance int NOT NULL default '0',
     PRIMARY KEY(id),
