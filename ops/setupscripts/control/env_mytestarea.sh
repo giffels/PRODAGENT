@@ -8,27 +8,22 @@ export INSTALL_TYPE=dev
 export PRODAGENT_INITIAL=c
 
 #The version you want to install
-export PAVERSION=0_12_7
-export PCVERSION=0_12_7
+export PAVERSION=0_12_5
+export PCVERSION=0_12_5
 #The DBS version we want to install
 export DBSVERSION=2_0_4_patch1
-#THe DLS version we want to install
-export DLSVERSION=1_1_0
 #The WMCORE version required
-export WMCOREVERSION=0_0_2_pre28
+export WMCOREVERSION=T0_0_0_2_pre28
 #The T0 version we need
 export T0VERSION=0_0_2_pre29
 
-# This is probably the only one to change
-export PRODAGENT_TOP=/data/$PRODAGENT_USER/PAProd/dev
-
 #Note, don't change this!
 #export PBIN=$HOME/public/bin/PRODAGENT_$PAVERSION
-export PBIN=$PRODAGENT_TOP/control
+export PBIN=/data/cmsprod/PAProd/dev/control
 
 #Don't change this!
-export MYTESTAREA=$PRODAGENT_TOP/install
-export PRODAGENT_WORKDIR=$PRODAGENT_TOP/prodAgent
+export MYTESTAREA=/data/$PRODAGENT_USER/PAProd/dev/install
+export PRODAGENT_WORKDIR=/data/$PRODAGENT_USER/PAProd/dev/prodAgent
 export APT_VER=0.5.15lorg3.2-cmp
 export VO_CMS_SW_DIR=$MYTESTAREA
 export SCRAM_ARCH_INSTALL=slc4_amd64_gcc345
