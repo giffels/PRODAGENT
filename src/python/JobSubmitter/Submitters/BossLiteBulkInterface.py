@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.28 2008/11/27 16:25:40 gcodispo Exp $"
-__version__ = "$Revision: 1.28 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.29 2008/12/02 11:08:05 gcodispo Exp $"
+__version__ = "$Revision: 1.29 $"
 
 import os
 import logging
@@ -227,6 +227,7 @@ fi
                                  % self.singleSpecName)
                     # no job instance in db: create a task with a job
                     self.prepareSubmission()
+                    bossJob = self.bossTask.jobs[0]
 
                 logging.info('Jobs exists in db "%s"' % self.singleSpecName)
                 # job loaded, prepare resubmission
@@ -296,9 +297,11 @@ fi
             self.bossLiteSession.updateDB( bossJob )
 
         # one more check...
-        if bossJob.runningJob['processStatus'] != 'not_handled' :
-            logging.error( "Invalid processStatus for job %s.%s" % \
-                           (bossJob['taskId'], bossJob['jobId']))
+        if bossJob.runningJob['processStatus'] != 'created' :
+            logging.error( "Invalid processStatus for job %s.%s.%s : %s" % \
+                           (bossJob['taskId'], bossJob['jobId'], \
+                            bossJob.runningJob['submission'], \
+                            bossJob.runningJob['processStatus']) )
 
         # load the task ans append the job
         self.bossTask = self.bossLiteSession.loadTask(
