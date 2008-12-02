@@ -16,6 +16,7 @@ from JobQueue.JobQueueAPI import getSiteForReleasedJob
 
 import os
 
+
 class JobStatistics(dict):
     """
     _JobStatistics_
@@ -65,15 +66,17 @@ class JobStatistics(dict):
         self.setdefault("database_ids", {})
 
 
-    def insertIntoDB(self):
+    def insertIntoDB(self, *others):
         """
         _insertIntoDB_
 
         Insert self constituent information into database
+        
+        optionally take reports for other steps in the job instance
 
         """
         try:
-            insertStats(self)
+            insertStats(*(others + (self, )))
         except Exception, ex:
             msg = "Unable to insert JobStatistics into DB:\n"
             msg += str(ex)
@@ -284,4 +287,31 @@ def jobReportToJobStats(jobRepInstance):
             result['error_desc'] = lastError['Description']
         
     return result
+
+
+def jobStatsGroupedBySpecId(reports):
+    """
+    Take job reports and return them grouped by job instance 
+     - identified by same jobSpecId but diff step name
+     - set first exit code to first error
+    """
+    result = {}
+    for report in reports:
+        stats = jobReportToJobStats(report)
+        result.setdefault(stats['job_spec_id'], []).append(stats)
+
+        first_task = result[stats['job_spec_id']][0]
+        if not first_task['exit_code'] and stats['exit_code']:
+            first_task['exit_code'] = stats['exit_code']
+            first_task['error_desc'] = stats['error_desc']
+            first_task['error_code'] = stats['error_code']
+            first_task['error_type'] = stats['error_type']
+
+    return [x for x in result.values()]
     
+    
+def wasSuccess(*jobStats):
+    for stat in jobStats:
+        if stat['exit_code']:
+            return False
+    return True

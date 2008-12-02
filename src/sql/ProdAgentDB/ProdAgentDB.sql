@@ -784,8 +784,6 @@ CREATE TABLE prodmon_Job_instance (
        dashboard_id VARCHAR(255),
        worker_node VARCHAR(255) NOT NULL,
        exit_code INT,
-       evts_read INT NOT NULL,
-       evts_written INT NOT NULL,
        error_id INT,
        error_message BLOB,
        start_time INT,
@@ -797,6 +795,24 @@ CREATE TABLE prodmon_Job_instance (
        FOREIGN KEY (job_id) REFERENCES prodmon_Job (job_id)
        	ON DELETE CASCADE,
        FOREIGN KEY (resource_id) REFERENCES prodmon_Resource (resource_id)
+       	ON DELETE CASCADE,
+       FOREIGN KEY (error_id) REFERENCES prodmon_Job_errors (error_id)
+       	ON DELETE CASCADE
+)TYPE=InnoDB;
+
+CREATE TABLE prodmon_Job_step (
+       step_id INT NOT NULL AUTO_INCREMENT,
+       instance_id INT NOT NULL,
+       exit_code INT,
+       evts_read INT NOT NULL,
+       evts_written INT NOT NULL,
+       error_id INT,
+       error_message BLOB,
+       start_time INT,
+       end_time INT,
+       PRIMARY KEY (step_id),
+       INDEX (step_id, instance_id, error_id),
+       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
        	ON DELETE CASCADE,
        FOREIGN KEY (error_id) REFERENCES prodmon_Job_errors (error_id)
        	ON DELETE CASCADE
@@ -823,50 +839,33 @@ CREATE TABLE prodmon_output_datasets_map (
 )TYPE=InnoDB;
 
 CREATE TABLE prodmon_input_LFN_map (
-       instance_id INT NOT NULL,
+       step_id INT NOT NULL,
        file_id INT NOT NULL,
-       INDEX (instance_id, file_id),
-       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
+       INDEX (step_id, file_id),
+       FOREIGN KEY (step_id) REFERENCES prodmon_Job_step (step_id)
        	ON DELETE CASCADE,
        FOREIGN KEY (file_id) REFERENCES prodmon_LFN (file_id)
         ON DELETE CASCADE
 )TYPE=InnoDB;
 
 CREATE TABLE prodmon_output_LFN_map (
-       instance_id INT NOT NULL,
+       step_id INT NOT NULL,
        file_id INT NOT NULL,
-       INDEX (instance_id, file_id),
-       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
+       INDEX (step_id, file_id),
+       FOREIGN KEY (step_id) REFERENCES prodmon_Job_step (step_id)
         ON DELETE CASCADE,
        FOREIGN KEY (file_id) REFERENCES prodmon_LFN (file_id)
         ON DELETE CASCADE
 )TYPE=InnoDB;
 
-CREATE TABLE prodmon_output_runs (
-       instance_id INT NOT NULL,
-       run INT NOT NULL,
-       INDEX (instance_id),
-       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
-       	ON DELETE CASCADE
-)TYPE=InnoDB;
-
-CREATE TABLE prodmon_skipped_events (
-       instance_id INT NOT NULL,
-       run INT NOT NULL,
-       event INT NOT NULL,
-       INDEX (instance_id),
-       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
-        ON DELETE CASCADE
-)TYPE=InnoDB;
-
 CREATE TABLE prodmon_Job_timing (
        timing_id INT NOT NULL AUTO_INCREMENT,
-       instance_id INT NOT NULL,
+       step_id INT NOT NULL,
        timing_type VARCHAR(255) NOT NULL,
        value INT NOT NULL,
        PRIMARY KEY (timing_id),
-       INDEX (instance_id),
-       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
+       INDEX (step_id),
+       FOREIGN KEY (step_id) REFERENCES prodmon_Job_step (step_id)
         ON DELETE CASCADE
 )TYPE=InnoDB;
 
@@ -891,23 +890,23 @@ CREATE TABLE prodmon_node_map (
 )TYPE=InnoDB;
 
 CREATE TABLE prodmon_performance_summary (
-       instance_id INT NOT NULL,
+       step_id INT NOT NULL,
        metric_class VARCHAR(255) NOT NULL,
        metric_name VARCHAR(255) NOT NULL,
        metric_value VARCHAR(255) NOT NULL,
-       INDEX (instance_id, metric_class, metric_name),
-       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
+       INDEX (step_id, metric_class, metric_name),
+       FOREIGN KEY (step_id) REFERENCES prodmon_Job_step (step_id)
          ON DELETE CASCADE
 )TYPE=InnoDB;
 
 CREATE TABLE prodmon_performance_modules (
-       instance_id INT NOT NULL,
+       step_id INT NOT NULL,
        module_name VARCHAR(255) NOT NULL,
        metric_class VARCHAR(255) NOT NULL,
        metric_name VARCHAR(255) NOT NULL,
        metric_value VARCHAR(255) NOT NULL,
-       INDEX (instance_id, module_name, metric_class, metric_name),
-       FOREIGN KEY (instance_id) REFERENCES prodmon_Job_instance (instance_id)
+       INDEX (step_id, module_name, metric_class, metric_name),
+       FOREIGN KEY (step_id) REFERENCES prodmon_Job_step (step_id)
          ON DELETE CASCADE
 )TYPE=InnoDB;
 

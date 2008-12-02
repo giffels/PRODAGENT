@@ -11,8 +11,8 @@ and inserts the data into tables in the ProdAgentDB.
 Derived from previous StatTracker and Monitoring components
 
 """
-__version__ = "$Revision: 1.12 $"
-__revision__ = "$Id: ProdMonComponent.py,v 1.12 2008/04/07 20:44:04 evansde Exp $"
+__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: ProdMonComponent.py,v 1.13 2008/09/12 17:14:16 swakef Exp $"
 __author__ = "stuart.wakefield@imperial.ac.uk"
 
 
@@ -22,7 +22,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from MessageService.MessageService import MessageService
-from ProdMon.JobStatistics import jobReportToJobStats
+from ProdMon.JobStatistics import jobStatsGroupedBySpecId, wasSuccess
 from ProdCommon.FwkJobRep.ReportParser import readJobReport
 #from Trigger.TriggerAPI.TriggerAPI import TriggerAPI
 from ProdCommon.Database import Session
@@ -199,22 +199,25 @@ class ProdMonComponent:
         """
         result = False
         try:
-            reports = readJobReport(jobReportFile)
+            fjrs = readJobReport(jobReportFile)
+            reportsByInstances = jobStatsGroupedBySpecId(fjrs)
         except StandardError, ex:
             msg = "Error loading Job Report: %s\n" % jobReportFile
             msg += "Stats for this job not recorded"
             logging.error(msg)
             return
-
+        
         logging.debug("ReportFile: %s" % jobReportFile)
-        logging.debug("Contains: %s reports" % len(reports))
-        for report in reports:
-            logging.debug("Inserting into db %s" % report.jobSpecId)
+        logging.debug("Contains: %s instances" % len(reportsByInstances))
+        for reports in reportsByInstances:
+            
+            report = reports[0]
+            logging.debug("Inserting into db %s" % report['job_spec_id'])
+            logging.debug("With %s step(s)" % len(reports))
             try:
                 try:
-                    if report.jobType not in ('LogArchive', 'CleanUp'):
-                        stats = jobReportToJobStats(report)
-                        stats.insertIntoDB()
+                    if report['job_type'] not in ('LogArchive', 'CleanUp'):
+                        report.insertIntoDB(*reports[1:])
                         result = True
                     else:
                         # dont want to handle this job so skip it
@@ -223,27 +226,28 @@ class ProdMonComponent:
                     # If error on insert save for later retry
                     logging.error("Failed to insert job stats into the db: %s" % str(ex))
                     try:
-                        if not os.path.isdir(self.args["FailedDir"]):
-                            os.mkdir(self.args["FailedDir"])
-                        report.write(os.path.join(self.args["FailedDir"], report.jobSpecId))
-                        msg = "Error inserting Stats into DB for report: %s\n" % report.jobSpecId
+                        # TODO: change for multi step processing
+#                        if not os.path.isdir(self.args["FailedDir"]):
+#                            os.mkdir(self.args["FailedDir"])
+#                        fjrs.write(os.path.join(self.args["FailedDir"], report.jobSpecId))
+                        msg = "Error inserting Stats into DB for report: %s\n" % report['job_spec_id']
                         msg += "report saved to %s\n" % str(self.args["FailedDir"])
                         msg += str(ex)
                         logging.error(msg)
-                    except Exception, ex:
+                    except StandardError, ex:
                         logging.error("Unable to save job report to failure area: %s" % str(ex))
 
             finally:
                 #   //
                 #  // if report is a success, we also set the trigger
                 # //  to allow the cleanup to procede.
-                if report.wasSuccess():
+                if wasSuccess(*reports):
                     try:
                         self.trigger.setFlag("cleanup",
-                                             report.jobSpecId,
+                                             report['job_spec_id'],
                                              "ProdMon")
                     except Exception, ex:
-                        msg = "Error setting cleanup flag for job: %s" % report.jobSpecId
+                        msg = "Error setting cleanup flag for job: %s" % report['job_spec_id']
                         msg += str(ex)
                         logging.error(msg)
                         

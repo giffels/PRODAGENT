@@ -111,7 +111,8 @@ def jobToXML(document, parent, instances):
     job.setAttribute("job_spec_id", str(jobInfo["job_spec_id"]))
     job.setAttribute("request_id", str(jobInfo["request_id"]))
     job.setAttribute("workflow_name", str(jobInfo["workflow_name"]))
-    job.setAttribute("app_version", str(jobInfo["app_version"]))
+    # TODO: What to do about this for multi step processing?
+    #job.setAttribute("app_version", str(jobInfo["app_version"]))
     parent.appendChild(job)
     
     # find input/output datasets
@@ -187,27 +188,30 @@ def instancesToXML(document, parent, instances):
         for outfile in instanceInfo["output_files"]:
             addTextNode(document, output_node, "LFN", outfile)
         
+        # TODO: What to send in multi-step cases
+        # for the moment just give empty nodes
         # timing
         timing_node = document.createElement("timings")
         instance_node.appendChild(timing_node)
-        for timing_type, value in instanceInfo["timing"].items():
-            if timing_type not in ("AppStartTime", "AppEndTime"):
-                addTextNode(document, timing_node, timing_type, value)
+#        for timing_type, value in instanceInfo["timing"].items():
+#            if timing_type not in ("AppStartTime", "AppEndTime"):
+#                addTextNode(document, timing_node, timing_type, value)
 
         # runs
         run_node = document.createElement("output_runs")
         instance_node.appendChild(run_node)
-        for run in instanceInfo["output_runs"]:
-            addTextNode(document, run_node, "value", run)
+#        for run in instanceInfo["output_runs"]:
+#            addTextNode(document, run_node, "value", run)
         
         # skipped events
         skipped_node = document.createElement("skipped_events")
         instance_node.appendChild(skipped_node)
-        for run, event in instanceInfo["skipped_events"]:
-            skipped_event_node = document.createElement("skipped")
-            skipped_node.appendChild(skipped_event_node)
-            skipped_event_node.setAttribute("run", str(run))
-            skipped_event_node.setAttribute("event", str(event))
+#        for run, event in instanceInfo["skipped_events"]:
+#            skipped_event_node = document.createElement("skipped")
+#            skipped_node.appendChild(skipped_event_node)
+#            skipped_event_node.setAttribute("run", str(run))
+#            skipped_event_node.setAttribute("event", str(event))
+
 
     return
 

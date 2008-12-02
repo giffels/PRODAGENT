@@ -16,7 +16,7 @@ from ProdAgentDB.Config import defaultConfig as dbConfig
 
 # do we want to export this job to external monitoring
 # ignore logArchive and CleanUp jobs
-exportable = lambda x: x not in  ('CleanUp', 'LogArchive') and True or False
+exportable = lambda x: x not in  ('CleanUp', 'LogCollect') and True or False
 
 
 def addQuotes(value):
@@ -33,56 +33,45 @@ def addQuotes(value):
         return "\'" + MySQLdb.escape_string(str(value)) + "\'"
     
 
-def insertStats(jobStatistics):
+def insertStats(*jobStatistics):
     """
     _insertStats_
 
     Insert the jobStatistics instance in the database
 
     """
+    areport = jobStatistics[0]
     try:
-        #Session.set_database(dbConfig)
-        #Session.connect()
-        #Session.start_transaction()
-               
-        #connection = connect()
-        #Session = connection.cursor()
-        
-        # perform all db actions within transaction
-        # technically not everything needs to be in same
-        # transaction - but easier
-        #Session.execute("BEGIN")
-        
         # insert/link tables
         # Note: Order does matter as these methods
         # rely on id's of foreign keys being in jobStatistics
-        __setWorkflowId(Session, jobStatistics)
-        __insertJob(Session, jobStatistics)
-        __insertResource(Session, jobStatistics)
-        __insertError(Session, jobStatistics)
-        __insertInputFiles(Session, jobStatistics)
-        __insertOutputFiles(Session, jobStatistics)
-        __insertJobInstance(Session, jobStatistics)
-        __linkFilesJobInstance(Session, jobStatistics)
-        __insertRuns(Session, jobStatistics)
-        __insertSkippedEvents(Session, jobStatistics)
-        __insertTimings(Session, jobStatistics)
-        __insertPerformanceReport(Session, jobStatistics)
         
-        #Session.commit()
-        #Session.close()
+        # first insert things for the whole job instance
+        __setWorkflowId(Session, areport)
+        __insertJob(Session, areport)
+        __insertResource(Session, areport)
+        __insertError(Session, areport)
+        __insertJobInstance(Session, areport, jobStatistics[-1])
+
+        # now insert things for the steps
+        for report in jobStatistics:
+            report["database_ids"] = areport["database_ids"]
+            __insertInputFiles(Session, report)
+            __insertOutputFiles(Session, report)
+            __insertJobStep(Session, report)
+            __linkFilesJobStep(Session, report)
+            __insertTimings(Session, report)
+            __insertPerformanceReport(Session, report)
+
     except StandardError, ex:
-        # Close DB connection and re-throw
-        #Session.rollback()
-        #Session.close()
         msg = "Failed to insert JobStatistics: %s\n" % str(ex)
         raise RuntimeError, msg    
         
-    logging.debug("Job successfully saved to database, id: %s" % 
-                  jobStatistics["database_ids"]["instance_id"])
+    logging.debug("Job instance successfully saved to database, id: %s" %
+                  areport["database_ids"]["instance_id"])
     return
 
-    
+
 def insertNewWorkflow(workflowName, requestId, inputDatasets, outputDatasets, appVersion):
     """
     Insert new workflow
@@ -206,19 +195,19 @@ def __insertOutputFiles(Session, jobStatistics):
         jobStatistics["database_ids"]["output_file_ids"].append(inserted_id)
 
 
-def __linkFilesJobInstance(Session, jobStatistics):
+def __linkFilesJobStep(Session, jobStatistics):
     """
     Fill job_instance LFN mapping tables
     """
     for file_id in jobStatistics["database_ids"]["input_file_ids"]:
         __insert(Session, "prodmon_input_LFN_map", 
-               {"instance_id" : jobStatistics["database_ids"]["instance_id"],
+               {"step_id" : jobStatistics["database_ids"]["step_id"],
                 "file_id" : file_id},
                returns = False)
     
     for file_id in jobStatistics["database_ids"]["output_file_ids"]:
         __insert(Session, "prodmon_output_LFN_map", 
-               {"instance_id" : jobStatistics["database_ids"]["instance_id"],
+               {"step_id" : jobStatistics["database_ids"]["step_id"],
                 "file_id" : file_id},
                returns = False)
 
@@ -264,7 +253,7 @@ def __insertTimings(Session, jobStatistics):
     for key, value in jobStatistics["timing"].items():
         if key not in ("AppStartTime", "AppEndTime"):
             __insert(Session, "prodmon_Job_timing",
-                   {"instance_id" : jobStatistics["database_ids"]["instance_id"],
+                   {"step_id" : jobStatistics["database_ids"]["step_id"],
                    "timing_type" : key,
                    "value" : value},
                    returns=False)
@@ -284,28 +273,6 @@ def __insertError(Session, jobStatistics):
         jobStatistics["database_ids"]["error_id"] = error_id
 
 
-def __insertRuns(Session, jobStatistics):
-    """
-    Insert runs
-    """
-    for run in jobStatistics["run_numbers"]:
-        __insert(Session, "prodmon_output_runs", 
-               {"instance_id" : jobStatistics["database_ids"]["instance_id"],
-                "run": run},
-               returns=False)
-
-
-def __insertSkippedEvents(Session, jobStatistics):
-    """
-    Insert SkippedEvents
-    """
-    for run, event in jobStatistics["skipped_events"]:
-        __insert(Session, "prodmon_skipped_events", 
-               {"instance_id" : jobStatistics["database_ids"]["instance_id"],
-                "run": run, "event" : event},
-               returns=False)
-        
-        
 def __insertPerformanceReport(Session, jobStatistics):
     """
     Insert performance report
@@ -316,7 +283,7 @@ def __insertPerformanceReport(Session, jobStatistics):
     perf_report = jobStatistics.get("performance_report", None)
 
     if perf_report == None:
-        logging.info("performance report not found - skipping")
+        #logging.debug("performance report not found - skipping")
         return
 
     #node properties
@@ -346,11 +313,11 @@ def __insertPerformanceReport(Session, jobStatistics):
     for metric_class, metric in perf_report.summaries.items():
         for name, value in metric.items():
             __insert(Session, "prodmon_performance_summary",
-                 {"instance_id" : jobStatistics["database_ids"]["instance_id"],
+                 {"step_id" : jobStatistics["database_ids"]["step_id"],
                   "metric_class" : metric_class,
                   "metric_name" : name,
                   "metric_value" : value},
-                  "instance_id")
+                  "step_id")
 
     #module info
     for module, details in perf_report.modules.items():
@@ -358,15 +325,15 @@ def __insertPerformanceReport(Session, jobStatistics):
             for metric in metrics:
                 for name, value in metric.items():
                     __insert(Session, "prodmon_performance_modules",
-                             {"instance_id" : jobStatistics["database_ids"]["instance_id"],
+                             {"step_id" : jobStatistics["database_ids"]["step_id"],
                              "module_name" : module,
                              "metric_class" : metric_class,
                              "metric_name" : name,
                              "metric_value" : value},
                              returns = False)
 
-            
-def __insertJobInstance(Session, jobStatistics):
+
+def __insertJobInstance(Session, jobStatistics, lastReport):
     """
     Insert a job instance
     
@@ -377,16 +344,33 @@ def __insertJobInstance(Session, jobStatistics):
                           "dashboard_id" : jobStatistics["dashboard_id"],
                           "worker_node": jobStatistics["host_name"],
                           "exit_code" : jobStatistics["exit_code"],
+                          "error_id" : jobStatistics["database_ids"]["error_id"],
+                          "error_message" : jobStatistics["error_desc"],
+                          "start_time" : jobStatistics["timing"]["AppStartTime"],
+                          "end_time" : lastReport["timing"]["AppEndTime"],
+                          "exported" : not exportable(jobStatistics['job_type'])},
+                         "instance_id"
+                          )
+    jobStatistics["database_ids"]["instance_id"] = instance_id
+
+
+def __insertJobStep(Session, jobStatistics):
+    """
+    Insert a job instance
+    
+    """
+    step_id = __insert(Session, "prodmon_Job_step",
+                         {"instance_id" : jobStatistics["database_ids"]["instance_id"],
+                          "exit_code" : jobStatistics["exit_code"],
                           "evts_read" : jobStatistics["events_read"],
                           "evts_written" : jobStatistics["events_written"],
                           "error_id" : jobStatistics["database_ids"]["error_id"],
                           "error_message" : jobStatistics["error_desc"],
                           "start_time" : jobStatistics["timing"]["AppStartTime"],
-                          "end_time" : jobStatistics["timing"]["AppEndTime"],
-                          "exported" : not exportable(jobStatistics['job_type'])},
-                         "instance_id"
+                          "end_time" : jobStatistics["timing"]["AppEndTime"]},
+                         "step_id"
                           )
-    jobStatistics["database_ids"]["instance_id"] = instance_id
+    jobStatistics["database_ids"]["step_id"] = step_id
     
 
 def __insertIfNotExist(Session, table, values, identifier, returns=True):
@@ -539,10 +523,10 @@ def getJobStatistics(instance_ids):
         instance["host_name"] = instance["worker_node"]
         instance["ce_name"] = instance["ce_hostname"]
         instance["se_name"] = instance["se_hostname"]
-        instance["run_numbers"] = instance["output_runs"]
         instance["error_desc"] = instance["error_message"]
         instance["events_read"] = instance["evts_read"]
         instance["events_written"] = instance["evts_written"]
+        instance["timing"] = {}
         instance["timing"]["AppStartTime"] = instance["start_time"]
         instance["timing"]["AppEndTime"] = instance["end_time"]
                 
@@ -578,10 +562,14 @@ def getJobInstancesInfo(instance_ids):
     if not instance_ids:
         return ()
 
-    sqlStr = """SELECT job_id, instance_id, site_name, ce_hostname, se_hostname, 
-    exit_code, evts_read, evts_written, start_time, end_time, error_message, 
-    worker_node, dashboard_id, UNIX_TIMESTAMP(insert_time) FROM prodmon_Job_instance JOIN prodmon_Resource WHERE 
-    prodmon_Job_instance.resource_id = prodmon_Resource.resource_id AND ("""
+    sqlStr = """SELECT job_id, instance.instance_id, site_name, ce_hostname,
+    se_hostname, instance.exit_code, SUM(evts_read), SUM(evts_written),
+    instance.start_time, instance.end_time, instance.error_message,
+    worker_node, dashboard_id, UNIX_TIMESTAMP(insert_time)
+    FROM prodmon_Job_instance instance
+    JOIN prodmon_Resource, prodmon_Job_step WHERE 
+    instance.resource_id = prodmon_Resource.resource_id AND 
+    instance.instance_id = prodmon_Job_step.instance_id AND ("""
 
     first = True
     for instance in instance_ids:
@@ -589,9 +577,10 @@ def getJobInstancesInfo(instance_ids):
             sqlStr += " OR "
         else:
             first = False
-        sqlStr += " instance_id = " + addQuotes(instance)
-    sqlStr += ");"
+        sqlStr += " instance.instance_id = " + addQuotes(instance)
+    sqlStr += ")"
 
+    sqlStr += " GROUP BY instance_id"
     #Session.set_database(dbConfig)
     #Session.connect()
     Session.execute(sqlStr)
@@ -600,6 +589,7 @@ def getJobInstancesInfo(instance_ids):
     results = []
     for instance in temp:
         i = {}
+        i['timing'] = {}
         i["job_id"], i["instance_id"], i["site_name"], i["ce_hostname"], i["se_hostname"], \
                 i["exit_code"], i["evts_read"], i["evts_written"], i["start_time"], i["end_time"], i["error_message"], \
                 i["worker_node"], i["dashboard_id"], i["insert_time"] = instance
@@ -626,9 +616,9 @@ def getJobInstancesInfo(instance_ids):
         
         # LFN's
         inputLFNSQL = """SELECT file_name FROM prodmon_LFN 
-                    JOIN prodmon_input_LFN_map, prodmon_Job_instance 
-                    WHERE prodmon_Job_instance.instance_id = %s AND
-                    prodmon_Job_instance.instance_id = prodmon_input_LFN_map.instance_id
+                    JOIN prodmon_input_LFN_map, prodmon_Job_step 
+                    WHERE prodmon_Job_step.instance_id = %s AND
+                    prodmon_Job_step.step_id = prodmon_input_LFN_map.step_id
                     AND prodmon_input_LFN_map.file_id = 
                     prodmon_LFN.file_id;""" % addQuotes(instance_id)
 
@@ -636,37 +626,42 @@ def getJobInstancesInfo(instance_ids):
         instance["input_files"] = [removeTuple(file) for file in Session.fetchall()]
 
         outputLFNSQL = """SELECT file_name FROM prodmon_LFN 
-                    JOIN prodmon_output_LFN_map, prodmon_Job_instance 
-                    WHERE prodmon_Job_instance.instance_id = %s AND
-                    prodmon_Job_instance.instance_id = prodmon_output_LFN_map.instance_id
+                    JOIN prodmon_output_LFN_map, prodmon_Job_step
+                    WHERE prodmon_Job_step.step_id = %s AND
+                    prodmon_Job_step.step_id = prodmon_output_LFN_map.step_id
                     AND prodmon_output_LFN_map.file_id = 
                     prodmon_LFN.file_id;""" % addQuotes(instance_id)
         Session.execute(outputLFNSQL)
         instance["output_files"] = [removeTuple(file) for file in Session.fetchall()]
         
+        #  //
+        # // With move to multi-step jobs these are no longer tracked
+        #//
         # timing
-        timingSQL = """SELECT timing_type, value from prodmon_Job_timing 
-                    WHERE instance_id = %s;""" % addQuotes(instance_id)
-        Session.execute(timingSQL)
-        rows = Session.fetchall()
-        
-        instance["timing"] = {}
-        for key, value in rows:
-            instance["timing"][key] = value
-        # instance["timing"] = [(key, value) for key, value in rows]
-       
-        # runs
-        runSQL = """SELECT run from prodmon_output_runs 
-                WHERE instance_id = %s;""" % addQuotes(instance_id)
-        Session.execute(runSQL)
-        instance["output_runs"] = [removeTuple(run) for run in Session.fetchall()]
-        
-        # skipped events
-        skippedSQL = """SELECT run, event FROM 
-                        prodmon_skipped_events WHERE 
-                        instance_id = %s;""" % addQuotes(instance_id)
-        Session.execute(skippedSQL)
-        instance["skipped_events"] = Session.fetchall()
+#        timingSQL = """SELECT timing_type, value from prodmon_Job_timing 
+#                    WHERE instance_id = %s;""" % addQuotes(instance_id)
+#        Session.execute(timingSQL)
+#        rows = Session.fetchall()
+#        
+#        
+#
+#        instance["timing"] = {}
+#        for key, value in rows:
+#            instance["timing"][key] = value
+#        # instance["timing"] = [(key, value) for key, value in rows]
+#       
+#        # runs
+#        runSQL = """SELECT run from prodmon_output_runs 
+#                WHERE instance_id = %s;""" % addQuotes(instance_id)
+#        Session.execute(runSQL)
+#        instance["output_runs"] = [removeTuple(run) for run in Session.fetchall()]
+#        
+#        # skipped events
+#        skippedSQL = """SELECT run, event FROM 
+#                        prodmon_skipped_events WHERE 
+#                        instance_id = %s;""" % addQuotes(instance_id)
+#        Session.execute(skippedSQL)
+#        instance["skipped_events"] = Session.fetchall()
       
     #Session.close()
     return results
