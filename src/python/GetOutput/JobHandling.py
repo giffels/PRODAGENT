@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.11 2008/11/22 14:42:01 gcodispo Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: JobHandling.py,v 1.12 2008/11/22 14:47:26 gcodispo Exp $"
+__version__ = "$Revision: 1.12 $"
 
 import os
 import logging
@@ -42,7 +42,7 @@ class JobHandling:
 
         # store parameters and open a connection
         self.componentDir = params['componentDir']
-        self.dropBoxPath = params['dropBoxPath']
+        self.dropBoxPath = params['CacheDir']
         self.outputLocation = params['OutputLocation']
         self.bossLiteSession = params['bossLiteSession']
         self.configs = params['OutputParams']

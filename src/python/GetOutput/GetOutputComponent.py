@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.13 2008/11/25 14:17:40 gcodispo Exp $"
-__revision__ = "$Revision: 1.13 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.14 2008/11/25 14:42:51 gcodispo Exp $"
+__revision__ = "$Revision: 1.14 $"
 
 import os
 import logging
@@ -47,7 +47,7 @@ class GetOutputComponent:
         self.args.setdefault("GetOutputPoolThreadsSize", 5)
         self.args.setdefault("jobsToPoll", 1000)
         self.args.setdefault("OutputLocation", "local")
-        self.args.setdefault("dropBoxPath", None)
+        self.args.setdefault("CacheDir", None)
         self.args.setdefault("Logfile", None)
         self.args.setdefault("verbose", 1) # tmp for testing
         self.args.setdefault("configDir", None)
@@ -99,7 +99,7 @@ class GetOutputComponent:
         # set job handling parameters
         jobHandlingParams = {}
         jobHandlingParams['componentDir'] = self.args['JobTrackingDir']
-        jobHandlingParams['dropBoxPath'] = self.args['dropBoxPath']
+        jobHandlingParams['CacheDir'] = self.args['CacheDir']
         jobHandlingParams['OutputLocation'] = self.args['OutputLocation']
         jobHandlingParams['OutputParams'] = outputParams
 
