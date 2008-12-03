@@ -545,7 +545,11 @@ class DBSComponent:
             # //  Do nothing for jobs that should have dbs output registered
             #//
             if (jobreport.jobType in ("CleanUp", "LogCollect")) or (len(jobreport.files) == 0):
-                logging.info("Do nothing for CleanUp job")
+                msg = "Job Report met conditions to skip it:\n"
+                msg =  "  => Job Type: %s is one of CleanUp or LogCollect\n" % jobreport.jobType
+                msg += "   -OR- \n"
+                msg += "  => Job Contains No Files: filecount = %s" % len(jobreport.files)
+                logging.info(msg)
                 try:
                     self.trigger.setFlag("cleanup", jobreport.jobSpecId,
                                         "DBS2Interface")
