@@ -42,10 +42,10 @@ import ProdAgentCore.LoggingUtils  as LoggingUtils
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 
 
-# disable DBS info      
+# disable DBS info
 #logging.disable(logging.INFO)
-                                                               
-# ############## 
+
+# ##############
 class InvalidWorkFlowSpec(exceptions.Exception):
   def __init__(self,workflowfile):
    args="Invalid WorkFlowSpec file: %s\n"%workflowfile
@@ -66,11 +66,11 @@ class InvalidDataTier(exceptions.Exception):
    args=" DataTier: => %s <= not supported in DBS.\n Valid Data Tier is a combination of - separated tiers among: %s"%(datatier,DBSdatatiers)
    exceptions.Exception.__init__(self, args)
    pass
-                                                                                                                      
+
   def getClassName(self):
    """ Return class name. """
    return "%s" % (self.__class__.__name__)
-                                                                                                                      
+
   def getErrorMessage(self):
    """ Return exception error. """
    return "%s" % (self.args)
@@ -81,11 +81,11 @@ class InvalidJobReport(exceptions.Exception):
    args="Invalid JobReport file: %s\n"%jobreportfile
    exceptions.Exception.__init__(self, args)
    pass
-                                                                                
+
   def getClassName(self):
    """ Return class name. """
    return "%s" % (self.__class__.__name__)
-                                                                                
+
   def getErrorMessage(self):
    """ Return exception error. """
    return "%s" % (self.args)
@@ -96,25 +96,25 @@ class NoFileBlock(exceptions.Exception):
    args= errmsg
    exceptions.Exception.__init__(self, args)
    pass
-                                                                                              
+
   def getClassName(self):
    """ Return class name. """
    return "%s" % (self.__class__.__name__)
-                                                                                              
+
   def getErrorMessage(self):
    """ Return exception error. """
    return "%s" % (self.args)
-                                                                                              
+
 # ##############
 def getFastMergeConfig():
         """
         Extract the FastMerge information from the prod agent config
         However since we don't have EdmFastMerge anymore, this guy
         doesn't seem to make sense -- therefore setting it to always
-        return false.  Next step is to find out where this guy is 
+        return false.  Next step is to find out where this guy is
         called & remove those...
         """
-        return False 
+        return False
 
 
 # ##############
@@ -129,11 +129,11 @@ def getGlobalDBSDLSConfig():
             msg += str(ex)
             logging.error(msg)
             raise RuntimeError, msg
-                                                                                                                                                 
+
         if not config.has_key("GlobalDBSDLS"):
             msg = "Configuration block GlobalDBSDLS is missing from $PRODAGENT_CONFIG"
             logging.error(msg)
-                                                                                                                                                 
+
         try:
              globalConfig = config.getConfig("GlobalDBSDLS")
         except StandardError, ex:
@@ -141,9 +141,9 @@ def getGlobalDBSDLSConfig():
             msg += str(ex)
             logging.error(msg)
             raise RuntimeError, msg
-                                                                                                                                                 
+
         logging.debug("GlobalDBSDLS Config: %s" % globalConfig)
-                                                                                                                                                 
+
         dbsConfig = {
         'DBSURL' : globalConfig['DBSURL'],
         'ReadDBSURL' : globalConfig['ReadDBSURL'],
@@ -169,7 +169,7 @@ class DBSComponent:
         self.args.setdefault("BadTMDBInjectfile", None)
         self.args.setdefault("BadMigrationfile", None)
         self.args.setdefault("CloseBlockSize", "None")  # No check on fileblock size
-        self.args.setdefault("CloseBlockFiles", 100 )        
+        self.args.setdefault("CloseBlockFiles", 100 )
         self.args.setdefault("skipGlobalMigration", False )
         self.args.setdefault("skipPhEDExInjection", True )
         self.args.setdefault("DataMode", "mc" )
@@ -219,7 +219,7 @@ class DBSComponent:
         # // Log Failed NewDataset registration into DBS
         #//
         if self.args['BadDatasetfile'] == None:
-            self.args['BadDatasetfile'] = os.path.join(self.args['ComponentDir'],                                                      "FailedDatasetList.txt")                                                                                
+            self.args['BadDatasetfile'] = os.path.join(self.args['ComponentDir'],                                                      "FailedDatasetList.txt")
         #  //
         # // Log Failed fileblock migration to Global
         #//
@@ -234,8 +234,8 @@ class DBSComponent:
             self.args['BadTMDBInjectfile'] = os.path.join(self.args['ComponentDir'],
                                                       "FailedTMDBInject.txt")
 
-        
-        
+
+
     def __call__(self, event, payload):
         """
 
@@ -258,7 +258,7 @@ class DBSComponent:
                 self.BadDataset.write("%s\n" % payload)
                 self.BadDataset.flush()
                 return
-            except DBSReaderError, ex: 
+            except DBSReaderError, ex:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 self.BadDataset.write("%s\n" % payload)
                 self.BadDataset.flush()
@@ -276,7 +276,7 @@ class DBSComponent:
                 self.BadDataset.flush()
                 return
 
-            
+
         if event == "JobSuccess":
             self.BadReport = open(self.args['BadReportfile'],'a')
             #logging.info("Job Succeeded: %s" % payload)
@@ -408,9 +408,9 @@ class DBSComponent:
             try:
                self.MigrateBlockToGlobal(payload)
                return
-            except: 
+            except:
                logging.error("Failed to MigrateBlocktToGlobal %s"%payload)
-            return 
+            return
 
         if event == "DBSInterface:SetCloseBlockSize":
             #logging.info("DBSInterface:SetCloseBlockSize Event %s"% payload)
@@ -455,7 +455,7 @@ class DBSComponent:
         if event == "DBSInterface:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
             return
-        
+
         return
 
     def newDatasetEvent(self, workflowFile):
@@ -479,18 +479,18 @@ class DBSComponent:
         except:
           logging.error("Invalid Workflow File: %s" % workflowFile)
           raise InvalidWorkFlowSpec(workflowFile)
-        #  //                                                                      
+        #  //
         # //  Contact DBS using the DBSWriter
         #//`
         logging.info("DBSURL %s"%self.args['DBSURL'])
-        #dbswriter = DBSWriter('fakeurl') 
+        #dbswriter = DBSWriter('fakeurl')
         dbswriter = DBSWriter(self.args['DBSURL'],level='ERROR')
         #  //
         # //  Create Processing Datsets based on workflow
         #//
 
         logging.info(">>>>> create Processing Dataset ")
-        #// optionally drop dataset parentage 
+        #// optionally drop dataset parentage
         if self.DropParent:
            for adataset in workflowSpec.payload._OutputDatasets:
                adataset['ParentDataset']=None
@@ -505,11 +505,11 @@ class DBSComponent:
 
 
     def readJobReportInfo(self,jobReportFile):
-        """  
+        """
         _readJobReportInfo_
 
         Read the info from jobReport file
-          
+
         """
         jobReportFile=string.replace(jobReportFile,'file://','')
         if not os.path.exists(jobReportFile):
@@ -519,7 +519,7 @@ class DBSComponent:
          jobreports=readJobReport(jobReportFile)
         except:
           logging.debug("Invalid JobReport File: %s" %jobReportFile)
-          raise InvalidJobReport(jobReportFile) 
+          raise InvalidJobReport(jobReportFile)
 
         return jobreports
 
@@ -538,131 +538,131 @@ class DBSComponent:
 
         ### Extract Info from the Job Report
         jobreports=self.readJobReportInfo(jobReportLocation)
-        #loop over the fwk jobreports 
+        #loop over the fwk jobreports
         for jobreport in jobreports:
 
-         #  //
-         # //  Do nothing for jobs that should have dbs output registered
-         #//
-         if jobreport.jobType in ("CleanUp", "LogCollect"):
-             logging.info("Do nothing for CleanUp job")
-             try:
-                 self.trigger.setFlag("cleanup", jobreport.jobSpecId,
-                                     "DBS2Interface")
-                 continue
-             except Exception, ex:
-                 msg = "Error setting cleanup flag for job: "
-                 msg += "%s\n" % jobreport.jobSpecId
-                 msg += str(ex)
-                 logging.error(msg)
-         #  //
-         # //  Contact DBS using the DBSWriter
-         #//
-         logging.info("DBSURL %s"%self.args['DBSURL'])
-         try:
-          dbswriter = DBSWriter(self.args['DBSURL'],level='ERROR')
-         except DbsException, ex:
-          logging.error("%s\n" % formatEx(ex))
-          return
+            #  //
+            # //  Do nothing for jobs that should have dbs output registered
+            #//
+            if (jobreport.jobType in ("CleanUp", "LogCollect")) or (len(jobreport.files) == 0):
+                logging.info("Do nothing for CleanUp job")
+                try:
+                    self.trigger.setFlag("cleanup", jobreport.jobSpecId,
+                                        "DBS2Interface")
+                    continue
+                except Exception, ex:
+                    msg = "Error setting cleanup flag for job: "
+                    msg += "%s\n" % jobreport.jobSpecId
+                    msg += str(ex)
+                    logging.error(msg)
+            #  //
+            # //  Contact DBS using the DBSWriter
+            #//
+            logging.info("DBSURL %s"%self.args['DBSURL'])
+            try:
+                dbswriter = DBSWriter(self.args['DBSURL'],level='ERROR')
+            except DbsException, ex:
+                logging.error("%s\n" % formatEx(ex))
+                return
 
-         if ( self.args['DataMode'] == "mc" ):
-            if len(jobreport.files)>0:
-               for outFile in jobreport.files:
-                   #
-                   #  remove branches info (optionally)
-                   #
-                   if self.DropBranches:
-                      if len(outFile.branches)>0 :
-                         outFile.branches = []
-                   #
-                   #  remove parents info (optionally)
-                   #
-                   if self.DropParent:
-                      if len(outFile.inputFiles)>0:
-                         outFile.inputFiles = []
-                      for adataset in outFile.dataset:
-                         adataset['ParentDataset'] = None
-
-
-         #  //
-         # // Insert Files to block and datasets 
-         #//
-         logging.info(">>>>> inserting Files")
-         MergedBlockList=dbswriter.insertFiles(jobreport, True) 
-
-         # Check to see if the processing job produced merged output so
-         # we can trigger the block close out code.
-         triggerCloseout = False
-         for processedFile in jobreport.files:
-           if processedFile["MergedBySize"] == "True":
-             triggerCloseout = True
-             break
-
-         #  //
-         # //  Check on block closure conditions for merged fileblocks
-         #//
-         if (jobreport.jobType == "Merge" or triggerCloseout == True) :
-            maxFiles=100
-            maxSize=None
-            if ( self.args['CloseBlockSize'] != "None"):  maxSize=float(self.args['CloseBlockSize'])
-            if ( self.args['CloseBlockFiles'] != "None"): maxFiles=float(self.args['CloseBlockFiles'])
-            if len(MergedBlockList)>0:
-               MigrateBlockList=[]
-               for MergedBlockName in MergedBlockList:
+            if ( self.args['DataMode'] == "mc" ):
+                if len(jobreport.files)>0:
+                    for outFile in jobreport.files:
+                        #
+                        #  remove branches info (optionally)
+                        #
+                        if self.DropBranches:
+                            if len(outFile.branches)>0 :
+                                outFile.branches = []
+                        #
+                        #  remove parents info (optionally)
+                        #
+                        if self.DropParent:
+                            if len(outFile.inputFiles)>0:
+                                outFile.inputFiles = []
+                            for adataset in outFile.dataset:
+                                adataset['ParentDataset'] = None
 
 
-               #  //  added check on unmerged being in block name to prevent 
-               # //   FJR's with multiple files from triggering a global 
-               #||    migration of the other unmerged datasets when one 
-               #||    is MergeBySize...
-               #//    if its an unmerged DS split will be > 1
+            #  //
+            # // Insert Files to block and datasets
+            #//
+            logging.info(">>>>> inserting Files")
+            MergedBlockList=dbswriter.insertFiles(jobreport, True)
 
-                 if len(MergedBlockName.split("unmerged",1))==1:
-                   logging.info(">>>>> Checking Close-Block Condition: Size > %s or Files > %s for FileBlock %s"%(maxSize,maxFiles,MergedBlockName)) 
-                   closedBlock=dbswriter.manageFileBlock(MergedBlockName , maxFiles= maxFiles, maxSize = maxSize)
-                   if closedBlock:
-                      MigrateBlockList.append(MergedBlockName)
-               #  //
-               # //   Trigger Migration of closed Blocks to Global DBS
-               #//
-               if len(MigrateBlockList)>0 and not self.skipGlobalMigration:
-                  for BlockName in MigrateBlockList:
-                     #datasetPath= dbswriter.reader.blockToDatasetPath(BlockName)
-                     self.handleMigrateBlock(BlockName)
+            # Check to see if the processing job produced merged output so
+            # we can trigger the block close out code.
+            triggerCloseout = False
+            for processedFile in jobreport.files:
+                if processedFile["MergedBySize"] == "True":
+                    triggerCloseout = True
+                    break
 
-                     #  //
-                     # // Trigger PhEDEx injection of migrated blocks
-                     #//  (if the migration is not successfull this point is not reached)
-                     if not self.skipPhEDExInjection:
-                       self.handlePhEDExInjectBlock(BlockName)  
+            #  //
+            # //  Check on block closure conditions for merged fileblocks
+            #//
+            if (jobreport.jobType == "Merge" or triggerCloseout == True) :
+                maxFiles=100
+                maxSize=None
+                if ( self.args['CloseBlockSize'] != "None"):  maxSize=float(self.args['CloseBlockSize'])
+                if ( self.args['CloseBlockFiles'] != "None"): maxFiles=float(self.args['CloseBlockFiles'])
+                if len(MergedBlockList)>0:
+                    MigrateBlockList=[]
+                    for MergedBlockName in MergedBlockList:
 
-         #  //
-         # // On successful insertion of job report, set the trigger
-         #//  to say we are done with it so that cleanup can be triggered.
-         try:
+
+                    #  //  added check on unmerged being in block name to prevent
+                    # //   FJR's with multiple files from triggering a global
+                    #||    migration of the other unmerged datasets when one
+                    #||    is MergeBySize...
+                    #//    if its an unmerged DS split will be > 1
+
+                        if len(MergedBlockName.split("unmerged",1))==1:
+                            logging.info(">>>>> Checking Close-Block Condition: Size > %s or Files > %s for FileBlock %s"%(maxSize,maxFiles,MergedBlockName))
+                            closedBlock=dbswriter.manageFileBlock(MergedBlockName , maxFiles= maxFiles, maxSize = maxSize)
+                            if closedBlock:
+                                MigrateBlockList.append(MergedBlockName)
+                    #  //
+                    # //   Trigger Migration of closed Blocks to Global DBS
+                    #//
+                    if len(MigrateBlockList)>0 and not self.skipGlobalMigration:
+                        for BlockName in MigrateBlockList:
+                            #datasetPath= dbswriter.reader.blockToDatasetPath(BlockName)
+                            self.handleMigrateBlock(BlockName)
+
+                            #  //
+                            # // Trigger PhEDEx injection of migrated blocks
+                            #//  (if the migration is not successfull this point is not reached)
+                            if not self.skipPhEDExInjection:
+                                self.handlePhEDExInjectBlock(BlockName)
+
+            #  //
+            # // On successful insertion of job report, set the trigger
+            #//  to say we are done with it so that cleanup can be triggered.
+            try:
                 self.trigger.setFlag("cleanup", jobreport.jobSpecId,
                                      "DBS2Interface")
-         except Exception, ex:
+            except Exception, ex:
                 msg = "Error setting cleanup flag for job: "
                 msg += "%s\n" % jobreport.jobSpecId
                 msg += str(ex)
                 logging.error(msg)
 
-                    
+
         return
 
 
 
     def getDataTier(self,DataTier,DBSDataTier):
         """
-         guess the Application family and data tier from the POOL Output Module Name convention in .cfg 
+         guess the Application family and data tier from the POOL Output Module Name convention in .cfg
         """
 
         DBSDataTierList = DBSDataTier.split(",")
 
         if DataTier not in DBSDataTierList:
             raise InvalidDataTier(DataTier, DBSDataTierList)
-        return DataTier              
+        return DataTier
 
 
     def MigrateDatasetToGlobal(self,datasetPath):
@@ -691,7 +691,7 @@ class DBSComponent:
         for MigrateBlock in MigrateBlockList:
             self.handleMigrateBlock(MigrateBlock)
         #self.MigrateDatasetBlocks(datasetPath, MigrateBlockList)
- 
+
 
     def MigrateBlockToGlobal(self,BlockName):
        """
@@ -700,7 +700,7 @@ class DBSComponent:
        LocalDBSurl=self.args['DBSURL']
        writer  = DBSWriter(LocalDBSurl,level='ERROR')
        #
-       # Migrate the block, closing it 
+       # Migrate the block, closing it
        #
        writer.manageFileBlock(BlockName,maxFiles=1)
        self.handleMigrateBlock(BlockName)
@@ -734,7 +734,7 @@ class DBSComponent:
 
     def MigrateBlock(self, fileblock):
         """
-        Migrate from Local to Global                                                                                                 
+        Migrate from Local to Global
         """
         writer  = DBSWriter(self.args['DBSURL'],level='ERROR')
         #
@@ -750,7 +750,7 @@ class DBSComponent:
         logging.info(">> Migrating FileBlocks %s in Dataset %s"%(fileblock,datasetPath))
         logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
         logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))
-                                                                                                
+
         GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,[fileblock])
 
     def MigrateDatasetBlocks(self,datasetPath,fileblockList):
@@ -762,13 +762,13 @@ class DBSComponent:
         #//
         DBSConf= getGlobalDBSDLSConfig()
         GlobalDBSwriter= DBSWriter(DBSConf['DBSURL'])
-                                                                                                
+
         logging.info(">> Migrating FileBlocks %s in Dataset %s"%(str(fileblockList),datasetPath))
         logging.info(">> From Local DBS: %s "%(self.args['DBSURL'],))
         logging.info(">> To Global DBS: %s "%(DBSConf['DBSURL'],))
-                                                                                                
+
         GlobalDBSwriter.migrateDatasetBlocks(self.args['DBSURL'],datasetPath,fileblockList)
-         
+
     def MigrationRetryFailures(self,fileName, filehandle):
         """
         Read the list of fileblock whose migration failed
@@ -791,7 +791,7 @@ class DBSComponent:
            except StandardError, ex:
                 logging.error("Failed to MigrateBlock: %s" % payload)
                 logging.error("StandardError Details:%s" % str(ex))
-                if not stillFailures.count(payload): stillFailures.append(payload) 
+                if not stillFailures.count(payload): stillFailures.append(payload)
         BadMigrationfile.close()
 
         ## Write the list of those still failing
@@ -801,7 +801,7 @@ class DBSComponent:
            BadMigrationfile.write("%s\n" % fileblock )
         BadMigrationfile.close()
 
-	logging.info("*** End the MigrationRetryFailures procedures => Failed migration logged in :%s "%(fileName))
+    logging.info("*** End the MigrationRetryFailures procedures => Failed migration logged in :%s "%(fileName))
 
     def CloseBlock(self,fileBlockName):
         """
@@ -815,7 +815,7 @@ class DBSComponent:
         logging.info(">>>>> Checking Close-Block Condition: Size > %s or Files > %s for FileBlock %s"%(maxSize,maxFiles,fileBlockName))
         closedBlock=dbswriter.manageFileBlock(fileBlockName , maxFiles= maxFiles, maxSize = maxSize)
         if closedBlock: logging.info("Closed FileBlock %s"%fileBlockName)
-        return 
+        return
 
     def PhEDExInjectBlock(self,fileBlockName):
         """
@@ -825,8 +825,8 @@ class DBSComponent:
         GlobalDBSURL=DBSConf['DBSURL']
         ReadGlobalDBSURL=DBSConf['ReadDBSURL']
         ReadLocalDBSurl=self.args['ReadDBSURL']
-        
-        phedexConfig,dropdir,Nodes=self.getPhEDExConfig() 
+
+        phedexConfig,dropdir,Nodes=self.getPhEDExConfig()
         #  //
         # // Get the datasetPath the block belong to
         #//
@@ -841,7 +841,7 @@ class DBSComponent:
             msg="DBPARAM not configured in PhEDExConfig block in $PRODAGENT_CONFIG"
             raise RuntimeError, msg
         workingdir="/tmp"
-        if dropdir != "None": workingdir=dropdir 
+        if dropdir != "None": workingdir=dropdir
 
         tmdbInjectBlock(GlobalDBSURL, datasetPath, fileBlockName, phedexConfig,
                     workingDir=workingdir,nodes=Nodes, storageElements=hosts)
@@ -850,7 +850,7 @@ class DBSComponent:
     def getPhEDExConfig(self):
         """
         Extract the PhEDEx information from the prod agent config
-        """         
+        """
         try:
             config = loadProdAgentConfiguration()
         except StandardError, ex:
@@ -858,11 +858,11 @@ class DBSComponent:
             msg += str(ex)
             logging.error(msg)
             raise RuntimeError, msg
-                                                                                                     
+
         if not config.has_key("PhEDExConfig"):
             msg = "Configuration block PhEDExConfig is missing from $PRODAGENT_CONFIG"
             logging.error(msg)
-                                                                                                     
+
         try:
              PhEDExConfig = config.getConfig("PhEDExConfig")
         except StandardError, ex:
@@ -870,14 +870,14 @@ class DBSComponent:
             msg += str(ex)
             logging.error(msg)
             raise RuntimeError, msg
-                                                                                                     
+
         logging.debug("PhEDEx Config: %s" % PhEDExConfig)
-                                                                       
+
         nodes = None
-        if PhEDExConfig.has_key("Nodes"): 
+        if PhEDExConfig.has_key("Nodes"):
            if PhEDExConfig['Nodes'] != "None":
-             nodes = PhEDExConfig['Nodes']      
-                     
+             nodes = PhEDExConfig['Nodes']
+
         return PhEDExConfig['DBPARAM'],PhEDExConfig['PhEDExDropBox'],nodes
 
 
@@ -948,7 +948,7 @@ class DBSComponent:
         Read the list of FWKJobReport that failed DBS registration and re-try the registration. If the FWKJobReport registration is succesfull remove it form the list of failed ones.
         """
         logging.info("*** Begin the PhEDExRetryFailures procedure")
-                                                                                                                                          
+
         ## Read the list of fileblock that failed TMDBInjection  and re-try
         filehandle.close()
         BadTMDBInjectfile = open(fileName, 'r')
@@ -983,9 +983,9 @@ class DBSComponent:
 
 
     def RetryFailures(self,fileName, filehandle):
-        """                                                                     
-        Read the list of FWKJobReport that failed DBS registration and re-try the registration. If the FWKJobReport registration is succesfull remove it form the list of failed ones. 
-                                                                                
+        """
+        Read the list of FWKJobReport that failed DBS registration and re-try the registration. If the FWKJobReport registration is succesfull remove it form the list of failed ones.
+
         """
         logging.info("*** Begin the RetryFailures procedure")
 
@@ -1033,8 +1033,8 @@ class DBSComponent:
                 stillFailures.append(payload)
 
         BadReportfile.close()
-       
-        ## Write the list of those still failing 
+
+        ## Write the list of those still failing
 
         BadReportfile = open(fileName, 'w')
         for item in stillFailures:
@@ -1047,14 +1047,14 @@ class DBSComponent:
     def DatasetRetryFailures(self,fileName, filehandle):
         """
         Read the list of dataset that failed DBS registration and re-try the registration. If the dataset registration is succesfull remove it form the list of failed ones.
-                                                                                                          
+
         """
         logging.info("*** Begin the DatasetRetryFailures procedure")
-                                                                                                          
+
         ## Read the list of dataset that failed DBS registration and re-try
         filehandle.close()
         Badfile = open(fileName, 'r')
-                                                                                                          
+
         stillFailures = []
         discarded = []
         for line in Badfile.readlines():
@@ -1078,17 +1078,17 @@ class DBSComponent:
                 logging.error("Failed to Create New Dataset: %s" % payload)
                 logging.error("StandardError Details:%s" % str(ex))
                 stillFailures.append(payload)
-                                                                                                          
+
         Badfile.close()
-                                                                                                          
+
         ## Write the list of those still failing
-                                                                                                          
+
         Badfile = open(fileName, 'w')
         for item in stillFailures:
            dataset=item.strip()
            Badfile.write("%s\n" % dataset )
         Badfile.close()
-                                                                                                          
+
         logging.info("*** End the DatasetRetryFailures procedures => Discarded: %s Failed logged in :%s "%(discarded,fileName))
 
 
@@ -1103,10 +1103,10 @@ class DBSComponent:
         """
         # create message service
         self.ms = MessageService()
-        self.trigger=Trigger(self.ms)                                                                      
+        self.trigger=Trigger(self.ms)
         # register
         self.ms.registerAs("DBS2Interface")
-                                                                                
+
         # subscribe to messages
         self.ms.subscribeTo("NewDataset")
         self.ms.subscribeTo("JobSuccess")
@@ -1123,7 +1123,7 @@ class DBSComponent:
         self.ms.subscribeTo("PhEDExRetryFailures")
         self.ms.subscribeTo("SetJobCleanupFlag")
         self.ms.subscribeTo("MigrationRetryFailures")
-                                                                                
+
         # wait for messages
         while True:
             type, payload = self.ms.get()
@@ -1137,5 +1137,5 @@ class DBSComponent:
             Session.close_all()
             self.ms.commit()
 
-                                                                                
+
 
