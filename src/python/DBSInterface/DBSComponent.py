@@ -801,7 +801,7 @@ class DBSComponent:
            BadMigrationfile.write("%s\n" % fileblock )
         BadMigrationfile.close()
 
-    logging.info("*** End the MigrationRetryFailures procedures => Failed migration logged in :%s "%(fileName))
+        logging.info("*** End the MigrationRetryFailures procedures => Failed migration logged in :%s "%(fileName))
 
     def CloseBlock(self,fileBlockName):
         """
