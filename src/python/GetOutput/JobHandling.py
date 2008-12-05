@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.12 2008/11/22 14:47:26 gcodispo Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: JobHandling.py,v 1.13 2008/12/03 13:51:06 spiga Exp $"
+__version__ = "$Revision: 1.13 $"
 
 import os
 import logging
@@ -394,12 +394,16 @@ class JobHandling:
                          self.configs["storagePort"] )
         loc = SElement("localhost", "local")
         sbi = SBinterface( seEl, loc )
+        credential = task['user_proxy'] 
+        if self.configs["Protocol"].upper() == 'RFIO':
+            username = task['name'].split('_')[0]
+            credential = '%s::%s'%(username,credential)
 
         # transfer fwjr
         try:
             logging.debug( 'Job %s REBOUNCE DBG : %s, %s' % \
                            (self.fullId(job), source, dest) )
-            sbi.copy( source, dest, task['user_proxy'])
+            sbi.copy( source, dest, credential )
         except Exception, e:
             logging.info("Job %s Report rebounce transfer fail : %s " \
                          % ( self.fullId(job), str(e) ) )
@@ -437,10 +441,15 @@ class JobHandling:
             dest = os.path.join(
                 outputDirectory, 'loggingInfo_' + str(job['jobId']) + '.log' )
 
+            credential = task['user_proxy'] 
+            if self.configs["Protocol"].upper() == 'RFIO':
+                username = task['name'].split('_')[0]
+                credential = '%s::%s'%(username,credential)
+
             try:
                 logging.info( 'Job %s : REBOUNCE DBG %s, %s' % \
                               (self.fullId(job), source, dest) )
-                sbi.copy( source, dest, task['user_proxy'])
+                sbi.copy( source, dest, credential)
                 #filesToClean.append(source)
             except Exception, e:
                 logging.error(
