@@ -36,7 +36,7 @@ for opt, arg in opts:
     if opt == "--all":
         alljobs = True
     if opt == "--jobQueue":
-        if arg.lower in ('true', 'yes'):
+        if arg.lower() in ('true', 'yes'):
             useJobQueue = True
         else:
             useJobQueue = False
