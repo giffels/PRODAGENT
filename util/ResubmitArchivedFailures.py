@@ -13,8 +13,8 @@ import sys,os,getopt
 import time,tarfile
 
 
-usage="\n Description: this script resubmit jobs from FailureArchive dir \n Usage: python ResubmitArchivedFailures.py <options> \n Options: \n --workflowname=<workflowName> \t\t workflow name \n --jobname=<jobspecName> \t\t jobspec name \n --all \t\t\t all jobs in FailureArchive dir\n"
-valid = ['workflowname=', 'jobname=','all']
+usage="\n Description: this script resubmit jobs from FailureArchive dir \n Usage: python ResubmitArchivedFailures.py <options> \n Options: \n --workflowname=<workflowName> \t\t workflow name \n --jobname=<jobspecName> \t\t jobspec name \n --all \t\t\t all jobs in FailureArchive dir\n --jobQueue=<true|false> - if not given take from pa config.\n"
+valid = ['workflowname=', 'jobname=','all','jobQueue=']
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
@@ -26,6 +26,7 @@ except getopt.GetoptError, ex:
 workflow = None
 jobname = None
 alljobs = False
+useJobQueue = None
 
 for opt, arg in opts:
     if opt == "--workflowname":
@@ -34,6 +35,11 @@ for opt, arg in opts:
         jobname = arg
     if opt == "--all":
         alljobs = True
+    if opt == "--jobQueue":
+        if arg.lower in ('true', 'yes'):
+            useJobQueue = True
+        else:
+            useJobQueue = False
 
 # ##########################
 def getFailureArchiveDir():
@@ -62,7 +68,25 @@ def getFailureArchiveDir():
    return failureArchive
 
 # ##########################
-def ResubmitJobs(TarFileList,FailureDir,ResubDir):
+def getJobQueueConfig():
+    """
+    find out if we should use the jobQueue
+    """
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error: error reading configuration:\n"
+        msg += str(ex)
+        print msg
+        sys.exit(1)
+    
+    mergeConfig = config.getConfig("MergeSensor")
+    if mergeConfig.get('QueueJobMode', 'false').lower() in ('true', 'yes'):
+        global useJobQueue
+        useJobQueue = True
+
+# ##########################
+def ResubmitJobs(TarFileList,FailureDir,ResubDir,jobQueue):
   """
   For each tarfile in FailureDir, move it to ResubDir
   extract the jobSpec File and re-create the job  
@@ -98,7 +122,7 @@ def ResubmitJobs(TarFileList,FailureDir,ResubDir):
    #
    # re-create job
    #
-   recreateJob(jobspecFile)
+   recreateJob(jobspecFile, jobQueue)
 
 # ##########################
 def clean_tr_tables(jobspecFile):
@@ -127,7 +151,7 @@ def clean_tr_tables(jobspecFile):
   Session.commit_all()
 
 # ##########################
-def recreateJob(jobspecFile):
+def recreateJob(jobspecFile, jobQueue):
   """
 
   re-create the processing job 
@@ -145,7 +169,10 @@ def recreateJob(jobspecFile):
      print "--> Publishing CreateJob for %s"%jobspecFile
      ms = MessageService()
      ms.registerAs("Test")
-     ms.publish("CreateJob", jobspecFile)
+     if jobQueue:
+         ms.publish("QueueJob", jobspecFile)
+     else:
+         ms.publish("CreateJob", jobspecFile)
      ms.commit()
   elif spec.parameters['JobType']=="Merge" :
      try:
@@ -179,6 +206,8 @@ if __name__ == '__main__':
  ResubDir=os.path.join(FailureDir,"ResubmitFailures")
  if not os.path.isdir(ResubDir):
          os.mkdir(ResubDir)
+ if useJobQueue is None:
+     getJobQueueConfig()
      
  if alljobs:
  #
@@ -201,7 +230,7 @@ if __name__ == '__main__':
     TarFileList=[ f for f in os.listdir(FailureDir) if f.count(matchingcriteria) > 0 and os.path.isfile(os.path.join(FailureDir, f)) ]
                                               
                                                      
- ResubmitJobs(TarFileList,FailureDir,ResubDir)
+ ResubmitJobs(TarFileList,FailureDir,ResubDir, useJobQueue)
                                                                                                   
 
 
