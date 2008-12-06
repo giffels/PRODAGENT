@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.30 2008/12/02 11:50:14 gcodispo Exp $"
-__version__ = "$Revision: 1.30 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.31 2008/12/02 12:02:19 gcodispo Exp $"
+__version__ = "$Revision: 1.31 $"
 
 import os
 import logging
@@ -294,7 +294,7 @@ fi
             self.bossLiteSession.getNewRunningInstance( bossJob )
             bossJob.runningJob['outputDirectory'] = outdir \
                                    + str(bossJob.runningJob['submission'])
-            self.bossLiteSession.updateDB( bossJob )
+            self.bossLiteSession.updateDB( bossJob.runningJob )
 
         # one more check...
         if bossJob.runningJob['processStatus'] != 'created' \
@@ -306,7 +306,7 @@ fi
 
         # load the task ans append the job
         self.bossTask = self.bossLiteSession.loadTask(
-            bossJob['taskId'], jobRange=None )
+            bossJob['taskId'], bossJob['jobId'] )
 
         # still no task? Something bad happened
         if self.bossTask is not None :
@@ -317,7 +317,6 @@ fi
             raise JSException("Failed to find Job", \
                               FailureList = self.failedSubmission)
 
-        self.bossTask.appendJob( bossJob )
 
 
     def prepareSubmission(self):
