@@ -44,7 +44,7 @@ class MessageBot(BotInterface):
         #  //
         # // Clean Message History Older than 3 days
         #//
-        msgSvc.cleanHistory("72:00:00")
+        msgSvc.cleanHistory("72")
         msgSvc.commit()
 
         return
