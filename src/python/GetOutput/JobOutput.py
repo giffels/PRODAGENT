@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.20 2008/11/04 13:37:53 gcodispo Exp $"
-__revision__ = "$Revision: 1.20 $"
+__version__ = "$Id: JobOutput.py,v 1.21 2008/12/08 21:15:21 gcodispo Exp $"
+__revision__ = "$Revision: 1.21 $"
 
 import logging
 import os
@@ -358,6 +358,7 @@ class JobOutput:
                     job.runningJob['status'] = 'A'
                     job.runningJob['statusReason'] = 'GetOutput failed 3 times'
                     # cls.handleFailed( job, task, schedSession )
+                    return
 
                 logging.error("%s: retrieval failed: %s" % \
                               (cls.fullId( job ), str(err) ) )
