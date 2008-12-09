@@ -21,8 +21,7 @@ from popen2 import Popen4
 # Mapping between job types and threshold types
 jobTypeMap = {"Processing":"processingThreshold",
               "Merge":"mergeThreshold",
-              "CleanUp":"cleanupThreshold",
-              "Repack":"repackThreshold" }
+              "CleanUp":"cleanupThreshold"}
 
 
 SEStatusCache = {}
