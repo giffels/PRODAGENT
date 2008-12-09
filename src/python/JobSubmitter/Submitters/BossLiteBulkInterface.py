@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.31 2008/12/02 12:02:19 gcodispo Exp $"
-__version__ = "$Revision: 1.31 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.32 2008/12/06 14:57:37 gcodispo Exp $"
+__version__ = "$Revision: 1.32 $"
 
 import os
 import logging
@@ -289,20 +289,32 @@ fi
         self.bossLiteSession.getRunningInstance( bossJob )
 
         # close previous instance and set up the outdir
-        if bossJob.runningJob['closed'] == 'Y' :
+        if bossJob.runningJob['processStatus'] != 'created' \
+               and bossJob.runningJob['processStatus'] is not None:
+
+            # eventually close old instance
+            if bossJob.runningJob['closed'] != 'Y' :
+                bossJob.runningJob['closed'] = 'Y'
+                self.bossLiteSession.updateDB( bossJob.runningJob )
+                logging.warning(
+                    "Previous RunningInstance %s.%s.%s not closed. Forcing" % \
+                    ( bossJob['taskId'], bossJob['jobId'], \
+                      bossJob.runningJob['submission'] ) )
+
+            logging.warning(
+                "Previous RunningInstance %s.%s.%s " % \
+                ( bossJob['taskId'], bossJob['jobId'], \
+                  bossJob.runningJob['submission'] ) )
+            # creating new RunningInstance
             outdir = self.toSubmit[ self.singleSpecName ] + '/Submission'
             self.bossLiteSession.getNewRunningInstance( bossJob )
             bossJob.runningJob['outputDirectory'] = outdir \
                                    + str(bossJob.runningJob['submission'])
-            self.bossLiteSession.updateDB( bossJob.runningJob )
-
-        # one more check...
-        if bossJob.runningJob['processStatus'] != 'created' \
-               and bossJob.runningJob['processStatus'] is not None :
-            logging.error( "Invalid processStatus for job %s.%s.%s : %s" % \
-                           (bossJob['taskId'], bossJob['jobId'], \
-                            bossJob.runningJob['submission'], \
-                            bossJob.runningJob['processStatus']) )
+            self.bossLiteSession.updateDB( bossJob )
+            logging.warning(
+                "next RunningInstance %s.%s.%s " % \
+                ( bossJob['taskId'], bossJob['jobId'], \
+                  bossJob.runningJob['submission'] ) )
 
         # load the task ans append the job
         self.bossTask = self.bossLiteSession.loadTask(
