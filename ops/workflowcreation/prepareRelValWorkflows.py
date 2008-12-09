@@ -130,6 +130,15 @@ def main(argv) :
             if command.find('python_filename') < 0:
                 command += ' --python_filename ' + outputname
 
+            if len(line.split("@@@")[0].split("++")) > 3 :
+                print "Sorry, but you need to you edit the samples file."
+                print "Only two \"++\" should be in the line %d:\n%s" % (n_line,line.split("@@@")[0])
+                print "Syntax should be like this:"
+                print "00 ++ SampleName ++ RECOTag, ALCATag @@@ cmsRun... or"
+                print "00 ++ SampleName ++ none @@@ cmsRun... in case there is no chained processing."
+                print ""
+                sys.exit(4)
+
             chain = line.split('@@@')[0].split('++')[-1].split(',')
             ALCAtag = RECOtag = None
             if len(chain) >= 1 :
@@ -300,7 +309,7 @@ def main(argv) :
             command += '--acquisition_era=' + version + ' \\\n'
             command += '--conditions=' + sample['conditions'] + ' \\\n'
             command += '--processing_version=' + processing_version + ' \\\n'
-            command += '--only-sites=srm.cern.ch \\\n'
+            command += '--only-sites=srm-cms.cern.ch \\\n'
             command += '--starting-run=' + initial_run + ' \\\n'
             if initial_event != None :
                 command += '--starting-event=' + initial_event + ' \\\n'
@@ -322,7 +331,7 @@ def main(argv) :
             command += '--acquisition_era=' + version + ' \\\n'
             command += '--conditions=' + sample['conditions'] + ' \\\n'
             command += '--processing_version=' + processing_version + ' \\\n'
-            command += '--only-sites=srm.cern.ch \\\n'
+            command += '--only-sites=srm-cms.cern.ch \\\n'
             command += '--starting-run=' + initial_run + ' \\\n'
             if initial_event != None :
                 command += '--starting-event=' + initial_event + ' \\\n'
@@ -372,7 +381,7 @@ def main(argv) :
         command += '--acquisition_era=' + version + ' \\\n'
         command += '--conditions=' + sample['conditions'] + ' \\\n'
         command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
-        command += '--only-sites=srm.cern.ch \\\n'
+        command += '--only-sites=srm-cms.cern.ch \\\n'
         command += '--starting-run=' + initial_run + ' \\\n'
         if initial_event != None :
             command += '--starting-event=' + initial_event + ' \\\n'
