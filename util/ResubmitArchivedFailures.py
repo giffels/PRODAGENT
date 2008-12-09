@@ -8,6 +8,7 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.Database import Session
 from ProdCommon.MCPayloads.JobSpec import JobSpec
+from ProdAgent.ResourceControl.ResourceControlAPI import createSEMap
 
 import sys,os,getopt
 import time,tarfile
@@ -27,6 +28,7 @@ workflow = None
 jobname = None
 alljobs = False
 useJobQueue = None
+
 
 for opt, arg in opts:
     if opt == "--workflowname":
@@ -79,7 +81,7 @@ def getJobQueueConfig():
         msg += str(ex)
         print msg
         sys.exit(1)
-    
+
     mergeConfig = config.getConfig("MergeSensor")
     if mergeConfig.get('QueueJobMode', 'false').lower() in ('true', 'yes'):
         global useJobQueue
@@ -89,8 +91,8 @@ def getJobQueueConfig():
 def ResubmitJobs(TarFileList,FailureDir,ResubDir,jobQueue):
   """
   For each tarfile in FailureDir, move it to ResubDir
-  extract the jobSpec File and re-create the job  
-  """ 
+  extract the jobSpec File and re-create the job
+  """
   for TarFile in TarFileList:
    #
    # mv tar file to "ResubmitFailures" subdir
@@ -99,14 +101,14 @@ def ResubmitJobs(TarFileList,FailureDir,ResubDir,jobQueue):
    ResubTarFile=os.path.join(ResubDir,TarFile)
    os.rename(FailureTarFile,ResubTarFile)
    #
-   # extract the JobSpec File 
+   # extract the JobSpec File
    #
    if tarfile.is_tarfile(ResubTarFile):
       jobtarfile = tarfile.open(ResubTarFile, 'r:gz')
       specFileList=[tf for tf in jobtarfile.getnames() if (tf.count("JobSpec.xml") and not tf.count("BULK"))]
 
       tarspecFile=specFileList[0]
-      #jobspecFile=os.path.join(ResubDir,os.path.basename(tarspecFile))  
+      #jobspecFile=os.path.join(ResubDir,os.path.basename(tarspecFile))
       jobspecFile="%s/%s_%s"%(ResubDir,os.path.basename(tarspecFile),time.time())
       try:
          jobtarfile.extract(tarspecFile,ResubDir)
@@ -154,7 +156,7 @@ def clean_tr_tables(jobspecFile):
 def recreateJob(jobspecFile, jobQueue):
   """
 
-  re-create the processing job 
+  re-create the processing job
 
   """
   # remove entries from tr_Trigger/Action tables to be on safer side
@@ -163,6 +165,25 @@ def recreateJob(jobspecFile, jobQueue):
   # create job if not merge
   spec = JobSpec()
   spec.load(jobspecFile)
+
+  #  //
+  # // refresh any site indexes in the site whitelist
+  #//
+  sitemap = createSEMap()
+  spec.siteWhitelist = [ sitemap[long(x)] for x in spec.siteWhitelist ]
+  spec.save(jobspecFile)
+
+  #  //
+  # // clean spec id from the job queue
+  #//  No easy way to do this in JobQueueAPI so use nekkid SQL for now
+  Session.set_database(dbConfig)
+  Session.connect()
+  sqlStr1 = "DELETE FROM jq_queue WHERE job_spec_id=\"%s\"; " % spec.parameters['JobName']
+  Session.execute(sqlStr1)
+  Session.commit_all()
+
+
+
   if spec.parameters['JobType']=="Processing" or spec.parameters['JobType']=="CleanUp" :
      # publish CreateJob
      print "- Resubmit Processing job"
@@ -196,24 +217,24 @@ def recreateJob(jobspecFile, jobQueue):
      ms.commit()
   else:
      print "ERROR: Do not know how to handle jobType %s"%spec.parameters['JobType']
-  
 
 
-################################################### 
+
+###################################################
 if __name__ == '__main__':
-                                                                                                   
+
  FailureDir=getFailureArchiveDir()
  ResubDir=os.path.join(FailureDir,"ResubmitFailures")
  if not os.path.isdir(ResubDir):
          os.mkdir(ResubDir)
  if useJobQueue is None:
      getJobQueueConfig()
-     
+
  if alljobs:
  #
  # all jobs in FailureArchive dir
  #
-    TarFileList=[ f for f in os.listdir(FailureDir) if os.path.isfile(os.path.join(FailureDir, f)) ]                                                                           
+    TarFileList=[ f for f in os.listdir(FailureDir) if os.path.isfile(os.path.join(FailureDir, f)) ]
  matchingcriteria=None
  if workflow:
    matchingcriteria=workflow
@@ -228,9 +249,9 @@ if __name__ == '__main__':
  # look for tar file matching jobname/workflow
  #
     TarFileList=[ f for f in os.listdir(FailureDir) if f.count(matchingcriteria) > 0 and os.path.isfile(os.path.join(FailureDir, f)) ]
-                                              
-                                                     
+
+
  ResubmitJobs(TarFileList,FailureDir,ResubDir, useJobQueue)
-                                                                                                  
+
 
 
