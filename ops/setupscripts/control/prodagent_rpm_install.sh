@@ -14,5 +14,5 @@ sh -x $VO_CMS_SW_DIR/bootstrap.sh setup -repository comp -path $VO_CMS_SW_DIR -a
 source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/external/apt/$APT_VER/etc/profile.d/init.sh
 
 apt-get update
-apt-get install cms+prodagent+PRODAGENT_$PAVERSION-cmp
+apt-get install cms+prodagent+PRODAGENT_$RPMVERSION-cmp
 #apt-get install cms+PHEDEX-micro+PHEDEX_2_5_2-cmp
