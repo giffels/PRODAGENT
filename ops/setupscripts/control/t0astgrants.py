@@ -5,18 +5,32 @@
 import cx_Oracle
 
 # the development instance
-DBInstance="DEVDB10"
-adminDBPass="PlumJ4m791"
-writerDBPass="m4rm4l4d3"
-# the production instance
-#DBInstance=CMS_T0AST
-#adminDBPass="PlumJ4m791"
-#writerDBPass="PlumJ4m791"
+#DBInstance="DEVDB10"
+#Account="CMS_T0AST"
+#adminDBPass=""
+#writerDBPass=""
+# the production instance(s)
+#DBInstance="CMS_T0AST"
+#Account="CMS_T0AST"
+#adminDBPass=""
+#writerDBPass=""
+
+#DBInstance="CMS_T0AST"
+#Account="CMS_T0AST_1"
+#adminDBPass=""
+#writerDBPass=""
+
+DBInstance="CMS_T0AST"
+Account="CMS_T0AST_2"
+adminDBPass=""
+writerDBPass=""
+
+# the integration instance (at least for now)
 
 cx_Oracle.threaded=True
 
 
-connectString="CMS_T0AST/%s@%s" % (adminDBPass,DBInstance)
+connectString="%s/%s@%s" % (Account,adminDBPass,DBInstance)
 con = cx_Oracle.connect(connectString)
 cur = con.cursor()
 cur.execute("select table_name from user_tables")
@@ -25,7 +39,7 @@ print tables
 cur.execute("select sequence_name from user_sequences")
 sequences = cur.fetchall()
 print sequences
-user = "CMS_T0AST_WRITER"
+user = "%s_WRITER"%Account
 print user
 for t in tables:
  print t
@@ -41,7 +55,7 @@ cur.execute("Grant select on all_cons_columns to %s" % (user))
 
 con.commit()
 
-user = "CMS_T0AST_READER"
+user = "%s_READER"%Account
 print user
 for t in tables:
  print t
@@ -61,7 +75,7 @@ con.close()
 
 
 
-connectString="CMS_T0AST_WRITER/%s@%s" % (writerDBPass,DBInstance)
+connectString="%s_WRITER/%s@%s" % (Account,writerDBPass,DBInstance)
 con = cx_Oracle.connect(connectString)
 cur = con.cursor()
 
@@ -78,10 +92,10 @@ for s in sequences:
 con.commit()
 
 for t in tables:
- cur.execute("Create synonym %s for CMS_T0AST.%s" % (t[0], t[0]))
+ cur.execute("Create synonym %s for %s.%s" % (t[0],Account, t[0]))
 
 for s in sequences:
- cur.execute("Create synonym %s for CMS_T0AST.%s" % (s[0], s[0]))
+ cur.execute("Create synonym %s for %s.%s" % (s[0],Account, s[0]))
 
 con.commit()
 con.close()
