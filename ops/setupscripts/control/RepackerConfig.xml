@@ -13,13 +13,17 @@
                 <Component Name="SegmentInjector"/> 
 		<Component Name="RepackerScheduler"/>
 		<Component Name="RepackerInjector"/>
-		<Component Name="Tier0Accountant"/>
-		<Component Name="RepackerMerger"/>
+		<!-- <Component Name="Tier0Accountant"/> -->
+		<Component Name="Tier0Merger"/>
                 <Component Name="RepackerAuditor"/>
                 <Component Name="PromptRecoInjector"/>     
                 <Component Name="PromptRecoManager"/>
-                <Component Name="BlockInjector"/> 
-                <Component Name="BlockAuditor"/> 
+                <!-- <Component Name="BlockInjector"/>  -->
+                <!-- <Component Name="BlockAuditor"/> -->
+                <ConfigBlock Name="RunConfig">
+                  <Parameter Name="OfflineConfDB" Value="/data/cmsprod/PAProd/dev/control/OfflineConfiguration.py"/>
+                  <Parameter Name="ConfigCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/RunConfig"/>
+                </ConfigBlock> 
                 <ConfigBlock Name="BlockInjector">
                   <Parameter Name="LogLevel" Value="Debug"/>
                   <Parameter Name="LogSize" Value="1073741824"/>
@@ -260,6 +264,7 @@
                 </ConfigBlock>
                 <ConfigBlock Name="RepackerInjector">
                         <Parameter Name="LogLevel" Value="Debug"/>
+                        <Parameter Name="UseLazyDownload" Value="On"/>
                         <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/RepackerInjector"/>
                         <Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/RepackerInjector"/>
 			<Parameter Name="cmsPath" Value="/afs/cern.ch/cms/sw"/>
@@ -275,14 +280,14 @@
 			<Parameter Name="LogRotate" Value="9"/>
 			<Parameter Name="mergeThreshold" Value="2000000000"/>
                 </ConfigBlock> 
-                <ConfigBlock Name="RepackerMerger"> 
+                <ConfigBlock Name="Tier0Merger"> 
                         <Parameter Name="LogLevel" Value="Debug"/>  
-                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/RepackerMerger"/> 
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/Tier0Merger"/> 
                         <Parameter Name="minMergeSize" Value="2000000000"/> 
                         <Parameter Name="maxMergeSize" Value="4100000000"/> 
                         <Parameter Name="maxMergeEvents" Value="50000"/> 
                         <Parameter Name="t0astPollInterval" Value="00:00:20"/>
-			<Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/RepackerMerger"/>
+			<Parameter Name="JobCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/Tier0Merger"/>
                         <Parameter Name="UseLazyDownload" Value="On"/> 
 			<Parameter Name="cmsPath" Value="/afs/cern.ch/cms/sw"/>
                         <Parameter Name="scramArch" Value="slc4_ia32_gcc345"/> 
