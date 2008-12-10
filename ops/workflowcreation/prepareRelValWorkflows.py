@@ -25,7 +25,8 @@ def main(argv) :
     --version <processing version> : processing version (v1, v2, ... )
     --DBSURL <URL>                 : URL of the local DBS (http://cmsdbsprod.cern.ch/cms_dbs_prod_local_07/servlet/DBSServlet, http://cmssrv46.fnal.gov:8080/DBS126/servlet/DBSServlet)
     
-    optional parameters            :
+    optional parameters
+    --pileupdataset                : input pileup dataset. It must be provided if the <samples> txt file contains PilepUp samples
     --lumi <number>                : initial run for generation (default: 666666), set it to 777777 for high statistics samples
     --event <number>               : initial event number
     --help (-h)                    : help
@@ -55,9 +56,10 @@ def main(argv) :
     initial_event      = None
     debug              = 0
     DBSURL             = None
+    pileup_dataset      = None
 
     try:
-        opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", "DBSURL=", "event=", "lumi="])
+        opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", "DBSURL=", "event=", "lumi=", "pileupdataset="])
     except getopt.GetoptError:
         print main.__doc__
         sys.exit(2)
@@ -73,13 +75,15 @@ def main(argv) :
             samples = arg
         elif opt == "--version" :
             processing_version = arg
-#	elif opt == "--run" :
         elif opt == "--lumi" :
             initial_run = arg
-	elif opt == "--event" :
+        elif opt == "--event" :
             initial_event = arg
-	elif opt == "--DBSURL" :
-	    DBSURL = arg
+    	elif opt == "--DBSURL" :
+            DBSURL = arg
+        elif opt == "--pileupdataset" :
+            pileup_dataset = arg
+            print arg
 
     if initial_event == None :
 	print ""
@@ -121,6 +125,16 @@ def main(argv) :
                 totalEvents = array[array.index('--relval')+1].split(',')[0].strip()
                 eventsPerJob = array[array.index('--relval')+1].split(',')[1].strip()
             SimType = ''
+            pileUp = False
+            if '--pileup' in array :
+                if array[array.index('--pileup')+1].lower().strip() != 'nopileup' :
+                    SimType = '_' + array[array.index('--pileup')+1].strip()
+                    pileUp = True
+                    if pileup_dataset == None :
+                        print "Hey! You have to provide a pileup dataset."
+                        print "Usually it is a MinBias (RAW)."
+                        print "Use option --pileupdataset"
+                        sys.exit(5)
             if command.find('FASTSIM') != -1 : SimType = '_FastSim'
             outputname = primary + '_' + conditions + SimType + '.py'
 
@@ -167,8 +181,8 @@ def main(argv) :
                     dict['eventsPerJob'] = eventsPerJob
                     dict['outputname'] = outputname
                     dict['version'] = ""
-                    if SimType == '_FastSim' :
-                        dict['version'] = 'FastSim_'
+                    if SimType != '' :
+                        dict['version'] = SimType.strip('_') + "_"
                     onestep.append(dict)
             else :
                 dict = {}
@@ -184,6 +198,10 @@ def main(argv) :
                 dict['totalEvents'] = totalEvents
                 dict['eventsPerJob'] = eventsPerJob
                 dict['outputname'] = outputname
+                dict['version'] = ""
+                if SimType != '' :
+                    dict['version'] = SimType.strip('_') + "_"
+                dict['pileUp'] = pileUp
                 step1.append(dict)
 
             if debug == 1:
@@ -197,6 +215,7 @@ def main(argv) :
                 print 'RECOtag:',RECOtag
                 print 'ALCAtag:',ALCAtag
                 print 'Steps:',chain
+                print 'PileUp:',pileUp
                 print ''
 
     for tag in parsedRECOTags:
@@ -308,13 +327,15 @@ def main(argv) :
             command += '--activity=RelVal \\\n'
             command += '--acquisition_era=' + version + ' \\\n'
             command += '--conditions=' + sample['conditions'] + ' \\\n'
-            command += '--processing_version=' + processing_version + ' \\\n'
+            command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
             command += '--only-sites=srm-cms.cern.ch \\\n'
             command += '--starting-run=' + initial_run + ' \\\n'
             if initial_event != None :
                 command += '--starting-event=' + initial_event + ' \\\n'
             command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
             command += '--eventsperjob=' + sample['eventsPerJob']
+            if sample['pileUp'] :
+                command += ' \\\n--pileup-dataset=' + pileup_dataset
         else :
             command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
             command += '--version=' + version + ' \\\n'
@@ -330,13 +351,15 @@ def main(argv) :
             command += '--activity=RelVal \\\n'
             command += '--acquisition_era=' + version + ' \\\n'
             command += '--conditions=' + sample['conditions'] + ' \\\n'
-            command += '--processing_version=' + processing_version + ' \\\n'
+            command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
             command += '--only-sites=srm-cms.cern.ch \\\n'
             command += '--starting-run=' + initial_run + ' \\\n'
             if initial_event != None :
                 command += '--starting-event=' + initial_event + ' \\\n'
             command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
             command += '--eventsperjob=' + sample['eventsPerJob']
+            if sample['pileUp'] :
+                command += ' \\\n--pileup-dataset=' + pileup_dataset
 
         if debug == 1 :
             print command
