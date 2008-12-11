@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.33 2008/12/09 11:58:37 gcodispo Exp $"
-__version__ = "$Revision: 1.33 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.34 2008/12/11 13:50:53 gcodispo Exp $"
+__version__ = "$Revision: 1.34 $"
 
 import os
 import logging
@@ -229,6 +229,8 @@ fi
                     self.prepareSubmission()
                     bossJob = self.bossTask.jobs[0]
 
+                # yes, it's there! resubmit...
+                else:
                     try :
                         logging.info('Jobs exists in db "%s"' \
                                      % self.singleSpecName)
@@ -242,10 +244,10 @@ fi
 
             except JobError, ex:
 
-                logging.error('Jobs does not exists in db "%s": %s' \
+                logging.error('Jobs handling failed "%s": %s' \
                               % (self.singleSpecName, str(ex)) )
                 self.failedSubmission = self.toSubmit.keys()
-                raise JSException("Failed to find Job", \
+                raise JSException("Failed handling Job", \
                                   FailureList = self.failedSubmission)
 
             # now submit!!!
