@@ -537,6 +537,13 @@ def main(argv) :
     os.chmod('DQMinput.sh',0755)
     print 'Wrote DQMHarvesting script for merged datasets to:', os.path.join(os.getcwd(),'DQMinput.sh')
 
+    # Output datasets list
+    outputList = open('outputDatasets.txt','w')
+    for sample in mergedDatasets :
+        for dataset in sample :
+            outputList.write(dataset + "\n")
+    print 'Wrote output datasets list to:', os.path.join(os.getcwd(),'outputDatasets.txt')
+
     print ''
 
 def FindIndex(output,string) :
