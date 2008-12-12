@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.16 2008/12/08 21:10:31 gcodispo Exp $"
-__revision__ = "$Revision: 1.16 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.17 2008/12/12 22:58:07 gcodispo Exp $"
+__revision__ = "$Revision: 1.17 $"
 
 import os
 import logging
@@ -312,8 +312,8 @@ class GetOutputComponent:
 
         # bad entry
         elif self.jobFinished[1] is None:
-            logging.error( "%s is Error" % \
-                           JobOutput.fullId( self.jobFinished[1] ))
+            #logging.error( "%s is Error" % \
+            #               JobOutput.fullId( self.jobFinished[1] ))
             return True
 
         # ok: job finished!
