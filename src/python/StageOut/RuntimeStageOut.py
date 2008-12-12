@@ -214,12 +214,6 @@ class StageOutManager:
         for fileToStage in self.toTransfer:
             try:
                 print "==>Working on file: %s" % fileToStage['LFN']
-                if fileToStage['GUID'] != None:
-                    fileToStage['LFN'] = os.path.join(
-                        os.path.dirname(fileToStage['LFN']),
-                        "%s.root" % fileToStage['GUID']
-                        )
-                    print "==> GUID inserted into LFN: %s" % fileToStage['LFN']
                 lfn = fileToStage['LFN']
                 
                 #  //
