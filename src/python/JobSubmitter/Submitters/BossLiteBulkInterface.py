@@ -142,7 +142,7 @@ fi
 
 
     def doSubmit(self):
-        """
+        """r
         __doSubmit__
 
         Perform bulk or single submission as needed based on the class data
@@ -180,6 +180,7 @@ fi
         self.singleSpecName = None
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
         self.bulkSize = int(self.pluginConfig['GLITE'].get('BulkSize', 300))
+        self.taskName = None
 
         # // specific submission parameters
         self.workflowName = self.primarySpecInstance.payload.workflow
@@ -199,9 +200,13 @@ fi
                 self.bossTask = self.bossLiteSession.loadTaskByName(
                     self.mainJobSpecName
                     )
+                self.taskName = self.mainJobSpecName
             except TaskError, ex:
+                self.taskName = self.mainJobSpecName + '_1'
                 # no task instance in db: create it
-                self.prepareSubmission()
+
+            # create task instance
+            self.prepareSubmission()
 
             # now submit!!!
             self.submitJobs( schedSession, submissionAttrs )
@@ -377,7 +382,7 @@ fi
         try :
 
             self.bossTask = Task()
-            self.bossTask['name'] = self.mainJobSpecName
+            self.bossTask['name'] = self.taskName
             self.bossTask['globalSandbox'] = executablePath + ',' + inpSandbox
             self.bossTask['jobType'] = \
                                  self.primarySpecInstance.parameters['JobType']
