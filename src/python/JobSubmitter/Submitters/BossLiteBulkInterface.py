@@ -6,12 +6,12 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.35 2008/12/11 15:04:26 gcodispo Exp $"
-__version__ = "$Revision: 1.35 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.37 2008/12/15 09:26:33 gcodispo Exp $"
+__version__ = "$Revision: 1.37 $"
 
 import os
 import logging
-
+import time
 
 from JobSubmitter.Submitters.BulkSubmitterInterface \
      import BulkSubmitterInterface
@@ -139,6 +139,7 @@ fi
         self.usingDashboard = None
         self.workflowName = None
         self.workingDir = None
+        self.taskName = None
 
 
     def doSubmit(self):
@@ -180,7 +181,6 @@ fi
         self.singleSpecName = None
         self.bossLiteSession = BossLiteAPI('MySQL', dbConfig)
         self.bulkSize = int(self.pluginConfig['GLITE'].get('BulkSize', 300))
-        self.taskName = None
 
         # // specific submission parameters
         self.workflowName = self.primarySpecInstance.payload.workflow
@@ -188,6 +188,7 @@ fi
         self.mainSandbox = \
                    self.primarySpecInstance.parameters['BulkInputSandbox']
         self.workingDir = os.path.dirname(self.mainSandbox)
+        self.taskName = self.workflowName + time.strftime('_%Y%m%d_%H%M%S')
         logging.debug("workingDir = %s" % self.workingDir)
 
         # //  Build scheduler configuration
@@ -196,14 +197,18 @@ fi
         # // Handle submission
         if self.isBulk:
             # try loading the task
-            try :
-                self.bossTask = self.bossLiteSession.loadTaskByName(
-                    self.mainJobSpecName
-                    )
-                self.taskName = self.mainJobSpecName
-            except TaskError, ex:
-                self.taskName = self.mainJobSpecName + '_1'
-                # no task instance in db: create it
+            ### try :
+            ###     self.bossTask = self.bossLiteSession.loadTaskByName(
+            ###         self.mainJobSpecName
+            ###         )
+            ###     if self.bossTask is not None:
+            ###         self.taskName = self.mainJobSpecName
+            ###         self.bossTask = None
+            ###     else:
+            ###         self.taskName = self.mainJobSpecName + '_1'
+            ###         
+            ### except TaskError, ex:
+            ###     self.taskName = self.mainJobSpecName + '_1'
 
             # create task instance
             self.prepareSubmission()
@@ -320,10 +325,9 @@ fi
                 ( bossJob['taskId'], bossJob['jobId'], \
                   bossJob.runningJob['submission'] ) )
             # creating new RunningInstance
-            outdir = self.toSubmit[ self.singleSpecName ] + '/Submission'
             self.bossLiteSession.getNewRunningInstance( bossJob )
-            bossJob.runningJob['outputDirectory'] = outdir \
-                                   + str(bossJob.runningJob['submission'])
+            bossJob.runningJob['outputDirectory'] = os.path.join(
+                [ self.singleSpecName ], time.strftime('%Y%m%d_%H%M%S') )
             self.bossLiteSession.updateDB( bossJob )
             logging.warning(
                 "next RunningInstance %s.%s.%s " % \
@@ -362,13 +366,14 @@ fi
                 self.mainSandbox, 
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox']
                 ]
+            executable = self.workflowName + '-submit'
         else:
             self.jobInputFiles = [ self.specFiles[self.mainJobSpecName],
                                    self.mainSandbox ]
+            executable = self.singleSpecName + '-submit'
             
         # // generate unique wrapper script
         logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
-        executable = self.mainJobSpecName + '-submit'
         executablePath = "%s/%s" % (self.workingDir, executable)
         logging.debug("makeWrapperScript = %s" % executablePath)
         self.makeWrapperScript( executablePath, "$1" )
@@ -394,6 +399,7 @@ fi
 
         # insert jobs
         try :
+            outdir = time.strftime('%Y%m%d_%H%M%S')
             for jobSpecId, jobCacheDir in self.toSubmit.items():
                 if len(jobSpecId) == 0 :#or jobSpecId in jobSpecUsedList :
                     continue
@@ -407,8 +413,8 @@ fi
                                        jobSpecId + '.tgz', \
                                        'FrameworkJobReport.xml' ]
                 self.bossLiteSession.getNewRunningInstance( job )
-                job.runningJob['outputDirectory'] = jobCacheDir \
-                                                    + '/Submission1'
+                job.runningJob['outputDirectory'] = \
+                                            os.path.join( jobCacheDir, outdir )
                 self.bossTask.addJob( job )
             self.bossLiteSession.updateDB( self.bossTask )
             logging.info( "Successfully Created task %s with %d jobs" % \
