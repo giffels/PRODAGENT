@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.34 2008/12/11 13:50:53 gcodispo Exp $"
-__version__ = "$Revision: 1.34 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.35 2008/12/11 15:04:26 gcodispo Exp $"
+__version__ = "$Revision: 1.35 $"
 
 import os
 import logging
@@ -223,7 +223,7 @@ fi
 
                 # is there any job?
                 if bossJob is None:
-                    logging.info('Jobs does not exists in db "%s": create it' \
+                    logging.info('Job does not exists in db "%s": create it' \
                                  % self.singleSpecName)
                     # no job instance in db: create a task with a job
                     self.prepareSubmission()
@@ -232,7 +232,7 @@ fi
                 # yes, it's there! resubmit...
                 else:
                     try :
-                        logging.info('Jobs exists in db "%s"' \
+                        logging.info('Job exists in db "%s"' \
                                      % self.singleSpecName)
                         # job loaded, prepare resubmission
                         self.prepareResubmission(bossJob)
@@ -361,7 +361,6 @@ fi
             self.jobInputFiles = [ self.specFiles[self.mainJobSpecName],
                                    self.mainSandbox ]
             
-
         # // generate unique wrapper script
         logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
         executable = self.mainJobSpecName + '-submit'
@@ -373,6 +372,8 @@ fi
         logging.debug("Declaring to BOSS")
 
         wrapperName = "%s/%s" % (self.workingDir, self.mainJobSpecName)
+
+        # insert task
         try :
 
             self.bossTask = Task()
@@ -380,7 +381,14 @@ fi
             self.bossTask['globalSandbox'] = executablePath + ',' + inpSandbox
             self.bossTask['jobType'] = \
                                  self.primarySpecInstance.parameters['JobType']
+            self.bossLiteSession.saveTask( self.bossTask )
 
+        except BossLiteError, ex:
+            self.failedSubmission = self.toSubmit.keys()
+            raise JSException(str(ex), FailureList = self.failedSubmission)
+
+        # insert jobs
+        try :
             for jobSpecId, jobCacheDir in self.toSubmit.items():
                 if len(jobSpecId) == 0 :#or jobSpecId in jobSpecUsedList :
                     continue
@@ -401,7 +409,7 @@ fi
             logging.info( "Successfully Created task %s with %d jobs" % \
                           ( self.bossTask['id'], len(self.bossTask.jobs) ) )
 
-        except ProdAgentException, ex:
+        except BossLiteError, ex:
             self.failedSubmission = self.toSubmit.keys()
             raise JSException(str(ex), FailureList = self.failedSubmission)
 
