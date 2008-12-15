@@ -57,7 +57,7 @@ for opt, arg in opts:
     if opt == "--released":
         releasedFlag = True
 
-if byType not in (None, "Merge", "Processing"):
+if byType not in (None, "Merge", "Processing", "Repack"):
     msg = "Unknown job type: %s\n" % byType
     msg += "Must be Merge or Processing if specified\n"
     raise RuntimeError, msg
