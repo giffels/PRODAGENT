@@ -9,23 +9,30 @@ import cx_Oracle
 #Account="CMS_T0AST"
 #adminDBPass=""
 #writerDBPass=""
+
+# the integration instance
+#DBInstance="INT2R_LB"
+#Account="CMS_T0ASTIT"
+#adminDBPass=""
+#writerDBPass=""
+
 # the production instance(s)
 #DBInstance="CMS_T0AST"
 #Account="CMS_T0AST"
 #adminDBPass=""
 #writerDBPass=""
 
-#DBInstance="CMS_T0AST"
-#Account="CMS_T0AST_1"
-#adminDBPass=""
-#writerDBPass=""
-
+# prodtest instance 1
 DBInstance="CMS_T0AST"
-Account="CMS_T0AST_2"
+Account="CMS_T0AST_1"
 adminDBPass=""
 writerDBPass=""
 
-# the integration instance (at least for now)
+# prodtest instance 2
+#DBInstance="CMS_T0AST"
+#Account="CMS_T0AST_2"
+#adminDBPass=""
+#writerDBPass=""
 
 cx_Oracle.threaded=True
 
