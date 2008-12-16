@@ -16,8 +16,8 @@ export RPMVERSION=0_12_8_pre1
 # overriding what comes with the RPMS
 
 #The ProdAgent & ProdCommon versions you want to pull out of CVS
-export PAVERSION=0_12_8_pre1
-export PCVERSION=0_12_8_pre1
+export PAVERSION=0_12_8
+export PCVERSION=0_12_8
 #The DBS version we want to install
 export DBSVERSION=2_0_4_patch1
 #The WMCORE version required
@@ -25,13 +25,16 @@ export WMCOREVERSION=T0_0_0_2_pre28
 #The T0 version we need
 export T0VERSION=0_0_2_pre30
 
+# This is probably the only one to change
+export PRODAGENT_TOP=/data/$PRODAGENT_USER/PAProd/$INSTALL_TYPE
+
 #Note, don't change this!
 #export PBIN=$HOME/public/bin/PRODAGENT_$PAVERSION
-export PBIN=/data/cmsprod/PAProd/$INSTALL_TYPE/control
+export PBIN=${PRODAGENT_TOP}/control
 
 #Don't change this!
-export MYTESTAREA=/data/$PRODAGENT_USER/PAProd/$INSTALL_TYPE/install
-export PRODAGENT_WORKDIR=/data/$PRODAGENT_USER/PAProd/$INSTALL_TYPE/prodAgent
+export MYTESTAREA=${PRODAGENT_TOP}/install
+export PRODAGENT_WORKDIR=${PRODAGENT_TOP}/prodAgent
 export APT_VER=0.5.15lorg3.2-cmp
 export VO_CMS_SW_DIR=$MYTESTAREA
 export SCRAM_ARCH_INSTALL=slc4_amd64_gcc345
