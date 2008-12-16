@@ -299,9 +299,5 @@
 		<ConfigBlock Name="LSF">
 			<Parameter Name="JobGroup" Value="/groups/tier0/repackerProd"/>
 		</ConfigBlock>
-		<ConfigBlock Name="RunConfig">
-			<Parameter Name="OfflineConfDB" Value="9"/>
-			<Parameter Name="ConfigCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/RunConfig"/>
-		</ConfigBlock>
 	</ProdAgentConfiguration>
 </ProdAgentConfig>
