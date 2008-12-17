@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.19 2008/10/10 13:24:49 gcodispo Exp $"
-__revision__ = "$Revision: 1.19 $"
+__version__ = "$Id: JobOutput.py,v 1.21 2008/12/08 21:15:21 gcodispo Exp $"
+__revision__ = "$Revision: 1.21 $"
 
 import logging
 import os
@@ -102,7 +102,7 @@ class JobOutput:
             status = job.runningJob['processStatus']
 
             # a variable to check if the output already retrieved
-            skipRetrieval = False            
+            skipRetrieval = False
 
             # output retrieved before, then recover interrupted operation
             if status == 'output_retrieved':
@@ -138,9 +138,9 @@ class JobOutput:
             if ret is not None:
 
                 job, success, reportfilename = ret
-                
+
                 logging.debug("%s: Processing output" % cls.fullId( job ) )
-                
+
                 # perform processing
                 try :
                     # update status
@@ -184,7 +184,7 @@ class JobOutput:
             logging.error( "%s: GetOutputThread traceback: %s" % \
                            ( cls.fullId( job ), traceback.format_exc() ) )
 
-            
+
 
     @classmethod
     def action(cls, bossLiteSession, job, jobHandling):
@@ -257,9 +257,10 @@ class JobOutput:
                 logging.error( '%s: Can not get logging info' % \
                                cls.fullId( job  ) )
                 return
-                
+
             logging.info('%s: Retrieved logging info in %s' \
                          % (cls.fullId( job ), outfile ))
+
         except BossLiteError, err:
             logging.error( '%s: Can not get logging info : [%s]' % \
                            ( cls.fullId( job ), str(err) ) )
@@ -297,7 +298,7 @@ class JobOutput:
             logging.warning( "%s: Warning, failed to purge : %s" \
                              % (cls.fullId( job ), str(err) ) )
             job.runningJob['processStatus'] = 'output_retrieved'
-            
+
             # proxy expired: invalidate job and empty return
             if err.value.find( "Proxy Expired" ) != -1 :
                 job.runningJob['closed'] = 'Y'
@@ -357,7 +358,8 @@ class JobOutput:
                     job.runningJob['status'] = 'A'
                     job.runningJob['statusReason'] = 'GetOutput failed 3 times'
                     # cls.handleFailed( job, task, schedSession )
-                
+                    return
+
                 logging.error("%s: retrieval failed: %s" % \
                               (cls.fullId( job ), str(err) ) )
                 logging.info( "BossLiteLogger : %s " % \
@@ -429,7 +431,7 @@ class JobOutput:
         for job in jobs:
 
             try:
-                pool.enqueue(job, job)
+                pool.enqueue(job['id'], job)
 
             except Exception, err:
                 logging.error( "%s: failed restoring : %s" % \

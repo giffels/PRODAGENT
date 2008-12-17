@@ -6,12 +6,12 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.27 2008/11/24 15:25:19 gcodispo Exp $"
-__version__ = "$Revision: 1.27 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.37 2008/12/15 09:26:33 gcodispo Exp $"
+__version__ = "$Revision: 1.37 $"
 
 import os
 import logging
-
+import time
 
 from JobSubmitter.Submitters.BulkSubmitterInterface \
      import BulkSubmitterInterface
@@ -139,10 +139,11 @@ fi
         self.usingDashboard = None
         self.workflowName = None
         self.workingDir = None
+        self.taskName = None
 
 
     def doSubmit(self):
-        """
+        """r
         __doSubmit__
 
         Perform bulk or single submission as needed based on the class data
@@ -187,6 +188,7 @@ fi
         self.mainSandbox = \
                    self.primarySpecInstance.parameters['BulkInputSandbox']
         self.workingDir = os.path.dirname(self.mainSandbox)
+        self.taskName = self.workflowName + time.strftime('_%Y%m%d_%H%M%S')
         logging.debug("workingDir = %s" % self.workingDir)
 
         # //  Build scheduler configuration
@@ -195,13 +197,21 @@ fi
         # // Handle submission
         if self.isBulk:
             # try loading the task
-            try :
-                self.bossTask = self.bossLiteSession.loadTaskByName(
-                    self.mainJobSpecName
-                    )
-            except TaskError, ex:
-                # no task instance in db: create it
-                self.prepareSubmission()
+            ### try :
+            ###     self.bossTask = self.bossLiteSession.loadTaskByName(
+            ###         self.mainJobSpecName
+            ###         )
+            ###     if self.bossTask is not None:
+            ###         self.taskName = self.mainJobSpecName
+            ###         self.bossTask = None
+            ###     else:
+            ###         self.taskName = self.mainJobSpecName + '_1'
+            ###         
+            ### except TaskError, ex:
+            ###     self.taskName = self.mainJobSpecName + '_1'
+
+            # create task instance
+            self.prepareSubmission()
 
             # now submit!!!
             self.submitJobs( schedSession, submissionAttrs )
@@ -223,28 +233,40 @@ fi
 
                 # is there any job?
                 if bossJob is None:
-                    logging.info('Jobs does not exists in db "%s": create it' \
+                    logging.info('Job does not exists in db "%s": create it' \
                                  % self.singleSpecName)
                     # no job instance in db: create a task with a job
                     self.prepareSubmission()
+                    bossJob = self.bossTask.jobs[0]
 
-                logging.info('Jobs exists in db "%s"' % self.singleSpecName)
-                # job loaded, prepare resubmission
-                self.prepareResubmission(bossJob)
+                # yes, it's there! resubmit...
+                else:
+                    try :
+                        logging.info('Job exists in db "%s"' \
+                                     % self.singleSpecName)
+                        # job loaded, prepare resubmission
+                        self.prepareResubmission(bossJob)
+                    except BossLiteError, ex:
+                        logging.error('Failed to resubmit Job "%s": %s' \
+                                      % (self.singleSpecName, str(ex)) )
+                        raise JSException("Failed to resubmit Job", \
+                                          FailureList = self.failedSubmission)
 
             except JobError, ex:
 
-                logging.info('Jobs does not exists in db "%s": %s' \
-                             % (self.singleSpecName, str(ex)) )
-                raise JSException("Failed to find Job", \
-                                  FailureList = self.toSubmit.keys())
+                logging.error('Jobs handling failed "%s": %s' \
+                              % (self.singleSpecName, str(ex)) )
+                self.failedSubmission = self.toSubmit.keys()
+                raise JSException("Failed handling Job", \
+                                  FailureList = self.failedSubmission)
 
             # now submit!!!
             self.submitSingleJob( schedSession, submissionAttrs )
 
         # // check for not submitted and eventually raise Submission Failed
         for job in self.bossTask.jobs :
-            if job.runningJob['schedulerId'] is None:
+            if job.runningJob['schedulerId'] is None \
+                   and job['name'] not in self.failedSubmission:
                 self.failedSubmission.append( job['name'] )
 
         if self.failedSubmission != []:
@@ -268,7 +290,8 @@ fi
         if bossJob is None:
             msg = 'Failed to retrieve job %s' % self.singleSpecName
             logging.error( msg )
-            raise JSException(msg, FailureList = self.toSubmit.keys())
+            self.failedSubmission = self.toSubmit.keys()
+            raise JSException(msg, FailureList = self.failedSubmission)
 
         # check if the wrapper is actually there
         executable = os.path.join(self.workingDir, bossJob['executable'] )
@@ -285,26 +308,45 @@ fi
         self.bossLiteSession.getRunningInstance( bossJob )
 
         # close previous instance and set up the outdir
-        if bossJob.runningJob['closed'] == 'Y' :
-            outdir = self.toSubmit[ self.singleSpecName ] + '/Submission'
+        if bossJob.runningJob['processStatus'] != 'created' \
+               and bossJob.runningJob['processStatus'] is not None:
+
+            # eventually close old instance
+            if bossJob.runningJob['closed'] != 'Y' :
+                bossJob.runningJob['closed'] = 'Y'
+                self.bossLiteSession.updateDB( bossJob.runningJob )
+                logging.warning(
+                    "Previous RunningInstance %s.%s.%s not closed. Forcing" % \
+                    ( bossJob['taskId'], bossJob['jobId'], \
+                      bossJob.runningJob['submission'] ) )
+
+            logging.warning(
+                "Previous RunningInstance %s.%s.%s " % \
+                ( bossJob['taskId'], bossJob['jobId'], \
+                  bossJob.runningJob['submission'] ) )
+            # creating new RunningInstance
             self.bossLiteSession.getNewRunningInstance( bossJob )
-            bossJob.runningJob['outputDirectory'] = outdir \
-                                   + str(bossJob.runningJob['submission'])
+            bossJob.runningJob['outputDirectory'] = os.path.join(
+                [ self.singleSpecName ], time.strftime('%Y%m%d_%H%M%S') )
             self.bossLiteSession.updateDB( bossJob )
+            logging.warning(
+                "next RunningInstance %s.%s.%s " % \
+                ( bossJob['taskId'], bossJob['jobId'], \
+                  bossJob.runningJob['submission'] ) )
 
         # load the task ans append the job
         self.bossTask = self.bossLiteSession.loadTask(
-            bossJob['taskId'], jobRange=None )
+            bossJob['taskId'], bossJob['jobId'] )
 
         # still no task? Something bad happened
         if self.bossTask is not None :
             logging.debug( "BossLiteBulkInterface: Submit bossTask = %s" \
                            % self.bossTask['id'] )
         else:
+            self.failedSubmission = self.toSubmit.keys()
             raise JSException("Failed to find Job", \
-                              FailureList = self.toSubmit.keys())
+                              FailureList = self.failedSubmission)
 
-        self.bossTask.appendJob( bossJob )
 
 
     def prepareSubmission(self):
@@ -324,14 +366,14 @@ fi
                 self.mainSandbox, 
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox']
                 ]
+            executable = self.workflowName + '-submit'
         else:
             self.jobInputFiles = [ self.specFiles[self.mainJobSpecName],
                                    self.mainSandbox ]
+            executable = self.singleSpecName + '-submit'
             
-
         # // generate unique wrapper script
         logging.debug("mainJobSpecName = \"%s\"" % self.mainJobSpecName)
-        executable = self.mainJobSpecName + '-submit'
         executablePath = "%s/%s" % (self.workingDir, executable)
         logging.debug("makeWrapperScript = %s" % executablePath)
         self.makeWrapperScript( executablePath, "$1" )
@@ -340,14 +382,24 @@ fi
         logging.debug("Declaring to BOSS")
 
         wrapperName = "%s/%s" % (self.workingDir, self.mainJobSpecName)
+
+        # insert task
         try :
 
             self.bossTask = Task()
-            self.bossTask['name'] = self.mainJobSpecName
+            self.bossTask['name'] = self.taskName
             self.bossTask['globalSandbox'] = executablePath + ',' + inpSandbox
             self.bossTask['jobType'] = \
                                  self.primarySpecInstance.parameters['JobType']
+            self.bossLiteSession.saveTask( self.bossTask )
 
+        except BossLiteError, ex:
+            self.failedSubmission = self.toSubmit.keys()
+            raise JSException(str(ex), FailureList = self.failedSubmission)
+
+        # insert jobs
+        try :
+            outdir = time.strftime('%Y%m%d_%H%M%S')
             for jobSpecId, jobCacheDir in self.toSubmit.items():
                 if len(jobSpecId) == 0 :#or jobSpecId in jobSpecUsedList :
                     continue
@@ -361,15 +413,16 @@ fi
                                        jobSpecId + '.tgz', \
                                        'FrameworkJobReport.xml' ]
                 self.bossLiteSession.getNewRunningInstance( job )
-                job.runningJob['outputDirectory'] = jobCacheDir \
-                                                    + '/Submission1'
+                job.runningJob['outputDirectory'] = \
+                                            os.path.join( jobCacheDir, outdir )
                 self.bossTask.addJob( job )
             self.bossLiteSession.updateDB( self.bossTask )
             logging.info( "Successfully Created task %s with %d jobs" % \
                           ( self.bossTask['id'], len(self.bossTask.jobs) ) )
 
-        except ProdAgentException, ex:
-            raise JSException(str(ex), FailureList = self.toSubmit.keys())
+        except BossLiteError, ex:
+            self.failedSubmission = self.toSubmit.keys()
+            raise JSException(str(ex), FailureList = self.failedSubmission)
 
         return
 
@@ -443,8 +496,9 @@ fi
 
         except BossLiteError, err:
             logging.error( "########### Failed submission : %s" % str( err ) )
+            self.failedSubmission = self.toSubmit.keys()
             raise JSException( "Unable to find a valid certificate", \
-                               FailureList = self.toSubmit.keys() )
+                               FailureList = self.failedSubmission )
 
         # // prepare extra jdl attributes
         logging.info("Preparing scheduler specific attributes")
@@ -454,7 +508,8 @@ fi
         except Exception, ex:
             msg = "Unable to build scheduler specific attributes"
             logging.error( msg )
-            raise JSException( msg, FailureList = self.toSubmit.keys() )
+            self.failedSubmission = self.toSubmit.keys()
+            raise JSException( msg, FailureList = self.failedSubmission )
 
         # return scheduler session and configuration
         return ( schedSession, submissionAttrs )
@@ -528,6 +583,7 @@ fi
                                (task.jobs[0]['jobId'], task.jobs[-1]['jobId']))
                 schedSession.submit(task, requirements=submissionAttrs)
             except BossLiteError, err:
+                self.failedSubmission.append( self.toSubmit.keys() )
                 logging.error( "########### Failed submission : %s" % \
                                str(schedSession.getLogger()) )
 
@@ -555,7 +611,8 @@ fi
         whitelist = whitelist.replace("]", "")
 
         for job in self.bossTask.jobs :
-            if job.runningJob['schedulerId'] is None:
+            if job.runningJob['schedulerId'] is None \
+                   or job['name'] in self.failedSubmission:
                 continue
 
             # compose DashboardInfo.xml path
