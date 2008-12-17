@@ -5,8 +5,8 @@
 import cx_Oracle
 
 # most of the accounts use these as their suffix
-readerSuffix=READER
-writerSuffix=WRITER
+readerSuffix="READER"
+writerSuffix="WRITER"
 
 # the development instance
 #DBInstance="DEVDB10"
@@ -31,8 +31,8 @@ writerSuffix=WRITER
 #Account="CMS_T0AST_SCALE"
 #adminDBPass=""
 #writerDBPass=""
-#readerSuffix=R
-#writerSuffix=W
+#readerSuffix="R"
+#writerSuffix="W"
 
 # prodtest instance 1
 DBInstance="CMS_T0AST"
