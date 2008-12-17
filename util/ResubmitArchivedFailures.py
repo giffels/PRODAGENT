@@ -8,7 +8,6 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentDB.Config import defaultConfig as dbConfig
 from ProdCommon.Database import Session
 from ProdCommon.MCPayloads.JobSpec import JobSpec
-from ProdAgent.ResourceControl.ResourceControlAPI import createSEMap
 
 import sys,os,getopt
 import time,tarfile
@@ -165,13 +164,6 @@ def recreateJob(jobspecFile, jobQueue):
   # create job if not merge
   spec = JobSpec()
   spec.load(jobspecFile)
-
-  #  //
-  # // refresh any site indexes in the site whitelist
-  #//
-  sitemap = createSEMap()
-  spec.siteWhitelist = [ sitemap[long(x)] for x in spec.siteWhitelist ]
-  spec.save(jobspecFile)
 
   #  //
   # // clean spec id from the job queue

@@ -125,16 +125,14 @@ class JobQueueDB:
         sites = []
         allSites = ResourceControlAPI.allSiteData()
 
-        # first search by name
+        # search for a match by name, SE, CE and index
         for site in allSites:
-         if site["SiteName"] == siteId:
-           sites.append(site["SiteIndex"])
-
-        # if not found try SE
-        if len(sites) == 0:
-          for site in allSites:
-            if site["SEName"] == siteId:    
-              sites.append(site["SiteIndex"])
+            if siteId in (site["SiteName"],
+                          site["SEName"],
+                          site["CEName"],
+                          site["SiteIndex"],
+                          str(site["SiteIndex"])):
+                sites.append(site["SiteIndex"])
 
         return sites
         
