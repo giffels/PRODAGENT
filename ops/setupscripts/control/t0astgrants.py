@@ -4,6 +4,10 @@
 
 import cx_Oracle
 
+# most of the accounts use these as their suffix
+readerSuffix=READER
+writerSuffix=WRITER
+
 # the development instance
 #DBInstance="DEVDB10"
 #Account="CMS_T0AST"
@@ -21,6 +25,14 @@ import cx_Oracle
 #Account="CMS_T0AST"
 #adminDBPass=""
 #writerDBPass=""
+
+# scale test database
+#DBInstance="int9r_lb"
+#Account="CMS_T0AST_SCALE"
+#adminDBPass=""
+#writerDBPass=""
+#readerSuffix=R
+#writerSuffix=W
 
 # prodtest instance 1
 DBInstance="CMS_T0AST"
@@ -46,7 +58,7 @@ print tables
 cur.execute("select sequence_name from user_sequences")
 sequences = cur.fetchall()
 print sequences
-user = "%s_WRITER"%Account
+user = "%s_%s" % (Account, writerSuffix)
 print user
 for t in tables:
  print t
@@ -62,7 +74,7 @@ cur.execute("Grant select on all_cons_columns to %s" % (user))
 
 con.commit()
 
-user = "%s_READER"%Account
+user = "%s_%s" % (Account, readerSuffix)
 print user
 for t in tables:
  print t
@@ -82,7 +94,7 @@ con.close()
 
 
 
-connectString="%s_WRITER/%s@%s" % (Account,writerDBPass,DBInstance)
+connectString="%s_%s/%s@%s" % (Account,writerSuffix,writerDBPass,DBInstance)
 con = cx_Oracle.connect(connectString)
 cur = con.cursor()
 
