@@ -4,12 +4,13 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.13 2008/11/25 14:17:40 gcodispo Exp $"
-__revision__ = "$Revision: 1.13 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.15 2008/12/03 13:51:06 spiga Exp $"
+__revision__ = "$Revision: 1.15 $"
 
 import os
 import logging
 import traceback
+import threading
 
 # PA configuration
 from ProdAgentDB.Config import defaultConfig as dbConfig
@@ -47,7 +48,7 @@ class GetOutputComponent:
         self.args.setdefault("GetOutputPoolThreadsSize", 5)
         self.args.setdefault("jobsToPoll", 1000)
         self.args.setdefault("OutputLocation", "local")
-        self.args.setdefault("dropBoxPath", None)
+        self.args.setdefault("CacheDir", None)
         self.args.setdefault("Logfile", None)
         self.args.setdefault("verbose", 1) # tmp for testing
         self.args.setdefault("configDir", None)
@@ -99,7 +100,7 @@ class GetOutputComponent:
         # set job handling parameters
         jobHandlingParams = {}
         jobHandlingParams['componentDir'] = self.args['JobTrackingDir']
-        jobHandlingParams['dropBoxPath'] = self.args['dropBoxPath']
+        jobHandlingParams['CacheDir'] = self.args['CacheDir']
         jobHandlingParams['OutputLocation'] = self.args['OutputLocation']
         jobHandlingParams['OutputParams'] = outputParams
 
@@ -116,7 +117,7 @@ class GetOutputComponent:
         JobOutput.setParameters(params)
         self.pool = WorkQueue([JobOutput.doWork] * \
                               int(self.args["GetOutputPoolThreadsSize"]))
-        
+
         # initialize job handling object
         jobHandlingParams['bossLiteSession'] = self.bossLiteSession
         logging.info("handleeee")
@@ -173,7 +174,7 @@ class GetOutputComponent:
 
         Poll the DB for jobs to get output from.
         """
-        import threading
+
         # how many active threads?
         logging.debug("ACTIVE THREADS when starting poll cycle: %s" \
                      % threading.activeCount() )
@@ -267,7 +268,7 @@ class GetOutputComponent:
                     job.runningJob['processStatus'] = 'in_progress'
                     self.bossLiteSession.updateDB( job )
 
-                    self.pool.enqueue(job, job)
+                    self.pool.enqueue(job['id'], job)
 
                 except BossLiteError, err:
                     logging.error( "failed request for job %s : %s" % \
@@ -281,6 +282,8 @@ class GetOutputComponent:
                                     str( traceback.format_exc() ) ) )
 
                 del( job )
+
+            logging.debug('Finished enqueuing polled Jobs in threads')
 
             del self.newJobs[:]
 
@@ -342,7 +345,6 @@ class GetOutputComponent:
                 logging.error("Job %s : Unable to archive in BossLite" % \
                               JobOutput.fullId(job) )
 
-
         # publish success event
         self.ms.publish("JobSuccess", reportfilename)
         self.ms.commit()
@@ -350,7 +352,7 @@ class GetOutputComponent:
         logging.info("Published JobSuccess with payload :%s" % \
                      reportfilename)
         self.notifyJobState(job)
-        
+
         return
 
 
@@ -379,7 +381,7 @@ class GetOutputComponent:
                      (JobOutput.fullId(job), reportfilename) )
 
         return
-    
+
 
     def notifyJobState(self, job):
         """

@@ -125,16 +125,14 @@ class JobQueueDB:
         sites = []
         allSites = ResourceControlAPI.allSiteData()
 
-        # first search by name
+        # search for a match by name, SE, CE and index
         for site in allSites:
-         if site["SiteName"] == siteId:
-           sites.append(site["SiteIndex"])
-
-        # if not found try SE
-        if len(sites) == 0:
-          for site in allSites:
-            if site["SEName"] == siteId:    
-              sites.append(site["SiteIndex"])
+            if siteId in (site["SiteName"],
+                          site["SEName"],
+                          site["CEName"],
+                          site["SiteIndex"],
+                          str(site["SiteIndex"])):
+                sites.append(site["SiteIndex"])
 
         return sites
         
@@ -1226,15 +1224,9 @@ def insertJobSpec(dbInterface, jobSpecId, jobSpecFile, jobType, workflowId,
                 "p_4": workflowId, "p_5": workflowPriority, "p_6": status}
     dbInterface.processData(queueQuery, bindVars, transaction = True)
 
-    result = dbInterface.processData("SELECT LAST_INSERT_ID()",
-                                     transaction = True)
-
-    logging.debug("insertJobSpec(): result %s" % result)
-    
-    jobIndex = result[0].fetchone()[0]
-
-    siteQuery = "INSERT INTO jq_site (job_index) VALUES (:p_1)"        
-    bindVars = {"p_1": jobIndex}
+    siteQuery = """INSERT INTO jq_site (job_index) SELECT job_index
+                   FROM jq_queue WHERE job_spec_id = :p_1"""        
+    bindVars = {"p_1": jobSpecId}
     dbInterface.processData(siteQuery, bindVars, transaction = True)
 
     return
