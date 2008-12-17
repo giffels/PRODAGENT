@@ -48,9 +48,7 @@ writerDBPass=""
 
 cx_Oracle.threaded=True
 
-
-connectString="%s/%s@%s" % (Account,adminDBPass,DBInstance)
-con = cx_Oracle.connect(connectString)
+con = cx_Oracle.connect(user=Account,password=adminDBPass,dsn=DBInstance)
 cur = con.cursor()
 cur.execute("select table_name from user_tables")
 tables = cur.fetchall()
@@ -92,10 +90,8 @@ con.commit()
 con.close()
 
 
-
-
-connectString="%s_%s/%s@%s" % (Account,writerSuffix,writerDBPass,DBInstance)
-con = cx_Oracle.connect(connectString)
+AccountName="%s_%s" % (Account,writerSuffix)
+con = cx_Oracle.connect(user=AccountName,password=writerDBPass,dsn=DBInstance)
 cur = con.cursor()
 
 for t in tables:
