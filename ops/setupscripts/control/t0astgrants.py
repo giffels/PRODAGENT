@@ -4,52 +4,35 @@
 
 import cx_Oracle
 
-# most of the accounts use these as their suffix
-readerSuffix="READER"
-writerSuffix="WRITER"
-
 # the development instance
 #DBInstance="DEVDB10"
 #Account="CMS_T0AST"
 #adminDBPass=""
 #writerDBPass=""
-
-# the integration instance
-#DBInstance="INT2R_LB"
-#Account="CMS_T0ASTIT"
-#adminDBPass=""
-#writerDBPass=""
-
 # the production instance(s)
 #DBInstance="CMS_T0AST"
 #Account="CMS_T0AST"
 #adminDBPass=""
 #writerDBPass=""
 
-# scale test database
-#DBInstance="int9r_lb"
-#Account="CMS_T0AST_SCALE"
-#adminDBPass=""
-#writerDBPass=""
-#readerSuffix="R"
-#writerSuffix="W"
-
-# prodtest instance 1
 #DBInstance="CMS_T0AST"
 #Account="CMS_T0AST_1"
 #adminDBPass=""
 #writerDBPass=""
 
-# prodtest instance 2
 DBInstance="CMS_T0AST"
 Account="CMS_T0AST_2"
 adminDBPass=""
 writerDBPass=""
 readerDBPass=""
 
+# the integration instance (at least for now)
+
 cx_Oracle.threaded=True
 
-con = cx_Oracle.connect(user=Account,password=adminDBPass,dsn=DBInstance)
+
+connectString="%s/%s@%s" % (Account,adminDBPass,DBInstance)
+con = cx_Oracle.connect(connectString)
 cur = con.cursor()
 cur.execute("select table_name from user_tables")
 tables = cur.fetchall()
@@ -57,7 +40,9 @@ print tables
 cur.execute("select sequence_name from user_sequences")
 sequences = cur.fetchall()
 print sequences
-user = "%s_%s" % (Account, writerSuffix)
+
+
+user = "%s_WRITER"%Account
 print user
 for t in tables:
  print t
@@ -73,7 +58,7 @@ cur.execute("Grant select on all_cons_columns to %s" % (user))
 
 con.commit()
 
-user = "%s_%s" % (Account, readerSuffix)
+user = "%s_READER"%Account
 print user
 for t in tables:
  print t
@@ -91,8 +76,10 @@ con.commit()
 con.close()
 
 
-AccountName="%s_%s" % (Account,writerSuffix)
-con = cx_Oracle.connect(user=AccountName,password=writerDBPass,dsn=DBInstance)
+
+
+connectString="%s_WRITER/%s@%s" % (Account,writerDBPass,DBInstance)
+con = cx_Oracle.connect(connectString)
 cur = con.cursor()
 
 for t in tables:
@@ -115,6 +102,8 @@ for s in sequences:
 
 con.commit()
 con.close()
+
+
 
 connectString="%s_READER/%s@%s" % (Account,readerDBPass,DBInstance)
 con = cx_Oracle.connect(connectString)
