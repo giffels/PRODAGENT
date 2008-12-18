@@ -35,16 +35,17 @@ writerSuffix="WRITER"
 #writerSuffix="W"
 
 # prodtest instance 1
-DBInstance="CMS_T0AST"
-Account="CMS_T0AST_1"
-adminDBPass=""
-writerDBPass=""
-
-# prodtest instance 2
 #DBInstance="CMS_T0AST"
-#Account="CMS_T0AST_2"
+#Account="CMS_T0AST_1"
 #adminDBPass=""
 #writerDBPass=""
+
+# prodtest instance 2
+DBInstance="CMS_T0AST"
+Account="CMS_T0AST_2"
+adminDBPass=""
+writerDBPass=""
+readerDBPass=""
 
 cx_Oracle.threaded=True
 
@@ -114,3 +115,29 @@ for s in sequences:
 
 con.commit()
 con.close()
+
+connectString="%s_READER/%s@%s" % (Account,readerDBPass,DBInstance)
+con = cx_Oracle.connect(connectString)
+cur = con.cursor()
+
+for t in tables:
+ try:
+  cur.execute("Drop synonym %s " % t[0])
+ except:
+  print "%s is crap" % t[0]
+for s in sequences:
+ try:
+  cur.execute("Drop synonym %s " % s[0])
+ except:
+  print "%s is crap" % s[0]
+con.commit()
+
+for t in tables:
+ cur.execute("Create synonym %s for %s.%s" % (t[0],Account, t[0]))
+
+for s in sequences:
+ cur.execute("Create synonym %s for %s.%s" % (s[0],Account, s[0]))
+
+con.commit()
+con.close()
+
