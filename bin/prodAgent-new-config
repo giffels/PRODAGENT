@@ -259,7 +259,7 @@ componentFields = {
     "exportMaxBatchSize" : "500",
     "exportInterval" : "00:05:00",
     "exportEnabled" : "False",
-    "DashboardURL" : "http://lxarda16.cern.ch/dashboard/request.py/getPAinfo",
+    "DashboardURL" : "http://dashb-cmspa.cern.ch/dashboard/request.py/getPAinfo",
     "expireEnabled" : False,
     "expireInterval" : "01:00:00",
     "expireRecordAfter" : "96:00:00",
