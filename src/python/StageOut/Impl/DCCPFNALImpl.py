@@ -104,7 +104,7 @@ class DCCPFNALImpl(StageOutImpl):
         dirname = os.path.dirname(targetPFN)
         result = "#!/bin/sh\n"
         result += ". /opt/d-cache/dcap/bin/setenv-cmsprod.sh\n"
-        result += "dccp -d 0 -X -role=cmsprod %s %s %s" % ( optionsStr, sourcePFN, targetPFN)
+        result += "dccp -o 7200  -d 0 -X -role=cmsprod %s %s %s" % ( optionsStr, sourcePFN, targetPFN)
 
         result += \
 """
