@@ -27,9 +27,6 @@ class RFCPCERNImpl(StageOutImpl):
         self.numRetries = 5
         self.retryPause = 300
 
-        # do we want a default ?
-        self.fileclass = None
-
         # permissions for target directory
         self.permissions = '775'
 
@@ -80,12 +77,32 @@ class RFCPCERNImpl(StageOutImpl):
         while ( targetdir.find('//') > -1 ):
             targetdir = targetdir.replace('//','/')
 
-        fileclass = self.fileclass
+        #
+        # determine file class from LFN
+        #
+        fileclass = None
 
-        # check to see if we need to change the file class
-        regExpParser = re.compile('.*/castor/cern.ch/cms/store/data/[^/]+/[^/]+/RAW/')
-        if ( regExpParser.match(targetdir) != None ):
-            fileclass = 'cms_raw'
+        # temp or unmerged files use cms_no_tape
+        if ( fileclass == None ):
+            regExpParser = re.compile('.*/castor/cern.ch/cms/store/temp/')
+            if ( regExpParser.match(targetdir) != None ):
+                fileclass = 'cms_no_tape'
+        if ( fileclass == None ):
+            regExpParser = re.compile('.*/castor/cern.ch/cms/store/unmerged/')
+            if ( regExpParser.match(targetdir) != None ):
+                fileclass = 'cms_no_tape'
+
+        # RAW data files use cms_raw
+        if ( fileclass == None ):
+            regExpParser = re.compile('.*/castor/cern.ch/cms/store/data/[^/]+/[^/]+/RAW/')
+            if ( regExpParser.match(targetdir) != None ):
+                fileclass = 'cms_raw'
+
+        # otherwise we assume another type of production file
+        if ( fileclass == None ):
+            fileclass = 'cms_production'
+
+        print "Setting fileclass to : %s" % fileclass
 
         # check if directory exists
         rfstatCmd = "rfstat %s 2> /dev/null | grep Protection" % targetdir
