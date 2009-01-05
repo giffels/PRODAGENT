@@ -56,7 +56,7 @@ class SRMV2Impl(StageOutImpl):
             return
         
         mkdircommand = "srmmkdir -retry_num=%s " % self.numRetries
-        checkdircmd="srmls -retry_num=%s " % self.numRetries
+        checkdircmd="srmls -recursion_depth=0 -retry_num=%s " % self.numRetries
         
         #  // Loop from top level checking existence stop when directory exists
         # // assume first 4 slashes are from srm://host:8443/srm/managerv2?SFN=
@@ -186,7 +186,7 @@ class SRMV2Impl(StageOutImpl):
         """
         for ((a=1; a <= 10 ; a++))
         do
-           SRM_SIZE=`srmls -retry_num=0 %s 2>/dev/null | grep '%s' | grep -v '%s' | awk '{print $1;}'`
+           SRM_SIZE=`srmls -recursion_depth=0 -retry_num=0 %s 2>/dev/null | grep '%s' | grep -v '%s' | awk '{print $1;}'`
            echo "SRM Size is $SRM_SIZE"
            if [[ $SRM_SIZE > 0 ]]; then
               if [[ $SRM_SIZE == $FILE_SIZE ]]; then
