@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.21 2008/11/27 16:29:07 gcodispo Exp $"
-__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.22 2008/12/01 10:33:42 gcodispo Exp $"
+__version__ = "$Revision: 1.22 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -189,7 +189,6 @@ class BossLiteKiller:
                 msg = "Cannot kill jobs for workflow %s: %s" % \
                       (workflowSpecId, str(msg))
                 logging.error(msg)
-                raise Exception, msg
 
         # write information if skipped jobs
         if skippedJobs == totalJobs:
