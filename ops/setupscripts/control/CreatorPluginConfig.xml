@@ -6,7 +6,7 @@
 			<Parameter Name="cmsitbsrv01.fnal.gov" Value="58884"/>
 		</ConfigBlock>
 		<ConfigBlock Name="Dashboard">
-			<Parameter Name="DestinationHost" Value="lxgate35.cern.ch"/>
+			<Parameter Name="DestinationHost" Value="cms-pamon.cern.ch"/>
 			<Parameter Name="EventDestinationHost" Value="lxarda12.cern.ch"/>
 			<Parameter Name="UseDashboard" Value="True"/>
 			<Parameter Name="EventDestinationPort" Value="8884"/>
