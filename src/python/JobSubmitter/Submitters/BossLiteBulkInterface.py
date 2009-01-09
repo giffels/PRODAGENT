@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.37 2008/12/15 09:26:33 gcodispo Exp $"
-__version__ = "$Revision: 1.37 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.38 2008/12/15 11:30:58 gcodispo Exp $"
+__version__ = "$Revision: 1.38 $"
 
 import os
 import logging
@@ -192,7 +192,7 @@ fi
         logging.debug("workingDir = %s" % self.workingDir)
 
         # //  Build scheduler configuration
-        schedSession, submissionAttrs = self.configureScheduler()
+        schedSession, submissionAttrs = self.buildScheduler()
 
         # // Handle submission
         if self.isBulk:
@@ -471,9 +471,9 @@ fi
         return
 
 
-    def configureScheduler(self):
+    def buildScheduler(self):
         """
-        __configureScheduler__
+        __buildScheduler__
 
         Build scheduler configuration
 
@@ -485,7 +485,7 @@ fi
         logging.info("Building up scheduler configuration")
         schedulerConfig = self.getSchedulerConfig()
 
-        #  // build scheduler sedssion, which also checks proxy validity
+        #  // build scheduler session, which also checks proxy validity
         # //  an exception raised will stop the submission
         try:
             schedulerCladFile = self.getSchedulerConfig()
@@ -499,6 +499,9 @@ fi
             self.failedSubmission = self.toSubmit.keys()
             raise JSException( "Unable to find a valid certificate", \
                                FailureList = self.failedSubmission )
+
+        # // performing scheduler specific operations
+        self.configureScheduler( schedSession )
 
         # // prepare extra jdl attributes
         logging.info("Preparing scheduler specific attributes")
@@ -735,4 +738,14 @@ fi
         return ''
 
 
+    def configureScheduler(self, schedSession) :
+        """
+        _configureScheduler_
+
+        perform any scheduler specific operation
+        Specific implementation in the Scheduler specific part
+                 (e.g. BlGLiteBulkSubmitter)
+        """
+
+        return ''
 

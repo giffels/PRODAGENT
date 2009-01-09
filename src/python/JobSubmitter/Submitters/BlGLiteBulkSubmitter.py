@@ -6,11 +6,12 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.1 2008/05/15 15:09:55 gcodispo Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.2 2008/05/30 16:29:24 gcodispo Exp $"
+__version__ = "$Revision: 1.2 $"
 
 import os
 import logging
+import time
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BossLiteBulkInterface import BossLiteBulkInterface
@@ -215,5 +216,55 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
 
         return userJDLRequirementsFile
 
+
+
+
+    def configureScheduler(self, schedSession) :
+        """
+        _configureScheduler_
+
+        perform any scheduler specific operation
+        Specific implementation in the Scheduler specific part
+                 (e.g. BlGLiteBulkSubmitter)
+        """
+
+        from ProdAgentCore.Configuration import loadProdAgentConfiguration
+        config = loadProdAgentConfiguration()
+        compCfg = config.getConfig("JobSubmitter")
+
+        filename = os.path.join(compCfg['ComponentDir'], 'lastDelegation')
+        format = '%Y-%m-%d %H:%M:%S'
+
+        timestamp = 0
+
+        if os.path.exists(filename) :
+            tsfile = open( filename, 'r' )
+            tsentry = tsfile.read().strip()
+            try :
+                timestamp = time.time() - \
+                            time.mktime(time.strptime( tsentry, format ))
+                timestamp /= 43200
+            except ValueError:
+                pass
+
+            tsfile.close()
+
+        if timestamp > 0 and timestamp < 1:
+            return
+
+        logging.info( 'delegating proxy to wms after %s hours' % \
+                      (timestamp*12 ) )
+        schedSession.getSchedulerInterface().delegateProxy()
+        tsfile = open( filename, 'w' )
+        logging.info ( '%s' % time.strftime( format ) )
+        tsfile.write( time.strftime( format ) )
+        tsfile.close()
+
+        return
+
+
+
+
 registerSubmitter(BlGLiteBulkSubmitter, BlGLiteBulkSubmitter.__name__)
+
 
