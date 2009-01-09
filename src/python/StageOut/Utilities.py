@@ -6,12 +6,35 @@ _Utilities_
 Misc utils for stage out operations
 
 """
-__version__ = "$Revision$"
-__revision__ = "$Id$"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: Utilities.py,v 1.1 2009/01/05 18:56:07 evansde Exp $"
 
 
 from IMProv.IMProvLoader import loadIMProvString
 from IMProv.IMProvQuery import IMProvQuery
+
+
+class NodeFinder:
+
+    def __init__(self, nodeName):
+        self.nodeName = nodeName
+        self.result = None
+
+    def __call__(self, nodeInstance):
+        if nodeInstance.name == self.nodeName:
+            self.result = nodeInstance
+
+def findStageOutNode(workflow, nodeName):
+    """
+    _findStageOutNode_
+
+    General util to find the stage out node named in the workflow
+
+    """
+    finder = NodeFinder(nodeName)
+    workflow.payload.operate(finder)
+    stageOutNode = finder.result
+    return stageOutNode
 
 
 def extractStageOutFor(cfgStr):
@@ -29,6 +52,10 @@ def extractStageOutFor(cfgStr):
     except Exception, ex:
         # Not an XML formatted string
         return []
+
+    if config == None:
+        return []
+
 
     query = IMProvQuery("/StageOutConfiguration/StageOutFor[attribute(\"NodeName\")]")
     nodelist = query(config)
@@ -57,6 +84,8 @@ def extractRetryInfo(cfgStr):
     except Exception, ex:
         # Not an XML formatted string
         return result
+    if config == None:
+        return {}
 
     query = IMProvQuery("/StageOutConfiguration/NumberOfRetries[attribute(\"Value\")]")
     vals = query(config)
@@ -88,6 +117,8 @@ def extractStageOutOverride(cfgStr):
         override = loadIMProvString(cfgStr)
     except Exception, ex:
         # Not an XML formatted string
+        return {}
+    if override == None:
         return {}
 
     commandQ = IMProvQuery("/StageOutConfiguration/Override/command[text()]")
@@ -127,6 +158,33 @@ def extractStageOutOverride(cfgStr):
         "lfn-prefix" : lfnPrefix,
         "option" : option,
         }
+
+
+def getStageOutConfig(workflow, nodeName):
+    """
+    _getStageOutConfig_
+
+    backwards compatible wrapper method for extracting stage out
+    settings from workflow node with given name
+
+    """
+    stageOutNode = findStageOutNode(workflow, nodeName)
+
+
+    stageOutFor = extractStageOutFor(stageOutNode.configuration)
+    override = extractStageOutOverride(
+        stageOutNode.configuration)
+    controls = extractRetryInfo(stageOutNode.configuration)
+
+    if stageOutFor == []:
+        # no stageout for list from config, treat as string of node names
+        nodeNames = [ x.strip() for x in stageOutNode.configuration.split(',')
+                      if x.strip() != "" ]
+        stageOutFor = nodeNames
+
+    return stageOutFor, override, controls
+
+
 
 
 

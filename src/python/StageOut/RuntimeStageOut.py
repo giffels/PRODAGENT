@@ -35,18 +35,10 @@ import StageOut.Impl
 
 from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
 from ProdCommon.FwkJobRep.MergeReports import updateReport
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+
 
 completedFiles = []
-
-class NodeFinder:
-
-    def __init__(self, nodeName):
-        self.nodeName = nodeName
-        self.result = None
-
-    def __call__(self, nodeInstance):
-        if nodeInstance.name == self.nodeName:
-            self.result = nodeInstance
 
 
 class StageOutReport:
@@ -152,13 +144,10 @@ def stageOut():
     workflow = WorkflowSpec()
     workflow.load(os.environ['PRODAGENT_WORKFLOW_SPEC'])
 
-    finder = NodeFinder(state.taskName())
-    workflow.payload.operate(finder)
-    stageOutNode = finder.result
 
-    override = StageOutUtils.extractStageOutOverride(stageOutNode.configuration)
-    controls = StageOutUtils.extractRetryInfo(stageOutNode.configuration)
-    stageOutFor = StageOutUtils.extractStageOutFor(stageOutNode.configuration)
+
+    stageOutFor, override, controls = StageOutUtils.getStageOutConfig(
+        workflow, state.taskName())
 
 
     exitCode = 0
