@@ -38,7 +38,7 @@ class RFCPImpl(StageOutImpl):
         create dir with group permission
         """
 
-        targetdir= os.path.dirname(targetPFN)
+        targetdir= getDirname(targetPFN)
 
         checkdircmd="rfstat \"%s\" > /dev/null " % targetdir
         print "Check dir existence : %s" %checkdircmd 
@@ -101,6 +101,39 @@ class RFCPImpl(StageOutImpl):
         """
         command = "rfrm \"%s\"" % pfnToRemove
         self.executeCommand(command)
+
+    def getDirname(self, pfn ):
+        """
+        _getDirname_
+
+        Parse directory name out of rfio: PFN
+
+        """
+
+        start=0
+        path=""
+
+        if pfn.startswith( "rfio:" ):
+            if pfn.find( "path=" ) != -1:
+                # first form, everything after path= is the path
+                dummy,path = pfn.split("path=")
+            else:
+                if pfn.find( "?" ) != -1:
+                    # second form, path is between the third slash and the ?
+                    path,dummy = pfn.split("?")
+                else:
+                    # illegal form that seems to work rfio:///<path>
+                    path = pfn
+                start = path.find( "//" ) # find 1st two
+                start = path.find( "/", start+2 ) # find 3rd
+                if path.find( "/", start+1 ) == start+1:
+                    # if there is a 4th next get rid of the third
+                    start += 1
+                path = path[start:]
+        else:
+            path = pfn
+
+        return os.path.dirname( path )
 
 
 registerStageOutImpl("rfcp", RFCPImpl)
