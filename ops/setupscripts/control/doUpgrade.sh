@@ -7,3 +7,5 @@
 ./upgrageFile.sh prodagent_rpm_install.sh
 ./upgrageFile.sh prodagent_start.sh
 ./upgrageFile.sh SubmitterPluginConfig.xml
+./upgrageFile.sh setupEnv.sh
+
