@@ -3,13 +3,13 @@
 source $PBIN/env_mytestarea.sh;
 
 #new package install style
-source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/cms/prodagent/PRODAGENT_$PAVERSION-cmp/etc/profile.d/dependencies-setup.sh 
+source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/cms/prodagent/PRODAGENT_$RPMVERSION-cmp/etc/profile.d/dependencies-setup.sh 
 
 export PRODAGENT_ROOT=$MYTESTAREA/PRODAGENT
 export PRODCOMMON_ROOT=$MYTESTAREA/PRODCOMMON
 export DBS_ROOT=$MYTESTAREA/DBS
 export WMCORE_ROOT=$MYTESTAREA/WMCORE
-export PATH=$PRODAGENT_ROOT/bin:$PATH
+export PATH=$PRODAGENT_ROOT/bin:$DBS_ROOT/Clients/Python/bin:$PATH
 export PYTHONPATH=$PRODAGENT_ROOT/lib:$PRODCOMMON_ROOT/lib:$DBS_ROOT/Clients/Python:$WMCORE_ROOT/lib:$MYTESTAREA/T0/src/python:$MYTESTAREA/T0/src/python/T0:$MYTESTAREA/LUMIDB/LumiWebService/Client:$PYTHONPATH
 
 export PUTIL=$PRODAGENT_ROOT/util
