@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.38 2008/12/15 11:30:58 gcodispo Exp $"
-__version__ = "$Revision: 1.38 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.39 2009/01/09 10:17:58 gcodispo Exp $"
+__version__ = "$Revision: 1.39 $"
 
 import os
 import logging
@@ -586,7 +586,7 @@ fi
                                (task.jobs[0]['jobId'], task.jobs[-1]['jobId']))
                 schedSession.submit(task, requirements=submissionAttrs)
             except BossLiteError, err:
-                self.failedSubmission.append( self.toSubmit.keys() )
+                self.failedSubmission.extend( self.toSubmit.keys() )
                 logging.error( "########### Failed submission : %s" % \
                                str(schedSession.getLogger()) )
 
