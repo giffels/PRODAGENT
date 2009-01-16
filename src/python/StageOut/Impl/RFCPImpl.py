@@ -38,7 +38,7 @@ class RFCPImpl(StageOutImpl):
         create dir with group permission
         """
 
-        targetdir= getDirname(targetPFN)
+        targetdir= self.getDirname(targetPFN)
 
         checkdircmd="rfstat \"%s\" > /dev/null " % targetdir
         print "Check dir existence : %s" %checkdircmd 
