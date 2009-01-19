@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.39 2009/01/09 10:17:58 gcodispo Exp $"
-__version__ = "$Revision: 1.39 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.40 2009/01/15 10:08:32 gcodispo Exp $"
+__version__ = "$Revision: 1.40 $"
 
 import os
 import logging
@@ -250,7 +250,7 @@ fi
                         logging.error('Failed to resubmit Job "%s": %s' \
                                       % (self.singleSpecName, str(ex)) )
                         raise JSException("Failed to resubmit Job", \
-                                          FailureList = self.failedSubmission)
+                                          FailureList = self.singleSpecName)
 
             except JobError, ex:
 
@@ -327,7 +327,7 @@ fi
             # creating new RunningInstance
             self.bossLiteSession.getNewRunningInstance( bossJob )
             bossJob.runningJob['outputDirectory'] = os.path.join(
-                [ self.singleSpecName ], time.strftime('%Y%m%d_%H%M%S') )
+                self.singleSpecName, time.strftime('%Y%m%d_%H%M%S') )
             self.bossLiteSession.updateDB( bossJob )
             logging.warning(
                 "next RunningInstance %s.%s.%s " % \
