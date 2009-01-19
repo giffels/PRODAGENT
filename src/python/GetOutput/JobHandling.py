@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.14 2008/12/05 11:21:13 spiga Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: JobHandling.py,v 1.13 2008/12/03 13:51:06 spiga Exp $"
+__version__ = "$Revision: 1.13 $"
 
 import os
 import logging
@@ -242,24 +242,14 @@ class JobHandling:
             success = ( jobReport.status == "Success" )
             exitCode = jobReport.exitCode
             job.runningJob["wrapperReturnCode"] = exitCode
-            cmsEx = None
-            retCode = None
+            job.runningJob["applicationReturnCode"] = exitCode
             for report in jobReport.errors:
                 if report['Type'] == 'WrapperExitCode':
                     job.runningJob["wrapperReturnCode"] = report['ExitStatus']
                 elif report['Type'] == 'ExeExitCode':
-                    retCode = report['ExitStatus']
-                elif report['Type'] == 'CMSException':
-                    cmsEx = error['ExitStatus']
+                    job.runningJob["applicationReturnCode"] = report['ExitStatus']
                 else:
                     continue
-
-            if retCode is not None:
-                job.runningJob["applicationReturnCode"] = retCode
-            elif cmsEx is not None:
-                job.runningJob["applicationReturnCode"] = cmsEx
-            else :
-                job.runningJob["applicationReturnCode"] = exitCode
         except:
             pass
 
@@ -407,7 +397,7 @@ class JobHandling:
         credential = task['user_proxy'] 
         if self.configs["Protocol"].upper() == 'RFIO':
             username = task['name'].split('_')[0]
-            credential = '%s::%s' % (username, credential)
+            credential = '%s::%s'%(username,credential)
 
         # transfer fwjr
         try:
@@ -454,7 +444,7 @@ class JobHandling:
             credential = task['user_proxy'] 
             if self.configs["Protocol"].upper() == 'RFIO':
                 username = task['name'].split('_')[0]
-                credential = '%s::%s' % (username, credential)
+                credential = '%s::%s'%(username,credential)
 
             try:
                 logging.info( 'Job %s : REBOUNCE DBG %s, %s' % \

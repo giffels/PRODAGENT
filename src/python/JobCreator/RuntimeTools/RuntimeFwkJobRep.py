@@ -56,13 +56,6 @@ def getSyncCE():
         content = pop.fromchild.read()
         result = content.strip()
         return result
-
-    if os.environ.has_key('NORDUGRID_CE'):
-        #  //
-        # // ARC, Sync CE from env. var. submitted with the job by JobSubmitter
-        #//
-        return os.environ['NORDUGRID_CE']
-
     return result
 
 def getDashboardId(jobSpec):

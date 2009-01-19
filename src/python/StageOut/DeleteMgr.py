@@ -41,29 +41,29 @@ class DeleteMgr:
         self.overrideConf = overrideParams
         if overrideParams != {}:
             self.override = True
-
+        
         #  //
         # // Try an get the TFC for the site
         #//
         self.tfc = None
 
 
-
+        
         self.numberOfRetries = 3
         self.retryPauseTime = 600
-
+        
         #  //
         # // If override isnt None, we dont need SiteCfg, if it is
         #//  then we need siteCfg otherwise we are dead.
 
         if self.override == False:
             self.siteCfg = loadSiteLocalConfig()
-
+            
         if self.override:
             self.initialiseOverride()
         else:
-            self.initialiseSiteConf()
-
+            self.initialiseSiteConf()         
+            
 
     def initialiseSiteConf(self):
         """
@@ -72,7 +72,7 @@ class DeleteMgr:
         Extract required information from site conf and TFC
 
         """
-
+        
         implName = self.siteCfg.localStageOut.get("command", None)
         if implName == None:
             msg = "Unable to retrieve local stage out command\n"
@@ -96,7 +96,7 @@ class DeleteMgr:
             msg += "Unable to perform StageOut operation"
             raise StageOutInitError( msg)
         msg += "Local Stage Out Catalog to be used is %s\n" % catalog
-
+        
         try:
             self.tfc = self.siteCfg.trivialFileCatalog()
             msg += "Trivial File Catalog has been loaded:\n"
@@ -106,10 +106,10 @@ class DeleteMgr:
             msg += "Local stage out will not be attempted\n"
             msg += str(ex)
             raise StageOutInitError( msg )
-
+        
         print msg
         return
-
+        
 
     def initialiseOverride(self):
         """
@@ -139,17 +139,17 @@ class DeleteMgr:
                 overrideParams['option'] = overrideConf['option']
             else:
                 overrideParams['option'] = ""
-
-        msg = "=======Delete Override Initialised:================\n"
+        
+        msg = "=======StageIn Override Initialised:================\n"
         for key, val in overrideParams.items():
             msg += " %s : %s\n" % (key, val)
         msg += "=====================================================\n"
         print msg
         self.fallbacks = []
         self.fallbacks.append(overrideParams)
-        return
-
-
+        return 
+        
+        
     def __call__(self, **fileToDelete):
         """
         _operator()_
@@ -157,13 +157,13 @@ class DeleteMgr:
         Use call to delete a file
 
         """
-
-
+            
+      
         try:
             print "==>Working on file: %s" % fileToDelete['LFN']
-
+            
             lfn = fileToDelete['LFN']
-
+            
             #  //
             # // No override => use local-stage-out from site conf
             #//  invoke for all files and check failures/successes
@@ -176,20 +176,20 @@ class DeleteMgr:
                     msg = "===> Local Stage Out Failure for file:\n"
                     msg += "======>  %s\n" % fileToDelete['LFN']
                     msg += str(ex)
-
+                    
             #  //
             # // Still here => override start using the fallback stage outs
             #//  If override is set, then that will be the only fallback available
             print "===> Attempting To Delete with Override."
             for fallback in self.fallbacks:
                 try:
-                    fileToDelete['PFN'] = self.deleteLFN(lfn, fallback)
+                    fileToDelete['PFN'] = self.deleteLFN(lfn, fallback) 
 #                    if self.failed.has_key(lfn):
 #                        del self.failed[lfn]
                     raise DeleteSuccess
                 except StageOutFailure, ex:
                     continue
-
+                
         except DeleteSuccess:
             msg = "===> Delete Successful:\n"
             msg += "====> LFN: %s\n" % fileToDelete['LFN']
@@ -201,22 +201,22 @@ class DeleteMgr:
         msg += fileToDelete['LFN']
         raise StageOutFailure(msg, **fileToDelete)
 
-
+        
     def deleteLFN(self, lfn, override = None):
         """
         deleteLFN
 
         Given the lfn and local stage out params, invoke the delete
-
+        
         if override is used the follwoing params should be defined:
         command - the stage out impl plugin name to be used
         option - the option values to be passed to that command (None is allowed)
         lfn-prefix - the LFN prefix to generate the PFN
         se-name - the Name of the SE to which the file is being xferred
-
+        
 
         """
-
+        
         if override:
             seName = override['se-name']
             command = override['command']
@@ -229,13 +229,13 @@ class DeleteMgr:
             options = self.siteCfg.localStageOut.get('option', None)
             pfn = self.searchTFC(lfn)
             protocol = self.tfc.preferredProtocol
-
+            
         if pfn == None:
             msg = "Unable to match lfn to pfn: \n  %s" % lfn
             raise StageOutFailure(msg, LFN = lfn, TFC = str(self.tfc))
-
+        
         return self.deletePFN(pfn, lfn, command)
-
+        
 
     def deletePFN(self, pfn, lfn, command):
         """
@@ -251,7 +251,7 @@ class DeleteMgr:
                                   LFN = lfn, ExceptionDetail = str(ex))
         impl.numRetries = self.numberOfRetries
         impl.retryPause = self.retryPauseTime
-
+        
         try:
             impl.removeFile(pfn)
         except Exception, ex:
@@ -264,9 +264,9 @@ class DeleteMgr:
                 msg += "Traceback unavailable\n"
             raise StageOutFailure(msg, Command = command, Protocol = command,
                                   LFN = lfn, TargetPFN = pfn)
-
+        
         return pfn
-
+    
 #    def reportStageOutFailure(self, stageOutExcep):
 #        """
 #        _reportStageOutFailure_
@@ -275,7 +275,7 @@ class DeleteMgr:
 #        framework job report.
 #
 #        - *stageOutExcep* : Instance of on of the StageOutError derived classes
-#
+#        
 #        """
 #        errStatus = stageOutExcep.data["ErrorCode"]
 #        errType = stageOutExcep.data["ErrorType"]
@@ -286,8 +286,8 @@ class DeleteMgr:
 #        return
 
 
-
-
+        
+      
     def searchTFC(self, lfn):
         """
         _searchTFC_
@@ -307,7 +307,7 @@ class DeleteMgr:
             msg += lfn
             print msg
             return None
-
+        
         pfn = self.tfc.matchLFN(self.tfc.preferredProtocol, lfn)
         if pfn == None:
             msg = "Unable to map LFN to PFN:\n"
@@ -329,6 +329,6 @@ class DeleteMgr:
 
 ##    mgr.searchTFC(lfn)
 ##    mgr(LFN = lfn, PFN = pfn, GUID=None)
-
-
-
+    
+    
+    

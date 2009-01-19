@@ -38,7 +38,7 @@ class RFCPImpl(StageOutImpl):
         create dir with group permission
         """
 
-        targetdir= getDirname(targetPFN)
+        targetdir= self.getDirname(targetPFN)
 
         checkdircmd="rfstat \"%s\" > /dev/null " % targetdir
         print "Check dir existence : %s" %checkdircmd 
@@ -78,7 +78,7 @@ class RFCPImpl(StageOutImpl):
         result = "rfcp "
         if options != None:
             result += " %s " % options
-        result += " %s " % sourcePFN
+        result += " \"%s\" " % sourcePFN
         result += " \"%s\" " % targetPFN
         
         if self.stageIn:
@@ -86,8 +86,7 @@ class RFCPImpl(StageOutImpl):
         else:
             remotePFN, localPFN = targetPFN, sourcePFN
         
-        result += "\nFILE_SIZE=`stat -c %s"
-        result += " %s ;`\n" % localPFN
+        result += "\nFILE_SIZE=`rfstat \"%s\" | grep Size | cut -f2 -d:`\n" % localPFN
         result += " echo \"Local File Size is: $FILE_SIZE\"; DEST_SIZE=`rfstat \"%s\" | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ $FILE_SIZE == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % (remotePFN)
         return result
 
