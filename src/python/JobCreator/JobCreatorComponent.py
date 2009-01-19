@@ -55,6 +55,7 @@ class JobCreatorComponent:
         self.args['FrontierDiagnostic'] = False
         self.args['MultipleJobsPerRun'] = False
         self.args['DropNonLFNInputs'] = True
+        self.args['SizeBasedMerge'] = True
         
         self.args.update(args)
         self.prodAgent = prodAgentName()
