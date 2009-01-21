@@ -167,7 +167,6 @@ def stageOut():
             errRep['Description'] = " Error loading task state/job report to stage out:\n%s" % str(ex)
             inputReport.status = "Failed"
             inputReport.exitCode = ex.data['ErrorCode']
-            reportToUpdate = inputState.getJobReport()
             init = False
 
         initmgr = True
@@ -181,13 +180,11 @@ def stageOut():
             errRep['Description'] = ex.message
             inputReport.status = "Failed"
             inputReport.exitCode = ex.data['ErrorCode']
-            reportToUpdate = inputState.getJobReport()
             initmgr = False
 
         try:
             if init and initmgr:
                 exitCode = manager()
-                reportToUpdate = state.getJobReport()
         except StageOutFailure, ex:
             exitCode = ex.data['ErrorCode']
             errRep = inputReport.addError(
@@ -195,11 +192,11 @@ def stageOut():
             errRep['Description'] = ex.message
             inputReport.status = "Failed"
             inputReport.exitCode = ex.data['ErrorCode']
-            reportToUpdate = inputState.getJobReport()
 
 
 
         inputState.saveJobReport()
+        reportToUpdate = inputState.getJobReport()
         #  //
         # // Update primary job report
         #//
