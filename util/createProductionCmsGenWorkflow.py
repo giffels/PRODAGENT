@@ -163,7 +163,7 @@ for cmsRunCfg in cmsRunCfgs:
         cmsCfg = include(cmsRunCfg) 
     else:
         import imp
-        modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
+        modRef = imp.load_source( os.path.basename(cmsRunCfg).replace(".py", ""),  cmsRunCfg)
         cmsCfg = modRef.process
 
     cfgWrapper = CMSSWConfig()
