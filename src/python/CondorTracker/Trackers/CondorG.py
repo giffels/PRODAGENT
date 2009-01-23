@@ -90,10 +90,11 @@ class CondorG(TrackerPlugin):
                 # // We have got the log file and computed an exit status 
                 #//  for it.
                 status = condorLog.condorStatus()
+                clusterId = condorLog['Cluster']
                 
             else:
                 status = classad['JobStatus']
-                
+                clusterId = classad['ClusterId']                
 
             if status == 1:
                 logging.debug("Job %s is pending" % (subId))
@@ -119,7 +120,7 @@ class CondorG(TrackerPlugin):
                 logging.debug("Job %s is held..." % (subId))
                 self.TrackerDB.jobFailed(subId)
 #                self.TrackerDB.killJob(subId)
-                command="condor_rm %s " % subId
+                command="condor_rm %s " % clusterId
                 logging.debug("Removing job from queue...")
                 logging.debug("Executing %s " % command)
                 os.system(command)
