@@ -6,8 +6,8 @@ _Utilities_
 Misc utils for stage out operations
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: Utilities.py,v 1.1 2009/01/05 18:56:07 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: Utilities.py,v 1.2 2009/01/09 20:31:44 evansde Exp $"
 
 
 from IMProv.IMProvLoader import loadIMProvString
@@ -178,7 +178,7 @@ def getStageOutConfig(workflow, nodeName):
 
     if stageOutFor == []:
         # no stageout for list from config, treat as string of node names
-        nodeNames = [ x.strip() for x in stageOutNode.configuration.split(',')
+        nodeNames = [ x.strip() for x in stageOutNode.configuration.split()
                       if x.strip() != "" ]
         stageOutFor = nodeNames
 
