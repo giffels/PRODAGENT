@@ -24,6 +24,7 @@ import sys
 import time
 
 
+
 from StageOut.StageOutError import StageOutFailure
 from StageOut.StageOutError import StageOutInitError
 from StageOut.StageOutMgr import StageOutMgr
@@ -35,6 +36,7 @@ import StageOut.Impl
 
 from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
 from ProdCommon.FwkJobRep.MergeReports import updateReport
+from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
 
@@ -144,10 +146,14 @@ def stageOut():
     workflow = WorkflowSpec()
     workflow.load(os.environ['PRODAGENT_WORKFLOW_SPEC'])
 
-
+    print workflow
+    print state.taskName()
 
     stageOutFor, override, controls = StageOutUtils.getStageOutConfig(
         workflow, state.taskName())
+
+    toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
+                                  "FrameworkJobReport.xml")
 
 
     exitCode = 0
@@ -155,24 +161,61 @@ def stageOut():
     # // find inputs by locating the task for which we are staging out
     #//  and loading its TaskState
     for inputTask in stageOutFor:
-        print "Attempting to stage out files for node %s" % stageOutFor
-        init = True
+        print "Attempting to stage out files for node %s" % inputTask
         try:
             inputState = getTaskState(inputTask)
-            inputReport = inputState.getJobReport()
+            msg = "Loaded Input Task: %s " % inputTask
         except Exception, ex:
+            msg = "Error load for TaskState for task %s" % inputTask
+            msg += "%s\n" % str(ex)
+            inputState = None
+        print msg
+
+        if inputState == None:
+            # exit with init error
+            # generate failure report in this dir, since cant find
+            # input state dir
+            inputReport = FwkJobReport()
+            inputReport.name = inputTask
             exitCode = 60311
             errRep = inputReport.addError(
-                exitCode, "StageOutInputFailure")
-            errRep['Description'] = " Error loading task state/job report to stage out:\n%s" % str(ex)
+                60311, "TaskStateError")
+            errRep['Description'] = msg
             inputReport.status = "Failed"
-            inputReport.exitCode = ex.data['ErrorCode']
-            init = False
+            inputReport.exitCode = 60311
+            updateReport(toplevelReport, inputReport)
+            print "TaskState is None, exiting..."
+            return exitCode
 
-        initmgr = True
         try:
-            if init:
-                manager = StageOutReport(inputReport, override, controls)
+            inputReport = inputState.getJobReport()
+            msg = "Loaded JobReport for Task : %s\n" % inputTask
+            msg += "File: %s\n" % inputState.jobReport
+        except Exception, ex:
+            msg = "Error loading input report : %s" % str(ex)
+            inputReport = None
+
+        print msg
+        if inputReport == None:
+            msg += "Unable to read Job Report for input task: %s\n" % inputTask
+            msg += "Looked for file: %s\n" % inputState.jobReport
+            print msg
+            inputReport = FwkJobReport()
+            inputReport.name = inputTask
+            exitCode = 60311
+            errRep = inputReport.addError(
+                60311, "InputReportError")
+            errRep['Description'] = msg
+            inputReport.status = "Failed"
+            inputReport.exitCode = 60311
+            updateReport(toplevelReport, inputReport)
+            # exit with init error
+            return 60311
+
+
+
+        try:
+            manager = StageOutReport(inputReport, override, controls)
         except StageOutInitError, ex:
             exitCode = ex.data['ErrorCode']
             errRep = inputReport.addError(
@@ -181,10 +224,21 @@ def stageOut():
             inputReport.status = "Failed"
             inputReport.exitCode = ex.data['ErrorCode']
             initmgr = False
+        except Exception, ex:
+            msg = "Unexpected Error instantiating StageOutMgr:\n"
+            msg += str(ex)
+            exitCode = 60311
+            errRep = inputReport.addError(
+                60311, "TaskStateError")
+            errRep['Description'] = msg
+            inputReport.status = "Failed"
+            inputReport.exitCode = 60311
+            updateReport(toplevelReport, inputReport)
+            print "StageOutMgr init failed, exiting..."
+            return exitCode
 
         try:
-            if init and initmgr:
-                exitCode = manager()
+            exitCode = manager()
         except StageOutFailure, ex:
             exitCode = ex.data['ErrorCode']
             errRep = inputReport.addError(
@@ -200,10 +254,6 @@ def stageOut():
         #  //
         # // Update primary job report
         #//
-
-        toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
-                                      "FrameworkJobReport.xml")
-
         updateReport(toplevelReport, reportToUpdate)
         print "Stage Out for %s complete: Return code: %s " % \
                                                     (inputTask, exitCode)

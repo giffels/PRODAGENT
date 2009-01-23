@@ -36,9 +36,14 @@ if __name__ == '__main__':
 
     inputTasks = stageOutFor
     for inputTask in inputTasks:
+
         inputState = getTaskState(inputTask)
+        if inputState == None:
+            msg = "Input State: %s Not found, skipping..." % inputTask
+            continue
 
         inputReport = inputState.getJobReport()
+
         inputReport.status = "Failed"
         if inputReport.exitCode in (0, "0"):
             #  //
