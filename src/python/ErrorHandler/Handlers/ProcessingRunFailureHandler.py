@@ -18,6 +18,10 @@ class ProcessingRunFailureHandler(HandlerInterface):
 
     def handleError(self,payload):
          jobReport=readJobReport(payload)
+
+         if len(jobReport) == 0:
+             logging.error("Error parsing FWJR: %s" % payload)
+             
          jobId  = jobReport[0].jobSpecId
          # do nothing for the moment.
          logging.debug(">ProcessingRunFailureHandler< do nothing 4 the moment")
