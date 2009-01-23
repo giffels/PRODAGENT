@@ -6,10 +6,11 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id: BlGLiteBulkResConSubmitter.py,v 1.1 2008/07/25 15:29:17 swakef Exp $"
-__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: BlGLiteBulkResConSubmitter.py,v 1.2 2009/01/23 11:15:44 gcodispo Exp $"
+__version__ = "$Revision: 1.2 $"
 
 import os
+import time
 import logging
 
 from JobSubmitter.Registry import registerSubmitter
@@ -207,7 +208,7 @@ class BlGLiteBulkResConSubmitter(BossLiteBulkInterface):
             for ce in self.whitelist:
                 sitelist += "other.GlueCEUniqueID==\"%s\" || " % ce
             sitelist = sitelist[:-4]
-            anyMatchrequirements+=sitelist+")"
+            anyMatchrequirements += sitelist+")"
         return anyMatchrequirements
 
 
