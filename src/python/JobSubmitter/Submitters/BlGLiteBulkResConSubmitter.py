@@ -6,8 +6,8 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.2 2008/05/30 16:29:24 gcodispo Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: BlGLiteBulkResConSubmitter.py,v 1.1 2008/07/25 15:29:17 swakef Exp $"
+__version__ = "$Revision: 1.1 $"
 
 import os
 import logging
@@ -200,7 +200,7 @@ class BlGLiteBulkResConSubmitter(BossLiteBulkInterface):
         # turn resource control id's to list of ce's
         self.whitelist = getCEstrings(self.whitelist)
         anyMatchrequirements = ""
-        if len(self.whitelist)>0:
+        if len(self.whitelist) > 0:
             anyMatchrequirements = " ("
             sitelist = ""
             #ces = getCEstrings(self.whitelist)
@@ -239,6 +239,56 @@ class BlGLiteBulkResConSubmitter(BossLiteBulkInterface):
             return userJDLRequirementsFile
 
         return userJDLRequirementsFile
+
+
+
+
+    def configureScheduler(self, schedSession) :
+        """
+        _configureScheduler_
+
+        perform any scheduler specific operation
+        Specific implementation in the Scheduler specific part
+                 (e.g. BlGLiteBulkSubmitter)
+        """
+
+        from ProdAgentCore.Configuration import loadProdAgentConfiguration
+        config = loadProdAgentConfiguration()
+        compCfg = config.getConfig("JobSubmitter")
+
+        filename = os.path.join(compCfg['ComponentDir'], 'lastDelegation')
+        format = '%Y-%m-%d %H:%M:%S'
+
+        timestamp = 0
+
+        if os.path.exists(filename) :
+            tsfile = open( filename, 'r' )
+            tsentry = tsfile.read().strip()
+            try :
+                timestamp = time.time() - \
+                            time.mktime(time.strptime( tsentry, format ))
+                timestamp /= 43200
+            except ValueError:
+                pass
+
+            tsfile.close()
+
+        if timestamp > 0 and timestamp < 1:
+            return
+
+        logging.info( 'delegating proxy to wms after %s hours' % \
+                      (timestamp*12 ) )
+        schedSession.getSchedulerInterface().delegateProxy()
+        tsfile = open( filename, 'w' )
+        logging.info ( '%s' % time.strftime( format ) )
+        tsfile.write( time.strftime( format ) )
+        tsfile.close()
+
+        return
+
+
+
+
 
 registerSubmitter(BlGLiteBulkResConSubmitter, BlGLiteBulkResConSubmitter.__name__)
 
