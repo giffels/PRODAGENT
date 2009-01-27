@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.21 2008/12/08 21:15:21 gcodispo Exp $"
-__revision__ = "$Revision: 1.21 $"
+__version__ = "$Id: JobOutput.py,v 1.22 2008/12/09 11:57:34 gcodispo Exp $"
+__revision__ = "$Revision: 1.22 $"
 
 import logging
 import os
@@ -135,33 +135,36 @@ class JobOutput:
             else :
                 ret = cls.action( bossLiteSession, job, jobHandling )
 
-            if ret is not None:
+            if ret is None:
+                
+                # perform update
+                bossLiteSession.updateDB( job )
+                return
 
-                job, success, reportfilename = ret
+            # perform processing
+            job, success, reportfilename = ret
+            logging.debug("%s: Processing output" % cls.fullId( job ) )
 
-                logging.debug("%s: Processing output" % cls.fullId( job ) )
+            try :
+                # update status
+                job.runningJob['processStatus'] = 'processed'
+                job.runningJob['closed'] = 'Y'
+                bossLiteSession.updateDB( job )
+            except BossLiteError, err:
+                logging.error( "%s failed to process output : %s" % \
+                               (cls.fullId( job ), str(err) ) )
+            except Exception, err:
+                logging.error( "%s failed to process output : %s" % \
+                               (cls.fullId( job ), str(err) ) )
+            except :
+                logging.error( "%s failed to process output : %s" % \
+                               (cls.fullId( job ), \
+                                str( traceback.format_exc() )  ) )
 
-                # perform processing
-                try :
-                    # update status
-                    job.runningJob['processStatus'] = 'processed'
-                    job.runningJob['closed'] = 'Y'
-                    bossLiteSession.updateDB( job )
-                except BossLiteError, err:
-                    logging.error( "%s failed to process output : %s" % \
-                                   (cls.fullId( job ), str(err) ) )
-                except Exception, err:
-                    logging.error( "%s failed to process output : %s" % \
-                                   (cls.fullId( job ), str(err) ) )
-                except :
-                    logging.error( "%s failed to process output : %s" % \
-                                   (cls.fullId( job ), \
-                                    str( traceback.format_exc() )  ) )
+            logging.debug("%s : Processing output finished" % \
+                          cls.fullId( job ) )
 
-                logging.debug("%s : Processing output finished" % \
-                              cls.fullId( job ) )
-
-                return (job, success, reportfilename)
+            return (job, success, reportfilename)
 
         # thread has failed
         except Exception, ex :
