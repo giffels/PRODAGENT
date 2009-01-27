@@ -9,6 +9,7 @@ and generate a DQM Harvesting workflow/job.
 import logging
 import os
 import threading
+import time
 
 from DQMInjector.Plugins.BasePlugin import BasePlugin
 from DQMInjector.HarvestWorkflow import createHarvestingWorkflow
@@ -55,8 +56,7 @@ class T0ASTWrapper:
             msg = "Unable to import Tier 0 Python Libs"
             raise RuntimeError, msg
         
-        files = ListFiles.listFilesForDQM(self.t0astDBConn,
-                                          "Reconstructed", runNumber,
+        files = ListFiles.listFilesForDQM(self.t0astDBConn, runNumber,
                                           primaryDataset)
         return files
 
@@ -221,7 +221,8 @@ class T0ASTPlugin(BasePlugin):
         harvesting job.
         """
         jobSpec = workflowSpec.createJobSpec()
-        jobName = "DQMHarvest-Run%s-%s" % (runNumber, primaryDataset)
+        jobName = "DQMHarvest-Run%s-%s-%s" % (runNumber, primaryDataset,
+                                              time.time())
         jobSpec.setJobName(jobName)
         jobSpec.setJobType("Processing")
         jobSpec.parameters["RunNumber"] = runNumber
