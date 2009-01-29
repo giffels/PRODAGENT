@@ -39,7 +39,7 @@ _HTTPPostURL = 'https://vocms33.cern.ch/dqm/dev' #test instance
 #//
 CERNStageOut = {
     "command" : "srmv2",
-    "option" : "-use_urlcopy_script -urlcopy=/opt/d-cache/srm/sbin/url-copy.sh",
+    "option" : [],
     "se-name" : "srm.cern.ch",
     "lfn-prefix" : "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms/",
     }
@@ -73,7 +73,7 @@ class HarvesterImpl:
         self.doStageOut = _DoStageOut
         self.doHttpPost = _DoHTTPPost
         self.doCernCopy = _DoCERNCopy
-
+        self.copyCommandParameters = CERNStageOut
 
     def __call__(self, aFile):
         """
@@ -175,8 +175,16 @@ class HarvesterImpl:
 
         """
         filename = analysisFile['FileName']
+
+        #  //
+        # // In case the site is T1_US_FNAL, special options are added to the srmv2 command
+        #//
+        if self.thisSite.lower().find('t1_us_fnal') > -1 :
+            self.copyCommandParameters['option'] = \
+            '-use_urlcopy_script -urlcopy=/opt/d-cache/srm/sbin/url-copy.sh'
+            
         try:
-            stager = StageOutMgr(**CERNStageOut)
+            stager = StageOutMgr(**self.copyCommandParameters)
         except Exception, ex:
             msg = "Unable to stage out DQM File to CERN:\n"
             msg += str(ex)
