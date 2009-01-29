@@ -39,14 +39,14 @@ _HTTPPostURL = 'https://vocms33.cern.ch/dqm/dev' #test instance
 #//
 CERNStageOut = {
     "command" : "srmv2",
-    "option" : [],
+    "option" : "-use_urlcopy_script -urlcopy=/opt/d-cache/srm/sbin/url-copy.sh",
     "se-name" : "srm.cern.ch",
     "lfn-prefix" : "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms/",
     }
 
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.16 2008/11/21 16:13:46 direyes Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.17 2008/11/21 17:04:36 direyes Exp $"
+__version__ = "$Revision: 1.17 $"
 
 
 HTTPS = httplib.HTTPS
