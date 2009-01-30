@@ -83,18 +83,17 @@ class ARCTracker(TrackerPlugin):
         logging.debug("getJobReport: Report file for %s copied to %s" % \
                       (jobSpecId, localDir))
 
-        if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-            # Let's get a few additional files as well; they can be useful for
-            # tracking down errors. 
-            try:
-                ARC.executeCommand("ngcp %s/run.log %s/" % (arcId,localDir))
-                ARC.executeCommand("ngcp %s/output %s/" % (arcId,localDir))
-                ARC.executeCommand("ngcp %s/errors %s/" % (arcId,localDir))
-            except ARC.CommandExecutionError, s:
-                msg = "getJobReport: Copying of additional files failed for job "
-                msg += jobSpecId + ": "
-                msg += "ngcp failed with exit status %s" % str(s)
-                logging.warning(msg)
+        # Let's get a few additional files as well; they can be useful for
+        # tracking down errors. 
+        try:
+            ARC.executeCommand("ngcp %s/run.log %s/" % (arcId,localDir))
+            ARC.executeCommand("ngcp %s/output %s/" % (arcId,localDir))
+            ARC.executeCommand("ngcp %s/errors %s/" % (arcId,localDir))
+        except ARC.CommandExecutionError, s:
+            msg = "getJobReport: Copying of additional files failed for job "
+            msg += jobSpecId + ": "
+            msg += "ngcp failed with exit status %s" % str(s)
+            logging.warning(msg)
 
         return localDir + "/FrameworkJobReport.xml"
 

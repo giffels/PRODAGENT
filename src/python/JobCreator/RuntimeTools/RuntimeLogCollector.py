@@ -96,29 +96,31 @@ class LogCollectorMgr:
         seNameQ = IMProvQuery("/LogCollectorConfig/Override/se-name[text()]")
         lfnPrefixQ = IMProvQuery("/LogCollectorConfig/Override/lfn-prefix[text()]")
         
-        self.override = True
-        #overrideConf = self.config['StageOutParameters']['Override']
-        self.overrideParams = {
-                "command" : None,
-                "option" : None,
-                "se-name" : None,
-                "lfn-prefix" : None,
-                }
-
-        try:
-            self.overrideParams['command'] = commandQ(top)[0]
-            self.overrideParams['se-name'] = seNameQ(top)[0]
-            self.overrideParams['lfn-prefix'] = lfnPrefixQ(top)[0]
-        except StandardError, ex:
-            msg = "Unable to extract Override parameters from config:\n"
-            msg += str(ex)
-            raise StageOutInitError(msg)
-        
-        option = optionQ(top)    
-        if option:
-            self.overrideParams['option'] = option[-1]
-        else:
-            self.overrideParams['option'] = ""
+        # are we overriding?
+        self.overrideParams = {}
+        if commandQ(top):
+            #overrideConf = self.config['StageOutParameters']['Override']
+            self.overrideParams = {
+                    "command" : None,
+                    "option" : None,
+                    "se-name" : None,
+                    "lfn-prefix" : None,
+                    }
+    
+            try:
+                self.overrideParams['command'] = commandQ(top)[0]
+                self.overrideParams['se-name'] = seNameQ(top)[0]
+                self.overrideParams['lfn-prefix'] = lfnPrefixQ(top)[0]
+            except StandardError, ex:
+                msg = "Unable to extract Override parameters from config:\n"
+                msg += str(ex)
+                raise StageOutInitError(msg)
+            
+            option = optionQ(top)    
+            if option:
+                self.overrideParams['option'] = option[-1]
+            else:
+                self.overrideParams['option'] = ""
         
         
         
