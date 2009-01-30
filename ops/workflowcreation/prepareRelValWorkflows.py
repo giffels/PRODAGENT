@@ -378,7 +378,6 @@ def main(argv) :
             tmp = []
             index = FindIndex(output,'Output Datasets')
             for dataset in output[index+1:] : tmp.append(dataset.strip())
-            tmp.sort()
             unmergedDatasets.append(tmp)
             index = FindIndex(output,'Created')
             if index == -1 :
@@ -428,7 +427,6 @@ def main(argv) :
             tmp = []
             index = FindIndex(output,'Output Datasets')
             for dataset in output[index+1:] : tmp.append(dataset.strip())
-            tmp.sort()
             unmergedDatasets.append(tmp)
             index = FindIndex(output,'Created')
             if index == -1 :
