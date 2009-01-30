@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.41 2009/01/19 11:17:00 gcodispo Exp $"
-__version__ = "$Revision: 1.41 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.42 2009/01/29 17:11:52 gcodispo Exp $"
+__version__ = "$Revision: 1.42 $"
 
 import os
 import logging
@@ -220,10 +220,12 @@ fi
         # // Handle single job submission and reSubmission 
         else:
             # loading the job
-            self.singleJobDir = os.path.basename( 
+            self.singleJobDir = os.path.dirname( 
+                self.specFiles[self.mainJobSpecName] )
+            self.singleSpecName = os.path.basename( 
                 self.specFiles[self.mainJobSpecName] )
             self.singleSpecName = \
-                 self.singleSpecName[:self.singleJobDir.find('-JobSpec.xml')]
+                 self.singleSpecName[:self.singleSpecName.find('-JobSpec.xml')]
             logging.info("singleSpecName \"%s\"" % self.singleSpecName)
             try :
 
