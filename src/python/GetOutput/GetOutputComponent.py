@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.17 2008/12/12 22:58:07 gcodispo Exp $"
-__revision__ = "$Revision: 1.17 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.18 2008/12/12 23:06:14 gcodispo Exp $"
+__revision__ = "$Revision: 1.18 $"
 
 import os
 import logging
@@ -44,7 +44,6 @@ class GetOutputComponent:
         self.args = {}
         self.args.setdefault("PollInterval", 300)
         self.args.setdefault("ComponentDir", "/tmp")
-        self.args.setdefault("JobTrackingDir", None)
         self.args.setdefault("GetOutputPoolThreadsSize", 5)
         self.args.setdefault("jobsToPoll", 1000)
         self.args.setdefault("OutputLocation", "local")
@@ -99,7 +98,7 @@ class GetOutputComponent:
 
         # set job handling parameters
         jobHandlingParams = {}
-        jobHandlingParams['componentDir'] = self.args['JobTrackingDir']
+        jobHandlingParams['componentDir'] = self.args['ComponentDir']
         jobHandlingParams['CacheDir'] = self.args['CacheDir']
         jobHandlingParams['OutputLocation'] = self.args['OutputLocation']
         jobHandlingParams['OutputParams'] = outputParams
@@ -307,17 +306,18 @@ class GetOutputComponent:
 
         # no more jobs
         if self.jobFinished is None :
-            logging.error( "No jobs to dequeue" )
             return False
 
         # bad entry
         elif self.jobFinished[1] is None:
-            #logging.error( "%s is Error" % \
-            #               JobOutput.fullId( self.jobFinished[1] ))
+            logging.info( "GetOutput failed, no job to dequeue" )
+        #    logging.error( "%s is Error" % \
+        #                   JobOutput.fullId( self.jobFinished[1] ))
             return True
 
         # ok: job finished!
         else :
+
             job, success, reportfilename = self.jobFinished[1]
             if success :
                 self.publishJobSuccess( job, reportfilename )

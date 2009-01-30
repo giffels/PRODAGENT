@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.21 2008/12/08 21:15:21 gcodispo Exp $"
-__revision__ = "$Revision: 1.21 $"
+__version__ = "$Id: JobOutput.py,v 1.23 2009/01/27 14:36:15 gcodispo Exp $"
+__revision__ = "$Revision: 1.23 $"
 
 import logging
 import os
@@ -87,6 +87,7 @@ class JobOutput:
 
         try:
 
+            ret = None
             logging.debug("%s: Getting output" % cls.fullId( job ) )
 
             # open database
@@ -125,6 +126,8 @@ class JobOutput:
                 bossLiteSession.updateDB( job )
                 skipRetrieval = True
 
+            logging.debug("%s: Processing output" % cls.fullId( job ) )
+
             if skipRetrieval :
                 # job failed: perform postMortem operations and notify failure
                 if job.runningJob['status'] in cls.failureCodes:
@@ -135,33 +138,27 @@ class JobOutput:
             else :
                 ret = cls.action( bossLiteSession, job, jobHandling )
 
+            logging.debug("%s : Processing output finished" % \
+                          cls.fullId( job ) )
+
+            # update status
             if ret is not None:
+                job.runningJob['processStatus'] = 'processed'
+                job.runningJob['closed'] = 'Y'
 
-                job, success, reportfilename = ret
+            # perform update
+            bossLiteSession.updateDB( job )
+            return ret
 
-                logging.debug("%s: Processing output" % cls.fullId( job ) )
+        # thread has failed because of a Bossite problem
+        except BossLiteError, err:
 
-                # perform processing
-                try :
-                    # update status
-                    job.runningJob['processStatus'] = 'processed'
-                    job.runningJob['closed'] = 'Y'
-                    bossLiteSession.updateDB( job )
-                except BossLiteError, err:
-                    logging.error( "%s failed to process output : %s" % \
-                                   (cls.fullId( job ), str(err) ) )
-                except Exception, err:
-                    logging.error( "%s failed to process output : %s" % \
-                                   (cls.fullId( job ), str(err) ) )
-                except :
-                    logging.error( "%s failed to process output : %s" % \
-                                   (cls.fullId( job ), \
-                                    str( traceback.format_exc() )  ) )
+            # allow job to be reprocessed
+            cls.recoverStatus( job, bossLiteSession )
 
-                logging.debug("%s : Processing output finished" % \
-                              cls.fullId( job ) )
-
-                return (job, success, reportfilename)
+            # show error message
+            logging.error( "%s failed to process output : %s" % \
+                           ( cls.fullId( job ), str(err) ) )
 
         # thread has failed
         except Exception, ex :
@@ -192,6 +189,7 @@ class JobOutput:
         perform an action on the configuration bases
         """
 
+        ret = None
         schedSession = None
         try:
             # both for failed and done, a scheduler instance is needed:
@@ -224,9 +222,6 @@ class JobOutput:
                 if job is None:
                     return
                 ret = jobHandling.performOutputProcessing(job)
-
-            # if success, the job is returned: update and return!
-            bossLiteSession.updateDB( job )
 
             # return job info
             return ret
@@ -354,8 +349,9 @@ class JobOutput:
                                    cls.fullId( job ) )
 
                     # set as failed
-                    job.runningJob['processStatus'] = 'failed'
                     job.runningJob['status'] = 'A'
+                    job.runningJob['processStatus'] = 'failed'
+                    job.runningJob['statusScheduler'] = 'Abandoned'
                     job.runningJob['statusReason'] = 'GetOutput failed 3 times'
                     # cls.handleFailed( job, task, schedSession )
                     return

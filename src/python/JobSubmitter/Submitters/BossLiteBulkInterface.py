@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.40 2009/01/15 10:08:32 gcodispo Exp $"
-__version__ = "$Revision: 1.40 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.42 2009/01/29 17:11:52 gcodispo Exp $"
+__version__ = "$Revision: 1.42 $"
 
 import os
 import logging
@@ -135,6 +135,7 @@ fi
         self.mainJobSpecName = None
         self.mainSandbox = None
         self.singleSpecName = None
+        self.singleJobDir = None
         self.specSandboxName = None
         self.usingDashboard = None
         self.workflowName = None
@@ -219,8 +220,10 @@ fi
         # // Handle single job submission and reSubmission 
         else:
             # loading the job
-            self.singleSpecName = os.path.basename(
-                self.specFiles[self.mainJobSpecName])
+            self.singleJobDir = os.path.dirname( 
+                self.specFiles[self.mainJobSpecName] )
+            self.singleSpecName = os.path.basename( 
+                self.specFiles[self.mainJobSpecName] )
             self.singleSpecName = \
                  self.singleSpecName[:self.singleSpecName.find('-JobSpec.xml')]
             logging.info("singleSpecName \"%s\"" % self.singleSpecName)
@@ -327,7 +330,7 @@ fi
             # creating new RunningInstance
             self.bossLiteSession.getNewRunningInstance( bossJob )
             bossJob.runningJob['outputDirectory'] = os.path.join(
-                self.singleSpecName, time.strftime('%Y%m%d_%H%M%S') )
+                self.singleJobDir, time.strftime('%Y%m%d_%H%M%S') )
             self.bossLiteSession.updateDB( bossJob )
             logging.warning(
                 "next RunningInstance %s.%s.%s " % \
