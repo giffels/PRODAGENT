@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.42 2009/01/29 17:11:52 gcodispo Exp $"
-__version__ = "$Revision: 1.42 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.43 2009/01/30 10:00:37 gcodispo Exp $"
+__version__ = "$Revision: 1.43 $"
 
 import os
 import logging
@@ -512,7 +512,8 @@ fi
             jobType = self.primarySpecInstance.parameters['JobType']
             submissionAttrs = self.createSchedulerAttributes(jobType)
         except Exception, ex:
-            msg = "Unable to build scheduler specific attributes"
+            msg = "Unable to build scheduler specific attributes : %s" \
+                  % str( ex )
             logging.error( msg )
             self.failedSubmission = self.toSubmit.keys()
             raise JSException( msg, FailureList = self.failedSubmission )
