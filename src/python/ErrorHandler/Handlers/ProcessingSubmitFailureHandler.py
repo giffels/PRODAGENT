@@ -21,6 +21,7 @@ class ProcessingSubmitFailureHandler(HandlerInterface):
          logging.debug(">ProcessingSubmitFailureHandler<: do nothing 4 the moment") 
 
 registerHandler(ProcessingSubmitFailureHandler(),"ProcessingSubmitFailureHandler","ErrorHandler")
+registerHandler(ProcessingSubmitFailureHandler(),"RepackSubmitFailureHandler","ErrorHandler")
 registerHandler(ProcessingSubmitFailureHandler(),"LogCollectSubmitFailureHandler","ErrorHandler")
 registerHandler(ProcessingSubmitFailureHandler(),"CleanUpSubmitFailureHandler","ErrorHandler")
 

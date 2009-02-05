@@ -27,6 +27,7 @@ class ProcessingRunFailureHandler(HandlerInterface):
          logging.debug(">ProcessingRunFailureHandler< do nothing 4 the moment")
 
 registerHandler(ProcessingRunFailureHandler(),"ProcessingRunFailureHandler","ErrorHandler")
+registerHandler(ProcessingRunFailureHandler(),"RepackRunFailureHandler","ErrorHandler")
 registerHandler(ProcessingRunFailureHandler(),"LogCollectRunFailureHandler","ErrorHandler")
 registerHandler(ProcessingRunFailureHandler(),"CleanUpRunFailureHandler","ErrorHandler")
 
