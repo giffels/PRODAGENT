@@ -70,6 +70,12 @@ def runCommand(command):
 	select.select([],[],[],.1) # give a little time for buffers to fill
         
     err = child.wait()
+    if os.WIFEXITED(err):
+        return os.WEXITSTATUS(err)
+    elif os.WIFSIGNALED(err):
+        return os.WTERMSIG(err)
+    elif os.WIFSTOPPED(err):
+        return os.WSTOPSIG(err)
     return err
 
 def runCommandWithOutput(command):
@@ -117,6 +123,12 @@ def runCommandWithOutput(command):
         select.select([],[],[],.1) # give a little time for buffers to fill
         
     err = child.wait()
+    if os.WIFEXITED(err):
+        return os.WEXITSTATUS(err)
+    elif os.WIFSIGNALED(err):
+        return os.WTERMSIG(err)
+    elif os.WIFSTOPPED(err):
+        return os.WSTOPSIG(err)
     return err, output
 
 

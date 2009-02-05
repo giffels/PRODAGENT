@@ -8,8 +8,8 @@ inherit this object and implement the methods accordingly
 """
 import time
 import os
-from StageOut.Execute import execute
-from StageOut.StageOutError import StageOutError
+from StageOut.Execute import runCommand
+from StageOut.StageOutError import StageOutError, StageOutInvalidPath
 
 class StageOutImpl:
     """
@@ -25,12 +25,50 @@ class StageOutImpl:
     - *retryPause* : Time in seconds to wait between retries.
                      default is 10 minutes
     """
-    executeCommand = staticmethod(execute)
 
     def __init__(self, stagein=False):
         self.numRetries = 3
         self.retryPause = 600
         self.stageIn = stagein
+        # tuple of exit codes of copy when dest directory does not exist
+        self.directoryErrorCodes = tuple()
+    
+
+    def deferDirectoryCreation(self):
+        """
+        Can we defer directory creation, hoping it exists, 
+        only to create on a given error condition
+        """
+        return len(self.directoryErrorCodes) != 0
+    
+
+    def executeCommand(self, command):
+        """
+        _execute_
+    
+        Execute the command provided, throw a StageOutError if it exits
+        non zero
+    
+        """
+        try:
+            exitCode = runCommand(command)
+            msg = "Command :\n%s\n exited with status: %s" % (command, exitCode)
+            print msg
+        except Exception, ex:
+            msg = "Exception while invoking command:\n"
+            msg += "%s\n" % command
+            msg += "Exception: %s\n" % str(ex)
+            print "ERROR: Exception During Stage Out:\n"
+            print msg
+            raise StageOutError(msg, Command = command, ExitCode = 60311)
+        if exitCode in self.directoryErrorCodes:
+            raise StageOutInvalidPath()
+        elif exitCode:
+            msg = "Command exited non-zero"
+            print "ERROR: Exception During Stage Out:\n"
+            print msg
+            raise StageOutError(msg, Command = command, ExitCode = exitCode)
+        return
 
 
     def createSourceName(self, protocol, pfn):
@@ -130,8 +168,12 @@ class StageOutImpl:
         #//
         for retryCount in range(1, self.numRetries + 1):
             try:
-                self.createOutputDirectory(targetPFN)
+                # if we can detect directory problems later
+                # defer directory creation till then, only applies to stageOut
+                if not self.deferDirectoryCreation() or self.stageIn:
+                    self.createOutputDirectory(targetPFN)
                 break
+
             except StageOutError, ex:
                 msg = "Attempted directory creation for stageout %s failed\n" % retryCount
                 msg += "Automatically retrying in %s secs\n " % self.retryPause
@@ -155,8 +197,18 @@ class StageOutImpl:
         #//
         for retryCount in range(1, self.numRetries + 1):
             try:
-                self.executeCommand(command)
+                
+                try:
+                    self.executeCommand(command)
+                except StageOutInvalidPath, ex:
+                    # plugin indicated directory missing,create and retry
+                    msg = "Copy failure indicates directory does not exist.\n"
+                    msg += "Create now"
+                    print msg
+                    self.createOutputDirectory(targetPFN)
+                    self.executeCommand(command)
                 return
+
             except StageOutError, ex:
                 msg = "Attempted stage out %s failed\n" % retryCount
                 msg += "Automatically retrying in %s secs\n " % self.retryPause

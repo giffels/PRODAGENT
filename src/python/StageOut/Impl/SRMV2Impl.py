@@ -26,6 +26,11 @@ class SRMV2Impl(StageOutImpl):
     
     run = staticmethod(runCommand)
     
+    def __init__(self, stagein=False):
+        StageOutImpl.__init__(self, stagein)
+        self.directoryErrorCodes = (1,)
+    
+    
     def createSourceName(self, protocol, pfn):
         """
         _createSourceName_
@@ -117,19 +122,22 @@ class SRMV2Impl(StageOutImpl):
         """
         result = "#!/bin/sh\n"
         result += "REPORT_FILE=`pwd`/srm.report.$$\n"
-        result += "srmcp -2 -report=$REPORT_FILE -retry_num=0 "
+        result += "srmcp -2 -report=$REPORT_FILE -retry_num=0"
         
         if options != None:
             result += " %s " % options
         result += " %s " % sourcePFN
-        result += " %s \n" % targetPFN
+        result += " %s" % targetPFN
+        result += " 2>&1 | tee srm.output.$$ \n"
         
         
         if _CheckExitCodeOption:
             result += """
             EXIT_STATUS=`cat $REPORT_FILE | cut -f3 -d" "`
             echo "srmcp exit status: $EXIT_STATUS"
-            if [[ $EXIT_STATUS != 0 ]]; then
+            if [[ "X$EXIT_STATUS" == "X" ]] && [[ `grep -c SRM_INVALID_PATH srm.output.$$` != 0 ]]; then
+                exit 1 # dir does not eixst
+            elif [[ $EXIT_STATUS != 0 ]]; then
                echo "Non-zero srmcp Exit status!!!"
                echo "Cleaning up failed file:"
                 %s 
