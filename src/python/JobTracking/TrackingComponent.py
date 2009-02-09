@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.59 2008/11/18 18:08:23 gcodispo Exp $"
-__version__ = "$Revision: 1.59 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.60 2008/11/20 18:16:22 mcinquil Exp $"
+__version__ = "$Revision: 1.60 $"
 
 import os
 import os.path
@@ -62,10 +62,9 @@ class TrackingComponent:
         self.args.setdefault("PollInterval", 300)
         self.args.setdefault("QueryInterval", 3)
         self.args.setdefault("jobsToPoll", 300)
-        self.args.setdefault("ComponentDir", "/tmp")
-        self.args.setdefault("configDir", None)
-        self.args.setdefault("ProdAgentWorkDir", None)
         self.args.setdefault("PoolThreadsSize", 5)
+        self.args.setdefault("ComponentDir", "/tmp")
+        self.args.setdefault("ProdAgentWorkDir", None)
         self.args.setdefault("Logfile", None)
         self.args.setdefault("verbose", 0)
         self.args.setdefault("JobCreatorComponentDir", None)
@@ -413,7 +412,8 @@ class TrackingComponent:
         """
 
         # using Dashboard?
-        if self.usingDashboard['use'] == "False" :
+        if self.usingDashboard['use'] == "False" or \
+               job.runningJob['schedulerId'] is None:
             return
 
         # initialize
