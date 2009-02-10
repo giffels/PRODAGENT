@@ -145,7 +145,7 @@ if not node.type == "StageOut":
     msg += "It is a node of type: %s\n" % node.type
     raise RuntimeError, msg
 
-node.configuration = ""
+#node.configuration = ""
 
 addStageOutOverride(node, override['command'],
                     override['option'],
