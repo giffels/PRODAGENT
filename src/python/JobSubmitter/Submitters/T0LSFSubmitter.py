@@ -78,7 +78,7 @@ def bulkUnpackerScript(bulkSpecTarName,jobSpecName):
         "JOB_SPEC_NAME=%s-JobSpec.xml\n" % jobSpecName, 
         "BULK_SPEC_NAME=\"%s\"\n" % bulkSpecTarName,
         "echo \"This Job Using Spec: $JOB_SPEC_NAME\"\n",
-        "tar -zxf $BULK_SPEC_NAME\n",
+        "tar -zxf $BULK_SPEC_NAME >& /dev/null\n",
         ]
     lines.append(bulkUnpackerScriptMain)
     return lines
