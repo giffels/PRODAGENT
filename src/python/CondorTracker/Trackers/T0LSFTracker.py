@@ -118,44 +118,47 @@ class T0LSFTracker(TrackerPlugin):
 
             status = self.bjobs.get(runId, None)
   
-            #  // 
-            # //  Job not in bjobs output, start checking other sources
-            #//   First check job report
+            # job not in bjobs output, look at job report for backup
             if status == None:
-                msg = "No Status entry for %s, checking job report" % runId
-                logging.debug(msg)
+                logging.debug("No LSF record for %s, checking job report" % (runId))
                 status = self.jobReportStatus(runId)
                 
-            #  //
-            # // if status is still None => check lsf history
-            #//
+            # if status is still None => check lsf history
+            # DISABLED (lsf history is expensive and not much more history then the in memory lookup)
             #if status == None:    
                 #status = LSFInterface.bjobs(runId).get(runId, None)
 
-            #  //
-            # // If status still None, declare job lost/failed
-            #//
+            # if status still None, declare job lost/failed
             if status == None:
                 self.TrackerDB.jobFailed(runId)
                 logging.debug("Job %s has been lost" % (runId))
-                continue
-            
-            if status == LSFStatus.running:
-                #  //
-                # // Is running
-                #//
+
+            # if running do nothing
+            elif status == LSFStatus.running:
                 logging.debug("Job %s is still running" % (runId))
-                continue
-            if status == LSFStatus.finished:
-                #  //
-                # // Is Complete 
-                #//
-                self.TrackerDB.jobComplete(runId)
-                logging.debug("Job %s complete" % (runId))
-                continue
-            if status in (LSFStatus.failed, LSFStatus.aborted):
-                logging.debug("Job %s is held..." % (runId))
-                self.TrackerDB.jobFailed(runId)
+
+            # if finished check job report, then report status
+            elif status == LSFStatus.finished:
+
+                status = self.jobReportStatus(runId)
+
+                if status == LSFStatus.finished:
+                    logging.debug("Job %s succeeded" % (runId))
+                    self.TrackerDB.jobComplete(runId)
+                elif status == LSFStatus.failed:
+                    logging.debug("Job %s finished ok, bad job report, marked as failed" % (runId))
+                    self.TrackerDB.jobFailed(runId)
+                elif status == None:
+                    logging.debug("Job %s finished ok, no job report, marked as failed" % (runId))
+                    self.TrackerDB.jobFailed(runId)
+
+            # if failed report that as well
+            elif status == LSFStatus.failed:
+
+                    logging.debug("Job %s failed" % (runId))
+                    self.TrackerDB.jobFailed(runId)
+            
+
 
             
     def updateComplete(self, *complete):
@@ -244,7 +247,8 @@ class T0LSFTracker(TrackerPlugin):
         
         if ReportState.checkSuccess(report):
             return LSFStatus.finished
-        return LSFStatus.failed
+        else:
+            return LSFStatus.failed
     
 
 registerTracker(T0LSFTracker, T0LSFTracker.__name__)
