@@ -136,6 +136,9 @@ class T0ASTPlugin(BasePlugin):
                                  collectPayload["RunNumber"],
                                  collectPayload["PrimaryDataset"])
 
+        if jobSpec == None:
+            return []
+
         job = {}
         job["JobSpecId"] = jobSpec.parameters["JobName"]
         job["JobSpecFile"] = jobSpecFile
@@ -220,6 +223,11 @@ class T0ASTPlugin(BasePlugin):
         Given a workflow spec, run number and primaryDataset, create a DQM
         harvesting job.
         """
+        jobFiles = self.t0astWrapper.listFiles(runNumber, primaryDataset)
+
+        if len(jobFiles) == 0:
+            return (None, None)
+        
         jobSpec = workflowSpec.createJobSpec()
         jobName = "DQMHarvest-Run%s-%s-%s" % (runNumber, primaryDataset,
                                               time.time())
@@ -228,7 +236,7 @@ class T0ASTPlugin(BasePlugin):
         jobSpec.parameters["RunNumber"] = runNumber
         jobSpec.addWhitelistSite(self.site)
         jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
-        jobSpec.payload.cfgInterface.inputFiles.extend(self.t0astWrapper.listFiles(runNumber, primaryDataset))
+        jobSpec.payload.cfgInterface.inputFiles.extend(jobFiles)
 
         jobCache = os.path.join(self.args["ComponentDir"], "T0ASTPlugin",
                                 "Run" + runNumber)            
