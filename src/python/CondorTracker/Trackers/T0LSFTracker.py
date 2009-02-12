@@ -54,52 +54,35 @@ class T0LSFTracker(TrackerPlugin):
         """
         logging.info("T0LSF: Submitted Count: %s" % len(submitted))
         for subId in submitted:
+
             status = self.bjobs.get(subId, None)
   
-            #  // 
-            # //  Job not in bjobs output, start checking other sources
-            #//   First check job report
+            # job not in bjobs output, look at job report for backup
             if status == None:
-                msg = "No Status entry for %s, checking job report" % subId
-                logging.debug(msg)
-                status = self.jobReportStatus(subId)
+                logging.debug("No LSF record for %s, checking job report" % (runId))
+                status = self.jobReportStatus(runId)
                 
-            #//
-            #// if status is still None => check lsf history
-            #//  for right now just check again the single job
-            #//
-            #if status == None:
-                #status = LSFInterface.bjobs(subId).get(subId, None)
+            # if status is still None => check lsf history
+            # DISABLED (lsf history is expensive and not much more history then the in memory lookup)
+            #if status == None:    
+                #status = LSFInterface.bjobs(runId).get(runId, None)
 
-            #  //
-            # // If status still None, declare job lost/failed
-            #//
+            # if status still None, declare job lost/failed
             if status == None:
-                self.TrackerDB.jobFailed(subId)
-                logging.debug("Job %s has been lost" % (subId))
-                continue
+                self.TrackerDB.jobFailed(runId)
+                logging.debug("Job %s has been lost" % (runId))
 
-            #  //
-            # // Now examine the status value, not sure what these are, but act accordingly
-            #//
-
+            # if submitted do nothing
             if status == LSFStatus.submitted:
-                #  //
-                # // Still submitted, nothing to be done
-                #//
                 logging.debug("Job %s is pending" % (subId))
-                continue 
-            if status in (LSFStatus.running, LSFStatus.finished):
-                #  //
-                # // Is running or completed already, forward to running handler
-                #//
-                self.TrackerDB.jobRunning(subId)
+
+            # if running or completed forward to running handler
+            elif status in (LSFStatus.running, LSFStatus.finished):
                 logging.debug("Job %s is running" % (subId))
-                continue
-            if status in (LSFStatus.failed, LSFStatus.aborted):
-                #  //
-                # // Failed or Aborted
-                #//
+                self.TrackerDB.jobRunning(subId)
+
+            # if failed mark as failed
+            elif status == LSFStatus.failed:
                 logging.debug("Job %s is held..." % (subId))
                 self.TrackerDB.jobFailed(subId)
                 
@@ -152,7 +135,7 @@ class T0LSFTracker(TrackerPlugin):
                     logging.debug("Job %s finished ok, no job report, marked as failed" % (runId))
                     self.TrackerDB.jobFailed(runId)
 
-            # if failed report that as well
+            # if failed mark as failed
             elif status == LSFStatus.failed:
 
                     logging.debug("Job %s failed" % (runId))
