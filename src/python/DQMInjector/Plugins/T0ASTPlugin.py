@@ -208,7 +208,11 @@ class T0ASTPlugin(BasePlugin):
                                                 self.args["CmsPath"],
                                                 self.args["ScramArch"],
                                                 cmsswVersion, globalTag,
-                                                self.args["ConfigFile"])
+                                                self.args["ConfigFile"],
+                                                self.args['DQMServer'],
+                                                self.args['proxyLocation'],
+                                                self.args['DQMCopyToCERN'])
+        
         
         workflowSpec.save(workflowSpecPath)
         msg = "Created Harvesting Workflow:\n %s" % workflowSpecPath
