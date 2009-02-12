@@ -159,9 +159,11 @@ class DQMInjectorComponent:
                 'job_type' : "Processing", "max_retries" : 3,
                 "max_racers" : 1,
                 })
+
+        if len(jobs) > 0:
+            site = self.args['Site']
+            bulkQueueJobs(site, *jobs)
             
-        site = self.args['Site']
-        bulkQueueJobs(site, *jobs)
         return
 
 

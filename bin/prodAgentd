@@ -291,13 +291,13 @@ def status():
         compDir = os.path.expandvars(compDir)
         daemonXml = os.path.join(compDir, "Daemon.xml")
         if not os.path.exists(daemonXml):
-            print "Component:%s Not Running" % component
+            print "Component:%24s   NOT  Running" % component
             continue
         daemon = DaemonDetails(daemonXml)
         if not daemon.isAlive():
-            print "Component:%s Not Running" % component
+            print "Component:%24s   NOT  Running" % component
         else:
-            print "Component:%s Running:%s" % (component, daemon['ProcessID'])
+            print "Component:%24s        Running:%s" % (component, daemon['ProcessID'])
 
     sys.exit(0)
 

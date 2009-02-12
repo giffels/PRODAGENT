@@ -55,10 +55,10 @@ class T0ASTWrapper:
             msg = "Unable to import Tier 0 Python Libs"
             raise RuntimeError, msg
         
-        files = ListFiles.listFilesForDQM(self.t0astDBConn,
-                                          "Reconstructed", runNumber,
-                                          primaryDataset)
-        return files
+        files = ListFiles.listFilesByRunAndDataset(self.t0astDBConn,
+                                                   "Reconstructed", runNumber,
+                                                   primaryDataset)
+        return [x["LFN"] for x in files]
 
     def listRecoConfig(self, runNumber, primaryDataset):
         """

@@ -187,6 +187,5 @@ class LSFStatus:
     """
     submitted = 'PEND'
     running = 'RUN'
-    aborted = 'EXIT'
     finished = 'DONE'
     failed = 'EXIT'
