@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.15 2009/01/13 09:56:44 gcodispo Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: JobHandling.py,v 1.16 2009/02/13 09:40:12 gcodispo Exp $"
+__version__ = "$Revision: 1.16 $"
 
 import os
 import logging
@@ -250,7 +250,7 @@ class JobHandling:
                 elif report['Type'] == 'ExeExitCode':
                     retCode = report['ExitStatus']
                 elif report['Type'] == 'CMSException':
-                    cmsEx = error['ExitStatus']
+                    cmsEx = report['ExitStatus']
                 else:
                     continue
 
@@ -260,8 +260,8 @@ class JobHandling:
                 job.runningJob["applicationReturnCode"] = cmsEx
             else :
                 job.runningJob["applicationReturnCode"] = exitCode
-        except:
-            pass
+        except Exception, err:
+            logging.error('Invalid Framework Job Report Entry: %s' %str(err) )
 
         return success
 
