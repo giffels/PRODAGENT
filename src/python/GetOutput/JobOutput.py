@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.23 2009/01/27 14:36:15 gcodispo Exp $"
-__revision__ = "$Revision: 1.23 $"
+__version__ = "$Id: JobOutput.py,v 1.24 2009/01/29 15:49:42 gcodispo Exp $"
+__revision__ = "$Revision: 1.24 $"
 
 import logging
 import os
@@ -314,73 +314,65 @@ class JobOutput:
         """
 
         #  get output, trying at most maxGetOutputAttempts
-        retry = 0
+        retry = int( job.runningJob['getOutputRetry'] )
+        job.runningJob['getOutputRetry'] = retry + 1
 
-        while retry < int( cls.params['maxGetOutputAttempts'] ):
-            retry += 1
+        logging.info("%s: retrieval attempt %d" % (cls.fullId( job ), retry))
 
-            logging.info("%s: retrieval attempt %d" % \
-                         (cls.fullId( job ), retry))
+        #  perform get output operation
+        try:
+            outdir = job.runningJob['outputDirectory']
+            schedSession.getOutput( task, outdir=outdir)
+            job.runningJob['processStatus'] = 'output_retrieved'
 
-            #  perform get output operation
-            try:
-                outdir = job.runningJob['outputDirectory']
-                schedSession.getOutput( task, outdir=outdir)
-                job.runningJob['processStatus'] = 'output_retrieved'
+            logging.info('%s: Retrieved output in %s' % \
+                         (cls.fullId( job ), outdir ))
 
-                logging.info('%s: Retrieved output in %s' % \
-                             (cls.fullId( job ), outdir ))
+            # log warnings and errors collected by the scheduler session
+            log = str(schedSession.getLogger())
+            if log is not None:
+                logging.info( log )
 
-                # log warnings and errors collected by the scheduler session
-                log = str(schedSession.getLogger())
-                if log is not None:
-                    logging.info( log )
+        # scheduler interaction error
+        except BossLiteError, err:
 
-                # success: stop processing
-                break
+            # if the job has not to be reprocessed
+            if retry >= int( cls.params['maxGetOutputAttempts'] ) :
 
-            # scheduler interaction error
-            except BossLiteError, err:
+                logging.error( "%s: LAST ATTEMPT RETRIEVAL FAILED!!!" % \
+                               cls.fullId( job ) )
 
-                # if the job has not to be reprocessed
-                if retry >= int( cls.params['maxGetOutputAttempts'] ) :
+                # set as failed
+                job.runningJob['status'] = 'A'
+                job.runningJob['processStatus'] = 'failed'
+                job.runningJob['statusScheduler'] = 'Abandoned'
+                job.runningJob['statusReason'] = 'GetOutput failed %s times' \
+                                           % cls.params['maxGetOutputAttempts']
 
-                    logging.error( "%s: LAST ATTEMPT RETRIEVAL FAILED!!!" % \
-                                   cls.fullId( job ) )
+            logging.error("%s: retrieval failed: %s" % \
+                          (cls.fullId( job ), str(err) ) )
+            logging.info( "BossLiteLogger : %s " % \
+                          str(schedSession.getLogger()) )
 
-                    # set as failed
-                    job.runningJob['status'] = 'A'
-                    job.runningJob['processStatus'] = 'failed'
-                    job.runningJob['statusScheduler'] = 'Abandoned'
-                    job.runningJob['statusReason'] = 'GetOutput failed 3 times'
-                    # cls.handleFailed( job, task, schedSession )
-                    return
+            # proxy expired: invalidate job and empty return
+            if err.value.find( "Proxy Expired" ) != -1 :
+                job.runningJob['closed'] = 'Y'
 
-                logging.error("%s: retrieval failed: %s" % \
+            # not ready for GO: waiting for next round
+            elif err.message().find( "Job current status doesn" ) != -1:
+                logging.error("%s in status %s: waiting next round" % \
+                              (cls.fullId( job ), job.runningJob['status'])
+                              )
+                # allow job to be reprocessed
+                job.runningJob['processStatus'] = 'handled'
+
+            else :
+                # oops: What to do?!?!
+                logging.error("%s: no action taken: [%s]" % \
                               (cls.fullId( job ), str(err) ) )
-                logging.info( "BossLiteLogger : %s " % \
-                              str(schedSession.getLogger()) )
 
-                # proxy expired: invalidate job and empty return
-                if err.value.find( "Proxy Expired" ) != -1 :
-                    job.runningJob['closed'] = 'Y'
-                    return
-
-                # not ready for GO: waiting for next round
-                elif err.message().find( "Job current status doesn" ) != -1:
-                    logging.error("%s in status %s: waiting next round" % \
-                                  (cls.fullId( job ), job.runningJob['status'])
-                                  )
-                    # allow job to be reprocessed
-                    job.runningJob['processStatus'] = 'handled'
-                    return
-
-                else :
-                    # oops: What to do?!?!
-                    logging.error("%s: no action taken: [%s]" % \
-                                  (cls.fullId( job ), str(err) ) )
-                    sleep(3)
-                    continue
+            # in case of errors does not return...
+            return
 
         return job
 

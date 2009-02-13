@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.14 2008/12/05 11:21:13 spiga Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: JobHandling.py,v 1.15 2009/01/13 09:56:44 gcodispo Exp $"
+__version__ = "$Revision: 1.15 $"
 
 import os
 import logging
@@ -41,7 +41,7 @@ class JobHandling:
         """
 
         # store parameters and open a connection
-        self.componentDir = params['componentDir']
+        self.componentDir = params['ComponentDir']
         self.dropBoxPath = params['CacheDir']
         self.outputLocation = params['OutputLocation']
         self.bossLiteSession = params['bossLiteSession']

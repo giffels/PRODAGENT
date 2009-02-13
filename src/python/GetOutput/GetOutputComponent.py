@@ -4,10 +4,11 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.18 2008/12/12 23:06:14 gcodispo Exp $"
-__revision__ = "$Revision: 1.18 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.19 2009/01/29 15:49:42 gcodispo Exp $"
+__revision__ = "$Revision: 1.19 $"
 
 import os
+import time
 import logging
 import traceback
 import threading
@@ -51,6 +52,7 @@ class GetOutputComponent:
         self.args.setdefault("Logfile", None)
         self.args.setdefault("verbose", 1) # tmp for testing
         self.args.setdefault("configDir", None)
+        self.args.setdefault('retryDelay', 12)
         self.args.setdefault('maxGetOutputAttempts', 3)
         self.args.setdefault('skipWMSAuth', None)
         self.args.update(args)
@@ -98,7 +100,7 @@ class GetOutputComponent:
 
         # set job handling parameters
         jobHandlingParams = {}
-        jobHandlingParams['componentDir'] = self.args['ComponentDir']
+        jobHandlingParams['ComponentDir'] = self.args['ComponentDir']
         jobHandlingParams['CacheDir'] = self.args['CacheDir']
         jobHandlingParams['OutputLocation'] = self.args['OutputLocation']
         jobHandlingParams['OutputParams'] = outputParams
@@ -133,10 +135,19 @@ class GetOutputComponent:
         self.jobLimit = int(self.args['jobsToPoll'])
         self.newJobs = []
         self.jobFinished = None
-        self.finishedAttrs = {'processStatus': 'output_requested',
-                              'closed' : 'N'}
+        self.finishedAttrs = { 'processStatus': 'output_requested',
+                               'closed' : 'N' }
         self.failedAttrs = { 'processStatus' : 'failed',
                              'closed' : 'N' }
+
+        # recovery of old enqueud, not processd jobs
+        maxRet = int(params['maxGetOutputAttempts']) + 1
+        enqueueTimeDelay = '(CURRENT_TIMESTAMP-INTERVAL %s HOUR)' % \
+                           self.args['retryDelay'] 
+        self.timeAttrs = { 'processStatus': 'in_progress' }
+        self.lessLimit = { 'outputEnqueueTime' : enqueueTimeDelay,
+                           'getOutputRetry' : maxRet
+                           }
 
         # component running, display info
         logging.info("GetOutput Component Started...")
@@ -205,6 +216,9 @@ class GetOutputComponent:
         # process jobs having 'processStatus' : 'failed',
         self.pollJobs( self.failedAttrs )
 
+        # recover jobs in_progress since more than 12 hours
+        self.recoverJobs()
+
         # process failure reports if ready
         loop = True
         while loop :
@@ -265,6 +279,7 @@ class GetOutputComponent:
                         action( job )
 
                     job.runningJob['processStatus'] = 'in_progress'
+                    job.runningJob['outputEnqueueTime'] = int( time.time() )
                     self.bossLiteSession.updateDB( job )
 
                     self.pool.enqueue(job['id'], job)
@@ -289,6 +304,49 @@ class GetOutputComponent:
         del self.newJobs[:]
 
 
+    def recoverJobs(self):
+        """
+        __recoverJobs__
+
+        poll jobs in progress from more than retryDelay hours
+
+        """
+
+        self.newJobs = self.bossLiteSession.loadJobsByTimestamp(
+            more={}, less=self.lessLimit, runningAttrs=self.timeAttrs )
+
+        logging.info("Polled jobs for recovery : " + str( len(self.newJobs) ) )
+
+        # exit if no more jobs to query
+        while self.newJobs != [] :
+
+            try :
+                job = self.newJobs.pop()
+                job.runningJob['processStatus'] = 'in_progress'
+                job.runningJob['outputEnqueueTime'] = int( time.time() )
+                self.bossLiteSession.updateDB( job )
+
+                self.pool.enqueue(job['id'], job)
+
+            except BossLiteError, err:
+                logging.error( "failed request for job %s : %s" % \
+                               (JobOutput.fullId(job), str(err) ) )
+            except Exception, err:
+                logging.error( "failed enqueue for job %s : %s" % \
+                               (JobOutput.fullId(job), str(err) ) )
+            except:
+                logging.error( "failed enqueue job %s : %s" % \
+                               (JobOutput.fullId(job), \
+                                str( traceback.format_exc() ) ) )
+
+            del( job )
+
+            logging.debug('Finished enqueuing polled Jobs in threads')
+
+        del self.newJobs[:]
+
+
+
     def processOutput(self):
         """
         __processOutput__
@@ -306,6 +364,7 @@ class GetOutputComponent:
 
         # no more jobs
         if self.jobFinished is None :
+            logging.info( "All jobs in queue processed" )
             return False
 
         # bad entry
