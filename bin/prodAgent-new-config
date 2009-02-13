@@ -283,8 +283,11 @@ componentFields = {
     "ComponentDir" : None,
     "PollInterval" : 300,
     "GetOutputPoolThreadsSize" : 5,
+    "jobsToPoll" : 1000,
     "OutputLocation" : "local",
     'maxGetOutputAttempts' : 3,
+    'retryDelay' : 12,
+    'skipWMSAuth' : True,
     "RssFeed" : "no",
     },
 
