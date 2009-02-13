@@ -4,9 +4,10 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.4 2008/10/07 17:07:27 gcodispo Exp $"
-__revision__ = "$Revision: 1.4 $"
+__version__ = "$Id: TrackingDB.py,v 1.5 2008/11/18 18:08:23 gcodispo Exp $"
+__revision__ = "$Revision: 1.5 $"
 
+import time
 
 class TrackingDB:
     """
@@ -237,9 +238,15 @@ class TrackingDB:
         else :
             toSkip = '' 
 
+        if processStatus in ['failed', 'output_requested'] :
+            tsString = "', output_request_time='" + \
+                       time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime() )
+        else :
+            tsString = ''
+
 
         query = \
               "update bl_runningjob set process_status='" + processStatus + \
-              "' where id in (" + jlist + ")" + toSkip
+              tsString + "' where id in (" + jlist + ")" + toSkip
 
         self.bossSession.modify(query)
