@@ -124,6 +124,9 @@ class JobSpecExpander:
             if file.get('LFN', None) not in (None, '', 'None'):
                 if not tfc:
                     tfc = TrivialFileCatalog.TrivialFileCatalog()
+                if not inpLink['AppearStandalone']: # cmsRun fjr LFN lacks guid
+                    file['LFN'] = '%s/%s.root' % \
+                        (file['LFN'][:file['LFN'].rfind("/")], file['GUID'])
                 inputFileList.append(file['LFN'])
                 tfc.addLfnToPfnRule('override', file['LFN'], file['PFN'])
             else:
