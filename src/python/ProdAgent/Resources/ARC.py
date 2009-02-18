@@ -204,6 +204,17 @@ class ARCJob:
             self.jobinfo = {}
             
 
+def execNgstat(ids):
+    msg = "execNgstat: Id:s to check:\n -> " + ids.strip().replace(" ", "\n -> ")
+    logging.debug(msg)
+
+    if not ids.strip(): return ""
+
+    try:
+        return executeCommand("ngstat " + ids)
+    except CommandExecutionError, s:
+        msg = "Command 'ngstat %s' exited with exit status %s" % (ids, str(s))
+        raise RuntimeError, msg
             
 
 def getJobs():
@@ -214,21 +225,20 @@ def getJobs():
 
     jobIds = jobIdMap()
     ids = ""
+    n = 0
+    output = ""
     for id in jobIds.keys():
         if id.find(" ") >= 0:
             id = '"' + id.strip() + '"'
         ids += id.strip() + " "
+        n += 1
+        if n >= 50:
+            output += execNgstat(ids)
+            ids = ""
+            n = 0
 
-    msg = "getJobs: Id:s to check:\n -> " + ids.strip().replace(" ", "\n -> ")
-    logging.debug(msg)
-
-    if not ids.strip(): return []
-
-    try:
-        output = executeCommand("ngstat " + ids)
-    except CommandExecutionError, s:
-        msg = "Command 'ngstat %s' exited with exit status %s" % (ids, str(s))
-        raise RuntimeError, msg
+    if n > 0:
+        output += execNgstat(ids)
 
     jobs = []
     for line in output.split("\n"):
