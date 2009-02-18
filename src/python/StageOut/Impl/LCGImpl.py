@@ -55,7 +55,7 @@ class LCGImpl(StageOutImpl):
         if pfn.startswith("srm://"):
             return "lcg-del -b -l -D srmv2 --vo cms %s" % pfn
         elif pfn.startswith("file:"):
-            return "/bin/rm -f %s" % pfn.replace("file://", "", 1)
+            return "/bin/rm -f %s" % pfn.replace("file:", "", 1)
         else:
             return StageOutImpl.createRemoveFileCommand(self, pfn)
         
@@ -90,9 +90,9 @@ class LCGImpl(StageOutImpl):
             """ % self.createRemoveFileCommand(targetPFN)
         
         if self.stageIn:
-            remotePFN, localPFN = sourcePFN, targetPFN.replace("file://", "", 1)
+            remotePFN, localPFN = sourcePFN, targetPFN.replace("file:", "", 1)
         else:
-            remotePFN, localPFN = targetPFN, sourcePFN.replace("file://", "", 1)
+            remotePFN, localPFN = targetPFN, sourcePFN.replace("file:", "", 1)
         
         result += "FILE_SIZE=`stat -c %s"
         result += " %s `\n" % localPFN
