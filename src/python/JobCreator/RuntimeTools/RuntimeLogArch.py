@@ -9,8 +9,8 @@ for the job.
 
 
 """
-__version__ = "$Revision$"
-__revision__ = "$Id$"
+__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: RuntimeLogArch.py,v 1.15 2009/02/13 15:27:54 evansde Exp $"
 
 import sys
 import os
@@ -25,6 +25,7 @@ from StageOut.StoreFail import StoreFailMgr
 from StageOut.StageOutError import StageOutInitError
 
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.FwkJobRep.MergeReports import mergeReports
 from ProdCommon.FwkJobRep.MergeReports import updateReport
 
@@ -121,6 +122,21 @@ class LogArchMgr:
                 else:
                     self.overrideParams['option'] = ""
 
+    def wasJobFailure(self):
+        """
+        _wasJobFailure_
+
+        Check wether the job is flagged as a faillure in the toplevel report
+        return boolean, True if job was a failure
+        """
+        status = False
+        toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],"FrameworkJobReport.xml")
+        toplevelReps = readJobReport(toplevelReps)
+        for rep in toplevelReps:
+            if not rep.wasSuccess():
+                status = True
+        return status
+
     def __call__(self):
         """
         _operator()_
@@ -128,6 +144,8 @@ class LogArchMgr:
         tar up and xfer logfiles
 
         """
+
+
         #  //
         # // Create the tarfile
         #//
@@ -238,18 +256,19 @@ class LogArchMgr:
 
         # stage out files so far to store/fail if activated
         if self.doStoreFail:
-            failLog = []
-            taskState = getTaskState(task)
-            report = taskState.getJobReport()
-            if report != None:
-                storeFailMgr = StoreFailMgr(report)
-                failLog.extend(storeFailMgr())
+            if self.wasJobFailure():
+                failLog = []
+                taskState = getTaskState(task)
+                report = taskState.getJobReport()
+                if report != None:
+                    storeFailMgr = StoreFailMgr(report)
+                    failLog.extend(storeFailMgr())
 
-            failLogFile = os.path.join(taskDir, "StoreFail.log")
-            handle = open(failLogFile, 'w')
-            for f in failLog:
-                handle.write("%s\n" % f)
-            handle.close()
+                failLogFile = os.path.join(taskDir, "StoreFail.log")
+                handle = open(failLogFile, 'w')
+                for f in failLog:
+                    handle.write("%s\n" % f)
+                handle.close()
 
 
 
