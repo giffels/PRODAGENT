@@ -9,8 +9,8 @@ for the job.
 
 
 """
-__version__ = "$Revision: 1.15 $"
-__revision__ = "$Id: RuntimeLogArch.py,v 1.15 2009/02/13 15:27:54 evansde Exp $"
+__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: RuntimeLogArch.py,v 1.16 2009/02/18 14:48:48 evansde Exp $"
 
 import sys
 import os
@@ -131,7 +131,7 @@ class LogArchMgr:
         """
         status = False
         toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],"FrameworkJobReport.xml")
-        toplevelReps = readJobReport(toplevelReps)
+        toplevelReps = readJobReport(toplevelReport)
         for rep in toplevelReps:
             if not rep.wasSuccess():
                 status = True
