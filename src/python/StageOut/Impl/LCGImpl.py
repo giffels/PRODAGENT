@@ -34,7 +34,7 @@ class LCGImpl(StageOutImpl):
 
         """
         if pfn.startswith('/'):
-            return "file:///%s" % pfn
+            return "file:%s" % pfn
         else:
             return pfn
         
