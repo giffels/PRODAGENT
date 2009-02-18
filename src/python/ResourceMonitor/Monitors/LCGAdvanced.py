@@ -104,7 +104,7 @@ class LCGAdvanced(MonitorInterface):
             self.plugConf["FCRurls"] = self.plugConf.get("FCRurls", self.FCRurl)
         else:
             self.plugConf["UseFCR"] = False
-            self.plugConf["FCRurls"] = None
+            self.plugConf["FCRurls"] = []
             logging.info("Ignoring fcr state")
 
         if not self.plugConf.has_key("BDII"):
