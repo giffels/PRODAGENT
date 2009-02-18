@@ -77,8 +77,6 @@ class ARCCreator(CreatorInterface):
             ". $VO_CMS_SW_DIR/cmsset_default.sh ;") # CERN default
             
         return
-            
-        return
 
 
     def handleSVSuite(self, taskObject):
