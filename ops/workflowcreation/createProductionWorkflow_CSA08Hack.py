@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: createProductionWorkflow_CSA08Hack.py,v 1.6 2008/09/08 16:04:15 direyes Exp $"
+__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.10 2007/05/28 12:32:27 afanfani Exp $"
 
 
 import os
@@ -27,8 +27,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=',
          'pileup-dataset=', 'pileup-files-per-job=','only-sites='
          'selection-efficiency=','starting-run=','starting-event=','totalevents=','activity=',
-         'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=', 'stageout-intermediates=',
-         'chained-input='
+         'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=', 'stageout-intermediates='
          ]
 
 usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
@@ -47,7 +46,6 @@ usage += "                                  --acquisition_era=<Acquisition Era>\
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
 usage += "                                  --only-sites=<Site>\n"
-usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -66,7 +64,6 @@ except getopt.GetoptError, ex:
 
 cfgFiles = []
 stageoutOutputs = []
-chainedInputs = []
 requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
 label = "Test"
@@ -103,8 +100,6 @@ for opt, arg in opts:
             stageoutOutputs.append(True)
         else:
             stageoutOutputs.append(False)
-    if opt == '--chained-input': 
-        chainedInputs.append([x.strip() for x in arg.split(',') if x!='']) 
     if opt == "--category":
         category = arg
     if opt == "--channel":
@@ -157,9 +152,6 @@ if len(versions) != len(cfgFiles):
 if len(stageoutOutputs) != len(cfgFiles) - 1:
     msg = "Need one less --stageout-intermediates than --cfg arguments"
     raise RuntimeError, msg
-if len(chainedInputs) and len(chainedInputs) != len(cfgFiles) - 1:
-    msg = "Need one less chained-input than --cfg arguments"
-    raise RuntimeError, msg
 if channel == None:
     msg = "--channel option not provided: This is required"
     raise RuntimeError, msg
@@ -210,12 +202,8 @@ for cfgFile in cfgFiles:
     cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
     cfgInt.validateForProduction()
     if nodeNumber:
-        try:
-            inputModules = chainedInputs[nodeNumber-1]
-        except IndexError:
-            inputModules = []
-        maker.chainCmsRunNode(stageoutOutputs[nodeNumber-1], *inputModules)
-            
+        maker.chainCmsRunNode(stageOutIntermediates=stageoutOutputs[nodeNumber-1])
+
     maker.setCMSSWVersion(versions[nodeNumber])
     maker.setConfiguration(cfgWrapper, Type = "instance")
     maker.setOriginalCfg(file(cfgFile).read())
@@ -244,7 +232,7 @@ if pileupDS != None:
 spec = maker.makeWorkflow()
 
 if activity is not None:
-    spec.setActivity(activity)
+        spec.setActivity(activity)
 
 spec.parameters['TotalEvents']=totalEvents
 spec.parameters['EventsPerJob']=eventsPerJob
@@ -254,7 +242,7 @@ if startingEvent != -1 :
 else :
 	print "Warning: InitialEvent parameter is not set!"
 if onlySites != None:
-    spec.parameters['OnlySites']=onlySites
+   spec.parameters['OnlySites']=onlySites
 
 spec.save("%s-Workflow.xml" % maker.workflowName)
 
