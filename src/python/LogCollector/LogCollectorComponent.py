@@ -69,7 +69,8 @@ class LogCollectorComponent:
             self.stageOutOverride['command'] = 'srmv2'
             self.stageOutOverride['option'] = '-streams_num=1' #seems to be needed by some site firewalls
             self.stageOutOverride['se-name'] = self.args['logSE']
-            self.stageOutOverride['lfnPrefix'] = self.args['logURL']            
+            self.stageOutOverride['lfnPrefix'] = self.args['logURL']
+            
             
         except StandardError, ex:
             msg = "Error handling configuration"
@@ -231,20 +232,13 @@ class LogCollectorComponent:
                 ref = 0
                 for i in range (0, njobs):
                     runPadding = str(first_id + i // 1000).zfill(4)
-
-                    # if we are running at the site we use local stageout
-                    if se == self.stageOutOverride['se-name']:
-                        stageOut = None
-                    else:
-                        stageOut =  self.stageOutOverride
-                    
                     #create jobs
                     spec = LogCollectorTools.createLogCollectorJobSpec(\
                                     logCollectorWorkflow, 
                                     wf, 
                                     se,
                                     "%s/%s/%s/%s" % (lfnBase, wf, runPadding, i),
-                                    stageOut,
+                                    self.stageOutOverride,
                                     *logs[ref:ref+self.args['maxLogs']])
                     jobspec = os.path.join(self.args['LogArchiveSpecs'], \
                                            spec.parameters["JobName"] + ".xml") 
