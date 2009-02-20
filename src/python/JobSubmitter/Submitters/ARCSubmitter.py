@@ -285,6 +285,9 @@ class ARCSubmitter(BulkSubmitterInterface):
 
         code += "(environment=%s)" % envVars
 
+        # Set wallTime to arbitrary large value, assumed to be enough for all jobs
+        code += '(wallTime="2 days")'
+
         return code
 
 
