@@ -29,6 +29,7 @@ def main(argv) :
     --pileupdataset                : input pileup dataset. It must be provided if the <samples> txt file contains PilepUp samples
     --lumi <number>                : initial run for generation (default: 666666), set it to 777777 for high statistics samples
     --event <number>               : initial event number
+    --store-fail <True|False>      : store output files for failed jobs in chain processing.
     --help (-h)                    : help
     --debug (-d)                   : debug statements
     
@@ -50,16 +51,17 @@ def main(argv) :
         print 'CMSSW architecture cannot be determined from $SCRAM_ARCH'
         sys.exit(2)
 
-    samples            = None
-    processing_version = None
-    initial_run        = "666666"
-    initial_event      = None
-    debug              = 0
-    DBSURL             = None
+    samples             = None
+    processing_version  = None
+    initial_run         = "666666"
+    initial_event       = None
+    debug               = 0
+    DBSURL              = None
     pileup_dataset      = None
+    storeFail           = False
 
     try:
-        opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", "DBSURL=", "event=", "lumi=", "pileupdataset="])
+        opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", "DBSURL=", "event=", "lumi=", "pileupdataset=", "store-fail="])
     except getopt.GetoptError:
         print main.__doc__
         sys.exit(2)
@@ -84,6 +86,11 @@ def main(argv) :
         elif opt == "--pileupdataset" :
             pileup_dataset = arg
             print arg
+        elif opt == '--store-fail':
+            if arg.lower() in ("true", "yes"):
+                storeFail = True
+            else:
+                storeFail = False
 
     if initial_event == None :
 	print ""
@@ -336,6 +343,8 @@ def main(argv) :
             command += '--eventsperjob=' + sample['eventsPerJob']
             if sample['pileUp'] :
                 command += ' \\\n--pileup-dataset=' + pileup_dataset
+            if storeFail :
+                command += ' \\\n--store-fail=True' 
         else :
             command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
             command += '--version=' + version + ' \\\n'
@@ -360,6 +369,8 @@ def main(argv) :
             command += '--eventsperjob=' + sample['eventsPerJob']
             if sample['pileUp'] :
                 command += ' \\\n--pileup-dataset=' + pileup_dataset
+            if storeFail :
+                command += ' \\\n--store-fail=True'
 
         if debug == 1 :
             print command

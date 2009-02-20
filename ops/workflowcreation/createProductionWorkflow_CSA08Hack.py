@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: createProductionWorkflow_CSA08Hack.py,v 1.6 2008/09/08 16:04:15 direyes Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: createProductionWorkflow_CSA08Hack.py,v 1.7 2009/01/16 10:26:13 direyes Exp $"
 
 
 import os
@@ -23,23 +23,28 @@ from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 
 
-valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
-         'channel=', 'group=', 'request-id=',
-         'pileup-dataset=', 'pileup-files-per-job=','only-sites='
-         'selection-efficiency=','starting-run=','starting-event=','totalevents=','activity=',
-         'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=', 'stageout-intermediates=',
-         'chained-input='
+valid = ['cfg=', 'py-cfg=', 'version=', 'category=', #"label=",
+         'channel=', 'group=', #'request-id=',
+         'pileup-dataset=', 'pileup-files-per-job=',
+         'selection-efficiency=', 'activity=', 'stageout-intermediates=',
+         'chained-input=', 'starting-run=','starting-event=','totalevents=',
+         'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=',
+         'only-sites=', 'store-fail='
          ]
 
 usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
 usage += "                                  --version=<CMSSW version>\n"
 usage += "                                  --channel=<Phys Channel/Primary Dataset>\n"
 usage += "                                  --group=<Physics Group>\n"
-#usage += "                                  --request-id=<Request ID>\n"
-#usage += "                                  --label=<Production Label>\n"
+#usage += "                                  --request-id=<Request ID>\n"  #Replaced by --conditions and --processing_version 
+#usage += "                                  --label=<Production Label>\n" #Replaced by --aquisition_era
 usage += "                                  --category=<Production category>\n"
+usage += "                                  --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
 usage += "                                  --stageout-intermediates=<true|false>\n"
-usage += "                                  --starting-run=<Starting run>\n"
+usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
+usage += "                                  --store-fail=<true|false>. It forces the stageout \
+                                            of output files before a faild step\n"
+usage += "                                  --starting-run=<Starting lumi>\n"
 usage += "                                  --starting-event=<Starting event>\n"
 usage += "                                  --totalevents=<Total Events>\n"
 usage += "                                  --eventsperjob=<Events/job>\n"
@@ -47,7 +52,6 @@ usage += "                                  --acquisition_era=<Acquisition Era>\
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
 usage += "                                  --only-sites=<Site>\n"
-usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -67,22 +71,23 @@ except getopt.GetoptError, ex:
 cfgFiles = []
 stageoutOutputs = []
 chainedInputs = []
-requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
+#requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
-label = "Test"
+#label = "Test"
 versions = []
 category = "mc"
 channel = None
 cfgTypes = []
 activity = None
-startingRun=1
-startingEvent=-1
-totalEvents=1000
-eventsPerJob=100
-acquisitionEra="Test"
-conditions="Bad"
-processingVersion=666
+startingRun = None
+startingEvent = None
+totalEvents = None
+eventsPerJob = None
+acquisitionEra = "Test"
+conditions = "Bad"
+processingVersion = None
 onlySites=None
+storeFail = False
 
 pileupDS = None
 pileupFilesPerJob = 1
@@ -103,8 +108,8 @@ for opt, arg in opts:
             stageoutOutputs.append(True)
         else:
             stageoutOutputs.append(False)
-    if opt == '--chained-input': 
-        chainedInputs.append([x.strip() for x in arg.split(',') if x!='']) 
+    if opt == '--chained-input':
+        chainedInputs.append([x.strip() for x in arg.split(',') if x!=''])
     if opt == "--category":
         category = arg
     if opt == "--channel":
@@ -115,8 +120,6 @@ for opt, arg in opts:
         physicsGroup = arg
 #    if opt == "--request-id":
 #        requestId = arg
-    if opt == '--activity':
-        activity = arg
     if opt == "--starting-run":
         startingRun = arg
     if opt == "--starting-event":
@@ -131,6 +134,8 @@ for opt, arg in opts:
         conditions = arg
     if opt == "--processing_version":
         processingVersion = arg
+    if opt == '--only-sites':
+        onlySites = arg
 
     if opt == "--selection-efficiency":
         selectionEfficiency = arg
@@ -138,10 +143,15 @@ for opt, arg in opts:
     if opt == '--pileup-dataset':
         pileupDS = arg
     if opt == '--pileup-files-per-job':
-        pileupFilesPerJob = arg   
-    if opt == '--only-sites':
-        onlySites = arg
-   
+        pileupFilesPerJob = arg
+    if opt == '--activity':
+        activity = arg
+    if opt == '--store-fail':
+        if arg.lower() in ("true", "yes"):
+            storeFail = True
+        else:
+            storeFail = False
+ 
     
 if len(cfgFiles) == 0:
     msg = "--cfg option not provided: This is required"
@@ -160,11 +170,14 @@ if len(stageoutOutputs) != len(cfgFiles) - 1:
 if len(chainedInputs) and len(chainedInputs) != len(cfgFiles) - 1:
     msg = "Need one less chained-input than --cfg arguments"
     raise RuntimeError, msg
+
 if channel == None:
     msg = "--channel option not provided: This is required"
     raise RuntimeError, msg
 
-
+#  //
+# // Set requestId and label
+#//
 requestId="%s_%s" % (conditions,processingVersion)
 label=acquisitionEra
 
@@ -209,6 +222,7 @@ for cfgFile in cfgFiles:
     cfgWrapper = CMSSWConfig()
     cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
     cfgInt.validateForProduction()
+
     if nodeNumber:
         try:
             inputModules = chainedInputs[nodeNumber-1]
@@ -225,36 +239,41 @@ for cfgFile in cfgFiles:
 
 #  //
 # // Pileup sample?
-# //
+#//
 if pileupDS != None:
     maker.addPileupDataset( pileupDS, pileupFilesPerJob)
-        
+
 maker.changeCategory(category)
 maker.setAcquisitionEra(acquisitionEra)
 maker.workflow.parameters['Conditions'] = conditions
 maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
 
-#  //
-# // Pileup sample?
-#//
-if pileupDS != None:
-    maker.addPileupDataset( pileupDS, pileupFilesPerJob)
   
 spec = maker.makeWorkflow()
 
 if activity is not None:
     spec.setActivity(activity)
-
-spec.parameters['TotalEvents']=totalEvents
-spec.parameters['EventsPerJob']=eventsPerJob
-spec.parameters['InitialRun']=startingRun
-if startingEvent != -1 :
-	spec.parameters['InitialEvent']=startingEvent
+if totalEvents is not None :
+    spec.parameters['TotalEvents']=totalEvents
 else :
-	print "Warning: InitialEvent parameter is not set!"
-if onlySites != None:
+    print "Warning: totalEvents parameter is not set!"
+if eventsPerJob is not None :
+    spec.parameters['EventsPerJob']=eventsPerJob
+else :
+    print "Warning: EventsPerJob parameter is not set!"
+if startingRun is not None :
+    spec.parameters['InitialRun']=startingRun
+else :
+    print "Warning: InitialRun (lumi) parameter is not set!"
+if startingEvent is not None :
+    spec.parameters['InitialEvent']=startingEvent
+else :
+    print "Warning: InitialEvent parameter is not set!"
+if onlySites is not None:
     spec.parameters['OnlySites']=onlySites
+if storeFail :
+    spec.parameters['UseStoreFail'] = "True"
 
 spec.save("%s-Workflow.xml" % maker.workflowName)
 
