@@ -3,12 +3,12 @@
 """
 _StoreFail_
 
-Util class to stage out a set of files from a job report to the /store/fail
+Util class to stage out a set of files from a job report to the /store/unmerged/fail
 namespace
 
 """
-__version__ = "$Revision$"
-__revision__ = "$Id$"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: StoreFail.py,v 1.1 2009/02/13 15:23:55 evansde Exp $"
 
 from StageOut.StageOutError import StageOutFailure
 from StageOut.StageOutMgr import StageOutMgr
@@ -18,13 +18,13 @@ def modifyLFN(inputLfn):
     """
     _modifyLFN_
 
-    Util to tweak a normal LFN to be a /store/fail LFN
+    Util to tweak a normal LFN to be a /store/unmerged/fail LFN
     Simple algorithm to start with, split of /store/whatever and replace
-    it with /store/fail
+    it with /store/unmerged/fail
 
     """
     lfnSplit = [ x for x in inputLfn.split("/") if len(x) != 0 ]
-    lfnSplit[1] = "fail"
+    lfnSplit[1] = "unmerged/fail"
     newLfn = "/%s" % "/".join(lfnSplit)
     return newLfn
 
@@ -46,7 +46,7 @@ class StoreFailMgr:
         """
         _operator()_
 
-        Invoke stage out of files to /store/fail based on
+        Invoke stage out of files to /store/unmerged/fail based on
         information in the report provided.
 
         Generate a list of the LFNs that were staged out as a

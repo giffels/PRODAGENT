@@ -9,8 +9,8 @@ for the job.
 
 
 """
-__version__ = "$Revision: 1.16 $"
-__revision__ = "$Id: RuntimeLogArch.py,v 1.16 2009/02/18 14:48:48 evansde Exp $"
+__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: RuntimeLogArch.py,v 1.17 2009/02/18 16:56:02 direyes Exp $"
 
 import sys
 import os
@@ -254,7 +254,7 @@ class LogArchMgr:
         except OSError, ex:
             print "Error creating directory %s: %s" % (taskArchiveDir, str(ex))
 
-        # stage out files so far to store/fail if activated
+        # stage out files so far to store/unmerged/fail if activated
         if self.doStoreFail:
             if self.wasJobFailure():
                 failLog = []
