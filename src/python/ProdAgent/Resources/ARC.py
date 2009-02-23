@@ -213,7 +213,7 @@ def execNgstat(ids):
     try:
         return executeCommand("ngstat " + ids)
     except CommandExecutionError, s:
-        msg = "Command 'ngstat %s' exited with exit status %s" % (ids, str(s))
+        #msg = "Command 'ngstat %s' exited with exit status %s" % (ids, str(s))
         raise RuntimeError, msg
             
 
