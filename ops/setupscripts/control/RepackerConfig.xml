@@ -1,4 +1,4 @@
-<?xml version="1.0" ?>
+<?xml version="0.0" ?>
 <ProdAgentConfig>
 	<ProdAgentConfiguration>
 		<Component Name="CondorTracker"/>
@@ -16,14 +16,27 @@
 		<Component Name="Tier0Accountant"/> 
 		<Component Name="Tier0Merger"/>
                 <Component Name="RepackerAuditor"/>
-                <Component Name="PromptRecoInjector"/>     
-                <Component Name="PromptRecoManager"/>
+                <Component Name="PromptRecoInjector"/> -->     
+                <Component Name="PromptRecoManager"/>  -->
                 <Component Name="BlockInjector"/> 
                 <Component Name="BlockAuditor"/> 
+                <Component Name="DQMInjector"/>
                 <ConfigBlock Name="RunConfig">
                   <Parameter Name="OfflineConfDB" Value="/data/cmsprod/PAProd/dev/control/OfflineConfiguration.py"/>
                   <Parameter Name="ConfigCacheDir" Value="/data/cmsprod/PAProd/dev/prodAgent/JobCache/RunConfig"/>
                 </ConfigBlock> 
+                <ConfigBlock Name="DQMInjector">
+                  <Parameter Name="LogLevel" Value="Debug"/>
+                  <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/DQMInjector"/>
+                <!-- <Parameter Name="proxyLocation" Value="/data/cmsprod/PAProd/dev/prodAgent/proxy/x509up_u7178"/> -->
+                <Parameter Name="proxyLocation" Value="/afs/cern.ch/user/c/cmsprod/.globus/x509up_u7178"/>
+                  <Parameter Name="Plugin" Value="T0ASTPlugin"/>
+                  <Parameter Name="Site" Value="srm-cms.cern.ch"/>
+                  <Parameter Name="ScramArch" Value="slc4_ia32_gcc345"/>
+                  <Parameter Name="CmsPath" Value="/afs/cern.ch/cms/sw"/>
+                  <Parameter Name="DQMCopyToCERN" Value="False"/>
+                  <Parameter Name="DQMServer" Value="https://cmsweb.cern.ch/dqm/dev"/>
+                </ConfigBlock>
                 <ConfigBlock Name="BlockInjector">
                   <Parameter Name="LogLevel" Value="Debug"/>
                   <Parameter Name="LogSize" Value="1073741824"/>
@@ -41,6 +54,15 @@
                   <Parameter Name="DBSMigrationFlag" Value="On"/>
                   <Parameter Name="SkipBlockTransferCheck" Value="On"/>
                   <Parameter Name="ComponentDir"  Value="/data/cmsprod/PAProd/dev/prodAgent/BlockAuditor"/>
+                </ConfigBlock>
+                <ConfigBlock Name="ProdMon">
+                        <Parameter Name="DashboardURL" Value="http://lxarda16.cern.ch/dashboard/request.py/getPAinfo"/>
+                        <Parameter Name="exportMaxBatchSize" Value="500"/>
+                       <Parameter Name="LogLevel" Value="Debug"/>
+                        <Parameter Name="ComponentDir" Value="/data/cmsprod/PAProd/dev/prodAgent/ProdMon"/>
+                        <Parameter Name="Team" Value="Boston Red Sox"/>
+                        <Parameter Name="exportEnabled" Value="True"/>
+                        <Parameter Name="exportInterval" Value="00:05:00"/>
                 </ConfigBlock>
                 <ConfigBlock Name="PromptRecoManager">
                         <Parameter Name="LogLevel" Value="Debug"/>
@@ -114,6 +136,7 @@
 			<Parameter Name="ProdAgentRunOffset" Value="0"/>
 		</ConfigBlock>
 		<ConfigBlock Name="ErrorHandler">
+                        <Parameter Name="LogLevel" Value="Debug"/>
 			<Comment>
 				MaxCacheDirSizeMB : The maximum size a cache dir can have 
 				before it is pruned, to prevent taking up to much space.
@@ -201,14 +224,13 @@
                 <ConfigBlock Name="Tier0DB">
 			<Parameter Name="user" Value="CMS_T0AST"/>-->  
 			<!-- <Parameter Name="user" Value="CMS_T0AST_WRITER"/> -->
-			<!-- <Parameter Name="user" Value="CMS_T0AST_2_WRITER"/> -->
+			<!--<Parameter Name="user" Value="CMS_T0AST_2_WRITER"/> -->
                         <Parameter Name="passwd" Value=""/>
                         <Parameter Name="dbName" Value="TOAST_0_0_1"/>
                         <Parameter Name="dbType" Value="oracle"/>
                         <!-- <Parameter Name="tnsName" Value="CMS_T0AST"/> -->
                         <Parameter Name="tnsName" Value="DEVDB10"/> -->
-                        <!-- <Parameter Name="tnsName" Value="CMS_T0AST"/> -->
-   			<Parameter Name="schemaLocation" Value="/data/cmsprod/PAProd/dev/install/T0/sql/tier0inject/TOAST_Oracle.sql"/>
+  			<Parameter Name="schemaLocation" Value="/data/cmsprod/PAProd/dev/install/T0/sql/tier0inject/TOAST_Oracle.sql"/>
                 </ConfigBlock>
 		<ConfigBlock Name="JobCreator">
 			<Parameter Name="CreatorPluginConfig" Value="/data/cmsprod/PAProd/dev/control/CreatorPluginConfig.xml"/>
