@@ -10,20 +10,20 @@ export INSTALL_TYPE=dev
 export PRODAGENT_INITIAL=c
 
 #PA RPM version -- this controls the dependencies
-export RPMVERSION=0_12_8_pre1
+export RPMVERSION=0_12_10
 
 # these are all parts of tags needed to check out the actual codebase from CVS
 # overriding what comes with the RPMS
 
 #The ProdAgent & ProdCommon versions you want to pull out of CVS
-export PAVERSION=0_12_8
-export PCVERSION=0_12_8
+export PAVERSION=0_12_12
+export PCVERSION=0_12_12
 #The DBS version we want to install
-export DBSVERSION=2_0_4_patch1
+export DBSVERSION=2_0_5
 #The WMCORE version required
-export WMCOREVERSION=T0_0_0_2_pre28
+export WMCOREVERSION=T0_0_0_2_pre40
 #The T0 version we need
-export T0VERSION=0_0_2_pre30
+export T0VERSION=0_0_2_pre42
 
 # This is probably the only one to change
 export PRODAGENT_TOP=/data/$PRODAGENT_USER/PAProd/$INSTALL_TYPE
