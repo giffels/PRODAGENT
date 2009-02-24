@@ -8,8 +8,8 @@ as success while failure are marked a middleware
 failures.
 
 """
-__revision__ = "$Id: EmulatorReportPlugin.py,v 1.21 2008/10/28 20:24:13 sryu Exp $"
-__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: EmulatorReportPlugin.py,v 1.22 2008/10/28 21:19:29 sfoulkes Exp $"
+__version__ = "$Revision: 1.22 $"
 __author__ = "sfoukes, sryu"
 
 import logging
@@ -142,6 +142,7 @@ class EmulatorReportPlugin(JobReportPluginInterface):
             theFile['SEName'] = workerNodeInfo['se-name']
             theFile['CEname'] = workerNodeInfo['ce-name']
             theFile['Catalog'] = outMod['catalog']
+            theFile['Stream'] = outMod['stream']
             theFile['OutputModuleClass'] = "PoolOutputModule"
 
             theFile.addChecksum("cksum", randrange(1000000, 10000000))
