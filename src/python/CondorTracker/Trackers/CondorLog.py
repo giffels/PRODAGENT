@@ -46,10 +46,6 @@ class CondorLog(dict):
         Return True or False if job was a success or not
 
         """
-        if self['Aborted']:
-            return False
-        if self['Held']:
-            return False
         if self['Terminated']:
             if self.has_key('TerminatedNormally'):
                 if self['TerminatedNormally']:
@@ -58,6 +54,10 @@ class CondorLog(dict):
                     return False
             # Not sure about this...
             return True
+        if self['Aborted']:
+            return False
+        if self['Held']:
+            return False
         return False
 
     def condorStatus(self):
