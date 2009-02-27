@@ -9,6 +9,7 @@ Automatically shutdown prodAgent components in case the disk is full
 import logging
 import os
 import subprocess
+import sys
 
 from AdminControl.Bots.BotInterface import BotInterface
 from AdminControl.Registry import registerBot
@@ -90,7 +91,6 @@ class DiskBot(BotInterface):
             msg += " SHUTTING DOWN PRODAGENT DAEMONS"
             logging.warning(msg)
             self.shutdown()
-            logging.info("Diskbot: Shutdown procedure completed.")
 
 
     def shutdown(self) :
@@ -102,7 +102,7 @@ class DiskBot(BotInterface):
         for component in components:
             logging.info("DiskBot: Checking %s" % component)
             if component.lower().find('admincontrol') > -1 :
-                logging.info("Suicide is not allowed. Skipping.")
+                logging.info("Suicide is not allowed... yet! Skipping.")
                 continue
             compCfg = cfgObject.getConfig(component)
             compDir = compCfg['ComponentDir']
@@ -122,6 +122,15 @@ class DiskBot(BotInterface):
                 logging.info("Component %s is alive, killing it..." % component)
                 daemon.killWithPrejudice()
                 logging.info("%s has been killed." % component)
+        
+        logging.info("Diskbot: Commiting seppuku. Bye.")
+        compCfg = cfgObject.getConfig("AdminControl")
+        compDir = compCfg['ComponentDir']
+        compDir = os.path.expandvars(compDir)
+        daemonXml = os.path.join(compDir, "Daemon.xml")
+        daemon = DaemonDetails(daemonXml)
+        daemon.killWithPrejudice()
+
 
 
 registerBot(DiskBot, DiskBot.__name__)
