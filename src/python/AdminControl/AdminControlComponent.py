@@ -33,7 +33,15 @@ class AdminControlComponent:
         self.args['Logfile'] = None
         self.args['Bots'] = ""
         self.args['BotPeriod'] = "01:00:00"
+        self.args['MailTo'] = None
+        self.args['SendMail'] = False
+        self.args['MaxDiskPercent'] = None
+        self.args['MinDiskSpaceGB'] = None
         self.args.update(args)
+
+        if self.args['SendMail'] :
+            if self.args['SendMail'].lower() == "true" :
+                self.args['SendMail'] = True
 
         self.botList = []
         self.bots = {}
@@ -49,11 +57,12 @@ class AdminControlComponent:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
         LoggingUtils.installLogHandler(self)
-
         msg = "AdminControl Component Started"
         msg += " => Bot Update Period: %s\n " % self.args['BotPeriod']
         msg += " => Bots: %s\n " % self.botList
+        msg += " => SendMail: %s\n" % self.args['SendMail']
         logging.info(msg)
+
 
     def __call__(self, event, payload):
         """
@@ -219,6 +228,7 @@ class AdminControlComponent:
             self.stopBots = False
             return
         for bot in self.bots.values():
+            bot.args.update(self.args)
             bot.run()
         self.ms.publish("AdminControl:BotCycle", "", self.args['BotPeriod'])
         self.ms.commit()
