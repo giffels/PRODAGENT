@@ -65,21 +65,43 @@ class DiskBot(BotInterface):
 
         """
         sizes = sizeUsed(os.getcwd())
-
+        
         percentUsed = float(sizes['used'])/float(sizes['size']) * 100
 
         #  //
-        # // > 98% full
+        # // > 98% full (default)
         #//
-        percentageLimit = 98
+        percentageLimit = self.args.get('MaxDiskPercent', None)
+        if percentageLimit == None or percentageLimit.lower() == "none" :
+            percentageLimit = 98
+        try :
+            percentageLimit = int(percentageLimit)
+        except ValueError, ex :
+            msg = "Parameter MaxDiskPercent: %s" % (ex)
+            raise RuntimeError, msg
+        if int(percentageLimit) <= 0 or int(percentageLimit) >= 100 :
+            percentageLimit = 98
+            msg = "MaxDiskPercent is out of bonds. MaxDiskPercent set to 98%."
+            raise RuntimeError, msg
         percentageTest = percentUsed > percentageLimit
         logging.info("Disk Percentage used %s > %s percent : Test is %s " % (
             percentUsed, percentageLimit, percentageTest))
 
         #  //
-        # // Minimum space check min GB available
+        # // Minimum space check min GB available (10 GB default)
         #//
-        minimumSpaceLimit = 10
+        minimumSpaceLimit = self.args.get('MinDiskSpaceGB', None)
+        if minimumSpaceLimit == None or minimumSpaceLimit.lower() == "none" :
+            minimumSpaceLimit = 10
+        try :
+            minimumSpaceLimit = int(minimumSpaceLimit)
+        except ValueError, ex :
+            msg = "Parameter MinDiskSpaceGB: %s" % (ex)
+            raise RuntimeError, msg
+        if int(minimumSpaceLimit) <= 0 :
+            minimumSpaceLimit = 10
+            msg = "MaxDiskPercent is out of bonds. MaxDiskPercent set to 98%."
+            raise RuntimeError, msg
         spaceTest = sizes['available'] < minimumSpaceLimit
         logging.info("Minimum Disk Space: %sGB < %sGB : Test is %s" % (
             sizes['available'], minimumSpaceLimit, spaceTest))
@@ -90,6 +112,7 @@ class DiskBot(BotInterface):
             msg += " - Less than %s GB available\n" % minimumSpaceLimit
             msg += " SHUTTING DOWN PRODAGENT DAEMONS"
             logging.warning(msg)
+            self.mail(msg)
             self.shutdown()
 
 
