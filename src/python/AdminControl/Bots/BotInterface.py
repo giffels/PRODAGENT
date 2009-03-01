@@ -8,6 +8,7 @@ Periodic Cycle
 """
 
 import logging
+import os
 
 class BotInterface:
     """
@@ -20,6 +21,7 @@ class BotInterface:
         self.cycleCount = 0
         self.skipCycles = 1
         self.active = True
+        self.args = {}
 
 
     def handleForwardedMessage(self, payload):
@@ -65,6 +67,42 @@ class BotInterface:
                 logging.error(ex)
             self.cycleCount = 0
         return
+
+
+    def mail(self, message):
+        """
+        _mail_
+        
+        Method that sends an email notification to the 'MailTo' field in 
+        case any of the bots had taken an action. This method has to be 
+        explicitly called.
+
+        """
+        if not self.args['SendMail'] :
+            logging.info("SendMail flag is False, not sending mail.")
+            return
+
+        if self.args['MailTo'] == None :
+            mailTo = os.environ['USER']
+        elif self.args['MailTo'].lower() == "none" :
+            mailTo = os.environ['USER']
+        else :
+            mailTo = self.args['MailTo']
+
+        host = os.environ['HOST']
+        messageFileName = os.path.join(self.args['ComponentDir'], 'mail.txt')
+        messageFile = open(messageFileName, 'w')
+        messageFile.write(message)
+
+        command = "mail -s '%s: ProdAgent. AdminControl Component Notification'" % (
+            host)
+        command += " %s" % (mailTo)
+        command += " < %s" % (messageFileName)
+
+        logging.info("\nSending notification mail.\nMailTo: %s\n" % mailTo)
+        logging.info("Command: %s" % command)
+        messageFile.close()
+        os.system(command)
 
 
     def __call__(self):
