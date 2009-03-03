@@ -43,6 +43,7 @@ class RestartBot(BotInterface):
         """
         cfgObject = loadProdAgentConfiguration()
         components = cfgObject.listComponents()
+        restartedComponents = []
         for component in components:
             logging.info("RestartBot: Checking %s" % component)
             compCfg = cfgObject.getConfig(component)
@@ -57,8 +58,8 @@ class RestartBot(BotInterface):
             if not daemon.isAlive():
                 doRestart = True
 
-
             if doRestart:
+                restartedComponents.append(component)
                 modRef = __import__(component, globals(), locals(), [])
                 srcFile = inspect.getsourcefile(modRef)
                 srcDir = os.path.dirname(srcFile)
@@ -75,6 +76,7 @@ class RestartBot(BotInterface):
                 os.system("%s %s " % (sys.executable, startup))
             else:
                 logging.info("RestartBot: Component %s Running" % component)
+        if 
         return
                 
                 
