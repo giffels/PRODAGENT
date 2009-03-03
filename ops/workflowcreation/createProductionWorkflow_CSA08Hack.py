@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: createProductionWorkflow_CSA08Hack.py,v 1.7 2009/01/16 10:26:13 direyes Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: createProductionWorkflow_CSA08Hack.py,v 1.8 2009/02/20 23:20:05 direyes Exp $"
 
 
 import os
@@ -29,7 +29,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', #"label=",
          'selection-efficiency=', 'activity=', 'stageout-intermediates=',
          'chained-input=', 'starting-run=','starting-event=','totalevents=',
          'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=',
-         'only-sites=', 'store-fail='
+         'only-sites=', 'store-fail=','workflow_tag='
          ]
 
 usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
@@ -52,6 +52,7 @@ usage += "                                  --acquisition_era=<Acquisition Era>\
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
 usage += "                                  --only-sites=<Site>\n"
+usage += "                                  --workflow_tag=<Tag in workflow name to distinguish e.g. RAW and RECO workflows for a given channel>\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -88,6 +89,7 @@ conditions = "Bad"
 processingVersion = None
 onlySites=None
 storeFail = False
+workflow_tag=None
 
 pileupDS = None
 pileupFilesPerJob = 1
@@ -151,7 +153,9 @@ for opt, arg in opts:
             storeFail = True
         else:
             storeFail = False
- 
+
+    if opt == '--workflow_tag':
+        workflow_tag = arg
     
 if len(cfgFiles) == 0:
     msg = "--cfg option not provided: This is required"
@@ -178,7 +182,12 @@ if channel == None:
 #  //
 # // Set requestId and label
 #//
-requestId="%s_%s" % (conditions,processingVersion)
+#requestId="%s_%s" % (conditions,processingVersion)
+if workflow_tag in (None,""):
+   requestId="%s_%s" % (conditions,processingVersion)
+else:
+   requestId="%s_%s_%s" % (conditions,workflow_tag,processingVersion)
+
 label=acquisitionEra
 
 for cfgFile in cfgFiles:
