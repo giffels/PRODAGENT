@@ -76,14 +76,16 @@ class RestartBot(BotInterface):
                 os.system("%s %s " % (sys.executable, startup))
             else:
                 logging.info("RestartBot: Component %s Running" % component)
-        if 
+        #  //
+        # // Mail notification
+        #//
+        if len(restartedComponents) > 0 :
+            mailMsg = "RestartBot. The following components were not running. The have been restarted:\n"
+            for component in restartedComponents :
+                mailMsg += " %s" % (component)
+            mailMsg += "\nYours, RestartBot."
+            self.mail(mailMsg)
         return
-                
-                
-            
-
 
 
 registerBot(RestartBot, RestartBot.__name__)
-
-
