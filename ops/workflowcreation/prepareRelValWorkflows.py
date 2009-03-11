@@ -21,17 +21,19 @@ def main(argv) :
     - prepare local DBS query script
     
     required parameters
-    --samples <textfile>           : list of RelVal sample parameter-sets in plain text file, one sample per line, # marks comment
-    --version <processing version> : processing version (v1, v2, ... )
-    --DBSURL <URL>                 : URL of the local DBS (http://cmsdbsprod.cern.ch/cms_dbs_prod_local_07/servlet/DBSServlet, http://cmssrv46.fnal.gov:8080/DBS126/servlet/DBSServlet)
+    --samples <textfile>            : list of RelVal sample parameter-sets in plain text file, one sample per line, # marks comment
+    --version <processing version>  : processing version (v1, v2, ... )
+    --DBSURL <URL>                  : URL of the local DBS (http://cmsdbsprod.cern.ch/cms_dbs_prod_local_07/servlet/DBSServlet, http://cmssrv46.fnal.gov:8080/DBS126/servlet/DBSServlet)
+    --only-sites                    : Site where dataset is going to be processed or where the input dataset is taken from. Usually srm-cms.cern.ch and cmssrm.fnal.gov
     
     optional parameters
-    --pileupdataset                : input pileup dataset. It must be provided if the <samples> txt file contains PilepUp samples
-    --lumi <number>                : initial run for generation (default: 666666), set it to 777777 for high statistics samples
-    --event <number>               : initial event number
-    --store-fail <True|False>      : store output files for failed jobs in chain processing.
-    --help (-h)                    : help
-    --debug (-d)                   : debug statements
+    --pileupdataset                 : input pileup dataset. It must be provided if the <samples> txt file contains PilepUp samples
+    --lumi <number>                 : initial run for generation (default: 666666), set it to 777777 for high statistics samples
+    --event <number>                : initial event number
+    --store-fail <True|False>       : store output files for failed jobs in chain processing.
+    --read-dbs                      : DBS URL used for obtaining the list of available blocks for real data. Default: http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet
+    --help (-h)                     : help
+    --debug (-d)                    : debug statements
     
     
     """
@@ -51,6 +53,13 @@ def main(argv) :
         print 'CMSSW architecture cannot be determined from $SCRAM_ARCH'
         sys.exit(2)
 
+    try:
+        from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
+    except ImportError, ex:
+        print ex
+        print 'Please load prodAgent libraries (point $PYTHONPATH to the right path).'
+        sys.exit(2)
+
     samples             = None
     processing_version  = None
     initial_run         = "666666"
@@ -59,9 +68,11 @@ def main(argv) :
     DBSURL              = None
     pileup_dataset      = None
     storeFail           = False
+    readDBS             = 'http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet'
+    onlySites           = None
 
     try:
-        opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", "DBSURL=", "event=", "lumi=", "pileupdataset=", "store-fail="])
+        opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", "DBSURL=", "event=", "lumi=", "pileupdataset=", "store-fail=", "read-dbs=", "only-sites="])
     except getopt.GetoptError:
         print main.__doc__
         sys.exit(2)
@@ -91,6 +102,10 @@ def main(argv) :
                 storeFail = True
             else:
                 storeFail = False
+        elif opt == '--read-dbs':
+            readDBS = arg
+        elif opt == '--only-sites':
+            onlySites = arg
 
     if initial_event == None :
 	print ""
@@ -117,55 +132,82 @@ def main(argv) :
     n_line = 0
     for line in file.readlines():
         n_line += 1
+        isRealData = False
         if line != '' and line != '\n' and line.find("#") != 0 and line.find('//') != 0 :
             # parse
             primary = 'RelVal' + line.split('@@@')[0].split('++')[1].strip()
-            command = line.split('@@@')[1].strip()
-            if command.count('=') > 0 : command=command.replace('=',' ')
-            array = command.split()
-            if '--conditions' in array:
-                conditions = array[array.index('--conditions')+1].split(',')[1].split('::')[0].strip()
-                if conditions not in parsedConditions: parsedConditions.append(conditions)
+            if line.find('REALDATA') > -1 :
+                command = ''
+                array = []
+                isRealData = True
+                conditions = None
+                pileUp = False
+                totalEvents = None
+                eventsPerJob = None
             else:
-                conditions = 'SpecialConditions'
-            if '--relval' in array :
-                totalEvents = array[array.index('--relval')+1].split(',')[0].strip()
-                eventsPerJob = array[array.index('--relval')+1].split(',')[1].strip()
-            SimType = ''
-            pileUp = False
-            if '--pileup' in array :
-                if array[array.index('--pileup')+1].lower().strip() != 'nopileup' :
-                    SimType = '_' + array[array.index('--pileup')+1].strip()
-                    pileUp = True
-                    if pileup_dataset == None :
-                        print "Hey! You have to provide a pileup dataset."
-                        print "Usually it is a MinBias (RAW)."
-                        print "Use option --pileupdataset"
-                        sys.exit(5)
-            if command.find('FASTSIM') != -1 : SimType = '_FastSim'
-            outputname = primary + '_' + conditions + SimType + '.py'
+                command = line.split('@@@')[1].strip()
+                if command.count('=') > 0 : command=command.replace('=',' ')
+                array = command.split()
+                if '--conditions' in array:
+                    conditions = array[array.index('--conditions')+1].split(',')[1].split('::')[0].strip()
+                    if conditions not in parsedConditions: parsedConditions.append(conditions)
+                else:
+                    conditions = 'SpecialConditions'
+                if '--relval' in array :
+                    totalEvents = array[array.index('--relval')+1].split(',')[0].strip()
+                    eventsPerJob = array[array.index('--relval')+1].split(',')[1].strip()
+                SimType = ''
+                pileUp = False
+                if '--pileup' in array :
+                    if array[array.index('--pileup')+1].lower().strip() != 'nopileup' :
+                        SimType = '_' + array[array.index('--pileup')+1].strip()
+                        pileUp = True
+                        if pileup_dataset == None :
+                            print "Hey! You have to provide a pileup dataset."
+                            print "Usually it is a MinBias (RAW)."
+                            print "Use option --pileupdataset"
+                            sys.exit(5)
+                if command.find('FASTSIM') != -1 : SimType = '_FastSim'
+                outputname = primary + '_' + conditions + SimType + '.py'
 
-            # add command options
-            if command.find('no_exec') < 0:
-                command += ' --no_exec'
-            if command.find('python_filename') < 0:
-                command += ' --python_filename ' + outputname
+                # add command options
+                if command.find('no_exec') < 0:
+                    command += ' --no_exec'
+                if command.find('python_filename') < 0:
+                    command += ' --python_filename ' + outputname
 
-            if len(line.split("@@@")[0].split("++")) > 3 :
+            if len(line.split("@@@")[0].split("++")) > 3 and not isRealData:
                 print "Sorry, but you need to you edit the samples file."
                 print "Only two \"++\" should be in the line %d:\n%s" % (n_line,line.split("@@@")[0])
-                print "Syntax should be like this:"
-                print "00 ++ SampleName ++ RECOTag, ALCATag @@@ cmsRun... or"
-                print "00 ++ SampleName ++ none @@@ cmsRun... in case there is no chained processing."
+                print "Syntax should be like this for MC samples:"
+                print "## ++ SampleName ++ RECOTag, ALCATag @@@ cmsDriver... or"
+                print "## ++ SampleName ++ none @@@ cmsDriver... in case there is no chained processing."
                 print ""
                 sys.exit(4)
 
-            chain = line.split('@@@')[0].split('++')[-1].split(',')
-            ALCAtag = RECOtag = None
-            if len(chain) >= 1 :
-                RECOtag = chain[0].strip()
-            if len(chain) >= 2 :
-                ALCAtag = chain[1].strip()
+            inputData = {}
+            inputBlocks = ""
+            if isRealData:
+                for parameter in line.split("@@@")[0].split('++')[3].split(','):
+                    inputData[parameter.split(':')[0].strip()] = parameter.split(':')[1].strip()
+                #  //
+                # // Looking up the blocks for a given Dataset and a given run
+                #//
+                reader = DBSReader(readDBS)
+                inputFiles = reader.dbs.listFiles(path=inputData['REALDATA'],runNumber=inputData['RUN'])
+                blocks = {}
+                for inputFile in inputFiles:
+                    blocks[inputFile['Block']['Name']] = None
+                inputBlocks = ",".join(blocks.keys())
+            
+            # Is a first step command?
+            if len(line.split('@@@')[0].split('++')) > 2 : #Yes
+                chain = line.split('@@@')[0].split('++')[2].split(',')
+                ALCAtag = RECOtag = None
+                if len(chain) >= 1 :
+                    RECOtag = chain[0].strip()
+                if len(chain) >= 2 :
+                    ALCAtag = chain[1].strip()
 
             # distinguish two-step and one-step processes (one step always has RECO in process list)
             if command.find('RECO') >= 0 :
@@ -173,6 +215,7 @@ def main(argv) :
                     dict = {}
                     dict['command'] = command
                     dict['outputname'] = outputname
+                    dict['conditions'] = conditions
                     step2[line.split('@@@')[0].split('++')[1].strip()] = dict
                 elif primary.find('ALCA') >= 0 :
                     dict = {}
@@ -200,6 +243,9 @@ def main(argv) :
                     dict['steps'] = 2
                 dict['RECOtag'] = RECOtag
                 dict['command'] = command
+                dict['isRealData'] = isRealData
+                dict['inputData'] = inputData
+                dict['inputBlocks'] = inputBlocks
                 dict['primary'] = primary
                 dict['conditions'] = conditions
                 dict['totalEvents'] = totalEvents
@@ -239,6 +285,9 @@ def main(argv) :
         for sample in step1:
             print 'primary:',sample['primary']
             print 'command:',sample['command']
+            print 'isRealData:',sample['isRealData']
+            print 'inputData:',sample['inputData']
+            print 'inputBlocks',sample['inputBlocks']
             print 'conditions:',sample['conditions']
             print 'totalEvents:',sample['totalEvents']
             print 'eventsPerJob:',sample['eventsPerJob']
@@ -267,13 +316,20 @@ def main(argv) :
     print 'Executing cmsDriver commands for step 1 configurations'
     print ''
     for sample in step1:
-        proc = popen2.Popen3(sample['command'])
-        exitCode = proc.wait()
-        if exitCode == 0 :
-            print 'cmsDriver command for step 1 to produce:',sample['outputname'],'exited with ExitCode:',exitCode
+        if not sample['isRealData'] :
+            proc = popen2.Popen3(sample['command'])
+            exitCode = proc.wait()
+            if exitCode == 0 :
+                print 'cmsDriver command for step 1 to produce:',sample['outputname'],'exited with ExitCode:',exitCode
+            else :
+                print 'cmsDriver command for step 1 to produce:',sample['outputname'],'failed with ExitCode:',exitCode
+                sys.exit(1)
         else :
-            print 'cmsDriver command for step 1 to produce:',sample['outputname'],'failed with ExitCode:',exitCode
-            sys.exit(1)
+            msg = 'Real Data:\n'
+            msg += 'Input dataset: %s\n' % (sample['inputData']['REALDATA'])
+            msg += 'Run: %s\n' % (sample['inputData']['RUN'])
+            msg += 'Input blocks: %s' % (sample['inputBlocks'])
+            print msg
 
     print ''
     print 'Executing cmsDriver commands for step 2 configurations'
@@ -317,60 +373,102 @@ def main(argv) :
 
     unmergedDatasets = []
     mergedDatasets = []
-    workflows = []
+    workflows = {}
 
 
     # create workflows
     for sample in step1:
-        if sample['steps'] == 2 :
-            command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
-            command += '--version=' + version + ' \\\n'
-            command += '--py-cfg=' + sample['outputname'] + ' \\\n'
-            command += '--version=' + version + ' \\\n'
-            command += '--py-cfg=' + step2[sample['RECOtag']]['outputname']+ ' \\\n'
-            command += '--stageout-intermediates=true \\\n'
-            command += '--group=RelVal \\\n'
-            command += '--category=relval \\\n'
-            command += '--activity=RelVal \\\n'
-            command += '--acquisition_era=' + version + ' \\\n'
-            command += '--conditions=' + sample['conditions'] + ' \\\n'
-            command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
-            command += '--only-sites=srm-cms.cern.ch \\\n'
-            command += '--starting-run=' + initial_run + ' \\\n'
-            if initial_event != None :
-                command += '--starting-event=' + initial_event + ' \\\n'
-            command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
-            command += '--eventsperjob=' + sample['eventsPerJob']
-            if sample['pileUp'] :
-                command += ' \\\n--pileup-dataset=' + pileup_dataset
-            if storeFail :
-                command += ' \\\n--store-fail=True' 
+        if sample['isRealData'] :
+            if sample['steps'] == 2 :
+                command  = 'python2.4 createProcessingWorkflow_CSA08Hack.py \\\n'
+                command += '--override-channel=' + sample['primary'] + ' \\\n'
+                command += '--version=' + version + ' \\\n'
+                command += '--py-cfg=' + step2[sample['RECOtag']]['outputname'] + ' \\\n'
+                command += '--group=RelVal \\\n'
+                command += '--category=relval \\\n'
+                command += '--activity=RelVal \\\n'
+                command += '--acquisition_era=' + version + ' \\\n'
+                command += '--conditions=' + step2[sample['RECOtag']]['conditions'] + ' \\\n'
+                command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
+                command += '--only-sites=' + onlySites + ' \\\n'
+                command += '--dataset='
+                command += '--dbs-url=' + readDBS + ' \\\n'
+                command += '--split-type=file \\\n'
+                command += '--split-size=1 \\\n'
+                command += '--only-blocks=' + sample['inputBlocks']
+            else :
+                command  = 'python2.4 createProcessingWorkflow_CSA08Hack.py \\\n'
+                command += '--override-channel=' + sample['primary'] + ' \\\n'
+                command += '--version=' + version + ' \\\n'
+                command += '--py-cfg=' + step2[sample['RECOtag']]['outputname'] + ' \\\n'
+                #  //
+                # // Currently not supported by prodAgent!
+                #//
+                #command += '--version=' + version + ' \\\n'
+                #command += '--py-cfg=' + step2[sample['ALCAtag']]['outputname'] + ' \\\n'
+                #command += '--stageout-intermediates=true \\\n'
+                command += '--group=RelVal \\\n'
+                command += '--category=relval \\\n'
+                command += '--activity=RelVal \\\n'
+                command += '--acquisition_era=' + version + ' \\\n'
+                command += '--conditions=' + step2[sample['RECOtag']]['conditions'] + ' \\\n'
+                command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
+                command += '--only-sites=' + onlySites + ' \\\n'
+                command += '--dataset='
+                command += '--dbs-url=' + readDBS + ' \\\n'
+                command += '--split-type=file \\\n'
+                command += '--split-size=1 \\\n'
+                command += '--only-blocks=' + sample['inputBlocks']
         else :
-            command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
-            command += '--version=' + version + ' \\\n'
-            command += '--py-cfg=' + sample['outputname'] + ' \\\n'
-            command += '--version=' + version + ' \\\n'
-            command += '--py-cfg=' + step2[sample['RECOtag']]['outputname']+ ' \\\n'
-            command += '--stageout-intermediates=true \\\n'
-            command += '--version=' + version + ' \\\n'
-            command += '--py-cfg=' + step3[sample['ALCAtag']]['outputname']+ ' \\\n'
-            command += '--stageout-intermediates=true \\\n'
-            command += '--group=RelVal \\\n'
-            command += '--category=relval \\\n'
-            command += '--activity=RelVal \\\n'
-            command += '--acquisition_era=' + version + ' \\\n'
-            command += '--conditions=' + sample['conditions'] + ' \\\n'
-            command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
-            command += '--only-sites=srm-cms.cern.ch \\\n'
-            command += '--starting-run=' + initial_run + ' \\\n'
-            if initial_event != None :
-                command += '--starting-event=' + initial_event + ' \\\n'
-            command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
-            command += '--eventsperjob=' + sample['eventsPerJob']
-            if sample['pileUp'] :
-                command += ' \\\n--pileup-dataset=' + pileup_dataset
-            if storeFail :
-                command += ' \\\n--store-fail=True'
+            if sample['steps'] == 2 :
+                command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
+                command += '--version=' + version + ' \\\n'
+                command += '--py-cfg=' + sample['outputname'] + ' \\\n'
+                command += '--version=' + version + ' \\\n'
+                command += '--py-cfg=' + step2[sample['RECOtag']]['outputname'] + ' \\\n'
+                command += '--stageout-intermediates=true \\\n'
+                command += '--group=RelVal \\\n'
+                command += '--category=relval \\\n'
+                command += '--activity=RelVal \\\n'
+                command += '--acquisition_era=' + version + ' \\\n'
+                command += '--conditions=' + sample['conditions'] + ' \\\n'
+                command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
+                command += '--only-sites=' + onlySites + ' \\\n'
+                command += '--starting-run=' + initial_run + ' \\\n'
+                if initial_event != None :
+                    command += '--starting-event=' + initial_event + ' \\\n'
+                command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
+                command += '--eventsperjob=' + sample['eventsPerJob']
+                if sample['pileUp'] :
+                    command += ' \\\n--pileup-dataset=' + pileup_dataset
+                if storeFail :
+                    command += ' \\\n--store-fail=True' 
+            else :
+                command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
+                command += '--version=' + version + ' \\\n'
+                command += '--py-cfg=' + sample['outputname'] + ' \\\n'
+                command += '--version=' + version + ' \\\n'
+                command += '--py-cfg=' + step2[sample['RECOtag']]['outputname']+ ' \\\n'
+                command += '--stageout-intermediates=true \\\n'
+                command += '--version=' + version + ' \\\n'
+                command += '--py-cfg=' + step3[sample['ALCAtag']]['outputname']+ ' \\\n'
+                command += '--stageout-intermediates=true \\\n'
+                command += '--group=RelVal \\\n'
+                command += '--category=relval \\\n'
+                command += '--activity=RelVal \\\n'
+                command += '--acquisition_era=' + version + ' \\\n'
+                command += '--conditions=' + sample['conditions'] + ' \\\n'
+                command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
+                command += '--only-sites=' + onlySites + ' \\\n'
+                command += '--starting-run=' + initial_run + ' \\\n'
+                if initial_event != None :
+                    command += '--starting-event=' + initial_event + ' \\\n'
+                command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
+                command += '--eventsperjob=' + sample['eventsPerJob']
+                if sample['pileUp'] :
+                    command += ' \\\n--pileup-dataset=' + pileup_dataset
+                if storeFail :
+                    command += ' \\\n--store-fail=True'
 
         if debug == 1 :
             print command
@@ -392,10 +490,10 @@ def main(argv) :
             unmergedDatasets.append(tmp)
             index = FindIndex(output,'Created')
             if index == -1 :
-                print "No workflow was created by createProductionWorkflow_CSAi08Hack.py"
+                print "No workflow was created by create*workflow.py"
                 sys.exit(1)
             workflow = output[index].split()[1].strip()
-            workflows.append(workflow)
+            workflows[workflow] = sample['isRealData']
             print 'workflow creation command for workflow:',workflow,'exited with ExitCode:',exitCode
         else :
             print 'workflow creation command:'
@@ -414,7 +512,7 @@ def main(argv) :
         command += '--acquisition_era=' + version + ' \\\n'
         command += '--conditions=' + sample['conditions'] + ' \\\n'
         command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
-        command += '--only-sites=srm-cms.cern.ch \\\n'
+        command += '--only-sites=' + onlySites + ' \\\n'
         command += '--starting-run=' + initial_run + ' \\\n'
         if initial_event != None :
             command += '--starting-event=' + initial_event + ' \\\n'
@@ -444,7 +542,7 @@ def main(argv) :
                 print "No workflow was created by createProductionWorkflow_CSAi08Hack.py"
                 sys.exit(1)
             workflow = output[index].split()[1].strip()
-            workflows.append(workflow) 
+            workflows[workflow] = False 
             print 'workflow creation command for workflow:',workflow,'exited with ExitCode:',exitCode
         else :
             exitValue = exitCode
@@ -455,7 +553,7 @@ def main(argv) :
     
     if debug == 1 :
         print 'Created workflows:'
-        print workflows	
+        print workflows.keys()	
         print ''
         print "Unmerged datasets:"
         print unmergedDatasets
@@ -474,8 +572,16 @@ def main(argv) :
     # WorkflowInjector:Input script
     inputScript = open('input.sh','w')
     inputScript.write('#!/bin/bash\n')
-    inputScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py WorkflowInjector:SetPlugin RequestFeeder\n')
-    for workflow in workflows:
+    feeder = 'None'
+    for workflow in workflows.keys():
+        if workflows[workflow]:
+            if feeder.find('ReReco') < 0:
+                inputScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py WorkflowInjector:SetPlugin ReRecoFeeder\n')
+                feeder = 'ReReco'
+        else :
+            if feeder.find('Request') < 0:
+                inputScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py WorkflowInjector:SetPlugin RequestFeeder\n')
+                feeder = 'Request'
         inputScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py WorkflowInjector:Input ' + os.path.join(os.getcwd(), workflow) + '\n')
     inputScript.close()
     os.chmod('input.sh',0755)
