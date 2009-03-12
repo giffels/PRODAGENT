@@ -22,6 +22,9 @@ prodAgent-install-db
 python $MYTESTAREA/PRODAGENT/util/resourceControl.py --new --site=CERN --ce-name=none --se-name=srm.cern.ch --processing-threshold=500 --min-submit=50 --max-submit=100
 
 #once that's in,you can dynamically edit the sql via:
+python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=repackThreshold --value=1000
+python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=minimumSubmission --value=10
+python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=maximumSubmission --value=500
 python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=processingThreshold --value=1000
 python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=cleanupThreshold --value=200
 python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=mergeThreshold --value=500

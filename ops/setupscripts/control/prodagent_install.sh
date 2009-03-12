@@ -27,6 +27,9 @@ cvs co -r PRODCOMMON_$PCVERSION PRODCOMMON
 # place any PC patches here:
 
 
+cvs update -r 1.12 PRODCOMMON/src/python/ProdCommon/FwkJobRep/FileInfo.py
+cvs update -r 1.11 PRODCOMMON/src/python/ProdCommon/FwkJobRep/TaskState.py
+
 cd PRODCOMMON
 make
 

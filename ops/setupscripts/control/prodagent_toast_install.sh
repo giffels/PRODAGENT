@@ -1,10 +1,8 @@
 
-cd $MYTESTAREA/T0/src/sql/
-#This is the production instance
-sqlplus CMS_T0AST/PlumJ4m791@DEVDB10 @TOAST_Oracle
-#This is Simons dev instance
-#sqlplus CMS_T0AST_SIMON/PlumJ4m791@DEVDB10 @TOAST_Oracle
+# this is using the new method of installing the schema rather than just
+# sourcing the sql
+cd $MYTESTAREA/T0/operations
+python installT0Schema.py
 cd $PBIN
-
 python t0astgrants.py
 

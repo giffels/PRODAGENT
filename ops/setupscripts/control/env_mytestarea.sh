@@ -10,20 +10,20 @@ export INSTALL_TYPE=dev
 export PRODAGENT_INITIAL=c
 
 #PA RPM version -- this controls the dependencies
-export RPMVERSION=0_12_10
+export RPMVERSION=0_12_13
 
 # these are all parts of tags needed to check out the actual codebase from CVS
 # overriding what comes with the RPMS
 
 #The ProdAgent & ProdCommon versions you want to pull out of CVS
-export PAVERSION=0_12_12
-export PCVERSION=0_12_12
+export PAVERSION=0_12_13
+export PCVERSION=0_12_13
 #The DBS version we want to install
 export DBSVERSION=2_0_5
 #The WMCORE version required
-export WMCOREVERSION=T0_0_0_2_pre40
+export WMCOREVERSION=T0_0_0_2_pre43
 #The T0 version we need
-export T0VERSION=0_0_2_pre42
+export T0VERSION=0_0_2_pre47
 
 # This is probably the only one to change
 export PRODAGENT_TOP=/data/$PRODAGENT_USER/PAProd/$INSTALL_TYPE
@@ -40,7 +40,7 @@ export VO_CMS_SW_DIR=$MYTESTAREA
 export SCRAM_ARCH_INSTALL=slc4_amd64_gcc345
 export LANG "C"
 
-export CVSROOT=:kserver:$PRODAGENT_USER@cmscvs.cern.ch:/cvs/CMSSW 
+export CVSROOT=:gserver:$PRODAGENT_USER@cmscvs.cern.ch:/cvs/CMSSW 
 export PRODAGENT_CONFIG=$PBIN/RepackerConfig.xml
 
 
