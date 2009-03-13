@@ -24,19 +24,19 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'only-blocks=', 'only-sites=',
          'only-closed-blocks',
          'dbs-url=', 
-         'pileup-dataset=', 'pileup-files-per-job=','workflow_tag=',
-         'tar-up-lib','tar-up-src','split-into-primary',
-         'acquisition_era=','conditions=','processing_version=',
-         'activity='
-         
+         'pileup-dataset=', 'pileup-files-per-job=',
+         'activity=', 'stageout-intermediates=', 'chained-input=',
+         'acquisition_era=', 'conditions=', 'processing_version=',
+         'workflow_tag=', 'split-into-primary',
+         'tar-up-lib','tar-up-src'
          ]
 
 
 usage = "Usage: createProcessingWorkflow.py --cfg=<cfgFile>\n"
 usage += "                                  --version=<CMSSW version>\n"
 usage += "                                  --group=<Physics Group>\n"
-usage += "                                  --request-id=<Request ID>\n"
-usage += "                                  --label=<Production Label>\n"
+#usage += "                                  --request-id=<Request ID>\n"
+#usage += "                                  --label=<Production Label>\n"
 usage += "                                  --category=<Production category>\n"
 usage += "\n"
 usage += "                                --dataset=<Dataset to process>\n"
@@ -47,14 +47,16 @@ usage += "                                --only-blocks=<List of fileblocks>\n"
 usage += "                                --only-sites=<List of sites>\n"
 usage += "                                --dbs-url=<DBSUrl>\n"
 usage += "                                  --override-channel=<Phys Channel/Primary Dataset>\n"
+usage += "                                  --activity=<activity>\n"
+usage += "                                  --stageout-intermediates=<true|false>\n"
+usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
 usage += "                                  --acquisition_era=<Acquisition Era>\n"
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
 usage += "                                  --workflow_tag=<Workflow tag>\n"
-usage += "                                --split-into-primary\n"
-usage += "                                --tar-up-lib\n"
-usage += "                                --tar-up-src\n"
-usage += "                                --activity=<activity>\n"
+usage += "                                  --split-into-primary\n"
+usage += "                                  --tar-up-lib\n"
+usage += "                                  --tar-up-src\n"
 
 
 
@@ -92,20 +94,31 @@ options = \
   --only-closed-blocks  Switch that will mean that open blocks are ignored
     by the dataset injector.
 
-  --split-into-primary  Take datasets flagged in cfg file as primary datasets
-
   --dbs-url=DBS Url, The URL of the DBS Service containing the input dataset
 
-   --tar-up-lib Switch turns up tarring up and bringing along the lib
-     dir.  Not for any particular reason, just to uh... be safe.
-
-   --tar-up-src Similar to --tar-up-lib, but for src.  It makes sense
-     to have this be seperate
-
-   --activity=<activity>, The activity represented but this workflow
+  --activity=<activity>, The activity represented but this workflow
     i.e. Reprocessing, Skimming etc.
+
+   --stageout-intermediates=<true|false>, Stageout intermediate files in 
+    chained processing
     
+   --chained-input=comma,separated,list,of,output,module,names Optional param
+   that specifies the output modules to chain to the next input module. Defaults
+   to all modules in a step, leave blank for all. If given should be specified 
+   for each step 
+
+  --split-into-primary  Take datasets flagged in cfg file as primary datasets
+
 """
+
+#  //
+# // Bonus track options (Please do not use them if you're don't know waht you're doing)
+# || These options don't work for chain processing!
+#//
+# --tar-up-lib Switch turns up tarring up and bringing along the lib
+#   dir.  Not for any particular reason, just to uh... be safe.
+#  --tar-up-src Similar to --tar-up-lib, but for src.  It makes sense
+#   to have this be seperate
 
 
 usage += options
@@ -118,14 +131,16 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-cfgFile = None
-version = None
+cfgFiles = []
+versions = []
+stageoutOutputs = []
+chainedInputs = []
 requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
 label = "Test"
 category = "mc"
 channel = None
-cfgType = "cfg"
+cfgTypes = []
 selectionEfficiency = None
 
 dataset = None
@@ -142,6 +157,8 @@ onlyClosedBlocks = False
 pileupDataset = None
 pileupFilesPerJob = 1
 
+activity = "Reprocessing"
+
 tarupLib = False
 tarupSrc = False
 
@@ -150,28 +167,34 @@ conditions="Bad"
 processingVersion=666
 workflow_tag=None
 
-activity = "Reprocessing"
 
 for opt, arg in opts:
     if opt == "--cfg":
-        cfgFile = arg
-        cfgType = "cfg"
+        cfgFiles.append(arg)
+        cfgTypes.append("cfg")
     if opt == "--py-cfg":
-  	cfgFile = arg
-  	cfgType = "python"
+        cfgFiles.append(arg)
+        cfgTypes.append("python")
     if opt == "--version":
-        version = arg
+        versions.append(arg)
+    if opt == "--stageout-intermediates":
+        if arg.lower() in ("true", "yes"):
+            stageoutOutputs.append(True)
+        else:
+            stageoutOutputs.append(False)
+    if opt == '--chained-input':
+        chainedInputs.append([x.strip() for x in arg.split(',') if x!=''])
     if opt == "--category":
         category = arg
 
     if opt == "--override-channel":
         channel = arg
-    if opt == "--label":
-        label = arg
+#    if opt == "--label":
+#        label = arg
     if opt == "--group":
         physicsGroup = arg
-    if opt == "--request-id":
-        requestId = arg
+#    if opt == "--request-id":
+#        requestId = arg
 
     if opt == "--selection-efficiency":
         selectionEfficiency = arg
@@ -194,27 +217,22 @@ for opt, arg in opts:
         pileupDataset = arg
     if opt == '--pileup-files-per-job':
         pileupFilesPerJob = arg
-
+    if opt == '--activity':
+        activity = arg
     if opt == "--acquisition_era":
         acquisitionEra = arg
     if opt == "--conditions":
         conditions = arg
     if opt == "--processing_version":
         processingVersion = arg
-
     if opt == "--workflow_tag":
         workflow_tag = arg
-
-
     if opt == '--split-into-primary':
         splitIntoPrimary = True
-
     if opt == '--tar-up-lib':
         tarupLib = True
     if opt == '--tar-up-src':
         tarupSrc = True  
-    if opt == '--activity':
-        activity = arg
 
 if workflow_tag in (None,""):
    requestId="%s_%s" % (conditions,processingVersion)
@@ -225,12 +243,23 @@ label=acquisitionEra
 
 
         
-if cfgFile == None:
+if not len(cfgFiles):
     msg = "--cfg or --py-cfg option not provided: This is required"
     raise RuntimeError, msg
+elif len(cfgFiles) > 1:
+    print "%s cfgs listed - chaining them" % len(cfgFiles)
 
-if version == None:
+if not len(versions):
     msg = "--version option not provided: This is required"
+    raise RuntimeError, msg
+if len(versions) != len(cfgFiles):
+    msg = "Need same number of --cfg and --version arguments"
+    raise RuntimeError, msg
+if len(stageoutOutputs) != len(cfgFiles) - 1:
+    msg = "Need one less --stageout-intermediates than --cfg arguments"
+    raise RuntimeError, msg
+if len(chainedInputs) and len(chainedInputs) != len(cfgFiles) - 1:
+    msg = "Need one less chained-input than --cfg arguments"
     raise RuntimeError, msg
 
 if dataset == None:
@@ -254,7 +283,7 @@ except ValueError, ex:
     msg = "--split-size argument is not an integer: %s\n" % splitSize
     raise RuntimeError, msg
 
-channel0 = DatasetConventions.parseDatasetPath(dataset)['Primary']
+#channel0 = DatasetConventions.parseDatasetPath(dataset)['Primary']
 
 if channel == None:
     #  //
@@ -263,11 +292,10 @@ if channel == None:
     channel = DatasetConventions.parseDatasetPath(dataset)['Primary']
     
 
-if not os.path.exists(cfgFile):
-    msg = "Cfg File Not Found: %s" % cfgFile
-    raise RuntimeError, msg
-
-
+for cfgFile in cfgFiles:
+    if not os.path.exists(cfgFile):
+        msg = "Cfg File Not Found: %s" % cfgFile
+        raise RuntimeError, msg
 
 #  //
 # // Set CMSSW_SEARCH_PATH
@@ -278,21 +306,6 @@ if not origcmsswsearch:
    raise RuntimeError, msg
 cmsswsearch="/:%s"%origcmsswsearch
 os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
-
-if cfgType == "cfg":
-    from FWCore.ParameterSet.Config import include
-    cmsCfg = include(cfgFile)
-else:
-    import imp
-    modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
-    cmsCfg = modRef.process
-                                                                                                      
-cfgWrapper = CMSSWConfig()
-cfgWrapper.originalCfg = file(cfgFile).read()
-cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
-cfgInt.validateForProduction()
-
-
 
 
 #  //
@@ -388,13 +401,9 @@ if tarupLib:
 #//
 
 maker = WorkflowMaker(requestId, channel, label )
-
-maker.setCMSSWVersion(version)
 maker.setPhysicsGroup(physicsGroup)
-maker.setConfiguration(cfgWrapper, Type = "instance")
-maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
-maker.changeCategory(category)
-maker.setAcquisitionEra(acquisitionEra)
+#maker.changeCategory(category)
+#maker.setAcquisitionEra(acquisitionEra)
 
 
 
@@ -420,6 +429,41 @@ if selectionEfficiency != None:
     maker.addSelectionEfficiency(selectionEfficiency)
 
 
+# loop over cfg's provided and add to workflow
+# first cmsRun node created implicitly by WorkflowMaker
+nodeNumber = 0
+for cfgFile in cfgFiles:
+
+    if cfgTypes[nodeNumber] == "cfg":
+        from FWCore.ParameterSet.Config import include
+        cmsCfg = include(cfgFile)
+    else:
+        import imp
+        modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
+        cmsCfg = modRef.process
+
+    cfgWrapper = CMSSWConfig()
+    #cfgWrapper.originalCfg = file(cfgFile).read()
+    cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
+    cfgInt.validateForProduction()
+
+    if nodeNumber:
+        try:
+            inputModules = chainedInputs[nodeNumber-1]
+        except IndexError:
+            inputModules = []
+        maker.chainCmsRunNode(stageoutOutputs[nodeNumber-1], *inputModules)
+
+    maker.setCMSSWVersion(versions[nodeNumber])
+    maker.setConfiguration(cfgWrapper, Type = "instance")
+    maker.setOriginalCfg(file(cfgFile).read())
+    maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
+    
+    nodeNumber = nodeNumber + 1
+
+maker.changeCategory(category)
+maker.setAcquisitionEra(acquisitionEra)
+ 
 #  //
 # // Pileup sample?
 #//
@@ -451,7 +495,7 @@ maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
 spec = maker.makeWorkflow()
 spec.setActivity(activity)
-appendedname="%s-%s" % (maker.workflowName,channel0)
+#appendedname="%s-%s" % (maker.workflowName,channel0)
 spec.save("%s-Workflow.xml" % maker.workflowName)
 
 
