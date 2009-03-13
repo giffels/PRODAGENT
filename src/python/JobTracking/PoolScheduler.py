@@ -6,14 +6,14 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.3 2008/07/25 15:47:41 swakef Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.4 2008/07/28 13:39:22 gcodispo Exp $"
+__version__ = "$Revision: 1.4 $"
 
 from threading import Thread
 from time import sleep
 from sets import Set
 import logging
-from random import shuffle
+# from random import shuffle
 
 from JobTracking.JobStatus import JobStatus
 from JobTracking.TrackingDB import TrackingDB
@@ -147,7 +147,9 @@ class PoolScheduler(Thread):
         # process all groups
         grid = 0
         while self.jobPerTask != [] :
+
             grid = grid + 1
+            ntasks = 0
 
             # ignore groups under processing
             if grid in self.groupsUnderProcessing:
@@ -161,8 +163,9 @@ class PoolScheduler(Thread):
             logging.info('filling group ' + str(grid) + ' with largest tasks')
 
             # fill group with the largest tasks
-            while self.jobPerTask != []:
+            while self.jobPerTask != [] and ntasks < 30 :
                 try:
+
                     task, jobs = self.jobPerTask[0]
 
                     # stop when there are enough jobs
@@ -175,6 +178,9 @@ class PoolScheduler(Thread):
                     jobsReached += int(jobs)
                     self.jobPerTask.pop(0)
 
+                    # stop when there are too much tasks
+                    ntasks += 1
+
                 # go to next task
                 except IndexError, ex:
                     self.jobPerTask.pop(0)
@@ -185,8 +191,9 @@ class PoolScheduler(Thread):
                           ' with the smallest tasks')
 
             # fill group with the smallest tasks
-            while self.jobPerTask != []:
+            while self.jobPerTask != [] and ntasks < 30 :
                 try:
+
                     task, jobs = self.jobPerTask[0]
 
                     # stop when there are enough jobs
@@ -197,6 +204,9 @@ class PoolScheduler(Thread):
                     groups[grid] += task + ','
                     jobsReached += int(jobs)
                     self.jobPerTask.pop()
+
+                    # stop when there are too much tasks
+                    ntasks += 1
 
                 # go to next task
                 except IndexError:
@@ -230,6 +240,6 @@ class PoolScheduler(Thread):
         logging.debug("returning groups " + ret.__str__())
 
         # and return it
-        shuffle( ret )
+        # shuffle( ret )
         return ret
 

@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__revision__ = "$Id: JobStatus.py,v 1.4 2008/09/08 15:56:04 gcodispo Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: JobStatus.py,v 1.5 2008/09/24 09:09:39 gcodispo Exp $"
+__version__ = "$Revision: 1.5 $"
 
 import threading
 from JobTracking.TrackingDB import TrackingDB
@@ -254,6 +254,7 @@ class JobStatus:
                 #    + " with BOSS id " +  str( pair[0] ) + '.' \
                 #    + str( pair[1] )\
                 #    )
+            logging.debug("Removed jobs from group %s" % str(group) )
             session.close()
             del( joblist )
 

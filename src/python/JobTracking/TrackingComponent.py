@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.60 2008/11/20 18:16:22 mcinquil Exp $"
-__version__ = "$Revision: 1.60 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.61 2009/02/09 09:56:20 gcodispo Exp $"
+__version__ = "$Revision: 1.61 $"
 
 import os
 import os.path
@@ -61,7 +61,7 @@ class TrackingComponent:
         self.args = {}
         self.args.setdefault("PollInterval", 300)
         self.args.setdefault("QueryInterval", 3)
-        self.args.setdefault("jobsToPoll", 300)
+        self.args.setdefault("jobsToPoll", 3000)
         self.args.setdefault("PoolThreadsSize", 5)
         self.args.setdefault("ComponentDir", "/tmp")
         self.args.setdefault("ProdAgentWorkDir", None)
@@ -491,7 +491,7 @@ class TrackingComponent:
         try:
             # logging.debug("dashboardinfo: %s" % dashboardInfo.__str__())
             dashboardInfo.publish(1)
-            logging.info("dashboard info sent for job %s" % self.fullId(job) )
+            logging.debug("dashboard info sent for job %s" % self.fullId(job) )
 
         # error, cannot publish it
         except Exception, msg:

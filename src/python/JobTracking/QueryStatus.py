@@ -4,7 +4,7 @@ __QueryStatus__
 
 """
 
-__version__ = "$Id: QueryStatus.py,v 1.4 2008/08/27 13:00:15 gcodispo Exp $"
+__version__ = "$Id: QueryStatus.py,v 1.5 2008/10/07 17:07:27 gcodispo Exp $"
 __revision__ = "$Revision"
 __author__ = "Giuseppe.Codispoti@bo.infn.it"
 
@@ -37,7 +37,9 @@ except :
 bossSession = BossLiteAPI( "MySQL", dbConfig)
 
 # Scheduler session
-schedulerConfig = { 'name' : scheduler, 'user_proxy' : proxy }
+schedulerConfig = { 'name' : scheduler,
+                    'user_proxy' : proxy,
+                    'skipProxyCheck' : True}
 
 try:
     schedSession = BossLiteAPISched( bossSession, schedulerConfig)
