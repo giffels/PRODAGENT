@@ -47,7 +47,7 @@ def standardScriptHeader(jobSpecId, wfSpecId, minDiskSize=1500000):
     script.append("MIN_DISK=%s\n" % minDiskSize) 
     script.append("DIRS=\"$OSG_WN_TMP $_CONDOR_SCRATCH_DIR\"\n")
     script.append("for dir in $DIRS; do\n")
-    script.append("  space=`df $dir | tail -1 | awk '{print $4}'`\n")
+    script.append("  space=`df -P $dir | tail -1 | awk '{print $4}'`\n")
     script.append("  if [ \"$space\" -gt $MIN_DISK ]; then \n")
     script.append("     CHOSEN_WORKDIR=$dir\n")
     script.append("     break\n")
