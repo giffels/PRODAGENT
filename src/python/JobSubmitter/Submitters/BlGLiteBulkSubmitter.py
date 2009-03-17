@@ -6,8 +6,8 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.2 2008/05/30 16:29:24 gcodispo Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.3 2009/01/09 10:17:58 gcodispo Exp $"
+__version__ = "$Revision: 1.3 $"
 
 import os
 import logging
@@ -17,15 +17,6 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BossLiteBulkInterface import BossLiteBulkInterface
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentCore.ProdAgentException import ProdAgentException
-
-import exceptions
-class InvalidFile(exceptions.Exception):
-    """
-    local exception
-    """
-    def __init__(self, msg):
-        args = "%s\n" % msg
-        exceptions.Exception.__init__(self, args)
 
 
 class BlGLiteBulkSubmitter(BossLiteBulkInterface):
@@ -80,7 +71,7 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
 
         if userJDLRequirementsFile != "None":
 
-            if os.path.exists(userJDLRequirementsFile) :
+            try :
                 userReq = None
                 logging.debug( "createJDL: using JDLRequirementsFile " \
                                + userJDLRequirementsFile )
@@ -98,11 +89,11 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
                             submissionAttrs += inline
                 if userReq != None :
                     userRequirements = " %s " % userReq
-            else:
+            except IOError:
                 msg = "JDLRequirementsFile File Not Found: %s" \
                       % userJDLRequirementsFile
                 logging.error(msg)
-                raise InvalidFile(msg)
+                raise
 
         anyMatchrequirements = self.getSiteRequirements()
 
