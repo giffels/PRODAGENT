@@ -25,15 +25,18 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'only-closed-blocks',
          'dbs-url=', 
          'pileup-dataset=', 'pileup-files-per-job=',
-         'activity=', 'stageout-intermediates=', 'chained-input='         
+         'activity=', 'stageout-intermediates=', 'chained-input=',
+         'acquisition_era=', 'conditions=', 'processing_version=',
+         'workflow_tag=', 'split-into-primary',
+         'tar-up-lib','tar-up-src'
          ]
 
 
 usage = "Usage: createProcessingWorkflow.py --cfg=<cfgFile>\n"
 usage += "                                  --version=<CMSSW version>\n"
 usage += "                                  --group=<Physics Group>\n"
-usage += "                                  --request-id=<Request ID>\n"
-usage += "                                  --label=<Production Label>\n"
+#usage += "                                  --request-id=<Request ID>\n"
+#usage += "                                  --label=<Production Label>\n"
 usage += "                                  --category=<Production category>\n"
 usage += "\n"
 usage += "                                --dataset=<Dataset to process>\n"
@@ -47,6 +50,13 @@ usage += "                                  --override-channel=<Phys Channel/Pri
 usage += "                                  --activity=<activity>\n"
 usage += "                                  --stageout-intermediates=<true|false>\n"
 usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
+usage += "                                  --acquisition_era=<Acquisition Era>\n"
+usage += "                                  --conditions=<Conditions>\n"
+usage += "                                  --processing_version=<Processing version>\n"
+usage += "                                  --workflow_tag=<Workflow tag>\n"
+usage += "                                  --split-into-primary\n"
+usage += "                                  --tar-up-lib\n"
+usage += "                                  --tar-up-src\n"
 
 
 
@@ -85,10 +95,10 @@ options = \
     by the dataset injector.
 
   --dbs-url=DBS Url, The URL of the DBS Service containing the input dataset
-    
-  --activity=<activity>, The activiy represented but this workflow
+
+  --activity=<activity>, The activity represented but this workflow
     i.e. Reprocessing, Skimming etc.
-    
+
    --stageout-intermediates=<true|false>, Stageout intermediate files in 
     chained processing
     
@@ -96,7 +106,19 @@ options = \
    that specifies the output modules to chain to the next input module. Defaults
    to all modules in a step, leave blank for all. If given should be specified 
    for each step 
+
+  --split-into-primary  Take datasets flagged in cfg file as primary datasets
+
 """
+
+#  //
+# // Bonus track options (Please do not use them if you're don't know waht you're doing)
+# || These options don't work for chain processing!
+#//
+# --tar-up-lib Switch turns up tarring up and bringing along the lib
+#   dir.  Not for any particular reason, just to uh... be safe.
+#  --tar-up-src Similar to --tar-up-lib, but for src.  It makes sense
+#   to have this be seperate
 
 
 usage += options
@@ -125,6 +147,7 @@ dataset = None
 splitType = None
 splitSize = None
 
+splitIntoPrimary = False
 
 onlyBlocks = None
 onlySites = None
@@ -136,7 +159,13 @@ pileupFilesPerJob = 1
 
 activity = "Reprocessing"
 
+tarupLib = False
+tarupSrc = False
 
+acquisitionEra="Test"
+conditions="Bad"
+processingVersion=666
+workflow_tag=None
 
 
 for opt, arg in opts:
@@ -160,12 +189,12 @@ for opt, arg in opts:
 
     if opt == "--override-channel":
         channel = arg
-    if opt == "--label":
-        label = arg
+#    if opt == "--label":
+#        label = arg
     if opt == "--group":
         physicsGroup = arg
-    if opt == "--request-id":
-        requestId = arg
+#    if opt == "--request-id":
+#        requestId = arg
 
     if opt == "--selection-efficiency":
         selectionEfficiency = arg
@@ -190,6 +219,29 @@ for opt, arg in opts:
         pileupFilesPerJob = arg
     if opt == '--activity':
         activity = arg
+    if opt == "--acquisition_era":
+        acquisitionEra = arg
+    if opt == "--conditions":
+        conditions = arg
+    if opt == "--processing_version":
+        processingVersion = arg
+    if opt == "--workflow_tag":
+        workflow_tag = arg
+    if opt == '--split-into-primary':
+        splitIntoPrimary = True
+    if opt == '--tar-up-lib':
+        tarupLib = True
+    if opt == '--tar-up-src':
+        tarupSrc = True  
+
+if workflow_tag in (None,""):
+   requestId="%s_%s" % (conditions,processingVersion)
+else:
+   requestId="%s_%s_%s" % (conditions,workflow_tag,processingVersion)
+
+label=acquisitionEra
+
+
         
 if not len(cfgFiles):
     msg = "--cfg or --py-cfg option not provided: This is required"
@@ -231,6 +283,7 @@ except ValueError, ex:
     msg = "--split-size argument is not an integer: %s\n" % splitSize
     raise RuntimeError, msg
 
+#channel0 = DatasetConventions.parseDatasetPath(dataset)['Primary']
 
 if channel == None:
     #  //
@@ -253,7 +306,95 @@ if not origcmsswsearch:
    raise RuntimeError, msg
 cmsswsearch="/:%s"%origcmsswsearch
 os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
-                                                                                          
+
+
+#  //
+# //  deal with user sandbox -- make tarball & stick location in workflow
+# ||  Code developed more or less organically as we learned what needed to be packed along
+#//
+
+# first we make sure version is the same as where we are, otherwise bail
+if tarupLib:
+  CMSSWversionFromHere=((os.getcwd()).split("/"))[-2]
+  if CMSSWversionFromHere!=version:
+      msg="You said to tar up the lib dir,\n"
+      msg+="but specified a different CMSSW version than we're sitting in..."
+      raise RuntimeError, msg
+
+
+  CMSSWLibPath=os.path.join(version,'lib')
+  RelCMSSWLibPath=os.path.join('../../',CMSSWLibPath)
+  LibSubDir=os.listdir(RelCMSSWLibPath)
+  if len(LibSubDir)>1:
+    msg="Seems there is more than one architecture in lib dir, and --tar-up-libs was set."
+    raise RuntimeError, msg
+  LibOSPath=LibSubDir[0]
+  CMSSWLibSubPath=os.path.join(CMSSWLibPath,LibOSPath)
+  RelCMSSWLibSubPath=os.path.join('../../',CMSSWLibSubPath)
+  StuffinLib=os.listdir(RelCMSSWLibSubPath)
+  if len(StuffinLib)>0:
+    print "%i things in %s -- tarring the following:"% (len(StuffinLib),CMSSWLibSubPath)
+  else:
+    print "Nothing in CMSSW lib dir\n Nevermind..."  
+
+#   need to do the same for the module dir...
+
+  CMSSWModulePath=os.path.join(version,'module') 
+  RelCMSSWModulePath=os.path.join('../../',CMSSWModulePath)
+  ModuleSubDir=os.listdir(RelCMSSWModulePath)
+  if len(ModuleSubDir)>1:
+    msg="Seems there is more than one architecture in module dir, and --tar-up-libs was set."
+    raise RuntimeError, msg
+  ModuleOSPath=ModuleSubDir[0]
+  CMSSWModuleSubPath=os.path.join(CMSSWModulePath,ModuleOSPath)
+  RelCMSSWModuleSubPath=os.path.join('../../',CMSSWModuleSubPath)
+  StuffinModule=os.listdir(RelCMSSWModuleSubPath)
+  if len(StuffinModule)>0:
+    print "%i things in %s -- tarring the following:"% (len(StuffinModule),CMSSWModuleSubPath)
+  else:
+    print "Nothing in CMSSW module dir\n Nevermind..."
+    
+#   need to do the same for the share dir...
+
+
+
+  CMSSWSharePath=""
+  CMSSWSharePath=os.path.join(version,'share')
+  RelCMSSWSharePath=os.path.join('../../',CMSSWSharePath)
+  if os.path.exists(RelCMSSWSharePath):
+    StuffinShare=os.listdir(RelCMSSWSharePath)
+    if len(StuffinShare)>0:
+      print "%i things in %s -- tarring the following:"% (len(StuffinShare),CMSSWSharePath)
+    else:
+      print "Nothing in CMSSW share dir\n Nevermind..."
+
+# then python path
+
+  CMSSWPythonPath=""
+  CMSSWPythonPath=os.path.join(version,'python')
+  RelCMSSWPythonPath=os.path.join('../../',CMSSWPythonPath)
+  if os.path.exists(RelCMSSWPythonPath):
+    StuffinPython=os.listdir(RelCMSSWPythonPath)
+    if len(StuffinPython)>0:
+      print "%i things in %s -- tarring the following:"% (len(StuffinPython),CMSSWPythonPath)
+    else:
+      print "Nothing in CMSSW python dir\n Nevermind..."
+
+
+#   need to do the same for the src/data dir if requested...
+  CMSSWSrcPath=""
+  if tarupSrc:
+    CMSSWSrcPath=os.path.join(version,'src') 
+    RelCMSSWSrcPath=os.path.join('../../',CMSSWSrcPath)
+    StuffinSrc=os.listdir(RelCMSSWSrcPath)
+    if len(StuffinSrc)>0:
+      print "%i things in %s -- tarring the following:"% (len(StuffinSrc),CMSSWSrcPath)
+    else:
+      print "Nothing in CMSSW lib dir\n Nevermind..."
+
+  
+
+
 
 #  //
 # // Instantiate a WorkflowMaker
@@ -261,7 +402,28 @@ os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
 
 maker = WorkflowMaker(requestId, channel, label )
 maker.setPhysicsGroup(physicsGroup)
-maker.changeCategory(category)
+#maker.changeCategory(category)
+#maker.setAcquisitionEra(acquisitionEra)
+
+
+
+#  //
+# //  Actually make tarball & insert into workflow -- needed to do this after maker
+# ||  is instantiated so that we have the workflow name to play with
+#//
+
+if tarupLib:
+    
+  tarball="%s.sandbox.tgz" % maker.workflowName
+  systemcommand="tar -cvzf %s -C ../.. --wildcards --exclude=\"*.tgz\" --exclude \"*.root\" %s %s %s %s %s" % (tarball,CMSSWLibSubPath,CMSSWModuleSubPath,CMSSWSharePath,CMSSWSrcPath,CMSSWPythonPath)
+
+  print "system command: %s" % systemcommand
+  os.system(systemcommand)
+#  systemcommand="mv ../%s ." % tarball
+#  os.system(systemcommand)
+  FullPathToTarfile=os.path.join(os.getcwd(),tarball)
+  maker.setUserSandbox(FullPathToTarfile)
+  print "Tarball %s inserted into workflow" % tarball
 
 if selectionEfficiency != None:
     maker.addSelectionEfficiency(selectionEfficiency)
@@ -298,7 +460,10 @@ for cfgFile in cfgFiles:
     maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
     
     nodeNumber = nodeNumber + 1
-    
+
+maker.changeCategory(category)
+maker.setAcquisitionEra(acquisitionEra)
+ 
 #  //
 # // Pileup sample?
 #//
@@ -325,11 +490,12 @@ if onlyClosedBlocks:
 if dbsUrl != None:
     maker.workflow.parameters['DBSURL'] = dbsUrl
 
-
+maker.workflow.parameters['Conditions'] = conditions
+maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
 spec = maker.makeWorkflow()
 spec.setActivity(activity)
-
+#appendedname="%s-%s" % (maker.workflowName,channel0)
 spec.save("%s-Workflow.xml" % maker.workflowName)
 
 

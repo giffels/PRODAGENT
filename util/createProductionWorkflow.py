@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.14 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.14 2008/07/18 14:13:39 swakef Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: createProductionWorkflow_CSA08Hack.py,v 1.9 2009/03/03 14:48:16 direyes Exp $"
 
 
 import os
@@ -23,23 +23,36 @@ from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 
 
-valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
-         'channel=', 'group=', 'request-id=',
+valid = ['cfg=', 'py-cfg=', 'version=', 'category=', #"label=",
+         'channel=', 'group=', #'request-id=',
          'pileup-dataset=', 'pileup-files-per-job=',
          'selection-efficiency=', 'activity=', 'stageout-intermediates=',
-         'chained-input='
+         'chained-input=', 'starting-run=','starting-event=','totalevents=',
+         'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=',
+         'only-sites=', 'store-fail=','workflow_tag='
          ]
 
 usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
 usage += "                                  --version=<CMSSW version>\n"
 usage += "                                  --channel=<Phys Channel/Primary Dataset>\n"
 usage += "                                  --group=<Physics Group>\n"
-usage += "                                  --request-id=<Request ID>\n"
-usage += "                                  --label=<Production Label>\n"
+#usage += "                                  --request-id=<Request ID>\n"  #Replaced by --conditions and --processing_version 
+#usage += "                                  --label=<Production Label>\n" #Replaced by --aquisition_era
 usage += "                                  --category=<Production category>\n"
 usage += "                                  --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
 usage += "                                  --stageout-intermediates=<true|false>\n"
 usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
+usage += "                                  --store-fail=<true|false>. It forces the stageout \
+                                            of output files before a faild step\n"
+usage += "                                  --starting-run=<Starting lumi>\n"
+usage += "                                  --starting-event=<Starting event>\n"
+usage += "                                  --totalevents=<Total Events>\n"
+usage += "                                  --eventsperjob=<Events/job>\n"
+usage += "                                  --acquisition_era=<Acquisition Era>\n"
+usage += "                                  --conditions=<Conditions>\n"
+usage += "                                  --processing_version=<Processing version>\n"
+usage += "                                  --only-sites=<Site>\n"
+usage += "                                  --workflow_tag=<Tag in workflow name to distinguish e.g. RAW and RECO workflows for a given channel>\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -59,14 +72,24 @@ except getopt.GetoptError, ex:
 cfgFiles = []
 stageoutOutputs = []
 chainedInputs = []
-requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
+#requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
 physicsGroup = "Individual"
-label = "Test"
+#label = "Test"
 versions = []
 category = "mc"
 channel = None
 cfgTypes = []
 activity = None
+startingRun = None
+startingEvent = None
+totalEvents = None
+eventsPerJob = None
+acquisitionEra = "Test"
+conditions = "Bad"
+processingVersion = None
+onlySites=None
+storeFail = False
+workflow_tag=None
 
 pileupDS = None
 pileupFilesPerJob = 1
@@ -77,11 +100,9 @@ for opt, arg in opts:
     if opt == "--cfg":
         cfgFiles.append(arg)
         cfgTypes.append("cfg")
-        cfgType = "cfg"
     if opt == "--py-cfg":
         cfgFiles.append(arg)
         cfgTypes.append("python")
-        cfgType = "python"
     if opt == "--version":
         versions.append(arg)
     if opt == "--stageout-intermediates":
@@ -95,12 +116,28 @@ for opt, arg in opts:
         category = arg
     if opt == "--channel":
         channel = arg
-    if opt == "--label":
-        label = arg
+#    if opt == "--label":
+#        label = arg
     if opt == "--group":
         physicsGroup = arg
-    if opt == "--request-id":
-        requestId = arg
+#    if opt == "--request-id":
+#        requestId = arg
+    if opt == "--starting-run":
+        startingRun = arg
+    if opt == "--starting-event":
+        startingEvent = arg
+    if opt == "--totalevents":
+        totalEvents = arg
+    if opt == "--eventsperjob":
+        eventsPerJob = arg
+    if opt == "--acquisition_era":
+        acquisitionEra = arg
+    if opt == "--conditions":
+        conditions = arg
+    if opt == "--processing_version":
+        processingVersion = arg
+    if opt == '--only-sites':
+        onlySites = arg
 
     if opt == "--selection-efficiency":
         selectionEfficiency = arg
@@ -111,7 +148,14 @@ for opt, arg in opts:
         pileupFilesPerJob = arg
     if opt == '--activity':
         activity = arg
-   
+    if opt == '--store-fail':
+        if arg.lower() in ("true", "yes"):
+            storeFail = True
+        else:
+            storeFail = False
+
+    if opt == '--workflow_tag':
+        workflow_tag = arg
     
 if len(cfgFiles) == 0:
     msg = "--cfg option not provided: This is required"
@@ -135,7 +179,16 @@ if channel == None:
     msg = "--channel option not provided: This is required"
     raise RuntimeError, msg
 
+#  //
+# // Set requestId and label
+#//
+#requestId="%s_%s" % (conditions,processingVersion)
+if workflow_tag in (None,""):
+   requestId="%s_%s" % (conditions,processingVersion)
+else:
+   requestId="%s_%s_%s" % (conditions,workflow_tag,processingVersion)
 
+label=acquisitionEra
 
 for cfgFile in cfgFiles:
     if not os.path.exists(cfgFile):
@@ -166,32 +219,31 @@ if selectionEfficiency != None:
 # first cmsRun node created implicitly by WorkflowMaker
 nodeNumber = 0
 for cfgFile in cfgFiles:
-    
+
     if cfgTypes[nodeNumber] == "cfg":
         from FWCore.ParameterSet.Config import include
-        cmsCfg = include(cfgFile)
+        cmsCfg = include(cfgFile) 
     else:
         import imp
         modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
         cmsCfg = modRef.process
-        
+    
     cfgWrapper = CMSSWConfig()
-    #cfgWrapper.originalCfg = file(cfgFile).read()
     cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
     cfgInt.validateForProduction()
-    
+
     if nodeNumber:
         try:
             inputModules = chainedInputs[nodeNumber-1]
         except IndexError:
             inputModules = []
-        maker.chainCmsRunNode( stageoutOutputs[nodeNumber-1], *inputModules)
-        
+        maker.chainCmsRunNode(stageoutOutputs[nodeNumber-1], *inputModules)
+            
     maker.setCMSSWVersion(versions[nodeNumber])
     maker.setConfiguration(cfgWrapper, Type = "instance")
     maker.setOriginalCfg(file(cfgFile).read())
     maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
-    
+
     nodeNumber += 1
 
 #  //
@@ -199,12 +251,38 @@ for cfgFile in cfgFiles:
 #//
 if pileupDS != None:
     maker.addPileupDataset( pileupDS, pileupFilesPerJob)
-    
+
+maker.changeCategory(category)
+maker.setAcquisitionEra(acquisitionEra)
+maker.workflow.parameters['Conditions'] = conditions
+maker.workflow.parameters['ProcessingVersion'] = processingVersion
+
+
   
 spec = maker.makeWorkflow()
 
 if activity is not None:
     spec.setActivity(activity)
+if totalEvents is not None :
+    spec.parameters['TotalEvents']=totalEvents
+else :
+    print "Warning: totalEvents parameter is not set!"
+if eventsPerJob is not None :
+    spec.parameters['EventsPerJob']=eventsPerJob
+else :
+    print "Warning: EventsPerJob parameter is not set!"
+if startingRun is not None :
+    spec.parameters['InitialRun']=startingRun
+else :
+    print "Warning: InitialRun (lumi) parameter is not set!"
+if startingEvent is not None :
+    spec.parameters['InitialEvent']=startingEvent
+else :
+    print "Warning: InitialEvent parameter is not set!"
+if onlySites is not None:
+    spec.parameters['OnlySites']=onlySites
+if storeFail :
+    spec.parameters['UseStoreFail'] = "True"
 
 spec.save("%s-Workflow.xml" % maker.workflowName)
 
