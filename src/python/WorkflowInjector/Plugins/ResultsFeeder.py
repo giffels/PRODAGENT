@@ -1,34 +1,42 @@
 #!/usr/bin/env python
 """
-_ADSFeeder_
+_ResultsFeeder_
 
-Analysis Dataset feeder
+Results feeder
 
-Splits an ADS by file using parameters:
+Merges a /store/user dataset into /store/results. Input parameters are
 
-- SplitSize
-- DBSURL
-
-Input ADS will be extracted from the first node in the workflow
+- Input dataset
+- Output dataset
+- DBS URL where the dataset is stored
+- CMSSW version
 
 """
 
+__revision__ = "$Id: BlackWhiteListParser.py,v 1.9 2009/02/09 18:04:06 mcinquil Exp $"
+__version__  = "$Revision: 1.9 $"
+__author__   = "ewv@fnal.gov"
 
 import logging
 import os
-import pickle
-
 
 from WorkflowInjector.PluginInterface import PluginInterface
 from WorkflowInjector.Registry import registerPlugin
 
 from ProdCommon.JobFactory.MergeJobFactory import MergeJobFactory
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
+from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 
 from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
 
-
 def getInputDBSURL():
+    """
+    _getInputDBSURL_
+
+    Return the input URL for DBS
+
+    """
     try:
         config = loadProdAgentConfiguration()
     except StandardError, ex:
@@ -45,28 +53,7 @@ def getInputDBSURL():
         logging.error(msg)
         raise RuntimeError, msg
 
-    return dbsConfig.get("InputDBSURL", None)
-
-def getGlobalDBSURL():
-    try:
-        config = loadProdAgentConfiguration()
-    except StandardError, ex:
-        msg = "Error reading configuration:\n"
-        msg += str(ex)
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    try:
-        dbsConfig = config.getConfig("GlobalDBSDLS")
-    except StandardError, ex:
-        msg = "Error reading configuration for GlobalDBSDLS:\n"
-        msg += str(ex)
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    return dbsConfig.get("ReadDBSURL", None)
-
-
+    return dbsConfig.get("DBSURL", None)
 
 class ResultsFeeder(PluginInterface):
     """
@@ -75,6 +62,136 @@ class ResultsFeeder(PluginInterface):
     Generate a set of processing jobs to process an ADS
 
     """
+    def createWorkflow(self):
+        """
+        _createWorkflow_
+
+        Create the workflow out of the user's inputs and static information
+
+        """
+        logging.info("In RF:createWorkflow")
+
+
+        self.dataTier    = 'USER'
+
+        self.workflow = WorkflowSpec()
+        self.workflowName = "StoreResults-%s-%s-%s" % \
+            (self.cmsswRelease, self.primaryDataset, self.processedDataset)
+        self.workflow.setWorkflowName(self.workflowName)
+        self.workflow.parameters["WorkflowType"] = "Merge"
+        self.workflow.parameters["DataTier"] = self.dataTier
+        self.workflow.parameters['DBSURL'] = self.inputDBSURL
+        self.inputDatasetName = self.workflow.payload.addInputDataset(
+            self.primaryDataset, self.processedDataset
+            )
+        self.inputDatasetName.update({
+            "DataTier":"USER",
+            })
+
+#         self.workflow.setRequestCategory("data")
+#         self.workflow.setRequestTimestamp(self.timestamp)
+#         self.workflow.parameters["ProdRequestID"] = self.run
+#         self.workflow.parameters["RunNumber"] = self.run
+
+#         self.workflow.parameters["CMSSWVersion"] = self.cmssw["CMSSWVersion"]
+#         self.workflow.parameters["ScramArch"] = self.cmssw["ScramArch"]
+#         self.workflow.parameters["CMSPath"] = self.cmssw["CMSPath"]
+#
+#         if self.useLazyDownload == True:
+#             self.workflow.parameters["UseLazyDownload"] = "True"
+#         else:
+#             self.workflow.parameters["UseLazyDownload"] = "False"
+#
+        self.cmsRunNode = self.workflow.payload
+        self.cmsRunNode.name = "cmsRun1"
+        self.cmsRunNode.type = "CMSSW"
+        self.cmsRunNode.application["Version"] = self.cmsswRelease
+        self.cmsRunNode.application["Executable"] = "cmsRun"
+        self.cmsRunNode.application["Project"] = "CMSSW"
+        self.cmsRunNode.application["Architecture"] = 'SCRAM Version'
+#
+#         preExecScript = self.cmsRunNode.scriptControls["PreExe"]
+#         preExecScript.append("T0.Tier0Merger.RuntimeTier0Merger")
+#
+#         inputDataset = self.cmsRunNode.addInputDataset(self.primaryDataset,
+#                                                        self.processedDataset)
+#         inputDataset["DataTier"] = self.dataTier
+#
+        outputDataset = self.cmsRunNode.addOutputDataset(self.primaryDataset,
+                                                         self.processedDataset,
+                                                         "Merged")
+        outputDataset["DataTier"] = self.dataTier
+        outputDataset["ApplicationName"] = "cmsRun"
+        outputDataset["ApplicationProject"] = "CMSSW"
+        outputDataset["ApplicationVersion"] = self.cmsswRelease
+        outputDataset["ApplicationFamily"] = "Merged"
+        outputDataset["ParentDataset"] = "/%s/%s/%s" % (self.primaryDataset,
+                                                        self.processedDataset,
+                                                        self.dataTier)
+
+        self.workflow.payload.cfgInterface = CMSSWConfig()
+        cfgInt = self.workflow.payload.cfgInterface
+        cfgInt.sourceType = "PoolSource"
+        cfgInt.maxEvents["input"] = -1
+        cfgInt.configMetadata["name"] = self.workflowName
+        cfgInt.configMetadata["version"] = "AutoGenerated"
+        cfgInt.configMetadata["annotation"] = "AutoGenerated By Tier 0"
+
+        outputModule = cfgInt.getOutputModule("Merged")
+        outputModule["catalog"] = "%s-Catalog.xml" % outputModule["Name"]
+        outputModule["primaryDataset"] = self.primaryDataset
+        outputModule["processedDataset"] = self.processedDataset
+        outputModule["dataTier"] = self.dataTier
+#        outputModule["acquisitionEra"] = self.acquisitionEra
+#        outputModule["processingVersion"] = self.processingVersion
+
+        outputDataset["LFNBase"] = '/store/results/junk/'
+        outputModule["LFNBase"] = outputDataset["LFNBase"]
+        self.workflow.parameters["UnmergedLFNBase"] = outputDataset["LFNBase"]
+        self.workflow.parameters["MergedLFNBase"] = outputDataset["LFNBase"]
+        outputModule["fileName"] = "%s.root" % outputModule["Name"]
+
+        outputModule["logicalFileName"] = os.path.join(
+            outputDataset["LFNBase"], "Merged.root")
+
+        value = self.workflow.parameters.get("DBSURL", None)
+        if value != None:
+            self.dbsUrl = value
+
+    def loadParams(self, paramFile):
+        """
+        _loadParams_
+
+        Load user parameters from a JSON file
+
+        """
+        fileString = ''
+        # Do this right with finally
+        try:
+            fileHandle = open(paramFile, 'r')
+            fileString = fileHandle.read()
+            fileHandle.close()
+        except:
+            raise RuntimeError("Problem reading file: %s" % paramFile)
+
+        logging.info('Parsing: %s' % fileString)
+
+        from WMCore.Services.JSONParser import JSONParser
+        parser = JSONParser.JSONParser('DummyURL')
+        userParams = parser.dictParser(fileString)
+
+        logging.info('User loaded params: %s' % userParams)
+
+        try:
+            self.primaryDataset   = userParams['primaryDataset']
+            self.processedDataset = userParams['processedDataset']
+            self.cmsswRelease     = userParams['cmsswRelease']
+            self.inputDBSURL      = userParams['inputDBSURL']
+        except KeyError:
+            raise RuntimeError("Some parameters missing")
+
+
+
     def handleInput(self, payload):
         """
         _handleInput_
@@ -82,14 +199,18 @@ class ResultsFeeder(PluginInterface):
         Handle an input payload
 
         """
+        logging.info("In RF:handleInput")
         self.workflow = None
         self.dbsUrl = None
         self.workflowFile = payload
-        self.loadPayloads(self.workflowFile)
+        logging.info("RF:handleInput wff: %s" % self.workflowFile)
 
+        self.loadParams(self.workflowFile)
+        self.createWorkflow()
 
-
-        adsFactory = MergeJobFactory(self.workflow, self.workingDir, self.dbsUrl)
+        adsFactory = MergeJobFactory(
+            self.workflow, self.workingDir, self.dbsUrl
+            )
 
         jobs = adsFactory()
 
@@ -101,6 +222,7 @@ class ResultsFeeder(PluginInterface):
 
 
         """
+        logging.info("In RF:loadPayloads")
         self.workflow = self.loadWorkflow(workflowFile)
 
         cacheDir = os.path.join(self.workingDir,
@@ -108,16 +230,10 @@ class ResultsFeeder(PluginInterface):
         if not os.path.exists(cacheDir):
             os.makedirs(cacheDir)
 
-        value = self.workflow.parameters.get("InputDBSURL", None)
+        value = self.workflow.parameters.get("DBSURL", None)
         if value != None:
             print "Setting dbsUrl to ", value
             self.dbsUrl = value
-
-        if self.dbsUrl == None:
-            self.dbsUrl = getGlobalDBSURL()
-            self.workflow.parameters['DBSURL'] = self.dbsUrl
-            msg = "No DBSURL in workflow: Switching to global DBS\n"
-            logging.info(msg)
 
         return
 
@@ -126,6 +242,7 @@ class ResultsFeeder(PluginInterface):
         util to get input dataset name
 
         """
+        logging.info("In RF:inputDataset")
         topNode = self.workflow.payload
         try:
             inputDataset = topNode._InputDatasets[-1]
@@ -143,12 +260,10 @@ class ResultsFeeder(PluginInterface):
         _importDataset_
 
         Import the Dataset contents and inject it into the DB.
+        Import the dataset to be processed into the local DBS
 
         """
 
-        #  //
-        # // Import the dataset to be processed into the local DBS
-        #//
         localDBS = getInputDBSURL()
         dbsWriter = DBSWriter(localDBS)
         globalDBS = self.dbsUrl
