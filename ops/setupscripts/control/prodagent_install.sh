@@ -12,6 +12,8 @@ cvs co -r PRODAGENT_$PAVERSION PRODAGENT
 # Place any PA patches here -- as in 
 # cvs update -r 1.8 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py
 
+cvs update -r 1.12 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py 
+
 cd PRODAGENT
 source $PBIN/prodagent_init.sh
 make
