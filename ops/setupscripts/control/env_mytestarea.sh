@@ -4,7 +4,7 @@ export STAGER_TRACE=3
 export PRODAGENT_USER=cmsprod
 
 # usually set to either dev, int, or if you like gunshot wounds, prod
-export INSTALL_TYPE=prod
+export INSTALL_TYPE=dev
 
 #This next one is the first letter of your username
 export PRODAGENT_INITIAL=c
