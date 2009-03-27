@@ -64,12 +64,14 @@ class TwoFileFeeder(PluginInterface):
         self.blocks = []
         self.workflowFile = payload
         self.onlyClosedBlocks = False
+        self.providedOnlyBlocks = None
         self.loadPayloads(self.workflowFile)
 
         self.publishNewDataset(self.workflowFile)
 
         logging.debug("Looking for new blocks:")
-        self.makeBlockList(self.onlyClosedBlocks)
+        self.makeBlockList(self.onlyClosedBlocks, 
+            providedOnlyBlocks=self.providedOnlyBlocks)
 
         factory = ReRecoJobFactory(self.workflow,
                                    self.workingDir,
@@ -123,13 +125,14 @@ class TwoFileFeeder(PluginInterface):
             self.publishWorkflow(workflowFile, self.workflow.workflowName())
 
         #  //
-        # // This pluggin accepts not OnlyBlocks parameter
+        # // OnlyBlocks setting
         #//
-        onlyBlocks = self.workflow.parameters.get("OnlyBlocks", None)
-        if onlyBlocks != None:
-            msg = "OnlyBlocks setting conflicts with TwoFileFeeder\n"
-            msg += "Logic. You cannot use OnlyBlocks with this plugin"
-            raise RuntimeError, msg
+        self.providedOnlyBlocks = self.workflow.parameters.get("OnlyBlocks", None)
+        if self.providedOnlyBlocks != None:
+            msg = "OnlyBlocks setting will be processed."
+            msg += "\nI will process the intersection of the OnlyBlocks list"
+            msg += " and the all new blocks I can find for Dataset.\n"
+            logging.debug(msg)
 
         #  //
         # // Only closed blocks are long to be processed?
@@ -143,7 +146,7 @@ class TwoFileFeeder(PluginInterface):
             self.dbsUrl = value
 
         if self.dbsUrl == None:
-            msg = "Error: No DBSURL available for dataset:\n"
+            msg = "Error: No DBSURL available for set:\n"
             msg += "Cant get local DBSURL and one not provided with workflow"
             logging.error(msg)
             raise RuntimeError, msg
@@ -153,7 +156,8 @@ class TwoFileFeeder(PluginInterface):
         return
 
 
-    def makeBlockList(self, onlyClosedBlocks = False, sites=None):
+    def makeBlockList(self, onlyClosedBlocks = False, sites=None,
+        providedOnlyBlocks=None):
         """
         _makeBlockList_
 
@@ -162,7 +166,8 @@ class TwoFileFeeder(PluginInterface):
 
         1. Get the list of all blocks from the DBS
         2. Compare to list of blocks in persistency file
-        3. Set OnlyBlocks parameter to new blocks
+        3. Obtain the intersection of the new blocks and the providedOnlyBlocks list.
+        4. Set OnlyBlocks parameter to intersection obtained.
         
         """
         reader = DBSReader(self.dbsUrl)
@@ -189,14 +194,51 @@ class TwoFileFeeder(PluginInterface):
         if len(newBlocks) == 0:
             msg = "No New Blocks found for dataset\n"
             raise RuntimeError, msg
+
+        #  //
+        # // Check presence of provided Blocks in newBlocks
+        #//
+        blocksToProcess = []
+        if providedOnlyBlocks is not None :
+            providedOnlyBlocksList = providedOnlyBlocks.split(',')
+            msg = "OnlyBlocks setting provided. Processing it..."
+            logging.info(msg)
+            msg = "OnlyBlocks list contains %s Blocks." % (
+                len(providedOnlyBlocksList))
+            logging.info(msg)
+            blockCount = 1
+            for block in providedOnlyBlocksList :
+                if block.strip() in newBlocks :
+                    blocksToProcess.append(block.strip())
+                    msg = "Block %s: Adding Block %s" % (
+                        blockCount, block)
+                    msg += " to the Whitelist"
+                    logging.info(msg)
+                else:
+                    msg = "Block %s: Skiping Block %s " % (
+                        blockCount, block)
+                    msg += "It's no New or it has been processed"
+                    msg += " already."
+                    logging.info(msg)
+                blockCount += 1
+        else :
+            blocksToProcess = newBlocks
+            msg = "OnlyBlocks setting not provided. Processing"
+            msg += " all New Blocks for Dataset\n"
+            logging.info(msg)
+
+        if len(blocksToProcess) == 0 :
+            msg = "OnlyBlocks list does not match any New Blocks"
+            msg += " found for Dataset\n"
+            raise RuntimeError, msg
         
-        blockList = str(newBlocks)
+        blockList = str(blocksToProcess)
         blockList = blockList.replace("[", "")
         blockList = blockList.replace("]", "")
         blockList = blockList.replace("\'", "")
         blockList = blockList.replace("\"", "")
         self.workflow.parameters['OnlyBlocks'] = blockList
-        self.persistData.blocks.extend(newBlocks)
+        self.persistData.blocks.extend(blocksToProcess)
         return
 
 
