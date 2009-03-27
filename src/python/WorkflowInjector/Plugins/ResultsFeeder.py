@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: BlackWhiteListParser.py,v 1.9 2009/02/09 18:04:06 mcinquil Exp $"
-__version__  = "$Revision: 1.9 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.2 2009/03/23 20:26:25 ewv Exp $"
+__version__  = "$Revision: 1.2 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -69,8 +69,6 @@ class ResultsFeeder(PluginInterface):
         Create the workflow out of the user's inputs and static information
 
         """
-        logging.info("In RF:createWorkflow")
-
 
         self.dataTier    = 'USER'
 
@@ -140,12 +138,12 @@ class ResultsFeeder(PluginInterface):
         outputModule = cfgInt.getOutputModule("Merged")
         outputModule["catalog"] = "%s-Catalog.xml" % outputModule["Name"]
         outputModule["primaryDataset"] = self.primaryDataset
-        outputModule["processedDataset"] = self.processedDataset
+        outputModule["processedDataset"] = self.outputDataset
         outputModule["dataTier"] = self.dataTier
 #        outputModule["acquisitionEra"] = self.acquisitionEra
 #        outputModule["processingVersion"] = self.processingVersion
 
-        outputDataset["LFNBase"] = '/store/results/junk/'
+        outputDataset["LFNBase"] =   '/store/user/ewv/testresults/%s/' % self.physicsGroup
         outputModule["LFNBase"] = outputDataset["LFNBase"]
         self.workflow.parameters["UnmergedLFNBase"] = outputDataset["LFNBase"]
         self.workflow.parameters["MergedLFNBase"] = outputDataset["LFNBase"]
@@ -158,6 +156,7 @@ class ResultsFeeder(PluginInterface):
         if value != None:
             self.dbsUrl = value
 
+
     def loadParams(self, paramFile):
         """
         _loadParams_
@@ -166,15 +165,14 @@ class ResultsFeeder(PluginInterface):
 
         """
         fileString = ''
-        # Do this right with finally
+
         try:
-            fileHandle = open(paramFile, 'r')
-            fileString = fileHandle.read()
-            fileHandle.close()
+            lines = [line.rstrip() for line in open(paramFile, 'r')]
+            fileString = ' '.join(lines)
         except:
             raise RuntimeError("Problem reading file: %s" % paramFile)
 
-        logging.info('Parsing: %s' % fileString)
+        logging.debug('Parsing1: %s' % fileString)
 
         from WMCore.Services.JSONParser import JSONParser
         parser = JSONParser.JSONParser('DummyURL')
@@ -185,11 +183,12 @@ class ResultsFeeder(PluginInterface):
         try:
             self.primaryDataset   = userParams['primaryDataset']
             self.processedDataset = userParams['processedDataset']
+            self.outputDataset    = userParams['outputDataset']
             self.cmsswRelease     = userParams['cmsswRelease']
             self.inputDBSURL      = userParams['inputDBSURL']
+            self.physicsGroup     = userParams['physicsGroup']
         except KeyError:
             raise RuntimeError("Some parameters missing")
-
 
 
     def handleInput(self, payload):
@@ -199,11 +198,9 @@ class ResultsFeeder(PluginInterface):
         Handle an input payload
 
         """
-        logging.info("In RF:handleInput")
         self.workflow = None
         self.dbsUrl = None
         self.workflowFile = payload
-        logging.info("RF:handleInput wff: %s" % self.workflowFile)
 
         self.loadParams(self.workflowFile)
         self.createWorkflow()
@@ -211,9 +208,8 @@ class ResultsFeeder(PluginInterface):
         adsFactory = MergeJobFactory(
             self.workflow, self.workingDir, self.dbsUrl
             )
-
+        self.workflow.save('/home/ewv/testworkflow.xml')
         jobs = adsFactory()
-
 
 
     def loadPayloads(self, workflowFile):
@@ -236,6 +232,7 @@ class ResultsFeeder(PluginInterface):
             self.dbsUrl = value
 
         return
+
 
     def inputDataset(self):
         """
