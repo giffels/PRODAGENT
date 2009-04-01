@@ -21,7 +21,9 @@ from popen2 import Popen4
 # Mapping between job types and threshold types
 jobTypeMap = {"Processing":"processingThreshold",
               "Merge":"mergeThreshold",
-              "CleanUp":"cleanupThreshold"}
+              "CleanUp":"cleanupThreshold",
+              "Repack":"repackThreshold",
+              "LogCollect":"logcollectThreshold"}
 
 
 SEStatusCache = {}
@@ -44,31 +46,36 @@ class ARCMonitor(MonitorInterface):
         siteMap = ResConAPI.createSiteIndexMap()
 
         # Find out how many existing jobs of each type we have per CE
-        jobs = {}
+        njobs = {}
         for ce in siteMap.keys():
-            jobs[ce] = {}
+            njobs[ce] = {}
             for jobType in jobTypeMap.keys():
-                jobs[ce][jobType] = 0
+                njobs[ce][jobType] = 0
         for j in ARC.getJobsLite():  # FIXME: Use ProdAgent's internal data structures instead?
             try:
                 jobType = j.jobinfo['job_type']
             except KeyError:
                 logging.warning("No job_type for job '%s'" % j.jobSpecId)
                 continue
-            jobs[j.CEName][jobType] = jobs[j.CEName][jobType] + 1
+            njobs[j.CEName][jobType] = njobs[j.CEName][jobType] + 1
 
         # Subtract the number of existing jobs of each type per CE
         # from the allowed ones to get the constraints
         for ce in self.availableCEs():
             try:
                 site = siteMap[ce]
-            except:
+            except KeyError:
                 logging.warning("CE %s not found in site list" % ce)
                 continue
             threshold = ResConAPI.thresholdsByIndex(site)
             for (jobType, threshType) in jobTypeMap.items():
                 con = ResourceConstraint()
-                con["count"] = max(threshold[threshType] - jobs[ce][jobType], 0)
+                try:
+                    th = threshold[threshType]
+                except KeyError:
+                    logging.warning("No threshold '%s'" % threshType)
+                    th = 0
+                con["count"] = max(th - njobs[ce][jobType], 0)
                 con["type"] = jobType
                 con["site"] = site
                 logging.debug("%i counts for type %s at %s" % (con["count"], con["type"], con["site"]))

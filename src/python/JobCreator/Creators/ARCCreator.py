@@ -147,8 +147,12 @@ class ARCCreator(CreatorInterface):
             self.handleCleanUp(taskObject)
         elif typeVal == "SVSuite":
             self.handleSVSuite(taskObject)
+        elif typeVal == "LogArchive":
+            self.handleLogArchive(taskObject)
         elif typeVal == "LogCollect":
             self.handleLogCollect(taskObject)
+        else:
+            logging.warning("No support for task of type '%s'" % typeVal)
         return
 
 
@@ -305,6 +309,24 @@ class ARCCreator(CreatorInterface):
             self.swSetupCommand
             )
 
+                                                                                                                          
+    def handleLogArchive(self, taskObject):
+        """
+        _handleCleanup_
+
+        Handle a Logrch type task object.
+                                                                                                                          
+        """
+        taskObject['Environment'].addVariable(
+            "SCRAM_ARCH",
+            self.pluginConfig['SoftwareSetup']['ScramArch'])
+
+        taskObject['PreLogArchCommands'].append(
+            self.swSetupCommand
+            )
+                                                                                                                          
+        return
+    
 
     def handleLogCollect(self, taskObject):
         stageOutSetup = self.pluginConfig['StageOut']['SetupCommand']
@@ -320,6 +342,11 @@ class ARCCreator(CreatorInterface):
         taskObject['PreLogCollectCommands'].append(
             stageOutSetup
             )
+        taskObject['PreLogCollectCommands'].append(
+            self.swSetupCommand
+            )
+        # FIXME: Make this more like LCGBulkCreator's corresponding
+        # function?
         return
 
 
