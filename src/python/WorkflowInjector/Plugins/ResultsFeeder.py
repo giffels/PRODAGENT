@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.3 2009/03/27 18:53:56 ewv Exp $"
-__version__  = "$Revision: 1.3 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.4 2009/04/06 16:47:52 ewv Exp $"
+__version__  = "$Revision: 1.4 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -134,6 +134,7 @@ class ResultsFeeder(PluginInterface):
         outputDataset["ApplicationVersion"] = self.cmsswRelease
         outputDataset["ApplicationFamily"] = "Merged"
         outputDataset["PhysicsGroup"] = self.physicsGroup
+        outputDataset["PrimaryDatasetType"] = self.dataType
         outputDataset["ParentDataset"] = "/%s/%s/%s" % (self.primaryDataset,
                                                         self.processedDataset,
                                                         self.dataTier)
