@@ -20,6 +20,7 @@ from ProdCommon.FwkJobRep.MergeReports import combineReports
 import ProdCommon.FwkJobRep.PerfLogParser as PerfReps
 from ShREEK.CMSPlugins.DashboardInfo import generateDashboardID
 
+
 def getSyncCE():
     """
     _getSyncCE_
@@ -91,8 +92,8 @@ def processFrameworkJobReport():
     state.jobSpecNode.loadConfiguration()
     state.dumpJobReport()
     
-    
     badReport = False
+
     try:
         state.loadJobReport()
     except Exception, ex:
@@ -114,7 +115,6 @@ def processFrameworkJobReport():
         print "Generating Job Report by hand..."
         state._JobReport = FwkJobReport()
         
-
     report = state.getJobReport()
     exitCode = state.getExitStatus()
     reportStatus = "Success"
@@ -223,7 +223,8 @@ def processFrameworkJobReport():
     #  //
     # // write out updated report
     #//
-    
+    localReport = os.path.join(os.getcwd(),
+                               "FrameworkJobReport.xml")
     toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
                                   "FrameworkJobReport.xml")
 
@@ -243,7 +244,7 @@ def processFrameworkJobReport():
                           for x in state.jobSpecNode._InputLinks ]
         print "Combining current report with %s" % str(inputTaskNames)
         report = combineReports(toplevelReport, inputTaskNames, report)
-        report.write("./FrameworkJobReport.xml")
+        report.write(localReport)
     else:
         #  // 
         # // Add this report to the job toplevel report
@@ -252,15 +253,10 @@ def processFrameworkJobReport():
         # // is in there already.
         #//
         print "Adding report to top level"
-        report.write("./FrameworkJobReport.xml")
-        newReport = os.path.join(os.getcwd(), "FrameworkJobReport.xml")
-        mergeReports(toplevelReport, newReport)
-    
+        report.write(localReport)
+        mergeReports(toplevelReport, localReport)
+
     return
-
-
-
-
 
 
 if __name__ == '__main__':
