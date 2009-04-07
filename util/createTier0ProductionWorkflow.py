@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.16 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.16 2009/03/20 12:34:36 direyes Exp $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.1 2009/04/06 15:41:14 hufnagel Exp $"
 
 
 import os
@@ -254,6 +254,8 @@ spec = maker.makeWorkflow()
 
 maker.workflow.parameters['MergedLFNBase'] = "/T0/hufnagel/"
 maker.workflow.parameters['UnmergedLFNBase'] = maker.workflow.parameters['MergedLFNBase']
+
+maker.workflow.parameters['StreamerIndexDir'] = "vocms13:/data/hufnagel/parepack/StreamerIndexDir"
 
 if activity is not None:
     spec.setActivity(activity)
