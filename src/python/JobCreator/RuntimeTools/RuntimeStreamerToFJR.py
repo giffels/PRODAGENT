@@ -63,16 +63,18 @@ def processFrameworkJobReport():
     streamerFiles = {}
 
     # look at output modules (configuration)
-##    for outputModuleName, outputModule in process.outputModules.items():
-##        streamerFiles[outputModuleName] = {
-##            'indexFileName' : outputModule.indexFileName
-##            }
+    for outputModuleName, outputModule in process.outputModules.items():
+        streamerFiles[outputModuleName] = {
+            'indexFileName' : outputModule.indexFileName.value()
+            }
 
     # look at output modules (JobSpecNode)
     for outputModuleName, outputModule in state.jobSpecNode.cfgInterface.outputModules.items():
         jobReportFile = report.newFile()
 
-        jobReportFile['LFN'] = "%s/%s.dat" % (outputModule['LFNBase'], makeUUID())
+        uuid = makeUUID()
+
+        jobReportFile['LFN'] = "%s/%s.dat" % (outputModule['LFNBase'], uuid)
         jobReportFile['PFN'] = outputModule['fileName']
         jobReportFile['Catalog'] = None
         jobReportFile['ModuleLabel'] = outputModuleName
@@ -80,7 +82,6 @@ def processFrameworkJobReport():
         jobReportFile['Branches'] = None
         jobReportFile['OutputModuleClass'] = "EventStreamFileWriter"
 
-        
         jobReportFile['TotalEvents'] = 1
 
         jobReportFile['DataType'] = "MC"
@@ -93,6 +94,16 @@ def processFrameworkJobReport():
         # this is extra
         # should be a check on OutputModuleClass later really
         jobReportFile['FileType'] = 'STREAMER'
+
+        # handle streamer index file
+        streamerIndexDir = state.jobSpecNode.getParameter("StreamerIndexDir")[0]
+        sourceIndexFile = streamerFiles[outputModuleName]['indexFileName']
+        targetIndexFile = "%s/%s.ind" % (streamerIndexDir, uuid)
+
+        os.system("rfcp %s %s" % (sourceIndexFile, targetIndexFile))
+
+        jobReportFile['StreamerIndexFile'] = targetIndexFile
+
 
     # write out updated report (overwrites existing one)
     state.saveJobReport()
