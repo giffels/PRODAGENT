@@ -1204,17 +1204,17 @@ def validateJobSpecDict(dictInstance):
     return
 
 def insertJobSpec(dbInterface, jobSpecId, jobSpecFile, jobType, workflowId,
-                  workflowPriority, sitesList, status = "new"):
+                  workflowPriority, siteName = None, status = "new"):
     """
     _insertJobSpec_
     
-    Insert a single job spec entry with a list of sites into the job queue.
+    Insert a single job spec for a single site into the job queue.
     """
     logging.debug("insertJobSpec(): Running...")
     
     jobSpecDict = {"JobSpecId": jobSpecId, "JobSpecFile": jobSpecFile,
                    "JobType": jobType, "WorkflowSpecId": workflowId,
-                   "WorkflowPriority": workflowPriority, "SiteList": sitesList}
+                   "WorkflowPriority": workflowPriority, "SiteList": siteName}
     validateJobSpecDict(jobSpecDict)
         
     queueQuery = """INSERT INTO jq_queue (job_spec_id, job_spec_file, job_type,
@@ -1224,10 +1224,18 @@ def insertJobSpec(dbInterface, jobSpecId, jobSpecFile, jobType, workflowId,
                 "p_4": workflowId, "p_5": workflowPriority, "p_6": status}
     dbInterface.processData(queueQuery, bindVars, transaction = True)
 
-    siteQuery = """INSERT INTO jq_site (job_index) SELECT job_index
-                   FROM jq_queue WHERE job_spec_id = :p_1"""        
-    bindVars = {"p_1": jobSpecId}
-    dbInterface.processData(siteQuery, bindVars, transaction = True)
+    if siteName == None:
+        siteQuery = """INSERT INTO jq_site (job_index) SELECT job_index
+                       FROM jq_queue WHERE job_spec_id = :p_1"""        
+        bindVars = {"p_1": jobSpecId}
+        dbInterface.processData(siteQuery, bindVars, transaction = True)
+    else:
+        siteQuery = """INSERT INTO jq_site (job_index, site_index) VALUES (
+                       (SELECT job_index FROM jq_queue WHERE job_spec_id = :p_1),
+                       (SELECT site_index FROM rc_site WHERE site_name = :p_2))
+                       """
+        bindVars = {"p_1": jobSpecId, "p_2": siteName}
+        dbInterface.processData(siteQuery, bindVars, transaction = True)
 
     return
 
