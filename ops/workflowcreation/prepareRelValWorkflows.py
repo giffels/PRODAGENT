@@ -23,7 +23,7 @@ def main(argv) :
     required parameters
     --samples <textfile>            : list of RelVal sample parameter-sets in plain text file, one sample per line, # marks comment
     --version <processing version>  : processing version (v1, v2, ... )
-    --DBSURL <URL>                  : URL of the local DBS (http://cmsdbsprod.cern.ch/cms_dbs_prod_local_07/servlet/DBSServlet, http://cmssrv46.fnal.gov:8080/DBS126/servlet/DBSServlet)
+    --DBSURL <URL>                  : URL of the local DBS (http://cmsdbsprod.cern.ch/cms_dbs_prod_local_07/servlet/DBSServlet | http://cmssrv46.fnal.gov:8080/DBSFNALT1206/servlet/DBSServlet)
     --only-sites                    : Site where dataset is going to be processed or where the input dataset is taken from. Usually srm-cms.cern.ch and cmssrm.fnal.gov
     
     optional parameters
@@ -32,6 +32,7 @@ def main(argv) :
     --event <number>                : initial event number
     --store-fail <True|False>       : store output files for failed jobs in chain processing.
     --read-dbs                      : DBS URL used for obtaining the list of available blocks for real data. Default: http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet
+    --scripts-dir                   : Path to workflow creation scripts (default: $PUTIL)
     --help (-h)                     : help
     --debug (-d)                    : debug statements
     
@@ -70,9 +71,13 @@ def main(argv) :
     storeFail           = False
     readDBS             = 'http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet'
     onlySites           = None
+    scriptsDir          = '$PUTIL'
 
     try:
-        opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", "DBSURL=", "event=", "lumi=", "pileupdataset=", "store-fail=", "read-dbs=", "only-sites="])
+        opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", 
+                                                "DBSURL=", "event=", "lumi=", "pileupdataset=", 
+                                                "store-fail=", "read-dbs=", "only-sites=", 
+                                                "scripts-dir="])
     except getopt.GetoptError:
         print main.__doc__
         sys.exit(2)
@@ -106,6 +111,21 @@ def main(argv) :
             readDBS = arg
         elif opt == '--only-sites':
             onlySites = arg
+        elif opt == '--scripts-dir':
+            if arg.endswith('/') :
+                scriptsDir = arg[:-1]
+            else:
+                scriptsDir = arg
+            scriptsDirTemp = scriptsDir
+            if scriptsDir.startswith('$') :
+                scriptsDirTemp = os.environ.get(scriptsDir[1:],None)
+            if scriptsDirTemp != None:
+                if not os.path.exists(scriptsDirTemp):
+                    print "--scripts-dir argument does not exist, please verify."
+                    sys.exit(6)
+            else:
+                print "--scripts-dir argument does not exist, please verify."
+                sys.exit(6)
 
     if initial_event == None :
 	print ""
@@ -380,7 +400,7 @@ def main(argv) :
     for sample in step1:
         if sample['isRealData'] :
             if sample['steps'] == 2 :
-                command  = 'python2.4 createProcessingWorkflow_CSA08Hack.py \\\n'
+                command  = 'python2.4 ' + scriptsDir + '/createProcessingWorkflow.py \\\n'
                 command += '--override-channel=' + sample['primary'] + ' \\\n'
                 command += '--version=' + version + ' \\\n'
                 command += '--py-cfg=' + step2[sample['RECOtag']]['outputname'] + ' \\\n'
@@ -397,7 +417,7 @@ def main(argv) :
                 command += '--split-size=1 \\\n'
                 command += '--only-blocks=' + sample['inputBlocks']
             else :
-                command  = 'python2.4 createProcessingWorkflow_CSA08Hack.py \\\n'
+                command  = 'python2.4 ' + scriptsDir + '/createProcessingWorkflow.py \\\n'
                 command += '--override-channel=' + sample['primary'] + ' \\\n'
                 command += '--version=' + version + ' \\\n'
                 command += '--py-cfg=' + step2[sample['RECOtag']]['outputname'] + ' \\\n'
@@ -421,7 +441,7 @@ def main(argv) :
                 command += '--only-blocks=' + sample['inputBlocks']
         else :
             if sample['steps'] == 2 :
-                command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
+                command  = 'python2.4 ' + scriptsDir + '/createProductionWorkflow.py --channel=' + sample['primary'] + ' \\\n'
                 command += '--version=' + version + ' \\\n'
                 command += '--py-cfg=' + sample['outputname'] + ' \\\n'
                 command += '--version=' + version + ' \\\n'
@@ -444,7 +464,7 @@ def main(argv) :
                 if storeFail :
                     command += ' \\\n--store-fail=True' 
             else :
-                command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
+                command  = 'python2.4 ' + scriptsDir + '/createProductionWorkflow.py --channel=' + sample['primary'] + ' \\\n'
                 command += '--version=' + version + ' \\\n'
                 command += '--py-cfg=' + sample['outputname'] + ' \\\n'
                 command += '--version=' + version + ' \\\n'
@@ -503,7 +523,7 @@ def main(argv) :
 
     # create workflows
     for sample in onestep:
-        command  = 'python2.4 createProductionWorkflow_CSA08Hack.py --channel=' + sample['primary'] + ' \\\n'
+        command  = 'python2.4 ' + scriptsDir + '/createProductionWorkflow.py --channel=' + sample['primary'] + ' \\\n'
         command += '--version=' + version + ' \\\n'
         command += '--py-cfg=' + sample['outputname'] + ' \\\n'
         command += '--group=RelVal \\\n'
@@ -576,7 +596,7 @@ def main(argv) :
     for workflow in workflows.keys():
         if workflows[workflow]:
             if feeder.find('ReReco') < 0:
-                inputScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py WorkflowInjector:SetPlugin ReRecoFeeder\n')
+                inputScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py WorkflowInjector:SetPlugin BlockFeeder\n')
                 feeder = 'ReReco'
         else :
             if feeder.find('Request') < 0:
