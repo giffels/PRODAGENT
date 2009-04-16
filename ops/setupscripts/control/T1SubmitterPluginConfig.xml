@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<ProdAgentPluginConfig>
+	<PluginConfiguration>
+		<ConfigBlock Name="SiteWhitelist"/>
+		<ConfigBlock Name="SiteBlacklist"/>
+		<ConfigBlock Name="OSG">
+			<Parameter Name="GlobusScheduler" Value="cmsosgce.fnal.gov/jobmanager-condor"/>
+			<Parameter Name="GlideInSite" Value="FNAL"/>
+		</ConfigBlock>
+		<ConfigBlock Name="LCG">
+			<Parameter Name="RBconfigVO" Value="None"/>
+			<Parameter Name="JDLRequirementsFile" Value="None"/>
+			<Parameter Name="RBconfig" Value="None"/>
+		</ConfigBlock>
+                <ConfigBlock Name="SENameToJobmanager">
+			<Parameter Name="FNAL" Value="cmsosgce.fnal.gov/jobmanager-condor"/>
+                        <Parameter Name="cmssrm.fnal.gov" Value="cmsosgce.fnal.gov/jobmanager-condor"/>
+		</ConfigBlock>
+		<ConfigBlock Name="Dashboard">
+                        <Parameter Name="DestinationHost" Value="cms-pamon.cern.ch"/>
+                        <Parameter Name="UseDashboard" Value="True"/>
+                        <Parameter Name="DestinationPort" Value="8884"/>
+                </ConfigBlock>
+                <ConfigBlock Name="SENameToSiteName">
+			<Parameter Name="FNAL" Value="FNAL"/>
+                        <Parameter Name="cmssrm.fnal.gov" Value="FNAL"/>
+                        <Parameter Name="1" Value="FNAL"/>
+		</ConfigBlock>
+	</PluginConfiguration>
+</ProdAgentPluginConfig>
