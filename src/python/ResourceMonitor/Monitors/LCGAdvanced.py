@@ -42,35 +42,37 @@ class LCGAdvanced(MonitorInterface):
     def __call__(self):
         self.loadPluginConfig()
 
+        # only look at active sites
+        sites = [x for x in self.allSites.values() if x['SiteName'] in self.activeSites]
+
         ## check for ill-formed entries
-        good_sites = self.validateCENames(self.activeSites)
+        sites = self.validateCENames(sites)
 
         ## no need to use phedex, give a dummy value as DBParam
         dbparam = 'TEST'
        
-        self.siteinfo = getSiteInfoFromBase(good_sites,
+        self.siteinfo = getSiteInfoFromBase(sites,
                                             self.plugConf["FCRurls"],
                                             self.plugConf["BDII"],
                                             dbparam, self.plugConf["SAMurl"])
         
-        good_sites = self.sitesPassingTests(good_sites)
-      
-        # if requested write site status file
-        self.writeSiteStatusFile()
+        # filter out failing sites
+        good_sites = self.sitesPassingTests(sites)
         
         # check sites have required cmssw versions for active workflows
-        siteWorkflowIncompatibilities = siteToNotWorkflows(good_sites,
-                                          self.allSites, self.siteinfo)
-        logging.debug("Site/Workflow incompatibilities: %s" % \
-                                          str(siteWorkflowIncompatibilities))
+        wf_constraints = siteToNotWorkflows(good_sites, self.siteinfo)
+#        logging.debug("Site/Workflow incompatibilities: %s" % \
+#                                          str(siteWorkflowIncompatibilities))
 
         # get active jobs released at a site
         jq = JobQueueDB()
         self.sitejobs = jq.countQueuedActiveJobs()
-        logging.debug("Released jobs at sites: %s" % str(self.sitejobs))
+        
+        # if requested write site status file
+        self.writeSiteStatusFile(self.siteinfo)
         
         # get constraints for sites and jobtypes
-        result = self.getConstraints(good_sites, siteWorkflowIncompatibilities)
+        result = self.getConstraints(good_sites, wf_constraints)
         
         # reorder constraints - sites with most successful jobs first
         result = self.reOrderConstraints(result)        
@@ -170,7 +172,7 @@ class LCGAdvanced(MonitorInterface):
         return maxi
     
     
-    def writeSiteStatusFile(self):
+    def writeSiteStatusFile(self, info):
         """
         write to file of current site status
         """
@@ -181,7 +183,7 @@ class LCGAdvanced(MonitorInterface):
                 f.write('## BEGIN\n\n')
                 f.close()
             f = file(place,'a')
-            f.write(str([time.localtime(), self.siteinfo])+'\n')
+            f.write(str([time.localtime(), info])+'\n')
             f.close()
         return
             
@@ -192,35 +194,46 @@ class LCGAdvanced(MonitorInterface):
         """
         result = []
         
-        for site in sites:
-            siteData = self.allSites[site]
+        for rc_site in sites:
             
-            if siteData['CEName'] not in self.siteinfo.keys():
-                logging.info("LCGAdvanced: "+site+" not in information system. Skipping.")
+            name = rc_site['SiteName']
+            site = self.siteinfo.get(name, None)
+            if not site:
+                logging.info("LCGAdvanced: Site %s not returned from info system query. See above for error." \
+                                                        % (name))
                 continue
             
-            val = self.siteinfo[siteData['CEName']]
-            
-            if not val['state'] == 'Production':
-                logging.info("LCGAdvanced: Removing site %s from available resources. Site state is %s, not Production" \
-                                                                     % (site, val['state']))
-                continue
-            elif val['in_fcr'] and self.plugConf["UseFCR"]:
-                logging.info("LCGAdvanced: Removing site %s from available resources. Site is in FCR" \
-                                                                     % (site))
-                continue
-            elif val['SAMfail'] and self.plugConf["UseSAM"]:
-                logging.info("LCGAdvanced: Removing site %s from available resources. CE is failing SAM tests" \
-                                                                     % (site))
-                continue
-            
-            quality = self.sitePerformance[site]['quality']
+            quality = self.sitePerformance[name]['quality']
             if quality and quality < self.plugConf["SiteQualityCutOff"]:
                 logging.info("LCGAdvanced: Removing site %s from available resources. Job quality is poor - %s" \
-                                                                     % (site, str(quality)))
+                                                                         % (name, str(quality)))
                 continue
-
-            result.append(site)
+            
+            good_ces = []
+            # multiple CE's per site - require at least 1 to pass tests
+            for ce, val in site.items():
+                if not val['state'] == 'Production':
+                    logging.info("LCGAdvanced: Removing %s from available resources. State is %s, not Production" \
+                                                                         % (ce, val['state']))
+                    site.pop(ce)
+                    continue
+                elif val['in_fcr'] and self.plugConf["UseFCR"]:
+                    logging.info("LCGAdvanced: Removing %s from available resources. CE is in FCR" % ce)
+                    site.pop(ce)
+                    continue
+                elif val['SAMfail'] and self.plugConf["UseSAM"]:
+                    logging.info("LCGAdvanced: Removing %s from available resources. CE is failing SAM tests" \
+                                                                         % ce)
+                    site.pop(ce)
+                    continue
+                
+                good_ces.append(ce)
+            
+            if site:
+                result.append(rc_site)
+            else:
+                logging.info("LCGAdvanced: All CE's at %s fail tests. Ignoring site" % name)
+            
         return result
     
     
@@ -231,8 +244,8 @@ class LCGAdvanced(MonitorInterface):
         result = []
         gtk_reg = re.compile(r"(?P<ce>.*?)(:(?P<port>\d+))/(?P<queue>.*)$")
         for site in sites:
-            ce = self.allSites[site]['CEName']
-            if not gtk_reg.search(ce): 
+            ce = site['CEName']
+            if ce and not gtk_reg.search(ce): #ce not specified if letting wms manage job distribution
                 logging.warning("LCGAdvanced: Configured gatekeeper "+ce+" does not match regexp. Removing from resources to be checked.")
                 continue
             result.append(site)
@@ -264,8 +277,8 @@ class LCGAdvanced(MonitorInterface):
         get the constriants for given sites
         """
         result = []
-        for sitename in sites:
-            site = self.allSites[sitename]
+        for site in sites:
+            sitename = site['SiteName']
             
             self.setThresholds(site)
             thresholds = self.siteThresholds[sitename]

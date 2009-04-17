@@ -244,28 +244,28 @@ def gtkToNotWorkflows(infosite,short=False):
     return all_gtk	
 
 
-def siteToNotWorkflows(sites, siteData, data):
+def siteToNotWorkflows(sites, data):
     """
-    take a dictionary with {gtk:[cmssoft]} and return a dictionary {gtk:[not_workflow]}
+    take a list of resource control sites and a dict containing the ce's and 
+    their properties from the information system i.e. software versions
+    
+    return a dictionary {site:[not_workflow]}
     only will work if new workflows ALWAYS trigger RM
 
-    if short, attempt a translationof WF names to ids in various tables
+    in short, attempt a translation of WF names to ids in various tables
     """
-
 
     workmap=workmapWFName2ID(getWorkflow2CMSSW())
     logging.debug(": workflow/software "+str(workmap))
 
     result = {}
-    for name, site in siteData.items():
-        
-        if name not in sites:
-            continue
-        
+    for site in sites:
+        name = site['SiteName']
         result[name] = []
-
-        for workflow, version in workmap.items():
-            if not version in data[site['CEName']]['software']:
+        for workflow, version in workmap.iteritems():
+            for ce in data[name].itervalues():
+                if version in ce['software']:
+                    break
+            else:
                 result[name].append(workflow)
-
     return result

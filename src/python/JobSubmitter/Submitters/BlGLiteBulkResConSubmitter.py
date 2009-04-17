@@ -6,32 +6,15 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id: BlGLiteBulkResConSubmitter.py,v 1.3 2009/01/23 12:58:11 gcodispo Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: BlGLiteBulkResConSubmitter.py,v 1.4 2009/03/17 14:11:59 gcodispo Exp $"
+__version__ = "$Revision: 1.4 $"
 
 import logging
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BlGLiteBulkSubmitter import BlGLiteBulkSubmitter
 
-from ProdAgent.ResourceControl.ResourceControlAPI import createCEMap
-                                       
-def getCEstrings(Whitelist):
-    """
-    Get list of CE's from resource control
-    """
-    result = set()
-    # upto ResourceMonitor to take account of site status (not submitter)
-    cemap = createCEMap(activeOnly=False)
-    for i in Whitelist:
-        try:
-            name = cemap[int(i)]
-            result.add(name)
-            logging.debug("Whitelist element %s" % name)
-        except KeyError, ex:
-            raise RuntimeError("Error mapping site id %s to ce: %s" % (str(i), str(ex)))
-    return list(result)
-                            
+from JobQueue.JobQueueDB import JobQueueDB
 
 
 class BlGLiteBulkResConSubmitter(BlGLiteBulkSubmitter):
@@ -48,23 +31,36 @@ class BlGLiteBulkResConSubmitter(BlGLiteBulkSubmitter):
         #super(BlGLiteBulkSubmitter, self).__init__()
         BlGLiteBulkSubmitter.__init__(self)
         self.whitelist = None
+        self.jobQ = JobQueueDB()
 
 
     def getSiteRequirements(self):
         """
         # // white list for anymatch clause
         """
-        # turn resource control id's to list of ce's
-        self.whitelist = getCEstrings(self.whitelist)
         anyMatchrequirements = ""
         if len(self.whitelist) > 0:
+            used_names = []
             anyMatchrequirements = " ("
             sitelist = ""
-            #ces = getCEstrings(self.whitelist)
-            for ce in self.whitelist:
-                sitelist += "other.GlueCEUniqueID==\"%s\" || " % ce
+            for id in self.whitelist:
+                sites = self.jobQ.getSite(id)  
+                for site in sites:
+                    if site["SiteName"] in used_names:
+                        continue
+                    if site['CEName']:
+                        sitelist += "other.GlueCEUniqueID==\"%s\" || " % site['CEName']
+                    else:
+                        sitelist += " Member(\"%s\", other.GlueCESEBindGroupSEUniqueID) || " % site["SEName"]
+                    used_names.append(site["SiteName"])       
+            
+            if not used_names:
+                raise RuntimeError, "Unable to map whitelist to site: %s" % str(self.whitelist)  
+                
             sitelist = sitelist[:-4]
             anyMatchrequirements += sitelist+")"
+            self.whitelist = used_names # publish to dashboard later
+        
         return anyMatchrequirements
 
 

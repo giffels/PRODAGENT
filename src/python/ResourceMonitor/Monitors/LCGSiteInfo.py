@@ -34,24 +34,25 @@ Collect site info
 FCR parsing
 """
 
-def getFcr(urls):
+def getFcr(fcr_url, sites):
     in_fcr_cms=[]
 
     ## FCR ldif regexp
     reg_fcr_cms=re.compile(r"dn\s*:\s*GlueCEUniqueID=(?P<queue>.*?),.*?,mds-vo-name=local,o=grid\s*\n\s*changetype\s*:\s*modify\s*\n\s*delete\s*:\s*GlueCEAccessControlBaseRule\s*\n\s*GlueCEAccessControlBaseRule:\s*VO\s*:\s*cms")
 
-    for fcr_url in urls:
-        try:
-            f=urlopen(fcr_url).read()
-        except:
-            ## if something goes wrong, assume empty list
-            f=''
+    try:
+        f=urlopen(fcr_url).read()
+    except:
+        ## if something goes wrong, assume empty list
+        f=''
 
-        for i in reg_fcr_cms.finditer(f):
-            #print i.group('queue'),i.group('site')
-            in_fcr_cms.append(i.group('queue'))
-
-    return in_fcr_cms
+    for i in reg_fcr_cms.finditer(f):
+        in_fcr_cms.append(i.group('queue'))
+        for site in sites:
+            for ce, ceinfo in site.items():
+                if ce == i.group('queue'):
+                    ceinfo['in_fcr'] = True
+    return sites
 
 
 def samCheck(sites, url):
@@ -64,7 +65,11 @@ def samCheck(sites, url):
       return sites
 
     site_mapper = CECmsMap()
-    cms_sites = set([site_mapper[ce.split(':')[0]] for ce in sites.keys()])
+    cms_sites = []
+    for site in sites.values():
+        cms_sites.extend([site_mapper[ce.split(":")[0]] for ce in site])
+#        set([site_mapper[ce.split(':')[0]] for ce in site for site in sites ])
+    cms_sites = set(cms_sites)
 
     # dashboard url takes test id's not names
     #TODO: move to config file at some point
@@ -92,23 +97,23 @@ def samCheck(sites, url):
         data = results.getElementsByTagName('data')[0].getElementsByTagName('item')
         for sitedata in data:
 
-            # check if any sites names - if not skip
-            if (len(sitedata.getElementsByTagName('SamName')) == 0):
-                continue
+            try:
 
-            site = sitedata.getElementsByTagName('SamName')[0].firstChild.nodeValue
-            logging.debug("checking site %s" % site)
-
-            # now loop over ce's
-            ces = sitedata.getElementsByTagName('ServiceNames')
-            for ce in ces:
-                try:
+                # check if any sites names - if not skip
+                if (len(sitedata.getElementsByTagName('SamName')) == 0):
+                    continue
+    
+                site = sitedata.getElementsByTagName('SamName')[0].firstChild.nodeValue
+                logging.debug("checking site %s" % site)
+    
+                # now loop over ce's
+                ces = sitedata.getElementsByTagName('ServiceNames')
+                for ce in ces:
 
                     if ce.getElementsByTagName('ServiceName') == None:
                         continue;
 
                     cename = ce.getElementsByTagName('ServiceName')[0].firstChild.nodeValue
-                    logging.error("ce = %s" % cename)
 
                     #go through tests
                     tests = ce.getElementsByTagName('Tests')[0]
@@ -127,13 +132,14 @@ def samCheck(sites, url):
                         statusNode = test.getElementsByTagName("Status")[0].firstChild
                         #statusNode not filled for non-error
                         #TODO: Change to fail only on error - look up syntax
-                        if statusNode and statusNode.nodeValue != "ok":
+                        if statusNode and statusNode.nodeValue not in ("ok", "info", "warning"):
                             for ce, details in sites.values():
                                 if ce.split(':')[0] == cename:
                                     details['SAMfail'] = True
-                except Exception, ex:
-                    logging.error("prob with sam query of %s: %s" % (site, str(ex)))
-                    # on errror just ignore ce
+                                    #details['SAMfail'].append(ce)
+            except Exception, ex:
+                logging.error("prob with sam query of %s: %s" % (site, str(ex)))
+                # on errror just ignore ce
 
 
     except Exception, ex:
@@ -201,7 +207,7 @@ def getLdap(base,attrs,ldaphost,ret_dn=False):
 """
 Search the necessary info from BDII
 """
-def getBdii(names,ldaphost):
+def getBdii(sites, ldaphost):
     the_list={}
 
     reg_cmssoft=re.compile("^VO-cms-(.*)$")
@@ -209,10 +215,24 @@ def getBdii(names,ldaphost):
 
     reg_mdsvoname=re.compile(r"mds-vo-name=(?P<site>.*)")
 
-    for site in names:
+    #
+    # TODO: Change to going from SE to CE - ignore CE's not in GlueCESEBindGroupCEUniqueID
+    #
+    # Loop over clusters, find closeSE, filter for given se
+    #    only add if one ce close to se - return standard stuff but keyed off site name not ce
+    #         return list of sites
+    for site in sites:
         try:
-            site_base='mds-vo-name='+site+',mds-vo-name=local,o=grid'
+            name = site['SiteName']
+            se = site['SEName']
+            ce = site['CEName']
+        
+            site_base='mds-vo-name='+name+',mds-vo-name=local,o=grid'
             [clusters]=getLdap(site_base,['GlueClusterUniqueID'],ldaphost,True)
+            
+            if not clusters:
+                logging.warning("No clusters for site %s found in information system." % name)
+            
             for source,[cluster] in clusters:
                 ## to fix GRIF, we need to redefine the site base
                 tmparr=source.split(',')
@@ -242,6 +262,13 @@ def getBdii(names,ldaphost):
                             if not cmssw in cmssoft:
                                 cmssoft.append(cmssw)
 
+                if ce and ce not in ceuid:
+                    logging.warning("Specified CE %s not in info system for site %s." % (ce, name))
+                    continue
+
+                #
+                # TODO: Drop acbr check - confusion between prod and non prod role - leave to operator???
+                #
                 for ceuid in ceUIDs:
                     ceuid_base='GlueCEUniqueID='+ceuid+','+site_base
                     info=['GlueCEInfoTotalCPUs','GlueCEStateFreeCPUs','GlueCEStateStatus','GlueCEPolicyMaxCPUTime','GlueCEAccessControlBaseRule']
@@ -263,23 +290,33 @@ def getBdii(names,ldaphost):
                                 ceseuid_base='GlueCESEBindGroupCEUniqueID='+ceuid+','+site_base
                                 [ses]=getLdap(ceseuid_base,['GlueCESEBindGroupSEUniqueID'],ldaphost)
                                 #print ses
+                                
+                                # CE must be listed as close to the specified SE
+                                if se not in ses:
+                                    logging.info("Ignore CE %s - not close to SE %s at %s" % (ce, se, name))
+                                    support_cms = False
+                                
+                    the_list.setdefault(name, {})
+                    #if the site has a CE specified we only care about that one
+                    if support_cms and not ce or ce == ceuid:
 
-                                the_list[ceuid]={'site_name':site+tmp_sitename,
-                                                    'SEs':ses,
-                                                    'estimated_response_time':estRT[0],
-                                                    'free_slots':free[0],
-                                                    'max_slots':max_slots[0],
-                                                    'jobs_running':runn[0],
-                                                    'jobs_total':tot[0],
-                                                    'jobs_waiting':wait[0],
-                                                    'state':state[0],
-                                                    'max_cpu_time':maxct[0],
-                                                    'in_fcr':False,
-                                                    'software':cmssoft,
-                                                    'SAMfail' : False
-                                                    }
+                        #the_list[ceuid]={'site_name':site+tmp_sitename,
+                        the_list[name][ceuid] = {'CE' : ceuid,
+                                    'SE': se,
+                                    'estimated_response_time':estRT[0],
+                                    'free_slots':free[0],
+                                    'max_slots':max_slots[0],
+                                    'jobs_running':runn[0],
+                                    'jobs_total':tot[0],
+                                    'jobs_waiting':wait[0],
+                                    'state':state[0],
+                                    'max_cpu_time':maxct[0],
+                                    'in_fcr': False,
+                                    'software':cmssoft,
+                                    'SAMfail' : False
+                                    }
         except Exception, e:
-            logging.error("Error with site %s bdii query:\t%s" % (site, str(e)))
+            logging.error("Error with site %s bdii query:\t%s" % (name, str(e)))
 
 
     return the_list
@@ -355,7 +392,7 @@ def getPhedexSEmap(paramfile,section):
     #print ma
     return ma
 
-def getSiteInfoFromBase(names,urls,ldaphost,dbp=None, samUrl=None):
+def getSiteInfoFromBase(sites, urls, ldaphost, dbp=None, samUrl=None):
     """
     Collect all site info starting from LCG BDII Site names. Returns dictionary.
     """
@@ -365,7 +402,6 @@ def getSiteInfoFromBase(names,urls,ldaphost,dbp=None, samUrl=None):
         if not dbp:
             from ProdAgentCore.Configuration import loadProdAgentConfiguration
             PAcfg = loadProdAgentConfiguration()
-
 
             PhedCfg = PAcfg['PhEDExConfig']
             dbp = PhedCfg['DBPARAM']
@@ -378,34 +414,40 @@ def getSiteInfoFromBase(names,urls,ldaphost,dbp=None, samUrl=None):
         use_phed=False
     
     #strip of text after "#", and remove site duplicates 
-    bdiiNames = list(set([ x.split("#")[0] for x in names]))
-    tmp_list=getBdii(bdiiNames,ldaphost)
+    #bdiiNames = list(set([x['SiteName'].split("#")[0] for x in sites]))
     
+    tmp_list = getBdii(sites, ldaphost)
+    #tmp_list=getBdii(bdiiNames,ldaphost)
+
     #fcr info
-    ceuids_in_fcr=getFcr(urls)
-    for ceuid in tmp_list.keys():
-        if ceuid in ceuids_in_fcr:
-            tmp_list[ceuid]['in_fcr']=True
+    #ceuids_in_fcr=getFcr(urls)
+#    for ceuid in tmp_list.keys():
+#        if ceuid in ceuids_in_fcr:
+#            tmp_list[ceuid]['in_fcr']=True      
+    #tmp_list = [x for x in tmp_list if x['CEName'] in ceuids_in_fcr]
+    tmp_list = getFcr(urls, tmp_list)
 
     #sam test info
     tmp_list = samCheck(tmp_list, samUrl)
 
-    if use_phed:
-        Phmap=getPhedexSEmap(DBParamFile,Section)
-
-        for ceuid in tmp_list.keys():
-            se_in_phedex=None
-            for se in tmp_list[ceuid]['SEs']:
-                if se in Phmap.values():
-                    ## this can happen more than once,
-                    ## but should not cause problems                
-                    se_in_phedex=se
-            if se_in_phedex:
-                tmp_list[ceuid]['SEs']=[se]
-            else:
-                print "None of the published SEs can be found in Phedex."
-                print " This is probably a bug somewhere."
-                print "Currnet SEs: %s, CEUID: %s" % (
-                    str(tmp_list[ceuid]['SEs']),ceuid)
+#    if use_phed:
+#        #TODO: Out of date, Do we want to track links here -
+#        #        esp if we are going to auto-create subscriptions
+#        Phmap=getPhedexSEmap(DBParamFile,Section)
+#
+#        for site in tmp_list:
+#            #se_in_phedex=None
+#            for se in site.values(): #['SEs'][:]: #tmp_list[ceuid]['SEs']:
+#                se = se['SE']
+#                if not se in Phmap.values():
+#                    ## this can happen more than once,
+#                    ## but should not cause problems                
+#                    #se_in_phedex=se
+#                    site['SEs'].remove(se)
+#            else:
+#                print "None of the published SEs can be found in Phedex."
+#                print " This is probably a bug somewhere."
+#                print "Currnet SEs: %s, CEUID: %s" % (
+#                    str(tmp_list[ceuid]['SEs']),ceuid)
 
     return tmp_list
