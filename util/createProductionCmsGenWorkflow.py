@@ -5,8 +5,8 @@ _createProductionCmsGenWorkflow_
 Create a cmsGen and cmsRun workflow
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: createProductionCmsGenWorkflow_CSA08Hack.py,v 1.3 2009/03/19 16:52:31 direyes Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.9 2009/03/20 12:35:30 direyes Exp $"
 
 
 
@@ -29,7 +29,7 @@ valid = ['cmsRunCfg=', 'cmsGenCfg=', 'version=', 'category=', "label=",
          'pileup-dataset=', 'pileup-files-per-job=','only-sites=',
          'starting-run=', 'starting-event=', 'totalevents=', 'eventsperjob=',
          'acquisition_era=', 'conditions=', 'processing_version=',
-         'workflow_tag=', 'override-initial-event='
+         'processing_string=', 'workflow_tag=', 'override-initial-event='
          ]
 
 usage  = "Usage: createProductionCmsGenWorkflow.py\n"
@@ -55,6 +55,7 @@ usage += "                                  --eventsperjob=<Events/job>\n"
 usage += "                                  --acquisition_era=<Acquisition Era>\n"
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
+usage += "                                  --processing_string=<Processing string>/n"
 usage += "                                  --workflow_tag=<Workflow tag>\n"
 usage += "                                  --override-initial-event=<Override Initial event>\n"
 usage += "\n"
@@ -98,6 +99,7 @@ workflow_tag        = None
 pileupDS            = None
 pileupFilesPerJob   = 1
 overrideInitialEvent= None
+processingString = None
 
 
 for opt, arg in opts:
@@ -152,6 +154,8 @@ for opt, arg in opts:
         conditions = arg
     if opt == "--processing_version":
         processingVersion = arg
+    if opt == "--processing_string":
+        processingString = arg
     if opt == '--workflow_tag':
         workflow_tag = arg
     if opt == "--override-initial-event":
@@ -253,17 +257,18 @@ for cmsRunCfg in cmsRunCfgs:
             inputModules = []
         maker.chainCmsRunNode(stageoutOutputs[nodeNumber-1], *inputModules)
 
-    maker.setConfiguration(cfgWrapper,  Type = "instance")
+    maker.setConfiguration(cfgWrapper, Type = "instance")
     maker.setCMSSWVersion(versions[nodeNumber])
     maker.setOriginalCfg(file(cmsRunCfg).read())
     maker.setPSetHash(WorkflowTools.createPSetHash(cmsRunCfg))
-    maker.setPhysicsGroup(physicsGroup)
-    maker.changeCategory(category)
-    maker.setAcquisitionEra(acquisitionEra)
-    maker.workflow.parameters['Conditions'] = conditions
-    maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
     nodeNumber += 1
+    
+maker.changeCategory(category)
+maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
+maker.workflow.parameters['Conditions'] = conditions
+
+    
 
 if selectionEfficiency != None:
     maker.addSelectionEfficiency(selectionEfficiency)

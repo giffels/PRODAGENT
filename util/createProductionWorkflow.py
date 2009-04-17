@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.9 $"
-__revision__ = "$Id: createProductionWorkflow_CSA08Hack.py,v 1.9 2009/03/03 14:48:16 direyes Exp $"
+__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.16 2009/03/20 12:34:36 direyes Exp $"
 
 
 import os
@@ -29,7 +29,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', #"label=",
          'selection-efficiency=', 'activity=', 'stageout-intermediates=',
          'chained-input=', 'starting-run=','starting-event=','totalevents=',
          'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=',
-         'only-sites=', 'store-fail=','workflow_tag='
+         'only-sites=', 'store-fail=','workflow_tag=', 'processing_string='
          ]
 
 usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
@@ -51,6 +51,7 @@ usage += "                                  --eventsperjob=<Events/job>\n"
 usage += "                                  --acquisition_era=<Acquisition Era>\n"
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
+usage += "                                  --processing_string=<Processing string>/n"
 usage += "                                  --only-sites=<Site>\n"
 usage += "                                  --workflow_tag=<Tag in workflow name to distinguish e.g. RAW and RECO workflows for a given channel>\n"
 usage += "\n"
@@ -90,6 +91,7 @@ processingVersion = None
 onlySites=None
 storeFail = False
 workflow_tag=None
+processingString = None
 
 pileupDS = None
 pileupFilesPerJob = 1
@@ -136,6 +138,8 @@ for opt, arg in opts:
         conditions = arg
     if opt == "--processing_version":
         processingVersion = arg
+    if opt == "--processing_string":
+        processingString = arg
     if opt == '--only-sites':
         onlySites = arg
 
@@ -253,9 +257,8 @@ if pileupDS != None:
     maker.addPileupDataset( pileupDS, pileupFilesPerJob)
 
 maker.changeCategory(category)
-maker.setAcquisitionEra(acquisitionEra)
+maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
 maker.workflow.parameters['Conditions'] = conditions
-maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
 
   

@@ -27,7 +27,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'pileup-dataset=', 'pileup-files-per-job=',
          'activity=', 'stageout-intermediates=', 'chained-input=',
          'acquisition_era=', 'conditions=', 'processing_version=',
-         'workflow_tag=', 'split-into-primary',
+         'processing_string=', 'workflow_tag=', 'split-into-primary',
          'tar-up-lib','tar-up-src'
          ]
 
@@ -53,6 +53,7 @@ usage += "                                  --chained-input=comma,separated,list
 usage += "                                  --acquisition_era=<Acquisition Era>\n"
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
+usage += "                                  --processing_string=<Processing string>/n"
 usage += "                                  --workflow_tag=<Workflow tag>\n"
 usage += "                                  --split-into-primary\n"
 usage += "                                  --tar-up-lib\n"
@@ -166,6 +167,7 @@ acquisitionEra="Test"
 conditions="Bad"
 processingVersion=666
 workflow_tag=None
+processingString = None
 
 
 for opt, arg in opts:
@@ -225,6 +227,8 @@ for opt, arg in opts:
         conditions = arg
     if opt == "--processing_version":
         processingVersion = arg
+    if opt == "--processing_string":
+        processingString = arg
     if opt == "--workflow_tag":
         workflow_tag = arg
     if opt == '--split-into-primary':
@@ -462,7 +466,7 @@ for cfgFile in cfgFiles:
     nodeNumber = nodeNumber + 1
 
 maker.changeCategory(category)
-maker.setAcquisitionEra(acquisitionEra)
+maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
  
 #  //
 # // Pileup sample?
@@ -491,7 +495,6 @@ if dbsUrl != None:
     maker.workflow.parameters['DBSURL'] = dbsUrl
 
 maker.workflow.parameters['Conditions'] = conditions
-maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
 spec = maker.makeWorkflow()
 spec.setActivity(activity)
