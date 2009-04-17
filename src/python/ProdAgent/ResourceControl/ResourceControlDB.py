@@ -133,9 +133,14 @@ class ResourceControlDB:
         Add a new site to the DB
         
         """
+        if ceName is None:
+            ceName = "NULL"
+        else:
+            ceName = "\"%s\"" % ceName
+        
         sqlStr = """INSERT into rc_site
             (site_name, se_name, ce_name, is_active)
-              VALUES ( "%s", "%s", "%s", """ % (
+              VALUES ( "%s", "%s", %s, """ % (
             siteName, seName, ceName,
             )
 

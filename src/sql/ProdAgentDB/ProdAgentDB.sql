@@ -487,7 +487,7 @@ CREATE TABLE rc_site(
  site_index INT(11) NOT NULL AUTO_INCREMENT,
  site_name VARCHAR(255) NOT NULL,
  se_name VARCHAR(255) NOT NULL,
- ce_name VARCHAR(255) NOT NULL,
+ ce_name VARCHAR(255),
  is_active ENUM("true", "false") DEFAULT "true",
  PRIMARY KEY(site_index),
  UNIQUE(site_name)
