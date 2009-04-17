@@ -122,6 +122,19 @@ class JobQueueDB:
         In the event of no match, [] is returned
 
         """
+        return [x['SiteIndex'] for x in self.getSite(siteId)]
+        
+
+    def getSite(self, siteId):
+        """
+        _getSite_
+
+        Get the site for the site id provided, first, site names
+        are checked, then se names and all matching indices are returned.
+
+        In the event of no match, [] is returned
+
+        """
         sites = []
         allSites = ResourceControlAPI.allSiteData()
 
@@ -132,10 +145,10 @@ class JobQueueDB:
                           site["CEName"],
                           site["SiteIndex"],
                           str(site["SiteIndex"])):
-                sites.append(site["SiteIndex"])
+                sites.append(site)
 
         return sites
-        
+
 
     def validateJobSpecDict(self, dictInstance):
         """
