@@ -164,6 +164,8 @@ def main(argv) :
                 pileUp = False
                 totalEvents = None
                 eventsPerJob = None
+                outputname = ""
+                SimType = ""
             else:
                 command = line.split('@@@')[1].strip()
                 if command.count('=') > 0 : command=command.replace('=',' ')
@@ -642,8 +644,8 @@ def main(argv) :
     queryUnmergedScript.write('#!/bin/bash\n')
     for sample in unmergedDatasets :
         for dataset in sample :
-            if dataset.find('-RECO') == -1 or len(sample) == 1 :
-                queryUnmergedScript.write('python2.4 $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + dataset + ' | grep total\n')
+            #if dataset.find('-RECO') == -1 or len(sample) == 1 :
+            queryUnmergedScript.write('python2.4 $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + dataset + ' | grep total\n')
     queryUnmergedScript.close()
     os.chmod('queryUnmerged.sh',0755)
     print 'Wrote DBS query script for unmerged datasets to:',os.path.join(os.getcwd(),'queryUnmerged.sh')
@@ -653,8 +655,8 @@ def main(argv) :
     queryMergedScript.write('#!/bin/bash\n')
     for sample in mergedDatasets :
         for dataset in sample :
-            if dataset.find('-RECO') == -1 or len(sample) == 1 :
-                queryMergedScript.write('python2.4 $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + dataset + ' | grep total\n')
+            #if dataset.find('-RECO') == -1 or len(sample) == 1 :
+            queryMergedScript.write('python2.4 $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + dataset + ' | grep total\n')
     queryMergedScript.close()
     os.chmod('queryMerged.sh',0755)
     print 'Wrote DBS query script for merged datasets to:',os.path.join(os.getcwd(),'queryMerged.sh')
