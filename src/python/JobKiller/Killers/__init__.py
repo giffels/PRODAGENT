@@ -3,11 +3,7 @@ __all__ = []
 
 
 import CondorKiller
-import ARCKiller
-try:
-    import BOSSKiller
-except ImportError:
-    pass 
+import ARCKiller 
 try:
     import BossLiteKiller
 except:
