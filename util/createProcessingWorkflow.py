@@ -5,6 +5,8 @@ _createProcessingWorkflow_
 Create a workflow that processes an input dataset with a cfg file
 
 """
+__version__ = "$Revision$"
+__revision__ = "$Id$"
 
 import os
 import sys
@@ -28,61 +30,75 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'activity=', 'stageout-intermediates=', 'chained-input=',
          'acquisition_era=', 'conditions=', 'processing_version=',
          'processing_string=', 'workflow_tag=', 'split-into-primary',
-         'tar-up-lib','tar-up-src'
+         'tar-up-lib','tar-up-src', 'use-proper-name='
          ]
 
 
-usage = "Usage: createProcessingWorkflow.py --cfg=<cfgFile>\n"
+usage  = "Usage: createProcessingWorkflow.py --cfg=<cfgFile>\n"
+usage += "                                  --py-cfg=<python cfgFile>\n"
 usage += "                                  --version=<CMSSW version>\n"
 usage += "                                  --group=<Physics Group>\n"
 #usage += "                                  --request-id=<Request ID>\n"
 #usage += "                                  --label=<Production Label>\n"
 usage += "                                  --category=<Production category>\n"
-usage += "\n"
-usage += "                                --dataset=<Dataset to process>\n"
-usage += "                                --split-type=<event|file>\n"
-usage += "                                --split-size=<Integer split size>\n"
-usage += "   Options:\n"
-usage += "                                --only-blocks=<List of fileblocks>\n"
-usage += "                                --only-sites=<List of sites>\n"
-usage += "                                --dbs-url=<DBSUrl>\n"
+usage += "                                  --dataset=<Dataset to process>\n"
+usage += "                                  --split-type=<event|file>\n"
+usage += "                                  --split-size=<Integer split size>\n"
+usage += "                                  --only-blocks=<List of fileblocks>\n"
+usage += "                                  --only-sites=<List of sites>\n"
+usage += "                                  --only-closed-blocks=<True|False>\n"
+usage += "                                  --dbs-url=<DBSUrl>\n"
+usage += "                                  --pileup-dataset=<Input Pile Up Dataset>\n"
+usage += "                                  --pileup-files-per-job=<Integer pile up files per job>\n"
 usage += "                                  --override-channel=<Phys Channel/Primary Dataset>\n"
+usage += "                                  --selection-efficiency=<Selection efficiency>\n"
 usage += "                                  --activity=<activity>\n"
 usage += "                                  --stageout-intermediates=<true|false>\n"
 usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
 usage += "                                  --acquisition_era=<Acquisition Era>\n"
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
-usage += "                                  --processing_string=<Processing string>/n"
+usage += "                                  --processing_string=<Processing string>\n"
+usage += "                                  --use-proper-name=<true|false>\n"
 usage += "                                  --workflow_tag=<Workflow tag>\n"
 usage += "                                  --split-into-primary\n"
 usage += "                                  --tar-up-lib\n"
 usage += "                                  --tar-up-src\n"
-
-
-
+usage += "\n  Options:\n"
 
 options = \
 """
-  --cfg is the path to the cfg file to be used for the skimming cmsRun task
-  --version is the version of the CMSSW to be used, you should also have done
-    a scram runtime setup for this version
-  --name is the name of the request/workflow
+  --acquisition_era sets the aquisition era and the Primary Dataset name
+
+  --activity=<activity>, The activity represented but this workflow
+    i.e. Reprocessing, Skimming etc.
+
   --category is the processing category, eg PreProd, SVSuite, Skim etc. It
-    defaults to PreProd if not provided
+    defaults to 'mc' if not provided
+
+  --cfg is the path to the cfg file to be used for the skimming cmsRun task
+
+  --chained-input=comma,separated,list,of,output,module,names Optional param
+    that specifies the output modules to chain to the next input module. Defaults
+    to all modules in a step, leave blank for all. If given should be specified
+    for each step
+
+  --conditions sets the conditions
+
   --dataset is the input dataset to be processed
-  --split-type should be either file or event. file means split the jobs based
-    on file boundaries. This means jobs with have N files per job, where N is
-    the value of --split-size. If this is events, then each job will contain N
-    events (regardless of file boundaries) where N is the value of --split-size
-  --split-size is an integer that defines the size of jobs. If --split-type is
-    set to files, then it is the number of files per job. If --split-type is
-    set to events, then it is the number of events per job
+
+  --dbs-url The URL of the DBS Service containing the input dataset
+
+  --group is the Physics group
 
   --only-blocks allows you to specify a comma seperated list of blocks that
     will be imported if you dont want the entire dataset.
     Eg: --only-blocks=blockname1,blockname2,blockname3 will process only files
     belonging to the named blocks.
+
+  --only-closed-blocks  Switch that will mean that open blocks are ignored
+    by the dataset injector. Defaults: False
+
   --only-sites allows you to restrict which fileblocks are used based on
     the site name, which will be the SE Name for that site
     Eg: --only-sites=site1,site2 will process only files that are available
@@ -92,23 +108,44 @@ options = \
     for the output. Default/Normal use is to use the same channel/primary
     as the input dataset.
 
-  --only-closed-blocks  Switch that will mean that open blocks are ignored
-    by the dataset injector.
+  --pileup-dataset is the input pileup dataset
 
-  --dbs-url=DBS Url, The URL of the DBS Service containing the input dataset
+  --pileup-files-per-job is the pileup files per job
 
-  --activity=<activity>, The activity represented but this workflow
-    i.e. Reprocessing, Skimming etc.
+  --processing_string sets the processing string
 
-   --stageout-intermediates=<true|false>, Stageout intermediate files in 
-    chained processing
-    
-   --chained-input=comma,separated,list,of,output,module,names Optional param
-   that specifies the output modules to chain to the next input module. Defaults
-   to all modules in a step, leave blank for all. If given should be specified 
-   for each step 
+  --processing_version sets the processing version
+
+  --py-cfg is path to the python cfg file to be used for the skimming cmsRun
+    task
+
+  --selection-efficiency sets the efficiency
 
   --split-into-primary  Take datasets flagged in cfg file as primary datasets
+
+  --split-size is an integer that defines the size of jobs. If --split-type is
+    set to files, then it is the number of files per job. If --split-type is
+    set to events, then it is the number of events per job
+
+  --split-type should be either file or event. file means split the jobs based
+    on file boundaries. This means jobs with have N files per job, where N is
+    the value of --split-size. If this is events, then each job will contain N
+    events (regardless of file boundaries) where N is the value of --split-size
+
+  --stageout-intermediates=<true|false>, Stageout intermediate files in
+    chained processing
+
+  --use-proper-name sets the naming convention to be used. Default: True
+    If true, it uses proper dataset naming convention:
+    /<channel>/<acquisition_era>-<processing_string>-<processing_version>/TIER
+    If false, it uses CSA08 convention:
+    /<channel>/<acquisition_era>_<conditions>_<filter_name>_<processing_version>/TIER
+
+  --version is the version of the CMSSW to be used, you should also have done
+    a scram runtime setup for this version
+
+  --workflow_tag sets the workflow tag to distinguish e.g. RAW and RECO workflows
+    for a given channel
 
 """
 
@@ -168,6 +205,7 @@ conditions="Bad"
 processingVersion=666
 workflow_tag=None
 processingString = None
+useProperName = True
 
 
 for opt, arg in opts:
@@ -236,7 +274,13 @@ for opt, arg in opts:
     if opt == '--tar-up-lib':
         tarupLib = True
     if opt == '--tar-up-src':
-        tarupSrc = True  
+        tarupSrc = True
+    if opt == '--use-proper-name':
+        if arg.lower() in ("true", "yes"):
+            useProperName = True
+        else:
+            useProperName = False
+ 
 
 if workflow_tag in (None,""):
    requestId="%s_%s" % (conditions,processingVersion)
@@ -466,7 +510,10 @@ for cfgFile in cfgFiles:
     nodeNumber = nodeNumber + 1
 
 maker.changeCategory(category)
-maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
+if useProperName:
+    maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
+else:
+    maker.setAcquisitionEra(acquisitionEra)
  
 #  //
 # // Pileup sample?
@@ -495,6 +542,8 @@ if dbsUrl != None:
     maker.workflow.parameters['DBSURL'] = dbsUrl
 
 maker.workflow.parameters['Conditions'] = conditions
+if not useProperName:
+    maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
 spec = maker.makeWorkflow()
 spec.setActivity(activity)

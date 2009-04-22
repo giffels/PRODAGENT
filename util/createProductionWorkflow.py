@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 """
-_createPreProdWorkflow_
+_createProductionWorkflow_
 
-Create a preprod workflow using a configuration PSet.
+Create a production workflow using a configuration PSet.
 
 This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.16 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.16 2009/03/20 12:34:36 direyes Exp $"
+__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.17 2009/04/17 15:13:15 swakef Exp $"
 
 
 import os
@@ -29,21 +29,25 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', #"label=",
          'selection-efficiency=', 'activity=', 'stageout-intermediates=',
          'chained-input=', 'starting-run=','starting-event=','totalevents=',
          'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=',
-         'only-sites=', 'store-fail=','workflow_tag=', 'processing_string='
+         'only-sites=', 'store-fail=','workflow_tag=', 'processing_string=',
+         'use-proper-name='
          ]
 
-usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
+usage  = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
+usage += "                                  --py-cfg=<python cfgFile>\n"
 usage += "                                  --version=<CMSSW version>\n"
 usage += "                                  --channel=<Phys Channel/Primary Dataset>\n"
 usage += "                                  --group=<Physics Group>\n"
 #usage += "                                  --request-id=<Request ID>\n"  #Replaced by --conditions and --processing_version 
 #usage += "                                  --label=<Production Label>\n" #Replaced by --aquisition_era
 usage += "                                  --category=<Production category>\n"
+usage += "                                  --pileup-dataset=<Input Pile Up Dataset /PrimDS/ProcDS/Tier>\n"
+usage += "                                  --pileup-files-per-job=<PileUp files per job>\n"
+usage += "                                  --selection-efficiency=<Selection efficiency>\n"
 usage += "                                  --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
 usage += "                                  --stageout-intermediates=<true|false>\n"
 usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
-usage += "                                  --store-fail=<true|false>. It forces the stageout \
-                                            of output files before a faild step\n"
+usage += "                                  --store-fail=<true|false>. Default: False\n"
 usage += "                                  --starting-run=<Starting lumi>\n"
 usage += "                                  --starting-event=<Starting event>\n"
 usage += "                                  --totalevents=<Total Events>\n"
@@ -51,9 +55,10 @@ usage += "                                  --eventsperjob=<Events/job>\n"
 usage += "                                  --acquisition_era=<Acquisition Era>\n"
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
-usage += "                                  --processing_string=<Processing string>/n"
+usage += "                                  --processing_string=<Processing string>\n"
 usage += "                                  --only-sites=<Site>\n"
-usage += "                                  --workflow_tag=<Tag in workflow name to distinguish e.g. RAW and RECO workflows for a given channel>\n"
+usage += "                                  --workflow_tag=<Tag in workflow name>\n"
+usage += "                                  --use-proper-name=<true|false> Default: True\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -62,6 +67,80 @@ usage += "to be used. \n"
 usage += "It will default to the name of the cfg file if not provided\n\n"
 usage += "Production category is a marker that will be added to LFNs, \n"
 usage += "For example: PreProd, CSA06 etc etc. Defaults to mc\n"
+
+usage += "\n  Options:\n"
+
+options = \
+"""
+  --acquisition_era sets the aquisition era and the Primary Dataset name
+
+  --activity=<activity>, The activity represented but this workflow
+    i.e. Reprocessing, Skimming etc.
+
+  --category is the processing category, eg PreProd, SVSuite, Skim etc. It
+    defaults to 'mc' if not provided
+
+  --channel allows you to specify a different primary dataset
+    for the output. 
+
+  --cfg is the path to the cfg file to be used for the skimming cmsRun task
+
+  --chained-input=comma,separated,list,of,output,module,names Optional param
+    that specifies the output modules to chain to the next input module. Defaults
+    to all modules in a step, leave blank for all. If given should be specified
+    for each step
+
+  --conditions sets the conditions
+
+  --eventsperjob is the number of events to produce in a single batch job 
+
+  --group is the Physics group
+
+  --only-sites allows you to restrict which fileblocks are used based on
+    the site name, which will be the SE Name for that site
+    Eg: --only-sites=site1,site2 will process only files that are available
+    at the specified list of sites.
+
+  --pileup-dataset is the input pileup dataset
+
+  --pileup-files-per-job is the pileup files per job
+
+  --processing_string sets the processing string
+
+  --processing_version sets the processing version
+
+  --py-cfg is path to the python cfg file to be used for the skimming cmsRun
+    task
+
+  --selection-efficiency sets the efficiency
+
+  --stageout-intermediates=<true|false>, Stageout intermediate files in
+    chained processing
+
+  --starting-run sets the first LUMI number.
+
+  --starting-event sets the first event number.
+
+  --store-fail allows you store output files of succeed steps of a failed 
+    chained processing job
+
+  --totalevents sets the total number of events to be produced.
+
+  --use-proper-name sets the naming convention to be used. Default: True
+    If true, it uses proper dataset naming convention:
+    /<channel>/<acquisition_era>-<processing_string>-<processing_version>/TIER
+    If false, it uses CSA08 convention:
+    /<channel>/<acquisition_era>_<conditions>_<filter_name>_<processing_version>/TIER
+
+  --version is the version of the CMSSW to be used, you should also have done
+    a scram runtime setup for this version
+
+  --workflow_tag sets the workflow tag to distinguish e.g. RAW and RECO workflows
+    for a given channel
+
+"""
+
+usage += options
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
@@ -92,6 +171,7 @@ onlySites=None
 storeFail = False
 workflow_tag=None
 processingString = None
+useProperName = True
 
 pileupDS = None
 pileupFilesPerJob = 1
@@ -160,6 +240,12 @@ for opt, arg in opts:
 
     if opt == '--workflow_tag':
         workflow_tag = arg
+
+    if opt == '--use-proper-name':
+        if arg.lower() in ("true", "yes"):
+            useProperName = True
+        else:
+            useProperName = False
     
 if len(cfgFiles) == 0:
     msg = "--cfg option not provided: This is required"
@@ -257,8 +343,16 @@ if pileupDS != None:
     maker.addPileupDataset( pileupDS, pileupFilesPerJob)
 
 maker.changeCategory(category)
-maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
-maker.workflow.parameters['Conditions'] = conditions
+#  //
+# // Proper Naming covention
+#//
+if useProperName:
+    maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
+    maker.workflow.parameters['Conditions'] = conditions
+else:
+    maker.setAcquisitionEra(acquisitionEra)
+    maker.workflow.parameters['Conditions'] = conditions
+    maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
 
   
