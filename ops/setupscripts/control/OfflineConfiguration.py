@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.3 2009/02/24 20:20:56 dmason Exp $"
-__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.5 2009/04/15 17:13:40 dmason Exp $"
+__version__ = "$Revision: 1.5 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -63,29 +63,29 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_2_2_7"
-defaultAlcaVersion = "CMSSW_2_2_7"
-defaultDQMVersion = "CMSSW_2_2_7"
+defaultRecoVersion = "CMSSW_2_2_8"
+defaultAlcaVersion = "CMSSW_2_2_8"
+defaultDQMVersion = "CMSSW_2_2_8"
 
 
 defaultProcVersion = "v1"
 repackProcVersion = defaultProcVersion
 #recoProcVersion = "PFTHPFTHPTHFPFTHPHTH-v12CRAFT-testingtesting"
 recoProcVersion = defaultProcVersion
-defaultGlobalTag = "CRAFT_ALL_V11::All"
+defaultGlobalTag = "CRAFT_V14P::All"
 
 # Create a dictionary that associates a reco configuration with a scenario.
 # The configuration must be specified as a url.
 recoConfig = {}
 alcaConfig = {}
 # for CRUZET and BeamSplash reprocessing
-recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py?revision=1.40"
+recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py?revision=1.41"
 # for EW35 and CRAFT reprocessing
 #recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_38T_cfg.py?revision=1.22"
 #recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_DBField_cfg.py?revision=1.2"
 # Create the default configuration.  Repacking is enabled and everything else
 # is turned off.  The default processing style is also set to "Bulk".
-alcaConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_7/src/step3_ALCA_CRAFT.py"
+alcaConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_8/src/step3_ALCA_CRAFT.py"
 setProcessingStyle(tier0Config, "Default", "Bulk")
 addDataset(tier0Config, "Default", "Default",
            default_proc_ver = defaultProcVersion, hltdebug = False,
@@ -94,14 +94,15 @@ addDataset(tier0Config, "Default", "Default",
 
 # Configure the processing style for the various streams.
 
-setProcessingStyle(tier0Config, "EXPRESS", "Express")
+setProcessingStyle(tier0Config, "Express", "Express")
 setProcessingStyle(tier0Config, "A", "Bulk")
 setProcessingStyle(tier0Config, "ALCAP0", "Bulk")
 setProcessingStyle(tier0Config, "ALCAPHISYM", "Bulk")
 setProcessingStyle(tier0Config, "ALCAPHISYMHCAL", "Bulk")
-setProcessingStyle(tier0Config, "CALIBRATION", "Bulk")
-setProcessingStyle(tier0Config, "ECALCALIBRATION", "Bulk")
+setProcessingStyle(tier0Config, "Calibration", "Bulk")
+setProcessingStyle(tier0Config, "EcalCalibration", "Bulk")
 setProcessingStyle(tier0Config, "HLTDEBUG", "Bulk")
+setProcessingStyle(tier0Config, "HLTMON", "Bulk")
 
 
 
@@ -136,17 +137,6 @@ addDataset(tier0Config, "A", "MinimumBias",
            reco_version = defaultRecoVersion,
            custodial_node = "T1_ES_PIC_MSS",
            archival_node = "T0_CH_CERN_MSS")
-addDataset(tier0Config, "A", "BeamHalo",
-           default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = defaultGlobalTag,
-           reco_configuration = recoConfig["cosmics"],
-           reco_proc_ver = recoProcVersion,
-           reco_version = defaultRecoVersion,
-           do_dqm = True,dqm_version=defaultDQMVersion,
-           do_alca = True, alca_version= defaultAlcaVersion,
-           alca_proc_ver = recoProcVersion,
-           alca_configuration=alcaConfig["cosmics"],
-           archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config, "HLTDEBUG", "Monitor",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
            do_reco = False, global_tag = defaultGlobalTag,
@@ -156,20 +146,6 @@ addDataset(tier0Config, "HLTDEBUG", "Monitor",
            do_dqm = False,dqm_version=defaultDQMVersion,
            do_alca = False,
            alca_configuration=alcaConfig["cosmics"],
-           archival_node = "T0_CH_CERN_MSS")
-addDataset(tier0Config, "A", "BarrelMuon",
-           default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = defaultGlobalTag,
-           reco_proc_ver = recoProcVersion,
-           reco_configuration = recoConfig["cosmics"],
-           reco_version = defaultRecoVersion,
-           archival_node = "T0_CH_CERN_MSS")
-addDataset(tier0Config, "A", "EndcapsMuon",
-           default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = defaultGlobalTag,
-           reco_configuration = recoConfig["cosmics"],
-           reco_proc_ver = recoProcVersion,
-           reco_version = defaultRecoVersion,
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"A","HcalHPDNoise",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -191,9 +167,20 @@ addDataset(tier0Config,"ALCAPHISYMHCAL","AlCaPhiSymHcal",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
            do_reco = False, global_tag = defaultGlobalTag,
            archival_node = "T0_CH_CERN_MSS")
-addDataset(tier0Config,"CALIBRATION","EcalLaser",
+addDataset(tier0Config,"Calibration","TestEnables",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
            do_reco = False, global_tag = defaultGlobalTag,
+           archival_node = "T0_CH_CERN_MSS")
+addDataset(tier0Config,"EcalCalibration","EcalLaser",
+           default_proc_ver = defaultProcVersion, scenario = "cosmics",
+           do_reco = False, global_tag = defaultGlobalTag,
+           archival_node = "T0_CH_CERN_MSS")
+addDataset(tier0Config, "HLTMON", "OfflineMonitor",
+           default_proc_ver = defaultProcVersion, scenario = "cosmics",
+           do_reco = True, global_tag = defaultGlobalTag,
+           reco_proc_ver = recoProcVersion,
+           reco_configuration = recoConfig["cosmics"],
+           reco_version = defaultRecoVersion,
            archival_node = "T0_CH_CERN_MSS")
 
 
@@ -206,12 +193,12 @@ skimConfig["SuperPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/
 skimConfig["TrackerPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/TrackerPointing_cfg.py?revision=1.9"
 skimConfig["HcalHPDFilter"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/HcalHPDFilter_cfg.py?revision=1.2"
 
-addTier1Skim(tier0Config, "Skim1", "A", "RECO", "Cosmics", "CMSSW_2_2_7", "v1",
-             skimConfig["SuperPointing"], "T1_IT_CNAF_MSS")
-addTier1Skim(tier0Config, "Skim2", "A", "RECO", "Cosmics", "CMSSW_2_2_7", "v2",
-             skimConfig["TrackerPointing"], "T1_IT_CNAF_MSS")
-addTier1Skim(tier0Config, "Skim3", "A", "RECO", "Calo", "CMSSW_2_2_7", "v3",
-             skimConfig["HcalHPDFilter"], "T1_FR_CCIN2P3_MSS")
+addTier1Skim(tier0Config, "Skim1", "A", "RECO", "Cosmics", "CMSSW_2_2_8", "v1",
+             skimConfig["SuperPointing"], False)
+addTier1Skim(tier0Config, "Skim2", "A", "RECO", "Cosmics", "CMSSW_2_2_8", "v2",
+             skimConfig["TrackerPointing"], False)
+addTier1Skim(tier0Config, "Skim3", "A", "RECO", "Calo", "CMSSW_2_2_8", "v3",
+             skimConfig["HcalHPDFilter"], False)
 
 
 # set up Express handling
@@ -219,14 +206,14 @@ addTier1Skim(tier0Config, "Skim3", "A", "RECO", "Calo", "CMSSW_2_2_7", "v3",
 # actual express configuration
 # Create a dictionary that associates express processing config urls to names.
 expressProcConfig = {}
-expressProcConfig["default"] = "/data/cmsprod/PAProd/dev/raw2digi_reco_alcaCombined_express_cfg.py"
+expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg.py"
 
 # Create a dictionary that associated express merge packing config urls to names
 
 expressMergePackConfig = {}
-expressMergePackConfig["default"] = "/data/cmsprod/PAProd/dev/alCaRecoSplitting_express_cfg.py"
+expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg.py"
 
-addExpressConfig(tier0Config, "EXPRESS",
+addExpressConfig(tier0Config, "Express",
                   expressProcConfig["default"],
                   expressMergePackConfig["default"], False)
 
