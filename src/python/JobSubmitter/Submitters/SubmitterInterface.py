@@ -9,7 +9,7 @@ Submitters should not take any ctor args since they will be instantiated
 by a factory
 
 """
-__revision__ = "$Id: SubmitterInterface.py,v 1.25 2008/07/25 15:29:17 swakef Exp $"
+__revision__ = "$Id: SubmitterInterface.py,v 1.26 2008/11/07 13:44:56 swakef Exp $"
 
 import os
 import logging
@@ -20,7 +20,6 @@ from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdAgentCore.PluginConfiguration import loadPluginConfig
 from ProdAgentCore.ProdAgentException import ProdAgentException
-from ProdAgentBOSS import BOSSCommands
 
 
 from ShREEK.CMSPlugins.DashboardInfo import DashboardInfo,extractDashboardID
