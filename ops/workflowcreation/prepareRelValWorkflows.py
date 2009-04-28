@@ -393,6 +393,7 @@ def main(argv) :
     print 'Workflow creation'
     print ''
 
+    datasets = []
     unmergedDatasets = []
     mergedDatasets = []
     workflows = {}
@@ -423,12 +424,9 @@ def main(argv) :
                 command += '--override-channel=' + sample['primary'] + ' \\\n'
                 command += '--version=' + version + ' \\\n'
                 command += '--py-cfg=' + step2[sample['RECOtag']]['outputname'] + ' \\\n'
-                #  //
-                # // Currently not supported by prodAgent!
-                #//
-                #command += '--version=' + version + ' \\\n'
-                #command += '--py-cfg=' + step2[sample['ALCAtag']]['outputname'] + ' \\\n'
-                #command += '--stageout-intermediates=true \\\n'
+                command += '--version=' + version + ' \\\n'
+                command += '--py-cfg=' + step3[sample['ALCAtag']]['outputname'] + ' \\\n'
+                command += '--stageout-intermediates=true \\\n'
                 command += '--group=RelVal \\\n'
                 command += '--category=relval \\\n'
                 command += '--activity=RelVal \\\n'
@@ -509,6 +507,8 @@ def main(argv) :
             tmp = []
             index = FindIndex(output,'Output Datasets')
             for dataset in output[index+1:] : tmp.append(dataset.strip())
+            datasets.append({ 'unmerged':tmp, 'totalEvents':sample['totalEvents'],
+                             'merged':[ x.replace('-unmerged','') for x in tmp ] })
             unmergedDatasets.append(tmp)
             index = FindIndex(output,'Created')
             if index == -1 :
@@ -558,6 +558,8 @@ def main(argv) :
             tmp = []
             index = FindIndex(output,'Output Datasets')
             for dataset in output[index+1:] : tmp.append(dataset.strip())
+            datasets.append({ 'unmerged':tmp, 'totalEvents':sample['totalEvents'],
+                             'merged':[ x.replace('-unmerged','') for x in tmp ] })
             unmergedDatasets.append(tmp)
             index = FindIndex(output,'Created')
             if index == -1 :
@@ -680,6 +682,14 @@ def main(argv) :
         for dataset in sample :
             outputList.write(dataset + "\n")
     print 'Wrote output datasets list to:', os.path.join(os.getcwd(),'outputDatasets.txt')
+
+    # File with expected number of events
+    numberOfEvents = open('eventsExpected.txt','w')
+    for sample in datasets:
+        for dataset in sample['merged']:
+            numberOfEvents.write("%s %s\n" % (sample['totalEvents'],dataset))
+    numberOfEvents.close()
+    print 'Wrote events per dataset to:', os.path.join(os.getcwd(),'eventsExpected.txt')
 
     print ''
 
