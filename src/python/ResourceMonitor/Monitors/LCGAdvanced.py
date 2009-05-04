@@ -11,7 +11,7 @@ from ResourceMonitor.Registry import registerMonitor
 
 from ResourceMonitor.Monitors.LCGSiteInfo import getSiteInfoFromBase
 from ResourceMonitor.Monitors.WorkflowConstraints import siteToNotWorkflows
-from JobQueue.JobQueueDB import JobQueueDB
+from ProdCommon.Database import Session
 
 import logging
 
@@ -64,12 +64,15 @@ class LCGAdvanced(MonitorInterface):
 #        logging.debug("Site/Workflow incompatibilities: %s" % \
 #                                          str(siteWorkflowIncompatibilities))
 
-        # get active jobs released at a site
-        jq = JobQueueDB()
-        self.sitejobs = jq.countQueuedActiveJobs()
         
         # if requested write site status file
         self.writeSiteStatusFile(self.siteinfo)
+        
+        # Increase thresholds for sites with few jobs queuing
+#        schedulerJobStatus = None # either from monitoring or API, check with Giuseppe
+#        siteJobStatus = self.jq.combineSchedulerStatus(schedulerJobStatus)
+        if self.plugConf.get("DynamicallyAdjustThresholds", False):
+            self.dynamicallyAdjustThresholds(self.schedulerSiteStatus())
         
         # get constraints for sites and jobtypes
         result = self.getConstraints(good_sites, wf_constraints)
@@ -116,6 +119,9 @@ class LCGAdvanced(MonitorInterface):
                 raise Exception("BDII not set in config file and env variable LCG_GFAL_INFOSYS not defined")
     
         self.plugConf["SiteQualityCutOff"] = float(self.plugConf.get("SiteQualityCutOff", 0.5))
+        
+        if self.plugConf.get("DynamicallyAdjustThresholds", "false").lower() in ("true", "yes"):
+            self.plugConf["DynamicallyAdjustThresholds"] = True
     
     
     def setThresholds(self, siteData):
@@ -318,6 +324,52 @@ class LCGAdvanced(MonitorInterface):
                     result.append(constraint)
         
         return result
+
+
+    def schedulerSiteStatus(self):
+        """
+        Find the number of jobs per site with a given scheduler status
+        This is naughty as we join with BossLite tables but the alternative is
+        to get a list of all jobs and combine with we_Job which will be very
+        heavy
+        """
+        statusMap = {'Waiting' : 'Queued',
+                     'Ready' : 'Queued',
+                     'Submitted' : 'Queued', 
+                     'Scheduled' : 'Queued',
+                      'Running' : 'Running',
+                      'Done' : 'Done',
+                      'Retrieved' : 'Done',
+                      'Other' : 'Other'}
+        result = {}
+#        query = """SELECT released_site,bl_task.job_type,status_scheduler,count(*)
+#                    from bl_runningjob, bl_task, jq_queue, bl_job, we_Job
+#                    WHERE bl_job.task_id=bl_task.id 
+#                    and bl_runningjob.job_id = bl_job.job_id 
+#                    and jq_queue.job_spec_id = bl_job.name
+#                    and jq_queue.status = 'released'
+#                    and bl_runningjob.closed != 'Y'
+#                    and we_Job.id = jq_queue.job_spec_id
+#                    and we_Job.status = 'inProgress'
+#                    and bl_job.submission_number = bl_runningjob.submission
+#                    GROUP BY status_scheduler,bl_task.job_type"""
+        query = """SELECT released_site,job_type,status_scheduler,count(*)
+                    FROM bl_runningjob
+                    JOIN bl_job ON bl_runningjob.task_id=bl_job.task_id 
+                      and bl_runningjob.job_id = bl_job.job_id
+                      and bl_job.submission_number = bl_runningjob.submission
+                    JOIN jq_queue ON jq_queue.job_spec_id = bl_job.name
+                    WHERE jq_queue.status = 'released' and bl_runningjob.closed != 'Y'
+                    GROUP BY status_scheduler,job_type"""
+        Session.execute(query)
+        temp = Session.fetchall()
+        for site, jobtype, status, count in temp:
+            if status not in statusMap:
+                logging.error('Job status %s unknown - fall back to Other' % status)
+                status = 'Other'
             
-            
+            result.setdefault(site, {}).setdefault(jobtype, {})[statusMap[status]] = count
+        return result
+
+
 registerMonitor(LCGAdvanced, LCGAdvanced.__name__)
