@@ -100,9 +100,20 @@ class RequestFeeder(PluginInterface):
         self.overrideInitialEvent = \
                  self.workflow.parameters.get("OverrideInitialEvent", None)
 
-        siteList = self.workflow.parameters.get("Sites", "")
-        [ self.sites.append(x) for x in siteList.split(",") if x != "" ] 
+        #  //
+        # // OnlySites takes precedence over Sites parameter!
+        #//
 
+        siteList = self.workflow.parameters.get("Sites", None)
+        onlySitesList = self.workflow.parameters.get("OnlySites", None)
+        if (siteList is not None) and (onlySitesList is not None):
+            logging.info("Both restrictions, OnlySites and Sites were \
+                provided --- OnlySites overrides Sites ---")
+        if onlySitesList is not None:
+            self.sites.extend([x for x in onlySitesList.split(",") if x != ""])
+        elif siteList is not None:
+            self.sites.extend([x for x in siteList.split(",") if x != ""])
+            
         msg = "Total Events: %s  \n" %  self.totalEvents
         msg += "EventsPerJob: %s  InitialRun: %s  \n" % (
              self.eventsPerJob, self.initialRun)
