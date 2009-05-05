@@ -218,8 +218,10 @@ def main(argv) :
                 reader = DBSReader(readDBS)
                 inputFiles = reader.dbs.listFiles(path=inputData['REALDATA'],runNumber=inputData['RUN'])
                 blocks = {}
+                totalEvents = 0
                 for inputFile in inputFiles:
                     blocks[inputFile['Block']['Name']] = None
+                    totalEvents += inputFile['NumberOfEvents']
                 inputBlocks = ",".join(blocks.keys())
             
             # Is a first step command?
