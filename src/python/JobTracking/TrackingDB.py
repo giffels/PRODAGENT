@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.5 2008/11/18 18:08:23 gcodispo Exp $"
-__revision__ = "$Revision: 1.5 $"
+__version__ = "$Id: TrackingDB.py,v 1.6 2009/02/13 09:37:48 gcodispo Exp $"
+__revision__ = "$Revision: 1.6 $"
 
 import time
 
@@ -121,6 +121,14 @@ class TrackingDB:
 
         select active jobs not yet associated to a status query group
         """
+        ### query = \
+        ###       'select j.task_id,j.job_id from ' \
+        ###       + ' (select task_id,job_id from bl_runningjob ' \
+        ###       + " where closed='N' and scheduler_id IS NOT NULL " \
+        ###       + " and process_status like '%handled') j " \
+        ###       + ' left join jt_group g ' \
+        ###       + ' on (j.task_id=g.task_id and j.job_id=g.job_id) ' \
+        ###       + ' where g.job_id IS NULL  order by j.task_id'
 
         query = \
               'select j.task_id,j.job_id from bl_runningjob j' \
@@ -128,7 +136,7 @@ class TrackingDB:
               + ' on (j.task_id=g.task_id and j.job_id=g.job_id) ' \
               + ' where g.job_id IS NULL ' \
               + " and j.closed='N' and j.scheduler_id IS NOT NULL" \
-              + " and process_status like '%handled'" \
+              + " and j.process_status like '%handled'" \
               + " order by j.task_id"
 
         rows = self.bossSession.select(query)
@@ -144,12 +152,12 @@ class TrackingDB:
         """
 
         query = \
-              'select g.task_id,g.job_id from bl_runningjob j' \
-              + ' right join jt_group g' \
+              'select g.task_id,g.job_id from jt_group g left join ' \
+              + ' (select task_id,job_id from bl_runningjob ' \
+              + " where closed='N' and scheduler_id IS NOT NULL " \
+              + " and process_status like '%handled') j " \
               + ' on (j.task_id=g.task_id and j.job_id=g.job_id) ' \
-              + ' where g.job_id IS NOT NULL ' \
-              + " and j.status in ('E','K','A','SD') " \
-              + " or process_status not like '%handled'" \
+              + ' where j.job_id IS NULL'
 
         rows = self.bossSession.select(query)
         return rows
