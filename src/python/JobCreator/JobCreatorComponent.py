@@ -56,7 +56,7 @@ class JobCreatorComponent:
         self.args['MultipleJobsPerRun'] = False
         self.args['DropNonLFNInputs'] = True
         self.args['SizeBasedMerge'] = True
-        
+
         self.args.update(args)
         self.prodAgent = prodAgentName()
         self.job_state = self.args['JobState']
@@ -78,7 +78,7 @@ class JobCreatorComponent:
             self.args['MultipleJobsPerRun'] = True
         else:
             self.args['MultipleJobsPerRun'] = False
-            
+
         if str(self.args['DropNonLFNInputs']).lower() in ("true", "yes"):
             self.args['DropNonLFNInputs'] = True
         else:
@@ -92,7 +92,7 @@ class JobCreatorComponent:
         msg += " Creator: %s \n" % self.args['CreatorName']
 
         logging.info(msg)
-        
+
     def __call__(self, event, payload):
         """
         _operator()_
@@ -105,7 +105,7 @@ class JobCreatorComponent:
         msg += "Current Creator: %s" % self.args['CreatorName']
         logging.debug(msg)
 
-        
+
         if event == "CreateJob":
             logging.info("Creating Job %s" % payload)
             try:
@@ -129,7 +129,7 @@ class JobCreatorComponent:
                 msg += "\nTraceback: %s\n" % traceback.format_exc()
                 logging.error(msg)
                 return
-            
+
         elif event == "JobCreator:SetCreator":
             #  //
             # // Payload should be name of registered creator
@@ -153,7 +153,7 @@ class JobCreatorComponent:
         elif event == "JobCreator:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
             return
-        
+
 
     def newWorkflow(self, workflowSpec):
         """
@@ -182,7 +182,7 @@ class JobCreatorComponent:
             wfname, spec.parameters['WorkflowType'])
                                 )
         spec.save(wfBackup)
-        
+
         gen = retrieveGenerator(self.args['GeneratorName'])
         creator = retrieveCreator(self.args['CreatorName'])
         gen.creator = creator
@@ -192,10 +192,10 @@ class JobCreatorComponent:
         gen.actOnWorkflowSpec(spec, wfCache)
 
         return
-    
-        
-        
-            
+
+
+
+
     def setCreator(self, creatorName):
         """
         _setCreator_
@@ -232,9 +232,9 @@ class JobCreatorComponent:
         if primaryJobSpec == None:
             logging.error("Unable to Create Job for: %s" % jobSpecFile)
             return
-        
+
         logging.debug("Site Whitelist= %s" % primaryJobSpec.siteWhitelist)
-        
+
         if not primaryJobSpec.isBulkSpec():
             #  //
             # // Non bulk spec: handle as single spec
@@ -252,7 +252,7 @@ class JobCreatorComponent:
             self.ms.publish("SubmitJob", jobSpecToPublish)
             self.ms.commit()
             return
-        
+
         #  //
         # // Still here => Bulk Job spec, so process each spec,
         #//  regenerate the bulk spec file and publish that.
@@ -270,7 +270,7 @@ class JobCreatorComponent:
                 msg = "Unable to load bulk Job Spec:\n%s\n" % specFile
                 logging.warning(msg)
                 continue
-            
+
             newSpecFile = self.handleJobSpecInstance(specInstance)
             if newSpecFile == None:
                 msg = "No JobSpec Returned due to error\n"
@@ -282,17 +282,17 @@ class JobCreatorComponent:
                 firstSpec = newSpecFile
 
         #  //
-        # // Now update and save the bulk spec with the new spec 
+        # // Now update and save the bulk spec with the new spec
         #//  file locations and then publish it for submission
         logging.debug("Converting to Bulk Spec: %s" % firstSpec)
         newBulkSpec = self.readJobSpec(firstSpec)
         newBulkSpecFile = "%s.BULK" % firstSpec
         workflowName = newBulkSpec.payload.workflow
-        
+
         bulkTar = os.path.dirname(firstSpec)
         #       We don't want this to go somewhere that'll eventually be cleaned up...
         #       strip off last part of dir
-        bulkTar = os.path.dirname(bulkTar) 
+        bulkTar = os.path.dirname(bulkTar)
         bulkNNNN = os.path.split(bulkTar)[1]
         bulkTar += "/BulkSpecs"
         if not os.path.exists(bulkTar):
@@ -305,19 +305,19 @@ class JobCreatorComponent:
         newBulkSpec.siteBlacklist.extend(primaryJobSpec.siteBlacklist)
 
         logging.debug("Setting bulk flags for trigger")
-        WEJob.setBulkId(newSpecs.keys(), bulkNNNN+'::'+bulkName) 
+        WEJob.setBulkId(newSpecs.keys(), bulkNNNN+'::'+bulkName)
         self.trigger.addFlag("bulkClean",bulkNNNN+'::'+bulkName,newSpecs.keys())
         self.trigger.setAction(bulkNNNN+"::"+bulkName,"bulkClean","bulkCleanAction")
 
         logging.debug("Bulk Spec Whitelist: %s" % newBulkSpec.siteWhitelist)
-        
-        
+
+
         #  //
         # // Generate job spec tarball and add to bulk job spec
         #//
         createBulkSpecTar(newBulkSpec, bulkTar)
         newBulkSpec.save(newBulkSpecFile)
-        
+
         #  //
         # // Publish AcceptedJob events to allow cleanup
         #//
@@ -325,12 +325,12 @@ class JobCreatorComponent:
             logging.debug("Publishing AcceptedJob: %s" % specId)
             self.ms.publish("AcceptedJob", specId)
             self.ms.commit()
-        
+
         logging.debug("Publishing (BulkSpec) SubmitJob: %s" % newBulkSpecFile)
         self.ms.publish("SubmitJob", newBulkSpecFile)
         self.ms.commit()
         return
-        
+
 
 
 
@@ -350,7 +350,7 @@ class JobCreatorComponent:
         wfBackup = os.path.join(
             wfCache,
             "%s-%s-Workflow.xml" % (workflowName, jobSpec.payload.jobType))
-        
+
         runNum = jobSpec.parameters.get("RunNumber", None)
         runPadding = None
         if runNum == None:
@@ -361,7 +361,7 @@ class JobCreatorComponent:
                 runPadding = "cleanups"
             elif (jobType == 'LogCollect'):
                 runPadding = "logcollects"
-            else:  
+            else:
                runPadding = "merges"
         else:
             runNum = int(runNum)
@@ -376,7 +376,7 @@ class JobCreatorComponent:
         # The default directory structure is:
         #   ComponentDir/workflowName/NNNN/runNumber
         if self.args["MultipleJobsPerRun"] == True:
-            jobSpecDirKey = str((abs(id(jobSpec)) % 1000)).zfill(4)        
+            jobSpecDirKey = str((abs(id(jobSpec)) % 1000)).zfill(4)
             jobCache = os.path.join(self.args['ComponentDir'],
                                     workflowName,
                                     jobSpecDirKey,
@@ -386,7 +386,7 @@ class JobCreatorComponent:
                                     workflowName,
                                     "%s" % runPadding,
                                     str(runNum))
-        
+
         if not os.path.exists(jobCache):
             os.makedirs(jobCache)
 
@@ -414,14 +414,17 @@ class JobCreatorComponent:
             gen.jobCache = jobCache
             newJobSpec = gen.actOnJobSpec(jobSpec, jobCache)
         except Exception, ex:
-            logging.error("Failed to create Job: %s\n%s" % (jobname, ex))
+            msg =  "Failed to create Job: %s\n" % jobname
+            msg += "Details: %s\n" % str(ex)
+            msg += "Traceback: %s\n" % traceback.format_exc()
+            logging.error(msg)
             self.ms.publish("CreateFailed", jobname)
             self.ms.commit()
             return
 
 
         try:
-            #  // 
+            #  //
             # // Register job creation for jobname, provide Cache Area
             #//  and set job state to InProgress
             if not JobState.isRegistered(jobname):
@@ -431,18 +434,18 @@ class JobCreatorComponent:
                     JobState.register(jobname, 'Merge',\
                                         int(self.args['mergeMaxRetries']),\
                                         1, workflowName)
-                    
+
                 else:
                     JobState.register(jobname, jobType,\
                                         int(self.args['maxRetries']),\
                                         1, workflowName)
-            logging.debug("job state has been  registered")                    
+            logging.debug("job state has been  registered")
             JobState.create(jobname, jobCache)
-            logging.debug("job state has been created")                    
+            logging.debug("job state has been created")
             JobState.inProgress(jobname)
             logging.debug("job state is in progress")
         except Exception, ex:
-            # NOTE: we can have different errors here 
+            # NOTE: we can have different errors here
             # NOTE: transition, submission, other...
             msg = "JobState Error: %s\n" % str(ex)
             msg += "Traceback: %s\n" % traceback.format_exc()
@@ -451,7 +454,7 @@ class JobCreatorComponent:
 
         try:
 
-            cleanFlags = self.mss.isSubscribedTo("SetJobCleanupFlag") 
+            cleanFlags = self.mss.isSubscribedTo("SetJobCleanupFlag")
             logging.debug("Found following components for cleanup flags " + \
                 str(cleanFlags))
             if jobType in  ("Merge", "Processing", "CleanUp"):
@@ -463,13 +466,13 @@ class JobCreatorComponent:
                 logging.debug(
                     "ProdMgr based job: Adding ProdMgr cleanup Flag to job")
                 cleanFlags += \
-                self.mss.isSubscribedTo("ProdMgrInterface:SetJobCleanupFlag") 
+                self.mss.isSubscribedTo("ProdMgrInterface:SetJobCleanupFlag")
             for component in cleanFlags:
                 logging.debug("trigger.addFlag(cleanup, %s, %s" % (
                     jobname, component)
                               )
                 self.trigger.addFlag("cleanup", jobname, component)
-               
+
             if len(cleanFlags) > 0:
                 #  //
                 # // Only set the action if there are components
@@ -477,15 +480,15 @@ class JobCreatorComponent:
                 logging.debug("Cleanup action installed for %s" % jobname)
                 self.trigger.setAction(jobname,"cleanup","jobCleanAction")
         except Exception, ex:
-            # NOTE: we can have different errors here 
+            # NOTE: we can have different errors here
             # NOTE: transition, submission, other...
             msg = "Cleanup flag Error: %s\n" % str(ex)
             msg += "Traceback: %s\n" % traceback.format_exc()
             logging.error(msg)
             return
-        
+
         return newJobSpec
-        
+
 
     def readJobSpec(self, url):
         """
@@ -500,12 +503,12 @@ class JobCreatorComponent:
             logging.error(str(ex))
             return None
         return jobSpec
-        
-        
-        
-        
 
-        
+
+
+
+
+
 
     def startComponent(self):
         """
@@ -515,12 +518,12 @@ class JobCreatorComponent:
 
         """
 
- 
+
         # create message service
         self.ms = MessageService()
         # create message service status object
         self.mss = MessageServiceStatus()
-        self.trigger=Trigger(self.ms)                                                                                
+        self.trigger=Trigger(self.ms)
         # register
         self.ms.registerAs("JobCreator")
 
@@ -531,7 +534,7 @@ class JobCreatorComponent:
         self.ms.subscribeTo("JobCreator:SetGenerator")
         self.ms.subscribeTo("JobCreator:StartDebug")
         self.ms.subscribeTo("JobCreator:EndDebug")
- 
+
         # wait for messages
         while True:
             Session.set_database(dbConfig)
@@ -544,7 +547,7 @@ class JobCreatorComponent:
             Session.commit_all()
             Session.close_all()
 
-                                                                                
+
 
 def createBulkSpecTar(bulkSpec, tarfileName):
     """
@@ -560,5 +563,5 @@ def createBulkSpecTar(bulkSpec, tarfileName):
         tarball.add(filename, "BulkSpecs/%s" % os.path.basename(filename), False)
 
     tarball.close()
-    return 
+    return
 
