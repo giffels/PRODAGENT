@@ -4,12 +4,13 @@ Class to define the standardised formatting of MySQL results.
 import datetime
 import time
 from  sqlalchemy.engine import RowProxy
-
+from WMCore.Database.DBFormatter import DBFormatter
 
 class MySQLBase(object):
     def __init__(self, logger, dbinterface):
         self.logger = logger
         self.dbi = dbinterface
+        self.wmformatter = DBFormatter(self.logger, self.dbi)
 
 
     def truefalse(self, value):
@@ -31,35 +32,45 @@ class MySQLBase(object):
         """
         Some standard formatting
         """
-        out = []
-        for r in result:
-           if dictionary == False:
-            for i in r.cursor.fetchall():
-                out.append(i)
-           else:
+        if not dictionary:
+            return self.wmformatter.format(result)
+        else:
+            return self.wmformatter.formatDict(result)
         
-             for i in r.cursor.fetchall():
-               row = RowProxy(r,i)
-               out.append(dict(row.items()))
-   
-               
-        return out
+#        out = []
+#        for r in result:
+#           if dictionary == False:
+#            for i in r.cursor.fetchall():
+#                out.append(i)
+#           else:
+#        
+#             for i in r.cursor.fetchall():
+#               row = RowProxy(r,i)
+#               out.append(dict(row.items()))
+#   
+#               
+#        return out
     
     def formatOne(self, result, dictionary = False):
         """
         single value format
 
         """
-        if len(result) == 0:
-            return [] 
-        value = result[0].fetchone()
-        if value == None:
-            return []
-
-        if dictionary == True:
-           row = RowProxy(result[0],value)
-           value = dict(row.items())
-        return value
+        if not dictionary:
+            return self.wmformatter.formatOne(result)
+        else:
+            return self.wmformatter.formatOneDict(result)
+      
+#        if len(result) == 0:
+#            return [] 
+#        value = result[0].fetchone()
+#        if value == None:
+#            return []
+#
+#        if dictionary == True:
+#           row = RowProxy(result[0],value)
+#           value = dict(row.items())
+#        return value
 
 
     def getBinds(self):
