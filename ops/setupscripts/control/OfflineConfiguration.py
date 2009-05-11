@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.5 2009/04/15 17:13:40 dmason Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.6 2009/04/24 21:37:16 dmason Exp $"
+__version__ = "$Revision: 1.6 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -79,7 +79,7 @@ defaultGlobalTag = "CRAFT_V14P::All"
 recoConfig = {}
 alcaConfig = {}
 # for CRUZET and BeamSplash reprocessing
-recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py?revision=1.41"
+recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py?revision=1.42"
 # for EW35 and CRAFT reprocessing
 #recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_38T_cfg.py?revision=1.22"
 #recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_DBField_cfg.py?revision=1.2"
@@ -101,8 +101,10 @@ setProcessingStyle(tier0Config, "ALCAPHISYM", "Bulk")
 setProcessingStyle(tier0Config, "ALCAPHISYMHCAL", "Bulk")
 setProcessingStyle(tier0Config, "Calibration", "Bulk")
 setProcessingStyle(tier0Config, "EcalCalibration", "Bulk")
+setProcessingStyle(tier0Config, "DQM", "Bulk")
 setProcessingStyle(tier0Config, "HLTDEBUG", "Bulk")
 setProcessingStyle(tier0Config, "HLTMON", "Bulk")
+setProcessingStyle(tier0Config, "RPCMON", "Bulk")
 
 
 
@@ -136,6 +138,16 @@ addDataset(tier0Config, "A", "MinimumBias",
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
            custodial_node = "T1_ES_PIC_MSS",
+           archival_node = "T0_CH_CERN_MSS")
+addDataset(tier0Config, "DQM", "Monitor",
+           default_proc_ver = defaultProcVersion, scenario = "cosmics",
+           do_reco = False, global_tag = defaultGlobalTag,
+           reco_configuration = recoConfig["cosmics"],
+           reco_version = defaultRecoVersion,
+           reco_proc_ver = recoProcVersion,
+           do_dqm = False,dqm_version=defaultDQMVersion,
+           do_alca = False,
+           alca_configuration=alcaConfig["cosmics"],
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config, "HLTDEBUG", "Monitor",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -181,6 +193,10 @@ addDataset(tier0Config, "HLTMON", "OfflineMonitor",
            reco_proc_ver = recoProcVersion,
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
+           archival_node = "T0_CH_CERN_MSS")
+addDataset(tier0Config,"RPCMON","RPCMonitor",
+           default_proc_ver = defaultProcVersion, scenario = "cosmics",
+           do_reco = False, global_tag = defaultGlobalTag,
            archival_node = "T0_CH_CERN_MSS")
 
 
