@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.31 2007/06/06 14:34:11 ckavka Exp $"
-__version__ = "$Revision: 1.31 $"
+__revision__ = "$Id: Dataset.py,v 1.32 2008/07/18 14:07:36 swakef Exp $"
+__version__ = "$Revision: 1.32 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -97,9 +97,9 @@ class Dataset:
                 raise
                 
             # compute target dataset path
-            primaryDataset = self.data['primaryDataset']
-            processedDataset = self.data['processedDataset']
-            dataTier = self.data['dataTier']
+            primaryDataset = self.data['primarydataset']
+            processedDataset = self.data['processeddataset']
+            dataTier = self.data['datatier']
             
             if processedDataset.endswith('-unmerged'):
                 targetDatasetPath = "/" + primaryDataset + "/" + \
@@ -110,7 +110,7 @@ class Dataset:
                         processedDataset + '-merged' + "/" + \
                         dataTier
                                     
-            self.data['targetDatasetPath'] = targetDatasetPath
+            self.data['targetdatasetpath'] = targetDatasetPath
             
             # dataset loaded
             return 
@@ -207,20 +207,20 @@ class Dataset:
                        dataTier
                                 
         self.data = {'name' : name,
-                     'primaryDataset' : primaryDataset,
-                     'dataTier' : dataTier,
-                     'processedDataset' : processedDataset,
-                     'targetDatasetPath' : targetDatasetPath,
-                     'PSetHash' : psethash,
+                     'primarydataset' : primaryDataset,
+                     'datatier' : dataTier,
+                     'processeddataset' : processedDataset,
+                     'targetdatasetpath' : targetDatasetPath,
+                     'psethash' : psethash,
                      'version' : version,
-                     'workflowName' : workflowName,
-                     'mergedLFNBase' : mergedLFNBase,
+                     'workflowname' : workflowName,
+                     'mergedlfnbase' : mergedLFNBase,
                      'category' : category,
-                     'timeStamp' : timeStamp,
+                     'timestamp' : timeStamp,
                      'status' : 'open',
                      'started' : date,
-                     'lastUpdated' : date,
-                     'outSeqNumber' : 1
+                     'lastupdated' : date,
+                     'outseqnumber' : 1
                     }
 
         # test if it was inserted before
@@ -494,7 +494,7 @@ class Dataset:
 
         # update time
         date = time.asctime(time.localtime(time.time()))
-        self.data['lastUpdated'] = date
+        self.data['lastupdated'] = date
         
         # update dataset info
         self.database.updateDataset(self.data['name'])
@@ -535,8 +535,8 @@ class Dataset:
         if oldJobId is None:
 
             # new submission, create a name
-            outputFile = "set" + str(self.data['outSeqNumber'])
-            self.data['outSeqNumber'] = self.data['outSeqNumber'] + 1
+            outputFile = "set" + str(self.data['outseqnumber'])
+            self.data['outseqnumber'] = self.data['outseqnumber'] + 1
 
             # add the job
             self.database.addJob(datasetId, outputFile, jobId, fileList)
@@ -554,7 +554,7 @@ class Dataset:
 
         # update dataset
         self.database.updateDataset(self.data['name'], \
-                                    sequenceNumber=self.data['outSeqNumber'])
+                                    sequenceNumber=self.data['outseqnumber'])
         
         # commit changes
         self.database.commit()
