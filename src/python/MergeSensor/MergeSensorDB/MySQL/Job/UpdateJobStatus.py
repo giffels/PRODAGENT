@@ -39,7 +39,7 @@ class UpdateJobStatus(MySQLBase):
 	  
         
 
-          rows = result[0].cursor.rowcount
+          rows = result[0].rowcount
 	 
 
          

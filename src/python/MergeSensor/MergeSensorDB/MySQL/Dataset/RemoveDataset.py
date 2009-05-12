@@ -36,6 +36,6 @@ class RemoveDataset(MySQLBase):
           result = self.dbi.processData(self.sqlCommand, conn = conn, transaction = trans)
 	  
   
-          return  result[0].cursor.rowcount  #//END RemoveDataset
+          return  result[0].rowcount  #//END RemoveDataset
 
  

@@ -40,7 +40,7 @@ class UpdateInputFileStatus(MySQLBase):
              # duplicate or wrong data
              raise MergeSensorDBError, msg   
 	  
-          rowcount = result[0].cursor.rowcount
+          rowcount = result[0].rowcount
 	   
           return rowcount  #//END
 

@@ -37,7 +37,7 @@ class InsertWorkflow(MySQLBase):
 
              raise MergeSensorDBError, str(msg)   
 	  
-          rowcount = result[0].cursor.rowcount
+          rowcount = result[0].rowcount
 
       	 
 

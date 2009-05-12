@@ -39,7 +39,7 @@ class GetAssociatedFiles(MySQLBase):
 
              raise MergeSensorDBError, msg   
 	  
-          rowcount = result[0].cursor.rowcount
+          rowcount = result[0].rowcount
 	
 	
    

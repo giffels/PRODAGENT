@@ -48,8 +48,8 @@ class UpdateOutputFileInfo(MySQLBase):
              raise MergeSensorDBError, msg   
 	  
 
-	  rowcount = result[0].cursor.rowcount 
-          fileId = result[0].cursor.lastrowid	
+	  rowcount = result[0].rowcount 
+          fileId = result[0].lastrowid	
 	       
 	   
           return  (fileId, rowcount)  #//END

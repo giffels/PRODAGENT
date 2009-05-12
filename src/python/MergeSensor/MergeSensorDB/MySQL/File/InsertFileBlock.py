@@ -43,8 +43,8 @@ class InsertFileBlock(MySQLBase):
 	  
         
       
-          rows = result[0].cursor.rowcount
-          blockId =  result[0].cursor.lastrowid
+          rows = result[0].rowcount
+          blockId =  result[0].lastrowid
         
 
          

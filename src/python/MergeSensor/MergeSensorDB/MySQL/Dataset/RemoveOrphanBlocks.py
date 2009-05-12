@@ -37,6 +37,6 @@ class RemoveOrphanBlocks (MySQLBase):
                 
 
   
-          return  result[0].cursor.rowcount  #//END RemoveDataset
+          return  result[0].rowcount  #//END RemoveDataset
 
  

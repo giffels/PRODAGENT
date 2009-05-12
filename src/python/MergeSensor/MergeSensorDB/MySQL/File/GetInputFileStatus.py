@@ -43,6 +43,6 @@ class GetInputFileStatus(MySQLBase):
 		 
 	
 		      
-          return result[0].cursor.rowcount  #//END
+          return result[0].rowcount  #//END
 
  

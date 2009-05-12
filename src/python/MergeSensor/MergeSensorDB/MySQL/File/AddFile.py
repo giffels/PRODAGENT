@@ -56,8 +56,8 @@ class AddFile(MySQLBase):
 	  
         
 
-	  fileId = result[0].cursor.lastrowid      
-          rowcount = result[0].cursor.rowcount 
+          fileId = result[0].lastrowid      
+          rowcount = result[0].rowcount 
          
           return (fileId, rowcount) #//END
 

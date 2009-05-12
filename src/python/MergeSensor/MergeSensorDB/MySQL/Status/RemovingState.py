@@ -42,6 +42,6 @@ class RemovingState(MySQLBase):
 
              raise MergeSensorDBError, msg   
          
-          return result[0].cursor.rowcount  #//END
+          return result[0].rowcount  #//END
 
  

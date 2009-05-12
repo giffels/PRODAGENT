@@ -173,7 +173,7 @@ class MergeSensorDB:
            return []
 	    
         #//Convert each tuple to one string
-        datasetList = ["/%s/%s/%s" % elem for elem in rows]
+        datasetList = ["/%s/%s/%s" % tuple(elem) for elem in rows]
 
 
 	
