@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.7 2009/04/08 19:50:43 ewv Exp $"
-__version__  = "$Revision: 1.7 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.8 2009/04/27 20:24:15 ewv Exp $"
+__version__  = "$Revision: 1.8 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -78,6 +78,9 @@ class ResultsFeeder(PluginInterface):
             (self.cmsswRelease, self.primaryDataset, self.processedDataset)
         self.workflowFile = os.path.join(self.workingDir,
                                          '%s.xml' % self.workflowName)
+
+	if not os.path.exists(self.workingDir):
+            os.makedirs(self.workingDir)
 
         self.workflow = WorkflowSpec()
         self.workflow.setWorkflowName(self.workflowName)
