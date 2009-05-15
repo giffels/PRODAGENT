@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.32 2008/07/18 14:07:36 swakef Exp $"
-__version__ = "$Revision: 1.32 $"
+__revision__ = "$Id: Dataset.py,v 1.33 2009/05/12 12:45:39 direyes Exp $"
+__version__ = "$Revision: 1.33 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -207,20 +207,20 @@ class Dataset:
                        dataTier
                                 
         self.data = {'name' : name,
-                     'primarydataset' : primaryDataset,
-                     'datatier' : dataTier,
-                     'processeddataset' : processedDataset,
-                     'targetdatasetpath' : targetDatasetPath,
-                     'psethash' : psethash,
+                     'primaryDataset' : primaryDataset,
+                     'dataTier' : dataTier,
+                     'processedDataset' : processedDataset,
+                     'targetDatasetPath' : targetDatasetPath,
+                     'PSetHash' : psethash,
                      'version' : version,
-                     'workflowname' : workflowName,
-                     'mergedlfnbase' : mergedLFNBase,
+                     'workflowName' : workflowName,
+                     'mergedLFNBase' : mergedLFNBase,
                      'category' : category,
-                     'timestamp' : timeStamp,
+                     'timeStamp' : timeStamp,
                      'status' : 'open',
                      'started' : date,
-                     'lastupdated' : date,
-                     'outseqnumber' : 1
+                     'lastUpdated' : date,
+                     'outSeqNumber' : 1
                     }
 
         # test if it was inserted before
