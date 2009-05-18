@@ -205,7 +205,7 @@ class LCGAdvanced(MonitorInterface):
             name = rc_site['SiteName']
             site = self.siteinfo.get(name, None)
             if not site:
-                logging.info("LCGAdvanced: Site %s not returned from info system query. See above for error." \
+                logging.info("LCGAdvanced: Site %s not returned from info system query. Either see above for error or it is missing." \
                                                         % (name))
                 continue
             
@@ -340,6 +340,7 @@ class LCGAdvanced(MonitorInterface):
                       'Running' : 'Running',
                       'Done' : 'Done',
                       'Retrieved' : 'Done',
+                      'Aborted'   : 'Done',
                       'Other' : 'Other'}
         result = {}
 #        query = """SELECT released_site,bl_task.job_type,status_scheduler,count(*)
