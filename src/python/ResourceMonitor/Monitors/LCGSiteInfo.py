@@ -30,6 +30,34 @@ from ProdCommon.SiteDB.CmsSiteMapper import CECmsMap
 Collect site info
 """
 
+
+def getVOMSfqan():
+    """
+    Get voms fqan string
+      Some sites only allow certain roles to run there,
+        need to find which role we have and use that in bdii queries
+    """
+    # default that matches plain cms access rules
+    result = 'VO\s*:\s*cms\s*$'
+    reg_search_fqan = re.compile('^\/cms\/Role=(\w*)\/')
+    
+    command = 'voms-proxy-info -fqan'
+    try:
+        out, err = Popen(command,stdout=PIPE,stderr=PIPE,shell=True).communicate()
+    except:
+        raise RuntimeError, 'Error with voms fqan: %s, %s' % (out,err)
+    try:
+        role = reg_search_fqan.search(out.split('\n')[0])
+        if role:
+            role = role.group(1)
+            if role != 'NULL':
+                # new rule match voms rule *or* the default cms access
+                result="("+result+')|('+'VOMS\s*:\s*\/cms\/Role='+role+'\s*$'+')'
+    except Exception, e:
+        raise RuntimeError, 'Error with voms fqan: %s' % str(e)
+    return re.compile(result)
+            
+
 """
 FCR parsing
 """
@@ -211,7 +239,7 @@ def getBdii(sites, ldaphost):
     the_list={}
 
     reg_cmssoft=re.compile("^VO-cms-(.*)$")
-    reg_acbr_cms=re.compile("VO\s*:\s*cms\s*$")
+    reg_acbr_cms = getVOMSfqan()
 
     reg_mdsvoname=re.compile(r"mds-vo-name=(?P<site>.*)")
 
@@ -262,8 +290,7 @@ def getBdii(sites, ldaphost):
                             if not cmssw in cmssoft:
                                 cmssoft.append(cmssw)
 
-                if ce and ce not in ceuid:
-                    logging.warning("Specified CE %s not in info system for site %s." % (ce, name))
+                if ce and ce not in ceUIDs:
                     continue
 
                 #
@@ -298,7 +325,9 @@ def getBdii(sites, ldaphost):
                                 
                     the_list.setdefault(name, {})
                     #if the site has a CE specified we only care about that one
-                    if support_cms and not ce or ce == ceuid:
+                    if support_cms:
+                        if ce and ce != ceuid:
+                            continue
 
                         #the_list[ceuid]={'site_name':site+tmp_sitename,
                         the_list[name][ceuid] = {'CE' : ceuid,
@@ -315,6 +344,11 @@ def getBdii(sites, ldaphost):
                                     'software':cmssoft,
                                     'SAMfail' : False
                                     }
+
+            if ce and ce not in the_list.get(name, {}):
+                    logging.warning("Specified CE %s not in info system (or you don't have the necessary role) for site %s." % (ce, name))
+                    continue
+
         except Exception, e:
             logging.error("Error with site %s bdii query:\t%s" % (name, str(e)))
 
