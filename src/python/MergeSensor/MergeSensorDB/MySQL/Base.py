@@ -88,3 +88,12 @@ class MySQLBase(object):
         return self.format(result)
 
        
+    def restoreCaps(self, dicts, *newkeys):
+        """
+        Utility function to restore capitalization in dictionary keys
+         lost to conform with Oracle - use of this should be phased out
+        """
+        for dict in dicts:
+            for key in newkeys:
+                dict[key] = dict.pop(key.lower())
+        return dicts

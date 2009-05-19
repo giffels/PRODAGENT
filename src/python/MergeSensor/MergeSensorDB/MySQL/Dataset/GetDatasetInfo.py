@@ -62,7 +62,9 @@ class GetDatasetInfo(MySQLBase):
           result = self.dbi.processData(self.sqlCommand, conn = conn, transaction = trans)
 
           rows = self.format (result, dictionary= True)
-
+          rows = self.restoreCaps(rows, 'primaryDataset', 'dataTier',
+                        'processedDataset', 'PSetHash', 'lastUpdated',
+                        'workflowName', 'mergedLFNBase', 'outSeqNumber')
           return rows #//END GetDatasetInfo
 	  
  
