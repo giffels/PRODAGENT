@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.6 2009/04/24 21:37:16 dmason Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.7 2009/05/11 16:03:10 dmason Exp $"
+__version__ = "$Revision: 1.7 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -16,6 +16,7 @@ from T0.RunConfigCache.Tier0Config import setAcquisitionEra
 from T0.RunConfigCache.Tier0Config import setConfigVersion
 from T0.RunConfigCache.Tier0Config import setProcessingStyle
 from T0.RunConfigCache.Tier0Config import setRepackVersionMapping
+from T0.RunConfigCache.Tier0Config import setExpressVersionMapping
 
 # Create the Tier0 configuration object
 tier0Config = createTier0Config()
@@ -63,29 +64,31 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_2_2_8"
-defaultAlcaVersion = "CMSSW_2_2_8"
-defaultDQMVersion = "CMSSW_2_2_8"
+defaultRecoVersion = "CMSSW_2_2_11"
+defaultAlcaVersion = "CMSSW_2_2_11"
+defaultDQMVersion = "CMSSW_2_2_11"
 
 
 defaultProcVersion = "v1"
 repackProcVersion = defaultProcVersion
 #recoProcVersion = "PFTHPFTHPTHFPFTHPHTH-v12CRAFT-testingtesting"
 recoProcVersion = defaultProcVersion
-defaultGlobalTag = "CRAFT_V14P::All"
+defaultGlobalTag = "CRAFT_V15P::All"
 
 # Create a dictionary that associates a reco configuration with a scenario.
 # The configuration must be specified as a url.
 recoConfig = {}
 alcaConfig = {}
 # for CRUZET and BeamSplash reprocessing
-recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py?revision=1.42"
+#recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py?revision=1.44"
+#hacked config to stop crashes
+recoConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_11/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg_1.44_hacked.py"
 # for EW35 and CRAFT reprocessing
 #recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_38T_cfg.py?revision=1.22"
 #recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_DBField_cfg.py?revision=1.2"
 # Create the default configuration.  Repacking is enabled and everything else
 # is turned off.  The default processing style is also set to "Bulk".
-alcaConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_8/src/step3_ALCA_CRAFT.py"
+alcaConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_11/src/step3_V15_ALCA_CRAFT.py"
 setProcessingStyle(tier0Config, "Default", "Bulk")
 addDataset(tier0Config, "Default", "Default",
            default_proc_ver = defaultProcVersion, hltdebug = False,
@@ -209,11 +212,11 @@ skimConfig["SuperPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/
 skimConfig["TrackerPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/TrackerPointing_cfg.py?revision=1.9"
 skimConfig["HcalHPDFilter"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/HcalHPDFilter_cfg.py?revision=1.2"
 
-addTier1Skim(tier0Config, "Skim1", "A", "RECO", "Cosmics", "CMSSW_2_2_8", "v1",
+addTier1Skim(tier0Config, "Skim1", "A", "RECO", "Cosmics", "CMSSW_2_2_11", "v1",
              skimConfig["SuperPointing"], False)
-addTier1Skim(tier0Config, "Skim2", "A", "RECO", "Cosmics", "CMSSW_2_2_8", "v2",
+addTier1Skim(tier0Config, "Skim2", "A", "RECO", "Cosmics", "CMSSW_2_2_11", "v2",
              skimConfig["TrackerPointing"], False)
-addTier1Skim(tier0Config, "Skim3", "A", "RECO", "Calo", "CMSSW_2_2_8", "v3",
+addTier1Skim(tier0Config, "Skim3", "A", "RECO", "Calo", "CMSSW_2_2_11", "v3",
              skimConfig["HcalHPDFilter"], False)
 
 
@@ -222,19 +225,20 @@ addTier1Skim(tier0Config, "Skim3", "A", "RECO", "Calo", "CMSSW_2_2_8", "v3",
 # actual express configuration
 # Create a dictionary that associates express processing config urls to names.
 expressProcConfig = {}
-expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg.py"
+expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg_V15_1.44_hacked.py"
 
 # Create a dictionary that associated express merge packing config urls to names
 
 expressMergePackConfig = {}
-expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg.py"
+expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg_V15_1.44_hacked.py"
 
 addExpressConfig(tier0Config, "Express",
                   expressProcConfig["default"],
                   expressMergePackConfig["default"], False)
 
 
-
+#Set express processing version remapping
+setExpressVersionMapping(tier0Config, "CMSSW_2_2_10", "CMSSW_2_2_11")
 
 # Setup the mappings between the framework version used to take a run and the
 # version that should be used to repack it.
