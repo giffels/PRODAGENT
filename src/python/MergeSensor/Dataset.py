@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.33 2009/05/12 12:45:39 direyes Exp $"
-__version__ = "$Revision: 1.33 $"
+__revision__ = "$Id: Dataset.py,v 1.32 2008/07/18 14:07:36 swakef Exp $"
+__version__ = "$Revision: 1.32 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -97,9 +97,9 @@ class Dataset:
                 raise
                 
             # compute target dataset path
-            primaryDataset = self.data['primarydataset']
-            processedDataset = self.data['processeddataset']
-            dataTier = self.data['datatier']
+            primaryDataset = self.data['primaryDataset']
+            processedDataset = self.data['processedDataset']
+            dataTier = self.data['dataTier']
             
             if processedDataset.endswith('-unmerged'):
                 targetDatasetPath = "/" + primaryDataset + "/" + \
@@ -110,7 +110,7 @@ class Dataset:
                         processedDataset + '-merged' + "/" + \
                         dataTier
                                     
-            self.data['targetdatasetpath'] = targetDatasetPath
+            self.data['targetDatasetPath'] = targetDatasetPath
             
             # dataset loaded
             return 
@@ -494,7 +494,7 @@ class Dataset:
 
         # update time
         date = time.asctime(time.localtime(time.time()))
-        self.data['lastupdated'] = date
+        self.data['lastUpdated'] = date
         
         # update dataset info
         self.database.updateDataset(self.data['name'])
@@ -535,8 +535,8 @@ class Dataset:
         if oldJobId is None:
 
             # new submission, create a name
-            outputFile = "set" + str(self.data['outseqnumber'])
-            self.data['outseqnumber'] = self.data['outseqnumber'] + 1
+            outputFile = "set" + str(self.data['outSeqNumber'])
+            self.data['outSeqNumber'] = self.data['outSeqNumber'] + 1
 
             # add the job
             self.database.addJob(datasetId, outputFile, jobId, fileList)
@@ -554,7 +554,7 @@ class Dataset:
 
         # update dataset
         self.database.updateDataset(self.data['name'], \
-                                    sequenceNumber=self.data['outseqnumber'])
+                                    sequenceNumber=self.data['outSeqNumber'])
         
         # commit changes
         self.database.commit()
