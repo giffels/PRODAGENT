@@ -13,6 +13,8 @@ cvs co -r PRODAGENT_$PAVERSION PRODAGENT
 # cvs update -r 1.8 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py
 
 cvs update -r 1.12 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py 
+cvs update -r 1.30 PRODAGENT/src/python/JobQueueDB.py
+cvs update -A PRODAGENT/bin/prodAgentd
 
 cd PRODAGENT
 source $PBIN/prodagent_init.sh
@@ -30,7 +32,7 @@ cvs co -r PRODCOMMON_$PCVERSION PRODCOMMON
 
 
 cvs update -r 1.12 PRODCOMMON/src/python/ProdCommon/FwkJobRep/FileInfo.py
-cvs update -r 1.11 PRODCOMMON/src/python/ProdCommon/FwkJobRep/TaskState.py
+cvs update -r 1.12 PRODCOMMON/src/python/ProdCommon/FwkJobRep/TaskState.py
 
 cd PRODCOMMON
 make
