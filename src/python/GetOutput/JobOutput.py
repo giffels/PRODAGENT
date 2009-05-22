@@ -12,14 +12,13 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.24 2009/01/29 15:49:42 gcodispo Exp $"
-__revision__ = "$Revision: 1.24 $"
+__version__ = "$Id: JobOutput.py,v 1.25 2009/02/13 09:40:12 gcodispo Exp $"
+__revision__ = "$Revision: 1.25 $"
 
 import logging
 import os
 import traceback
 import threading
-from time import sleep
 
 # BossLite import
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
@@ -146,6 +145,25 @@ class JobOutput:
                 job.runningJob['processStatus'] = 'processed'
                 job.runningJob['closed'] = 'Y'
 
+            else:
+                # allow job to be reprocessed
+                cls.recoverStatus( job, bossLiteSession )
+
+                # if the job has not to be reprocessed
+                if int( job.runningJob['getOutputRetry'] ) >= \
+                       int( cls.params['maxGetOutputAttempts'] ) :
+
+                    logging.error( "%s: LAST ATTEMPT RETRIEVAL FAILED!!!" % \
+                                   cls.fullId( job ) )
+                    
+                    # set as failed
+                    job.runningJob['status'] = 'A'
+                    job.runningJob['processStatus'] = 'failed'
+                    job.runningJob['statusScheduler'] = 'Abandoned'
+                    job.runningJob['statusReason'] = \
+                                           'GetOutput failed %s times' \
+                                           % cls.params['maxGetOutputAttempts']
+
             # perform update
             bossLiteSession.updateDB( job )
             return ret
@@ -200,6 +218,9 @@ class JobOutput:
             # build needed output directory
             job.runningJob['outputDirectory'] = \
                                             jobHandling.buildOutdir(job, task)
+
+            job.runningJob['getOutputRetry'] = 1 + \
+                                        int( job.runningJob['getOutputRetry'] )
 
             # job failed: perform postMortem operations and notify failure
             if job.runningJob['status'] in cls.failureCodes:
@@ -298,7 +319,7 @@ class JobOutput:
             if err.value.find( "Proxy Expired" ) != -1 :
                 job.runningJob['closed'] = 'Y'
 
-            return
+            return job
 
 
         return job
@@ -314,10 +335,8 @@ class JobOutput:
         """
 
         #  get output, trying at most maxGetOutputAttempts
-        retry = int( job.runningJob['getOutputRetry'] )
-        job.runningJob['getOutputRetry'] = retry + 1
-
-        logging.info("%s: retrieval attempt %d" % (cls.fullId( job ), retry))
+        logging.info("%s: retrieval attempt %s" % \
+                     (cls.fullId( job ), job.runningJob['getOutputRetry']))
 
         #  perform get output operation
         try:
@@ -335,19 +354,6 @@ class JobOutput:
 
         # scheduler interaction error
         except BossLiteError, err:
-
-            # if the job has not to be reprocessed
-            if retry >= int( cls.params['maxGetOutputAttempts'] ) :
-
-                logging.error( "%s: LAST ATTEMPT RETRIEVAL FAILED!!!" % \
-                               cls.fullId( job ) )
-
-                # set as failed
-                job.runningJob['status'] = 'A'
-                job.runningJob['processStatus'] = 'failed'
-                job.runningJob['statusScheduler'] = 'Abandoned'
-                job.runningJob['statusReason'] = 'GetOutput failed %s times' \
-                                           % cls.params['maxGetOutputAttempts']
 
             logging.error("%s: retrieval failed: %s" % \
                           (cls.fullId( job ), str(err) ) )
@@ -444,10 +450,13 @@ class JobOutput:
 
         # allow job to be reprocessed
         try :
+            logging.info( '%s: Recovering job status for next retry' \
+                          %  cls.fullId( job ) )
             if job.runningJob['status'] in cls.failureCodes:
                 job.runningJob['processStatus'] = 'failed'
             else:
                 job.runningJob['processStatus'] = 'output_requested'
+            job.runningJob['closed'] = 'N'
             bossLiteSession.updateDB( job )
         except:
             logging.warning(
