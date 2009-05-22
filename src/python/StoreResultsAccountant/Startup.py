@@ -33,16 +33,12 @@ except StandardError, ex:
 
 compCfg['ComponentDir'] = os.path.expandvars(compCfg['ComponentDir'])
 
-#  //
-# // Initialise and start the component
-#//
+#
+#  Initialise and start the component
+#
+
 print "Starting StoreResultsAccountant Component..."
-print "CD(%s)" % compCfg['ComponentDir']
 createDaemon(compCfg['ComponentDir'])
-print "D created"
 component = StoreResultsAccountantComponent(**dict(compCfg))
-print "C created"
 
 runWithPostMortem(component, compCfg['ComponentDir'])
-print "run"
-

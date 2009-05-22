@@ -22,34 +22,26 @@ class ExtractDatasets:
         self.datasets = []
 
     def __call__(self, node):
-#         logging.info("Node is %s" % node)
         for dataset in node._OutputDatasets:
-#             logging.info("Checking dataset %s" % dataset)
-#             if dataset.has_key("NoMerge"):
-#                 #  //
-#                 # // If we need to avoid merging some datasets we
-#                 #//  can add a NoMerge key and this will ignore it
-#                 continue
             self.datasets.append(dataset)
 
-        logging.info("Monitoring datasets %s" % self.datasets)
 
 
-def countOutstandingUnmergedFiles(dataset):
-    """
-    _countOutstandingUnmergedFiles_
-
-    Get the number of files awaiting merging for a dataset from
-    the MergeSensor DB
-
-    """
-    mergeDB = MergeSensorDB()
-    try:
-        filecount = len(mergeDB.getUnmergedFileListFromDataset(dataset))
-    except Exception, ex:
-        filecount = 0
-    return filecount
-
+# def countOutstandingUnmergedFiles(dataset):
+#     """
+#     _countOutstandingUnmergedFiles_
+#
+#     Get the number of files awaiting merging for a dataset from
+#     the MergeSensor DB
+#
+#     """
+#     mergeDB = MergeSensorDB()
+#     try:
+#         filecount = len(mergeDB.getUnmergedFileListFromDataset(dataset))
+#     except Exception, ex:
+#         filecount = 0
+#     return filecount
+#
 class ResultsStatus:
     """
     _ResultsStatus_
@@ -79,13 +71,6 @@ class ResultsStatus:
         data and publish any events that are triggered
 
         """
-        processed = False
-        merged = False
-
-#         logging.info("Unmerged datasets: %s" % self.unmergedDatasets())
-#         logging.info("Merged datasets: %s" % self.mergedDatasets())
-
-
         if self.processingComplete():
             logging.info("Processing Complete for %s" % self.workflow)
             for dataset in self.unmergedDatasets():
@@ -106,30 +91,14 @@ class ResultsStatus:
             Session.commit_all()
 
 
-            logging.info("Workflow %s complete" % self.workflow)
             WEWorkflow.setFinished(self.workflow)
             WEWorkflow.remove(self.workflow)
             Session.commit_all()
 
-            #  //
-            # // Generate summary
-            #//
-            self.summariseWorkflow()
+            # Generate summary
+            # self.summariseWorkflow()
 
         return
-
-
-    def summariseWorkflow(self):
-        """
-        _summariseWorkflow_
-
-        Workflow has been finished, do whatever is required
-        to generate a summary for the jobs and dispatch it
-        to wherever it is needed
-
-        """
-        logging.info("Summarising Workflow %s" % self.workflow)
-        pass
 
 
     def processingComplete(self):
@@ -140,17 +109,18 @@ class ResultsStatus:
         if all processing jobs are complete
 
         """
-        allJobs = WEUtils.jobsForWorkflow(self.workflow, "Merge")
+        allJobs      = WEUtils.jobsForWorkflow(self.workflow, "Merge")
         finishedJobs = WEUtils.jobsForWorkflow(self.workflow, "Merge", "finished")
-        logging.info("All jobs: %s" % allJobs)
-        logging.info("Finished jobs: %s" % finishedJobs)
         totalProcessing = len(allJobs)
-        totalProcComplete = len(finishedJobs)
+        totalComplete   = len(finishedJobs)
 
-        if totalProcessing == 0:
+        logging.info("Progress: %s/%s jobs complete" %
+                      (totalProcComplete,totalProcessing))
+
+        if totalProcessing == 0: # Protection for non-sensical situation
             return False
 
-        if totalProcComplete < totalProcessing:
+        if totalComplete < totalProcessing:
             return False
 
         return True
