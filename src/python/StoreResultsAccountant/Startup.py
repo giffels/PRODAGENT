@@ -23,7 +23,6 @@ from StoreResultsAccountant.StoreResultsAccountantComponent import StoreResultsA
 try:
 
     config = loadProdAgentConfiguration()
-    jobStatesCfg = config.getConfig("StoreResultsAccountant")
     compCfg = config.getConfig("StoreResultsAccountant")
 except StandardError, ex:
     msg = "Error reading configuration:\n"

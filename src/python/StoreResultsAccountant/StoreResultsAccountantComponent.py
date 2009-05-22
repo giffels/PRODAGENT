@@ -12,18 +12,15 @@ import os
 import time
 import logging
 
-from MessageService.MessageService import MessageService
-import ProdAgentCore.LoggingUtils as LoggingUtils
-from ProdAgentDB.Config import defaultConfig as dbConfig
-# from RelValInjector.RelValSpecMgr import RelValSpecMgr
-from StoreResultsAccountant.ResultsStatus import ResultsStatus
-from ProdCommon.Database import Session
-
-#from JobQueue.JobQueueAPI import bulkQueueJobs
-
-import ProdAgent.WorkflowEntities.Workflow as WEWorkflow
-import ProdAgent.WorkflowEntities.Job as WEJob
+import ProdAgentCore.LoggingUtils           as LoggingUtils
+import ProdAgent.WorkflowEntities.Job       as WEJob
 import ProdAgent.WorkflowEntities.Utilities as WEUtils
+import ProdAgent.WorkflowEntities.Workflow  as WEWorkflow
+
+from MessageService.MessageService        import MessageService
+from ProdCommon.Database                  import Session
+from ProdAgentDB.Config                   import defaultConfig as dbConfig
+from StoreResultsAccountant.ResultsStatus import ResultsStatus
 
 
 class StoreResultsAccountantComponent:
@@ -97,7 +94,6 @@ class StoreResultsAccountantComponent:
         Polling loop response to check status of RelVal jobs being tracked
 
         """
-        logging.info("StoreResultsAccountant.poll()")
         #  //
         # // Poll WorkflowEntities to find all workflows owned by
         #//  this component
@@ -105,10 +101,11 @@ class StoreResultsAccountantComponent:
         workflows = WEWorkflow.get(relvalWorkflows)
         if type(workflows) != type(list()) :
             workflows = [workflows]
+        logging.info("StoreResultsAccountant.poll() checking %s workflows" % len(workflows))
         for workflow in workflows:
             if workflow != 0:
                 logging.debug(
-                    "Polling for state of workflow: %s\n" % str(workflow['id']))
+                    "Polling for state of workflow: %s" % str(workflow['id']))
                 status = ResultsStatus(self.args, self.ms, **workflow)
                 status()
 

@@ -21,27 +21,13 @@ class ExtractDatasets:
     def __init__(self):
         self.datasets = []
 
+
     def __call__(self, node):
         for dataset in node._OutputDatasets:
             self.datasets.append(dataset)
 
 
 
-# def countOutstandingUnmergedFiles(dataset):
-#     """
-#     _countOutstandingUnmergedFiles_
-#
-#     Get the number of files awaiting merging for a dataset from
-#     the MergeSensor DB
-#
-#     """
-#     mergeDB = MergeSensorDB()
-#     try:
-#         filecount = len(mergeDB.getUnmergedFileListFromDataset(dataset))
-#     except Exception, ex:
-#         filecount = 0
-#     return filecount
-#
 class ResultsStatus:
     """
     _ResultsStatus_
@@ -114,8 +100,8 @@ class ResultsStatus:
         totalProcessing = len(allJobs)
         totalComplete   = len(finishedJobs)
 
-        logging.info("Progress: %s/%s jobs complete" %
-                      (totalProcComplete,totalProcessing))
+        logging.info("%s: %s/%s jobs complete" %
+                      (self.workflow,totalComplete,totalProcessing))
 
         if totalProcessing == 0: # Protection for non-sensical situation
             return False
