@@ -38,8 +38,20 @@ cd PRODCOMMON
 make
 
 cd $MYTESTAREA
-# pull the DBS client out of DBS
-cvs co -r DBS_$DBSVERSION DBS
+
+if [ ! -z $DBSVERSION ]; then
+
+  # pull the DBS client out of DBS
+  cvs co -r DBS_$DBSVERSION DBS
+fi
+
+if [ ! -z $DLSVERSION ]; then
+  #pull the DLS client out of CVS
+  cvs co -r DLS_$DLSVERSION DLS/Client
+  cd DLS/Client
+  make
+  cd $MYTESTAREA
+fi
 
 # T0 specific components
 
