@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.74 2008/10/16 12:19:35 swakef Exp $"
-__version__ = "$Revision: 1.74 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.75 2008/11/19 12:00:38 swakef Exp $"
+__version__ = "$Revision: 1.75 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -1202,8 +1202,8 @@ class MergeSensorComponent:
         group = str(status['mergedjobs'] // 1000).zfill(4)
 
         remainingBits=lastBit
-        if acqEra != None:
-          thingtoStrip="%s_" % acqEra
+        if acqEra is not None:
+          thingtoStrip="%s-" % acqEra
           mypieces=lastBit.split(thingtoStrip,1)
           if len(mypieces)>1:  
             remainingBits=mypieces[1].split("-unmerged",1)[0]
