@@ -19,11 +19,11 @@ export RPMVERSION=0_12_14
 export PAVERSION=0_12_14
 export PCVERSION=0_12_14
 #The DBS version we want to install
-export DBSVERSION=2_0_7
+export DBSVERSION=2_0_6_pre5
 #The WMCORE version required
-export WMCOREVERSION=T0_0_0_2_pre70
+export WMCOREVERSION=T0_0_0_2_pre71
 #The T0 version we need
-export T0VERSION=0_0_2_pre70
+export T0VERSION=0_0_2_pre71
 
 # This is probably the only one to change
 export PRODAGENT_TOP=/data/$PRODAGENT_USER/PAProd/$INSTALL_TYPE

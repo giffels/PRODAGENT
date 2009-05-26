@@ -13,7 +13,7 @@ cvs co -r PRODAGENT_$PAVERSION PRODAGENT
 # cvs update -r 1.8 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py
 
 cvs update -r 1.12 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py 
-cvs update -r 1.30 PRODAGENT/src/python/JobQueueDB.py
+cvs update -r 1.30 PRODAGENT/src/python/JobQueue/JobQueueDB.py
 cvs update -A PRODAGENT/bin/prodAgentd
 
 cd PRODAGENT
