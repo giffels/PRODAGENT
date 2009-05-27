@@ -6,8 +6,8 @@ General Exception class for JC modules
 
 """
 
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: StageOutError.py,v 1.4 2007/04/30 18:19:51 evansde Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: StageOutError.py,v 1.5 2009/02/05 11:31:48 swakef Exp $"
 
 import exceptions
 import inspect
@@ -159,5 +159,5 @@ class StageOutInvalidPath(StageOutError):
     """
     Exception class indicating a directory does not exist
     """
-    def __init__(self, **data):
-        StageOutError.__init__(self, message, **data)
+    def __init__(self, messgae = '', **data):
+        StageOutError.__init__(self, messgae, **data)
