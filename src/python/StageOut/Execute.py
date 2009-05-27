@@ -82,10 +82,10 @@ def runCommandWithOutput(command):
     """
     _runCommand_
 
-    Run the command without deadlocking stdou and stderr,
+    Run the command without deadlocking stdout and stderr,
     echo all output to sys.stdout and sys.stderr
 
-    Returns the exitCode
+    Returns the exitCode and the a string containing std out & error
     
     """
     child = popen2.Popen3(command, 1) # capture stdout and stderr from command
@@ -124,11 +124,11 @@ def runCommandWithOutput(command):
         
     err = child.wait()
     if os.WIFEXITED(err):
-        return os.WEXITSTATUS(err)
+        err = os.WEXITSTATUS(err)
     elif os.WIFSIGNALED(err):
-        return os.WTERMSIG(err)
+        err = os.WTERMSIG(err)
     elif os.WIFSTOPPED(err):
-        return os.WSTOPSIG(err)
+        err = os.WSTOPSIG(err)
     return err, output
 
 
