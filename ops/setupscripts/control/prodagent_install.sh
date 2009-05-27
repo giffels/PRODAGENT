@@ -56,6 +56,9 @@ fi
 # T0 specific components
 
 cvs co -r T0_$T0VERSION T0
+
+cvs update -A T0/src/python/T0/RunConfigCache/RunConfig.py 
+
 cvs co -r WMCORE_$WMCOREVERSION WMCORE
  
 # place any WMCORE patches here:
