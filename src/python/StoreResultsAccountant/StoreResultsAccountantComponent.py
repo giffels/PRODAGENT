@@ -34,7 +34,7 @@ class StoreResultsAccountantComponent:
         logging.info("Trying to start StoreResultsAccountant")
         self.args = {}
         self.args['Logfile'] = None
-        self.args['PollInterval'] = "00:01:00"
+        self.args['PollInterval'] = "00:02:00"
         self.args['MigrateToGlobal'] = False
         self.args['InjectToPhEDEx'] = False
 
@@ -58,6 +58,8 @@ class StoreResultsAccountantComponent:
             # Cant inject without migration
             self.args['InjectToPhEDEx'] = False
 
+        self.args['MigrateToGlobal'] = True
+        self.args['InjectToPhEDEx'] = True
 
         LoggingUtils.installLogHandler(self)
         msg = "StoreResultsAccountant Component Started:\n"
@@ -84,8 +86,15 @@ class StoreResultsAccountantComponent:
             return
 
         if message == "StoreResultsAccountant:Poll":
-            self.poll()
-            return
+            try:
+                self.poll()
+                return
+            except StandardError, ex:
+                logging.error("Failed to Poll: %s" % payload)
+                import traceback
+                msg =  traceback.format_exc()
+                logging.error("Details: \n%s" % msg)
+                return
 
     def poll(self):
         """

@@ -14,6 +14,7 @@ from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.MergeTools import createMergeDatasetWorkflow
 from MergeSensor.MergeSensorDB.Interface.MergeSensorDB import MergeSensorDB
 from ProdCommon.Database import Session
+from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
 
 
 
@@ -45,9 +46,11 @@ class ResultsStatus:
         self.workflowSpec = WorkflowSpec()
         self.workflowSpec.load(self.workflowFile)
 
-        self.doMigration = self.configuration.get("MigrateToGlobal", False)
-        self.doInjection = self.configuration.get("InjectToPhEDEx", False)
+        self.doMigration = self.configuration.get("MigrateToGlobal", True)
+        self.doInjection = self.configuration.get("InjectToPhEDEx", True)
 
+        self.doMigration = True
+        self.doInjection = True
 
     def __call__(self):
         """
@@ -95,6 +98,9 @@ class ResultsStatus:
         if all processing jobs are complete
 
         """
+        intermediateDBS = self.workflowSpec.parameters['DBSURL']
+        outputDataset   = self.workflowSpec.outputDatasets()[0].name()
+
         allJobs      = WEUtils.jobsForWorkflow(self.workflow, "Merge")
         finishedJobs = WEUtils.jobsForWorkflow(self.workflow, "Merge", "finished")
         totalProcessing = len(allJobs)
@@ -107,6 +113,23 @@ class ResultsStatus:
             return False
 
         if totalComplete < totalProcessing:
+            return False
+
+        # Check to make sure local DBS knows about all output files
+        try:
+            reader = DBSReader(intermediateDBS)
+            blockList = reader.getFiles(dataset = outputDataset)
+        except:
+            logging.info("Dataset not in DBS yet")
+            return False
+
+        totalRegistered = 0
+        for block in blockList:
+            totalRegistered += len(blockList[block]['Files'])
+
+        logging.info("%s: %s/%s jobs registered" %
+                      (self.workflow,totalRegistered,totalProcessing))
+        if totalRegistered < totalProcessing:
             return False
 
         return True
