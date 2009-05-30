@@ -240,6 +240,8 @@ def main(argv) :
                     dict['command'] = command
                     dict['outputname'] = outputname
                     dict['conditions'] = conditions
+                    if command.find("--relval") == -1:
+                        dict['multipleOutput'] = True
                     step2[line.split('@@@')[0].split('++')[1].strip()] = dict
                 elif primary.find('ALCA') >= 0 :
                     dict = {}
@@ -472,9 +474,14 @@ def main(argv) :
                 command += '--version=' + version + ' \\\n'
                 command += '--py-cfg=' + step2[sample['RECOtag']]['outputname']+ ' \\\n'
                 command += '--stageout-intermediates=true \\\n'
+                print step2[sample['RECOtag']]
+                if step2[sample['RECOtag']].get('multipleOutput', None) is not None:
+                    command += '--chained-input=output \\\n'
                 command += '--version=' + version + ' \\\n'
                 command += '--py-cfg=' + step3[sample['ALCAtag']]['outputname']+ ' \\\n'
                 command += '--stageout-intermediates=true \\\n'
+                if step2[sample['RECOtag']].get('multipleOutput', None) is not None:
+                    command += '--chained-input=output \\\n'
                 command += '--group=RelVal \\\n'
                 command += '--category=relval \\\n'
                 command += '--activity=RelVal \\\n'
