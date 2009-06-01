@@ -35,8 +35,8 @@ class StoreResultsAccountantComponent:
         self.args = {}
         self.args['Logfile'] = None
         self.args['PollInterval'] = "00:02:00"
-        self.args['MigrateToGlobal'] = False
-        self.args['InjectToPhEDEx'] = False
+        self.args['MigrateToGlobal'] = True
+        self.args['InjectToPhEDEx'] = True
 
         self.args.update(args)
 
@@ -57,9 +57,6 @@ class StoreResultsAccountantComponent:
         if self.args['MigrateToGlobal'] == False:
             # Cant inject without migration
             self.args['InjectToPhEDEx'] = False
-
-        self.args['MigrateToGlobal'] = True
-        self.args['InjectToPhEDEx'] = True
 
         LoggingUtils.installLogHandler(self)
         msg = "StoreResultsAccountant Component Started:\n"

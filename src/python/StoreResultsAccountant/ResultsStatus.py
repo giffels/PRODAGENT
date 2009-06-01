@@ -49,9 +49,6 @@ class ResultsStatus:
         self.doMigration = self.configuration.get("MigrateToGlobal", True)
         self.doInjection = self.configuration.get("InjectToPhEDEx", True)
 
-        self.doMigration = True
-        self.doInjection = True
-
     def __call__(self):
         """
         _operator()_
@@ -60,6 +57,7 @@ class ResultsStatus:
         data and publish any events that are triggered
 
         """
+
         if self.processingComplete():
             logging.info("Processing Complete for %s" % self.workflow)
             for dataset in self.unmergedDatasets():
@@ -83,9 +81,6 @@ class ResultsStatus:
             WEWorkflow.setFinished(self.workflow)
             WEWorkflow.remove(self.workflow)
             Session.commit_all()
-
-            # Generate summary
-            # self.summariseWorkflow()
 
         return
 
