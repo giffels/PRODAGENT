@@ -176,7 +176,7 @@ def recreateJob(jobspecFile, jobQueue):
 
 
 
-  if spec.parameters['JobType']=="Processing" or spec.parameters['JobType']=="CleanUp" :
+  if spec.parameters['JobType'] in ('Processing', 'CleanUp', 'LogCollect'):
      # publish CreateJob
      print "- Resubmit Processing job"
      print "--> Publishing CreateJob for %s"%jobspecFile
