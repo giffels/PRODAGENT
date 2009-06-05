@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.10 2009/05/19 19:36:00 ewv Exp $"
-__version__  = "$Revision: 1.10 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.11 2009/05/29 21:48:18 ewv Exp $"
+__version__  = "$Revision: 1.11 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -176,11 +176,13 @@ class ResultsFeeder(PluginInterface):
         # Add a node for stage out
 
         addStageOutNode(self.cmsRunNode,"stageOut1")
-        for node in self.workflow.payload.children:
-            if node.type == "StageOut":
-                addStageOutOverride(node,
-                    command = "srmv2", option = "",
-                    seName = "cmssrm.fnal.gov", lfnPrefix = srmPrefix)
+
+        if self.FNALOverride:
+            for node in self.workflow.payload.children:
+                if node.type == "StageOut":
+                    addStageOutOverride(node,
+                        command = "srmv2", option = "",
+                        seName = "cmssrm.fnal.gov", lfnPrefix = srmPrefix)
 
         # Create and populate output dataset
 
@@ -257,6 +259,10 @@ class ResultsFeeder(PluginInterface):
             self.physicsGroup     = userParams['physicsGroup']
         except KeyError:
             raise RuntimeError("Some parameters missing")
+
+        self.FNALOverride = False
+        if  userParams.get('FNALOverride','False') == 'True':
+            self.FNALOverride = True
 
         self.dbsUrl       = getInputDBSURL()
         self.globalDbsUrl = getGlobalDBSURL()
