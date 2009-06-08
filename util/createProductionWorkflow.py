@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.17 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.17 2009/04/17 15:13:15 swakef Exp $"
+__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.18 2009/04/22 09:07:52 direyes Exp $"
 
 
 import os
@@ -90,7 +90,7 @@ options = \
     to all modules in a step, leave blank for all. If given should be specified
     for each step
 
-  --conditions sets the conditions
+  --conditions Deprecated
 
   --eventsperjob is the number of events to produce in a single batch job 
 
@@ -216,6 +216,9 @@ for opt, arg in opts:
         acquisitionEra = arg
     if opt == "--conditions":
         conditions = arg
+        msg = "deprecated: --conditions will be removed from later releases.\n"
+        msg += "deprecated: see https://twiki.cern.ch/twiki/bin/view/CMS/ProdAgent_0_12_15"
+        print(msg)
     if opt == "--processing_version":
         processingVersion = arg
     if opt == "--processing_string":
@@ -272,11 +275,11 @@ if channel == None:
 #  //
 # // Set requestId and label
 #//
-#requestId="%s_%s" % (conditions,processingVersion)
-if workflow_tag in (None,""):
-   requestId="%s_%s" % (conditions,processingVersion)
-else:
-   requestId="%s_%s_%s" % (conditions,workflow_tag,processingVersion)
+requestId = processingVersion
+if workflow_tag:
+    requestId = "%s_%s" % (workflow_tag, requestId)
+if processingString:
+    requestId = "%s_%s" % (processingString, requestId)
 
 label=acquisitionEra
 

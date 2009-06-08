@@ -5,8 +5,8 @@ _createProductionCmsGenWorkflow_
 Create a cmsGen and cmsRun workflow
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.10 2009/04/17 15:13:15 swakef Exp $"
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.11 2009/04/22 09:07:52 direyes Exp $"
 
 
 
@@ -93,7 +93,7 @@ options = \
 
   --cmsRunCfg python configuration file
 
-  --conditions sets the conditions
+  --conditions Deprecated
 
   --eventsperjob is the number of events to produce in a single batch job
 
@@ -273,12 +273,12 @@ if not os.path.exists(cmsGenCfg):
     msg = "cmsGenCfg File Not Found: %s" % cmsGenCfg
     raise RuntimeError, msg
 
-if workflow_tag in (None,""):
-   requestId="%s_%s" % (conditions,processingVersion)
-else:
-   requestId="%s_%s_%s" % (conditions,workflow_tag,processingVersion)
+requestId = processingVersion
+if workflow_tag:
+    requestId = "%s_%s" % (workflow_tag, requestId)
+if processingString:
+    requestId = "%s_%s" % (processingString, requestId)
 
-#requestId="%s_%s" % (conditions,processingVersion)
 label=acquisitionEra
 
 #  //

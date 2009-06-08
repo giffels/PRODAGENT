@@ -5,8 +5,8 @@ _createProcessingWorkflow_
 Create a workflow that processes an input dataset with a cfg file
 
 """
-__version__ = "$Revision$"
-__revision__ = "$Id$"
+__version__ = "$Revision: 1.19 $"
+__revision__ = "$Id: createProcessingWorkflow.py,v 1.19 2009/04/22 09:07:52 direyes Exp $"
 
 import os
 import sys
@@ -83,7 +83,7 @@ options = \
     to all modules in a step, leave blank for all. If given should be specified
     for each step
 
-  --conditions sets the conditions
+  --conditions Deprecated. 
 
   --dataset is the input dataset to be processed
 
@@ -282,10 +282,11 @@ for opt, arg in opts:
             useProperName = False
  
 
-if workflow_tag in (None,""):
-   requestId="%s_%s" % (conditions,processingVersion)
-else:
-   requestId="%s_%s_%s" % (conditions,workflow_tag,processingVersion)
+requestId = processingVersion
+if workflow_tag:
+    requestId = "%s_%s" % (workflow_tag, requestId)
+if processingString:
+    requestId = "%s_%s" % (processingString, requestId)
 
 label=acquisitionEra
 
