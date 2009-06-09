@@ -32,7 +32,7 @@
 		</ConfigBlock>
 
 		<ConfigBlock Name="LSF">
-			<Parameter Name="Queue" Value="cmsproc"/>
+			<Parameter Name="Queue" Value="cmsproc -m g_cmsproc"/>
 			<Parameter Name="LsfLogDir" Value="/afs/cern.ch/user/c/cmsprod/scratch2/cmsprod/logs"/> 
 <!--			<Parameter Name="CmsRunLogDir" Value="cmslcgse01.cern.ch:/data1/cmsprod/T0/logs"/> -->
                         <Parameter Name="Resource" Value="select[type==SLC4_64] rusage[mem=1800]"/>

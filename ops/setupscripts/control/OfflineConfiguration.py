@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.8 2009/05/19 14:15:53 dmason Exp $"
-__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.9 2009/06/01 17:12:25 dmason Exp $"
+__version__ = "$Revision: 1.9 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -24,7 +24,8 @@ tier0Config = createTier0Config()
 # Set global parameters like the acquisition era and the version of
 # the configuration.
 #setAcquisitionEra(tier0Config, "HAPPYHAPPYWARMFUZZY_T0TEST_WITHBUNNIESDANCINGAROUND")
-setAcquisitionEra(tier0Config, "Commissioning09")
+#setAcquisitionEra(tier0Config, "Commissioning09")
+setAcquisitionEra(tier0Config, "CRUZET09")
 #setAcquisitionEra(tier0Config, "AllRunsTest")
 setConfigVersion(tier0Config, __version__)
 
@@ -64,9 +65,9 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_2_2_11"
-defaultAlcaVersion = "CMSSW_2_2_11"
-defaultDQMVersion = "CMSSW_2_2_11"
+defaultRecoVersion = "CMSSW_2_2_12"
+defaultAlcaVersion = "CMSSW_2_2_12"
+defaultDQMVersion = "CMSSW_2_2_12"
 
 
 defaultProcVersion = "v1"
@@ -88,7 +89,7 @@ recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Config
 #recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_DBField_cfg.py?revision=1.2"
 # Create the default configuration.  Repacking is enabled and everything else
 # is turned off.  The default processing style is also set to "Bulk".
-alcaConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_11/src/step3_V16_ALCA_CRAFT.py"
+alcaConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_12/src/step3_V16_ALCA_CRAFT.py"
 setProcessingStyle(tier0Config, "Default", "Bulk")
 addDataset(tier0Config, "Default",
            default_proc_ver = defaultProcVersion, hltdebug = False,
@@ -119,7 +120,8 @@ addDataset(tier0Config, "Calo",
            reco_proc_ver = recoProcVersion,
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
-           custodial_node = "T1_FR_CCIN2P3_MSS",
+#           custodial_node = "T1_FR_CCIN2P3_MSS",
+           custodial_node = "T1_US_FNAL_MSS",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config, "Cosmics",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -198,16 +200,21 @@ addDataset(tier0Config,"RPCMonitor",
 
 # Create a dictionary that associates skim names to config urls.
 skimConfig = {}
-skimConfig["SuperPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/SuperPointing_cfg.py?revision=1.12"
-skimConfig["TrackerPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/TrackerPointing_cfg.py?revision=1.9"
-skimConfig["HcalHPDFilter"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/HcalHPDFilter_cfg.py?revision=1.2"
+skimConfig["SuperPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/SuperPointing_cfg.py?revision=1.13"
+skimConfig["TrackerPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/TrackerPointing_cfg.py?revision=1.10"
+skimConfig["HcalHPDFilter"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/HCALHighEnergy_cfg.py?revision=1.4"
 
-addTier1Skim(tier0Config, "Skim1",  "RECO", "Cosmics", "CMSSW_2_2_11", "v1",
-             skimConfig["SuperPointing"], False)
-addTier1Skim(tier0Config, "Skim2",  "RECO", "Cosmics", "CMSSW_2_2_11", "v2",
-             skimConfig["TrackerPointing"], False)
-addTier1Skim(tier0Config, "Skim3", "RECO", "Calo", "CMSSW_2_2_11", "v3",
+addTier1Skim(tier0Config, "Skim1", "RECO", "Cosmics", "CMSSW_2_2_12", "v1",
+             skimConfig["SuperPointing"], True)
+addTier1Skim(tier0Config, "Skim2", "RECO", "Calo", "CMSSW_2_2_12", "v2",
+             skimConfig["TrackerPointing"], True)
+addTier1Skim(tier0Config, "Skim3", "RECO", "Cosmics", "CMSSW_2_2_12", "v3",
              skimConfig["HcalHPDFilter"], False)
+addTier1Skim(tier0Config, "Skim4", "RECO", "MinimumBias", "CMSSW_2_2_12", "v4",
+             skimConfig["HcalHPDFilter"], False)
+addTier1Skim(tier0Config, "Skim5", "RECO", "Calo", "CMSSW_2_2_12", "v5",
+             skimConfig["HcalHPDFilter"], False)
+
 
 
 # set up Express handling
@@ -215,13 +222,14 @@ addTier1Skim(tier0Config, "Skim3", "RECO", "Calo", "CMSSW_2_2_11", "v3",
 # actual express configuration
 # Create a dictionary that associates express processing config urls to names.
 expressProcConfig = {}
-expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg_V16_1.44.py"
+#expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg_V16_1.44.py"
+expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_12/src/raw2digi_reco_alcaCombined_express_cfg.py"
 
 # Create a dictionary that associated express merge packing config urls to names
 
 expressMergePackConfig = {}
-#expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg_V16_1.44.py"
-expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/mergepacktestwithPrescales.py"
+#expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/mergepacktestwithPrescales.py"
+expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_12/src/alCaRecoSplitting_express_cfg.py"
 
 addExpressConfig(tier0Config, "Express",
                   expressProcConfig["default"],
@@ -229,7 +237,8 @@ addExpressConfig(tier0Config, "Express",
 
 
 #Set express processing version remapping
-setExpressVersionMapping(tier0Config, "CMSSW_2_2_10", "CMSSW_2_2_11")
+setExpressVersionMapping(tier0Config, "CMSSW_2_2_10", "CMSSW_2_2_12")
+setExpressVersionMapping(tier0Config, "CMSSW_2_2_11", "CMSSW_2_2_12")
 
 # Setup the mappings between the framework version used to take a run and the
 # version that should be used to repack it.
