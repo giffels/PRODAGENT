@@ -5,8 +5,8 @@ _createProductionCmsGenWorkflow_
 Create a cmsGen and cmsRun workflow
 
 """
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.11 2009/04/22 09:07:52 direyes Exp $"
+__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.12 2009/06/08 09:56:38 swakef Exp $"
 
 
 
@@ -76,7 +76,7 @@ options = \
   --acquisition_era sets the aquisition era and the Primary Dataset name
 
   --activity=<activity>, The activity represented but this workflow
-    i.e. Reprocessing, Skimming etc.
+    i.e. Reprocessing, Skimming etc. (Default: Production)
 
   --category is the processing category, eg PreProd, SVSuite, Skim etc. It
     defaults to 'mc' if not provided
@@ -158,7 +158,7 @@ physicsGroup        = "Individual"
 requestId           = "%s" % (int(time.time()))
 cfgTypes            = []
 selectionEfficiency = None
-activity            = None
+activity            = 'Production'
 startingRun         = 1
 initialEvent        = 1
 totalEvents         = 1000
@@ -376,8 +376,7 @@ if overrideInitialEvent not in (None, ""):
 if onlySites != None:
    spec.parameters['OnlySites']=onlySites
 
-if activity is not None:
-    spec.setActivity(activity)
+spec.setActivity(activity)
 spec.save("%s-Workflow.xml" % maker.workflowName)
 
 
