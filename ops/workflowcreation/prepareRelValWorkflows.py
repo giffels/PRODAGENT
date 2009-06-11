@@ -61,11 +61,11 @@ def main(argv) :
         print 'Please load prodAgent libraries (point $PYTHONPATH to the right path).'
         sys.exit(2)
 
-    samples             = None
+    samplesFile         = None
     processing_version  = None
     initial_run         = "666666"
     initial_event       = None
-    debug               = 0
+    debug               = False
     DBSURL              = None
     pileup_dataset      = None
     storeFail           = False
@@ -88,9 +88,9 @@ def main(argv) :
             print main.__doc__
             sys.exit()
         elif opt == "--debug" :
-            debug = 1
+            debug = True
         elif opt == "--samples" :
-            samples = arg
+            samplesFile = arg
         elif opt == "--version" :
             processing_version = arg
         elif opt == "--lumi" :
@@ -132,223 +132,315 @@ def main(argv) :
 	print "Warning: Initial Event Number is not set, output workflow will not have this block."
 	print ""
 
-    if samples == None or processing_version == None or DBSURL == None :
+    if samplesFile == None or processing_version == None or DBSURL == None :
         print main.__doc__
         sys.exit(2)
-
-    onestep = []
-    step1 = []
-    step2 = {}
-    step3 = {}
-    parsedConditions = []
-    parsedRECOTags = []
-    parsedALCATags = []
+    
+    samples = []
+    steps = {}
+    primary_prefix = 'RelVal'    
+    max_step = 1
 
     try:
-        file = open(samples)
+        file = open(samplesFile)
     except IOError:
         print 'file with list of parameter-sets cannot be opened!'
         sys.exit(1)
     n_line = 0
+    print 'Parsing input file...'
     for line in file.readlines():
         n_line += 1
-        isRealData = False
-        if line != '' and line != '\n' and line.find("#") != 0 and line.find('//') != 0 :
-            # parse
-            primary = 'RelVal' + line.split('@@@')[0].split('++')[1].strip()
-            if line.find('REALDATA') > -1 :
+        # Skipping lines with no info
+        if line != '' and line != '\n' and not line.strip().startswith("#") and \
+            line.find('//') != 0: # I don't know what's the last condition for
+            line_parts = [part.strip() for part in line.split('@@@') if part]
+            #  //
+            # // Parsing first step
+            #//
+            if not line.strip().startswith('STEP'):
                 command = ''
                 array = []
-                isRealData = True
+                special_tag = ''
                 conditions = None
-                pileUp = False
-                totalEvents = None
-                eventsPerJob = None
-                outputname = ""
-                SimType = ""
+                total_events = None
+                events_per_job = None
+                pile_up = False
+                output_name = ''
+                input_data = {}
+                input_blocks = ""
+                
+                sample_info = line_parts[0].strip()
+                #  //
+                # // Filling up sample's details
+                #//
+                sample_info_parts = [part.strip() for part in \
+                                    sample_info.split('++') if part]
+                sample_number = sample_info_parts[0] #We might need this later
+                sample_name = sample_info_parts[1]
+                sample_steps = [i.strip() for i in \
+                                    sample_info_parts[2].split(',') if i]
+                primary = primary_prefix + sample_name
+                #  //
+                # // Is it a real data processing sample? According to this 
+                #// we assign or not the command variable.
+                #\\
+                if len(line_parts) < 2:
+                    is_real_data = True
+                elif not line_parts[1].strip():
+                    is_real_data = True
+                else:
+                    is_real_data = False
+                    command = line_parts[1].strip()
+                    #  //
+                    # // Clean cmsDriver command format
+                    #//
+                    if command.find('=') > -1:
+                        command = command.replace('=',' ')
+                    array = [i for i in command.split() if i]
+                    #  //
+                    # // Remove --python_filename if present
+                    #//
+                    if '--python_filename' in array:
+                        del array[array.index('--python_filename'):\
+                            array.index('--python_filename')+2]
+                    command = " ".join(array)
+                    #  //
+                    # // Parse conditions
+                    #//
+                    if '--conditions' in array:
+                        conditions = array[array.index('--conditions')+1\
+                            ].split(',')[1].split('::')[0].strip()
+                    else:
+                        conditions = 'SpecialConditions'
+                    #  //
+                    # // Parsing number of events
+                    #//
+                    if '--relval' in array :
+                        total_events = array[array.index('--relval')+1\
+                            ].split(',')[0].strip()
+                        events_per_job = array[array.index('--relval')+1\
+                            ].split(',')[1].strip()
+                    #  //
+                    # // Special tag
+                    #//
+                    # FastSim
+                    if command.find('FASTSIM') > -1:
+                        special_tag = 'FastSim'
+                    # PileUp (at the same time with FastSim)
+                    if '--pileup' in array :
+                        #  //
+                        # // Will use whatever argument of --pileup option
+                        #//
+                        if array[array.index('--pileup')+1\
+                            ].lower().strip() != 'nopileup':
+                            if special_tag:
+                                special_tag = "_".join(\
+                                    array[array.index('--pileup')+1].strip())
+                            else:
+                                special_tag = \
+                                    array[array.index('--pileup')+1].strip()
+                            pile_up = True
+                            if pileup_dataset is None :
+                                print "You have to provide a pileup dataset."
+                                print "Usually it is a MinBias (RAW)."
+                                print "Use option --pileupdataset"
+                                sys.exit(5)
+                    #  //
+                    # // Cfg file's output name
+                    #//
+                    output_name = "_".join([primary, conditions, special_tag]\
+                        ) + ".py"
+                    #  //
+                    # // Add command options
+                    #//
+                    if command.find('no_exec') < 0:
+                        command += ' --no_exec'
+                    if command.find('python_filename') < 0:
+                        command += ' --python_filename ' + output_name
+                #  //
+                # // Collecting info for real data samples
+                #//
+                if is_real_data:
+                    #  //
+                    # // Storing input dataset and run number
+                    #//
+                    for parameter in sample_info_parts[3].split(','):
+                        input_data[parameter.split(':')[0].strip()] = \
+                            parameter.split(':')[1].strip()
+                    #  //
+                    # // Looking up the blocks for a given Dataset and a given run
+                    #//
+                    reader = DBSReader(readDBS)
+                    input_files = reader.dbs.listFiles(path=input_data['REALDATA'], \
+                        runNumber=input_data['RUN'])
+                    blocks = {}
+                    #  //
+                    # // Number of events to be processed
+                    #//
+                    total_events = 0
+                    for input_file in input_files:
+                        blocks[input_file['Block']['Name']] = None
+                        total_events += input_file['NumberOfEvents']
+                    input_blocks = ",".join(blocks.keys())
+                #  //
+                # // Composing a dictionary per sample
+                #//
+                dict = {}
+                dict['sampleName'] = sample_name
+                dict['command'] = command
+                dict['primary'] = primary
+                dict['outputName'] = output_name
+                dict['conditions'] = conditions
+                dict['specialTag'] = special_tag 
+                dict['totalEvents'] = total_events
+                dict['eventsPerJob'] = events_per_job
+                dict['pileUp'] = pile_up
+                dict['isRealData'] = is_real_data
+                dict['inputData'] = input_data
+                dict['inputBlocks'] = input_blocks
+                dict['steps'] = sample_steps
+ 
+                samples.append(dict)
+
+                if debug:
+                    print 'Parsing'
+                    print 'Sample:', sample_name
+                    print 'Command:', command
+                    print 'Conditions:', conditions
+                    print 'Special tag:', special_tag
+                    print 'Total events:', total_events
+                    print 'Events per job:', events_per_job
+                    print 'Steps:', sample_steps
+                    print 'PileUp:', pile_up
+                    print 'Input data:', input_data
+                    print 'Input blocks', input_blocks
+                    print ''
+
+            #  //
+            # // No a first step command (secon HLT table, RECO, ALCA, etc)
+            #//
             else:
-                command = line.split('@@@')[1].strip()
-                if command.count('=') > 0 : command=command.replace('=',' ')
-                array = command.split()
+                step_number = int(line_parts[0].split('++')[0].strip()[-1])
+                step_name = line_parts[0].split('++')[1].strip()
+                command = line_parts[1].strip()
+                #  //
+                # // Clean cmsDriver command format
+                #//
+                if command.find('=') > -1:
+                    command = command.replace('=',' ')
+                array = [i for i in command.split() if i]
+                #  //
+                # // Remove --python_filename if present
+                #//
+                if '--python_filename' in array:
+                    del array[array.index('--python_filename'):\
+                        array.index('--python_filename')+2]
+                command = " ".join(array)
+                #  //
+                # // Parse conditions
+                #//
                 if '--conditions' in array:
-                    conditions = array[array.index('--conditions')+1].split(',')[1].split('::')[0].strip()
-                    if conditions not in parsedConditions: parsedConditions.append(conditions)
+                    conditions = array[array.index('--conditions')+1\
+                        ].split(',')[1].split('::')[0].strip()
                 else:
                     conditions = 'SpecialConditions'
-                if '--relval' in array :
-                    totalEvents = array[array.index('--relval')+1].split(',')[0].strip()
-                    eventsPerJob = array[array.index('--relval')+1].split(',')[1].strip()
-                SimType = ''
-                pileUp = False
-                if '--pileup' in array :
-                    if array[array.index('--pileup')+1].lower().strip() != 'nopileup' :
-                        SimType = '_' + array[array.index('--pileup')+1].strip()
-                        pileUp = True
-                        if pileup_dataset == None :
-                            print "Hey! You have to provide a pileup dataset."
-                            print "Usually it is a MinBias (RAW)."
-                            print "Use option --pileupdataset"
-                            sys.exit(5)
-                if command.find('FASTSIM') != -1 : SimType = '_FastSim'
-                outputname = primary + '_' + conditions + SimType + '.py'
-
-                # add command options
+                #  //
+                # // Cfg file's output name
+                #//
+                output_name = "_".join([step_name, conditions]) + ".py"
+                #  //
+                # // Add command options
+                #//
                 if command.find('no_exec') < 0:
                     command += ' --no_exec'
                 if command.find('python_filename') < 0:
-                    command += ' --python_filename ' + outputname
-
-            if len(line.split("@@@")[0].split("++")) > 3 and not isRealData:
-                print "Sorry, but you need to you edit the samples file."
-                print "Only two \"++\" should be in the line %d:\n%s" % (n_line,line.split("@@@")[0])
-                print "Syntax should be like this for MC samples:"
-                print "## ++ SampleName ++ RECOTag, ALCATag @@@ cmsDriver... or"
-                print "## ++ SampleName ++ none @@@ cmsDriver... in case there is no chained processing."
-                print ""
-                sys.exit(4)
-
-            inputData = {}
-            inputBlocks = ""
-            if isRealData:
-                for parameter in line.split("@@@")[0].split('++')[3].split(','):
-                    inputData[parameter.split(':')[0].strip()] = parameter.split(':')[1].strip()
+                    command += ' --python_filename ' + output_name
                 #  //
-                # // Looking up the blocks for a given Dataset and a given run
+                # // Second trigger table? This may be changed, right now I am
+                #// assuming that all 4 steps workflows are like this.
+                #\\
+                stage_previous = True
+                if step_number == 2:
+                    if '-s' in array:
+                        index = array.index('-s')
+                    else:
+                        index = array.index('--step')
+                    if array[index+1].find('RECO') < 0:
+                        stage_previous = False
+
+                if step_number > max_step:
+                    max_step = step_number
+                #  //
+                # // Composing a dictionary per step
                 #//
-                reader = DBSReader(readDBS)
-                inputFiles = reader.dbs.listFiles(path=inputData['REALDATA'],runNumber=inputData['RUN'])
-                blocks = {}
-                totalEvents = 0
-                for inputFile in inputFiles:
-                    blocks[inputFile['Block']['Name']] = None
-                    totalEvents += inputFile['NumberOfEvents']
-                inputBlocks = ",".join(blocks.keys())
-            
-            # Is a first step command?
-            if len(line.split('@@@')[0].split('++')) > 2 : #Yes
-                chain = line.split('@@@')[0].split('++')[2].split(',')
-                ALCAtag = RECOtag = None
-                if len(chain) >= 1 :
-                    RECOtag = chain[0].strip()
-                if len(chain) >= 2 :
-                    ALCAtag = chain[1].strip()
-
-            # distinguish two-step and one-step processes (one step always has RECO in process list)
-            if command.find('RECO') >= 0 :
-                if primary.find('RECO') >= 0 :
-                    dict = {}
-                    dict['command'] = command
-                    dict['outputname'] = outputname
-                    dict['conditions'] = conditions
-                    if command.find("--relval") == -1:
-                        dict['multipleOutput'] = True
-                    step2[line.split('@@@')[0].split('++')[1].strip()] = dict
-                elif primary.find('ALCA') >= 0 :
-                    dict = {}
-                    dict['command'] = command
-                    dict['outputname'] = outputname
-                    step3[line.split('@@@')[0].split('++')[1].strip()] = dict
-                else :
-                    dict = {}
-                    dict['command'] = command
-                    dict['primary'] = primary
-                    dict['conditions'] = conditions
-                    dict['totalEvents'] = totalEvents
-                    dict['eventsPerJob'] = eventsPerJob
-                    dict['outputname'] = outputname
-                    dict['version'] = ""
-                    if SimType != '' :
-                        dict['version'] = SimType.strip('_') + "_"
-                    onestep.append(dict)
-            else :
                 dict = {}
-                if len(chain) >= 2 :
-                    dict['steps'] = 3
-                    dict['ALCAtag'] = ALCAtag
-                else :
-                    dict['steps'] = 2
-                dict['RECOtag'] = RECOtag
+                dict['stepNumber'] = step_number
                 dict['command'] = command
-                dict['isRealData'] = isRealData
-                dict['inputData'] = inputData
-                dict['inputBlocks'] = inputBlocks
-                dict['primary'] = primary
+                dict['outputName'] = output_name
                 dict['conditions'] = conditions
-                dict['totalEvents'] = totalEvents
-                dict['eventsPerJob'] = eventsPerJob
-                dict['outputname'] = outputname
-                dict['version'] = ""
-                if SimType != '' :
-                    dict['version'] = SimType.strip('_') + "_"
-                dict['pileUp'] = pileUp
-                step1.append(dict)
+                dict['stagePrevious'] = stage_previous
+                #  //
+                # // Step name should be unique
+                #//
+                if step_name not in steps:
+                    steps[step_name] = dict
+                else:
+                    print "Label %s is repeated!!!" % step_name
+                    sys.exit(1)
 
-            if debug == 1:
-                print 'parsing'
-                print 'primary:',primary
-                print 'command:',command
-                print 'conditions:',conditions
-                if '--relval' in array :
-                    print 'totalEvents:',totalEvents
-                    print 'eventsPerJob:',eventsPerJob
-                print 'RECOtag:',RECOtag
-                print 'ALCAtag:',ALCAtag
-                print 'Steps:',chain
-                print 'PileUp:',pileUp
-                print ''
+                if debug:
+                    print 'Parsing'
+                    print 'Step name:', step_name
+                    print 'Step number:', step_number
+                    print 'Command:', command
+                    print 'Conditions:', conditions
+                    print 'Stage previous:', stage_previous
+                    print ''
 
-    for tag in parsedRECOTags:
-        if tag not in step2.keys():
-            print 'Step 2 cmsDriver command for: ',tag,' not included in sample file:',samples
-            sys.exit(1)
-    for tag in parsedALCATags:
-        if tag not in step2.keys():
-            print 'Step 2 cmsDriver command for: ',tag,' not included in sample file:',samples
-            sys.exit(1)
+    file.close()
 
-    if debug == 1:
-        print 'collected information step 1'
-        for sample in step1:
-            print 'primary:',sample['primary']
-            print 'command:',sample['command']
-            print 'isRealData:',sample['isRealData']
-            print 'inputData:',sample['inputData']
-            print 'inputBlocks',sample['inputBlocks']
-            print 'conditions:',sample['conditions']
-            print 'totalEvents:',sample['totalEvents']
-            print 'eventsPerJob:',sample['eventsPerJob']
-            print 'outputname:',sample['outputname']
+    if debug:
+        print "Collected information step 1"
+        for sample in samples:
+            print 'Sample name:', sample['sampleName']
+            print 'Command', sample['command']
+            print 'Real data:', sample['isRealData']
+            print 'Input data:', sample['inputData']
+            print 'Input blocks', sample['inputBlocks']
+            print 'Conditions:', sample['conditions']
+            print 'Total events:', sample['totalEvents']
+            print 'Events per job:', sample['eventsPerJob']
+            print 'Output name:', sample['outputName']
+            print 'Steps:', sample['steps']
+            print 'PileUp:', sample['pileUp']
+            print 'Special tag:', sample['specialTag']
             print ''
-        print 'collected information step 2'
-        for tag in step2.keys() :
-            print 'step 2 condition:',tag,' command:',step2[tag]['command'],' outputname:',step2[tag]['outputname']
-            print ''
-        print 'collected information step 3'
-        for tag in step3.keys() :
-            print 'step 3 condition:',tag,' command:',step3[tag]['command'],' outputname:',step3[tag]['outputname']
-            print ''
-        print 'collected information onestep'
-        for sample in onestep:
-            print 'primary:',sample['primary']
-            print 'command:',sample['command']
-            print 'conditions:',sample['conditions']
-            print 'totalEvents:',sample['totalEvents']
-            print 'eventsPerJob:',sample['eventsPerJob']
-            print 'outputname:',sample['outputname']
-            print ''
+        for i in range(2, max_step+1):
+            print 'Collected information step %s' % i
+            for step in steps:
+                if steps[step]['stepNumber'] == i:
+                    print 'Step name:', step
+                    print 'Command:', steps[step]['command']
+                    print 'Conditions:', steps[step]['conditions']
+                    print 'Stage previous:', steps[step]['stagePrevious']
+                    print ''
 
-    # execute cmsDriver commands
+    #  //
+    # // Execute cmsDriver command
+    #//
     print ''
     print 'Executing cmsDriver commands for step 1 configurations'
     print ''
-    for sample in step1:
-        if not sample['isRealData'] :
+    for sample in samples:
+        if not sample['isRealData']:
             proc = popen2.Popen3(sample['command'])
             exitCode = proc.wait()
-            if exitCode == 0 :
-                print 'cmsDriver command for step 1 to produce:',sample['outputname'],'exited with ExitCode:',exitCode
+            if exitCode == 0:
+                print 'cmsDriver command for step 1 to produce:', \
+                    sample['outputName'],'exited with ExitCode:', exitCode
             else :
-                print 'cmsDriver command for step 1 to produce:',sample['outputname'],'failed with ExitCode:',exitCode
+                print 'cmsDriver command for step 1 to produce:', \
+                    sample['outputName'],'failed with ExitCode:', exitCode
                 sys.exit(1)
         else :
             msg = 'Real Data:\n'
@@ -357,41 +449,23 @@ def main(argv) :
             msg += 'Input blocks: %s' % (sample['inputBlocks'])
             print msg
 
-    print ''
-    print 'Executing cmsDriver commands for step 2 configurations'
-    print ''
-    for condition in step2.keys() :
-        proc = popen2.Popen3(step2[condition]['command'])
-        exitCode = proc.wait()
-        if exitCode == 0 :
-            print 'cmsDriver command for step 2 to produce:',step2[condition]['outputname'],'exited with ExitCode:',exitCode
-        else :
-            print 'cmsDriver command for step 2 to produce:',step2[condition]['outputname'],'failed with ExitCode:',exitCode
-            sys.exit(1)
-
-    print ''
-    print 'Executing cmsDriver commands for step 3 configurations'
-    print ''
-    for condition in step3.keys() :
-        proc = popen2.Popen3(step3[condition]['command'])
-        exitCode = proc.wait()
-        if exitCode == 0 :
-            print 'cmsDriver command for step 3 to produce:',step3[condition]['outputname'],'exited with ExitCode:',exitCode
-        else :
-            print 'cmsDriver command for step 3 to produce:',step3[condition]['outputname'],'failed with ExitCode:',exitCode
-            sys.exit(1)
-
-    print ''
-    print 'Executing cmsDriver commands for single step configurations'
-    print ''
-    for sample in onestep:
-        proc = popen2.Popen3(sample['command'])
-        exitCode = proc.wait()
-        if exitCode == 0 :
-            print 'cmsDriver command for onestep to produce:',sample['outputname'],'exited with ExitCode:',exitCode
-        else :
-            print 'cmsDriver command for onestep to produce:',sample['outputname'],'failed with ExitCode:',exitCode
-            sys.exit(1)
+    for i in range(2, max_step+1):
+        print ''
+        print 'Executing cmsDriver commands for step %s configurations' % i
+        print ''
+        for step in steps:
+            if steps[step]['stepNumber'] == i:
+                proc = popen2.Popen3(steps[step]['command'])
+                exitCode = proc.wait()
+                if exitCode == 0:
+                    print 'cmsDriver command for step %s to produce:' % i, \
+                        steps[step]['outputName'], \
+                        'exited with ExitCode:', exitCode
+                else:
+                    print 'cmsDriver command for step %s to produce:' % i, \
+                        steps[step]['outputName'], \
+                        'failed with ExitCode:', exitCode
+                    sys.exit(1)
 
     print ''
     print 'Workflow creation'
@@ -401,109 +475,76 @@ def main(argv) :
     unmergedDatasets = []
     mergedDatasets = []
     workflows = {}
-
-
-    # create workflows
-    for sample in step1:
-        if sample['isRealData'] :
-            if sample['steps'] == 2 :
-                command  = 'python2.4 ' + scriptsDir + '/createProcessingWorkflow.py \\\n'
-                command += '--override-channel=' + sample['primary'] + ' \\\n'
+    
+    #  //
+    # // Create workflows
+    #//
+    for sample in samples:
+        command = 'python2.4 ' + scriptsDir
+        processing_string = '' # Conditions -> processingString
+        #  //
+        # // In case we are processing data
+        #//
+        if sample['isRealData']:
+            command += '/createProcessingWorkflow.py \\\n'
+            command += '--override-channel=' + sample['primary'] + ' \\\n'
+            command += '--dataset=' + sample['inputData']['REALDATA'] + ' \\\n'
+            command += '--only-blocks=' + sample['inputBlocks'] + ' \\\n'
+            command += '--dbs-url=' + readDBS + ' \\\n'
+            processing_string = steps[sample['steps'][0]]['conditions']
+            command += '--split-type=file \\\n'
+            command += '--split-size=1 \\\n'
+        #  //
+        # // MC workflows
+        #//
+        else:
+            command += '/createProductionWorkflow.py \\\n'
+            command += '--channel=' + sample['primary'] + ' \\\n'
+            processing_string = sample['conditions']
+            command += '--starting-run=' + initial_run + ' \\\n'
+            if initial_event != None:
+                command += '--starting-event=' + initial_event + ' \\\n'
+            command += '--totalevents=' + sample['totalEvents'] + ' \\\n'
+            command += '--eventsperjob=' + sample['eventsPerJob'] + ' \\\n'
+            if sample['pileUp']:
+                command += '--pileup-dataset=' + pileup_dataset + ' \\\n'
+            if storeFail:
+                command += '--store-fail=True \\\n'
+            #  //
+            # // First step
+            #//
+            command += '--version=' + version + ' \\\n'
+            command += '--py-cfg=' + sample['outputName'] + ' \\\n'
+        #  //
+        # // Input configurations (Second step and further)
+        #//
+        if sample['steps'][0].lower().strip() != 'none':
+            for i, step in enumerate(sample['steps']):
                 command += '--version=' + version + ' \\\n'
-                command += '--py-cfg=' + step2[sample['RECOtag']]['outputname'] + ' \\\n'
-                command += '--group=RelVal \\\n'
-                command += '--category=relval \\\n'
-                command += '--activity=RelVal \\\n'
-                command += '--acquisition_era=' + version + ' \\\n'
-                #command += '--conditions=' + step2[sample['RECOtag']]['conditions'] + ' \\\n'
-                command += '--processing_string=' + step2[sample['RECOtag']]['conditions'] + ' \\\n'
-                command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
-                command += '--only-sites=' + onlySites + ' \\\n'
-                command += '--dataset=' + sample['inputData']['REALDATA'] + ' \\\n'
-                command += '--dbs-url=' + readDBS + ' \\\n'
-                command += '--split-type=file \\\n'
-                command += '--split-size=1 \\\n'
-                command += '--only-blocks=' + sample['inputBlocks']
-            else :
-                command  = 'python2.4 ' + scriptsDir + '/createProcessingWorkflow.py \\\n'
-                command += '--override-channel=' + sample['primary'] + ' \\\n'
-                command += '--version=' + version + ' \\\n'
-                command += '--py-cfg=' + step2[sample['RECOtag']]['outputname'] + ' \\\n'
-                command += '--version=' + version + ' \\\n'
-                command += '--py-cfg=' + step3[sample['ALCAtag']]['outputname'] + ' \\\n'
-                command += '--stageout-intermediates=true \\\n'
-                command += '--group=RelVal \\\n'
-                command += '--category=relval \\\n'
-                command += '--activity=RelVal \\\n'
-                command += '--acquisition_era=' + version + ' \\\n'
-                #command += '--conditions=' + step2[sample['RECOtag']]['conditions'] + ' \\\n'
-                command += '--processing_string=' + step2[sample['RECOtag']]['conditions'] + ' \\\n'
-                command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
-                command += '--only-sites=' + onlySites + ' \\\n'
-                command += '--dataset=' + sample['inputData']['REALDATA'] + ' \\\n'
-                command += '--dbs-url=' + readDBS + ' \\\n'
-                command += '--split-type=file \\\n'
-                command += '--split-size=1 \\\n'
-                command += '--only-blocks=' + sample['inputBlocks']
-        else :
-            if sample['steps'] == 2 :
-                command  = 'python2.4 ' + scriptsDir + '/createProductionWorkflow.py --channel=' + sample['primary'] + ' \\\n'
-                command += '--version=' + version + ' \\\n'
-                command += '--py-cfg=' + sample['outputname'] + ' \\\n'
-                command += '--version=' + version + ' \\\n'
-                command += '--py-cfg=' + step2[sample['RECOtag']]['outputname'] + ' \\\n'
-                command += '--stageout-intermediates=true \\\n'
-                command += '--group=RelVal \\\n'
-                command += '--category=relval \\\n'
-                command += '--activity=RelVal \\\n'
-                command += '--acquisition_era=' + version + ' \\\n'
-                #command += '--conditions=' + sample['conditions'] + ' \\\n'
-                command += '--processing_string=' + sample['conditions'] + ' \\\n'
-                command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
-                command += '--only-sites=' + onlySites + ' \\\n'
-                command += '--starting-run=' + initial_run + ' \\\n'
-                if initial_event != None :
-                    command += '--starting-event=' + initial_event + ' \\\n'
-                command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
-                command += '--eventsperjob=' + sample['eventsPerJob']
-                if sample['pileUp'] :
-                    command += ' \\\n--pileup-dataset=' + pileup_dataset
-                if storeFail :
-                    command += ' \\\n--store-fail=True' 
-            else :
-                command  = 'python2.4 ' + scriptsDir + '/createProductionWorkflow.py --channel=' + sample['primary'] + ' \\\n'
-                command += '--version=' + version + ' \\\n'
-                command += '--py-cfg=' + sample['outputname'] + ' \\\n'
-                command += '--version=' + version + ' \\\n'
-                command += '--py-cfg=' + step2[sample['RECOtag']]['outputname']+ ' \\\n'
-                command += '--stageout-intermediates=true \\\n'
-                print step2[sample['RECOtag']]
-                if step2[sample['RECOtag']].get('multipleOutput', None) is not None:
+                command += '--py-cfg=' + steps[step]['outputName'] + ' \\\n'
+                if i != 0 or not sample['isRealData']:
+                    command += '--stageout-intermediates=%s \\\n' % (
+                        steps[step]['stagePrevious'])
                     command += '--chained-input=output \\\n'
-                command += '--version=' + version + ' \\\n'
-                command += '--py-cfg=' + step3[sample['ALCAtag']]['outputname']+ ' \\\n'
-                command += '--stageout-intermediates=true \\\n'
-                if step2[sample['RECOtag']].get('multipleOutput', None) is not None:
-                    command += '--chained-input=output \\\n'
-                command += '--group=RelVal \\\n'
-                command += '--category=relval \\\n'
-                command += '--activity=RelVal \\\n'
-                command += '--acquisition_era=' + version + ' \\\n'
-                #command += '--conditions=' + sample['conditions'] + ' \\\n'
-                command += '--processing_string=' + sample['conditions'] + ' \\\n'
-                command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
-                command += '--only-sites=' + onlySites + ' \\\n'
-                command += '--starting-run=' + initial_run + ' \\\n'
-                if initial_event != None :
-                    command += '--starting-event=' + initial_event + ' \\\n'
-                command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
-                command += '--eventsperjob=' + sample['eventsPerJob']
-                if sample['pileUp'] :
-                    command += ' \\\n--pileup-dataset=' + pileup_dataset
-                if storeFail :
-                    command += ' \\\n--store-fail=True'
+        #  //
+        # // Common options
+        #//
+        command += '--group=RelVal \\\n'
+        command += '--category=relval \\\n'
+        command += '--activity=RelVal \\\n'
+        command += '--acquisition_era=' + version + ' \\\n'
+        command += '--only-sites=' + onlySites + ' \\\n'
+        command += '--processing_version=' + processing_version + ' \\\n'
+        #  //
+        # // processingString="Conditions"_"specialTag"
+        #//
+        if sample['specialTag']:
+            command += '--processing_string=' + "_".join(
+                [processing_string, sample['specialTag']])
+        else:
+            command += '--processing_string=' + processing_string
 
-        if debug == 1 :
+        if debug:
             print command
             print ''
         
@@ -511,85 +552,35 @@ def main(argv) :
         ExitCode = proc.wait()
         output = proc.fromchild.readlines()
 
-        if debug == 1 :
+        if debug:
             print output
             print ''
 
-        if exitCode == 0 :
-            # parse output
+        if exitCode == 0:
+            #parse output
             tmp = []
             index = FindIndex(output,'Output Datasets')
             for dataset in output[index+1:] : tmp.append(dataset.strip())
-            datasets.append({ 'unmerged':tmp, 'totalEvents':sample['totalEvents'],
-                             'merged':[ x.replace('-unmerged','') for x in tmp ] })
+            datasets.append({'unmerged': tmp,
+                            'totalEvents': sample['totalEvents'],
+                            'merged': [x.replace('-unmerged','') for x in tmp]
+                            })
             unmergedDatasets.append(tmp)
             index = FindIndex(output,'Created')
-            if index == -1 :
+            if index == -1:
                 print "No workflow was created by create*workflow.py"
                 sys.exit(1)
             workflow = output[index].split()[1].strip()
             workflows[workflow] = sample['isRealData']
-            print 'workflow creation command for workflow:',workflow,'exited with ExitCode:',exitCode
+            print 'workflow creation command for workflow:', workflow, \
+                'exited with ExitCode:', exitCode
         else :
             print 'workflow creation command:'
             print command
             print 'failed'
             sys.exit(1)
 
-    # create workflows
-    for sample in onestep:
-        command  = 'python2.4 ' + scriptsDir + '/createProductionWorkflow.py --channel=' + sample['primary'] + ' \\\n'
-        command += '--version=' + version + ' \\\n'
-        command += '--py-cfg=' + sample['outputname'] + ' \\\n'
-        command += '--group=RelVal \\\n'
-        command += '--category=relval \\\n'
-        command += '--activity=RelVal \\\n'
-        command += '--acquisition_era=' + version + ' \\\n'
-        #command += '--conditions=' + sample['conditions'] + ' \\\n'
-        command += '--processing_string=' + sample['conditions'] + ' \\\n'
-        command += '--processing_version=' + sample['version'] + processing_version + ' \\\n'
-        command += '--only-sites=' + onlySites + ' \\\n'
-        command += '--starting-run=' + initial_run + ' \\\n'
-        if initial_event != None :
-            command += '--starting-event=' + initial_event + ' \\\n'
-        command += '--totalevents=' + sample['totalEvents']+ ' \\\n'
-        command += '--eventsperjob=' + sample['eventsPerJob']
-
-        if debug == 1 :
-            print command
-            print ''
-        
-        proc = popen2.Popen3(command)
-        exitCode = proc.wait()
-        output = proc.fromchild.readlines()
-
-        if debug == 1 :
-            print output
-            print ''
-        
-        if exitCode == 0 :
-            # parse output
-            tmp = []
-            index = FindIndex(output,'Output Datasets')
-            for dataset in output[index+1:] : tmp.append(dataset.strip())
-            datasets.append({ 'unmerged':tmp, 'totalEvents':sample['totalEvents'],
-                             'merged':[ x.replace('-unmerged','') for x in tmp ] })
-            unmergedDatasets.append(tmp)
-            index = FindIndex(output,'Created')
-            if index == -1 :
-                print "No workflow was created by createProductionWorkflow_CSAi08Hack.py"
-                sys.exit(1)
-            workflow = output[index].split()[1].strip()
-            workflows[workflow] = False 
-            print 'workflow creation command for workflow:',workflow,'exited with ExitCode:',exitCode
-        else :
-            exitValue = exitCode
-            print 'workflow creation command:'
-            print command
-            print 'failed'
-            sys.exit(1)
-    
-    if debug == 1 :
+    if debug:
         print 'Created workflows:'
         print workflows.keys()	
         print ''
