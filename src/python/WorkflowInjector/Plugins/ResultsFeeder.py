@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.11 2009/05/29 21:48:18 ewv Exp $"
-__version__  = "$Revision: 1.11 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.12 2009/06/05 16:49:19 ewv Exp $"
+__version__  = "$Revision: 1.12 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -106,11 +106,8 @@ class ResultsFeeder(PluginInterface):
 
         """
 
-        lfnPrefix = '/store/results'
+        lfnPrefix = self.resultsDir
 
-        # Temporary stuff to override stageout and location
-        srmPrefix = 'srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/11/'
-        lfnPrefix = '/store/user/ewv/testresults'
         self.workflowName = "SR-%s-%s-%s" % \
             (self.cmsswRelease, self.primaryDataset, self.outputDataset)
         self.workflowFile = os.path.join(self.workingDir,
@@ -177,7 +174,9 @@ class ResultsFeeder(PluginInterface):
 
         addStageOutNode(self.cmsRunNode,"stageOut1")
 
+        # Temporary stuff to override stageout and location
         if self.FNALOverride:
+            srmPrefix = 'srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/11/'
             for node in self.workflow.payload.children:
                 if node.type == "StageOut":
                     addStageOutOverride(node,
@@ -195,7 +194,7 @@ class ResultsFeeder(PluginInterface):
         outputDataset["ApplicationProject"] = "CMSSW"
         outputDataset["ApplicationVersion"] = self.cmsswRelease
         outputDataset["ApplicationFamily"] = "Merged"
-        outputDataset["LFNBase"] = '%s/%s/' % (lfnPrefix, self.physicsGroup)
+        outputDataset["LFNBase"] = '%s/%s/%s/' % (lfnPrefix, self.physicsGroup, self.outputDataset)
         outputDataset["PhysicsGroup"] = self.physicsGroup
         outputDataset["PrimaryDatasetType"] = self.dataType
         outputDataset["ParentDataset"] = "/%s/%s/%s" % (self.primaryDataset,
@@ -261,8 +260,11 @@ class ResultsFeeder(PluginInterface):
             raise RuntimeError("Some parameters missing")
 
         self.FNALOverride = False
+        self.resultsDir = "/store/results"
+
         if  userParams.get('FNALOverride','False') == 'True':
             self.FNALOverride = True
+        self.resultsDir = userParams.get('resultsDir',"/store/results")
 
         self.dbsUrl       = getInputDBSURL()
         self.globalDbsUrl = getGlobalDBSURL()
