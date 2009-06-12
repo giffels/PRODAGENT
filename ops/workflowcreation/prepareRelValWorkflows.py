@@ -526,6 +526,13 @@ def main(argv) :
                     command += '--stageout-intermediates=%s \\\n' % (
                         steps[step]['stagePrevious'])
                     command += '--chained-input=output \\\n'
+                #  //
+                # // If a two-hlt tables workflow, will take conditions from
+                #// the second step information
+                #\\
+                if not steps[step]['stagePrevious'] and \
+                    i == 0:
+                    processing_string = steps[step]['conditions']
         #  //
         # // Common options
         #//
