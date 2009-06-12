@@ -115,7 +115,7 @@ class StoreResultsAccountantComponent:
                 status = ResultsStatus(self.args, self.ms, **workflow)
                 status()
 
-        self.ms.publish("StoreResultsAccountant:Poll", "",
+        self.ms.publishUnique("StoreResultsAccountant:Poll", "",
                         self.args['PollInterval'])
         self.ms.commit()
         return
@@ -141,7 +141,8 @@ class StoreResultsAccountantComponent:
 
         self.ms.subscribeTo("StoreResultsAccountant:Poll")
 
-        self.ms.publish("StoreResultsAccountant:Poll", "",
+        self.ms.remove("StoreResultsAccountant:Poll")
+        self.ms.publishUnique("StoreResultsAccountant:Poll", "",
                         self.args['PollInterval'])
         self.ms.commit()
 
