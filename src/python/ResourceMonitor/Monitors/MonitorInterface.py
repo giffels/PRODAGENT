@@ -130,6 +130,8 @@ class MonitorInterface:
 
             for jobtype in ('Processing',): # processing only for the moment
                 threshold = getThreshold(thresholds, jobtype)
+                if threshold <= 0:
+                    continue
                 sitejobstatus = jobStatus.get(siteIndex, {}).get(jobtype, {})
                 queuing = sitejobstatus.get('Queued', 0)
                 others = sitejobstatus.get('Other', 0)
@@ -140,13 +142,20 @@ class MonitorInterface:
                 logging.debug("Scheduler: %s/%s/%s/%s/%s %s jobs pending/running/done/other/released at %s" % \
                     (queuing, running, done, others, released, jobtype, sitename))
 
-                # increase threshold if less than minSubmit queuing and we will
-                #  reach/exceed threshold in next batch of submissions and the
-                #   new value is larger than the current threshold
-                if pending < minSubmit and \
+                # attempt to keep a desired level of jobs queued at each site
+                desired = max(minSubmit, threshold / 5)
+                if desired > maxSubmit:
+                    desired = maxSubmit
+                # increase thresholds if:
+                #   o less than desired queuing
+                #   o we will reach/exceed threshold in next submission
+                #   o new value is larger than the current threshold
+                #   o less than 5 * threshold already released
+                if pending < desired and \
                     released >= (threshold - maxSubmit) and \
-                    (released + minSubmit) > threshold:
-                    thresholds['%sThreshold' % jobtype.lower()] = released + minSubmit
+                    (released + desired) > threshold and \
+                    released < (threshold * 5):
+                    thresholds['%sThreshold' % jobtype.lower()] = released + desired
                     logging.info('Increased %s threshold to %s at %s due to low number of queued jobs' % (jobtype, 
                                 getThreshold(thresholds, jobtype), sitename))
 
