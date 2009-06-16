@@ -122,6 +122,8 @@ class LCGAdvanced(MonitorInterface):
         
         if self.plugConf.get("DynamicallyAdjustThresholds", "false").lower() in ("true", "yes"):
             self.plugConf["DynamicallyAdjustThresholds"] = True
+        else:
+            self.plugConf["DynamicallyAdjustThresholds"] = False
     
     
     def setThresholds(self, siteData):
