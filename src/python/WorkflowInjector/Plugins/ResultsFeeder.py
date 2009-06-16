@@ -13,27 +13,29 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.12 2009/06/05 16:49:19 ewv Exp $"
-__version__  = "$Revision: 1.12 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.13 2009/06/12 17:57:50 ewv Exp $"
+__version__  = "$Revision: 1.13 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
 import os
+import traceback
 
 from WorkflowInjector.PluginInterface import PluginInterface
 from WorkflowInjector.Registry import registerPlugin
 
-from ProdCommon.JobFactory.MergeJobFactory import MergeJobFactory
-from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-from ProdCommon.MCPayloads.WorkflowTools import addStageOutNode
-from ProdCommon.MCPayloads.WorkflowTools import addStageOutOverride
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
-from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 
+from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
 from ProdCommon.DataMgmt.DBS.DBSWriter import DBSReader
+from ProdCommon.JobFactory.MergeJobFactory import MergeJobFactory
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.WorkflowTools import addStageOutNode, addStageOutOverride
 
 from WMCore.Services.JSONParser import JSONParser
+
+from dbsApiException import *
 
 def getInputDBSURL():
     """
@@ -132,33 +134,42 @@ class ResultsFeeder(PluginInterface):
             })
 
         # Get info from input dataset
-
         try:
+            logging.info("Listing dataset %s" %
+                     (self.primaryDataset))
             reader = DBSReader(self.inputDBSURL)
             primaries = reader.dbs.listPrimaryDatasets(self.primaryDataset)
             self.dataType = primaries[0]['Type']
         except:
             self.dataType = 'mc'
+        logging.info("Datatype = %s" % self.dataType)
 
         # Migrate dataset from User's LocalDBS to StoreResults LocalDBS
 
         writer = DBSWriter(self.dbsUrl)
-        dstURL = self.dbsUrl
+        skipParents = False
         srcURL = self.inputDBSURL
+        dstURL = self.dbsUrl
         path = "/%s/%s/USER" % (self.primaryDataset, self.processedDataset)
         logging.info("Migrating dataset %s from %s to %s" %
                      (path, srcURL, dstURL))
-        writer.dbs.migrateDatasetContents(srcURL, dstURL, path,
-                                          '', False, True)
+        try:
+            writer.dbs.migrateDatasetContents(srcURL, dstURL, path, '',
+                                              skipParents, True)
+        except:
+            logging.info("Migrating to local DBS failed:\n%s" % traceback.format_exc())
 
         # Migrate dataset from User's LocalDBS to Global DBS
 
         writer = DBSWriter(self.globalDbsUrl)
         dstURL = self.globalDbsUrl
         logging.info("Migrating dataset %s from %s to %s" %
-                     (path, srcURL, dstURL))
-        writer.dbs.migrateDatasetContents(srcURL, dstURL, path,
-                                          '', False, True)
+                    (path, srcURL, dstURL))
+        try:
+            writer.dbs.migrateDatasetContents(srcURL, dstURL, path, '',
+                                              skipParents, True)
+        except:
+            logging.info("Migrating to global DBS failed:\n%s" % traceback.format_exc())
 
         # Create node for cmsRun
 
