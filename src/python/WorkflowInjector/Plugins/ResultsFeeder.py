@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.12 2009/06/05 16:49:19 ewv Exp $"
-__version__  = "$Revision: 1.12 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.9 2009/05/14 07:11:54 giffels Exp $"
+__version__  = "$Revision: 1.9 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -60,28 +60,6 @@ def getInputDBSURL():
 
     return dbsConfig.get("DBSURL", None)
 
-
-def getGlobalDBSURL():
-    try:
-        config = loadProdAgentConfiguration()
-    except StandardError, ex:
-        msg = "Error reading configuration:\n"
-        msg += str(ex)
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    try:
-        dbsConfig = config.getConfig("GlobalDBSDLS")
-    except StandardError, ex:
-        msg = "Error reading configuration for GlobalDBSDLS:\n"
-        msg += str(ex)
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    return dbsConfig.get("DBSURL", None)
-
-
-
 class NodeFinder:
     def __init__(self, name):
         self.name = name
@@ -106,10 +84,14 @@ class ResultsFeeder(PluginInterface):
 
         """
 
-        lfnPrefix = self.resultsDir
+        lfnPrefix = '/store/results'
+        dataTier  = 'USER'
 
+        # Temporary stuff to override stageout and location
+        srmPrefix = 'srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/11/'
+        lfnPrefix = '/store/user/ewv/testresults'
         self.workflowName = "SR-%s-%s-%s" % \
-            (self.cmsswRelease, self.primaryDataset, self.outputDataset)
+            (self.cmsswRelease, self.primaryDataset, self.processedDataset)
         self.workflowFile = os.path.join(self.workingDir,
                                          '%s.xml' % self.workflowName)
 
@@ -121,14 +103,14 @@ class ResultsFeeder(PluginInterface):
         self.workflow = WorkflowSpec()
         self.workflow.setWorkflowName(self.workflowName)
         self.workflow.parameters["WorkflowType"] = "Merge"
-        self.workflow.parameters["DataTier"] = self.dataTier
+        self.workflow.parameters["DataTier"] = dataTier
         self.workflow.parameters['DBSURL'] = self.dbsUrl
 
         self.inputDatasetName = self.workflow.payload.addInputDataset(
             self.primaryDataset, self.processedDataset
             )
         self.inputDatasetName.update({
-            "DataTier" : self.dataTier,
+            "DataTier" : dataTier,
             })
 
         # Get info from input dataset
@@ -151,15 +133,6 @@ class ResultsFeeder(PluginInterface):
         writer.dbs.migrateDatasetContents(srcURL, dstURL, path,
                                           '', False, True)
 
-        # Migrate dataset from User's LocalDBS to Global DBS
-
-        writer = DBSWriter(self.globalDbsUrl)
-        dstURL = self.globalDbsUrl
-        logging.info("Migrating dataset %s from %s to %s" %
-                     (path, srcURL, dstURL))
-        writer.dbs.migrateDatasetContents(srcURL, dstURL, path,
-                                          '', False, True)
-
         # Create node for cmsRun
 
         self.cmsRunNode = self.workflow.payload
@@ -173,33 +146,29 @@ class ResultsFeeder(PluginInterface):
         # Add a node for stage out
 
         addStageOutNode(self.cmsRunNode,"stageOut1")
-
-        # Temporary stuff to override stageout and location
-        if self.FNALOverride:
-            srmPrefix = 'srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/11/'
-            for node in self.workflow.payload.children:
-                if node.type == "StageOut":
-                    addStageOutOverride(node,
-                        command = "srmv2", option = "",
-                        seName = "cmssrm.fnal.gov", lfnPrefix = srmPrefix)
+        for node in self.workflow.payload.children:
+            if node.type == "StageOut":
+                addStageOutOverride(node,
+                    command = "srmv2", option = "",
+                    seName = "cmssrm.fnal.gov", lfnPrefix = srmPrefix)
 
         # Create and populate output dataset
 
         outputDataset = self.cmsRunNode.addOutputDataset(self.primaryDataset,
                                                          self.outputDataset,
                                                          "Merged")
-        outputDataset["DataTier"] = self.dataTier
+        outputDataset["DataTier"] = dataTier
         outputDataset["NoMerge"] = "True"
         outputDataset["ApplicationName"] = "cmsRun"
         outputDataset["ApplicationProject"] = "CMSSW"
         outputDataset["ApplicationVersion"] = self.cmsswRelease
         outputDataset["ApplicationFamily"] = "Merged"
-        outputDataset["LFNBase"] = '%s/%s/%s/' % (lfnPrefix, self.physicsGroup, self.outputDataset)
+        outputDataset["LFNBase"] = '%s/%s/' % (lfnPrefix, self.physicsGroup)
         outputDataset["PhysicsGroup"] = self.physicsGroup
         outputDataset["PrimaryDatasetType"] = self.dataType
         outputDataset["ParentDataset"] = "/%s/%s/%s" % (self.primaryDataset,
                                                         self.processedDataset,
-                                                        self.dataTier)
+                                                        dataTier)
 
         # Create and populate config description
 
@@ -247,8 +216,6 @@ class ResultsFeeder(PluginInterface):
 
         logging.debug('User loaded params: %s' % userParams)
 
-        self.dataTier  = 'USER'
-
         try:
             self.primaryDataset   = userParams['primaryDataset']
             self.processedDataset = userParams['processedDataset']
@@ -259,15 +226,8 @@ class ResultsFeeder(PluginInterface):
         except KeyError:
             raise RuntimeError("Some parameters missing")
 
-        self.FNALOverride = False
-        self.resultsDir = "/store/results"
+        self.dbsUrl = getInputDBSURL()
 
-        if  userParams.get('FNALOverride','False') == 'True':
-            self.FNALOverride = True
-        self.resultsDir = userParams.get('resultsDir',"/store/results")
-
-        self.dbsUrl       = getInputDBSURL()
-        self.globalDbsUrl = getGlobalDBSURL()
 
     def handleInput(self, payload):
         """

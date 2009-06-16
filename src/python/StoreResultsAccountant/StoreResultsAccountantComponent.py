@@ -34,9 +34,9 @@ class StoreResultsAccountantComponent:
         logging.info("Trying to start StoreResultsAccountant")
         self.args = {}
         self.args['Logfile'] = None
-        self.args['PollInterval'] = "00:02:00"
-        self.args['MigrateToGlobal'] = True
-        self.args['InjectToPhEDEx'] = True
+        self.args['PollInterval'] = "00:01:00"
+        self.args['MigrateToGlobal'] = False
+        self.args['InjectToPhEDEx'] = False
 
         self.args.update(args)
 
@@ -57,6 +57,7 @@ class StoreResultsAccountantComponent:
         if self.args['MigrateToGlobal'] == False:
             # Cant inject without migration
             self.args['InjectToPhEDEx'] = False
+
 
         LoggingUtils.installLogHandler(self)
         msg = "StoreResultsAccountant Component Started:\n"
@@ -83,15 +84,8 @@ class StoreResultsAccountantComponent:
             return
 
         if message == "StoreResultsAccountant:Poll":
-            try:
-                self.poll()
-                return
-            except StandardError, ex:
-                logging.error("Failed to Poll: %s" % payload)
-                import traceback
-                msg =  traceback.format_exc()
-                logging.error("Details: \n%s" % msg)
-                return
+            self.poll()
+            return
 
     def poll(self):
         """
@@ -115,7 +109,7 @@ class StoreResultsAccountantComponent:
                 status = ResultsStatus(self.args, self.ms, **workflow)
                 status()
 
-        self.ms.publishUnique("StoreResultsAccountant:Poll", "",
+        self.ms.publish("StoreResultsAccountant:Poll", "",
                         self.args['PollInterval'])
         self.ms.commit()
         return
@@ -141,8 +135,7 @@ class StoreResultsAccountantComponent:
 
         self.ms.subscribeTo("StoreResultsAccountant:Poll")
 
-        self.ms.remove("StoreResultsAccountant:Poll")
-        self.ms.publishUnique("StoreResultsAccountant:Poll", "",
+        self.ms.publish("StoreResultsAccountant:Poll", "",
                         self.args['PollInterval'])
         self.ms.commit()
 
