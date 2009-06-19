@@ -31,6 +31,7 @@ class T0LSFTracker(TrackerPlugin):
     def __init__(self):
         TrackerPlugin.__init__(self)
         self.bjobs = {}
+        self.cooloff = "00:05:00"
 
 
     def initialise(self):
