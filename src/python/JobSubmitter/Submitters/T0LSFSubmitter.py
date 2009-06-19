@@ -276,6 +276,9 @@ class T0LSFSubmitter(BulkSubmitterInterface):
 
         script.append("tar -zxf $PRODAGENT_JOB_INITIALDIR/%s > /dev/null 2>&1\n" % self.mainSandboxName)
         script.append("cd %s\n" % self.workflowName)
+        stageHost = os.getenv( "STAGE_HOST" )
+        if stageHost:
+            script.append("export STAGE_HOST=%s\n" % stageHost )
         script.append("( /usr/bin/time ./run.sh $JOB_SPEC_FILE 2>&1 ) | gzip > ./run.log.gz\n")
         script.append("rfcp ./FrameworkJobReport.xml %s:%s/FrameworkJobReport.xml\n" % (hostname,cacheDir))
 
