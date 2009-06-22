@@ -12,24 +12,37 @@ writerSuffix="WRITER"
 #DBInstance="DEVDB10"
 #Account="CMS_T0AST"
 #adminDBPass=""
+#readerDBPass=""
 #writerDBPass=""
+
+# a user development instance
+#DBInstance="DEVDB10"
+#Account="CMS_T0AST_GOWDY"
+#adminDBPass=""
+#readerDBPass=""
+#writerDBPass=""
+#readerSuffix="R"
+#writerSuffix="W"
 
 # the integration instance
 #DBInstance="INT2R_LB"
 #Account="CMS_T0ASTIT"
 #adminDBPass=""
+#readerDBPass=""
 #writerDBPass=""
 
 # the production instance(s)
 #DBInstance="CMS_T0AST"
 #Account="CMS_T0AST"
 #adminDBPass=""
+#readerDBPass=""
 #writerDBPass=""
 
 # scale test database
 #DBInstance="int9r_lb"
 #Account="CMS_T0AST_SCALE"
 #adminDBPass=""
+#readerDBPass=""
 #writerDBPass=""
 #readerSuffix="R"
 #writerSuffix="W"
@@ -38,14 +51,15 @@ writerSuffix="WRITER"
 #DBInstance="CMS_T0AST"
 #Account="CMS_T0AST_1"
 #adminDBPass=""
+#readerDBPass=""
 #writerDBPass=""
 
 # prodtest instance 2
 DBInstance="CMS_T0AST"
 Account="CMS_T0AST_2"
 adminDBPass=""
-writerDBPass=""
 readerDBPass=""
+writerDBPass=""
 
 cx_Oracle.threaded=True
 
@@ -117,7 +131,7 @@ con.commit()
 con.close()
 
 AccountName="%s_%s" % (Account,readerSuffix)
-con = cx_Oracle.connect(user=AccountName,password=readDBPass,dsn=DBInstance)
+con = cx_Oracle.connect(user=AccountName,password=readerDBPass,dsn=DBInstance)
 cur = con.cursor()
 
 for t in tables:
