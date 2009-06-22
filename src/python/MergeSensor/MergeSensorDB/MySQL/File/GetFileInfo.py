@@ -59,7 +59,7 @@ class GetFileInfo(MySQLBase):
              # duplicate or wrong data
              raise MergeSensorDBError, msg   
 	  
-          if result[0].cursor.rowcount == 0:
+          if result[0].rowcount == 0:
 	  
 
             # generate exception
