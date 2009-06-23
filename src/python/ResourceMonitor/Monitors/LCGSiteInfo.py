@@ -278,7 +278,8 @@ def getBdii(sites, ldaphost):
                         tmp_sitename=' '+tmp_sitename
 
                 cluster_base='GlueClusterUniqueID='+cluster+','+site_base
-                subclusters,ceUIDs=getLdap(cluster_base,['GlueSubClusterUniqueID','GlueClusterService'],ldaphost)
+                subclusters,ceUIDs=getLdap(cluster_base,['GlueSubClusterUniqueID','GlueForeignKey'],ldaphost)
+                ceUIDs = [x.split('=')[1] for x in ceUIDs if x.find('GlueCEUniqueID=') > -1]
 
                 cmssoft=[]
                 for subcluster in subclusters:
