@@ -19,7 +19,7 @@ from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 import ProdCommon.MCPayloads.DatasetConventions as DatasetConventions
 
-usage="checkCfg.py --cfg=configname.py"
+usage="python configChecker.py --cfg=configname.py"
 
 valid = ['cfg=']
 
@@ -32,7 +32,7 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-if len(args)==0:
+if len(opts)==0:
     print "gimme arguments: %s"%usage
     sys.exit(1)
 
