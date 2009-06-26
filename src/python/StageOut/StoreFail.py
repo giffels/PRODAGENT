@@ -7,8 +7,8 @@ Util class to stage out a set of files from a job report to the /store/unmerged/
 namespace
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: StoreFail.py,v 1.1 2009/02/13 15:23:55 evansde Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: StoreFail.py,v 1.2 2009/02/21 12:47:05 direyes Exp $"
 
 from StageOut.StageOutError import StageOutFailure
 from StageOut.StageOutMgr import StageOutMgr
@@ -20,12 +20,17 @@ def modifyLFN(inputLfn):
 
     Util to tweak a normal LFN to be a /store/unmerged/fail LFN
     Simple algorithm to start with, split of /store/whatever and replace
-    it with /store/unmerged/fail
+    it with /store/unmerged/fail/whatever
 
     """
+    if not inputLfn.startswith('/store/'):
+        return None        
     lfnSplit = [ x for x in inputLfn.split("/") if len(x) != 0 ]
-    lfnSplit[1] = "unmerged/fail"
-    newLfn = "/%s" % "/".join(lfnSplit)
+    newlfnList = []
+    newlfnList.append(lfnSplit[0])
+    newlfnList.append("unmerged/fail")
+    newlfnList.extend(lfnSplit[1:])
+    newLfn = "/%s" % "/".join(newlfnList)
     return newLfn
 
 
@@ -57,6 +62,11 @@ class StoreFailMgr:
         for fileToStage in self.report.files:
             lfn = fileToStage['LFN']
             newLfn = modifyLFN(lfn)
+            if newLfn is None:
+                msg = "LFN: %s is either corrupted or " % lfn
+                msg += "the file should not be staged out. Skipping it."
+                print msg
+                continue
             print "Remapping LFN:\n%s\n" % lfn
             print " -TO-\n%s\n" % newLfn
             print "Staging Out: %s" % newLfn
