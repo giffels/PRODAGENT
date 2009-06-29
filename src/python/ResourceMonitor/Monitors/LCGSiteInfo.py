@@ -242,7 +242,7 @@ def getBdii(sites, ldaphost):
     reg_acbr_cms = getVOMSfqan()
 
     reg_mdsvoname=re.compile(r"mds-vo-name=(?P<site>.*)")
-
+    site_cache = {}
     #
     # TODO: Change to going from SE to CE - ignore CE's not in GlueCESEBindGroupCEUniqueID
     #
@@ -255,7 +255,8 @@ def getBdii(sites, ldaphost):
             se = site['SEName']
             ce = site['CEName']
         
-            site_base='mds-vo-name='+name+',mds-vo-name=local,o=grid'
+            site_base = 'mds-vo-name=%s,mds-vo-name=local,o=grid' % \
+                                                            name.split('#')[0]
             [clusters]=getLdap(site_base,['GlueClusterUniqueID'],ldaphost,True)
             
             if not clusters:
