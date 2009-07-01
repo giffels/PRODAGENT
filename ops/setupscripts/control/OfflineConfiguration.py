@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.10 2009/06/09 18:40:21 dmason Exp $"
-__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.11 2009/06/19 19:27:54 dmason Exp $"
+__version__ = "$Revision: 1.11 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -74,7 +74,7 @@ defaultProcVersion = "v2"
 #repackProcVersion = defaultProcVersion
 recoProcVersion = "v3"
 #recoProcVersion = defaultProcVersion
-defaultGlobalTag = "CRAFT_V16P::All"
+defaultGlobalTag = "CRAFT_V18P::All"
 
 # Create a dictionary that associates a reco configuration with a scenario.
 # The configuration must be specified as a url.
@@ -223,13 +223,20 @@ addTier1Skim(tier0Config, "Skim5", "RECO", "Calo", "CMSSW_2_2_13", "v5",
 # Create a dictionary that associates express processing config urls to names.
 expressProcConfig = {}
 #expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg_V16_1.44.py"
-expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/raw2digi_reco_alcaCombined_express_cfg.py"
+#expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/raw2digi_reco_alcaCombined_express_cfg.py"
+expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/raw2digi_reco_alcaCombined_express_cfg_V18P.py"
 
 # Create a dictionary that associated express merge packing config urls to names
 
 expressMergePackConfig = {}
 #expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/mergepacktestwithPrescales.py"
 expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/alCaRecoSplitting_express_cfg.py"
+
+expressProcConfig["alca"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/step23_EcalCalPi0Calib_ALCA_CRAFT_processing.py"
+expressMergePackConfig["alca"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/step23_EcalCalPi0Calib_ALCA_CRAFT_alcamerge.py"
+
+
+
 
 #addExpressConfig(tier0Config, "Express",
 #                  expressProcConfig["default"],
@@ -244,16 +251,37 @@ addExpressConfig(tier0Config, "Express",
 
 addExpressConfig(tier0Config, "HLTMON",
                  proc_config = expressProcConfig["default"],
-                 data_tiers = [ "FEVTDEBUGHLT" ],
+                 data_tiers = [ "FEVTHLTALL" ],
                  #data_tiers = [ "FEVT" ],
                  splitInProcessing = True,
                  proc_ver = recoProcVersion)
 
+# uncomment this and comment out the bulk stuff above for this stream to do
+# this as express
+
+#addExpressConfig(tier0Config, "ALCAP0",
+#                 proc_config = expressProcConfig["alca"],
+#                 data_tiers = [ "ALCARECO" ],
+#                 alcamerge_config = expressMergePackConfig["alca"],
+#                 splitInProcessing = True,
+#                 proc_ver = defaultProcVersion)
+
+
 
 #Set express processing version remapping
+# Policy is to express process with repack CMSSW version.
 setExpressVersionMapping(tier0Config, "CMSSW_2_2_10", "CMSSW_2_2_13")
 setExpressVersionMapping(tier0Config, "CMSSW_2_2_11", "CMSSW_2_2_13")
 setExpressVersionMapping(tier0Config, "CMSSW_2_2_12", "CMSSW_2_2_13")
+
+#Set mappings to send 31x tests to trash
+setExpressVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_6_6_6")
+setExpressVersionMapping(tier0Config, "CMSSW_3_1_0_pre10", "CMSSW_6_6_6")
+setExpressVersionMapping(tier0Config, "CMSSW_3_1_0_pre11", "CMSSW_6_6_6")
+setRepackVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_6_6_6")
+setRepackVersionMapping(tier0Config, "CMSSW_3_1_0_pre10", "CMSSW_6_6_6")
+setRepackVersionMapping(tier0Config, "CMSSW_3_1_0_pre11", "CMSSW_6_6_6")
+
 
 # Setup the mappings between the framework version used to take a run and the
 # version that should be used to repack it.
