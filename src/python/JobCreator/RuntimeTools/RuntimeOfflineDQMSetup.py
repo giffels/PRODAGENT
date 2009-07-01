@@ -108,6 +108,100 @@ class TEMP:
         return process
     makeDQMHarvestingConfig = staticmethod(makeDQMHarvestingConfigImpl)
 
+class TEMP31:
+    """
+    _TEMP_
+
+    Placeholder for getting the runtime DQM configuration in case
+    it isnt in the release
+
+    """
+
+    def makeDQMHarvestingConfigImpl(datasetName, runNumber,  globalTag, *inputFiles, **options):
+        """
+        _makeDQMHarvestingConfig_
+        
+        Arguments:
+        
+        datasetName - aka workflow name for DQMServer, this is the name of the
+        dataset containing the harvested run
+        runNumber - The run being harvested
+        globalTag - The global tag being used
+        inputFiles - The list of LFNs being harvested
+        
+        """
+        
+        import FWCore.ParameterSet.Config as cms
+        
+        process = cms.Process('HARVESTING')
+
+	# import of standard configurations
+	process.load('Configuration/StandardSequences/Services_cff')
+	process.load('FWCore/MessageService/MessageLogger_cfi')     
+	process.load('Configuration/StandardSequences/MixingNoPileUp_cff')
+	process.load('Configuration/StandardSequences/GeometryIdeal_cff') 
+	process.load('Configuration/StandardSequences/MagneticField_38T_cff')
+	process.load('Configuration/StandardSequences/EDMtoMEAtRunEnd_cff')  
+	process.load('Configuration/StandardSequences/HarvestingCosmics_cff')
+	process.load('Configuration/StandardSequences/FrontierConditions_GlobalTag_cff')
+
+	process.GlobalTag.connect = \
+             "frontier://FrontierProd/CMS_COND_31X_GLOBALTAG"
+
+	#process.configurationMetadata = cms.untracked.PSet(
+	    #version = cms.untracked.string('$Revision: 1.123 $'),
+	    #annotation = cms.untracked.string('step3_DT2_1 nevts:1'),
+	    #name = cms.untracked.string('PyReleaseValidation')
+	#)
+	process.maxEvents = cms.untracked.PSet(
+	    input = cms.untracked.int32(1)
+	)
+	process.options = cms.untracked.PSet(
+	    Rethrow = cms.untracked.vstring('ProductNotFound'),
+	    fileMode = cms.untracked.string('FULLMERGE')
+	)
+        process.source = cms.Source("PoolSource",
+        #    dropMetaData = cms.untracked.bool(True),
+            processingMode = cms.untracked.string("RunsLumisAndEvents"),
+            fileNames = cms.untracked.vstring()
+        )
+
+        for fileName in inputFiles:
+            process.source.fileNames.append(fileName)
+        
+        process.maxEvents.input = -1
+        
+        process.source.processingMode = "RunsAndLumis"
+        process.configurationMetadata = cms.untracked(cms.PSet())
+        process.configurationMetadata.name = cms.untracked(
+            cms.string("TEMP_CONFIG_USED"))
+        process.configurationMetadata.version = cms.untracked(
+            cms.string(os.environ['CMSSW_VERSION']))
+        process.configurationMetadata.annotation = cms.untracked(
+            cms.string("DQM Harvesting Configuration"))
+	# Additional output definition
+
+	# Other statements
+	process.GlobalTag.globaltag = globalTag
+
+        #process.DQMStore.referenceFileName = ''
+        #process.dqmSaver.convention = 'Offline'
+        process.dqmSaver.workflow = datasetName
+        
+        #process.DQMStore.collateHistograms = False
+        #process.EDMtoMEConverter.convertOnEndLumi = True
+        #process.EDMtoMEConverter.convertOnEndRun = False
+
+	# Path and EndPath definitions
+	process.edmtome_step = cms.Path(process.EDMtoME)
+	process.validationHarvesting = cms.Path(process.postValidation*process.hltpostvalidation)
+	process.dqmHarvesting = cms.Path(process.DQMOfflineCosmics_SecondStep*process.DQMOfflineCosmics_Certification)
+	process.dqmsave_step = cms.Path(process.DQMSaver)
+
+	# Schedule definition
+	process.schedule = cms.Schedule(process.edmtome_step,process.dqmHarvesting,process.dqmsave_step)
+        return process
+    makeDQMHarvestingConfig = staticmethod(makeDQMHarvestingConfigImpl)
 
 
 
@@ -220,7 +314,11 @@ class OfflineDQMSetup:
             msg += "%s\n" % str(ex)
             msg += "Falling Back to local definition"
             print msg
-            makeDQMHarvestingConfig = TEMP.makeDQMHarvestingConfig
+	    cmsswVersions = os.environ['CMSSW_VERSION'].split('_')
+	    if (cmsswVersions[1]=='3' and cmsswVersions[2]=='1'):
+              makeDQMHarvestingConfig = TEMP31.makeDQMHarvestingConfig
+            else:
+	      makeDQMHarvestingConfig = TEMP.makeDQMHarvestingConfig
 
         return makeDQMHarvestingConfig
     
