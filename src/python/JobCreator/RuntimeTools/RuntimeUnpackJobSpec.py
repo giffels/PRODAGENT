@@ -121,7 +121,10 @@ class JobSpecExpander:
         for file in inputReport.files:
             if not file['ModuleLabel'] == inpLink['OutputModule']:
                 continue
-            if file.get('LFN', None) not in (None, '', 'None'):
+            # link to file via lfn (in tfc) if link isn't standalone and we
+            # have a valid lfn. Else refer to file via pfn
+            if not inpLink['AppearStandalone'] and \
+                            file.get('LFN', None) not in (None, '', 'None'):
                 if not tfc:
                     tfc = TrivialFileCatalog.TrivialFileCatalog()
                 inputFileList.append(file['LFN'])
@@ -165,7 +168,10 @@ class JobSpecExpander:
         self.jobSpecNode.loadConfiguration()
         self.jobSpecNode.cfgInterface.rawCfg = self.workflowNode.cfgInterface.rawCfg
 
+        # taken from cmssw environment
+        # pylint: disable-msg=F0401
         import FWCore.ParameterSet.Types as CfgTypes
+        # pylint: enable-msg=F0401
 
         workingDir = os.path.join(os.getcwd(),'prestage')
         if os.path.exists(workingDir+'/prestageTFC.xml'):
@@ -229,9 +235,12 @@ class JobSpecExpander:
         self.jobSpecNode.loadConfiguration()
         cfgInt = self.jobSpecNode.cfgInterface
 
+        # taken from cmssw environment
+        # pylint: disable-msg=F0401
         from FWCore.ParameterSet.Config import Process, EndPath
         from FWCore.ParameterSet.Modules import OutputModule, Source
         import FWCore.ParameterSet.Types as CfgTypes
+        # pylint: enable-msg=F0401
 
         processName = "Merge"
         annotation = cfgInt.configMetadata.get("annotation",None)
