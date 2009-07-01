@@ -151,7 +151,8 @@ def main(argv) :
     for line in file.readlines():
         n_line += 1
         # Skipping lines with no info
-        if line != '' and line != '\n' and not line.strip().startswith("#") and \
+        if line.strip() != '' and line.strip() != '\n' and \
+            not line.strip().startswith("#") and \
             line.find('//') != 0: # I don't know what's the last condition for
             line_parts = [part.strip() for part in line.split('@@@') if part]
             #  //
