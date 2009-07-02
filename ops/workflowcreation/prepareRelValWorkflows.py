@@ -33,6 +33,8 @@ def main(argv) :
     --store-fail <True|False>       : store output files for failed jobs in chain processing.
     --read-dbs                      : DBS URL used for obtaining the list of available blocks for real data. Default: http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet
     --scripts-dir                   : Path to workflow creation scripts (default: $PUTIL)
+    --skip-config                   : Is the configuration file was already created, it will skip cmsDriver command execution
+    --extra-label                   : Extra label for identifying the datasets: /RelVal*/CMSSW_X_Y_Z-<Conditions>_<SpecialTag>_<ExtraLabel>_<FilterName>-<version>/TIER
     --help (-h)                     : help
     --debug (-d)                    : debug statements
     
@@ -61,23 +63,25 @@ def main(argv) :
         print 'Please load prodAgent libraries (point $PYTHONPATH to the right path).'
         sys.exit(2)
 
-    samplesFile         = None
-    processing_version  = None
-    initial_run         = "666666"
-    initial_event       = None
-    debug               = False
-    DBSURL              = None
-    pileup_dataset      = None
-    storeFail           = False
-    readDBS             = 'http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet'
-    onlySites           = None
-    scriptsDir          = '$PUTIL'
+    samplesFile = None
+    processing_version = None
+    initial_run = "666666"
+    initial_event = None
+    debug = False
+    DBSURL = None
+    pileup_dataset = None
+    storeFail = False
+    readDBS = 'http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet'
+    onlySites = None
+    scriptsDir = '$PUTIL'
+    skip_config = False
+    extra_label = ''
 
     try:
         opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", 
                                                 "DBSURL=", "event=", "lumi=", "pileupdataset=", 
                                                 "store-fail=", "read-dbs=", "only-sites=", 
-                                                "scripts-dir="])
+                                                "scripts-dir=", "skip-config", "extra-label="])
     except getopt.GetoptError:
         print main.__doc__
         sys.exit(2)
@@ -126,6 +130,10 @@ def main(argv) :
             else:
                 print "--scripts-dir argument does not exist, please verify."
                 sys.exit(6)
+        elif opt == "--skip-config":
+            skip_config = True
+        elif opt == "--extra-label":
+            extra_label = arg
 
     if initial_event == None :
 	print ""
@@ -434,6 +442,15 @@ def main(argv) :
     print ''
     for sample in samples:
         if not sample['isRealData']:
+            #  //
+            # // if the cfg. file was already created, we'll skip cmsDriver
+            #// command execution.
+            #\\
+            if os.path.exists("/".join([os.getcwd(),
+                sample['outputName']])) and skip_config:
+                print 'cmsDriver command for step 1 to produce:', \
+                    sample['outputName'],'was already issued, skipping.'
+                continue
             proc = popen2.Popen3(sample['command'])
             exitCode = proc.wait()
             if exitCode == 0:
@@ -456,6 +473,15 @@ def main(argv) :
         print ''
         for step in steps:
             if steps[step]['stepNumber'] == i:
+                #  //
+                # // if the cfg. file was already created, we'll skip cmsDriver
+                #// command execution.
+                #\\
+                if os.path.exists("/".join([os.getcwd(),
+                    steps[step]['outputName']])) and skip_config:
+                    print 'cmsDriver command for step %s to produce:' % i, \
+                        steps[step]['outputName'],'was already issued, skipping.'
+                    continue
                 proc = popen2.Popen3(steps[step]['command'])
                 exitCode = proc.wait()
                 if exitCode == 0:
@@ -482,7 +508,7 @@ def main(argv) :
     #//
     for sample in samples:
         command = 'python2.4 ' + scriptsDir
-        processing_string = '' # Conditions -> processingString
+        conditions = '' # Conditions -> processingString
         #  //
         # // In case we are processing data
         #//
@@ -492,7 +518,7 @@ def main(argv) :
             command += '--dataset=' + sample['inputData']['REALDATA'] + ' \\\n'
             command += '--only-blocks=' + sample['inputBlocks'] + ' \\\n'
             command += '--dbs-url=' + readDBS + ' \\\n'
-            processing_string = steps[sample['steps'][0]]['conditions']
+            conditions = steps[sample['steps'][0]]['conditions']
             command += '--split-type=file \\\n'
             command += '--split-size=1 \\\n'
         #  //
@@ -501,7 +527,7 @@ def main(argv) :
         else:
             command += '/createProductionWorkflow.py \\\n'
             command += '--channel=' + sample['primary'] + ' \\\n'
-            processing_string = sample['conditions']
+            conditions = sample['conditions']
             command += '--starting-run=' + initial_run + ' \\\n'
             if initial_event != None:
                 command += '--starting-event=' + initial_event + ' \\\n'
@@ -533,7 +559,7 @@ def main(argv) :
                 #\\
                 if not steps[step]['stagePrevious'] and \
                     i == 0:
-                    processing_string = steps[step]['conditions']
+                    conditions = steps[step]['conditions']
         #  //
         # // Common options
         #//
@@ -544,20 +570,23 @@ def main(argv) :
         command += '--only-sites=' + onlySites + ' \\\n'
         command += '--processing_version=' + processing_version + ' \\\n'
         #  //
-        # // processingString="Conditions"_"specialTag"
+        # // processingString="Conditions"_"specialTag"_"extra-label"
         #//
+        processing_string = conditions
         if sample['specialTag']:
-            command += '--processing_string=' + "_".join(
-                [processing_string, sample['specialTag']])
-        else:
-            command += '--processing_string=' + processing_string
+            processing_string = "_".join([processing_string, 
+                sample['specialTag']])
+        if extra_label:
+            processing_string = "_".join([processing_string, 
+                extra_label])
+        command += '--processing_string=' + processing_string
 
         if debug:
             print command
             print ''
         
         proc = popen2.Popen3(command)
-        ExitCode = proc.wait()
+        exitCode = proc.wait()
         output = proc.fromchild.readlines()
 
         if debug:

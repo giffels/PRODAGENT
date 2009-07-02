@@ -76,7 +76,7 @@ class JobStatistics(dict):
 
         """
         try:
-            insertStats(*(others + (self, )))
+            insertStats(*((self, ) + others))
         except Exception, ex:
             msg = "Unable to insert JobStatistics into DB:\n"
             msg += str(ex)
