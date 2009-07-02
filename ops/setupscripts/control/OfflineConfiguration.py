@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.11 2009/06/19 19:27:54 dmason Exp $"
-__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.12 2009/07/01 14:53:13 dmason Exp $"
+__version__ = "$Revision: 1.12 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -65,23 +65,31 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_2_2_13"
-defaultAlcaVersion = "CMSSW_2_2_13"
-defaultDQMVersion = "CMSSW_2_2_13"
+defaultRecoVersion = "CMSSW_3_1_0"
+defaultAlcaVersion = "CMSSW_3_1_0"
+defaultDQMVersion = "CMSSW_3_1_0"
 
 
 defaultProcVersion = "v2"
 #repackProcVersion = defaultProcVersion
-recoProcVersion = "v3"
+expressProcVersion = "v3"
+recoProcVersion = "v4"
 #recoProcVersion = defaultProcVersion
-defaultGlobalTag = "CRAFT_V18P::All"
+#defaultGlobalTag = "CRAFT_V18P::All"
+
+#31X
+defaultGlobalTag = "GR09_31X_V1P::All"
 
 # Create a dictionary that associates a reco configuration with a scenario.
 # The configuration must be specified as a url.
 recoConfig = {}
 alcaConfig = {}
 # for CRUZET and BeamSplash reprocessing
-recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py?revision=1.44"
+#recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py?revision=1.44"
+
+#for 3_1_X cosmics at 0T
+recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptReco_RAW2DIGI_RECO_DQM.py?revision=1.4"
+
 #hacked config to stop crashes
 #recoConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_11/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg_1.44_hacked.py"
 # for EW35 and CRAFT reprocessing
@@ -89,7 +97,11 @@ recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Config
 #recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_DBField_cfg.py?revision=1.2"
 # Create the default configuration.  Repacking is enabled and everything else
 # is turned off.  The default processing style is also set to "Bulk".
-alcaConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/step3_V16_ALCA_CRAFT.py"
+#alcaConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/step3_V16_ALCA_CRAFT.py"
+
+#31X cosmics
+alcaConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/AlCaRecoCosmics_cfg.py?revision=1.1"
+
 #setProcessingStyle(tier0Config, "Default", "Bulk")
 addDataset(tier0Config, "Default",
            default_proc_ver = defaultProcVersion, hltdebug = False,
@@ -247,14 +259,14 @@ addExpressConfig(tier0Config, "Express",
                  data_tiers = [ "RAW", "RECO", "ALCARECO" ],
                  alcamerge_config = expressMergePackConfig["default"],
                  splitInProcessing = False,
-                 proc_ver = recoProcVersion)
+                 proc_ver = expressProcVersion)
 
 addExpressConfig(tier0Config, "HLTMON",
                  proc_config = expressProcConfig["default"],
                  data_tiers = [ "FEVTHLTALL" ],
                  #data_tiers = [ "FEVT" ],
                  splitInProcessing = True,
-                 proc_ver = recoProcVersion)
+                 proc_ver = expressProcVersion)
 
 # uncomment this and comment out the bulk stuff above for this stream to do
 # this as express
@@ -264,7 +276,7 @@ addExpressConfig(tier0Config, "HLTMON",
 #                 data_tiers = [ "ALCARECO" ],
 #                 alcamerge_config = expressMergePackConfig["alca"],
 #                 splitInProcessing = True,
-#                 proc_ver = defaultProcVersion)
+#                 proc_ver = expressProcVersion)
 
 
 
