@@ -5,8 +5,8 @@ _createTier0ProductionWorkflow_
 Create a workflow to create streamer MC files for Tier0 processing.
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.2 2009/04/07 23:27:41 hufnagel Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.3 2009/07/05 18:44:59 hufnagel Exp $"
 
 
 import os
@@ -15,8 +15,9 @@ import time
 import getopt
 import imp
 
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
-from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
+#from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
 
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWAPILoader import CMSSWAPILoader
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
@@ -76,25 +77,44 @@ if not os.path.exists(cfgFile):
     msg = "Cfg File Not Found: %s" % cfgFile
     raise RuntimeError, msg
 
-#  //
-# // Instantiate a WorkflowMaker
-#//
-
-maker = WorkflowMaker("%s-%s" % (os.environ['USER'], int(time.time())),
-                      "Tier0Feed", acquisitionEra)
-
-# ?
-maker.setPhysicsGroup("DummyPhysicsGroup")
-
-# part of the LFN ?
-maker.changeCategory("mc")
 
 #
-# load CMSSW libraries
+# create workflow
 #
-loader = CMSSWAPILoader("slc4_ia32_gcc345",
-                        version,
-                        "/afs/cern.ch/cms/sw")
+
+workflowName = "Spring09Testing-Tier0Feed-hufnagel-1246816871"
+scramArch = "slc4_ia32_gcc345"
+cmsPath = "/afs/cern.ch/cms/sw"
+
+workflow = WorkflowSpec()
+workflow.setWorkflowName(workflowName)
+workflow.setRequestCategory("mc")
+workflow.setRequestTimestamp(int(time.time()))
+workflow.parameters["WorkflowType"] = "Processing"
+workflow.parameters["CMSSWVersion"] = version
+workflow.parameters["ScramArch"] = scramArch
+workflow.parameters["CMSPath"] = cmsPath
+
+# needed for streamed index stageout
+workflow.parameters['StreamerIndexDir'] = "vocms13:/data/hufnagel/parepack/StreamerIndexDir"
+
+cmsRunNode = workflow.payload
+cmsRunNode.name = "cmsRun1"
+cmsRunNode.type = "CMSSW"
+cmsRunNode.application["Version"] = version
+cmsRunNode.application["Executable"] = "cmsRun"
+cmsRunNode.application["Project"] = "CMSSW"
+cmsRunNode.application["Architecture"] = scramArch
+
+# special runtime script
+cmsRunNode.scriptControls["PostExe"].append(
+    "JobCreator.RuntimeTools.RuntimeStreamerToFJR"
+    )
+
+#
+# build the configuration template for the workflow
+#
+loader = CMSSWAPILoader(scramArch, version, cmsPath)
 
 try:
     loader.load()
@@ -104,41 +124,26 @@ except Exception, ex:
 
 loadedModule = imp.load_source( os.path.basename(cfgFile).replace(".py", ""), cfgFile )
 
-cfgInterface = CMSSWConfig()
-loadedConfig = cfgInterface.loadConfiguration(loadedModule.process)
+cmsRunNode.cfgInterface = CMSSWConfig()
+loadedConfig = cmsRunNode.cfgInterface.loadConfiguration(loadedModule.process)
 loadedConfig.validateForProduction()
 
 loader.unload()
 
-maker.cmsRunNodes[0].scriptControls["PostExe"].append(
-    "JobCreator.RuntimeTools.RuntimeStreamerToFJR"
-    )
+# generate Dataset information for workflow from cfgInterface
+for moduleName,outMod in cmsRunNode.cfgInterface.outputModules.items():
 
-maker.setCMSSWVersion(version)
-maker.setConfiguration(cfgInterface, Type = "instance")
-maker.setOriginalCfg(file(cfgFile).read())
-maker.setPSetHash("NO_PSET_HASH")
+    lfnBase = "/T0/hufnagel/Tier0Feed/RAW/v1/0000"
 
-maker.setNamingConventionParameters(acquisitionEra, None, processingVersion)
+    outMod["LFNBase"] = lfnBase
+    outMod["logicalFileName"] = os.path.join(
+        lfnBase, "%s.root" % moduleName
+        )
 
-maker.workflow.parameters['Conditions'] = conditions
+WorkflowTools.addStageOutNode(cmsRunNode, "stageOut1")
 
-spec = maker.makeWorkflow()
+workflow.save("%s-Workflow.xml" % workflowName)
 
-maker.workflow.parameters['MergedLFNBase'] = "/T0/hufnagel/"
-maker.workflow.parameters['UnmergedLFNBase'] = maker.workflow.parameters['MergedLFNBase']
-
-maker.workflow.parameters['StreamerIndexDir'] = "vocms13:/data/hufnagel/parepack/StreamerIndexDir"
-
-
-spec.save("%s-Workflow.xml" % maker.workflowName)
-
-print "Created: %s-Workflow.xml" % maker.workflowName
+print "Created: %s-Workflow.xml" % workflowName
 print "From: %s " % cfgFile
-print "Output Datasets:"
-[ sys.stdout.write(
-     "/%s/%s/%s\n" % (
-       x['PrimaryDataset'],
-       x['ProcessedDataset'],
-       x['DataTier'])) for x in spec.outputDatasets()]
 
