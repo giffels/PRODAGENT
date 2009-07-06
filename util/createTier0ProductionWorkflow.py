@@ -5,8 +5,8 @@ _createTier0ProductionWorkflow_
 Create a workflow to create streamer MC files for Tier0 processing.
 
 """
-__version__ = "$Revision: 1.3 $"
-__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.3 2009/07/05 18:44:59 hufnagel Exp $"
+__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.4 2009/07/05 23:35:49 hufnagel Exp $"
 
 
 import os
@@ -82,7 +82,7 @@ if not os.path.exists(cfgFile):
 # create workflow
 #
 
-workflowName = "Spring09Testing-Tier0Feed-hufnagel-1246816871"
+workflowName = "Tier0MCFeeder-%d" % int(time.time())
 scramArch = "slc4_ia32_gcc345"
 cmsPath = "/afs/cern.ch/cms/sw"
 
