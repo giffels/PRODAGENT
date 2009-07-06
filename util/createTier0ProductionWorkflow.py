@@ -5,8 +5,8 @@ _createTier0ProductionWorkflow_
 Create a workflow to create streamer MC files for Tier0 processing.
 
 """
-__version__ = "$Revision: 1.6 $"
-__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.6 2009/07/06 14:14:26 hufnagel Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.7 2009/07/06 14:39:20 hufnagel Exp $"
 
 
 import os
@@ -125,9 +125,9 @@ loader.unload()
 # generate Dataset information for workflow from cfgInterface
 for moduleName,outMod in cmsRunNode.cfgInterface.outputModules.items():
 
-    outMod["LFNBase"] = lfnBase
+    outMod["LFNBase"] = lfnbase
     outMod["logicalFileName"] = os.path.join(
-        lfnBase, "%s.root" % moduleName
+        lfnbase, "%s.root" % moduleName
         )
 
 WorkflowTools.addStageOutNode(cmsRunNode, "stageOut1")
