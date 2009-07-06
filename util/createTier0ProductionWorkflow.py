@@ -5,8 +5,8 @@ _createTier0ProductionWorkflow_
 Create a workflow to create streamer MC files for Tier0 processing.
 
 """
-__version__ = "$Revision: 1.4 $"
-__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.4 2009/07/05 23:35:49 hufnagel Exp $"
+__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.5 2009/07/06 13:06:54 hufnagel Exp $"
 
 
 import os
@@ -24,22 +24,11 @@ from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 
 
 valid = ['py-cfg=', 'version=',
-         'acquisition_era=',
-         'conditions=',
-         'processing_version=',
          ]
 
 usage = "Usage: createProductionWorkflow.py --py-cfg=<cfgFile>\n"
 usage += "                                  --version=<CMSSW version>\n"
-usage += "                                  --acquisition_era=<Acquisition Era>\n"
-usage += "                                  --conditions=<Conditions>\n"
-usage += "                                  --processing_version=<Processing version>\n"
 usage += "\n"
-usage += "You must have a scram runtime environment setup to use this tool\n"
-usage += "since it will invoke EdmConfig tools\n\n"
-usage += "Workflow Name is the name of the Workflow/Request/Primary Dataset\n"
-usage += "to be used. \n"
-usage += "It will default to the name of the cfg file if not provided\n\n"
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
@@ -50,21 +39,12 @@ except getopt.GetoptError, ex:
 
 cfgFile = None
 version = None
-acquisitionEra = "Test"
-conditions = "Bad"
-processingVersion = None
 
 for opt, arg in opts:
     if opt == "--py-cfg":
         cfgFile = arg
     if opt == "--version":
         version = arg
-    if opt == "--acquisition_era":
-        acquisitionEra = arg
-    if opt == "--conditions":
-        conditions = arg
-    if opt == "--processing_version":
-        processingVersion = arg
     
 if cfgFile == None:
     msg = "--cfg option not provided: This is required"
