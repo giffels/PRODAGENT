@@ -5,8 +5,8 @@ _createTier0ProductionWorkflow_
 Create a workflow to create streamer MC files for Tier0 processing.
 
 """
-__version__ = "$Revision: 1.5 $"
-__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.5 2009/07/06 13:06:54 hufnagel Exp $"
+__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.6 2009/07/06 14:14:26 hufnagel Exp $"
 
 
 import os
@@ -24,6 +24,7 @@ from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 
 
 valid = ['py-cfg=', 'version=',
+         'indexdir=', 'lfnbase='
          ]
 
 usage = "Usage: createProductionWorkflow.py --py-cfg=<cfgFile>\n"
@@ -39,18 +40,29 @@ except getopt.GetoptError, ex:
 
 cfgFile = None
 version = None
+indexdir = None
 
 for opt, arg in opts:
     if opt == "--py-cfg":
         cfgFile = arg
     if opt == "--version":
         version = arg
+    if opt == "--indexdir":
+        indexdir = arg
+    if opt == "--lfnbase":
+        lfnbase = arg
     
 if cfgFile == None:
     msg = "--cfg option not provided: This is required"
     raise RuntimeError, msg
 if version == None:
     msg = "--version option not provided: This is required"
+    raise RuntimeError, msg
+if indexdir == None:
+    msg = "--indexdir option not provided: This is required"
+    raise RuntimeError, msg
+if lfnbase == None:
+    msg = "--lfnbase option not provided: This is required"
     raise RuntimeError, msg
 
 if not os.path.exists(cfgFile):
@@ -76,7 +88,7 @@ workflow.parameters["ScramArch"] = scramArch
 workflow.parameters["CMSPath"] = cmsPath
 
 # needed for streamed index stageout
-workflow.parameters['StreamerIndexDir'] = "vocms13:/data/hufnagel/parepack/StreamerIndexDir"
+workflow.parameters['StreamerIndexDir'] = indexdir
 
 cmsRunNode = workflow.payload
 cmsRunNode.name = "cmsRun1"
@@ -112,8 +124,6 @@ loader.unload()
 
 # generate Dataset information for workflow from cfgInterface
 for moduleName,outMod in cmsRunNode.cfgInterface.outputModules.items():
-
-    lfnBase = "/T0/hufnagel/Tier0Feed/RAW/v1/0000"
 
     outMod["LFNBase"] = lfnBase
     outMod["logicalFileName"] = os.path.join(
