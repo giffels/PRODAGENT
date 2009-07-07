@@ -124,6 +124,9 @@ class MonitorInterface:
         
         for sitename, thresholds in self.siteThresholds.iteritems():
 
+            if not self.allSites[sitename]['Active']:
+                continue
+
             minSubmit = thresholds.get("minimumSubmission", 1)
             maxSubmit = thresholds.get("maximumSubmission", 100)
             siteIndex = self.allSites[sitename]['SiteIndex']
@@ -137,7 +140,8 @@ class MonitorInterface:
                 others = sitejobstatus.get('Other', 0)
                 running = sitejobstatus.get('Running', 0)
                 done = sitejobstatus.get('Done', 0)
-                pending = queuing + others
+                pending = queuing + others + done
+                scheduler_total = queuing + others + done + running
                 released = self.sitejobs.get(siteIndex, {}).get(jobtype, 0)
                 logging.debug("Scheduler: %s/%s/%s/%s/%s %s jobs pending/running/done/other/released at %s" % \
                     (queuing, running, done, others, released, jobtype, sitename))
@@ -147,13 +151,15 @@ class MonitorInterface:
                 if desired > maxSubmit:
                     desired = maxSubmit
                 # increase thresholds if:
-                #   o less than desired queuing
-                #   o we will reach/exceed threshold in next submission
-                #   o new value is larger than the current threshold
-                #   o less than 5 * threshold already released
+                #  o less than desired queuing
+                #  o we will reach/exceed threshold in next submission
+                #  o new value is larger than the current threshold
+                #  o >75% released jobs running (ensure job tracking keeps up)
+                #  o less than 5 * threshold already released
                 if pending < desired and \
                     released >= (threshold - maxSubmit) and \
                     (released + desired) > threshold and \
+                    running > (released * 0.75) and \
                     released < (threshold * 5):
                     thresholds['%sThreshold' % jobtype.lower()] = released + desired
                     logging.info('Increased %s threshold to %s at %s due to low number of queued jobs' % (jobtype, 
