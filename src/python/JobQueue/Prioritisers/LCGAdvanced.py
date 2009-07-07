@@ -40,26 +40,26 @@ class LCGAdvanced(PrioritiserInterface):
         Session.connect()
         Session.start_transaction()
         jobQ = JobQueueDB()
-        jobs=[]
+        jobs = []
 
         ## check if JobSubmitter still needs to process jobs
-        sqlStr='''
+        sqlStr = '''
         SELECT count(*) FROM ms_process,ms_message WHERE
           ( ms_process.procid = ms_message.dest
             AND ms_process.name IN ('JobSubmitter','JobCreator'));
         '''
         Session.execute(sqlStr)
         result = Session.fetchall()
-        js_is_ok=True
+        js_is_ok = True
         ## allowed number of messages (could be other messages
         ## for JobSubmitter)
         ## in principle this should also check for messages for
         ## JobCreator, as CreateJob messages will result in SubmitJob messages
         ## take number of jobs the JobSubmitter can handle in one
         ## ResourceMonitor:Poll interval 
-        allowed_nr_of_ms=600
+        allowed_nr_of_ms = 600
         if int(result[0][0]) > allowed_nr_of_ms:
-            js_is_ok=False
+            js_is_ok = False
             msg = "LCGAdvanced: JobSubmitter still need to process "
             msg += str(result[0][0])
             msg += " messages, which is more than number of allowed messages "
@@ -73,60 +73,33 @@ class LCGAdvanced(PrioritiserInterface):
         #What extra code do we want here
         # is workflow max not taken into account by other methods somewhere 
         # how does PrioritiserInterface do it?
-        
-        return PrioritiserInterface.findMatchedJobs(self, constraint)
             
-#        constraint['workflow']=constraintID2WFname(constraint['workflow'])
-#        merge_frac=0.15
-#        if js_is_ok and (constraint['site'] != None):
-#            # site based job match
-#            site = int(constraint['site']) 
-#            #jobQ.loadSiteMatchData()
-#            ct=int(constraint['count'])
-#            merge_ct=int(merge_frac*float(ct))
-#            jobIndices2_merge = jobQ.retrieveJobsAtSitesNotWorkflowSitesMax(
-#                merge_ct,
-#                'Merge',
-#                constraint['workflow'],
-#                * [site])
-#            proc_ct=ct-len(jobIndices2_merge)
-#            jobIndices2_proc = jobQ.retrieveJobsAtSitesNotWorkflowSitesMax(
-#                proc_ct,
-#                'Processing',
-#                constraint['workflow'],
-#                * [site])
-#            jobIndices3 = jobQ.retrieveJobsAtSitesNotWorkflow(
-#                constraint['count'],
-#                constraint["type"],
-#                constraint['workflow'],
-#                * [site])
-#            
-#
-#            jobIndices2=jobIndices2_merge+jobIndices2_proc
-#            msg = "New style: count %s," % ct
-#            msg += " merge number %s proc number %s merge %s, proc %s" % (
-#                len(jobIndices2_merge),
-#                len(jobIndices2_proc),
-#                jobIndices2_merge,
-#                jobIndices2_proc)
-#            logging.debug(msg)
-#            logging.debug("Old style: %s"%jobIndices3)
-#
-#            jobIndices=[]
-#            jobs = jobQ.retrieveJobDetails(*jobIndices2)
-#
-#            [ x.__setitem__("Site", site) for x in jobs ]
-#
-#        else:
-#            ## not implemented yet
-#            pass
-#
-#        Session.commit_all()
-#        Session.close_all()
-#        logging.info("LCGAdvanced: Matched %s jobs for constraint %s" % (
-#                len(jobs), constraint))
-#        self.matchedJobs = jobs
-#        return
+        constraint['workflow'] = constraintID2WFname(constraint['workflow'])
+
+        if js_is_ok and (constraint['site'] != None):
+            # site based job match
+            site = int(constraint['site']) 
+            
+            jobIndices = jobQ.retrieveJobsAtSitesNotWorkflowSitesMax(
+                constraint['count'],
+                constraint['type'],
+                constraint['workflow'],
+                * [site])
+
+            jobs = jobQ.retrieveJobDetails(*jobIndices)
+
+            [ x.__setitem__("Site", site) for x in jobs ]
+
+        else:
+            ## not implemented yet
+            pass
+
+        Session.commit_all()
+        Session.close_all()
+        logging.info("LCGAdvanced: Matched %s jobs for constraint %s" % (
+                len(jobs), constraint))
+        self.matchedJobs = jobs
+        return
 
 
     def prioritise(self, constraint):
@@ -141,6 +114,3 @@ class LCGAdvanced(PrioritiserInterface):
 
 
 registerPrioritiser(LCGAdvanced, LCGAdvanced.__name__)
-
-
-
