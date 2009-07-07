@@ -343,7 +343,10 @@ class LCGAdvanced(MonitorInterface):
                       'Done' : 'Done',
                       'Retrieved' : 'Done',
                       'Aborted'   : 'Done',
-                      'Other' : 'Other'}
+                      'Other' : 'Other',
+                      None : 'Other', # can sometimes get this
+                      'None' : 'Other'
+                      }
         result = {}
 #        query = """SELECT released_site,bl_task.job_type,status_scheduler,count(*)
 #                    from bl_runningjob, bl_task, jq_queue, bl_job, we_Job
