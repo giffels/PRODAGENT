@@ -11,16 +11,66 @@ Initially based on RelValInjector
 import os
 import time
 import logging
+import traceback
 
 import ProdAgentCore.LoggingUtils           as LoggingUtils
 import ProdAgent.WorkflowEntities.Job       as WEJob
 import ProdAgent.WorkflowEntities.Utilities as WEUtils
 import ProdAgent.WorkflowEntities.Workflow  as WEWorkflow
 
+from ProdAgentDB.Config                   import defaultConfig as dbConfig
+from ProdAgentCore.Configuration          import loadProdAgentConfiguration
+
+from WMCore.Services.PhEDEx.PhEDEx                       import PhEDEx
+from WMCore.Services.PhEDEx.DataStructs.SubscriptionList import PhEDExSubscription
+from WMCore.Services.PhEDEx.DataStructs.SubscriptionList import SubscriptionList
+
 from MessageService.MessageService        import MessageService
 from ProdCommon.Database                  import Session
-from ProdAgentDB.Config                   import defaultConfig as dbConfig
+from ProdCommon.MCPayloads.WorkflowSpec   import WorkflowSpec
+from ProdCommon.DataMgmt.DBS.DBSReader    import DBSReader
 from StoreResultsAccountant.ResultsStatus import ResultsStatus
+
+def getGlobalDBSURL():
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    try:
+        dbsConfig = config.getConfig("GlobalDBSDLS")
+    except StandardError, ex:
+        msg = "Error reading configuration for GlobalDBSDLS:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    return dbsConfig.get("DBSURL", None)
+
+
+
+def getPhedexDSURL():
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    try:
+        dsConfig = config.getConfig("PhEDExDataserviceConfig")
+    except StandardError, ex:
+        msg = "Error reading configuration for PhEDExDataservice:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    return dsConfig.get("DataserviceURL", None)
+
 
 
 class StoreResultsAccountantComponent:
@@ -88,10 +138,20 @@ class StoreResultsAccountantComponent:
                 return
             except StandardError, ex:
                 logging.error("Failed to Poll: %s" % payload)
-                import traceback
                 msg =  traceback.format_exc()
                 logging.error("Details: \n%s" % msg)
                 return
+
+        if message == "PhEDExDataServiceInject":
+            try:
+                self.phedexInjectDataset(payload)
+                return
+            except StandardError, ex:
+                logging.error("Failed to Inject: %s" % payload)
+                msg =  traceback.format_exc()
+                logging.error("Details: \n%s" % msg)
+                return
+
 
     def poll(self):
         """
@@ -121,6 +181,56 @@ class StoreResultsAccountantComponent:
         return
 
 
+    def phedexInjectDataset(self, payload):
+        """
+        inject a dataset into Phedex using the dataservice
+        """
+        dbsURL = getGlobalDBSURL()
+        dsURL  = getPhedexDSURL()
+        spec   = WorkflowSpec()
+        try:
+            spec.load(payload)
+        except Exception, ex:
+            msg = "Unable to read WorkflowSpec file:\n"
+            msg += "%s\n" % payload
+            msg += str(ex)
+            logging.error(msg)
+            msg =  traceback.format_exc()
+            logging.error("Details: \n%s" % msg)
+            return
+
+        datasetName = '/%s/%s/USER' % \
+             (spec.payload._OutputDatasets[0]['PrimaryDataset'],
+              spec.payload._OutputDatasets[0]['ProcessedDataset'])
+        injectNode = spec.parameters['InjectionNode']
+        destNode = spec.parameters['SubscriptionNode']
+
+        logging.info("Injecting dataset %s at: %s" % (datasetName,injectNode))
+
+        peDict = {'endpoint':dsURL}
+        phedexAPI = PhEDEx(peDict)
+        reader = DBSReader(dbsURL)
+
+        blocks = reader.dbs.listBlocks(dataset = datasetName)
+        blockNames = []
+
+        for block in blocks:
+            blockNames.append(block['Name'])
+
+        jsonOutput = phedexAPI.injectBlocks(dbsURL, injectNode, datasetName, 0 , 1, *blockNames)
+        logging.info("Injection results: %s" % jsonOutput)
+
+        sub = PhEDExSubscription(datasetName, destNode, "StoreResults")
+        #logging.info("Subscribing dataset to: %s" % destNode)
+        subList = SubscriptionList()
+        subList.addSubscription(sub)
+        for sub in subList.getSubscriptionList():
+            jsonOutput = phedexAPI.subscribe(dbsURL, sub)
+            #logging.info("Subscription results: %s" % jsonOutput)
+
+        return
+
+
     def startComponent(self):
         """
         _startComponent_
@@ -139,6 +249,7 @@ class StoreResultsAccountantComponent:
         #self.ms.subscribeTo("JobSuccess")
         self.ms.subscribeTo("GeneralJobFailure")
 
+        self.ms.subscribeTo("PhEDExDataServiceInject")
         self.ms.subscribeTo("StoreResultsAccountant:Poll")
 
         self.ms.remove("StoreResultsAccountant:Poll")

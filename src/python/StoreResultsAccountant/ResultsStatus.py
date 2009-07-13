@@ -70,9 +70,9 @@ class ResultsStatus:
                     self.msgSvcRef.commit()
                 if self.doInjection:
                     logging.debug(
-                        "Publishing PhEDExInjectDataset for %s" % dataset)
-                    self.msgSvcRef.publish("PhEDExInjectDataset",
-                                           dataset)
+                        "Publishing PhEDExDataServiceInject for %s" % dataset)
+                    self.msgSvcRef.publish("PhEDExDataServiceInject",
+                                           self.workflowFile,"00:05:00")
                     self.msgSvcRef.commit()
 
             Session.commit_all()
