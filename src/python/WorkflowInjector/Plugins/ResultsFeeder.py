@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.13 2009/06/12 17:57:50 ewv Exp $"
-__version__  = "$Revision: 1.13 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.14 2009/06/16 18:51:58 ewv Exp $"
+__version__  = "$Revision: 1.14 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -34,6 +34,7 @@ from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.WorkflowTools import addStageOutNode, addStageOutOverride
 
 from WMCore.Services.JSONParser import JSONParser
+from WMCore.Services.SiteDB.SiteDB import SiteDBJSON
 
 from dbsApiException import *
 
@@ -107,7 +108,6 @@ class ResultsFeeder(PluginInterface):
         Create the workflow out of the user's inputs and static information
 
         """
-
         lfnPrefix = self.resultsDir
 
         self.workflowName = "SR-%s-%s-%s" % \
@@ -125,6 +125,7 @@ class ResultsFeeder(PluginInterface):
         self.workflow.parameters["WorkflowType"] = "Merge"
         self.workflow.parameters["DataTier"] = self.dataTier
         self.workflow.parameters['DBSURL'] = self.dbsUrl
+        self.workflow.parameters['SubscriptionNode'] = self.injectionNode
 
         self.inputDatasetName = self.workflow.payload.addInputDataset(
             self.primaryDataset, self.processedDataset
@@ -142,7 +143,22 @@ class ResultsFeeder(PluginInterface):
             self.dataType = primaries[0]['Type']
         except:
             self.dataType = 'mc'
-        logging.info("Datatype = %s" % self.dataType)
+
+        # Figure out what Phedex node we'll be injecting into
+        # Assumes one node per site and all blocks are at one site
+        # (good for /store/user at Tier2?)
+        self.siteDBAPI = SiteDBJSON()
+
+        blockList = reader.dbs.listBlocks(dataset = self.datasetName)
+        seHost = blockList[0]['StorageElementList'][0]['Name']
+        siteHost = self.siteDBAPI.seToCMSName(seHost)
+        phedexNodes = self.siteDBAPI.cmsNametoPhEDExNode(siteHost)
+        logging.info("Data resides on %s" % phedexNodes[0])
+
+        self.workflow.parameters['InjectionNode'] = phedexNodes[0]
+        #self.workflow.parameters['InjectionNode'] = 'TX_Test2_Buffer'
+
+        logging.debug("Datatype = %s" % self.dataType)
 
         # Migrate dataset from User's LocalDBS to StoreResults LocalDBS
 
@@ -160,14 +176,13 @@ class ResultsFeeder(PluginInterface):
             logging.info("Migrating to local DBS failed:\n%s" % traceback.format_exc())
 
         # Migrate dataset from User's LocalDBS to Global DBS
-
         writer = DBSWriter(self.globalDbsUrl)
         dstURL = self.globalDbsUrl
         logging.info("Migrating dataset %s from %s to %s" %
                     (path, srcURL, dstURL))
         try:
             writer.dbs.migrateDatasetContents(srcURL, dstURL, path, '',
-                                              skipParents, True)
+                                            skipParents, True)
         except:
             logging.info("Migrating to global DBS failed:\n%s" % traceback.format_exc())
 
@@ -208,9 +223,7 @@ class ResultsFeeder(PluginInterface):
         outputDataset["LFNBase"] = '%s/%s/%s/' % (lfnPrefix, self.physicsGroup, self.outputDataset)
         outputDataset["PhysicsGroup"] = self.physicsGroup
         outputDataset["PrimaryDatasetType"] = self.dataType
-        outputDataset["ParentDataset"] = "/%s/%s/%s" % (self.primaryDataset,
-                                                        self.processedDataset,
-                                                        self.dataTier)
+        outputDataset["ParentDataset"]      =  self.datasetName
 
         # Create and populate config description
 
@@ -267,11 +280,15 @@ class ResultsFeeder(PluginInterface):
             self.cmsswRelease     = userParams['cmsswRelease']
             self.inputDBSURL      = userParams['inputDBSURL']
             self.physicsGroup     = userParams['physicsGroup']
+            self.injectionNode    = userParams['destinationSite']
         except KeyError:
             raise RuntimeError("Some parameters missing")
 
         self.FNALOverride = False
         self.resultsDir = "/store/results"
+        self.datasetName = "/%s/%s/%s" % (self.primaryDataset,
+                                          self.processedDataset,
+                                          self.dataTier)
 
         if  userParams.get('FNALOverride','False') == 'True':
             self.FNALOverride = True
