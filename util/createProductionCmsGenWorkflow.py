@@ -5,8 +5,8 @@ _createProductionCmsGenWorkflow_
 Create a cmsGen and cmsRun workflow
 
 """
-__version__ = "$Revision: 1.12 $"
-__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.12 2009/06/08 09:56:38 swakef Exp $"
+__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.13 2009/06/11 13:03:31 direyes Exp $"
 
 
 
@@ -30,7 +30,7 @@ valid = ['cmsRunCfg=', 'cmsGenCfg=', 'version=', 'category=', "label=",
          'starting-run=', 'starting-event=', 'totalevents=', 'eventsperjob=',
          'acquisition_era=', 'conditions=', 'processing_version=',
          'processing_string=', 'workflow_tag=', 'override-initial-event=',
-         'use-proper-name='
+         'dbs-status='
          ]
 
 usage  = "Usage: createProductionCmsGenWorkflow.py\n"
@@ -59,7 +59,7 @@ usage += "                                  --processing_version=<Processing ver
 usage += "                                  --processing_string=<Processing string>\n"
 usage += "                                  --workflow_tag=<Workflow tag>\n"
 usage += "                                  --override-initial-event=<Override Initial event>\n"
-usage += "                                  --use-proper-name=<true|false> Default: True\n"
+usage += "                                  --dbs-status=<VALID|PRODUCTION> Default: PRODUCTION\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -95,6 +95,10 @@ options = \
 
   --conditions Deprecated
 
+  --dbs-status is the status flag the output datasets will have in DBS. If
+    VALID, the datasets will be accesible by the physicists, If PRODUCTION, 
+    the datasets will be hidden.
+
   --eventsperjob is the number of events to produce in a single batch job
 
   --group is the Physics group
@@ -123,12 +127,6 @@ options = \
 
   --totalevents sets the total number of events to be produced.
 
-  --use-proper-name sets the naming convention to be used. Default: True
-    If true, it uses proper dataset naming convention:
-    /<channel>/<acquisition_era>-<processing_string>-<processing_version>/TIER
-    If false, it uses CSA08 convention:
-    /<channel>/<acquisition_era>_<conditions>_<filter_name>_<processing_version>/TIER
-
   --version is the version of the CMSSW to be used, you should also have done
     a scram runtime setup for this version
 
@@ -146,33 +144,33 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-cmsRunCfgs          = []
-cmsGenCfg           = None
-versions            = []
-stageoutOutputs     = []
-chainedInputs       = []
-category            = "mc"
-label               = "Test"
-channel             = None
-physicsGroup        = "Individual"
-requestId           = "%s" % (int(time.time()))
-cfgTypes            = []
+cmsRunCfgs = []
+cmsGenCfg = None
+versions = []
+stageoutOutputs = []
+chainedInputs = []
+category = "mc"
+label = "Test"
+channel = None
+physicsGroup = "Individual"
+requestId = "%s" % (int(time.time()))
+cfgTypes = []
 selectionEfficiency = None
-activity            = 'Production'
-startingRun         = 1
-initialEvent        = 1
-totalEvents         = 1000
-eventsPerJob        = 100
-acquisitionEra      = "Test"
-conditions          = "Bad"
-processingVersion   = "666"
-onlySites           = None
-workflow_tag        = None
-pileupDS            = None
-pileupFilesPerJob   = 1
-overrideInitialEvent= None
-processingString    = None
-useProperName       = True
+activity = 'Production'
+startingRun = 1
+initialEvent = 1
+totalEvents = 1000
+eventsPerJob = 100
+acquisitionEra = "Test"
+conditions = "Bad"
+processingVersion = "666"
+onlySites = None
+workflow_tag = None
+pileupDS = None
+pileupFilesPerJob = 1
+overrideInitialEvent = None
+processingString = None
+dbsStatus = 'PRODUCTION'
 
 for opt, arg in opts:
     if opt == "--help":
@@ -232,11 +230,9 @@ for opt, arg in opts:
         workflow_tag = arg
     if opt == "--override-initial-event":
         overrideInitialEvent = arg
-    if opt == '--use-proper-name':
-        if arg.lower() in ("true", "yes"):
-            useProperName = True
-        else:
-            useProperName = False
+    if opt == '--dbs-status':
+        if arg in ("VALID", "PRODUCTION"):
+            dbsStatus = arg
    
 if not len(cmsRunCfgs):
     msg = "--cmsRunCfg option not provided: This is required"
@@ -342,17 +338,9 @@ for cmsRunCfg in cmsRunCfgs:
     nodeNumber += 1
     
 maker.changeCategory(category)
-#  //
-# // Proper Naming covention
-#//
-if useProperName:
-    maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
-    maker.workflow.parameters['Conditions'] = conditions
-else:
-    maker.setAcquisitionEra(acquisitionEra)
-    maker.workflow.parameters['Conditions'] = conditions
-    maker.workflow.parameters['ProcessingVersion'] = processingVersion
-
+maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
+maker.workflow.parameters['Conditions'] = conditions
+maker.setOutputDatasetDbsStatus(dbsStatus)
     
 
 if selectionEfficiency != None:

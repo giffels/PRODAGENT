@@ -5,8 +5,8 @@ _createProcessingWorkflow_
 Create a workflow that processes an input dataset with a cfg file
 
 """
-__version__ = "$Revision: 1.19 $"
-__revision__ = "$Id: createProcessingWorkflow.py,v 1.19 2009/04/22 09:07:52 direyes Exp $"
+__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: createProcessingWorkflow.py,v 1.20 2009/06/08 09:56:38 swakef Exp $"
 
 import os
 import sys
@@ -30,7 +30,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'activity=', 'stageout-intermediates=', 'chained-input=',
          'acquisition_era=', 'conditions=', 'processing_version=',
          'processing_string=', 'workflow_tag=', 'split-into-primary',
-         'tar-up-lib','tar-up-src', 'use-proper-name='
+         'tar-up-lib','tar-up-src', 'dbs-status='
          ]
 
 
@@ -59,7 +59,7 @@ usage += "                                  --acquisition_era=<Acquisition Era>\
 usage += "                                  --conditions=<Conditions>\n"
 usage += "                                  --processing_version=<Processing version>\n"
 usage += "                                  --processing_string=<Processing string>\n"
-usage += "                                  --use-proper-name=<true|false>\n"
+usage += "                                  --dbs-status=<VALID|PRODUCTION> Default: PRODUCTION\n"
 usage += "                                  --workflow_tag=<Workflow tag>\n"
 usage += "                                  --split-into-primary\n"
 usage += "                                  --tar-up-lib\n"
@@ -86,6 +86,10 @@ options = \
   --conditions Deprecated. 
 
   --dataset is the input dataset to be processed
+
+  --dbs-status is the status flag the output datasets will have in DBS. If
+    VALID, the datasets will be accesible by the physicists, If PRODUCTION, 
+    the datasets will be hidden.
 
   --dbs-url The URL of the DBS Service containing the input dataset
 
@@ -205,7 +209,7 @@ conditions="Bad"
 processingVersion=666
 workflow_tag=None
 processingString = None
-useProperName = True
+dbsStatus = 'PRODUCTION'
 
 
 for opt, arg in opts:
@@ -275,11 +279,9 @@ for opt, arg in opts:
         tarupLib = True
     if opt == '--tar-up-src':
         tarupSrc = True
-    if opt == '--use-proper-name':
-        if arg.lower() in ("true", "yes"):
-            useProperName = True
-        else:
-            useProperName = False
+    if opt == '--dbs-status':
+        if arg in ("VALID", "PRODUCTION"):
+            dbsStatus = arg
  
 
 requestId = processingVersion
@@ -511,10 +513,7 @@ for cfgFile in cfgFiles:
     nodeNumber = nodeNumber + 1
 
 maker.changeCategory(category)
-if useProperName:
-    maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
-else:
-    maker.setAcquisitionEra(acquisitionEra)
+maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
  
 #  //
 # // Pileup sample?
@@ -546,6 +545,7 @@ maker.workflow.parameters['Conditions'] = conditions
 if not useProperName:
     maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
+maker.setOutputDatasetDbsStatus(dbsStatus)
 spec = maker.makeWorkflow()
 spec.setActivity(activity)
 #appendedname="%s-%s" % (maker.workflowName,channel0)

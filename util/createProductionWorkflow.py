@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.19 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.19 2009/06/08 09:56:38 swakef Exp $"
+__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.20 2009/06/11 13:03:31 direyes Exp $"
 
 
 import os
@@ -30,7 +30,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', #"label=",
          'chained-input=', 'starting-run=','starting-event=','totalevents=',
          'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=',
          'only-sites=', 'store-fail=','workflow_tag=', 'processing_string=',
-         'use-proper-name='
+         'dbs-status='
          ]
 
 usage  = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
@@ -58,7 +58,7 @@ usage += "                                  --processing_version=<Processing ver
 usage += "                                  --processing_string=<Processing string>\n"
 usage += "                                  --only-sites=<Site>\n"
 usage += "                                  --workflow_tag=<Tag in workflow name>\n"
-usage += "                                  --use-proper-name=<true|false> Default: True\n"
+usage += "                                  --dbs-status=<VALID|PRODUCTION> Default: PRODUCTION\n"
 usage += "\n"
 usage += "You must have a scram runtime environment setup to use this tool\n"
 usage += "since it will invoke EdmConfig tools\n\n"
@@ -91,6 +91,10 @@ options = \
     for each step
 
   --conditions Deprecated
+
+  --dbs-status is the status flag the output datasets will have in DBS. If
+    VALID, the datasets will be accesible by the physicists, If PRODUCTION, 
+    the datasets will be hidden.
 
   --eventsperjob is the number of events to produce in a single batch job 
 
@@ -125,12 +129,6 @@ options = \
     chained processing job
 
   --totalevents sets the total number of events to be produced.
-
-  --use-proper-name sets the naming convention to be used. Default: True
-    If true, it uses proper dataset naming convention:
-    /<channel>/<acquisition_era>-<processing_string>-<processing_version>/TIER
-    If false, it uses CSA08 convention:
-    /<channel>/<acquisition_era>_<conditions>_<filter_name>_<processing_version>/TIER
 
   --version is the version of the CMSSW to be used, you should also have done
     a scram runtime setup for this version
@@ -171,7 +169,7 @@ onlySites=None
 storeFail = False
 workflow_tag=None
 processingString = None
-useProperName = True
+dbsStatus = 'PRODUCTION'
 
 pileupDS = None
 pileupFilesPerJob = 1
@@ -244,11 +242,9 @@ for opt, arg in opts:
     if opt == '--workflow_tag':
         workflow_tag = arg
 
-    if opt == '--use-proper-name':
-        if arg.lower() in ("true", "yes"):
-            useProperName = True
-        else:
-            useProperName = False
+    if opt == '--dbs-status':
+        if arg in ("VALID", "PRODUCTION"):
+            dbsStatus = arg
     
 if len(cfgFiles) == 0:
     msg = "--cfg option not provided: This is required"
@@ -346,19 +342,10 @@ if pileupDS != None:
     maker.addPileupDataset( pileupDS, pileupFilesPerJob)
 
 maker.changeCategory(category)
-#  //
-# // Proper Naming covention
-#//
-if useProperName:
-    maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
-    maker.workflow.parameters['Conditions'] = conditions
-else:
-    maker.setAcquisitionEra(acquisitionEra)
-    maker.workflow.parameters['Conditions'] = conditions
-    maker.workflow.parameters['ProcessingVersion'] = processingVersion
-
-
-  
+maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)
+maker.workflow.parameters['Conditions'] = conditions
+maker.setOutputDatasetDbsStatus(dbsStatus)
+ 
 spec = maker.makeWorkflow()
 spec.setActivity(activity)
 
