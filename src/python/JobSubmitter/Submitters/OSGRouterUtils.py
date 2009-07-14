@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-_OSGUtils_
+_OSGRouterUtils_
 
 Common utils for OSG jobs
 
@@ -13,7 +13,7 @@ def makeErrorReportScript(jobSpecId, wfspecid = None):
     
     scriptBase = \
     """
-      echo '<FrameworkJobReport JobSpecID=\"%s\" Name=\"cmsRun1\" WorkflowSpecID=\"%s\" Status=\"Failed\">' > FrameworkJobReport.xml
+      echo '<FrameworkJobReport JobSpecID=\"%s\" Name=\"cmsRun1\" WorkflowSpedID=\"%s\" Status=\"Failed\">' > FrameworkJobReport.xml
       echo '<ExitCode Value=\"60999\"/>' >> FrameworkJobReport.xml
       echo '<FrameworkError ExitStatus=\"60999\" Type=\"NoSpaceOnDevice\">' >> FrameworkJobReport.xml
       echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
@@ -118,7 +118,7 @@ fi
 
 if [ $PROCEED_WITH_SPEC != 1 ]; then
    echo "Unable to proceed without JobSpec File"
-   echo "<FrameworkJobReport JobSpecID=\"$JOB_SPEC_NAME\" Status=\"Failed\">" > FrameworkJobReport.xml
+   echo "<FrameworkJobReport JobSpecID=\\"$JOB_SPEC_NAME\\" Status=\\"Failed\\">" > FrameworkJobReport.xml
    echo '<ExitCode Value="60998"/>' >> FrameworkJobReport.xml
    echo '<FrameworkError ExitStatus="60998" Type="MissingJobSpecFile">' >> FrameworkJobReport.xml
    echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml
@@ -164,7 +164,7 @@ if [ -e $PRODAGENT_JOB_INITIALDIR/FrameworkJobReport.xml ]; then
 else 
    echo "ERROR: No FrameworkJobReport produced by job!!!"
    echo "Generating failure report..."
-   echo "<FrameworkJobReport JobSpecID=\"$JOB_SPEC_NAME\" Status=\"Failed\">" > FrameworkJobReport.xml
+   echo "<FrameworkJobReport JobSpecID=\\"$JOB_SPEC_NAME\\" Status=\\"Failed\\">" > FrameworkJobReport.xml
    echo '<ExitCode Value=\"60997\"/>' >> FrameworkJobReport.xml
    echo '<FrameworkError ExitStatus=\"60997\" Type=\"JobReportMissing\">' >> FrameworkJobReport.xml
    echo "  hostname=`hostname -f` " >> FrameworkJobReport.xml

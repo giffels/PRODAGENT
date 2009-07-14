@@ -10,10 +10,11 @@ XML file.
 
 """
 
-__revision__ = "$Id: OSGBulkRouter.py,v 1.1 2007/06/08 19:51:20 evansde Exp $"
+__revision__ = "$Id: OSGBulkRouter.py,v 1.4 2008/02/12 20:05:46 dmason Exp $"
 
 import os
 import logging
+import time
 
 
 from JobSubmitter.Registry import registerSubmitter
@@ -46,20 +47,36 @@ class OSGBulkRouter(BulkSubmitterInterface):
         Perform bulk or single submission as needed based on the class data
         populated by the component that is invoking this plugin
         """
-        logging.debug("<<<<<<<<<<<<<<<<<OSGBulkSubmitter>>>>>>>>>>>>>>..")
+        logging.debug("<<<<<<<<<<<<<<<<<OSGBulkRouter>>>>>>>>>>>>>>..")
         logging.debug("%s" % self.primarySpecInstance.parameters)
         self.workflowName = self.primarySpecInstance.payload.workflow
         self.mainJobSpecName = self.primarySpecInstance.parameters['JobName']
         self.mainSandbox = \
                    self.primarySpecInstance.parameters['BulkInputSandbox']
+
         self.mainSandboxName = os.path.basename(self.mainSandbox)
+        self.mainSandboxDir = os.path.dirname(self.mainSandbox)
+        self.mainSandboxLink = os.path.join(self.mainSandboxDir,"SandBoxLink.tar.gz")   
+        # this is a workaround to avoid submission failures for pathnames
+        # greater than 256 characters.  
+        if not os.path.exists(self.mainSandboxLink):
+           linkcommand = "ln -s %s %s" % (self.mainSandbox,self.mainSandboxLink)
+           logging.debug("making link to sandbox: %s"%linkcommand)
+           os.system(linkcommand)
+        # then check if the link exists already, if not, make it and 
+        # instead insert that...
+        # do same with jobspecs...
+        
+        
+        logging.debug("mainSandbox: %s" % self.mainSandbox)
+        logging.debug("mainSandboxLink: %s" % self.mainSandboxLink)
         self.specSandboxName = None
         self.singleSpecName = None
         #  //
         # // Build a list of input files for every job
         #//
         self.jobInputFiles = []
-        self.jobInputFiles.append(self.mainSandbox)
+        self.jobInputFiles.append(self.mainSandboxLink)
         
         #  //
         # // For multiple bulk jobs there will be a tar of specs
@@ -68,13 +85,31 @@ class OSGBulkRouter(BulkSubmitterInterface):
             self.specSandboxName = os.path.basename(
                 self.primarySpecInstance.parameters['BulkInputSpecSandbox']
                 )
-            self.jobInputFiles.append(
-                self.primarySpecInstance.parameters['BulkInputSpecSandbox'])
+            self.specSandboxDir = os.path.dirname(
+                self.primarySpecInstance.parameters['BulkInputSpecSandbox']
+                )
+            self.jsLinkFileName="JobSpecLink.%s.tar.gz" % int(time.time())
+            self.specSandboxLink = os.path.join(self.specSandboxDir,self.jsLinkFileName)
+            logging.debug("specSandboxLink: %s"% self.specSandboxLink)   
+            linkcommand="ln -s %s %s" % (self.primarySpecInstance.parameters['BulkInputSpecSandbox'],self.specSandboxLink)
+            logging.debug("making link to jobspec: %s"%linkcommand)
+            os.system(linkcommand)
+            self.jobInputFiles.append(self.specSandboxLink)
+            logging.debug("InputSpecSandbox: %s" % self.specSandboxLink) 
         #  //
         # // For single jobs there will be just one job spec
         #//
         if not self.isBulk:
-            self.jobInputFiles.append(self.specFiles[self.mainJobSpecName])
+
+            self.specSandboxDir = os.path.dirname(self.specFiles[self.mainJobSpecName])
+            self.jsLinkFileName="JobSpecLink.xml" 
+            self.specSandboxLink = os.path.join(self.specSandboxDir,self.jsLinkFileName)
+            logging.debug("specSandboxLink: %s"% self.specSandboxLink)
+            linkcommand="ln -s %s %s" % (self.specFiles[self.mainJobSpecName],self.specSandboxLink)
+            logging.debug("making link to jobspec: %s"%linkcommand)
+            os.system(linkcommand)
+            self.jobInputFiles.append(self.specSandboxLink)
+
             self.singleSpecName = os.path.basename(
                 self.specFiles[self.mainJobSpecName])
             
@@ -99,9 +134,7 @@ class OSGBulkRouter(BulkSubmitterInterface):
 
         logging.debug(msg)
 
-        jdlFile = "%s/%s-submit.jdl" % (
-            self.toSubmit[self.mainJobSpecName],
-            self.mainJobSpecName)
+        jdlFile = "%s/submit.jdl" % self.toSubmit[self.mainJobSpecName]
         handle = open(jdlFile, 'w')
         handle.writelines(self.jdl)
         handle.close()
@@ -133,8 +166,14 @@ class OSGBulkRouter(BulkSubmitterInterface):
         inpFileJDL = inpFileJDL[:-1]
 
         jdl = []
-        jdl.append("universe = globus\n")
-        jdl.append("globusscheduler = %s\n" % globusScheduler)
+        if globusScheduler == "JobRouter":
+            jdl.append("universe = vanilla\n")
+            jdl.append("+WantJobRouter = True\n")
+            jdl.append("Requirements = False\n")
+            jdl.append("X509UserProxy = $ENV(X509_USER_PROXY)\n")
+        else:
+            jdl.append("universe = globus\n")
+            jdl.append("globusscheduler = %s\n" % globusScheduler)
         jdl.append("transfer_input_files = %s\n" % inpFileJDL)
         jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
         jdl.append("should_transfer_files = YES\n")
@@ -152,23 +191,30 @@ class OSGBulkRouter(BulkSubmitterInterface):
         For a given job/cache/spec make a JDL fragment to submit the job
 
         """
-
-        scriptFile = "%s/%s-submit.sh" % (cache, jobID)
+        # -- scriptFile & Output/Error/Log filenames shortened to 
+        #    avoid condorg submission errors from > 256 character pathnames
+        scriptFile = "%s/submit.sh" % cache 
         self.makeWrapperScript(scriptFile, jobID)
         logging.debug("Submit Script: %s" % scriptFile)
         
         jdl = []
         jdl.append("Executable = %s\n" % scriptFile)
         jdl.append("initialdir = %s\n" % cache)
-        jdl.append("Output = %s-condor.out\n" % jobID)
-        jdl.append("Error = %s-condor.err\n" %  jobID)
-        jdl.append("Log = %s-condor.log\n" % jobID)
+        jdl.append("Output = condor.out\n")
+        jdl.append("Error = condor.err\n")
+        jdl.append("Log = condor.log\n")
+
         
         #  //
         # // Add in parameters that indicate prodagent job types etc
         #//
         jdl.append("+ProdAgent_JobID = \"%s\"\n" % jobID)
         jdl.append("+ProdAgent_JobType = \"%s\"\n" % self.primarySpecInstance.parameters['JobType'])
+
+        # This is used by the JobRouter configuration to map workflows to
+        # sites, so do not change this attribute name without also changing
+        # the JobRouter configuration.
+        jdl.append("+prod_agent_workflow_spec_id = \"%s\"\n" % self.workflowName)
 
         jdl.append("Arguments = %s-JobSpec.xml \n" % jobID)
         jdl.append("Queue\n")
@@ -189,17 +235,31 @@ class OSGBulkRouter(BulkSubmitterInterface):
         # // Generate main executable script for job
         #//
         script = ["#!/bin/sh\n"]
-        script.extend(standardScriptHeader(jobName, self.workflowName))
-        
+
+
+        # Adjust Black hole delay for CleanUp Jobs because they are very fast
+        if self.primarySpecInstance.parameters['JobType'] == 'CleanUp':
+            script.extend(standardScriptHeader(jobName, self.workflowName, black_hole_delay=60))        
+        else :
+            script.extend(standardScriptHeader(jobName, self.workflowName))            
+
+        script.append("if [ -d %s ]; then\n" % jobName)
+        script.append("   echo WARNING : Directory %s exists, indicates clean up failure from a previous try. Removing it.\n" % jobName)
+        script.append("   rm -rf ./%s\n" % jobName)
+        script.append("fi\n")
+
+        script.append("PRODAGENT_JOB_WORKDIR=`pwd`/%s\n" % jobName)
+        script.append("mkdir $PRODAGENT_JOB_WORKDIR\n")
+        script.append("cd $PRODAGENT_JOB_WORKDIR\n")
 
         if self.isBulk:
-            script.extend(bulkUnpackerScript(self.specSandboxName))
+            script.extend(bulkUnpackerScript(self.specSandboxLink))
         else:
             script.append("JOB_SPEC_FILE=$PRODAGENT_JOB_INITIALDIR/%s\n" %
-                          self.singleSpecName)   
-            
+                          self.jsLinkFileName)   
+
         script.append(
-            "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % self.mainSandboxName 
+             "tar -zxf $PRODAGENT_JOB_INITIALDIR/%s\n" % "SandBoxLink.tar.gz"
             )
         script.append("cd %s\n" % self.workflowName)
         
@@ -209,6 +269,8 @@ class OSGBulkRouter(BulkSubmitterInterface):
         script.append(
             "cp ./FrameworkJobReport.xml $PRODAGENT_JOB_INITIALDIR \n")
         script.extend(missingJobReportCheck(jobName))
+        script.append("rm -rf $PRODAGENT_JOB_WORKDIR\n")
+        script.append("WrapupAndExit 0\n")
 
 
         handle = open(filename, 'w')
@@ -293,11 +355,12 @@ class OSGBulkRouter(BulkSubmitterInterface):
         ceMap = createCEMap()
         
         matchedJobMgr = None
-        for sitePref in  self.whitelist:
+        for sitePref in self.whitelist:
             try:
-                sitePref = int(sitePref)
+                intSitePref = int(sitePref)
+                sitePref = intSitePref
             except ValueError:
-                sitePref = sitePref
+                pass
                 
             if sitePref not in ceMap.keys():
                 logging.debug("lookupGlobusScheduler: No match: %s" % sitePref)
