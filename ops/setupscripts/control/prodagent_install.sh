@@ -12,9 +12,8 @@ cvs co -r PRODAGENT_$PAVERSION PRODAGENT
 # Place any PA patches here -- as in 
 # cvs update -r 1.8 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py
 
-cvs update -r 1.12 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py 
-cvs update -r 1.30 PRODAGENT/src/python/JobQueue/JobQueueDB.py
-cvs update -A PRODAGENT/bin/prodAgentd
+cvs update -r 1.3 PRODAGENT/src/python/JobCreator/RuntimeTools/RuntimeOfflineDQMSetup.py 
+cvs update -r 1.8 PRODAGENT/util/createTier0ProductionWorkflow.py
 
 cd PRODAGENT
 source $PBIN/prodagent_init.sh
@@ -31,8 +30,8 @@ cvs co -r PRODCOMMON_$PCVERSION PRODCOMMON
 # place any PC patches here:
 
 
-cvs update -r 1.12 PRODCOMMON/src/python/ProdCommon/FwkJobRep/FileInfo.py
-cvs update -r 1.12 PRODCOMMON/src/python/ProdCommon/FwkJobRep/TaskState.py
+cvs update -r 1.17 PRODCOMMON/src/python/ProdCommon/FwkJobRep/TaskState.py
+cvs update -r 1.12 PRODCOMMON/src/python/ProdCommon/MCPayloads/DatasetTools.py
 
 cd PRODCOMMON
 make

@@ -3,7 +3,8 @@
 source $PBIN/env_mytestarea.sh;
 
 #new package install style
-source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/cms/prodagent/PRODAGENT_$RPMVERSION-cmp/etc/profile.d/dependencies-setup.sh 
+#source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/cms/prodagent/PRODAGENT_$RPMVERSION-cmp/etc/profile.d/dependencies-setup.sh 
+source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/cms/prodagent/PRODAGENT_$RPMVERSION/etc/profile.d/dependencies-setup.sh 
 
 export PRODAGENT_ROOT=$MYTESTAREA/PRODAGENT
 export PRODCOMMON_ROOT=$MYTESTAREA/PRODCOMMON

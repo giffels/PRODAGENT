@@ -4,26 +4,26 @@ export STAGER_TRACE=3
 export PRODAGENT_USER=cmsprod
 
 # usually set to either dev, int, or if you like gunshot wounds, prod
-export INSTALL_TYPE=dev
+export INSTALL_TYPE=int
 
 #This next one is the first letter of your username
 export PRODAGENT_INITIAL=c
 
 #PA RPM version -- this controls the dependencies
-export RPMVERSION=0_12_14
+export RPMVERSION=0_12_15_patch1
 
 # these are all parts of tags needed to check out the actual codebase from CVS
 # overriding what comes with the RPMS
 
 #The ProdAgent & ProdCommon versions you want to pull out of CVS
-export PAVERSION=0_12_14
-export PCVERSION=0_12_14
+export PAVERSION=0_12_15_patch1
+export PCVERSION=0_12_15_patch1
 #The DBS version we want to install
 export DBSVERSION=2_0_6_pre5
 #The WMCORE version required
-export WMCOREVERSION=T0_0_0_2_pre71
+export WMCOREVERSION=T0_0_0_3_pre4
 #The T0 version we need
-export T0VERSION=0_0_2_pre71
+export T0VERSION=0_0_3_pre4
 
 # This is probably the only one to change
 export PRODAGENT_TOP=/data/$PRODAGENT_USER/PAProd/$INSTALL_TYPE
