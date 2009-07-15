@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.12 2009/07/01 14:53:13 dmason Exp $"
-__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.13 2009/07/02 19:43:56 dmason Exp $"
+__version__ = "$Revision: 1.13 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -65,20 +65,20 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_3_1_0"
-defaultAlcaVersion = "CMSSW_3_1_0"
-defaultDQMVersion = "CMSSW_3_1_0"
+defaultRecoVersion = "CMSSW_3_1_1"
+defaultAlcaVersion = "CMSSW_3_1_1"
+defaultDQMVersion = "CMSSW_3_1_1"
 
 
-defaultProcVersion = "v2"
+defaultProcVersion = "v3"
 #repackProcVersion = defaultProcVersion
-expressProcVersion = "v3"
-recoProcVersion = "v4"
+expressProcVersion = "v4"
+recoProcVersion = "v5"
 #recoProcVersion = defaultProcVersion
 #defaultGlobalTag = "CRAFT_V18P::All"
 
 #31X
-defaultGlobalTag = "GR09_31X_V1P::All"
+defaultGlobalTag = "GR09_31X_V3P::All"
 
 # Create a dictionary that associates a reco configuration with a scenario.
 # The configuration must be specified as a url.
@@ -100,7 +100,8 @@ recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Config
 #alcaConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/step3_V16_ALCA_CRAFT.py"
 
 #31X cosmics
-alcaConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/AlCaRecoCosmics_cfg.py?revision=1.1"
+#alcaConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/AlCaRecoCosmics_cfg.py?revision=1.1"
+alcaConfig["cosmics"] ="http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_prompt_cfg.py?revision=1.2"
 
 #setProcessingStyle(tier0Config, "Default", "Bulk")
 addDataset(tier0Config, "Default",
@@ -212,20 +213,19 @@ addDataset(tier0Config,"RPCMonitor",
 
 # Create a dictionary that associates skim names to config urls.
 skimConfig = {}
+skimConfig["T1SkimTester"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/DataOps/python/prescaleskimmer.py?revision=1.1"
 skimConfig["SuperPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/SuperPointing_cfg.py?revision=1.13"
 skimConfig["TrackerPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/TrackerPointing_cfg.py?revision=1.10"
 skimConfig["HcalHPDFilter"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/HCALHighEnergy_cfg.py?revision=1.4"
 
-addTier1Skim(tier0Config, "Skim1", "RECO", "Cosmics", "CMSSW_2_2_13", "v1",
-             skimConfig["SuperPointing"], True)
-addTier1Skim(tier0Config, "Skim2", "RECO", "Calo", "CMSSW_2_2_13", "v2",
-             skimConfig["TrackerPointing"], True)
-addTier1Skim(tier0Config, "Skim3", "RECO", "Cosmics", "CMSSW_2_2_13", "v3",
-             skimConfig["HcalHPDFilter"], False)
-addTier1Skim(tier0Config, "Skim4", "RECO", "MinimumBias", "CMSSW_2_2_13", "v4",
-             skimConfig["HcalHPDFilter"], False)
-addTier1Skim(tier0Config, "Skim5", "RECO", "Calo", "CMSSW_2_2_13", "v5",
-             skimConfig["HcalHPDFilter"], False)
+addTier1Skim(tier0Config, "Skim1", "RECO", "Cosmics", "CMSSW_3_1_1", "v1",
+             skimConfig["T1SkimTester"], True)
+addTier1Skim(tier0Config, "Skim2", "RECO", "Calo", "CMSSW_3_1_1", "v2",
+             skimConfig["T1SkimTester"], True)
+addTier1Skim(tier0Config, "Skim3", "RECO", "MinimumBias", "CMSSW_3_1_1", "v3",
+             skimConfig["T1SkimTester"], True)
+
+
 
 
 
@@ -236,13 +236,24 @@ addTier1Skim(tier0Config, "Skim5", "RECO", "Calo", "CMSSW_2_2_13", "v5",
 expressProcConfig = {}
 #expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/recoT0DQM_EvContent_Express_cfg_V16_1.44.py"
 #expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/raw2digi_reco_alcaCombined_express_cfg.py"
-expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/raw2digi_reco_alcaCombined_express_cfg_V18P.py"
+#expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/raw2digi_reco_alcaCombined_express_cfg_V18P.py"
+
+
+#For 31x
+#expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_3_1_0/src/recoAlcaProc.py"
+expressProcConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/expressReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.3" 
+
 
 # Create a dictionary that associated express merge packing config urls to names
 
 expressMergePackConfig = {}
 #expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_6/src/mergepacktestwithPrescales.py"
-expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/alCaRecoSplitting_express_cfg.py"
+#expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/alCaRecoSplitting_express_cfg.py"
+
+#For 31x
+#expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_3_1_0/src/recoAlcaMergePack.py"
+expressMergePackConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_express_cfg.py?revision=1.3"
+
 
 expressProcConfig["alca"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/step23_EcalCalPi0Calib_ALCA_CRAFT_processing.py"
 expressMergePackConfig["alca"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/step23_EcalCalPi0Calib_ALCA_CRAFT_alcamerge.py"
@@ -279,31 +290,49 @@ addExpressConfig(tier0Config, "HLTMON",
 #                 proc_ver = expressProcVersion)
 
 
+#Mappings for 311 online running
+setExpressVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_3_1_1")
+
+setExpressVersionMapping(tier0Config, "CMSSW_2_2_13", "CMSSW_6_6_6")
+setExpressVersionMapping(tier0Config, "CMSSW_2_2_12", "CMSSW_6_6_6")
+setExpressVersionMapping(tier0Config, "CMSSW_2_2_11", "CMSSW_6_6_6")
+setExpressVersionMapping(tier0Config, "CMSSW_2_2_10", "CMSSW_6_6_6")
+
 
 #Set express processing version remapping
 # Policy is to express process with repack CMSSW version.
-setExpressVersionMapping(tier0Config, "CMSSW_2_2_10", "CMSSW_2_2_13")
-setExpressVersionMapping(tier0Config, "CMSSW_2_2_11", "CMSSW_2_2_13")
-setExpressVersionMapping(tier0Config, "CMSSW_2_2_12", "CMSSW_2_2_13")
+#setExpressVersionMapping(tier0Config, "CMSSW_2_2_10", "CMSSW_2_2_13_offpatch1")
+#setExpressVersionMapping(tier0Config, "CMSSW_2_2_11", "CMSSW_2_2_13_offpatch1")
+#setExpressVersionMapping(tier0Config, "CMSSW_2_2_12", "CMSSW_2_2_13_offpatch1")
+#setExpressVersionMapping(tier0Config, "CMSSW_2_2_13", "CMSSW_2_2_13_offpatch1")
 
 #Set mappings to send 31x tests to trash
-setExpressVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_6_6_6")
-setExpressVersionMapping(tier0Config, "CMSSW_3_1_0_pre10", "CMSSW_6_6_6")
-setExpressVersionMapping(tier0Config, "CMSSW_3_1_0_pre11", "CMSSW_6_6_6")
-setRepackVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_6_6_6")
-setRepackVersionMapping(tier0Config, "CMSSW_3_1_0_pre10", "CMSSW_6_6_6")
-setRepackVersionMapping(tier0Config, "CMSSW_3_1_0_pre11", "CMSSW_6_6_6")
+#setExpressVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_6_6_6")
+#setExpressVersionMapping(tier0Config, "CMSSW_3_1_0_pre10", "CMSSW_6_6_6")
+#setExpressVersionMapping(tier0Config, "CMSSW_3_1_0_pre11", "CMSSW_6_6_6")
+#setRepackVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_6_6_6")
+#setRepackVersionMapping(tier0Config, "CMSSW_3_1_0_pre10", "CMSSW_6_6_6")
+#setRepackVersionMapping(tier0Config, "CMSSW_3_1_0_pre11", "CMSSW_6_6_6")
+
+
+
+#Mappings to fail out anything but 31x
+setRepackVersionMapping(tier0Config, "CMSSW_2_2_10", "CMSSW_6_6_6")
+setRepackVersionMapping(tier0Config, "CMSSW_2_2_11", "CMSSW_6_6_6")
+setRepackVersionMapping(tier0Config, "CMSSW_2_2_12", "CMSSW_6_6_6")
+setRepackVersionMapping(tier0Config, "CMSSW_2_2_13", "CMSSW_6_6_6")
+
 
 
 # Setup the mappings between the framework version used to take a run and the
 # version that should be used to repack it.
-setRepackVersionMapping(tier0Config, "CMSSW_2_0_10", "CMSSW_2_0_12")
-setRepackVersionMapping(tier0Config, "CMSSW_2_0_4", "CMSSW_2_0_12")
-setRepackVersionMapping(tier0Config, "CMSSW_2_0_8", "CMSSW_2_0_12")
-setRepackVersionMapping(tier0Config, "CMSSW_2_1_X_2008-08-16-0300", "CMSSW_2_1_8")
-setRepackVersionMapping(tier0Config, "CMSSW_2_1_0", "CMSSW_2_1_8")
-setRepackVersionMapping(tier0Config, "CMSSW_2_1_1", "CMSSW_2_1_8")
-setRepackVersionMapping(tier0Config, "CMSSW_2_1_4", "CMSSW_2_1_8")
+#setRepackVersionMapping(tier0Config, "CMSSW_2_0_10", "CMSSW_2_0_12")
+#setRepackVersionMapping(tier0Config, "CMSSW_2_0_4", "CMSSW_2_0_12")
+#setRepackVersionMapping(tier0Config, "CMSSW_2_0_8", "CMSSW_2_0_12")
+#setRepackVersionMapping(tier0Config, "CMSSW_2_1_X_2008-08-16-0300", "CMSSW_2_1_8")
+#setRepackVersionMapping(tier0Config, "CMSSW_2_1_0", "CMSSW_2_1_8")
+#setRepackVersionMapping(tier0Config, "CMSSW_2_1_1", "CMSSW_2_1_8")
+#setRepackVersionMapping(tier0Config, "CMSSW_2_1_4", "CMSSW_2_1_8")
 #setRepackVersionMapping(tier0Config, "CMSSW_2_1_9", "CMSSW_2_1_9")
 if __name__ == '__main__':
     print tier0Config
