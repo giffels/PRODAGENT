@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.14 2009/06/16 18:51:58 ewv Exp $"
-__version__  = "$Revision: 1.14 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.15 2009/07/13 19:32:21 ewv Exp $"
+__version__  = "$Revision: 1.15 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -186,6 +186,16 @@ class ResultsFeeder(PluginInterface):
         except:
             logging.info("Migrating to global DBS failed:\n%s" % traceback.format_exc())
 
+
+        # Check for existence of target dataset
+
+        exists = writer.dbs.listProcessedDatasets(
+                    patternPrim = self.primaryDataset,
+                    patternProc = self.outputDataset,
+                    patternDT   = self.dataTier)
+        if exists:
+            raise RuntimeError("Dataset %s already exists in global" % self.outputDatasetName)
+
         # Create node for cmsRun
 
         self.cmsRunNode = self.workflow.payload
@@ -271,6 +281,8 @@ class ResultsFeeder(PluginInterface):
 
         logging.debug('User loaded params: %s' % userParams)
 
+        self.FNALOverride = False
+        self.resultsDir = "/store/results"
         self.dataTier  = 'USER'
 
         try:
@@ -284,11 +296,12 @@ class ResultsFeeder(PluginInterface):
         except KeyError:
             raise RuntimeError("Some parameters missing")
 
-        self.FNALOverride = False
-        self.resultsDir = "/store/results"
         self.datasetName = "/%s/%s/%s" % (self.primaryDataset,
                                           self.processedDataset,
                                           self.dataTier)
+        self.outputDatasetName = "/%s/%s/%s" % (self.primaryDataset,
+                                                self.outputDataset,
+                                                self.dataTier)
 
         if  userParams.get('FNALOverride','False') == 'True':
             self.FNALOverride = True
