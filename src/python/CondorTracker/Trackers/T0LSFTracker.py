@@ -16,6 +16,7 @@ from CondorTracker.TrackerPlugin import TrackerPlugin
 from CondorTracker.Registry import registerTracker
 
 import ProdCommon.FwkJobRep.ReportState as ReportState
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 
 from ProdAgent.Resources.LSF import LSFInterface
 from ProdAgent.Resources.LSF import LSFStatus
@@ -126,7 +127,7 @@ class T0LSFTracker(TrackerPlugin):
                 status = self.jobReportStatus(runId)
 
                 if status == LSFStatus.finished:
-                    logging.debug("Job %s succeeded" % (runId))
+                    logging.debug("Job %s finished." % (runId))
                     self.TrackerDB.jobComplete(runId)
                 elif status == LSFStatus.failed:
                     logging.debug("Job %s finished ok, bad job report, marked as failed" % (runId))
@@ -220,18 +221,34 @@ class T0LSFTracker(TrackerPlugin):
         _jobReportStatus_
 
         Find the job report and determine the status of the job if possible.
-        Should return an LSF Status if a status is available, if the file cannot be found,
-        return None
+        Should return an LSF Status if a status is available, 
+            1- if the file cannot be found, return None
+            2- check if the job was successful --> return finished. If it 
+               wasn't successful, determine whether if it we have bad FJR
+               or not. 
+            2a- check if the FJR can be opened, return failed if not.
+            2b- if report is empty, return failed
+            2c- if report is not empty and could be opened, return finished.
 
         """
         report = self.findJobReport(jobSpecId)
         if report == None:
             return None
-        
+        # If report has 'JobSuccess' then it's finished 
         if ReportState.checkSuccess(report):
             return LSFStatus.finished
-        else:
+        # if checkSuccess returns False, check if it's a bad report file
+        try:
+            reports = readJobReport(report)
+            # if reports is empty --> failed
+            if not reports:
+                return LSFStatus.failed
+            # if we are here, the report is good (JobFailed --> finished)
+            return LSFStatus.finished
+        except:
+            # exception indicates bad report file => Implies failure
             return LSFStatus.failed
+
     
 
 registerTracker(T0LSFTracker, T0LSFTracker.__name__)
