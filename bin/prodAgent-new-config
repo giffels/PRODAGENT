@@ -166,9 +166,9 @@ componentFields = {
 
     "JobTracking" : {
     "ComponentDir" : None,
-    "PollInterval" : 3000,
+    "PollInterval" : 300,
     "QueryInterval" : 3,
-    "jobsToPoll" : 300,
+    "jobsToPoll" : 3000,
     "PoolThreadsSize" : 5,
     "RssFeed": "no",
     },
