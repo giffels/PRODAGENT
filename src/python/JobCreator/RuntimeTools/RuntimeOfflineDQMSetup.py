@@ -149,7 +149,7 @@ class TEMP31:
              "frontier://FrontierProd/CMS_COND_31X_GLOBALTAG"
 
 	#process.configurationMetadata = cms.untracked.PSet(
-	    #version = cms.untracked.string('$Revision: 1.123 $'),
+	    #version = cms.untracked.string('$Revision: 1.3 $'),
 	    #annotation = cms.untracked.string('step3_DT2_1 nevts:1'),
 	    #name = cms.untracked.string('PyReleaseValidation')
 	#)
@@ -315,7 +315,7 @@ class OfflineDQMSetup:
             msg += "Falling Back to local definition"
             print msg
 	    cmsswVersions = os.environ['CMSSW_VERSION'].split('_')
-	    if (cmsswVersions[1]=='3' and cmsswVersions[2]=='1'):
+	    if (cmsswVersions[1]=='3'):
               makeDQMHarvestingConfig = TEMP31.makeDQMHarvestingConfig
             else:
 	      makeDQMHarvestingConfig = TEMP.makeDQMHarvestingConfig
