@@ -14,6 +14,7 @@ cvs co -r PRODAGENT_$PAVERSION PRODAGENT
 
 cvs update -r 1.3 PRODAGENT/src/python/JobCreator/RuntimeTools/RuntimeOfflineDQMSetup.py 
 cvs update -r 1.8 PRODAGENT/util/createTier0ProductionWorkflow.py
+cvs update -r 1.2 PRODAGENT/src/python/CondorTracker/Trackers/CondorLog.py
 
 cd PRODAGENT
 source $PBIN/prodagent_init.sh
