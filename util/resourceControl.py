@@ -21,7 +21,11 @@ valid = [
     'processing-threshold=',                     # standard thresholds
     'merge-threshold=',                          # standard thresholds
     'cleanup-threshold=',                        # standard thresholds
+    'logcollect-threshold=',                        # standard thresholds
+    'skim-threshold=',                        # standard thresholds
+    'express-threshold=',                        # standard thresholds
     'repack-threshold=',                        # standard thresholds
+    'harvesting-threshold=',                        # standard thresholds
     'processing-throttle=',                      # standard throttles
     'merge-throttle=',                           # standard throttles
     'min-submit=', 'max-submit=',                # for new site mode
@@ -45,11 +49,16 @@ setThisValue = None
 procThreshold = 100
 mergeThreshold = 10
 cleanThreshold = 10
+logcollectThreshold = 10
+expressThreshold = 10
+harvestingThreshold = 10
+skimThreshold = 10
 repThreshold = 100
 minSubmit = 1
 maxSubmit = 50
 
 procThrottle = 10000000
+skimThrottle = 10000000
 mergeThrottle = 10000000
 
 usage = """
@@ -65,6 +74,9 @@ resourceControl.py --<MODE>     # Mode is one of: new, edit, drop, list
                                 
             --processing-threshold=<INT> (new, edit)
             --merge-threshold=<INT>      (new, edit)
+            --skim-threshold=<INT>      (new, edit)
+            --express-threshold=<INT>      (new, edit)
+            --logcollect-threshold=<INT>      (new, edit)
             --cleanup-threshold=<INT>    (new, edit)
             --repack-threshold=<INT>
                                 # Thresholds for triggering new submission
@@ -130,6 +142,21 @@ for opt, arg in opts:
     if opt == "--cleanup-threshold":
         cleanThreshold = int(arg)
     
+    if opt == "--logcollect-threshold":
+        logcollectThreshold = int(arg)
+    
+    if opt == "--express-threshold":
+        expressThreshold = int(arg)
+    
+    if opt == "--skim-threshold":
+        skimThreshold = int(arg)
+    
+    if opt == "--harvesting-threshold":
+        expressThreshold = int(arg)
+    
+    if opt == "--logcollect-threshold":
+        logcollectThreshold = int(arg)
+    
     if opt == "--repack-threshold":
         repThreshold = int(arg)
 
@@ -138,6 +165,9 @@ for opt, arg in opts:
 
     if opt == "--merge-throttle":
         mergeThrottle = int(arg)
+        
+    if opt == "--skim-throttle":
+        skimThrottle = int(arg)
         
     if opt == "--min-submit":
         minSubmit = int(arg)
@@ -179,13 +209,11 @@ def newMode():
         raise RuntimeError, msg
 
     if ceName == None:
-        msg = "--ce-name option not provided. Warning, this is not supported"
-        msg += " by all ResourceMonitor / Submitter combinations\n"
-        print(msg)
+        msg = "--ce-name option not provided"
+        raise RuntimeError, msg
     if seName == None:
         msg = "--se-name option not provided"
         raise RuntimeError, msg
-
 
 
     msg = "Adding New Site named: %s\n" % site
@@ -215,20 +243,30 @@ def newMode():
 
     
     resCon.updateThresholds(siteIndex, processingThreshold = procThreshold,
+                            skimThreshold = skimThreshold,
                             mergeThreshold = mergeThreshold,
                             cleanupThreshold = cleanThreshold,
+                            logcollectThreshold = logcollectThreshold,
                             repackThreshold = repThreshold,
+                            expressThreshold = expressThreshold,
+                            harvestingThreshold = harvestingThreshold,
                             processingRunningThrottle = procThrottle,
                             mergeRunningThrottle = mergeThrottle,
+                            skimRunningThrottle = skimThrottle,
                             minimumSubmission = minSubmit,
                             maximumSubmission = maxSubmit)
 
     msg += " Initial Thresholds for site set to:\n"
     msg += " Processing Threshold: %s\n" % procThreshold
+    msg += " Skim Threshold: %s\n" % skimThreshold
     msg += " Merge Threshold: %s\n" % mergeThreshold
     msg += " Cleanup Threshold: %s\n" % cleanThreshold
+    msg += " LogCollect Threshold: %s\n" % logcollectThreshold
     msg += " Repack Threshold: %s\n" % repThreshold
+    msg += " Express Threshold: %s\n" % expressThreshold
+    msg += " DQM Harvesting Threshold: %s\n" % harvestingThreshold
     msg += " Processing Running Throttle: %s\n" % procThrottle
+    msg += " Skim Running Throttle: %s\n" % skimThrottle
     msg += " Merge Running Throttle: %s\n" % mergeThrottle
     msg += " Minimum Submission: %s\n" % minSubmit
     msg += " Maximum Submission: %s\n" % maxSubmit

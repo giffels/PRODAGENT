@@ -60,10 +60,12 @@ class GlideinWMSMonitor(MonitorInterface):
         #  //
         # // get totals per active site for merge and processing
         #//  jobs
-        paJobs=CondorPAJobs(jobTypes=set(["Processing","Merge","CleanUp"]),load_on_create=True)
+        paJobs=CondorPAJobs(jobTypes=set(["Processing","Merge","CleanUp","Skim","Harvesting"]),load_on_create=True)
         mergeInfo = getJobs(paJobs,'Merge',*activeSites)
         processingInfo = getJobs(paJobs,'Processing',*activeSites)
         cleanupInfo = getJobs(paJobs,'Cleanup',*activeSites)
+        skimInfo = getJobs(paJobs,'Skim',*activeSites)
+        harvestingInfo = getJobs(paJobs,'Harvesting',*activeSites)
 
         #  //
         # // Calculate available merge slots
@@ -173,9 +175,107 @@ class GlideinWMSMonitor(MonitorInterface):
                 print str(constraint)
                 result.append(constraint)
                 
-                
+               
+
+
+ 
+        msg="skimInfo: %s"%str(skimInfo)
+        logging.debug(msg)
+
+        for site, jobcounts in skimInfo.items():
+            idle = jobcounts["Idle"]
+            running = jobcounts["Running"]
+            if self.siteThresholds.has_key(site):
+              skimThresh = self.siteThresholds[site]["skimThreshold"]
+              minSubmit = self.siteThresholds[site]["minimumSubmission"]
+              maxSubmit = self.siteThresholds[site]["maximumSubmission"]
+              try:
+                 skimRunThrottle = self.siteThresholds[site]["skimRunningThrottle"]
+              except:
+                 skimRunThrottle = 1000000000
+              test = idle - skimThresh
+              msg="GlideinWMSMonitor Skim: Site=%s, Idle=%s, Running=%s Thresh=%s, Test=%s"%(site,idle,running,skimThresh,test)
+              logging.debug(msg)
+
+              #  //  
+              # //  Some sites want us to throttle jobs to a certain level...  this is a crude way to do that
+              #||   Basically don't send in more jobs if we have more running jobs than the throttle level
+              #//
+              logging.debug("skimRunThrottle: %s"%skimRunThrottle)           
+              if running>skimRunThrottle:
+                 msg="GlideinWMSMonitor: Running skim jobs (%s) exceed throttle level (%s), not sending in more"%(running,skimRunThrottle) 
+                 logging.debug(msg)
+                 test=0
+
+              if test < 0:
+                if abs(test) < minSubmit:
+                    #  //
+                    # // below threshold, but not enough for a bulk
+                    #//  submission
+                    continue
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                # enforce maximum number to submit
+                if constraint['count'] > maxSubmit:
+                   constraint['count'] = maxSubmit
+                constraint['type'] = "Skim"
+                constraint['site'] = self.allSites[site]['SiteIndex']
+                print str(constraint)
+                result.append(constraint)
+
+
+
+        msg="harvestingInfo: %s"%str(harvestingInfo)
+        logging.debug(msg)
+
+        for site, jobcounts in harvestingInfo.items():
+            idle = jobcounts["Idle"]
+            running = jobcounts["Running"]
+            if self.siteThresholds.has_key(site):
+              harvestingThresh = self.siteThresholds[site]["harvestingThreshold"]
+              minSubmit = self.siteThresholds[site]["minimumSubmission"]
+              maxSubmit = self.siteThresholds[site]["maximumSubmission"]
+              try:
+                 harvestingRunThrottle = self.siteThresholds[site]["harvestingRunningThrottle"]
+              except:
+                 harvestingRunThrottle = 1000000000
+              test = idle - harvestingThresh
+              msg="GlideinWMSMonitor Harvesting: Site=%s, Idle=%s, Running=%s Thresh=%s, Test=%s"%(site,idle,running,harvestingThresh,test)
+              logging.debug(msg)
+
+              #  //  
+              # //  Some sites want us to throttle jobs to a certain level...  this is a crude way to do that
+              #||   Basically don't send in more jobs if we have more running jobs than the throttle level
+              #//
+              logging.debug("harvestingRunThrottle: %s"%harvestingRunThrottle)
+              if running>harvestingRunThrottle:
+                 msg="GlideinWMSMonitor: Running harvesting jobs (%s) exceed throttle level (%s), not sending in more"%(running,harvestingRunThrottle)
+                 logging.debug(msg)
+                 test=0
+
+              if test < 0:
+                if abs(test) < minSubmit:
+                    #  //
+                    # // below threshold, but not enough for a bulk
+                    #//  submission
+                    continue
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                # enforce maximum number to submit
+                if constraint['count'] > maxSubmit:
+                   constraint['count'] = maxSubmit
+                constraint['type'] = "Harvesting"
+                constraint['site'] = self.allSites[site]['SiteIndex']
+                print str(constraint)
+                result.append(constraint)
+
+
+
         return result
             
 
-    
+   
+
+
+ 
 registerMonitor(GlideinWMSMonitor, GlideinWMSMonitor.__name__)

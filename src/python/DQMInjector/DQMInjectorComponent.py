@@ -156,7 +156,8 @@ class DQMInjectorComponent:
             logging.info("Registering Job %s" % job['JobSpecId'])
             WEJob.register(job['WorkflowSpecId'], None, {
                 'id' : job['JobSpecId'], 'owner' : 'DQMInjector',
-                'job_type' : "Processing", "max_retries" : 3,
+#                'job_type' : "Processing", "max_retries" : 3,
+                'job_type' : "Harvesting", "max_retries" : 3,
                 "max_racers" : 1,
                 })
 

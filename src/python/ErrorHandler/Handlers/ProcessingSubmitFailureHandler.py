@@ -22,6 +22,9 @@ class ProcessingSubmitFailureHandler(HandlerInterface):
 
 registerHandler(ProcessingSubmitFailureHandler(),"ProcessingSubmitFailureHandler","ErrorHandler")
 registerHandler(ProcessingSubmitFailureHandler(),"RepackSubmitFailureHandler","ErrorHandler")
+registerHandler(ProcessingSubmitFailureHandler(),"ExpressSubmitFailureHandler","ErrorHandler")
+registerHandler(ProcessingSubmitFailureHandler(),"HarvestingSubmitFailureHandler","ErrorHandler")
+registerHandler(ProcessingSubmitFailureHandler(),"SkimSubmitFailureHandler","ErrorHandler")
 registerHandler(ProcessingSubmitFailureHandler(),"LogCollectSubmitFailureHandler","ErrorHandler")
 registerHandler(ProcessingSubmitFailureHandler(),"CleanUpSubmitFailureHandler","ErrorHandler")
 

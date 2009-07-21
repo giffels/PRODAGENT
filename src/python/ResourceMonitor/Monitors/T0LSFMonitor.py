@@ -65,8 +65,10 @@ class T0LSFMonitor(MonitorInterface):
         # element is processing jobs count, second element
         # is merge job count, third element is cleanup jobs 
         # forth element is repack job count
+        # fifth is log collect, 6th is skim, 7th is express
+        # 8th is DQM harvesting
         #
-        jobCountOverall = [0,0,0,0,0]
+        jobCountOverall = [0,0,0,0,0,0,0,0]
 
         #
         # the jobCount dictionary contains workflows as keys and
@@ -78,7 +80,7 @@ class T0LSFMonitor(MonitorInterface):
         jobCountByWorkflow = {}
         if not self.allSites.has_key(defaultSiteName):
             for workflowId in self.allSites.iterkeys():
-                jobCountByWorkflow[workflowId] = [0,0,0,0,0]
+                jobCountByWorkflow[workflowId] = [0,0,0,0,0,0,0,0]
 
         #
         # loop over output of bjobs
@@ -122,6 +124,21 @@ class T0LSFMonitor(MonitorInterface):
                             jobCountOverall[4] += 1
                         elif jobCountByWorkflow.has_key(workflowId):
                             jobCountByWorkflow[workflowId][4] += 1
+                    elif ( jobType == 'Skim' ):
+                        if self.allSites.has_key(defaultSiteName):
+                            jobCountOverall[5] += 1
+                        elif jobCountByWorkflow.has_key(workflowId):
+                            jobCountByWorkflow[workflowId][5] += 1
+                    elif ( jobType == 'Express' ):
+                        if self.allSites.has_key(defaultSiteName):
+                            jobCountOverall[6] += 1
+                        elif jobCountByWorkflow.has_key(workflowId):
+                            jobCountByWorkflow[workflowId][6] += 1
+                    elif ( jobType == 'Harvesting' ):
+                        if self.allSites.has_key(defaultSiteName):
+                            jobCountOverall[7] += 1
+                        elif jobCountByWorkflow.has_key(workflowId):
+                            jobCountByWorkflow[workflowId][7] += 1
 
                 else:
                     logging.debug("No job %s found in WE table" % jobId)
@@ -132,6 +149,9 @@ class T0LSFMonitor(MonitorInterface):
             logging.info("Number of cleanup jobs is %d" % jobCountOverall[2])
             logging.info("Number of repack jobs is %d" % jobCountOverall[3])
             logging.info("Number of logCollect jobs is %d" % jobCountOverall[4])
+            logging.info("Number of skim jobs is %d" % jobCountOverall[5])
+            logging.info("Number of express jobs is %d" % jobCountOverall[6])
+            logging.info("Number of harvesting jobs is %d" % jobCountOverall[7])
         else:
             for workflowId in self.allSites.iterkeys():
                 logging.info("Number of processing jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][0]))
@@ -139,6 +159,9 @@ class T0LSFMonitor(MonitorInterface):
                 logging.info("Number of cleanup jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][2]))
                 logging.info("Number of repack jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][3]))
                 logging.info("Number of logCollect jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][4]))
+                logging.info("Number of skim jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][5]))
+                logging.info("Number of express jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][6]))
+                logging.info("Number of harvesting jobs for workflow %s is %d" % (workflowId,jobCountByWorkflow[workflowId][7]))
 
         result = []
 
@@ -163,12 +186,18 @@ class T0LSFMonitor(MonitorInterface):
         cleanupThreshold = siteThresholds.get("cleanupThreshold", 1000000)
         repackThreshold = siteThresholds.get("repackThreshold", 10000000)
         collectThreshold = siteThresholds.get("logcollectThreshold", 1000000)
+        skimThreshold = siteThresholds.get("skimThreshold", 1000000)
+        expressThreshold = siteThresholds.get("expressThreshold", 1000000)
+        harvestingThreshold = siteThresholds.get("harvestingThreshold", 1000000)
         
         missingProcessingJobs = processingThreshold - jobCount[0]
         missingMergeJobs = mergeThreshold - jobCount[1]
         missingCleanupJobs = cleanupThreshold - jobCount[2]
         missingRepackJobs = repackThreshold - jobCount[3]
         missingLogCollectJobs = collectThreshold - jobCount[4]
+        missingSkimCollectJobs = skimThreshold - jobCount[5]
+        missingExpressCollectJobs = expressThreshold - jobCount[6]
+        missingHarvestingCollectJobs = harvestingThreshold - jobCount[7]
 
         minSubmit = siteThresholds.get("minimumSubmission", 1)
         maxSubmit = siteThresholds.get("maximumSubmission", 100)
@@ -293,6 +322,82 @@ class T0LSFMonitor(MonitorInterface):
                 logging.info("Releasing %d logCollect jobs" % constraint['count'])
 
             result.append(constraint)
+
+
+        # check if we should release skim jobs 
+        if ( missingSkimCollectJobs >= minSubmit ):
+
+            constraint = self.newConstraint()
+
+            # determine number of jobs
+            if ( missingSkimCollectJobs > maxSubmit ):
+                constraint['count'] = maxSubmit
+            else:
+                constraint['count'] = missingSkimCollectJobs
+
+            # some more constraints
+            constraint['type'] = "Skim"
+            #constraint['site'] = self.allSites[siteName]['SiteIndex']
+
+            # constraint for workflow
+            if ( constrainWorkflow ):
+                constraint['workflow'] = siteName
+                logging.info("Releasing %d skim jobs for workflow %s" % (constraint['count'],siteName))
+            else:
+                logging.info("Releasing %d skim jobs" % constraint['count'])
+
+            result.append(constraint)
+
+
+        # check if we should release express jobs 
+        if ( missingExpressCollectJobs >= minSubmit ):
+
+            constraint = self.newConstraint()
+
+            # determine number of jobs
+            if ( missingExpressCollectJobs > maxSubmit ):
+                constraint['count'] = maxSubmit
+            else:
+                constraint['count'] = missingExpressCollectJobs
+
+            # some more constraints
+            constraint['type'] = "Express"
+            #constraint['site'] = self.allSites[siteName]['SiteIndex']
+
+            # constraint for workflow
+            if ( constrainWorkflow ):
+                constraint['workflow'] = siteName
+                logging.info("Releasing %d express jobs for workflow %s" % (constraint['count'],siteName))
+            else:
+                logging.info("Releasing %d express jobs" % constraint['count'])
+
+            result.append(constraint)
+
+
+
+        if ( missingHarvestingCollectJobs >= minSubmit ):
+
+            constraint = self.newConstraint()
+
+            # determine number of jobs
+            if ( missingHarvestingCollectJobs > maxSubmit ):
+                constraint['count'] = maxSubmit
+            else:
+                constraint['count'] = missingHarvestingCollectJobs
+
+            # some more constraints
+            constraint['type'] = "Harvesting"
+            #constraint['site'] = self.allSites[siteName]['SiteIndex']
+
+            # constraint for workflow
+            if ( constrainWorkflow ):
+                constraint['workflow'] = siteName
+                logging.info("Releasing %d harvesting jobs for workflow %s" % (constraint['count'],siteName))
+            else:
+                logging.info("Releasing %d harvesting jobs" % constraint['count'])
+
+            result.append(constraint)
+
 
         return
 
