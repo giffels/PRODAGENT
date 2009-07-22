@@ -12,9 +12,6 @@ cvs co -r PRODAGENT_$PAVERSION PRODAGENT
 # Place any PA patches here -- as in 
 # cvs update -r 1.8 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py
 
-cvs update -r 1.3 PRODAGENT/src/python/JobCreator/RuntimeTools/RuntimeOfflineDQMSetup.py 
-cvs update -r 1.8 PRODAGENT/util/createTier0ProductionWorkflow.py
-cvs update -r 1.2 PRODAGENT/src/python/CondorTracker/Trackers/CondorLog.py
 
 cd PRODAGENT
 source $PBIN/prodagent_init.sh

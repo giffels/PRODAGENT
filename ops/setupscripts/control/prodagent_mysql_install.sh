@@ -25,7 +25,10 @@ python $MYTESTAREA/PRODAGENT/util/resourceControl.py --new --site=CERN --ce-name
 python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=repackThreshold --value=1000
 python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=minimumSubmission --value=10
 python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=maximumSubmission --value=500
-python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=processingThreshold --value=1000
-python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=cleanupThreshold --value=200
+python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=processingThreshold --value=1500
+python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=cleanupThreshold --value=100
 python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=mergeThreshold --value=500
+python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=skimThreshold --value=100
+python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=expressThreshold --value=200
+python $MYTESTAREA/PRODAGENT/util/resourceControl.py --edit --site=CERN --set-threshold=harvestingThreshold --value=10
 #see https://twiki.cern.ch/twiki/bin/view/CMS/ProdAgentResourceControlDB  for full documentation

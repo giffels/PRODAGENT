@@ -16,14 +16,14 @@ export RPMVERSION=0_12_15_patch1
 # overriding what comes with the RPMS
 
 #The ProdAgent & ProdCommon versions you want to pull out of CVS
-export PAVERSION=0_12_15_patch1
+export PAVERSION=0_12_16_pre1
 export PCVERSION=0_12_15_patch1
 #The DBS version we want to install
 export DBSVERSION=2_0_7
 #The WMCORE version required
 export WMCOREVERSION=T0_0_0_3_pre8
 #The T0 version we need
-export T0VERSION=0_0_3_pre8
+export T0VERSION=0_0_3_pre9
 
 # This is probably the only one to change
 export PRODAGENT_TOP=/data/$PRODAGENT_USER/PAProd/$INSTALL_TYPE
