@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.14 2009/07/15 04:59:25 dmason Exp $"
-__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.15 2009/07/22 18:14:16 dmason Exp $"
+__version__ = "$Revision: 1.15 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -66,8 +66,8 @@ setConfigVersion(tier0Config, __version__)
 
 
 defaultRecoVersion = "CMSSW_3_1_1_patch1"
-defaultAlcaVersion = "CMSSW_3_1_1_patch1"
-defaultDQMVersion = "CMSSW_3_1_1_patch1"
+defaultAlcaVersion = defaultRecoVersion
+defaultDQMVersion = defaultRecoVersion
 
 
 defaultProcVersion = "v3"
@@ -78,7 +78,7 @@ recoProcVersion = "v5"
 #defaultGlobalTag = "CRAFT_V18P::All"
 
 #31X
-defaultGlobalTag = "GR09_31X_V3P::All"
+defaultGlobalTag = "GR09_31X_V4P::All"
 
 # Create a dictionary that associates a reco configuration with a scenario.
 # The configuration must be specified as a url.
@@ -91,8 +91,12 @@ alcaConfig = {}
 #recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptReco_RAW2DIGI_RECO_DQM.py?revision=1.4"
 
 #3_1_1 reco config with combined alca
-recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.4"
+recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.6"
 
+#promptreco configs for alcaraw datasets
+recoConfig["AlCaP0"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alcareco_AlCaP0_cfg.py?revision=1.2"
+recoConfig["AlCaPhiSymEcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alcareco_AlCaPhiSymEcal_cfg.py?revision=1.2"
+recoConfig["AlCaPhiSymHcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alcareco_AlCaPhiSymHcal_cfg.py?revision=1.2"
 
 #hacked config to stop crashes
 #recoConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_11/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg_1.44_hacked.py"
@@ -106,6 +110,11 @@ recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Config
 #31X cosmics
 #alcaConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/AlCaRecoCosmics_cfg.py?revision=1.1"
 alcaConfig["cosmics"] ="http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_prompt_cfg.py?revision=1.2"
+
+#for alcaraw streams
+alcaConfig["AlCaP0"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_AlCaP0_cfg.py?revision=1.1"
+alcaConfig["AlCaPhiSymEcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_AlCaPhiSymEcal_cfg.py?revision=1.1"
+alcaConfig["AlCaPhiSymHcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_AlCaPhiSymHcal_cfg.py?revision=1.1"
 
 #setProcessingStyle(tier0Config, "Default", "Bulk")
 addDataset(tier0Config, "Default",
@@ -189,15 +198,33 @@ addDataset(tier0Config,"RandomTriggers",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"AlCaP0",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = False, global_tag = defaultGlobalTag,
+           do_reco = True, global_tag = defaultGlobalTag,
+           reco_configuration = recoConfig["AlCaP0"],
+           reco_proc_ver = recoProcVersion,
+           reco_version = defaultRecoVersion,
+           do_alca = True, alca_version= defaultAlcaVersion,
+           alca_proc_ver = recoProcVersion,
+           alca_configuration=alcaConfig["AlCaP0"],
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"AlCaPhiSymEcal",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = False, global_tag = defaultGlobalTag,
+           do_reco = True, global_tag = defaultGlobalTag,
+           reco_configuration = recoConfig["AlCaPhiSymEcal"],
+           reco_proc_ver = recoProcVersion,
+           reco_version = defaultRecoVersion,
+           do_alca = True, alca_version= defaultAlcaVersion,
+           alca_proc_ver = recoProcVersion,
+           alca_configuration=alcaConfig["AlCaPhiSymEcal"],
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"AlCaPhiSymHcal",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = False, global_tag = defaultGlobalTag,
+           do_reco = True, global_tag = defaultGlobalTag,
+           reco_configuration = recoConfig["AlCaPhiSymHcal"],
+           reco_proc_ver = recoProcVersion,
+           reco_version = defaultRecoVersion,
+           do_alca = True, alca_version= defaultAlcaVersion,
+           alca_proc_ver = recoProcVersion,
+           alca_configuration=alcaConfig["AlCaPhiSymHcal"],
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"TestEnables",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -253,9 +280,8 @@ expressProcConfig = {}
 
 #For 31x
 #expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_3_1_0/src/recoAlcaProc.py"
-#expressProcConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/expressReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.3" 
+expressProcConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/expressReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.3" 
 
-expressProcConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/DataOps/python/expressReco_RAW2DIGI_RECO_DQM_ALCA_V3P.py?revision=1.1"
 
 # Create a dictionary that associated express merge packing config urls to names
 
@@ -280,7 +306,7 @@ expressMergePackConfig["alca"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/step23_Ec
 
 addExpressConfig(tier0Config, "Express",
                  proc_config = expressProcConfig["default"],
-                 data_tiers = [ "RAW", "RECO", "ALCARECO" ],
+                 data_tiers = [ "FEVT", "ALCARECO" ],
                  alcamerge_config = expressMergePackConfig["default"],
                  splitInProcessing = False,
                  proc_ver = expressProcVersion)
