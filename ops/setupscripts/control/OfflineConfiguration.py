@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.13 2009/07/02 19:43:56 dmason Exp $"
-__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.14 2009/07/15 04:59:25 dmason Exp $"
+__version__ = "$Revision: 1.14 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -65,9 +65,9 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_3_1_1"
-defaultAlcaVersion = "CMSSW_3_1_1"
-defaultDQMVersion = "CMSSW_3_1_1"
+defaultRecoVersion = "CMSSW_3_1_1_patch1"
+defaultAlcaVersion = "CMSSW_3_1_1_patch1"
+defaultDQMVersion = "CMSSW_3_1_1_patch1"
 
 
 defaultProcVersion = "v3"
@@ -88,7 +88,11 @@ alcaConfig = {}
 #recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg.py?revision=1.44"
 
 #for 3_1_X cosmics at 0T
-recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptReco_RAW2DIGI_RECO_DQM.py?revision=1.4"
+#recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptReco_RAW2DIGI_RECO_DQM.py?revision=1.4"
+
+#3_1_1 reco config with combined alca
+recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.4"
+
 
 #hacked config to stop crashes
 #recoConfig["cosmics"] = "/data/cmsprod/CMSSW/CMSSW_2_2_11/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_cfg_1.44_hacked.py"
@@ -156,6 +160,14 @@ addDataset(tier0Config, "MinimumBias",
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
            custodial_node = "T1_ES_PIC_MSS",
+           archival_node = "T0_CH_CERN_MSS")
+addDataset(tier0Config, "MinimumBiasNoCalo",
+           default_proc_ver = defaultProcVersion, scenario = "cosmics",
+           do_reco = True, global_tag = defaultGlobalTag,
+           reco_proc_ver = recoProcVersion,
+           reco_configuration = recoConfig["cosmics"],
+           reco_version = defaultRecoVersion,
+           custodial_node = "T1_US_FNAL_MSS",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,  "Monitor",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -241,8 +253,9 @@ expressProcConfig = {}
 
 #For 31x
 #expressProcConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_3_1_0/src/recoAlcaProc.py"
-expressProcConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/expressReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.3" 
+#expressProcConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/expressReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.3" 
 
+expressProcConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/DataOps/python/expressReco_RAW2DIGI_RECO_DQM_ALCA_V3P.py?revision=1.1"
 
 # Create a dictionary that associated express merge packing config urls to names
 
@@ -291,7 +304,8 @@ addExpressConfig(tier0Config, "HLTMON",
 
 
 #Mappings for 311 online running
-setExpressVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_3_1_1")
+setExpressVersionMapping(tier0Config, "CMSSW_3_1_1", "CMSSW_3_1_1_patch1")
+setExpressVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_3_1_1_patch1")
 
 setExpressVersionMapping(tier0Config, "CMSSW_2_2_13", "CMSSW_6_6_6")
 setExpressVersionMapping(tier0Config, "CMSSW_2_2_12", "CMSSW_6_6_6")
