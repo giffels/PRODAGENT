@@ -12,13 +12,14 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.25 2009/02/13 09:40:12 gcodispo Exp $"
-__revision__ = "$Revision: 1.25 $"
+__version__ = "$Id: JobOutput.py,v 1.26 2009/05/22 12:58:13 gcodispo Exp $"
+__revision__ = "$Revision: 1.26 $"
 
 import logging
 import os
 import traceback
 import threading
+import deepcopy
 
 # BossLite import
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
@@ -94,9 +95,9 @@ class JobOutput:
                            BossLiteAPI('MySQL', pool=cls.params['sessionPool'])
 
             # instantiate JobHandling object
-            cls.params['jobHandlingParams']['bossLiteSession'] = \
-                                                               bossLiteSession
-            jobHandling = JobHandling(cls.params['jobHandlingParams'])
+            jHParams = deepcopy(cls.params['jobHandlingParams'])
+            jHParams['bossLiteSession'] = bossLiteSession
+            jobHandling = JobHandling( jHParams )
 
             # verify the status
             status = job.runningJob['processStatus']
