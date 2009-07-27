@@ -209,8 +209,9 @@ def newMode():
         raise RuntimeError, msg
 
     if ceName == None:
-        msg = "--ce-name option not provided"
-        raise RuntimeError, msg
+        msg = "--ce-name option not provided. Warning, this is not supported"
+        msg += " by all ResourceMonitor / Submitter combinations\n"
+        print(msg)
     if seName == None:
         msg = "--se-name option not provided"
         raise RuntimeError, msg
