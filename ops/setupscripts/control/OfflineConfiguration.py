@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.15 2009/07/22 18:14:16 dmason Exp $"
-__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.16 2009/07/22 20:15:26 dmason Exp $"
+__version__ = "$Revision: 1.16 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -24,8 +24,8 @@ tier0Config = createTier0Config()
 # Set global parameters like the acquisition era and the version of
 # the configuration.
 #setAcquisitionEra(tier0Config, "HAPPYHAPPYWARMFUZZY_T0TEST_WITHBUNNIESDANCINGAROUND")
-setAcquisitionEra(tier0Config, "Commissioning09")
-#setAcquisitionEra(tier0Config, "CRUZET09")
+#setAcquisitionEra(tier0Config, "Commissioning09")
+setAcquisitionEra(tier0Config, "CRAFT09")
 #setAcquisitionEra(tier0Config, "AllRunsTest")
 setConfigVersion(tier0Config, __version__)
 
@@ -65,15 +65,16 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_3_1_1_patch1"
+defaultRecoVersion = "CMSSW_3_2_2_patch2"
+#defaultRecoVersion = "CMSSW_3_2_1"
 defaultAlcaVersion = defaultRecoVersion
 defaultDQMVersion = defaultRecoVersion
 
 
-defaultProcVersion = "v3"
+defaultProcVersion = "v1"
 #repackProcVersion = defaultProcVersion
-expressProcVersion = "v4"
-recoProcVersion = "v5"
+expressProcVersion = "v1"
+recoProcVersion = "v1"
 #recoProcVersion = defaultProcVersion
 #defaultGlobalTag = "CRAFT_V18P::All"
 
@@ -109,7 +110,8 @@ recoConfig["AlCaPhiSymHcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW
 
 #31X cosmics
 #alcaConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/AlCaRecoCosmics_cfg.py?revision=1.1"
-alcaConfig["cosmics"] ="http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_prompt_cfg.py?revision=1.2"
+alcaConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_prompt_cfg.py?revision=1.3"
+alcaConfig["calo"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_prompt_Calo_cfg.py?revision=1.1"
 
 #for alcaraw streams
 alcaConfig["AlCaP0"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_AlCaP0_cfg.py?revision=1.1"
@@ -146,8 +148,12 @@ addDataset(tier0Config, "Calo",
            reco_proc_ver = recoProcVersion,
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
-           custodial_node = "T1_FR_CCIN2P3_MSS",
-#           custodial_node = "T1_US_FNAL_MSS",
+           do_dqm = True,dqm_version=defaultDQMVersion,
+           do_alca = True, alca_version= defaultAlcaVersion,
+           alca_proc_ver = recoProcVersion,
+           alca_configuration=alcaConfig["calo"],
+#          custodial_node = "T1_FR_CCIN2P3_MSS",
+           custodial_node = "T1_UK_RAL_MSS",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config, "Cosmics",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -168,7 +174,7 @@ addDataset(tier0Config, "MinimumBias",
            reco_proc_ver = recoProcVersion,
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
-           custodial_node = "T1_ES_PIC_MSS",
+#           custodial_node = "T1_ES_PIC_MSS",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config, "MinimumBiasNoCalo",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -176,7 +182,7 @@ addDataset(tier0Config, "MinimumBiasNoCalo",
            reco_proc_ver = recoProcVersion,
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
-           custodial_node = "T1_US_FNAL_MSS",
+           custodial_node = "T1_ES_PIC_MSS",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,  "Monitor",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -257,11 +263,11 @@ skimConfig["SuperPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/
 skimConfig["TrackerPointing"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/TrackerPointing_cfg.py?revision=1.10"
 skimConfig["HcalHPDFilter"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/HCALHighEnergy_cfg.py?revision=1.4"
 
-addTier1Skim(tier0Config, "Skim1", "RECO", "Cosmics", "CMSSW_3_1_1", "v1",
+addTier1Skim(tier0Config, "Skim1", "RECO", "Cosmics", "CMSSW_3_2_2", "v1",
              skimConfig["T1SkimTester"], True)
-addTier1Skim(tier0Config, "Skim2", "RECO", "Calo", "CMSSW_3_1_1", "v2",
+addTier1Skim(tier0Config, "Skim2", "RECO", "Calo", "CMSSW_3_2_2", "v2",
              skimConfig["T1SkimTester"], True)
-addTier1Skim(tier0Config, "Skim3", "RECO", "MinimumBias", "CMSSW_3_1_1", "v3",
+addTier1Skim(tier0Config, "Skim3", "RECO", "MinimumBias", "CMSSW_3_2_2", "v3",
              skimConfig["T1SkimTester"], True)
 
 
@@ -308,13 +314,15 @@ addExpressConfig(tier0Config, "Express",
                  proc_config = expressProcConfig["default"],
                  data_tiers = [ "FEVT", "ALCARECO" ],
                  alcamerge_config = expressMergePackConfig["default"],
-                 splitInProcessing = False,
+                 global_tag = defaultGlobalTag,
+                 splitInProcessing = True,
                  proc_ver = expressProcVersion)
 
 addExpressConfig(tier0Config, "HLTMON",
                  proc_config = expressProcConfig["default"],
                  data_tiers = [ "FEVTHLTALL" ],
                  #data_tiers = [ "FEVT" ],
+                 global_tag = defaultGlobalTag,
                  splitInProcessing = True,
                  proc_ver = expressProcVersion)
 
@@ -330,6 +338,8 @@ addExpressConfig(tier0Config, "HLTMON",
 
 
 #Mappings for 311 online running
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_2", "CMSSW_3_2_2_patch2")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_1", "CMSSW_3_2_2_patch2")
 setExpressVersionMapping(tier0Config, "CMSSW_3_1_1", "CMSSW_3_1_1_patch1")
 setExpressVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_3_1_1_patch1")
 
