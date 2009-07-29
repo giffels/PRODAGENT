@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.20 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.20 2009/06/11 13:03:31 direyes Exp $"
+__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.21 2009/07/14 09:34:03 direyes Exp $"
 
 
 import os
@@ -75,7 +75,7 @@ options = \
   --acquisition_era sets the aquisition era and the Primary Dataset name
 
   --activity=<activity>, The activity represented but this workflow
-    i.e. Reprocessing, Skimming etc. (Default: Production)
+    i.e. Reprocessing, Skimming etc. (Default: PrivateProduction)
 
   --category is the processing category, eg PreProd, SVSuite, Skim etc. It
     defaults to 'mc' if not provided
@@ -157,7 +157,7 @@ versions = []
 category = "mc"
 channel = None
 cfgTypes = []
-activity = "Production"
+activity = "PrivateProduction"
 startingRun = None
 startingEvent = None
 totalEvents = None

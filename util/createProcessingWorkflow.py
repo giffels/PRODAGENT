@@ -5,8 +5,8 @@ _createProcessingWorkflow_
 Create a workflow that processes an input dataset with a cfg file
 
 """
-__version__ = "$Revision: 1.20 $"
-__revision__ = "$Id: createProcessingWorkflow.py,v 1.20 2009/06/08 09:56:38 swakef Exp $"
+__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: createProcessingWorkflow.py,v 1.21 2009/07/14 09:33:59 direyes Exp $"
 
 import os
 import sys
@@ -71,7 +71,7 @@ options = \
   --acquisition_era sets the aquisition era and the Primary Dataset name
 
   --activity=<activity>, The activity represented but this workflow
-    i.e. Reprocessing, Skimming etc.
+    i.e. Reprocessing, Skimming etc. (Default: PrivateReprocessing)
 
   --category is the processing category, eg PreProd, SVSuite, Skim etc. It
     defaults to 'mc' if not provided
@@ -199,7 +199,7 @@ onlyClosedBlocks = False
 pileupDataset = None
 pileupFilesPerJob = 1
 
-activity = "Reprocessing"
+activity = "PrivateReprocessing"
 
 tarupLib = False
 tarupSrc = False

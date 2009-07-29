@@ -5,8 +5,8 @@ _createProductionCmsGenWorkflow_
 Create a cmsGen and cmsRun workflow
 
 """
-__version__ = "$Revision: 1.13 $"
-__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.13 2009/06/11 13:03:31 direyes Exp $"
+__version__ = "$Revision: 1.14 $"
+__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.14 2009/07/14 09:34:03 direyes Exp $"
 
 
 
@@ -76,7 +76,7 @@ options = \
   --acquisition_era sets the aquisition era and the Primary Dataset name
 
   --activity=<activity>, The activity represented but this workflow
-    i.e. Reprocessing, Skimming etc. (Default: Production)
+    i.e. Reprocessing, Skimming etc. (Default: PrivateProduction)
 
   --category is the processing category, eg PreProd, SVSuite, Skim etc. It
     defaults to 'mc' if not provided
@@ -156,7 +156,7 @@ physicsGroup = "Individual"
 requestId = "%s" % (int(time.time()))
 cfgTypes = []
 selectionEfficiency = None
-activity = 'Production'
+activity = 'PrivateProduction'
 startingRun = 1
 initialEvent = 1
 totalEvents = 1000
