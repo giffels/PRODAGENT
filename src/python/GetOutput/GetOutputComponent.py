@@ -4,14 +4,17 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.19 2009/01/29 15:49:42 gcodispo Exp $"
-__revision__ = "$Revision: 1.19 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.20 2009/02/13 09:40:12 gcodispo Exp $"
+__revision__ = "$Revision: 1.20 $"
 
 import os
 import time
 import logging
 import traceback
 import threading
+#import socket
+from copy import deepcopy
+
 
 # PA configuration
 from ProdAgentDB.Config import defaultConfig as dbConfig
@@ -57,7 +60,10 @@ class GetOutputComponent:
         self.args.setdefault('skipWMSAuth', None)
         self.args.update(args)
 
-       # set up logging for this component
+        ### setting global timeout for wms connection
+        # socket.setGlobalTimeout(600)
+
+        # set up logging for this component
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'], \
                                                 "ComponentLog")
@@ -109,7 +115,7 @@ class GetOutputComponent:
         params = {}
         params['skipWMSAuth'] = self.args['skipWMSAuth']
         params['sessionPool'] = self.sessionPool
-        params['jobHandlingParams'] = jobHandlingParams
+        params['jobHandlingParams'] = deepcopy( jobHandlingParams )
         params['maxGetOutputAttempts'] = \
                                        int( self.args['maxGetOutputAttempts'] )
 
