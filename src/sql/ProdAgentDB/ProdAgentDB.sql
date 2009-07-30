@@ -917,6 +917,7 @@ CREATE TABLE log_input (
        se_name VARCHAR(255) NOT NULL,
        status enum("new", "inprogress", "done", "failed") default "new",
        insert_time TIMESTAMP NOT NULL default CURRENT_TIMESTAMP,
+       error_count int NOT NULL default 0,
        INDEX (id, status)
 )TYPE=InnoDB;
 
