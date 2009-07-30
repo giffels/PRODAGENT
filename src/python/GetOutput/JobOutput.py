@@ -12,14 +12,14 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.26 2009/05/22 12:58:13 gcodispo Exp $"
-__revision__ = "$Revision: 1.26 $"
+__version__ = "$Id: JobOutput.py,v 1.27 2009/07/27 08:04:09 gcodispo Exp $"
+__revision__ = "$Revision: 1.27 $"
 
 import logging
 import os
 import traceback
 import threading
-import deepcopy
+from copy import deepcopy
 
 # BossLite import
 from ProdCommon.BossLite.API.BossLiteAPI import BossLiteAPI
