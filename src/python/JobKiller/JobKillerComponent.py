@@ -5,8 +5,8 @@ _JobKillerComponent_
 ProdAgent Component that kills jobs by job spec or workflow Id
 
 """
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: JobKillerComponent.py,v 1.7 2008/05/12 17:17:28 swakef Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: JobKillerComponent.py,v 1.8 2008/08/21 15:08:18 ahmadh Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -275,7 +275,7 @@ class JobKillerComponent:
         # build payload for TaskTracking component
         try:
             payload = taskSpecId.split(':')[0] + '::' + \
-                      taskSpecId.split(':')[2]
+                      taskSpecId.split(':')[1]
 
         # wrong task specification id
         except IndexError, msg:
