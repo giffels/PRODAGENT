@@ -165,8 +165,13 @@ def processFrameworkJobReport():
     #  //
     # // generate sizes and checksums
     #//
-    state.generateFileStats()
-    
+    try:
+        state.generateFileStats()
+    except Exception, ex:
+        print "Error generating file stats: %s" % str(ex)
+        report.status = "Failed"
+        report.exitCode = 50998
+
     #  //
     # // match files to datasets.
     #//
