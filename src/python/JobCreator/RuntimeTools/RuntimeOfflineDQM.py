@@ -45,8 +45,8 @@ CERNStageOut = {
     }
 
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.17 2008/11/21 17:04:36 direyes Exp $"
-__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.19 2009/01/29 13:36:34 direyes Exp $"
+__version__ = "$Revision: 1.19 $"
 
 
 HTTPS = httplib.HTTPS
@@ -259,10 +259,12 @@ class HarvesterImpl:
             print 'Status code: ', e.hdrs.get("Dqm-Status-Code", "None")
             print 'Message:     ', e.hdrs.get("Dqm-Status-Message", "None")
             print 'Detail:      ', e.hdrs.get("Dqm-Status-Detail", "None")
+            raise RuntimeError, e
         except Exception, ex:
             print 'Automated upload of %s failed' % filename
             print 'problem unknown'
             print ex
+            raise RuntimeError, ex
 
 
     def encode(self, args, files):
