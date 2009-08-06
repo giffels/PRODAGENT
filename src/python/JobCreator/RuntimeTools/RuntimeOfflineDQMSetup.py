@@ -149,7 +149,7 @@ class TEMP31:
              "frontier://FrontierProd/CMS_COND_31X_GLOBALTAG"
 
 	#process.configurationMetadata = cms.untracked.PSet(
-	    #version = cms.untracked.string('$Revision: 1.3 $'),
+	    #version = cms.untracked.string('$Revision: 1.4 $'),
 	    #annotation = cms.untracked.string('step3_DT2_1 nevts:1'),
 	    #name = cms.untracked.string('PyReleaseValidation')
 	#)
@@ -187,7 +187,7 @@ class TEMP31:
         #process.DQMStore.referenceFileName = ''
         #process.dqmSaver.convention = 'Offline'
         process.dqmSaver.workflow = datasetName
-        
+        process.dqmSaver.referenceHandling = 'all'
         #process.DQMStore.collateHistograms = False
         #process.EDMtoMEConverter.convertOnEndLumi = True
         #process.EDMtoMEConverter.convertOnEndRun = False
