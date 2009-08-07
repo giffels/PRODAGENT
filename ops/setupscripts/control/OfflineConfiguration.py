@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.16 2009/07/22 20:15:26 dmason Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.17 2009/07/29 18:45:37 dmason Exp $"
+__version__ = "$Revision: 1.17 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -65,7 +65,7 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_3_2_2_patch2"
+defaultRecoVersion = "CMSSW_3_2_3"
 #defaultRecoVersion = "CMSSW_3_2_1"
 defaultAlcaVersion = defaultRecoVersion
 defaultDQMVersion = defaultRecoVersion
@@ -79,7 +79,7 @@ recoProcVersion = "v1"
 #defaultGlobalTag = "CRAFT_V18P::All"
 
 #31X
-defaultGlobalTag = "GR09_31X_V4P::All"
+defaultGlobalTag = "GR09_31X_V6P::All"
 
 # Create a dictionary that associates a reco configuration with a scenario.
 # The configuration must be specified as a url.
@@ -338,8 +338,8 @@ addExpressConfig(tier0Config, "HLTMON",
 
 
 #Mappings for 311 online running
-setExpressVersionMapping(tier0Config, "CMSSW_3_2_2", "CMSSW_3_2_2_patch2")
-setExpressVersionMapping(tier0Config, "CMSSW_3_2_1", "CMSSW_3_2_2_patch2")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_2", "CMSSW_3_2_3")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_1", "CMSSW_3_2_3")
 setExpressVersionMapping(tier0Config, "CMSSW_3_1_1", "CMSSW_3_1_1_patch1")
 setExpressVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_3_1_1_patch1")
 
