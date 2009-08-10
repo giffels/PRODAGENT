@@ -109,7 +109,7 @@ def configFromFile(cmsPath, scramArch, cmsswVersion, filename):
 def createHarvestingWorkflow(dataset, site, cmsPath, scramArch,
                              cmsswVersion, globalTag, configFile = None,
                              DQMServer = None, proxyLocation = None, 
-                             DQMCopyToCERN = None):
+                             DQMCopyToCERN = None, runNumber = None):
     """
     _createHarvestingWorkflow_
 
@@ -123,14 +123,21 @@ def createHarvestingWorkflow(dataset, site, cmsPath, scramArch,
 
     datasetPieces = DatasetConventions.parseDatasetPath(dataset)
 
-    requestId = "OfflineDQM"
     physicsGroup = "OfflineDQM"
-    label = "%s-%s-%s" % (datasetPieces['Primary'], datasetPieces['Processed'],
-                          datasetPieces['DataTier'])
     category = "DQM"
-    channel = "DQMHarvest"
+    
+    if runNumber == None:
+        requestId = "OfflineDQM"
+        label = "%s-%s-%s" % (datasetPieces['Primary'], datasetPieces['Processed'],
+                          datasetPieces['DataTier'])
+        channel = "DQMHarvest"
+    else:
+        requestId = "%s-%s" % (datasetPieces["Primary"], datasetPieces["DataTier"])
+        label = "DQMHarvesting"
+        channel = "Run%s" % runNumber
 
-    ##cfgWrapper = CMSSWConfig()
+    logging.debug("path, arch, ver: %s, %s, %s" % (cmsPath, scramArch, cmsswVersion))
+
     if configFile != None:
         cfgWrapper = configFromFile(cmsPath, scramArch,
                                     cmsswVersion, configFile)
