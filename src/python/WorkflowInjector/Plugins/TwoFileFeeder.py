@@ -390,9 +390,10 @@ class TwoFileFeeder(PluginInterface):
         """
         _importDataset_
 
-        Import the Input Dataset contents and inject it into the DB. Also scan
-        the input Dataset's blocks looking for all the First level dataset
-        parents.
+        Import the Input Dataset contents and inject it into the DB. The
+        
+        DBSWriter.importDataset should also import the parent Dataset. The
+        parent importing seems to work with DBS_2_0_8
 
         """
         
@@ -402,72 +403,22 @@ class TwoFileFeeder(PluginInterface):
         localDBS = getLocalDBSURL()
         dbsWriter = DBSWriter(localDBS)
         globalDBS = self.dbsUrl
-        reader = DBSReader(self.dbsUrl)
 
-        # Blocks to process
-        blocks = reader.listFileBlocks(
-            self.inputDataset(),
-            self.onlyClosedBlocks
-            )
-
-        # direyes: Since this is the TwoFileFeeder, I think it's ok if we
-        # always import the input dataset and its possible direct parents.
-        # I am considreing the fact that some block might have multiple
-        # parents.
-        #msg = "LOOKING FOR INPUT DATASET'S PARENTS USING BLOCK PARENTAGE"
-        #msg += "\nI am figuring out which datasets should be imported..."
-        #msg += "So, I am scanning all the input dataset's blocks looking for"
-        #msg += " possible parents."
-        #logging.info(msg)
-        #parentDatasetsDict = {}
-        #for block in blocks:
-        #    parentBlocks = reader.dbs.listBlockParents(block)
-        #    for parentBlock in parentBlocks:
-        #        parentDatasetsDict[parentBlock.get('Path', None)] = None
-        #parentDatasets = \
-        #    [x for x in parentDatasetsDict.keys() if x not in ('', None)]
-
-        # This is a workaround that can be used as a patch for 0_12_15, it's
-        # long to temporal
-        if blocks:
-            parentBlock = reader.dbs.listBlockParents(blocks[0])
-            parentDataset = ""
-            if parentBlock:
-                parentDataset = parentBlock[0]['Path']
-            logging.debug("And the Mother of the input dataset is:\n%s" % \
-                parentDataset)
-        else:
-            msg = "Input dataset: %s is empty" % self.inputDataset()
+        try:
+            dbsWriter.importDataset(
+                globalDBS,
+                self.inputDataset(),
+                localDBS,
+                onlyClosed = True
+                )
+        except Exception, ex:
+            msg = "Error importing dataset to be processed into local DBS\n"
+            msg += "Source Dataset: %s\n" % self.inputDataset()
+            msg += "Source DBS: %s\n" % globalDBS
+            msg += "Destination DBS: %s\n" % localDBS
+            msg += str(ex)
             logging.error(msg)
             raise RuntimeError, msg
-
-        importList = [self.inputDataset()]
-
-        if parentDataset:
-            importList.insert(0, parentDataset) 
-
-        msg = "\n=========================================="
-        msg += "\nThe following dataset(s) will be imported:"
-        msg += "\n\n%s" % "\n".join(importList)
-        msg += "\n\n=========================================="
-        logging.info(msg)
-
-        for dataset in importList:
-            try:
-                dbsWriter.importDataset(
-                    globalDBS,
-                    dataset,
-                    localDBS,
-                    True
-                    )
-            except Exception, ex:
-                msg = "Error importing dataset to be processed into local DBS\n"
-                msg += "Source Dataset: %s\n" % dataset
-                msg += "Source DBS: %s\n" % globalDBS
-                msg += "Destination DBS: %s\n" % localDBS
-                msg += str(ex)
-                logging.error(msg)
-                raise RuntimeError, msg
 
 
 registerPlugin(TwoFileFeeder, TwoFileFeeder.__name__)
