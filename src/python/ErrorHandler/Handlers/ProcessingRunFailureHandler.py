@@ -28,6 +28,9 @@ class ProcessingRunFailureHandler(HandlerInterface):
 
 registerHandler(ProcessingRunFailureHandler(),"ProcessingRunFailureHandler","ErrorHandler")
 registerHandler(ProcessingRunFailureHandler(),"RepackRunFailureHandler","ErrorHandler")
+registerHandler(ProcessingRunFailureHandler(),"ExpressRunFailureHandler","ErrorHandler")
+registerHandler(ProcessingRunFailureHandler(),"HarvestingRunFailureHandler","ErrorHandler")
+registerHandler(ProcessingRunFailureHandler(),"SkimRunFailureHandler","ErrorHandler")
 registerHandler(ProcessingRunFailureHandler(),"LogCollectRunFailureHandler","ErrorHandler")
 registerHandler(ProcessingRunFailureHandler(),"CleanUpRunFailureHandler","ErrorHandler")
 

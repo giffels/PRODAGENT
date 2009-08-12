@@ -258,10 +258,6 @@ class T0LSFCreator(CreatorInterface):
           scramRuntimeCommand(taskObject['CMSProjectVersion'],self.pluginConfig['SoftwareSetup']['ScramCommand'],True)
         )
 
-        stageHost = os.getenv("STAGE_HOST")
-        if stageHost:
-            scramSetup.append("export STAGE_HOST=%s\n" % stageHost )
-
         if self.pluginConfig['OverrideUserSandbox'].has_key(taskObject['CMSProjectVersion']):
 
             taskObject.attachFile(self.pluginConfig['OverrideUserSandbox'][taskObject['CMSProjectVersion']])
@@ -286,12 +282,6 @@ class T0LSFCreator(CreatorInterface):
         taskObject['PreStageOutCommands'].append(
             ". $VO_CMS_SW_DIR/cmsset_default.sh"
             )
-
-        stageHost = os.getenv("STAGE_HOST")
-        if stageHost:
-            taskObject['PreStageOutCommands'].append(
-                "export STAGE_HOST=%s\n" % stageHost
-                )
 
         if ( self.pluginConfig['StageOut']['Command'] != "None" and \
              self.pluginConfig['StageOut']['LFNPrefix'] != "None" and \

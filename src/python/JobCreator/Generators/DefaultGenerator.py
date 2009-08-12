@@ -49,11 +49,12 @@ import RunRes
 import ProdCommon.FwkJobRep
 import StageOut
 import ProdCommon.TrivialFileCatalog
+import WMCore.Algorithms
 
 _StandardPackages = [ShREEK, IMProv, StageOut, ProdCommon.MCPayloads,
                      ProdCommon.Core,
                      ProdCommon.CMSConfigTools, RunRes, ProdCommon.FwkJobRep,
-                     ProdCommon.TrivialFileCatalog]
+                     ProdCommon.TrivialFileCatalog, WMCore.Algorithms]
 
 
 class TaskObjectMaker:

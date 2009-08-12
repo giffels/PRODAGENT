@@ -242,6 +242,7 @@ def getBdii(sites, ldaphost):
     reg_acbr_cms = getVOMSfqan()
 
     reg_mdsvoname=re.compile(r"mds-vo-name=(?P<site>.*)")
+    site_cache = {}
     #
     # TODO: Change to going from SE to CE - ignore CE's not in GlueCESEBindGroupCEUniqueID
     #

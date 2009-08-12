@@ -1,64 +1,35 @@
 #!/usr/bin/env python
 """
-_createPreProdWorkflow_
+_createTier0ProductionWorkflow_
 
-Create a preprod workflow using a configuration PSet.
-
-This calls EdmConfigToPython and EdmConfigHash, so a scram
-runtime environment must be setup to use this script.
+Create a workflow to create streamer MC files for Tier0 processing.
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.1 2009/04/06 15:41:14 hufnagel Exp $"
+__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.7 2009/07/06 14:39:20 hufnagel Exp $"
 
 
 import os
 import sys
-import getopt
-import popen2
 import time
+import getopt
+import imp
 
+from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
-from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
+#from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
+
+from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWAPILoader import CMSSWAPILoader
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 
 
-valid = ['cfg=', 'py-cfg=', 'version=', 'category=', #"label=",
-         'channel=', 'group=',
-         'pileup-dataset=', 'pileup-files-per-job=',
-         'selection-efficiency=', 'activity=', 'stageout-intermediates=',
-         'chained-input=', 'starting-run=','starting-event=','totalevents=',
-         'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=',
-         'only-sites=', 'store-fail=','workflow_tag='
+valid = ['py-cfg=', 'version=',
+         'indexdir=', 'lfnbase='
          ]
 
-usage = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
+usage = "Usage: createProductionWorkflow.py --py-cfg=<cfgFile>\n"
 usage += "                                  --version=<CMSSW version>\n"
-usage += "                                  --channel=<Phys Channel/Primary Dataset>\n"
-usage += "                                  --group=<Physics Group>\n"
-usage += "                                  --category=<Production category>\n"
-usage += "                                  --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
-usage += "                                  --stageout-intermediates=<true|false>\n"
-usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
-usage += "                                  --store-fail=<true|false>. It forces the stageout \
-                                            of output files before a faild step\n"
-usage += "                                  --starting-run=<Starting lumi>\n"
-usage += "                                  --starting-event=<Starting event>\n"
-usage += "                                  --totalevents=<Total Events>\n"
-usage += "                                  --eventsperjob=<Events/job>\n"
-usage += "                                  --acquisition_era=<Acquisition Era>\n"
-usage += "                                  --conditions=<Conditions>\n"
-usage += "                                  --processing_version=<Processing version>\n"
-usage += "                                  --only-sites=<Site>\n"
-usage += "                                  --workflow_tag=<Tag in workflow name to distinguish e.g. RAW and RECO workflows for a given channel>\n"
 usage += "\n"
-usage += "You must have a scram runtime environment setup to use this tool\n"
-usage += "since it will invoke EdmConfig tools\n\n"
-usage += "Workflow Name is the name of the Workflow/Request/Primary Dataset\n"
-usage += "to be used. \n"
-usage += "It will default to the name of the cfg file if not provided\n\n"
-usage += "Production category is a marker that will be added to LFNs, \n"
-usage += "For example: PreProd, CSA06 etc etc. Defaults to mc\n"
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", valid)
@@ -67,230 +38,102 @@ except getopt.GetoptError, ex:
     print str(ex)
     sys.exit(1)
 
-cfgFiles = []
-stageoutOutputs = []
-chainedInputs = []
-physicsGroup = "Individual"
-versions = []
-category = "mc"
-channel = None
-cfgTypes = []
-activity = None
-startingRun = None
-startingEvent = None
-totalEvents = None
-eventsPerJob = None
-acquisitionEra = "Test"
-conditions = "Bad"
-processingVersion = None
-onlySites=None
-storeFail = False
-workflow_tag=None
-
-pileupDS = None
-pileupFilesPerJob = 1
-
-selectionEfficiency = None
+cfgFile = None
+version = None
+indexdir = None
 
 for opt, arg in opts:
-    if opt == "--cfg":
-        cfgFiles.append(arg)
-        cfgTypes.append("cfg")
     if opt == "--py-cfg":
-        cfgFiles.append(arg)
-        cfgTypes.append("python")
+        cfgFile = arg
     if opt == "--version":
-        versions.append(arg)
-    if opt == "--stageout-intermediates":
-        if arg.lower() in ("true", "yes"):
-            stageoutOutputs.append(True)
-        else:
-            stageoutOutputs.append(False)
-    if opt == '--chained-input':
-        chainedInputs.append([x.strip() for x in arg.split(',') if x!=''])
-    if opt == "--category":
-        category = arg
-    if opt == "--channel":
-        channel = arg
-    if opt == "--group":
-        physicsGroup = arg
-    if opt == "--starting-run":
-        startingRun = arg
-    if opt == "--starting-event":
-        startingEvent = arg
-    if opt == "--totalevents":
-        totalEvents = arg
-    if opt == "--eventsperjob":
-        eventsPerJob = arg
-    if opt == "--acquisition_era":
-        acquisitionEra = arg
-    if opt == "--conditions":
-        conditions = arg
-    if opt == "--processing_version":
-        processingVersion = arg
-    if opt == '--only-sites':
-        onlySites = arg
-
-    if opt == "--selection-efficiency":
-        selectionEfficiency = arg
-
-    if opt == '--pileup-dataset':
-        pileupDS = arg
-    if opt == '--pileup-files-per-job':
-        pileupFilesPerJob = arg
-    if opt == '--activity':
-        activity = arg
-    if opt == '--store-fail':
-        if arg.lower() in ("true", "yes"):
-            storeFail = True
-        else:
-            storeFail = False
-
-    if opt == '--workflow_tag':
-        workflow_tag = arg
+        version = arg
+    if opt == "--indexdir":
+        indexdir = arg
+    if opt == "--lfnbase":
+        lfnbase = arg
     
-if len(cfgFiles) == 0:
+if cfgFile == None:
     msg = "--cfg option not provided: This is required"
     raise RuntimeError, msg
-elif len(cfgFiles) > 1:
-    print "%s cfgs listed - chaining them" % len(cfgFiles)
-if versions == []:
+if version == None:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
-if len(versions) != len(cfgFiles):
-    msg = "Need same number of --cfg and --version arguments"
+if indexdir == None:
+    msg = "--indexdir option not provided: This is required"
     raise RuntimeError, msg
-if len(stageoutOutputs) != len(cfgFiles) - 1:
-    msg = "Need one less --stageout-intermediates than --cfg arguments"
-    raise RuntimeError, msg
-if len(chainedInputs) and len(chainedInputs) != len(cfgFiles) - 1:
-    msg = "Need one less chained-input than --cfg arguments"
+if lfnbase == None:
+    msg = "--lfnbase option not provided: This is required"
     raise RuntimeError, msg
 
-if channel == None:
-    msg = "--channel option not provided: This is required"
+if not os.path.exists(cfgFile):
+    msg = "Cfg File Not Found: %s" % cfgFile
     raise RuntimeError, msg
 
-#  //
-# // Set requestId and label
-#//
-requestId = "%s-%s" % (os.environ['USER'], int(time.time()))
-label=acquisitionEra
 
-for cfgFile in cfgFiles:
-    if not os.path.exists(cfgFile):
-        msg = "Cfg File Not Found: %s" % cfgFile
-        raise RuntimeError, msg
+#
+# create workflow
+#
 
-#  //
-# // Set CMSSW_SEARCH_PATH 
-#//
-origcmsswsearch=os.environ.get("CMSSW_SEARCH_PATH", None)
-if not origcmsswsearch:
-   msg = "CMSSW_SEARCH_PATH not set....you need CMSSW environment "
-   raise RuntimeError, msg
-cmsswsearch="/:%s"%origcmsswsearch
-os.environ["CMSSW_SEARCH_PATH"]=cmsswsearch
+workflowName = "Tier0MCFeeder-%d" % int(time.time())
+scramArch = "slc4_ia32_gcc345"
+cmsPath = "/afs/cern.ch/cms/sw"
 
-#  //
-# // Instantiate a WorkflowMaker
-#//
-maker = WorkflowMaker(requestId, channel, label )
-maker.setPhysicsGroup(physicsGroup)
-maker.changeCategory(category)
+workflow = WorkflowSpec()
+workflow.setWorkflowName(workflowName)
+workflow.setRequestCategory("mc")
+workflow.setRequestTimestamp(int(time.time()))
+workflow.parameters["WorkflowType"] = "Processing"
+workflow.parameters["CMSSWVersion"] = version
+workflow.parameters["ScramArch"] = scramArch
+workflow.parameters["CMSPath"] = cmsPath
 
-if selectionEfficiency != None:
-    maker.addSelectionEfficiency(selectionEfficiency)
+# needed for streamed index stageout
+workflow.parameters['StreamerIndexDir'] = indexdir
 
-# loop over cfg's provided and add to workflow
-# first cmsRun node created implicitly by WorkflowMaker
-nodeNumber = 0
-for cfgFile in cfgFiles:
+cmsRunNode = workflow.payload
+cmsRunNode.name = "cmsRun1"
+cmsRunNode.type = "CMSSW"
+cmsRunNode.application["Version"] = version
+cmsRunNode.application["Executable"] = "cmsRun"
+cmsRunNode.application["Project"] = "CMSSW"
+cmsRunNode.application["Architecture"] = scramArch
 
-    if cfgTypes[nodeNumber] == "cfg":
-        from FWCore.ParameterSet.Config import include
-        cmsCfg = include(cfgFile) 
-    else:
-        import imp
-        modRef = imp.load_source( os.path.basename(cfgFile).replace(".py", ""),  cfgFile)
-        cmsCfg = modRef.process
-    
-    cfgWrapper = CMSSWConfig()
-    cfgInt = cfgWrapper.loadConfiguration(cmsCfg)
-    cfgInt.validateForProduction()
+# special runtime script
+cmsRunNode.scriptControls["PostExe"].append(
+    "JobCreator.RuntimeTools.RuntimeStreamerToFJR"
+    )
 
-    if nodeNumber:
-        try:
-            inputModules = chainedInputs[nodeNumber-1]
-        except IndexError:
-            inputModules = []
-        maker.chainCmsRunNode(stageoutOutputs[nodeNumber-1], *inputModules)
+#
+# build the configuration template for the workflow
+#
+loader = CMSSWAPILoader(scramArch, version, cmsPath)
 
-    maker.cmsRunNodes[nodeNumber].scriptControls["PostExe"].append(
-            "JobCreator.RuntimeTools.RuntimeStreamerToFJR"
-            )
+try:
+    loader.load()
+except Exception, ex:
+    msg = "Couldn't load CMSSW libraries: %s" % ex
+    raise RuntimeError, msg
 
+loadedModule = imp.load_source( os.path.basename(cfgFile).replace(".py", ""), cfgFile )
 
+cmsRunNode.cfgInterface = CMSSWConfig()
+loadedConfig = cmsRunNode.cfgInterface.loadConfiguration(loadedModule.process)
+loadedConfig.validateForProduction()
 
-    maker.setCMSSWVersion(versions[nodeNumber])
-    maker.setConfiguration(cfgWrapper, Type = "instance")
-    maker.setOriginalCfg(file(cfgFile).read())
-    maker.setPSetHash(WorkflowTools.createPSetHash(cfgFile))
+loader.unload()
 
-    nodeNumber += 1
+# generate Dataset information for workflow from cfgInterface
+for moduleName,outMod in cmsRunNode.cfgInterface.outputModules.items():
 
-#  //
-# // Pileup sample?
-#//
-if pileupDS != None:
-    maker.addPileupDataset( pileupDS, pileupFilesPerJob)
+    outMod["LFNBase"] = lfnbase
+    outMod["logicalFileName"] = os.path.join(
+        lfnbase, "%s.root" % moduleName
+        )
 
-maker.changeCategory(category)
-maker.setNamingConventionParameters(acquisitionEra, None, processingVersion)
+WorkflowTools.addStageOutNode(cmsRunNode, "stageOut1")
 
-maker.workflow.parameters['Conditions'] = conditions
+workflow.save("%s-Workflow.xml" % workflowName)
 
-spec = maker.makeWorkflow()
-
-maker.workflow.parameters['MergedLFNBase'] = "/T0/hufnagel/"
-maker.workflow.parameters['UnmergedLFNBase'] = maker.workflow.parameters['MergedLFNBase']
-
-maker.workflow.parameters['StreamerIndexDir'] = "vocms13:/data/hufnagel/parepack/StreamerIndexDir"
-
-if activity is not None:
-    spec.setActivity(activity)
-if totalEvents is not None :
-    spec.parameters['TotalEvents']=totalEvents
-else :
-    print "Warning: totalEvents parameter is not set!"
-if eventsPerJob is not None :
-    spec.parameters['EventsPerJob']=eventsPerJob
-else :
-    print "Warning: EventsPerJob parameter is not set!"
-if startingRun is not None :
-    spec.parameters['InitialRun']=startingRun
-else :
-    print "Warning: InitialRun (lumi) parameter is not set!"
-if startingEvent is not None :
-    spec.parameters['InitialEvent']=startingEvent
-else :
-    print "Warning: InitialEvent parameter is not set!"
-if onlySites is not None:
-    spec.parameters['OnlySites']=onlySites
-if storeFail :
-    spec.parameters['UseStoreFail'] = "True"
-
-spec.save("%s-Workflow.xml" % maker.workflowName)
-
-print "Created: %s-Workflow.xml" % maker.workflowName
+print "Created: %s-Workflow.xml" % workflowName
 print "From: %s " % cfgFile
-print "Output Datasets:"
-[ sys.stdout.write(
-     "/%s/%s/%s\n" % (
-       x['PrimaryDataset'],
-       x['ProcessedDataset'],
-       x['DataTier'])) for x in spec.outputDatasets()]
-
-
-
 
