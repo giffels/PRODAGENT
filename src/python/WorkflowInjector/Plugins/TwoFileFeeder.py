@@ -34,8 +34,53 @@ from WorkflowInjector.PluginInterface import PluginInterface
 from WorkflowInjector.Registry import registerPlugin
 
 from ProdCommon.JobFactory.ReRecoJobFactory import ReRecoJobFactory
+from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
+from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
+
+from JobQueue.JobQueueDB import JobQueueDB
+
+
+
+def getLocalDBSURL():
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    try:
+        dbsConfig = config.getConfig("LocalDBS")
+    except StandardError, ex:
+        msg = "Error reading configuration for LocalDBS:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    return dbsConfig.get("DBSURL", None)
+
+
+def getGlobalDBSURL():
+    try:
+        config = loadProdAgentConfiguration()
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+                                                                                                                                 
+    try:
+        dbsConfig = config.getConfig("GlobalDBSDLS")
+    except StandardError, ex:
+        msg = "Error reading configuration for GlobalDBSDLS:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+                                                                                                                                 
+    return dbsConfig.get("ReadDBSURL", None)
 
 
 class PersistencyFile:
@@ -62,6 +107,7 @@ class TwoFileFeeder(PluginInterface):
         self.workflow = None
         self.dbsUrl = None
         self.blocks = []
+        self.sites = None
         self.workflowFile = payload
         self.onlyClosedBlocks = False
         self.providedOnlyBlocks = None
@@ -69,9 +115,22 @@ class TwoFileFeeder(PluginInterface):
 
         self.publishNewDataset(self.workflowFile)
 
-        logging.debug("Looking for new blocks:")
-        self.makeBlockList(self.onlyClosedBlocks, 
+        msg = "\n======================================================"
+        msg += "\nImporting input dataset along with his beloved mother:"
+        msg += "\n======================================================"
+        logging.info(msg)
+
+        self.importDataset()
+
+        msg = "\nDataset importing completed. Now I'm invoking makeBlockList..."
+        logging.info(msg)
+
+        self.makeBlockList(self.onlyClosedBlocks, sites=self.sites, 
             providedOnlyBlocks=self.providedOnlyBlocks)
+
+        msg = "Processing the following list of blocks: %s" % \
+            self.workflow.parameters['OnlyBlocks']
+        logging.debug(msg)
 
         factory = ReRecoJobFactory(self.workflow,
                                    self.workingDir,
@@ -99,6 +158,11 @@ class TwoFileFeeder(PluginInterface):
         """
         _loadPayloads_
 
+        1. Load persistency file.
+        2. If OnlySites available in workflow:
+         a. Check that all the sites are known by the Resource Control DB.
+         b. Create list of target sites.
+        3. Load Global DBS from workflow if not present, load it from config.
 
         """
         self.workflow = self.loadWorkflow(workflowFile)
@@ -116,6 +180,31 @@ class TwoFileFeeder(PluginInterface):
             handle = open(self.persistFile, 'r')
             self.persistData = pickle.load(handle)
             handle.close()
+
+        #  //
+        # // Validating OnlySites List
+        #//
+        missingSitesList = self.missingSites()
+        if missingSitesList:
+            msg = "Error: Site(s) "
+            msg += "%s" % ", ".join(missingSitesList)
+            msg += " in OnlySites restriction is (are) not present in Resource"
+            msg += " Control DB."
+            raise RuntimeError, msg
+
+        siteRestriction = self.workflow.parameters.get("OnlySites", None)
+        if siteRestriction != None:
+            #  //
+            # // restriction on sites present, populate allowedSites list
+            #//
+            self.sites = []
+            msg = "Site restriction provided in Workflow Spec:\n"
+            msg += "%s\n" % siteRestriction
+            logging.info(msg)
+            siteList = [x for x in siteRestriction.split(",") if x.strip()]
+            for site in siteList:
+                if len(site.strip()) > 0:
+                    self.sites.append(site.strip())
 
         #  //
         # // New workflow?  If so, publish it
@@ -146,12 +235,23 @@ class TwoFileFeeder(PluginInterface):
             self.dbsUrl = value
 
         if self.dbsUrl == None:
-            msg = "Error: No DBSURL available for set:\n"
-            msg += "Cant get local DBSURL and one not provided with workflow"
-            logging.error(msg)
-            raise RuntimeError, msg
-
-
+            try:
+                self.dbsUrl = getGlobalDBSURL() 
+                msg = "\n============================"
+                msg += "\nDBS URL not provided in the Workflow."
+                msg += "\nUsing Global DBS from $PRODAGENT_CONFIG."
+                msg += "\n"
+                msg += "\nTarget DBSURL = %s\n" % self.dbsUrl
+                msg += "\n============================\n"
+                logging.info(msg)
+            except Exception, ex:
+                msg = "\n============================"
+                msg += "\nDBS URL not provided in the Workflow."
+                msg += "\nGlobal DBS can't be loaded from $PRODAGENT_CONFIG."
+                msg += "\nError: %s" % ex
+                msg += "\n============================"
+                logging.error(msg)
+                raise RuntimeError, msg
 
         return
 
@@ -180,10 +280,12 @@ class TwoFileFeeder(PluginInterface):
             newBlocks = dbsBlocks
         
         #  //
-        # // Sites restriction is not curently used in this plugin.
+        # // Check if blocks are present in the sites. The filter them by site.
         #//
-        if sites is not None:    
+        if sites is not None: 
             blocksAtSites = []
+            msg = "Filtering blocks using OnlySites restriction..."
+            logging.info(msg)
             for block in newBlocks:
                 for location in reader.listFileBlockLocation(block):
                     if location in sites:
@@ -258,6 +360,114 @@ class TwoFileFeeder(PluginInterface):
 
         return inputDataset.name()
 
+
+    def missingSites(self):
+        """
+        This method will return:
+        - []: if all the sites in the OnlySites restriction provided in the
+                the workflow are in the ResourceControlDB. If the OnlySites
+                list is empty, it will return True.
+        - [sites,not,found]: if any of the sites provided in the OnlySites 
+                 restriction is not in the ResourceControlDB
+        """
+        onlySites = self.workflow.parameters.get("OnlySites", None)
+        
+        # The list is empty, exiting.
+        if onlySites in (None, "none", "None", ""):
+            return []
+
+        # Verifying sites
+        jobQueueDB = JobQueueDB()
+        missingSites = []
+        for site in onlySites.split(","):
+            if site.strip() and \
+                not jobQueueDB.getSiteIndex(site.strip()):
+                missingSites.append(site)
+        return missingSites
+
+
+    def importDataset(self):
+        """
+        _importDataset_
+
+        Import the Input Dataset contents and inject it into the DB. Also scan
+        the input Dataset's blocks looking for all the First level dataset
+        parents.
+
+        """
+        
+        #  //
+        # // Getting Local and Global DBS URLs
+        #//
+        localDBS = getLocalDBSURL()
+        dbsWriter = DBSWriter(localDBS)
+        globalDBS = self.dbsUrl
+        reader = DBSReader(self.dbsUrl)
+
+        # Blocks to process
+        blocks = reader.listFileBlocks(
+            self.inputDataset(),
+            self.onlyClosedBlocks
+            )
+
+        # direyes: Since this is the TwoFileFeeder, I think it's ok if we
+        # always import the input dataset and its possible direct parents.
+        # I am considreing the fact that some block might have multiple
+        # parents.
+        #msg = "LOOKING FOR INPUT DATASET'S PARENTS USING BLOCK PARENTAGE"
+        #msg += "\nI am figuring out which datasets should be imported..."
+        #msg += "So, I am scanning all the input dataset's blocks looking for"
+        #msg += " possible parents."
+        #logging.info(msg)
+        #parentDatasetsDict = {}
+        #for block in blocks:
+        #    parentBlocks = reader.dbs.listBlockParents(block)
+        #    for parentBlock in parentBlocks:
+        #        parentDatasetsDict[parentBlock.get('Path', None)] = None
+        #parentDatasets = \
+        #    [x for x in parentDatasetsDict.keys() if x not in ('', None)]
+
+        # This is a workaround that can be used as a patch for 0_12_15, it's
+        # long to temporal
+        if blocks:
+            parentBlock = reader.dbs.listBlockParents(blocks[0])
+            parentDataset = ""
+            if parentBlock:
+                parentDataset = parentBlock[0]['Path']
+            logging.debug("And the Mother of the input dataset is:\n%s" % \
+                parentDataset)
+        else:
+            msg = "Input dataset: %s is empty" % self.inputDataset()
+            logging.error(msg)
+            raise RuntimeError, msg
+
+        importList = [self.inputDataset()]
+
+        if parentDataset:
+            importList.insert(0, parentDataset) 
+
+        msg = "\n=========================================="
+        msg += "\nThe following dataset(s) will be imported:"
+        msg += "\n\n%s" % "\n".join(importList)
+        msg += "\n\n=========================================="
+        logging.info(msg)
+
+        for dataset in importList:
+            try:
+                dbsWriter.importDataset(
+                    globalDBS,
+                    dataset,
+                    localDBS,
+                    True
+                    )
+            except Exception, ex:
+                msg = "Error importing dataset to be processed into local DBS\n"
+                msg += "Source Dataset: %s\n" % dataset
+                msg += "Source DBS: %s\n" % globalDBS
+                msg += "Destination DBS: %s\n" % localDBS
+                msg += str(ex)
+                logging.error(msg)
+                raise RuntimeError, msg
 
 
 registerPlugin(TwoFileFeeder, TwoFileFeeder.__name__)
