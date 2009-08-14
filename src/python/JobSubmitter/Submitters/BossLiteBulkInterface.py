@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.43 2009/01/30 10:00:37 gcodispo Exp $"
-__version__ = "$Revision: 1.43 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.44 2009/02/03 14:47:36 gcodispo Exp $"
+__version__ = "$Revision: 1.44 $"
 
 import os
 import logging
@@ -141,10 +141,10 @@ fi
         self.workflowName = None
         self.workingDir = None
         self.taskName = None
-
+        self.prodAgentName = None
 
     def doSubmit(self):
-        """r
+        """
         __doSubmit__
 
         Perform bulk or single submission as needed based on the class data
@@ -185,6 +185,7 @@ fi
 
         # // specific submission parameters
         self.workflowName = self.primarySpecInstance.payload.workflow
+        self.prodAgentName = self.primarySpecInstance.parameters['ProdAgentName']
         self.mainJobSpecName = self.primarySpecInstance.parameters['JobName']
         self.mainSandbox = \
                    self.primarySpecInstance.parameters['BulkInputSandbox']
@@ -487,13 +488,11 @@ fi
         #//   according to user provided configuration files
         logging.info("Building up scheduler configuration")
         schedulerConfig = self.getSchedulerConfig()
+        schedulerConfig['name'] = self.scheduler
 
         #  // build scheduler session, which also checks proxy validity
         # //  an exception raised will stop the submission
         try:
-            schedulerCladFile = self.getSchedulerConfig()
-            schedulerConfig = { 'name' : self.scheduler,
-                                'config' : schedulerCladFile }
             schedSession = BossLiteAPISched( self.bossLiteSession, \
                                              schedulerConfig )
 
