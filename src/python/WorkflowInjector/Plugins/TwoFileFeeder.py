@@ -229,6 +229,8 @@ class TwoFileFeeder(PluginInterface):
         onlyClosedBlocks = self.workflow.parameters.get("OnlyClosedBlocks", False)
         if onlyClosedBlocks and onlyClosedBlocks.lower() == "true":
             self.onlyClosedBlocks = True
+            msg = "Only closed blocks will be processed."
+            logging.info(msg)
 
         value = self.workflow.parameters.get("DBSURL", None)
         if value != None:
@@ -270,7 +272,10 @@ class TwoFileFeeder(PluginInterface):
         4. Set OnlyBlocks parameter to intersection obtained.
         
         """
-        reader = DBSReader(self.dbsUrl)
+        #reader = DBSReader(self.dbsUrl)
+        # At this point, blocks should be in local DBS
+        localDBS = getLocalDBSURL()
+        reader = DBSReader(localDBS)
         dbsBlocks = reader.listFileBlocks(self.inputDataset(), onlyClosedBlocks)
         
         if self.persistData.blocks != []:
@@ -278,20 +283,35 @@ class TwoFileFeeder(PluginInterface):
             newBlocks = filter(remover, dbsBlocks)
         else:
             newBlocks = dbsBlocks
-        
+
         #  //
-        # // Check if blocks are present in the sites. The filter them by site.
+        # // Skipping blocks without site info
         #//
-        if sites is not None: 
-            blocksAtSites = []
-            msg = "Filtering blocks using OnlySites restriction..."
-            logging.info(msg)
-            for block in newBlocks:
-                for location in reader.listFileBlockLocation(block):
+        msg = "Filtering blocks according to Site information..."
+        logging.info(msg)
+        blocksAtSites = []
+        for block in newBlocks:
+            locations = reader.listFileBlockLocation(block)
+            if not locations:
+                msg = "\nSkipping block: "
+                msg += "No site info available for block %s " % block
+                logging.info(msg)
+            elif sites is not None:
+                locationInSites = False
+                for location in locations:
                     if location in sites:
-                        blocksAtSites.append(block)
+                        locationInSites = True
                         break
-            newBlocks = blocksAtSites
+                if locationInSites:
+                    blocksAtSites.append(block)
+                else:
+                    msg = "\nSkipping block: "
+                    msg += "Block %s has no replicas in %s" % (block,
+                        ", ".join(sites))
+                    logging.info(msg)
+            else:
+                blocksAtSites.append(block)
+        newBlocks = blocksAtSites
 
         if len(newBlocks) == 0:
             msg = "No New Blocks found for dataset\n"
@@ -317,7 +337,7 @@ class TwoFileFeeder(PluginInterface):
                     msg += " to the Whitelist"
                     logging.info(msg)
                 else:
-                    msg = "Block %s: Skiping Block %s " % (
+                    msg = "Block %s: Skipping Block %s " % (
                         blockCount, block)
                     msg += "It's no New or it has been processed"
                     msg += " already."
@@ -409,7 +429,8 @@ class TwoFileFeeder(PluginInterface):
                 globalDBS,
                 self.inputDataset(),
                 localDBS,
-                onlyClosed = True
+                onlyClosed=self.onlyClosedBlocks,
+                skipNoSiteError=True
                 )
         except Exception, ex:
             msg = "Error importing dataset to be processed into local DBS\n"

@@ -33,6 +33,7 @@ from ProdAgentCore.Configuration import loadProdAgentConfiguration
 from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
 from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
 
+from JobQueue.JobQueueDB import JobQueueDB
 
 
 
@@ -192,6 +193,17 @@ class BlockFeeder(PluginInterface):
             handle.close()
 
         #  //
+        # // Validating OnlySites List
+        #//
+        missingSitesList = self.missingSites()
+        if missingSitesList:
+            msg = "Error: Site(s) "
+            msg += "%s" % ", ".join(missingSitesList)
+            msg += " in OnlySites restriction is (are) not present in Resource"
+            msg += " Control DB."
+            raise RuntimeError, msg
+
+        #  //
         # // New workflow?  If so, publish it
         #//
         if self.persistData.run == 1:
@@ -219,6 +231,8 @@ class BlockFeeder(PluginInterface):
         onlyClosedBlocks = self.workflow.parameters.get("OnlyClosedBlocks", False)
         if onlyClosedBlocks and onlyClosedBlocks.lower() == "true":
             self.onlyClosedBlocks = True
+            msg = "Only closed blocks will be processed."
+            logging.info(msg)
         
         siteRestriction = self.workflow.parameters.get("OnlySites", None)
         if siteRestriction != None:
@@ -273,16 +287,36 @@ class BlockFeeder(PluginInterface):
             
         else:
             newBlocks = dbsBlocks
-        
-        if sites is not None:    
-            blocksAtSites = []
-            for block in newBlocks:
-                for location in reader.listFileBlockLocation(block):
-                    if location in sites:
-                        blocksAtSites.append(block)
-                        break
-            newBlocks = blocksAtSites
 
+        #  //
+        # // Skipping blocks without site info
+        #//
+        msg = "Filtering blocks according to Site information..."
+        logging.info(msg)
+        blocksAtSites = []
+        for block in newBlocks:
+            locations = reader.listFileBlockLocation(block)
+            if not locations:
+                msg = "\nSkipping block: "
+                msg += "No site info available for block %s " % block
+                logging.info(msg)
+            elif sites is not None:
+                locationInSites = False
+                for location in locations:
+                    if location in sites:
+                        locationInSites = True
+                        break
+                if locationInSites:
+                    blocksAtSites.append(block)
+                else:
+                    msg = "\nSkipping block: "
+                    msg += "Block %s has no replicas in %s" % (block,
+                        ", ".join(sites))
+                    logging.info(msg)
+            else:
+                blocksAtSites.append(block)
+        newBlocks = blocksAtSites
+        
         if len(newBlocks) == 0:
             msg = "No New Blocks found for dataset\n"
             raise RuntimeError, msg
@@ -307,7 +341,7 @@ class BlockFeeder(PluginInterface):
                     msg += " to the Whitelist"
                     logging.info(msg)
                 else:
-                    msg = "Block %s: Skiping Block %s " % (
+                    msg = "Block %s: Skipping Block %s " % (
                         blockCount, block)
                     msg += "It's no New or it has been processed"
                     msg += " already."
@@ -350,6 +384,30 @@ class BlockFeeder(PluginInterface):
         return inputDataset.name()
 
 
+    def missingSites(self):
+        """
+        This method will return:
+        - []: if all the sites in the OnlySites restriction provided in the
+                the workflow are in the ResourceControlDB. If the OnlySites
+                list is empty, it will return True.
+        - [sites,not,found]: if any of the sites provided in the OnlySites 
+                 restriction is not in the ResourceControlDB
+        """
+        onlySites = self.workflow.parameters.get("OnlySites", None)
+
+        # The list is empty, exiting.
+        if onlySites in (None, "none", "None", ""):
+            return []
+
+        # Verifying sites
+        jobQueueDB = JobQueueDB()
+        missingSites = []
+        for site in onlySites.split(","):
+            if site.strip() and \
+                not jobQueueDB.getSiteIndex(site.strip()):
+                missingSites.append(site)
+        return missingSites
+
 
     def importDataset(self):
         """
@@ -371,7 +429,8 @@ class BlockFeeder(PluginInterface):
                 globalDBS,
                 self.inputDataset(),
                 localDBS,
-                True
+                onlyClosed=self.onlyClosedBlocks,
+                skipNoSiteError=True
                 )
         except Exception, ex:
             msg = "Error importing dataset to be processed into local DBS\n"
