@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.45 2009/08/14 10:42:39 gcodispo Exp $"
-__version__ = "$Revision: 1.45 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.46 2009/08/14 12:37:51 gcodispo Exp $"
+__version__ = "$Revision: 1.46 $"
 
 import os
 import logging
@@ -650,9 +650,9 @@ fi
             dashboardInfo['GridJobID'] = job.runningJob['schedulerId']
             dashboardInfo['SubTimeStamp'] = job.runningJob['submissionTime']
             dashboardInfo['RBname'] = job.runningJob['service']
-            dashboardInfo.addDestination(
-                self.usingDashboard['address'], self.usingDashboard['port']
-                )
+            dashboardInfo.addDestination( self.usingDashboard['address'],
+                                          int( self.usingDashboard['port'] )
+                                          )
 
             # update dashboard info file
             try:

@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.62 2009/03/13 12:00:27 gcodispo Exp $"
-__version__ = "$Revision: 1.62 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.63 2009/08/14 12:37:52 gcodispo Exp $"
+__version__ = "$Revision: 1.63 $"
 
 import os
 import os.path
@@ -439,8 +439,8 @@ class TrackingComponent:
             dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
             dashboardInfo['User'] = task['name'].split('_')[0]
             dashboardInfo['TaskType'] =  'analysis'
-            dashboardInfo.addDestination(self.usingDashboard['address'],
-                                         self.usingDashboard['port'])
+            dashboardInfo.addDestination( self.usingDashboard['address'],
+                                          int(self.usingDashboard['port']) )
 
         # otherwise, ProdAgent job: everything is stored in the file
         else:
