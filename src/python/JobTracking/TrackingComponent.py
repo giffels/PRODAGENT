@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.61 2009/02/09 09:56:20 gcodispo Exp $"
-__version__ = "$Revision: 1.61 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.62 2009/03/13 12:00:27 gcodispo Exp $"
+__version__ = "$Revision: 1.62 $"
 
 import os
 import os.path
@@ -71,7 +71,7 @@ class TrackingComponent:
         self.args.setdefault("dashboardInfo", \
                              {'use' : 'True', \
                               'address' : 'cms-jobmon.cern.ch', \
-                              'port' : '8884'})
+                              'port' : 8884})
         self.args.setdefault("TimeOutEvent", None)
         self.args.setdefault("TimeOut", 12)
         self.args.update(args)
@@ -456,7 +456,7 @@ class TrackingComponent:
                               + str(job['jobId']) + ")\n" + str(msg))
                 return
             if not dashboardInfo.destinations.has_key('cms-pamon.cern.ch'):
-                dashboardInfo.addDestination('cms-pamon.cern.ch', '8884')
+                dashboardInfo.addDestination('cms-pamon.cern.ch', 8884)
 
         # write dashboard information
         dashboardInfo['GridJobID'] = job.runningJob['schedulerId']

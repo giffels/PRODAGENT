@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.44 2009/02/03 14:47:36 gcodispo Exp $"
-__version__ = "$Revision: 1.44 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.45 2009/08/14 10:42:39 gcodispo Exp $"
+__version__ = "$Revision: 1.45 $"
 
 import os
 import logging
@@ -162,7 +162,7 @@ fi
         # // check for dashboard usage
         self.usingDashboard = {'use' : 'True', \
                                'address' : 'cms-pamon.cern.ch', \
-                               'port' : '8884'}
+                               'port' : 8884}
         try:
             dashboardCfg = self.pluginConfig.get('Dashboard', {})
             self.usingDashboard['use'] = dashboardCfg.get(
