@@ -16,7 +16,6 @@ import SoupKitchen
 import BlockFeeder
 import OfflineDQM
 import OfflineDQMPerRun
-import ReRecoFeeder
 import ADSFeeder
 import TwoFileFeeder
 import ResultsFeeder
