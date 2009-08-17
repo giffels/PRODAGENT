@@ -6,8 +6,8 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.4 2009/03/17 14:11:59 gcodispo Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.5 2009/08/14 10:42:39 gcodispo Exp $"
+__version__ = "$Revision: 1.5 $"
 
 import os
 import logging
@@ -37,7 +37,7 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
         retrieve configuration info for the BossLite scheduler
         """
 
-        schedulerConfig = []
+        schedulerConfig = {}
         schedulerConfig['name'] = self.scheduler
 
         if not 'WMSconfig' in self.pluginConfig['GLITE'].keys() or \
