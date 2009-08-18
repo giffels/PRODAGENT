@@ -141,20 +141,28 @@ class ARCMonitor(MonitorInterface):
         if cache and currTime - cache["time"] < 60:
             r = cache["isup"]
             msg = " (Cached)"
+            errormsg = cache["errormsg"]
         else:
             # FIXME: Is this the best way to do it? What about XRoot?
             cmd = "srmls srm://%s:8443/pnfs/csc.fi/data/cms/" % SEName
             cmd += " -retry_num=0 -recursion_depth=0"
-            logging.debug("Executing command '%s'" % cmd)
 
-            r = (os.system(cmd + " > /dev/null 2>&1") == 0)
-            SEStatusCache[SEName] = {"time": currTime, "isup": r}
+            try:
+                ARC.executeCommand(cmd)
+            except ARC.CommandExecutionError, e:
+                r = False
+                errormesg = str(e)
+            else:
+                r = True
+                errormesg = ""
+
+            SEStatusCache[SEName] = {"time": currTime, "isup": r, "errormsg": errormsg}
             msg = ""
 
         if r:
-            logging.info("SE " + SEName + " is UP" + msg)
+            logging.info("SE " + SEName + " is up" + msg)
         else:
-            logging.info("SE " + SEName + " is DOWN!!!" + msg)
+            logging.warning("No response from SE %s !! \"%s\" %s", (SEName, errormsg, msg))
 
         return r
 
