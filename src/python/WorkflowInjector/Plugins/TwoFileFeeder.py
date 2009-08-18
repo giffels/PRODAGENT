@@ -113,14 +113,17 @@ class TwoFileFeeder(PluginInterface):
         self.providedOnlyBlocks = None
         self.loadPayloads(self.workflowFile)
 
-        self.publishNewDataset(self.workflowFile)
-
         msg = "\n======================================================"
         msg += "\nImporting input dataset along with his beloved mother:"
         msg += "\n======================================================"
         logging.info(msg)
 
         self.importDataset()
+
+        msg = "\nDataset importing completed. Now I'm publishing NewDataset..."
+        logging.info(msg)
+        
+        self.publishNewDataset(self.workflowFile)
 
         msg = "\nDataset importing completed. Now I'm invoking makeBlockList..."
         logging.info(msg)
