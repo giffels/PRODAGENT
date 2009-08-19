@@ -70,7 +70,8 @@ class RequestFeeder(PluginInterface):
             InitialRun = self.initialRun,
             InitialEvent = self.initialEvent,
             OverrideFirstEvent = self.overrideInitialEvent,
-            EventsPerJob = self.eventsPerJob)
+            EventsPerJob = self.eventsPerJob,
+            Sites = self.sites)
         jobsList = factory()
 
         bulkQueueJobs(self.sites, *jobsList)
