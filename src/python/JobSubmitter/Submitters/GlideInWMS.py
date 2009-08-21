@@ -15,7 +15,7 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.9 2008/10/20 18:12:05 gutsche Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.10 2008/10/21 15:52:21 gutsche Exp $"
 
 import os
 import logging
@@ -53,6 +53,7 @@ class GlideInWMS(BulkSubmitterInterface):
         Perform bulk or single submission as needed based on the class data
         populated by the component that is invoking this plugin
         """
+
         logging.debug("%s" % self.primarySpecInstance.parameters)
         self.workflowName = self.primarySpecInstance.payload.workflow
         self.mainJobSpecName = self.primarySpecInstance.parameters['JobName']
@@ -130,7 +131,7 @@ class GlideInWMS(BulkSubmitterInterface):
         # // Start the JDL for this batch of jobs
         #//
         self.jdl = self.initJDL()
-        
+        failureList = []
         for jobSpec, cacheDir in self.toSubmit.items():
             logging.debug("Submit: %s from %s" % (jobSpec, cacheDir) )
             logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
@@ -157,8 +158,21 @@ class GlideInWMS(BulkSubmitterInterface):
 
         condorSubmit = "condor_submit %s" % jdlFile
         logging.debug("GlideInWMS.doSubmit: %s" % condorSubmit)
-        output = self.executeCommand(condorSubmit)
-        logging.info("GlideInWMS.doSubmit: %s " % output)
+        logging.debug("hacked to get around condor submitt failures.. jen")
+
+        try:
+           output = self.executeCommand(condorSubmit)
+           logging.info("GlideInWMS.doSubmit: %s " % output)
+        except RuntimeError, err:
+           # hopefully when condor_submit fails on bulk submission all jobs fail
+           for jobSpec, cacheDir in self.toSubmit.items():
+               #logging.debug("... appending to failure list %s" % jobSpec )
+               failureList.append(jobSpec)
+
+        if len(failureList) > 0:
+            raise JSException("Submission Failed", FailureList = failureList)
+            #logging.debug("---> FailureList size = %s " % len(failureList))
+                       
         return
 
 
