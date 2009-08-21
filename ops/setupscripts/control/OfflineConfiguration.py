@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.17 2009/07/29 18:45:37 dmason Exp $"
-__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.18 2009/08/07 22:21:39 dmason Exp $"
+__version__ = "$Revision: 1.18 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -24,8 +24,8 @@ tier0Config = createTier0Config()
 # Set global parameters like the acquisition era and the version of
 # the configuration.
 #setAcquisitionEra(tier0Config, "HAPPYHAPPYWARMFUZZY_T0TEST_WITHBUNNIESDANCINGAROUND")
-#setAcquisitionEra(tier0Config, "Commissioning09")
-setAcquisitionEra(tier0Config, "CRAFT09")
+setAcquisitionEra(tier0Config, "Commissioning09")
+#setAcquisitionEra(tier0Config, "CRAFT09")
 #setAcquisitionEra(tier0Config, "AllRunsTest")
 setConfigVersion(tier0Config, __version__)
 
@@ -65,22 +65,25 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_3_2_3"
+defaultRecoVersion = "CMSSW_3_2_4_patch1"
 #defaultRecoVersion = "CMSSW_3_2_1"
 defaultAlcaVersion = defaultRecoVersion
 defaultDQMVersion = defaultRecoVersion
 
 
-defaultProcVersion = "v1"
+defaultProcVersion = "v3"
 #repackProcVersion = defaultProcVersion
-expressProcVersion = "v1"
-recoProcVersion = "v1"
+expressProcVersion = "v6"
+recoProcVersion = "v7"
 #recoProcVersion = defaultProcVersion
 #defaultGlobalTag = "CRAFT_V18P::All"
 
 #31X
-defaultGlobalTag = "GR09_31X_V6P::All"
-
+#defaultGlobalTag = "GR09_31X_V6P::All"
+defaultGlobalTag = "GR09_E_V1::All"
+expressGlobalTag = defaultGlobalTag
+promptrecoGlobalTag = "GR09_P_V1::All"
+#
 # Create a dictionary that associates a reco configuration with a scenario.
 # The configuration must be specified as a url.
 recoConfig = {}
@@ -144,7 +147,7 @@ addDataset(tier0Config, "Default",
 # datasets will be reconstructed.
 addDataset(tier0Config, "Calo",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = defaultGlobalTag,
+           do_reco = True, global_tag = promptrecoGlobalTag,
            reco_proc_ver = recoProcVersion,
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
@@ -152,12 +155,12 @@ addDataset(tier0Config, "Calo",
            do_alca = True, alca_version= defaultAlcaVersion,
            alca_proc_ver = recoProcVersion,
            alca_configuration=alcaConfig["calo"],
-#          custodial_node = "T1_FR_CCIN2P3_MSS",
-           custodial_node = "T1_UK_RAL_MSS",
+           custodial_node = "T1_FR_CCIN2P3_MSS",
+#           custodial_node = "T1_UK_RAL_MSS",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config, "Cosmics",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = defaultGlobalTag,
+           do_reco = True, global_tag = promptrecoGlobalTag,
            reco_configuration = recoConfig["cosmics"],
            reco_proc_ver = recoProcVersion,
            reco_version = defaultRecoVersion,
@@ -170,7 +173,7 @@ addDataset(tier0Config, "Cosmics",
            )
 addDataset(tier0Config, "MinimumBias",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = defaultGlobalTag,
+           do_reco = True, global_tag = promptrecoGlobalTag,
            reco_proc_ver = recoProcVersion,
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
@@ -178,7 +181,7 @@ addDataset(tier0Config, "MinimumBias",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config, "MinimumBiasNoCalo",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = defaultGlobalTag,
+           do_reco = True, global_tag = promptrecoGlobalTag,
            reco_proc_ver = recoProcVersion,
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
@@ -186,7 +189,7 @@ addDataset(tier0Config, "MinimumBiasNoCalo",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,  "Monitor",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = False, global_tag = defaultGlobalTag,
+           do_reco = False, global_tag = promptrecoGlobalTag,
            reco_configuration = recoConfig["cosmics"],
            reco_version = defaultRecoVersion,
            reco_proc_ver = recoProcVersion,
@@ -196,15 +199,15 @@ addDataset(tier0Config,  "Monitor",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"HcalHPDNoise",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = False, global_tag = defaultGlobalTag,
+           do_reco = False, global_tag = promptrecoGlobalTag,
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"RandomTriggers",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = False, global_tag = defaultGlobalTag,
+           do_reco = False, global_tag = promptrecoGlobalTag,
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"AlCaP0",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = defaultGlobalTag,
+           do_reco = True, global_tag = promptrecoGlobalTag,
            reco_configuration = recoConfig["AlCaP0"],
            reco_proc_ver = recoProcVersion,
            reco_version = defaultRecoVersion,
@@ -214,7 +217,7 @@ addDataset(tier0Config,"AlCaP0",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"AlCaPhiSymEcal",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = defaultGlobalTag,
+           do_reco = True, global_tag = promptrecoGlobalTag,
            reco_configuration = recoConfig["AlCaPhiSymEcal"],
            reco_proc_ver = recoProcVersion,
            reco_version = defaultRecoVersion,
@@ -224,7 +227,7 @@ addDataset(tier0Config,"AlCaPhiSymEcal",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"AlCaPhiSymHcal",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = defaultGlobalTag,
+           do_reco = True, global_tag = promptrecoGlobalTag,
            reco_configuration = recoConfig["AlCaPhiSymHcal"],
            reco_proc_ver = recoProcVersion,
            reco_version = defaultRecoVersion,
@@ -234,11 +237,11 @@ addDataset(tier0Config,"AlCaPhiSymHcal",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"TestEnables",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = False, global_tag = defaultGlobalTag,
+           do_reco = False, global_tag = promptrecoGlobalTag,
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"EcalLaser",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = False, global_tag = defaultGlobalTag,
+           do_reco = False, global_tag = promptrecoGlobalTag,
            archival_node = "T0_CH_CERN_MSS")
 #addDataset(tier0Config, "OfflineMonitor",
 #           default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -249,7 +252,11 @@ addDataset(tier0Config,"EcalLaser",
 #           archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"RPCMonitor",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = False, global_tag = defaultGlobalTag,
+           do_reco = False, global_tag = promptrecoGlobalTag,
+           archival_node = "T0_CH_CERN_MSS")
+addDataset(tier0Config,"FEDMonitor",
+           default_proc_ver = defaultProcVersion, scenario = "cosmics",
+           do_reco = False, global_tag = promptrecoGlobalTag,
            archival_node = "T0_CH_CERN_MSS")
 
 
@@ -314,7 +321,7 @@ addExpressConfig(tier0Config, "Express",
                  proc_config = expressProcConfig["default"],
                  data_tiers = [ "FEVT", "ALCARECO" ],
                  alcamerge_config = expressMergePackConfig["default"],
-                 global_tag = defaultGlobalTag,
+                 global_tag = expressGlobalTag,
                  splitInProcessing = True,
                  proc_ver = expressProcVersion)
 
@@ -322,7 +329,7 @@ addExpressConfig(tier0Config, "HLTMON",
                  proc_config = expressProcConfig["default"],
                  data_tiers = [ "FEVTHLTALL" ],
                  #data_tiers = [ "FEVT" ],
-                 global_tag = defaultGlobalTag,
+                 global_tag = expressGlobalTag,
                  splitInProcessing = True,
                  proc_ver = expressProcVersion)
 
@@ -338,8 +345,10 @@ addExpressConfig(tier0Config, "HLTMON",
 
 
 #Mappings for 311 online running
-setExpressVersionMapping(tier0Config, "CMSSW_3_2_2", "CMSSW_3_2_3")
-setExpressVersionMapping(tier0Config, "CMSSW_3_2_1", "CMSSW_3_2_3")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_4", "CMSSW_3_2_4_patch1")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_3", "CMSSW_3_2_4_patch1")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_2", "CMSSW_3_2_4_patch1")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_1", "CMSSW_3_2_4_patch1")
 setExpressVersionMapping(tier0Config, "CMSSW_3_1_1", "CMSSW_3_1_1_patch1")
 setExpressVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_3_1_1_patch1")
 
