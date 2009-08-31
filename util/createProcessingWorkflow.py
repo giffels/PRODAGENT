@@ -5,8 +5,8 @@ _createProcessingWorkflow_
 Create a workflow that processes an input dataset with a cfg file
 
 """
-__version__ = "$Revision: 1.21 $"
-__revision__ = "$Id: createProcessingWorkflow.py,v 1.21 2009/07/14 09:33:59 direyes Exp $"
+__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: createProcessingWorkflow.py,v 1.22 2009/07/29 15:22:45 direyes Exp $"
 
 import os
 import sys
@@ -138,12 +138,6 @@ options = \
 
   --stageout-intermediates=<true|false>, Stageout intermediate files in
     chained processing
-
-  --use-proper-name sets the naming convention to be used. Default: True
-    If true, it uses proper dataset naming convention:
-    /<channel>/<acquisition_era>-<processing_string>-<processing_version>/TIER
-    If false, it uses CSA08 convention:
-    /<channel>/<acquisition_era>_<conditions>_<filter_name>_<processing_version>/TIER
 
   --version is the version of the CMSSW to be used, you should also have done
     a scram runtime setup for this version
@@ -542,8 +536,7 @@ if dbsUrl != None:
     maker.workflow.parameters['DBSURL'] = dbsUrl
 
 maker.workflow.parameters['Conditions'] = conditions
-if not useProperName:
-    maker.workflow.parameters['ProcessingVersion'] = processingVersion
+maker.workflow.parameters['ProcessingVersion'] = processingVersion
 
 maker.setOutputDatasetDbsStatus(dbsStatus)
 spec = maker.makeWorkflow()
