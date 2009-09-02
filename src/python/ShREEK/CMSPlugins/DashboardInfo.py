@@ -95,7 +95,7 @@ class DashboardInfo(dict):
         self.setdefault("NbEvPerRun", 0)
         self.setdefault("NodeName", None)
         self.setdefault("Scheduler", None)
-        self.setdefault("TaskType", "production")
+        self.setdefault("TaskType", "privateproduction")
         self.setdefault("NSteps", 0)
         self.setdefault("VO", "CMS")
         self.setdefault("TargetCE", None)
