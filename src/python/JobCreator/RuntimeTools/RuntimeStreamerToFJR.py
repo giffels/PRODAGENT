@@ -72,9 +72,14 @@ def processFrameworkJobReport():
     for outputModuleName, outputModule in state.jobSpecNode.cfgInterface.outputModules.items():
         jobReportFile = report.newFile()
 
+        runString = str(process.source.firstRun.value()).zfill(9)
         uuid = makeUUID()
 
-        jobReportFile['LFN'] = "%s/%s.dat" % (outputModule['LFNBase'], uuid)
+        jobReportFile['LFN'] = "%s/%s/%s/%s/%s.dat" % (outputModule['LFNBase'],
+                                                       runString[0:3],
+                                                       runString[3:6],
+                                                       runString[6:9],
+                                                       uuid)
         jobReportFile['PFN'] = outputModule['fileName']
         jobReportFile['Catalog'] = None
         jobReportFile['ModuleLabel'] = outputModuleName
@@ -96,11 +101,18 @@ def processFrameworkJobReport():
         jobReportFile['FileType'] = 'STREAMER'
 
         # handle streamer index file
-        streamerIndexDir = state.jobSpecNode.getParameter("StreamerIndexDir")[0]
+        baseStreamerIndexDir = state.jobSpecNode.getParameter("StreamerIndexDir")[0]
+        streamerIndexDir = "%s/%s/%s/%s" % (baseStreamerIndexDir,
+                                            runString[0:3],
+                                            runString[3:6],
+                                            runString[6:9])
         sourceIndexFile = streamerFiles[outputModuleName]['indexFileName']
         targetIndexFile = "%s/%s.ind" % (streamerIndexDir, uuid)
 
+        os.system("rfmkdir -p %s" % streamerIndexDir)
         os.system("rfcp %s %s" % (sourceIndexFile, targetIndexFile))
+
+        print "Streamer index file copied to %s" % targetIndexFile
 
         jobReportFile['StreamerIndexFile'] = targetIndexFile
 
