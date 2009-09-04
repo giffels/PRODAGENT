@@ -60,8 +60,8 @@ class T0LSFTracker(TrackerPlugin):
   
             # job not in bjobs output, look at job report for backup
             if status == None:
-                logging.debug("No LSF record for %s, checking job report" % (runId))
-                status = self.jobReportStatus(runId)
+                logging.debug("No LSF record for %s, checking job report" % (subId))
+                status = self.jobReportStatus(subId)
                 
             # if status is still None => check lsf history
             # DISABLED (lsf history is expensive and not much more history then the in memory lookup)
@@ -70,8 +70,8 @@ class T0LSFTracker(TrackerPlugin):
 
             # if status still None, declare job lost/failed
             if status == None:
-                self.TrackerDB.jobFailed(runId)
-                logging.debug("Job %s has been lost" % (runId))
+                self.TrackerDB.jobFailed(subId)
+                logging.debug("Job %s has been lost" % (subId))
 
             # if submitted do nothing
             if status == LSFStatus.submitted:
