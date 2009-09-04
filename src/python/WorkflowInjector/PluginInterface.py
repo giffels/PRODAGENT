@@ -108,6 +108,25 @@ class PluginInterface:
         self.workingDir = os.path.join(self.args['ComponentDir'],
                                        self.__class__.__name__)
 
+        #  //
+        # // Verifiying the workflow wasn't handled by another plugin.
+        #//
+        workflowName = self.loadWorkflow(payload).workflowName()
+        # Parsing list of used Plugins. Current plugin is taken out.
+        pluginCaches = [x for x in os.listdir(self.args['ComponentDir']) if \
+                os.path.isdir(os.path.join(self.args['ComponentDir'], x)) and \
+                x != self.__class__.__name__]
+        for pluginCache in pluginCaches:
+            testDir = os.path.join(self.args['ComponentDir'], pluginCache,
+                '%s-Cache' % workflowName)
+            if os.path.exists(testDir):
+                msg = "Workflow %s was already handled by %s plugin." % (
+                    payload, pluginCache)
+                msg += " Current plugin is %s." % self.__class__.__name__
+                msg += " Please change workflow's name"
+                msg += " or use the original plugin."
+                raise RuntimeError, msg
+
         self.handleInput(payload)
 
         for siteHash in self.jobsToPublish.keys():
