@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.21 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.21 2009/07/14 09:34:03 direyes Exp $"
+__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.22 2009/07/29 15:22:45 direyes Exp $"
 
 
 import os
@@ -30,7 +30,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', #"label=",
          'chained-input=', 'starting-run=','starting-event=','totalevents=',
          'eventsperjob=', 'acquisition_era=', 'conditions=', 'processing_version=',
          'only-sites=', 'store-fail=','workflow_tag=', 'processing_string=',
-         'dbs-status='
+         'dbs-status=', 'datamixer-pu-ds='
          ]
 
 usage  = "Usage: createProductionWorkflow.py --cfg=<cfgFile>\n"
@@ -43,6 +43,7 @@ usage += "                                  --group=<Physics Group>\n"
 usage += "                                  --category=<Production category>\n"
 usage += "                                  --pileup-dataset=<Input Pile Up Dataset /PrimDS/ProcDS/Tier>\n"
 usage += "                                  --pileup-files-per-job=<PileUp files per job>\n"
+usage += "                                  --datamixer-pu-ds=<Input Pile Up Dataset for DataMixing /PrimDS/ProcDS/Tier>\n"
 usage += "                                  --selection-efficiency=<Selection efficiency>\n"
 usage += "                                  --activity=<activity, i.e. Simulation, Reconstruction, Reprocessing, Skimming>\n"
 usage += "                                  --stageout-intermediates=<true|false>\n"
@@ -91,6 +92,8 @@ options = \
     for each step
 
   --conditions Deprecated
+
+  --datamixer-pu-ds input dataset for the data mixer module.
 
   --dbs-status is the status flag the output datasets will have in DBS. If
     VALID, the datasets will be accesible by the physicists, If PRODUCTION, 
@@ -174,6 +177,8 @@ dbsStatus = 'PRODUCTION'
 pileupDS = None
 pileupFilesPerJob = 1
 
+dataMixDS = None
+
 selectionEfficiency = None
 
 for opt, arg in opts:
@@ -226,6 +231,9 @@ for opt, arg in opts:
 
     if opt == "--selection-efficiency":
         selectionEfficiency = arg
+
+    if opt == '--datamixer-pu-ds':
+        dataMixDS = arg
 
     if opt == '--pileup-dataset':
         pileupDS = arg
@@ -339,7 +347,13 @@ for cfgFile in cfgFiles:
 # // Pileup sample?
 #//
 if pileupDS != None:
-    maker.addPileupDataset( pileupDS, pileupFilesPerJob)
+    maker.addPileupDataset(pileupDS, pileupFilesPerJob)
+
+#  //
+# // DataMix pileup sample?
+#//
+if dataMixDS:
+     maker.addPileupDataset(dataMixDS, 1, 'DataMixingModule')
 
 maker.changeCategory(category)
 maker.setNamingConventionParameters(acquisitionEra, processingString, processingVersion)

@@ -5,8 +5,8 @@ _createProcessingWorkflow_
 Create a workflow that processes an input dataset with a cfg file
 
 """
-__version__ = "$Revision: 1.22 $"
-__revision__ = "$Id: createProcessingWorkflow.py,v 1.22 2009/07/29 15:22:45 direyes Exp $"
+__version__ = "$Revision: 1.23 $"
+__revision__ = "$Id: createProcessingWorkflow.py,v 1.23 2009/08/31 11:06:53 direyes Exp $"
 
 import os
 import sys
@@ -30,7 +30,7 @@ valid = ['cfg=', 'py-cfg=', 'version=', 'category=', "label=",
          'activity=', 'stageout-intermediates=', 'chained-input=',
          'acquisition_era=', 'conditions=', 'processing_version=',
          'processing_string=', 'workflow_tag=', 'split-into-primary',
-         'tar-up-lib','tar-up-src', 'dbs-status='
+         'tar-up-lib','tar-up-src', 'dbs-status=', 'datamixer-pu-ds='
          ]
 
 
@@ -50,6 +50,7 @@ usage += "                                  --only-closed-blocks=<True|False>\n"
 usage += "                                  --dbs-url=<DBSUrl>\n"
 usage += "                                  --pileup-dataset=<Input Pile Up Dataset>\n"
 usage += "                                  --pileup-files-per-job=<Integer pile up files per job>\n"
+usage += "                                  --datamixer-pu-ds=<Input Pile Up Dataset for DataMixing /PrimDS/ProcDS/Tier>\n"
 usage += "                                  --override-channel=<Phys Channel/Primary Dataset>\n"
 usage += "                                  --selection-efficiency=<Selection efficiency>\n"
 usage += "                                  --activity=<activity>\n"
@@ -84,6 +85,8 @@ options = \
     for each step
 
   --conditions Deprecated. 
+
+  --datamixer-pu-ds input dataset for the data mixer module.
 
   --dataset is the input dataset to be processed
 
@@ -193,6 +196,8 @@ onlyClosedBlocks = False
 pileupDataset = None
 pileupFilesPerJob = 1
 
+dataMixDS = None
+
 activity = "PrivateReprocessing"
 
 tarupLib = False
@@ -251,6 +256,8 @@ for opt, arg in opts:
         onlySites = arg
     if opt == '--dbs-url':
         dbsUrl = arg
+    if opt == '--datamixer-pu-ds':
+        dataMixDS = arg
     if opt == '--pileup-dataset':
         pileupDataset = arg
     if opt == '--pileup-files-per-job':
@@ -514,6 +521,12 @@ maker.setNamingConventionParameters(acquisitionEra, processingString, processing
 #//
 if pileupDataset != None:
     maker.addPileupDataset(pileupDataset, pileupFilesPerJob)
+
+#  //
+# // DataMix pileup sample?
+#//
+if dataMixDS:
+     maker.addPileupDataset(dataMixDS, 1, 'DataMixingModule')
 
 #  //
 # // Input Dataset

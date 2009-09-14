@@ -5,8 +5,8 @@ _createProductionCmsGenWorkflow_
 Create a cmsGen and cmsRun workflow
 
 """
-__version__ = "$Revision: 1.14 $"
-__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.14 2009/07/14 09:34:03 direyes Exp $"
+__version__ = "$Revision: 1.15 $"
+__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.15 2009/07/29 15:22:45 direyes Exp $"
 
 
 
@@ -30,7 +30,7 @@ valid = ['cmsRunCfg=', 'cmsGenCfg=', 'version=', 'category=', "label=",
          'starting-run=', 'starting-event=', 'totalevents=', 'eventsperjob=',
          'acquisition_era=', 'conditions=', 'processing_version=',
          'processing_string=', 'workflow_tag=', 'override-initial-event=',
-         'dbs-status='
+         'dbs-status=', 'datamixer-pu-ds='
          ]
 
 usage  = "Usage: createProductionCmsGenWorkflow.py\n"
@@ -48,6 +48,7 @@ usage += "                                  --stageout-intermediates=<true|false
 usage += "                                  --chained-input=comma,separated,list,of,output,module,names\n"
 usage += "                                  --pileup-dataset=<Input pileup dataset>\n"
 usage += "                                  --pileup-files-per-job=<file per job> Default: 1\n"
+usage += "                                  --datamixer-pu-ds=<Input Pile Up Dataset for DataMixing /PrimDS/ProcDS/Tier>\n"
 usage += "                                  --only-sites=<Site>\n"
 usage += "                                  --starting-run=<Starting run>\n"
 usage += "                                  --starting-event=<Initial event>\n"
@@ -94,6 +95,8 @@ options = \
   --cmsRunCfg python configuration file
 
   --conditions Deprecated
+
+  --datamixer-pu-ds input dataset for the data mixer module.
 
   --dbs-status is the status flag the output datasets will have in DBS. If
     VALID, the datasets will be accesible by the physicists, If PRODUCTION, 
@@ -168,6 +171,7 @@ onlySites = None
 workflow_tag = None
 pileupDS = None
 pileupFilesPerJob = 1
+dataMixDS = None
 overrideInitialEvent = None
 processingString = None
 dbsStatus = 'PRODUCTION'
@@ -204,6 +208,8 @@ for opt, arg in opts:
             stageoutOutputs.append(False)
     if opt == '--chained-input':
         chainedInputs.append([x.strip() for x in arg.split(',') if x!=''])
+    if opt == '--datamixer-pu-ds':
+        dataMixDS = arg
     if opt == '--pileup-dataset':
         pileupDS = arg
     if opt == '--pileup-files-per-job':
@@ -352,6 +358,12 @@ if selectionEfficiency != None:
 #//
 if pileupDS != None:
     maker.addPileupDataset( pileupDS, pileupFilesPerJob)
+
+#  //
+# // DataMix pileup sample?
+#//
+if dataMixDS:
+     maker.addPileupDataset(dataMixDS, 1, 'DataMixingModule')
  
 spec = maker.makeWorkflow()
 
