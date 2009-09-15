@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<ProdAgentPluginConfig>
+	<PluginConfiguration>
+		<ConfigBlock Name="LCGAdvanced">
+			<Parameter Name="DumpState" Value="None"/>
+			<Parameter Name="UseFCR" Value="True"/>
+			<Parameter Name="UseSAM" Value="True"/>
+		</ConfigBlock>
+	</PluginConfiguration>
+</ProdAgentPluginConfig>
