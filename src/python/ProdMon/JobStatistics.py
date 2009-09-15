@@ -45,7 +45,7 @@ class JobStatistics(dict):
         self.setdefault("input_files", [])
         self.setdefault("request_id", None)
         self.setdefault("rc_site_index", None)
-        
+
         # for successful jobs
         self.setdefault("events_read", 0)
         self.setdefault("events_written", 0)
@@ -53,7 +53,7 @@ class JobStatistics(dict):
         self.setdefault("output_datasets", None)
         self.setdefault("output_files", [])
         self.setdefault("skipped_events", [])
-        
+
         # for failed jobs
         self.setdefault("error_type", None)
         self.setdefault("error_code", None)
@@ -61,7 +61,7 @@ class JobStatistics(dict):
 
         #performance records
         self.setdefault("performance_report", None)
-        
+
         # holds database_ids - used during insertions
         self.setdefault("database_ids", {})
 
@@ -76,14 +76,14 @@ class JobStatistics(dict):
 
         """
         try:
-            insertStats(*((self, ) + others))
+            insertStats(*((self,) + others))
         except Exception, ex:
             msg = "Unable to insert JobStatistics into DB:\n"
             msg += str(ex)
             # logging.error(msg)
             raise RuntimeError, msg
         return
-        
+
 
     def populateCommon(self, jobRepInstance):
         """
@@ -96,18 +96,18 @@ class JobStatistics(dict):
         self['task_name'] = jobRepInstance.name
         self['workflow_spec_id'] = jobRepInstance.workflowSpecId
         self['status'] = jobRepInstance.status
-        self['exit_code'] =  jobRepInstance.exitCode        
+        self['exit_code'] = jobRepInstance.exitCode
         self['job_type'] = jobRepInstance.jobType
-        
-        self['site_name'] = jobRepInstance.siteDetails.get("SiteName","Unknown")
-        self['host_name'] = jobRepInstance.siteDetails.get("HostName","Unknown")
-        self['se_name'] = jobRepInstance.siteDetails.get("se-name","Unknown")
-        self['ce_name'] = jobRepInstance.siteDetails.get("ce-name","Unknown")
-        
+
+        self['site_name'] = jobRepInstance.siteDetails.get("SiteName", "Unknown")
+        self['host_name'] = jobRepInstance.siteDetails.get("HostName", "Unknown")
+        self['se_name'] = jobRepInstance.siteDetails.get("se-name", "Unknown")
+        self['ce_name'] = jobRepInstance.siteDetails.get("ce-name", "Unknown")
+
         self['dashboard_id'] = jobRepInstance.dashboardId
-        
+
         self['performance_report'] = jobRepInstance.performance
-        
+
         # Fill in values not always in fjr
         if self["workflow_spec_id"] == None:
             self.__recordWorkflow(jobRepInstance)
@@ -115,7 +115,7 @@ class JobStatistics(dict):
             self.__recordJobType(jobRepInstance)
         if self["dashboard_id"] == None:
             self.__recordDashboardId(jobRepInstance)
-        
+
         return
 
 
@@ -130,8 +130,8 @@ class JobStatistics(dict):
         for key, value in timing.items():
             self['timing'][key] = value
         return
-    
-    
+
+
     def __str__(self):
         """string print of this object"""
         result = "JobStatistics\n"
@@ -147,9 +147,9 @@ class JobStatistics(dict):
 
         Extract the input file information from the job report instance
 
-        """        
+        """
         totalRead = 0
-        
+
         # If successful read input files from job report
         if jobRepInstance.wasSuccess():
             for infile in jobRepInstance.inputFiles:
@@ -158,15 +158,28 @@ class JobStatistics(dict):
                 if str(fileName).strip() in ("None", ""):
                     fileName = infile['PFN']
                 self["input_files"].append(str(fileName).strip())
-        
+
                 # skipped events
                 self['skipped_events'] = [(dic["Run"], dic["Event"]) for \
                                           dic in jobRepInstance.skippedEvents]
-        
+
         #  for failed merge job read from merge sensor tables
         elif jobRepInstance.jobType == "Merge":
             self.__recordMergeInputs(jobRepInstance)
-        
+
+        # failed non-merge job - files may/may not have been recorded
+        else:
+            for infile in jobRepInstance.inputFiles:
+                totalRead += int(infile['EventsRead'])
+                fileName = infile['LFN']
+                if str(fileName).strip() in ("None", ""):
+                    fileName = infile['PFN']
+                self["input_files"].append(str(fileName).strip())
+
+                # skipped events
+                self['skipped_events'] = [(dic["Run"], dic["Event"]) for \
+                                          dic in jobRepInstance.skippedEvents]
+
         self["events_read"] = totalRead
         return
 
@@ -184,7 +197,7 @@ class JobStatistics(dict):
         runs = []
         for ofile in jobRepInstance.files:
             totalWritten += int(ofile['TotalEvents'])
-            
+
             fileName = ofile['LFN']
             if str(fileName).strip() in ("None", ""):
                 fileName = ofile['PFN']
@@ -215,8 +228,8 @@ class JobStatistics(dict):
         generalInfo = Job.get(jobRepInst.jobSpecId)
         self["workflow_spec_id"] = generalInfo['workflow_id']
         return
-        
-        
+
+
     def __recordJobType(self, jobRepInst):
         """
         Set job id from db if not in jobReport
@@ -238,7 +251,7 @@ class JobStatistics(dict):
             return
         self['input_files'] = getMergeInputFiles(jobRepInst.jobSpecId)
         return
-    
+
 
     def __recordDashboardId(self, jobRepInst):
         """
@@ -255,10 +268,10 @@ class JobStatistics(dict):
         """
         get jobQ site index
         """
-        
+
         self['rc_site_index'] = getSiteForReleasedJob(jobRepInst.jobSpecId)
         return
-        
+
 
 def jobReportToJobStats(jobRepInstance):
     """
@@ -277,7 +290,7 @@ def jobReportToJobStats(jobRepInstance):
     result.recordOutputs(jobRepInstance)
     result.recordTiming(jobRepInstance)
     result.recordSiteIndex(jobRepInstance)
-    
+
     # record failure conditions
     if not jobRepInstance.wasSuccess():
         if len(jobRepInstance.errors) > 0:
@@ -285,7 +298,7 @@ def jobReportToJobStats(jobRepInstance):
             result['error_type'] = lastError['Type']
             result['error_code'] = lastError['ExitStatus']
             result['error_desc'] = lastError['Description']
-        
+
     return result
 
 
@@ -308,8 +321,8 @@ def jobStatsGroupedBySpecId(reports):
             first_task['error_type'] = stats['error_type']
 
     return [x for x in result.values()]
-    
-    
+
+
 def wasSuccess(*jobStats):
     for stat in jobStats:
         if stat['exit_code']:
