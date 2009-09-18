@@ -193,10 +193,11 @@ def main(argv) :
                 # // Is it a real data processing sample? According to this 
                 #// we assign or not the command variable.
                 #\\
-                if len(line_parts) < 2:
+                if line_parts[0].find('REALDATA') > -1:
                     is_real_data = True
-                elif not line_parts[1].strip():
-                    is_real_data = True
+                    # Extra tag: RelVal string should be in the processed 
+                    # dataset name. I will use the primary_prefix for now.
+                    special_tag = primary_prefix
                 else:
                     is_real_data = False
                     command = line_parts[1].strip()
@@ -514,7 +515,8 @@ def main(argv) :
         #//
         if sample['isRealData']:
             command += '/createProcessingWorkflow.py \\\n'
-            command += '--override-channel=' + sample['primary'] + ' \\\n'
+            # Not changing the primary dataset name for real data.
+            #command += '--override-channel=' + sample['primary'] + ' \\\n'
             command += '--dataset=' + sample['inputData']['REALDATA'] + ' \\\n'
             command += '--only-blocks=' + sample['inputBlocks'] + ' \\\n'
             command += '--dbs-url=' + readDBS + ' \\\n'
