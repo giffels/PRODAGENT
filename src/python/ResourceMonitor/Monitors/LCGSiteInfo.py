@@ -313,6 +313,14 @@ def getBdii(sites, ldaphost):
                             #TODO: restrict this to only cmsprod jobs (what about other cmsprod users?)\
                             info=['GlueCEStateEstimatedResponseTime','GlueCEStateRunningJobs','GlueCEStateTotalJobs','GlueCEStateWaitingJobs']
                             estRT,runn,tot,wait=getLdap(localvo_ceuid_base,info,ldaphost)
+                            # If GlueVOViewLocalID is incrrect, try fallbacks
+                            if not (estRT or runn or tot or wait):
+                                if acbr.find(":") > -1:
+                                    voview = acbr.split(":")[1].replace("=", "_").strip()
+                                else:
+                                    voview = "/cms/Role_production"
+                                localvo_ceuid_base=('GlueVOViewLocalID=%s,' % voview)+ceuid_base
+                                estRT,runn,tot,wait=getLdap(localvo_ceuid_base,info,ldaphost)
                             if support_cms:
                                 #print ceuid
                                 ceseuid_base='GlueCESEBindGroupCEUniqueID='+ceuid+','+site_base
