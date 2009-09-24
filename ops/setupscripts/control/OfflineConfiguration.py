@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.18 2009/08/07 22:21:39 dmason Exp $"
-__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.19 2009/08/21 01:33:27 dmason Exp $"
+__version__ = "$Revision: 1.19 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -24,8 +24,8 @@ tier0Config = createTier0Config()
 # Set global parameters like the acquisition era and the version of
 # the configuration.
 #setAcquisitionEra(tier0Config, "HAPPYHAPPYWARMFUZZY_T0TEST_WITHBUNNIESDANCINGAROUND")
-setAcquisitionEra(tier0Config, "Commissioning09")
-#setAcquisitionEra(tier0Config, "CRAFT09")
+#setAcquisitionEra(tier0Config, "Commissioning09")
+setAcquisitionEra(tier0Config, "CRAFT09")
 #setAcquisitionEra(tier0Config, "AllRunsTest")
 setConfigVersion(tier0Config, __version__)
 
@@ -65,24 +65,24 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_3_2_4_patch1"
+defaultRecoVersion = "CMSSW_3_2_5"
 #defaultRecoVersion = "CMSSW_3_2_1"
 defaultAlcaVersion = defaultRecoVersion
 defaultDQMVersion = defaultRecoVersion
 
 
-defaultProcVersion = "v3"
+defaultProcVersion = "v1"
 #repackProcVersion = defaultProcVersion
-expressProcVersion = "v6"
-recoProcVersion = "v7"
+expressProcVersion = "v1"
+recoProcVersion = "v1"
 #recoProcVersion = defaultProcVersion
 #defaultGlobalTag = "CRAFT_V18P::All"
 
 #31X
 #defaultGlobalTag = "GR09_31X_V6P::All"
-defaultGlobalTag = "GR09_E_V1::All"
+defaultGlobalTag = "GR09_E_V2::All"
 expressGlobalTag = defaultGlobalTag
-promptrecoGlobalTag = "GR09_P_V1::All"
+promptrecoGlobalTag = "GR09_P_V2::All"
 #
 # Create a dictionary that associates a reco configuration with a scenario.
 # The configuration must be specified as a url.
@@ -155,8 +155,8 @@ addDataset(tier0Config, "Calo",
            do_alca = True, alca_version= defaultAlcaVersion,
            alca_proc_ver = recoProcVersion,
            alca_configuration=alcaConfig["calo"],
-           custodial_node = "T1_FR_CCIN2P3_MSS",
-#           custodial_node = "T1_UK_RAL_MSS",
+#           custodial_node = "T1_FR_CCIN2P3_MSS",
+           custodial_node = "T1_UK_RAL_MSS",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config, "Cosmics",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -345,10 +345,10 @@ addExpressConfig(tier0Config, "HLTMON",
 
 
 #Mappings for 311 online running
-setExpressVersionMapping(tier0Config, "CMSSW_3_2_4", "CMSSW_3_2_4_patch1")
-setExpressVersionMapping(tier0Config, "CMSSW_3_2_3", "CMSSW_3_2_4_patch1")
-setExpressVersionMapping(tier0Config, "CMSSW_3_2_2", "CMSSW_3_2_4_patch1")
-setExpressVersionMapping(tier0Config, "CMSSW_3_2_1", "CMSSW_3_2_4_patch1")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_4", "CMSSW_3_2_5")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_3", "CMSSW_3_2_5")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_2", "CMSSW_3_2_5")
+setExpressVersionMapping(tier0Config, "CMSSW_3_2_1", "CMSSW_3_2_5")
 setExpressVersionMapping(tier0Config, "CMSSW_3_1_1", "CMSSW_3_1_1_patch1")
 setExpressVersionMapping(tier0Config, "CMSSW_3_1_0", "CMSSW_3_1_1_patch1")
 
