@@ -202,6 +202,7 @@ class StoreResultsAccountantComponent:
         datasetName = '/%s/%s/USER' % \
              (spec.payload._OutputDatasets[0]['PrimaryDataset'],
               spec.payload._OutputDatasets[0]['ProcessedDataset'])
+        phedexGroup = spec.payload._OutputDatasets[0]['PhysicsGroup']
         injectNode = spec.parameters['InjectionNode']
         destNode = spec.parameters['SubscriptionNode']
 
@@ -220,7 +221,7 @@ class StoreResultsAccountantComponent:
         jsonOutput = phedexAPI.injectBlocks(dbsURL, injectNode, datasetName, 0 , 1, *blockNames)
         logging.info("Injection results: %s" % jsonOutput)
 
-        sub = PhEDExSubscription(datasetName, destNode, "StoreResults")
+        sub = PhEDExSubscription(datasetName, destNode, phedexGroup)
         #logging.info("Subscribing dataset to: %s" % destNode)
         subList = SubscriptionList()
         subList.addSubscription(sub)
