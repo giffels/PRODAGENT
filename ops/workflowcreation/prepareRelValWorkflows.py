@@ -195,9 +195,6 @@ def main(argv) :
                 #\\
                 if line_parts[0].find('REALDATA') > -1:
                     is_real_data = True
-                    # Extra tag: RelVal string should be in the processed 
-                    # dataset name. I will use the primary_prefix for now.
-                    special_tag = primary_prefix
                 else:
                     is_real_data = False
                     command = line_parts[1].strip()
@@ -272,11 +269,30 @@ def main(argv) :
                 #//
                 if is_real_data:
                     #  //
-                    # // Storing input dataset and run number
-                    #//
+                    # // Parsing dataset details. The following details are
+                    #// supported: REALDATA, RUN, LABEL, FILES, EVENTS.
+                    #\\
                     for parameter in sample_info_parts[3].split(','):
                         input_data[parameter.split(':')[0].strip()] = \
                             parameter.split(':')[1].strip()
+                    #  //
+                    # // Verifiying optional arguments: LABEL, FILE, EVENTS
+                    #//
+                    data_label = input_data.get('LABEL', '')
+                    data_files = input_data.get('FILES', '')
+                    data_events = input_data.get('EVENTS', '')
+                    if data_events:
+                        data_events = int(data_events)
+                    if data_files:
+                        data_files = int(data_events)
+                    #  //
+                    # // Extra tag: RelVal string should be in the processed
+                    #// dataset name. I will use the primary_prefix for now.
+                    #\\
+                    if data_label:
+                        special_tag = "_".join([primary_prefix, data_label])
+                    else:
+                         special_tag = primary_prefix
                     #  //
                     # // Looking up the blocks for a given Dataset and a given run
                     #//
@@ -285,13 +301,34 @@ def main(argv) :
                         runNumber=input_data['RUN'])
                     blocks = {}
                     #  //
-                    # // Number of events to be processed
+                    # // Parsing input blocks
+                    #//
+                    for input_file in input_files:
+                        cur_files = \
+                            blocks.setdefault(input_file['Block']['Name'],
+                                              {}).setdefault('Files', 0)
+                        cur_events = \
+                            blocks[input_file['Block']['Name']].setdefault(
+                                'Events', 0)
+                        blocks[input_file['Block']['Name']]['Files'] += 1
+                        blocks[input_file['Block']['Name']]['Events'] += \
+                            input_file['NumberOfEvents']
+                    #  //
+                    # // Truncating blocks list
                     #//
                     total_events = 0
-                    for input_file in input_files:
-                        blocks[input_file['Block']['Name']] = None
-                        total_events += input_file['NumberOfEvents']
-                    input_blocks = ",".join(blocks.keys())
+                    total_files = 0
+                    blocks_to_process = []
+                    for block in blocks:
+                        blocks_to_process.append(block)
+                        total_events += blocks[block]['Events']
+                        total_files += blocks[block]['Files']
+                        if data_events and (data_events < total_events):
+                            break
+                        if data_files and (data_files < total_files):
+                            break
+
+                    input_blocks = ",".join(blocks_to_process)
                 #  //
                 # // Composing a dictionary per sample
                 #//
