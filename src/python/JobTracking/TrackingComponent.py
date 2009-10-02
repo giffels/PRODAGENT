@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.63 2009/08/14 12:37:52 gcodispo Exp $"
-__version__ = "$Revision: 1.63 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.64 2009/08/14 12:59:53 gcodispo Exp $"
+__version__ = "$Revision: 1.64 $"
 
 import os
 import os.path
@@ -422,9 +422,10 @@ class TrackingComponent:
 
         # looking for dashboardInfoFile
         try :
+            baseDir = os.path.dirname(job.runningJob['outputDirectory'])
             dashboardInfoFile = \
-                              os.path.join(job.runningJob['outputDirectory'], \
-                                           "DashboardInfo.xml" )
+                             os.path.join(baseDir, \
+                                          "DashboardInfo.xml" )
         except :
             pass
 
