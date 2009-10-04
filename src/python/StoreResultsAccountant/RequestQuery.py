@@ -24,6 +24,9 @@ class RequestQuery:
 
         self.isLoggedIn = self.login2Savannah()
 
+    def __del__(self):
+        self.br.close()
+
     def closeRequest(self,task):
         if self.isLoggedIn:
             self.selectQueryForm()
@@ -44,6 +47,7 @@ class RequestQuery:
 
                     self.br.submit()
                     return
+        return
                 
     def createValueDicts(self):       
         if self.isLoggedIn:
@@ -57,7 +61,9 @@ class RequestQuery:
             self.GroupByValueDict = self.getLabelByValueDict(control)
             control = self.br.find_control("resolution_id",type="select")
             self.StatusByValueDict = self.getLabelByValueDict(control)
-            
+
+        return
+    
     def getLabelByValueDict(self, control):
         d = {}
         for item in control.items:
@@ -77,6 +83,8 @@ class RequestQuery:
             self.br.select_form(name="bug_form")
             response = self.br.submit()
 
+            html_ouput = response.read()
+
             for link in self.br.links(text_regex="#[0-9]+"):
                 response = self.br.follow_link(link)
     
@@ -87,17 +95,13 @@ class RequestQuery:
                 control = self.br.find_control("custom_tf1",type="text")
                 old_dataset = control.value.split('/')
 
-                ## Get new dataset name
-                control = self.br.find_control("custom_tf2",type="text")
-                new_dataset = control.value.split('/')
-
                 ## Get DBS URL
                 control = self.br.find_control("custom_tf4",type="text")
                 dbs_url = control.value
 
                 ## Get Site
-                control = self.br.find_control("custom_sb1",type="select")
-                site_id =  control.value
+                #control = self.br.find_control("custom_sb1",type="select")
+                #site_id =  control.value
 
                 ## Get Release
                 control = self.br.find_control("custom_sb2",type="select")
@@ -111,6 +115,11 @@ class RequestQuery:
                 ## Get current status
                 control = self.br.find_control("resolution_id",type="select")
                 status_id = control.value
+                
+                ## Get current request status
+                control = self.br.find_control("status_id",type="select")
+                request_status_id = control.value
+                RequestStatusByValueDict = self.getLabelByValueDict(control)
 
                 ## Get assigned to
                 control = self.br.find_control("assigned_to",type="select")
@@ -121,7 +130,14 @@ class RequestQuery:
                 if AssignedToByValueDict[assignedTo_id[0]]!=group_squad:
                     control.value = [self.getValueByLabelDict(control)[group_squad]]
                     self.br.submit()
-    
+
+                ## Get new dataset name
+                ##control = self.br.find_control("custom_tf2",type="text")
+                ## remove leading hypernews name and add physics group name
+                stripped_dataset = old_dataset[2].split("-")[1:]
+                #new_dataset = self.GroupByValueDict[group_id[0]]+'-'+''.join(stripped_dataset)
+                new_dataset = 'StoreResults-'+''.join(stripped_dataset)
+                
                 self.br.back()
 
                 ## remove leading &nbsp and # from name
@@ -131,22 +147,25 @@ class RequestQuery:
                 
                 infoDict["primaryDataset"] = old_dataset[1]
                 infoDict["processedDataset"] = old_dataset[2]
-                infoDict["outputDataset"] = new_dataset[2]
+                infoDict["outputDataset"] = new_dataset
                 infoDict["physicsGroup"] = self.GroupByValueDict[group_id[0]]
                 infoDict["inputDBSURL"] = dbs_url
                 infoDict["cmsswRelease"] = self.ReleaseByValueDict[release_id[0]]
-                infoDict["destinationSite"] = self.SiteByValueDict[site_id[0]]
-                            
+                #infoDict["destinationSite"] = self.SiteByValueDict[site_id[0]]
+
                 ##Fill json file, if status is done
                 if self.StatusByValueDict[status_id[0]]=='Done':
                     self.writeJSONFile('Ticket_'+task+'.json', infoDict)
 
                 ##Not part of the bookeeping database
-                del infoDict["destinationSite"]
+                #del infoDict["destinationSite"]
 
                 infoDict["task"] = int(task)
-                infoDict["status"] = self.StatusByValueDict[status_id[0]]
+                infoDict["ticketStatus"] = self.StatusByValueDict[status_id[0]]
                 infoDict["assignedTo"] = AssignedToByValueDict[assignedTo_id[0]]
+
+                if infoDict["ticketStatus"] == "Done" and RequestStatusByValueDict[request_status_id[0]] == "Closed":
+                    infoDict["ticketStatus"] == "Closed"
                 
                 requests.append(infoDict)
     
@@ -199,6 +218,8 @@ class RequestQuery:
                 if item.attrs['label'] == "Test":
                     control.value = [item.attrs['value']]
             self.br.submit()
+
+        return
      
     def writeJSONFile(self, name, infoDict):
         ##check if file already exists
@@ -207,3 +228,5 @@ class RequestQuery:
             jsonfile = open(filename,'w')
             jsonfile.write(json.dumps(infoDict,sort_keys=True, indent=4))
             jsonfile.close
+
+        return
