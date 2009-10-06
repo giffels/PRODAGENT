@@ -5,8 +5,8 @@ _createTier0ProductionWorkflow_
 Create a workflow to create streamer MC files for Tier0 processing.
 
 """
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.7 2009/07/06 14:39:20 hufnagel Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: createTier0ProductionWorkflow.py,v 1.8 2009/07/06 15:19:05 hufnagel Exp $"
 
 
 import os
@@ -102,6 +102,9 @@ cmsRunNode.application["Architecture"] = scramArch
 cmsRunNode.scriptControls["PostExe"].append(
     "JobCreator.RuntimeTools.RuntimeStreamerToFJR"
     )
+
+# set user sandbox
+cmsRunNode.userSandbox = "/afs/cern.ch/user/h/hufnagel/public/Tier0MCFeeder/UserSandBox_CMSSW_3_1_2.tar.gz"
 
 #
 # build the configuration template for the workflow
