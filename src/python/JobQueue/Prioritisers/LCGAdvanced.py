@@ -68,7 +68,10 @@ class LCGAdvanced(PrioritiserInterface):
             logging.info(msg)
             Session.commit_all()
             return
-        
+
+        # skip the advanced stuff for non cmssw jobs
+        if constraint['type'] in ('CleanUp', 'LogCollect'):
+            return PrioritiserInterface.findMatchedJobs(self, constraint)
         
         #What extra code do we want here
         # is workflow max not taken into account by other methods somewhere 
