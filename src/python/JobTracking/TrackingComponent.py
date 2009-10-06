@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.64 2009/08/14 12:59:53 gcodispo Exp $"
-__version__ = "$Revision: 1.64 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.65 2009/10/02 12:17:03 direyes Exp $"
+__version__ = "$Revision: 1.65 $"
 
 import os
 import os.path
@@ -433,7 +433,7 @@ class TrackingComponent:
         # if the dashboardInfoFile is not there, this is a crab job
         if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
             task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
-            dashboardInfo.task = task['name'][: task['name'].rfind('_')]
+            dashboardInfo.task = task['name']
             dashboardInfo.job = str(job['jobId']) + '_' + \
                                 job.runningJob['schedulerId']
             dashboardInfo['JSTool'] = 'crab'
