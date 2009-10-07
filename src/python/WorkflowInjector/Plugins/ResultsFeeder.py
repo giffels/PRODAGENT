@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.15 2009/07/13 19:32:21 ewv Exp $"
-__version__  = "$Revision: 1.15 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.16 2009/07/15 14:08:03 ewv Exp $"
+__version__  = "$Revision: 1.16 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -174,6 +174,7 @@ class ResultsFeeder(PluginInterface):
                                               skipParents, True)
         except:
             logging.info("Migrating to local DBS failed:\n%s" % traceback.format_exc())
+            raise RuntimeError("Migrating %s to local DBS failed" % path)
 
         # Migrate dataset from User's LocalDBS to Global DBS
         writer = DBSWriter(self.globalDbsUrl)
@@ -185,6 +186,7 @@ class ResultsFeeder(PluginInterface):
                                             skipParents, True)
         except:
             logging.info("Migrating to global DBS failed:\n%s" % traceback.format_exc())
+            raise RuntimeError("Migrating %s to global DBS failed" % path)
 
 
         # Check for existence of target dataset
