@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.16 2009/07/15 14:08:03 ewv Exp $"
-__version__  = "$Revision: 1.16 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.17 2009/10/07 16:33:20 ewv Exp $"
+__version__  = "$Revision: 1.17 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -38,7 +38,7 @@ from WMCore.Services.SiteDB.SiteDB import SiteDBJSON
 
 from dbsApiException import *
 
-def getInputDBSURL():
+def getLocalDBSURLs():
     """
     _getInputDBSURL_
 
@@ -61,7 +61,7 @@ def getInputDBSURL():
         logging.error(msg)
         raise RuntimeError, msg
 
-    return dbsConfig.get("DBSURL", None)
+    return dbsConfig.get("ReadDBSURL", None), dbsConfig.get("DBSURL", None)
 
 
 def getGlobalDBSURL():
@@ -81,7 +81,7 @@ def getGlobalDBSURL():
         logging.error(msg)
         raise RuntimeError, msg
 
-    return dbsConfig.get("DBSURL", None)
+    return dbsConfig.get("ReadDBSURL", None), dbsConfig.get("DBSURL", None)
 
 
 
@@ -109,7 +109,7 @@ class ResultsFeeder(PluginInterface):
 
         """
         lfnPrefix = self.resultsDir
-
+        self.fudgeParents = True
         self.workflowName = "SR-%s-%s-%s" % \
             (self.cmsswRelease, self.primaryDataset, self.outputDataset)
         self.workflowFile = os.path.join(self.workingDir,
@@ -124,7 +124,7 @@ class ResultsFeeder(PluginInterface):
         self.workflow.setWorkflowName(self.workflowName)
         self.workflow.parameters["WorkflowType"] = "Merge"
         self.workflow.parameters["DataTier"] = self.dataTier
-        self.workflow.parameters['DBSURL'] = self.dbsUrl
+        self.workflow.parameters['DBSURL'] = self.localWriteURL
         self.workflow.parameters['SubscriptionNode'] = self.injectionNode
 
         self.inputDatasetName = self.workflow.payload.addInputDataset(
@@ -156,47 +156,53 @@ class ResultsFeeder(PluginInterface):
         logging.info("Data resides on %s" % phedexNodes[0])
 
         self.workflow.parameters['InjectionNode'] = phedexNodes[0]
-        #self.workflow.parameters['InjectionNode'] = 'TX_Test2_Buffer'
+        self.workflow.parameters['InjectionNode'] = 'TX_Test2_Buffer'
 
         logging.debug("Datatype = %s" % self.dataType)
 
         # Migrate dataset from User's LocalDBS to StoreResults LocalDBS
 
-        writer = DBSWriter(self.dbsUrl)
         skipParents = False
-        srcURL = self.inputDBSURL
-        dstURL = self.dbsUrl
+        readWrite = True
+        if self.fudgeParents:
+            skipParents = True
+            readWrite = False
+#         srcURL = self.inputDBSURL
+#         dstURL = self.localWriteURL
         path = "/%s/%s/USER" % (self.primaryDataset, self.processedDataset)
+
+        writer = DBSWriter(self.localWriteURL)
         logging.info("Migrating dataset %s from %s to %s" %
-                     (path, srcURL, dstURL))
+                     (path, self.inputDBSURL, self.localWriteURL))
         try:
-            writer.dbs.migrateDatasetContents(srcURL, dstURL, path, '',
-                                              skipParents, True)
+            writer.dbs.migrateDatasetContents(self.inputDBSURL,
+                        self.localWriteURL, path, '', skipParents, readWrite)
         except:
             logging.info("Migrating to local DBS failed:\n%s" % traceback.format_exc())
             raise RuntimeError("Migrating %s to local DBS failed" % path)
 
         # Migrate dataset from User's LocalDBS to Global DBS
         writer = DBSWriter(self.globalDbsUrl)
-        dstURL = self.globalDbsUrl
+#         dstURL = self.globalDbsUrl
         logging.info("Migrating dataset %s from %s to %s" %
-                    (path, srcURL, dstURL))
+                     (path, self.inputDBSURL, self.globalDbsUrl))
         try:
-            writer.dbs.migrateDatasetContents(srcURL, dstURL, path, '',
-                                            skipParents, True)
+            writer.dbs.migrateDatasetContents(self.inputDBSURL,
+                        self.globalDbsUrl, path, '', skipParents, True)
         except:
             logging.info("Migrating to global DBS failed:\n%s" % traceback.format_exc())
             raise RuntimeError("Migrating %s to global DBS failed" % path)
 
 
-        # Check for existence of target dataset
+        # Check for existence of target dataset in GlobalDBS
+        globalReader = DBSReader(self.globalReadURL)
 
-        exists = writer.dbs.listProcessedDatasets(
+        exists = globalReader.dbs.listProcessedDatasets(
                     patternPrim = self.primaryDataset,
                     patternProc = self.outputDataset,
                     patternDT   = self.dataTier)
         if exists:
-            raise RuntimeError("Dataset %s already exists in global" % self.outputDatasetName)
+            raise RuntimeError("Dataset %s already exists in global DBS" % self.outputDatasetName)
 
         # Create node for cmsRun
 
@@ -261,7 +267,7 @@ class ResultsFeeder(PluginInterface):
             outputDataset["LFNBase"], "Merged.root")
 
         self.workflow.parameters["UnmergedLFNBase"] = outputDataset["LFNBase"]
-        self.workflow.parameters["MergedLFNBase"] = outputDataset["LFNBase"]
+        self.workflow.parameters["MergedLFNBase"]   = outputDataset["LFNBase"]
 
     def loadParams(self, paramFile):
         """
@@ -309,8 +315,8 @@ class ResultsFeeder(PluginInterface):
             self.FNALOverride = True
         self.resultsDir = userParams.get('resultsDir',"/store/results")
 
-        self.dbsUrl       = getInputDBSURL()
-        self.globalDbsUrl = getGlobalDBSURL()
+        self.localReadURL, self.localWriteURL = getLocalDBSURLs()
+        self.globalReadURL, self.globalDbsUrl = getGlobalDBSURL()
 
     def handleInput(self, payload):
         """
@@ -319,8 +325,12 @@ class ResultsFeeder(PluginInterface):
         Handle an input payload
 
         """
-        self.workflow = None
-        self.dbsUrl = None
+        self.workflow      = None
+        self.localReadURL  = None
+        self.localWriteURL = None
+        self.globalReadURL = None
+        self.globalDbsUrl  = None
+
         self.workflowFile = payload
 
         self.loadParams(self.workflowFile)
@@ -330,7 +340,7 @@ class ResultsFeeder(PluginInterface):
         self.publishNewDataset(self.workflowFile)
 
         adsFactory = MergeJobFactory(
-            self.workflow, self.workingDir, self.dbsUrl
+            self.workflow, self.workingDir, self.localReadURL
             )
         jobs = adsFactory()
 

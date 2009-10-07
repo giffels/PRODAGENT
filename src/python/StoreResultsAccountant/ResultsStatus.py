@@ -72,7 +72,7 @@ class ResultsStatus:
                     logging.debug(
                         "Publishing PhEDExDataServiceInject for %s" % dataset)
                     self.msgSvcRef.publish("PhEDExDataServiceInject",
-                                           self.workflowFile,"00:05:00")
+                                           self.workflowFile,"00:10:00")
                     self.msgSvcRef.commit()
 
             Session.commit_all()
@@ -94,6 +94,8 @@ class ResultsStatus:
 
         """
         intermediateDBS = self.workflowSpec.parameters['DBSURL']
+        # FIXME: Check that using reader not writer
+        logging.info("Using %s as a DBS read-only URL" % intermediateDBS)
         outputDataset   = self.workflowSpec.outputDatasets()[0].name()
 
         allJobs      = WEUtils.jobsForWorkflow(self.workflow, "Merge")

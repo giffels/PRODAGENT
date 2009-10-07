@@ -48,7 +48,8 @@ def getGlobalDBSURL():
         logging.error(msg)
         raise RuntimeError, msg
 
-    return dbsConfig.get("DBSURL", None)
+    # FIXME: Return both reader and writer
+    return dbsConfig.get("ReadDBSURL", None)
 
 
 
