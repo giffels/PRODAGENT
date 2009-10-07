@@ -15,101 +15,105 @@ from DQMInjector.HarvestWorkflow import createHarvestingWorkflow
 
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.LFNAlgorithm import DefaultLFNMaker
+from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
-from ProdCommon.DataMgmt.DBS.DBSReader import DBSReader
 
-
-def findVersionForDataset(dbsUrl, primary, processed, tier):
+def findVersionForDataset(dbsUrl, primary, processed, tier, run):
     """
     _findVersionForDataset_
 
+    Find CMSSW version used for producing the dataset.
 
     """
     reader  = DBSReader(dbsUrl)
     datasetName = "/%s/%s/%s" % (primary, processed, tier)
 
-
     try:
         fileList = reader.dbs.listFiles(
             path = datasetName,
+            runNumber = run,
             retriveList = ['retrive_algo',])
     except Exception, ex:
         msg = "Failed to get details from DBS for dataset:\n"
-        msg += "%s\n" % (datasetName)
+        msg += "%s for run %s\n" % (datasetName, run)
         msg += "Cannot extract CMSSW Version from DBS"
         raise RuntimeError, msg
 
-
     if len(fileList) == 0:
-        msg = "No files in Dataset %s\n" % (datasetName)
+        msg = "No files in Dataset %s\n for run %s\n" % (datasetName, run)
         msg += "Cannot extract CMSSW Version from DBS"
         raise RuntimeError, msg
     lastFile = fileList[-1]
 
     algoList = lastFile['AlgoList']
     if len(algoList) == 0:
-        msg = "No algorithm information in Dataset %s\n" % (
-            datasetName)
+        msg = "No algorithm information in Dataset %si\n for run %s\n" % (
+            datasetName, run)
         msg += "Cannot extract CMSSW Version from DBS"
         raise RuntimeError, msg
     lastAlgo = lastFile['AlgoList'][-1]
-    return lastAlgo['ApplicationVersion']
 
+    return lastAlgo['ApplicationVersion']
 
 
 def findGlobalTagForDataset(dbsUrl, primary, processed, tier):
     """
     _findGlobalTagForDataset_
 
-    Look up the global tag for a DBS Dataset
+    Look up the global tag for a Dataset in DBS. It might not work 100% of the
+    times. In that case, it would be possible to use GlobalTagFallback
+    parameter.
+
+    This methos relies on the fact that RelVals, MC and ReProcessing have a
+    single GlobalTag across run boundaries.
+
+    It won't work for Harversting Tier-0 spat workflows.
 
     """
     reader  = DBSReader(dbsUrl)
     datasetName = "/%s/%s/%s" % (primary, processed, tier)
 
-
     try:
-        fileList = reader.dbs.listFiles(path = datasetName)
+        procDSList = \
+            reader.dbs.listProcessedDatasets(primary, tier, processed)
     except Exception, ex:
         msg = "Failed to get details from DBS for dataset:\n"
         msg += "%s\n" % (datasetName)
         msg += "Cannot extract Global Tag from DBS"
         raise RuntimeError, msg
 
-
-    if len(fileList) == 0:
-        msg = "No files in Dataset %s\n" % (datasetName)
+    if len(procDSList) == 0:
+        msg = "No Processed Dataset for Dataset %s\n" % (datasetName)
         msg += "Cannot extract Global Tag from DBS"
         raise RuntimeError, msg
-    lastFile = fileList[-1]
+    lastprocDS = procDSList[-1]
 
-    tag = lastFile['LogicalFileName'].split("/")[6].split("_")[0]
-    version = lastFile['LogicalFileName'].split("/")[6].split("_")[1]
+    globalTag = lastprocDS.get('GlobalTag', None)
+    if globalTag is None:
+        msg = "Failed to get Global Tag from DBS.\n"
+        if self.args.get('GlobalTagFallback', None) is not None:
+            globalTag = self.args['GlobalTagFallback']
+            msg += "Using Global Tag fallback: %s" % globalTag
+            logging.info(msg)
+        else:
+            msg += "No Global Tag fallback provided in the configuration "
+            msg += "file. Can't process input dataset: %s" % datasetName
+            raise RuntimeError, msg
 
-    GlobalTag = tag + "_" + version + "::All"
-
-    if tag != "IDEAL" and tag != "STARTUP" :
-        msg = "Warning: Dataset %s has not IDEAL nor STARTUP Global Tag.\n" % (
-            datasetName)
-        logging.info(msg)
-        GlobalTag = None
-        
-    return GlobalTag
-
+    return globalTag
 
 
 def getLFNForDataset(dbsUrl, primary, processed, tier):
     """
     _findGlobalTagForDataset_
 
-    Look up the global tag for a DBS Dataset
+    Look up the LFN's for a Dataset in DBS
 
     """
     reader  = DBSReader(dbsUrl)
     datasetName = "/%s/%s/%s" % (primary, processed, tier)
-
 
     try:
         fileList = reader.dbs.listFiles(path = datasetName)
@@ -124,28 +128,43 @@ def getLFNForDataset(dbsUrl, primary, processed, tier):
         msg += "Cannot extract Global Tag from DBS"
         raise RuntimeError, msg
 
-    return [ x['LogicalFileName'] for x in fileList ]
+    return [x['LogicalFileName'] for x in fileList]
 
 
 
 class RelValPlugin(BasePlugin):
+    """
+    _RelValPlugin_
 
+    Plugin for looking up a RelVal dataset's information and produce a DQM
+    Harvesting job for it.
+
+    This plugin actually could be used for any MC dataset in which run number
+    is 1.
+
+    """
     def __init__(self):
         BasePlugin.__init__(self)
+        # Do we wan to keep the dbsurl fixed?
         self.dbsUrl = "http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet"
+
 
     def __call__(self, collectPayload):
         """
         _operator(collectPayload)_
 
-        Given the dataset and run in the payload, callout to DBS
+        Given the dataset in the payload, callout to DBS
         to find the files to be harvested
 
         """
         msg = "RelValPlugin invoked for %s" % str(collectPayload)
         logging.info(msg)
 
-        site = self.args.get("Site", "srm.cern.ch")
+        if collectPayload.get('Scenario', None) is None:
+            msg = "RelValPlugin: Payload should provide a scenario."
+            raise RuntimeError, msg    
+
+        site = self.args.get("Site", "srm-cms.cern.ch")
 
         baseCache = os.path.join(self.args['ComponentDir'],
                                  "RelValPlugin")
@@ -170,31 +189,20 @@ class RelValPlugin(BasePlugin):
 
         if not os.path.exists(workflowFile):
             msg = "No workflow found for dataset: %s\n " % (
-                collectPayload.datasetPath(),)
+                collectPayload.datasetPath())
             msg += "Looking up software version and generating workflow..."
             logging.info(msg)
 
-#            if self.args.get("OverrideGlobalTag", None) == None:
-            if 1 :
+            if self.args.get("OverrideGlobalTag", None) is None:
                 globalTag = findGlobalTagForDataset(
                     self.dbsUrl,
                     collectPayload['PrimaryDataset'],
                     collectPayload['ProcessedDataset'],
                     collectPayload['DataTier'])
-                if globalTag == None :
-                    msg = "OverrideGlobalTag parameter will be used...\n"
-                    if self.args.get("OverrideGlobalTag", None) != None :
-                        globalTag = self.args['OverrideGlobalTag']
-                        msg += "=> GlobalTag: %s\n" % (globalTag)
-                        logging.info(msg)
-                    else :
-                        msg += "OverrideGlobalTag parameter is not defined in Configuration.\n"
-                        raise RuntimeError, msg                        
-#            else:
-#                globalTag = self.args['OverrideGlobalTag']
+            else:
+                globalTag = self.args['OverrideGlobalTag']
 
-
-            if self.args.get("OverrideCMSSW", None) != None:
+            if self.args.get("OverrideCMSSW", None) is not None:
                 cmsswVersion = self.args['OverrideCMSSW']
                 msg = "Using Override for CMSSW Version %s" % (
                     self.args['OverrideCMSSW'],)
@@ -204,10 +212,10 @@ class RelValPlugin(BasePlugin):
                     self.dbsUrl,
                     collectPayload['PrimaryDataset'],
                     collectPayload['ProcessedDataset'],
-                    collectPayload['DataTier'])
+                    collectPayload['DataTier'],
+                    collectPayload['RunNumber'])
                 msg = "Found CMSSW Version for dataset/run\n"
-                msg += " Dataset %s Run %s\n" % (collectPayload.datasetPath(),
-                                                 collectPayload['RunNumber'])
+                msg += " Dataset %s\n" % collectPayload.datasetPath()
                 msg += " CMSSW Version = %s\n " % cmsswVersion
                 logging.info(msg)
 
@@ -233,7 +241,7 @@ class RelValPlugin(BasePlugin):
             self.publishWorkflow(workflowFile, workflowSpec.workflowName())
         else:
             msg = "Loading existing workflow for dataset: %s\n " % (
-                collectPayload.datasetPath(),)
+                collectPayload.datasetPath())
             msg += " => %s\n" % workflowFile
             logging.info(msg)
 
@@ -251,9 +259,14 @@ class RelValPlugin(BasePlugin):
         jobSpec.setJobName(jobName)
         jobSpec.setJobType("Processing")
         jobSpec.parameters['RunNumber'] = collectPayload['RunNumber']  # How should we manage the run numbers?
+        jobSpec.parameters['Scenario'] = collectPayload['Scenario']
         jobSpec.addWhitelistSite(site)
         jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
-        jobSpec.payload.cfgInterface.inputFiles.extend(getLFNForDataset(self.dbsUrl,collectPayload['PrimaryDataset'],collectPayload['ProcessedDataset'],collectPayload['DataTier']))
+        jobSpec.payload.cfgInterface.inputFiles.extend(
+            getLFNForDataset(self.dbsUrl,
+                             collectPayload['PrimaryDataset'],
+                             collectPayload['ProcessedDataset'],
+                             collectPayload['DataTier']))
 
         specCacheDir =  os.path.join(
             datasetCache, str(int(collectPayload['RunNumber']) // 1000).zfill(4))
@@ -264,18 +277,17 @@ class RelValPlugin(BasePlugin):
 
         jobSpec.save(jobSpecFile)
 
-
         job["JobSpecId"] = jobName
         job["JobSpecFile"] = jobSpecFile
         job['JobType'] = "Processing"
         job["WorkflowSpecId"] = workflowSpec.workflowName(),
         job["WorkflowPriority"] = 10
         job["Sites"] = [site]
-#        job["Run"] = collectPayload['RunNumber']
+        job["Run"] = collectPayload['RunNumber']
         job['WorkflowSpecFile'] = workflowFile
 
         msg = "Harvesting Job Created for\n"
-#        msg += " => Run:       %s\n" % collectPayload['RunNumber']
+        msg += " => Run:       %s\n" % collectPayload['RunNumber']
         msg += " => Primary:   %s\n" % collectPayload['PrimaryDataset']
         msg += " => Processed: %s\n" % collectPayload['ProcessedDataset']
         msg += " => Tier:      %s\n" % collectPayload['DataTier']

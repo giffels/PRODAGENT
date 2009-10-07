@@ -24,6 +24,7 @@ from DQMInjector.Plugins.DBSPlugin import DBSPlugin
 from DQMInjector.Plugins.T0ASTPlugin import T0ASTPlugin
 from DQMInjector.Plugins.RelValPlugin import RelValPlugin
 
+
 class DQMInjectorComponent:
     """
     _DQMInjectorComponent_
@@ -40,6 +41,7 @@ class DQMInjectorComponent:
         self.args['ConfigFile'] = None
         self.args['OverrideCMSSW'] = None
         self.args['OverrideGlobalTag'] = None
+        self.args['GlobalTagFallback'] = None
         self.args['DQMServer'] = None
         self.args['proxyLocation'] = None
         self.args['DQMCopyToCERN'] = None
@@ -81,6 +83,9 @@ class DQMInjectorComponent:
                 self.args['OverrideGlobalTag'],)
         else:
             msg += " => GlobalTag Version looked up by Plugin\n"
+            if self.args['GlobalTagFallback'] is not None:
+                msg += "  => GlobalTag Version Fallback is: %s\n" % (
+                    self.args['GlobalTagFallback'])
         msg += " => Server: %s\n" % (self.args['DQMServer'])
         msg += " => proxyLocation: %s\n" % (self.args['proxyLocation'])
         msg += " => Copy to CERN: %s\n" % (self.args['DQMCopyToCERN'])
@@ -156,7 +161,7 @@ class DQMInjectorComponent:
             logging.info("Registering Job %s" % job['JobSpecId'])
             WEJob.register(job['WorkflowSpecId'], None, {
                 'id' : job['JobSpecId'], 'owner' : 'DQMInjector',
-#                'job_type' : "Processing", "max_retries" : 3,
+                #'job_type' : "Processing", "max_retries" : 3,
                 'job_type' : "Harvesting", "max_retries" : 3,
                 "max_racers" : 1,
                 })
@@ -197,6 +202,7 @@ class DQMInjectorComponent:
             return
 
         return
+
 
     def startComponent(self):
         """
