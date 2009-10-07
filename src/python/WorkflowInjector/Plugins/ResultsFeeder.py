@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.17 2009/10/07 16:33:20 ewv Exp $"
-__version__  = "$Revision: 1.17 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.18 2009/10/07 19:26:14 ewv Exp $"
+__version__  = "$Revision: 1.18 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -109,7 +109,6 @@ class ResultsFeeder(PluginInterface):
 
         """
         lfnPrefix = self.resultsDir
-        self.fudgeParents = True
         self.workflowName = "SR-%s-%s-%s" % \
             (self.cmsswRelease, self.primaryDataset, self.outputDataset)
         self.workflowFile = os.path.join(self.workingDir,
@@ -156,7 +155,7 @@ class ResultsFeeder(PluginInterface):
         logging.info("Data resides on %s" % phedexNodes[0])
 
         self.workflow.parameters['InjectionNode'] = phedexNodes[0]
-        self.workflow.parameters['InjectionNode'] = 'TX_Test2_Buffer'
+        #self.workflow.parameters['InjectionNode'] = 'TX_Test2_Buffer'
 
         logging.debug("Datatype = %s" % self.dataType)
 
@@ -164,9 +163,7 @@ class ResultsFeeder(PluginInterface):
 
         skipParents = False
         readWrite = True
-        if self.fudgeParents:
-            skipParents = True
-            readWrite = False
+
 #         srcURL = self.inputDBSURL
 #         dstURL = self.localWriteURL
         path = "/%s/%s/USER" % (self.primaryDataset, self.processedDataset)
@@ -192,7 +189,6 @@ class ResultsFeeder(PluginInterface):
         except:
             logging.info("Migrating to global DBS failed:\n%s" % traceback.format_exc())
             raise RuntimeError("Migrating %s to global DBS failed" % path)
-
 
         # Check for existence of target dataset in GlobalDBS
         globalReader = DBSReader(self.globalReadURL)
