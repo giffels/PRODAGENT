@@ -21,8 +21,8 @@ class CollectPayload(dict):
         self.setdefault("ProcessedDataset", None)
         self.setdefault("DataTier", None)
         self.setdefault("RunNumber", None)
-
-
+        self.setdefault("Scenario", None)
+        self.setdefault("GlobalTag", None)
 
 
     def datasetPath(self):
@@ -38,6 +38,7 @@ class CollectPayload(dict):
 
 
         return result
+
 
     def parse(self, payload):
         """
@@ -56,8 +57,13 @@ class CollectPayload(dict):
                 self['ProcessedDataset'] = token.replace("proc=", "")
             if token.startswith("run="):
                 self['RunNumber'] = token.replace("run=", "")
+            if token.startswith("scenario="):
+                self['Scenario'] = token.replace("scenario=", "")
+            if token.startswith("tag="):
+                self['GlobalTag'] = token.replace("tag=", "")
 
         return
+
 
     def __str__(self):
         """
@@ -73,14 +79,15 @@ class CollectPayload(dict):
             result += "proc=%s;" % self['ProcessedDataset']
         if self['DataTier'] != None:
             result += "tier=%s;" % self['DataTier']
+        if self['Scenario'] != None:
+            result += "scenario=%s;" % self['Scenario']
+        if self['GlobalTag'] != None:
+            result += "tag=%s;" % self['GlobalTag']
 
         return result
 
 
-
 if __name__ == '__main__':
-
-
     collect1 = CollectPayload()
     collect1['RunNumber'] = 11223344
 

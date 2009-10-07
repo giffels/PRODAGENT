@@ -13,7 +13,8 @@ from MessageService.MessageService import MessageService
 from DQMInjector.CollectPayload import CollectPayload
 
 
-valid = ['run=', 'primary=', 'processed=', 'tier=' , 'scenario=', 'path=']
+valid = ['run=', 'primary=', 'processed=', 'tier=' , 'scenario=', 'path=',
+         'tag=']
 
 
 usage = \
@@ -27,6 +28,7 @@ harvestDQM.py --run=<RUN>
               --scenario=<SCENARIO>
               --path=<DATASET_PATH>
               --plugin=<DQM_PLUGIN>
+              --tag=<GLOBAL_TAG>
 
 Details:
 
@@ -50,6 +52,10 @@ Details:
     - DBSPlugin
     - RelValPlugin
     - T0ASTPlugin
+<GLOBAL_TAG>:
+    Optional paramenter that allows to select the Global Tag. It should be
+    complete, i.e. MC_31X_V9::All, CRAFT0831X_V3::All
+
 """
 
 try:
@@ -81,6 +87,8 @@ for opt, arg in opts:
         collect['DataTier'] = arg
     if opt == "--scenario":
         collect['Scenario'] = arg
+    if opt == "--tag":
+        collect['GlobalTag'] = arg
     if opt == "--path":
         path = arg
     if opt == "--plugin":

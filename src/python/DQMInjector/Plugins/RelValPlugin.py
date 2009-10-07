@@ -193,14 +193,19 @@ class RelValPlugin(BasePlugin):
             msg += "Looking up software version and generating workflow..."
             logging.info(msg)
 
-            if self.args.get("OverrideGlobalTag", None) is None:
+            # Override Global Tag?
+            if self.args.get("OverrideGlobalTag", None) is not None:
+                globalTag = self.args['OverrideGlobalTag']
+            # Global Tag provided in the payload?
+            elif collectPayload.get('GlobalTag', None) is not None:
+                globalTag = collectPayload['GlobalTag']
+            # Look up in DBS for Global Tag, use fallback GT as last resort
+            else:
                 globalTag = findGlobalTagForDataset(
                     self.dbsUrl,
                     collectPayload['PrimaryDataset'],
                     collectPayload['ProcessedDataset'],
                     collectPayload['DataTier'])
-            else:
-                globalTag = self.args['OverrideGlobalTag']
 
             if self.args.get("OverrideCMSSW", None) is not None:
                 cmsswVersion = self.args['OverrideCMSSW']
