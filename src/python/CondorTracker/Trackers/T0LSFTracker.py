@@ -7,6 +7,7 @@ Tracker for Tier-0 LSF  submissions
 
 """
 
+import time
 import logging
 import popen2
 import fcntl, select, sys, os
@@ -62,23 +63,18 @@ class T0LSFTracker(TrackerPlugin):
             if status == None:
                 logging.debug("No LSF record for %s, checking job report" % (subId))
                 status = self.jobReportStatus(subId)
-                
-            # if status is still None => check lsf history
-            # DISABLED (lsf history is expensive and not much more history then the in memory lookup)
-            #if status == None:    
-                #status = LSFInterface.bjobs(runId).get(runId, None)
 
             # if status still None, declare job lost/failed
             if status == None:
-                self.TrackerDB.jobFailed(subId)
                 logging.debug("Job %s has been lost" % (subId))
+                self.TrackerDB.jobFailed(subId)
 
             # if submitted do nothing
-            if status == LSFStatus.submitted:
+            if status in (LSFStatus.submitted, LSFStatus.pend_suspend):
                 logging.debug("Job %s is pending" % (subId))
 
-            # if running or completed forward to running handler
-            elif status in (LSFStatus.running, LSFStatus.finished):
+            # if running or completed forward to running handler 
+            elif status in (LSFStatus.running, LSFStatus.usr_suspend, LSFStatus.sys_suspend, LSFStatus.finished):
                 logging.debug("Job %s is running" % (subId))
                 self.TrackerDB.jobRunning(subId)
 
@@ -86,7 +82,7 @@ class T0LSFTracker(TrackerPlugin):
             elif status == LSFStatus.failed:
                 logging.debug("Job %s is held..." % (subId))
                 self.TrackerDB.jobFailed(subId)
-                
+
         return
 
 
@@ -107,18 +103,13 @@ class T0LSFTracker(TrackerPlugin):
                 logging.debug("No LSF record for %s, checking job report" % (runId))
                 status = self.jobReportStatus(runId)
                 
-            # if status is still None => check lsf history
-            # DISABLED (lsf history is expensive and not much more history then the in memory lookup)
-            #if status == None:    
-                #status = LSFInterface.bjobs(runId).get(runId, None)
-
             # if status still None, declare job lost/failed
             if status == None:
-                self.TrackerDB.jobFailed(runId)
                 logging.debug("Job %s has been lost" % (runId))
+                self.TrackerDB.jobFailed(runId)
 
             # if running do nothing
-            elif status == LSFStatus.running:
+            elif status in (LSFStatus.running, LSFStatus.usr_suspend, LSFStatus.sys_suspend):
                 logging.debug("Job %s is still running" % (runId))
 
             # if finished check job report, then report status
@@ -138,13 +129,9 @@ class T0LSFTracker(TrackerPlugin):
 
             # if failed mark as failed
             elif status == LSFStatus.failed:
-
                     logging.debug("Job %s failed" % (runId))
                     self.TrackerDB.jobFailed(runId)
-            
 
-
-            
     def updateComplete(self, *complete):
         """
         _updateComplete_
@@ -157,10 +144,12 @@ class T0LSFTracker(TrackerPlugin):
         """
         if len(complete) == 0:
             return
+
         summary = "Jobs Completed:\n"
         for compId in complete:
             summary += " -> %s\n" % compId
         logging.info(summary)
+
         return
 
     def updateFailed(self, *failed):
@@ -172,12 +161,12 @@ class T0LSFTracker(TrackerPlugin):
         """
         if len(failed) == 0:
             return
+
         summary = "Jobs Failed:\n"
         for compId in failed:
-            
-            
             summary += " -> %s\n" % compId
         logging.info(summary)
+
         return
 
     def kill(self, *toKill):
