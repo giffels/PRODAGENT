@@ -73,20 +73,8 @@ class OfflineDQMSetup:
             msg += "    => %s\n" % inputfile
         print msg
 
-        configCreator = self.importConfigurationLibrary()
+        process = self.importConfigurationLibrary()
         
-        try:
-            process = configCreator(
-                self.inputDataset.name(),
-                self.runNumber,
-                self.globalTag,
-                *self.inputFiles)
-        except Exception, ex:
-            msg = "Error creating harvesting configuration\n"
-            msg += str(ex)
-            print msg
-            raise RuntimeError, "Harvesting Config Failure"
-
         pycfgDump = open("PyCfgFileDump.log", 'w')
         try:
             pycfgDump.write(process.dumpPython())
@@ -136,13 +124,16 @@ class OfflineDQMSetup:
 
         print "Retrieved Scenario: %s" % self.scenario
         print "Using Global Tag: %s" % self.globalTag
-        print "Dataset: %s" % self.inputDataset
+        print "Dataset: %s" % self.inputDataset.name()
         print "Run: %s" % self.runNumber
 
         try:
-            process = scenario.dqmHarvesting(self.inputDataset,
+            process = scenario.dqmHarvesting(self.inputDataset.name(),
                                              self.runNumber,
                                              self.globalTag)
+            # We might need this line since the ConfigBuilder is not filling up
+            # the global tag
+            # process.GlobalTag.globaltag = self.globalTag
         except Exception, ex:
             msg = "Error creating Harvesting config:\n"
             msg += str(ex)
