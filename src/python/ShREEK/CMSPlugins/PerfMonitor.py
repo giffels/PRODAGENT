@@ -20,7 +20,7 @@ from ShREEK.CMSPlugins.TraceUtils import getCommandOutput
 
 _PsCommand = \
 """
-ps -eo pid,ppid,rss,vsize,pcpu,pmem,cmd -ww | grep  " cmsRun " | grep -v grep | grep -v myprofile"""
+ps -eo pid,ppid,rss,vsize,pcpu,pmem,cmd -ww | grep  " cmsRun " | grep -v grep | grep -v myprofile | grep `cat process_id`"""
 
 
 class PerfMonitor(ShREEKMonitor):
