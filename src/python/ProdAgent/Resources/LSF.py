@@ -186,6 +186,9 @@ class LSFStatus:
 
     """
     submitted = 'PEND'
+    pend_suspend = 'PSUSP'
     running = 'RUN'
+    usr_suspend = 'USUSP'
+    sys_suspend = 'SSUSP'
     finished = 'DONE'
     failed = 'EXIT'
