@@ -13,6 +13,7 @@ from ResourceMonitor.Monitors.MonitorInterface import MonitorInterface
 from ResourceMonitor.Registry import registerMonitor
 
 from ProdAgent.Resources.LSF import LSFInterface
+from ProdAgent.Resources.LSF import LSFStatus
 
 from ProdAgent.WorkflowEntities import Job
 
@@ -85,8 +86,10 @@ class T0LSFMonitor(MonitorInterface):
         #
         # loop over output of bjobs
         #
-        for jobId in jobList.keys():
-            if ( jobList[jobId] == 'PEND' or jobList[jobId] == 'RUN' ):
+        for jobId, status in jobList.items():
+
+            if status in (LSFStatus.submitted, LSFStatus.pend_suspend,
+                          LSFStatus.running, LSFStatus.usr_suspend, LSFStatus.sys_suspend, LSFStatus.finished):
 
                 # database query for job information from the workflow entities table
                 # NOTE: might not work for ProdMgr jobs (not used for Tier0, so no problem)
