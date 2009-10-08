@@ -236,16 +236,15 @@ def main(argv) :
                     # PileUp (at the same time with FastSim)
                     if '--pileup' in array :
                         #  //
-                        # // Will use whatever argument of --pileup option
+                        # // Will use whatever argument of --pileup option is
                         #//
-                        if array[array.index('--pileup')+1\
-                            ].lower().strip() != 'nopileup':
+                        pileup_arg = array[array.index('--pileup') + 1]
+                        if pileup_arg.lower().strip() != 'nopileup':
                             if special_tag:
-                                special_tag = "_".join(\
-                                    array[array.index('--pileup')+1].strip())
+                                special_tag = "_".join(
+                                    [special_tag, pileup_arg.strip()])
                             else:
-                                special_tag = \
-                                    array[array.index('--pileup')+1].strip()
+                                special_tag = pileup_arg.strip()
                             pile_up = True
                             if pileup_dataset is None :
                                 print "You have to provide a pileup dataset."
@@ -253,9 +252,21 @@ def main(argv) :
                                 print "Use option --pileupdataset"
                                 sys.exit(5)
                     #  //
+                    # // Sort of custom tag
+                    #//
+                    if '--beamspot' in array:
+                        beamspot_arg = \
+                            array[array.index('--beamspot') + 1].strip()
+                        if special_tag:
+                            special_tag = "_".join(
+                                [special_tag, beamspot_arg])
+                        else:
+                            special_tag = beamspot_arg
+                    #  //
                     # // Cfg file's output name
                     #//
-                    output_name = "_".join([primary, conditions, special_tag]\
+                    output_name = "_".join(
+                        [x for x in [primary, conditions, special_tag] if x]
                         ) + ".py"
                     #  //
                     # // Add command options
@@ -292,7 +303,7 @@ def main(argv) :
                     if data_label:
                         special_tag = "_".join([primary_prefix, data_label])
                     else:
-                         special_tag = primary_prefix
+                        special_tag = primary_prefix
                     #  //
                     # // Looking up the blocks for a given Dataset and a given run
                     #//
