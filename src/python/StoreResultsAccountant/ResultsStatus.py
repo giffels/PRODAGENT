@@ -6,6 +6,11 @@ Utils to check the state of a set of StoreResults jobs using the WorkflowEntitie
 table
 
 """
+
+__revision__ = "$Id: ResultsFeeder.py,v 1.19 2009/10/07 19:47:32 ewv Exp $"
+__version__  = "$Revision: 1.19 $"
+__author__   = "ewv@fnal.gov"
+
 import logging
 
 import ProdAgent.WorkflowEntities.Utilities as WEUtils
@@ -94,8 +99,6 @@ class ResultsStatus:
 
         """
         intermediateDBS = self.workflowSpec.parameters['DBSURL']
-        # FIXME: Check that using reader not writer
-        logging.info("Using %s as a DBS read-only URL" % intermediateDBS)
         outputDataset   = self.workflowSpec.outputDatasets()[0].name()
 
         allJobs      = WEUtils.jobsForWorkflow(self.workflow, "Merge")

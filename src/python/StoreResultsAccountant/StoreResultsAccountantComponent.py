@@ -8,6 +8,11 @@ triggers merges and export when jobs complete.
 Initially based on RelValInjector
 
 """
+
+__revision__ = "$Id: ResultsFeeder.py,v 1.19 2009/10/07 19:47:32 ewv Exp $"
+__version__  = "$Revision: 1.19 $"
+__author__   = "ewv@fnal.gov"
+
 import os
 import time
 import logging
@@ -186,6 +191,7 @@ class StoreResultsAccountantComponent:
         """
         inject a dataset into Phedex using the dataservice
         """
+        logging.info("Beginning Phedex injection")
         dbsURL = getGlobalDBSURL()
         dsURL  = getPhedexDSURL()
         spec   = WorkflowSpec()
@@ -207,7 +213,7 @@ class StoreResultsAccountantComponent:
         injectNode = spec.parameters['InjectionNode']
         destNode = spec.parameters['SubscriptionNode']
 
-        logging.info("Injecting dataset %s at: %s" % (datasetName,injectNode))
+        logging.info("Injecting dataset %s at: %s" % (datasetName, injectNode))
 
         peDict = {'endpoint':dsURL}
         phedexAPI = PhEDEx(peDict)
