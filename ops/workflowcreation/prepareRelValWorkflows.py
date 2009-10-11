@@ -215,8 +215,12 @@ def main(argv) :
                     # // Parse conditions
                     #//
                     if '--conditions' in array:
-                        conditions = array[array.index('--conditions')+1\
-                            ].split(',')[1].split('::')[0].strip()
+                        conditions_arg = array[array.index('--conditions')+1]
+                        conditions = [
+                            x.strip() \
+                            for x in conditions_arg.split(',') \
+                            if x.find("::") != -1
+                            ][0].split('::')[0].strip()
                     else:
                         conditions = 'SpecialConditions'
                     #  //
@@ -398,8 +402,12 @@ def main(argv) :
                 # // Parse conditions
                 #//
                 if '--conditions' in array:
-                    conditions = array[array.index('--conditions')+1\
-                        ].split(',')[1].split('::')[0].strip()
+                    conditions_arg = array[array.index('--conditions')+1]
+                    conditions = [
+                        x.strip() \
+                        for x in conditions_arg.split(',') \
+                        if x.find("::") != -1
+                        ][0].split('::')[0].strip()
                 else:
                     conditions = 'SpecialConditions'
                 #  //
