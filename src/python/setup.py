@@ -6,7 +6,7 @@ Python packages for the CMS Production Agent
 
 """
 
-__revision__ = "$Id: setup.py,v 1.59 2008/09/12 13:23:30 evansde Exp $"
+__revision__ = "$Id: setup.py,v 1.60 2009/04/24 18:52:30 swakef Exp $"
 
 from distutils.core import setup
 
@@ -53,7 +53,7 @@ packages = [
     'MergeSensor.MergeSensorDB',
     'MergeSensor.MergeSensorDB.Interface',
     'MergeSensor.MergeSensorDB.MySQL',
-    'MergeSensor.MergeSensorDB.MySQL.Dataset',  
+    'MergeSensor.MergeSensorDB.MySQL.Dataset',
     'MergeSensor.MergeSensorDB.MySQL.File',
     'MergeSensor.MergeSensorDB.MySQL.Job',
     'MergeSensor.MergeSensorDB.MySQL.Schema',
@@ -90,6 +90,7 @@ packages = [
     'ShREEK.CMSPlugins.JobMon',
     'StageOut',
     'StageOut.Impl',
+    'StoreResultsAccountant',
     'TaskObjects',
     'TaskObjects.Tools',
     'Trigger',
