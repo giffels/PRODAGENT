@@ -483,6 +483,7 @@ class DBSComponent:
         # //  Contact DBS using the DBSWriter
         #//`
         logging.info("DBSURL %s"%self.args['DBSURL'])
+        logging.info("ReadDBSURL %s"%self.args['ReadDBSURL'])
         #dbswriter = DBSWriter('fakeurl')
         dbswriter = DBSWriter(self.args['DBSURL'],level='ERROR')
         #  //
