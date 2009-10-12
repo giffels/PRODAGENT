@@ -211,7 +211,7 @@ def getJobsByState(state, cooloff = "00:00:00"):
 
     sqlStr = """SELECT job_spec_id, job_index FROM ct_job
                    WHERE job_state="%s"
-                      AND time < ADDTIME(CURRENT_TIMESTAMP,'-%s'); """ % (
+                      AND time <= ADDTIME(CURRENT_TIMESTAMP,'-%s'); """ % (
                        state, cooloff)
     
     dbCur = connection.cursor()
@@ -325,6 +325,7 @@ def jobComplete(jobSpecId, **attrs):
     changeJobState(jobIndex, "complete", connection)
     return
 
+
 def jobFailed(jobSpecId, **attrs):
     """
     _jobFailed_
@@ -338,6 +339,7 @@ def jobFailed(jobSpecId, **attrs):
         addJobAttrs(jobIndex, connection, **attrs)
     changeJobState(jobIndex, "failed", connection)
     return
+
 
 def removeJob(jobSpecId):
     """
@@ -362,9 +364,6 @@ def removeJob(jobSpecId):
         msg += str(ex)
         raise RuntimeError, msg
     return
-
-
-
 
 
 if __name__ == '__main__':
