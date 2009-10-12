@@ -9,8 +9,8 @@ Initially based on RelValInjector
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.19 2009/10/07 19:47:32 ewv Exp $"
-__version__  = "$Revision: 1.19 $"
+__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.10 2009/10/09 22:00:57 ewv Exp $"
+__version__  = "$Revision: 1.10 $"
 __author__   = "ewv@fnal.gov"
 
 import os
@@ -215,7 +215,8 @@ class StoreResultsAccountantComponent:
 
         logging.info("Injecting dataset %s at: %s" % (datasetName, injectNode))
 
-        peDict = {'endpoint':dsURL}
+        peDict = {'endpoint' : dsURL,
+                  'method'   : 'POST'}
         phedexAPI = PhEDEx(peDict)
         reader = DBSReader(dbsURL)
 
