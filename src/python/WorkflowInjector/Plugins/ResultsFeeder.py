@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.18 2009/10/07 19:26:14 ewv Exp $"
-__version__  = "$Revision: 1.18 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.19 2009/10/07 19:47:32 ewv Exp $"
+__version__  = "$Revision: 1.19 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -27,14 +27,15 @@ from WorkflowInjector.Registry import registerPlugin
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
-from ProdCommon.DataMgmt.DBS.DBSWriter import DBSWriter
-from ProdCommon.DataMgmt.DBS.DBSWriter import DBSReader
+from WMCore.Services.DBS.DBSWriter import DBSWriter
+from WMCore.Services.DBS.DBSWriter import DBSReader
 from ProdCommon.JobFactory.MergeJobFactory import MergeJobFactory
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.WorkflowTools import addStageOutNode, addStageOutOverride
 
 from WMCore.Services.JSONParser import JSONParser
 from WMCore.Services.SiteDB.SiteDB import SiteDBJSON
+from WMCore.Services.UUID import makeUUID
 
 from dbsApiException import *
 
@@ -155,7 +156,7 @@ class ResultsFeeder(PluginInterface):
         logging.info("Data resides on %s" % phedexNodes[0])
 
         self.workflow.parameters['InjectionNode'] = phedexNodes[0]
-        #self.workflow.parameters['InjectionNode'] = 'TX_Test2_Buffer'
+#         self.workflow.parameters['InjectionNode'] = 'TX_Test2_Buffer'
 
         logging.debug("Datatype = %s" % self.dataType)
 
@@ -168,6 +169,7 @@ class ResultsFeeder(PluginInterface):
 #         dstURL = self.localWriteURL
         path = "/%s/%s/USER" % (self.primaryDataset, self.processedDataset)
 
+        logging.info("Connecting to DBS writer with URL %s" % self.localWriteURL)
         writer = DBSWriter(self.localWriteURL)
         logging.info("Migrating dataset %s from %s to %s" %
                      (path, self.inputDBSURL, self.localWriteURL))
@@ -179,6 +181,8 @@ class ResultsFeeder(PluginInterface):
             raise RuntimeError("Migrating %s to local DBS failed" % path)
 
         # Migrate dataset from User's LocalDBS to Global DBS
+        logging.info("Connecting to DBS writer with URL %s" % self.globalDbsUrl)
+
         writer = DBSWriter(self.globalDbsUrl)
 #         dstURL = self.globalDbsUrl
         logging.info("Migrating dataset %s from %s to %s" %
@@ -343,6 +347,19 @@ class ResultsFeeder(PluginInterface):
         for job in jobs:
             self.msRef.publish("CreateJob", job['JobSpecFile'])
         self.msRef.commit()
+
+
+    def loadWorkflow(self, specFile):
+        """
+        _loadWorkflow_
+
+        Dummy method to satisfy __call__ of PluginInterface
+
+        """
+        spec = WorkflowSpec()
+        spec.setWorkflowName(makeUUID())
+        return spec
+
 
 
 
