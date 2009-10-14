@@ -285,17 +285,19 @@ def main(argv) :
                 if is_real_data:
                     #  //
                     # // Parsing dataset details. The following details are
-                    #// supported: REALDATA, RUN, LABEL, FILES, EVENTS.
+                    #// supported: REALDATA, RUN, LABEL, FILES, EVENTS, PDNAME
                     #\\
                     for parameter in sample_info_parts[3].split(','):
                         input_data[parameter.split(':')[0].strip()] = \
                             parameter.split(':')[1].strip()
                     #  //
-                    # // Verifiying optional arguments: LABEL, FILE, EVENTS
-                    #//
+                    # // Verifiying optional arguments: LABEL, FILE, EVENTS,
+                    #// PDNAME
+                    #\\
                     data_label = input_data.get('LABEL', '')
                     data_files = input_data.get('FILES', '')
                     data_events = input_data.get('EVENTS', '')
+                    data_pname = input_data.get('PDNAME', '')
                     if data_events:
                         data_events = int(data_events)
                     if data_files:
@@ -308,6 +310,16 @@ def main(argv) :
                         special_tag = "_".join([primary_prefix, data_label])
                     else:
                         special_tag = primary_prefix
+                    #  //
+                    # // If true, it will use the conventional way for naming
+                    #// the primary and drop the processed dataset extra label
+                    #\\
+                    if data_pname and data_pname.lower() in ('y', 't', 'true'):
+                        primary = "".join([primary_prefix, sample_name])
+                        special_tag = ''
+                    else:
+                        primary = \
+                         [x for x in input_data['REALDATA'].split("/") if x][0]
                     #  //
                     # // Looking up the blocks for a given Dataset and a given run
                     #//
@@ -572,7 +584,7 @@ def main(argv) :
         if sample['isRealData']:
             command += '/createProcessingWorkflow.py \\\n'
             # Not changing the primary dataset name for real data.
-            #command += '--override-channel=' + sample['primary'] + ' \\\n'
+            command += '--override-channel=' + sample['primary'] + ' \\\n'
             command += '--dataset=' + sample['inputData']['REALDATA'] + ' \\\n'
             command += '--only-blocks=' + sample['inputBlocks'] + ' \\\n'
             command += '--dbs-url=' + readDBS + ' \\\n'
