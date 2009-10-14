@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.20 2009/02/13 09:40:12 gcodispo Exp $"
-__revision__ = "$Revision: 1.20 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.21 2009/07/30 08:35:53 gcodispo Exp $"
+__revision__ = "$Revision: 1.21 $"
 
 import os
 import time
@@ -57,6 +57,7 @@ class GetOutputComponent:
         self.args.setdefault("configDir", None)
         self.args.setdefault('retryDelay', 12)
         self.args.setdefault('maxGetOutputAttempts', 3)
+        self.args.setdefault('timeout', 600)
         self.args.setdefault('skipWMSAuth', None)
         self.args.update(args)
 
@@ -113,6 +114,7 @@ class GetOutputComponent:
 
         # create pool thread for get output operations
         params = {}
+        params['timeout'] = self.args['timeout']
         params['skipWMSAuth'] = self.args['skipWMSAuth']
         params['sessionPool'] = self.sessionPool
         params['jobHandlingParams'] = deepcopy( jobHandlingParams )

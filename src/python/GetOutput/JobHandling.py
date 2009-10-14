@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.16 2009/02/13 09:40:12 gcodispo Exp $"
-__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: JobHandling.py,v 1.17 2009/02/13 11:41:35 gcodispo Exp $"
+__version__ = "$Revision: 1.17 $"
 
 import os
 import logging
@@ -77,6 +77,8 @@ class JobHandling:
                 output = str(msg)
                 logging.error("Job %s FAILED REBOUNCE : %s" % \
                               (self.fullId(job), output ) )
+                logging.error("Job %s : resetting DB for retry" % \
+                              self.fullId(job) )                
                 return
 
         # if condorG rebounce full sandbox

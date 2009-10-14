@@ -12,13 +12,14 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.27 2009/07/27 08:04:09 gcodispo Exp $"
-__revision__ = "$Revision: 1.27 $"
+__version__ = "$Id: JobOutput.py,v 1.28 2009/07/30 08:27:51 gcodispo Exp $"
+__revision__ = "$Revision: 1.28 $"
 
 import logging
 import os
 import traceback
 import threading
+import socket
 from copy import deepcopy
 
 # BossLite import
@@ -42,6 +43,7 @@ class JobOutput:
               'sessionPool' : None,
               'skipWMSAuth' : None,
               'OutputLocation' : None,
+              'timeout' : 600,
               'jobHandlingParams' : None
               }
 
@@ -301,8 +303,14 @@ class JobOutput:
         """
 
         try :
+ 
             statusSched = job.runningJob['status']
+            
+            oldTimeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout( cls.params['timeout'] )
             schedSession.purgeService( task )
+            socket.setdefaulttimeout(oldTimeout)
+
             if statusSched == 'UE' :
                 job.runningJob['status'] = 'UE'
 
@@ -310,6 +318,14 @@ class JobOutput:
             log = str(schedSession.getLogger())
             if log is not None:
                 logging.info( str(log ) )
+
+        except socket.timeout, to :
+            logging.warning( "%s: Warning, failed to purge : %s" \
+                             % (cls.fullId( job ), str(to) ) )
+            job.runningJob['processStatus'] = 'output_retrieved'
+
+            return job
+            
 
         except BossLiteError, err:
             logging.warning( "%s: Warning, failed to purge : %s" \
@@ -341,8 +357,14 @@ class JobOutput:
 
         #  perform get output operation
         try:
+
             outdir = job.runningJob['outputDirectory']
+
+            oldTimeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout( cls.params['timeout'] )
             schedSession.getOutput( task, outdir=outdir)
+            socket.setdefaulttimeout(oldTimeout)
+
             job.runningJob['processStatus'] = 'output_retrieved'
 
             logging.info('%s: Retrieved output in %s' % \
@@ -352,6 +374,11 @@ class JobOutput:
             log = str(schedSession.getLogger())
             if log is not None:
                 logging.info( log )
+
+        # socket timeout
+        except socket.timeout, to :
+            logging.error("%s: retrieval failed: %s" % \
+                          (cls.fullId( job ), str(to) ) )
 
         # scheduler interaction error
         except BossLiteError, err:
