@@ -94,14 +94,14 @@ for opt, arg in opts:
     if opt == "--plugin":
         plugin = arg
 
-if path is not None and len(path.strip("/")) != 4 and not path.startswith('/'):
+if path is not None and len(path.split("/")) != 4 and not path.startswith('/'):
     msg = 'Invalid dataset path provided. '
     msg += 'It should be like /<PRIMARYDS>/<PROCDS>/<TIER>'
     print usage
     print msg
     sys.exit(1)
 elif path is not None:
-    dataset_parts = [x for x in path.strip('/') if x]
+    dataset_parts = [x for x in path.split('/') if x]
     collect['PrimaryDataset'] = dataset_parts[0]
     collect['ProcessedDataset'] = dataset_parts[1]
     collect['DataTier'] = dataset_parts[2]
