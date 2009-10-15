@@ -151,10 +151,10 @@ class ARCMonitor(MonitorInterface):
                 ARC.executeCommand(cmd)
             except ARC.CommandExecutionError, e:
                 r = False
-                errormesg = str(e)
+                errormsg = str(e)
             else:
                 r = True
-                errormesg = ""
+                errormsg = ""
 
             SEStatusCache[SEName] = {"time": currTime, "isup": r, "errormsg": errormsg}
             msg = ""
