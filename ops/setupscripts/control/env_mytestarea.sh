@@ -22,6 +22,8 @@ export PCVERSION=0_12_15_patch1
 export DBSVERSION=2_0_7
 #The WMCORE version required
 export WMCOREVERSION=T0_0_0_3_pre8
+#The CASTOR version, probably doesn't change much
+export CASTORVERSION=2.1.7.14-cmp
 #The T0 version we need
 export T0VERSION=0_0_3_pre9
 

@@ -17,3 +17,5 @@ apt-get update
 #apt-get install cms+prodagent+PRODAGENT_$RPMVERSION-cmp
 apt-get install cms+prodagent+PRODAGENT_$RPMVERSION
 #apt-get install cms+PHEDEX-micro+PHEDEX_2_5_2-cmp
+apt-get install external+castor+$CASTORVERSION
+

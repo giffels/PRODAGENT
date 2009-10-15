@@ -21,6 +21,9 @@ alias PAmysql='mysql -u root -p -S $PRODAGENT_WORKDIR/mysqldata/mysql.sock'
 # This line adds the PhEDEx commands to the PATH.
 #source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/cms/PHEDEX-micro/PHEDEX_3_0_4-cmp/etc/profile.d/init.sh
 
+# setup the castor commands needed by CleanupManager
+source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/external/castor/$CASTORVERSION/etc/profile.d/init.sh
+
 #and here we hack the DBS env
 # commented out DAM & Vijay
 export DBS_CLIENT_CONFIG=$DBS_ROOT/Clients/Python/DBSAPI/dbs.config 
