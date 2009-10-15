@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.19 2009/10/07 19:47:32 ewv Exp $"
-__version__  = "$Revision: 1.19 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.20 2009/10/13 01:36:08 ewv Exp $"
+__version__  = "$Revision: 1.20 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -165,8 +165,6 @@ class ResultsFeeder(PluginInterface):
         skipParents = False
         readWrite = True
 
-#         srcURL = self.inputDBSURL
-#         dstURL = self.localWriteURL
         path = "/%s/%s/USER" % (self.primaryDataset, self.processedDataset)
 
         logging.info("Connecting to DBS writer with URL %s" % self.localWriteURL)
@@ -184,7 +182,6 @@ class ResultsFeeder(PluginInterface):
         logging.info("Connecting to DBS writer with URL %s" % self.globalDbsUrl)
 
         writer = DBSWriter(self.globalDbsUrl)
-#         dstURL = self.globalDbsUrl
         logging.info("Migrating dataset %s from %s to %s" %
                      (path, self.inputDBSURL, self.globalDbsUrl))
         try:
@@ -232,13 +229,17 @@ class ResultsFeeder(PluginInterface):
         outputDataset = self.cmsRunNode.addOutputDataset(self.primaryDataset,
                                                          self.outputDataset,
                                                          "Merged")
+        lfnBase = '%s/%s/%s/%s/' % (lfnPrefix,
+            self.physicsGroup, self.primaryDataset, self.outputDataset)
+
         outputDataset["DataTier"] = self.dataTier
         outputDataset["NoMerge"] = "True"
         outputDataset["ApplicationName"] = "cmsRun"
         outputDataset["ApplicationProject"] = "CMSSW"
         outputDataset["ApplicationVersion"] = self.cmsswRelease
         outputDataset["ApplicationFamily"] = "Merged"
-        outputDataset["LFNBase"] = '%s/%s/%s/' % (lfnPrefix, self.physicsGroup, self.outputDataset)
+        outputDataset["LFNBase"] = lfnBase
+
         outputDataset["PhysicsGroup"] = self.physicsGroup
         outputDataset["PrimaryDatasetType"] = self.dataType
         outputDataset["ParentDataset"]      =  self.datasetName
@@ -260,14 +261,14 @@ class ResultsFeeder(PluginInterface):
         outputModule["primaryDataset"] = self.primaryDataset
         outputModule["processedDataset"] = self.outputDataset
         outputModule["dataTier"] = self.dataTier
-        outputModule["LFNBase"] = outputDataset["LFNBase"]
+        outputModule["LFNBase"] = lfnBase
         outputModule["fileName"] = "%s.root" % outputModule["Name"]
 
         outputModule["logicalFileName"] = os.path.join(
-            outputDataset["LFNBase"], "Merged.root")
+            lfnBase, "Merged.root")
 
-        self.workflow.parameters["UnmergedLFNBase"] = outputDataset["LFNBase"]
-        self.workflow.parameters["MergedLFNBase"]   = outputDataset["LFNBase"]
+        self.workflow.parameters["UnmergedLFNBase"] = lfnBase
+        self.workflow.parameters["MergedLFNBase"]   = lfnBase
 
     def loadParams(self, paramFile):
         """
