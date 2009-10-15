@@ -7,8 +7,8 @@ table
 
 """
 
-__revision__ = "$Id: ResultsStatus.py,v 1.8 2009/10/09 22:00:57 ewv Exp $"
-__version__  = "$Revision: 1.8 $"
+__revision__ = "$Id: ResultsStatus.py,v 1.9 2009/10/15 15:45:04 ewv Exp $"
+__version__  = "$Revision: 1.9 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -77,7 +77,7 @@ class ResultsStatus:
                     logging.debug(
                         "Publishing PhEDExDataServiceInject for %s" % dataset)
                     self.msgSvcRef.publish("PhEDExDataServiceInject",
-                                           self.workflowFile,"00:03:00")
+                                           self.workflowFile,"00:10:00")
                     self.msgSvcRef.commit()
 
             Session.commit_all()
