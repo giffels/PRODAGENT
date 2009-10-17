@@ -40,7 +40,7 @@
                 </ConfigBlock>
                 <ConfigBlock Name="LocalWMBSDB">
                         <Parameter Name="dialect" Value="oracle"/>
-                        <Parameter Name="database" Value="oracle://tier1_wmbs:passwd@cmswmbs:1521"/>
+                        <Parameter Name="database" Value="oracle://tier1_wmbs:just_42day_a@cmswmbs:1521"/>
                 </ConfigBlock>
 		<ConfigBlock Name="CondorTracker">
 			<Parameter Name="LogSize" Value="1073741824"/>
@@ -136,10 +136,12 @@
 			<Parameter Name="schemaLocation" Value="$PRODAGENT_ROOT/share/ProdAgentDB.sql"/>
 		</ConfigBlock>
                 <ConfigBlock Name="Tier0DB">
-			<Parameter Name="user" Value="CMS_T0AST_INT1_WRITER"/>
-                        <Parameter Name="passwd" Value="youwish"/>
+			<!--<Parameter Name="user" Value="CMS_T0AST_INT1_WRITER"/>-->
+			<Parameter Name="user" Value="CMS_T0AST_2_WRITER"/>
                         <Parameter Name="dbType" Value="oracle"/>
-                        <Parameter Name="tnsName" Value="INT2R"/>
+                        <Parameter Name="passwd" Value=""/>
+                        <!--<Parameter Name="tnsName" Value="INT2R"/> -->
+                        <Parameter Name="tnsName" Value="CMS_T0AST"/>
                 </ConfigBlock>
 		<ConfigBlock Name="JobCreator">
 			<Parameter Name="CreatorPluginConfig" Value="/storage/local/data1/pa/T0/dev/control/T1CreatorPluginConfig.xml"/>

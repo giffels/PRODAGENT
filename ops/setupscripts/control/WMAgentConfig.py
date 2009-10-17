@@ -14,7 +14,7 @@ config = Configuration()
 
 config.section_("Agent")
 config.Agent.hostName = "cmssrv60.fnal.gov"
-config.Agent.contact = "president@whitehouse.gov"
+config.Agent.contact = "cmsdataops@fnal.gov"
 config.Agent.teamName = "Batavia RickRollers"
 config.Agent.agentName = "Tier1Skimmer"
 
@@ -42,8 +42,8 @@ config.DBSUpload.dbsurl = "https://cmst0dbs.cern.ch:8443/cms_dbs_prod_tier0_writ
 config.DBSUpload.dbsversion = "DBS_2_0_8"
 config.DBSUpload.uploadFileMax = 10
 config.DBSUpload.pollInterval = 100
-config.DBSUpload.DBSMaxSize = 10000000000
-config.DBSUpload.DBSMaxFiles = 3
+config.DBSUpload.DBSMaxSize = 1000000000000
+config.DBSUpload.DBSMaxFiles = 100
 
 config.component_("PhEDExInjector")
 config.PhEDExInjector.namespace = "WMComponent.PhEDExInjector.PhEDExInjector"
