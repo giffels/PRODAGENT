@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.7 $"
-__revision__ = "$Id: BulkDashboardMonitor.py,v 1.7 2008/09/16 10:42:41 swakef Exp $"
+__version__ = "$Revision: 1.8 $"
+__revision__ = "$Id: BulkDashboardMonitor.py,v 1.8 2008/10/21 15:51:47 evansde Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -97,6 +97,54 @@ def loadJobSpec():
         print "ERROR: Cannot load JobSpec file!!!"
         jobSpec = None
     return jobSpec
+
+
+class PerformanceSummary:
+    """
+    Collect performance stats for the steps and output
+    them in a form understood by DashboardInfo
+    """
+    def __init__(self):
+
+        avg = lambda x: sum(x, 0.0) / len(x)
+        # format: metric, name, operator to sum/average etc., name in dashboard
+        self.summary_values = []
+        #self.summary_values.append(('PercentCPU', 'AvgPercentCPU',
+        #                            avg, 'cmsswAvgPercentCPU'))
+        self.summary_values.append(('StorageTiming',
+                                    'tstoragefile-read-total-megabytes',
+                                    sum, 'PAcmssw_io_read_megabytes'))
+        self.summary_values.append(('StorageTiming',
+                                    'tstoragefile-write-total-megabytes',
+                                    sum, 'PAcmssw_io_write_megabytes'))
+
+    def __call__(self, *fjrs):
+        out = {}
+        try:
+            cpu_time, wall_time = [], []
+            for fjr in fjrs:
+                if not fjr.name.startswith('cmsRun'):
+                    continue
+                wall_time.append(int(fjr.timing['AppEndTime']) - \
+                                 int(fjr.timing['AppStartTime']))
+
+                try:
+                    cpu_time.append(wall_time[-1] * \
+                    int(fjr.performance.summaries['PercentCPU']['AvgPercentCPU']))
+                except:
+                    pass
+            if cpu_time: out['PAcmsswCpuTime'] = sum(cpu_time)
+            if wall_time: out['PAcmsswWallTime'] = sum(wall_time)
+        except:
+           pass
+
+        perf_summaries = [x.performance.summaries for x in fjrs]
+        for metric, name, op, newname in self.summary_values:
+            try:
+                out[newname] = op([float(x[metric][name]) for x in perf_summaries])
+            except (KeyError, ValueError):
+                continue
+        return out
 
 
 
@@ -262,6 +310,7 @@ class BulkDashboardMonitor(ShREEKMonitor):
         try:
             reports = readJobReport("FrameworkJobReport.xml")
             newInfo['JobExitStatus'] = reports[-1].exitCode
+            newInfo.update(PerformanceSummary()(*reports))
         except:
             newInfo['JobExitStatus'] = 50116
         newInfo['JobFinished'] = time.time()
