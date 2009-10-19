@@ -9,8 +9,8 @@ Initially based on RelValInjector
 
 """
 
-__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.10 2009/10/09 22:00:57 ewv Exp $"
-__version__  = "$Revision: 1.10 $"
+__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.11 2009/10/12 23:41:05 ewv Exp $"
+__version__  = "$Revision: 1.11 $"
 __author__   = "ewv@fnal.gov"
 
 import os
@@ -53,8 +53,7 @@ def getGlobalDBSURL():
         logging.error(msg)
         raise RuntimeError, msg
 
-    # FIXME: Return both reader and writer
-    return dbsConfig.get("ReadDBSURL", None)
+    return dbsConfig.get("ReadDBSURL", None), dbsConfig.get("DBSURL", None)
 
 
 
@@ -192,7 +191,8 @@ class StoreResultsAccountantComponent:
         inject a dataset into Phedex using the dataservice
         """
         logging.info("Beginning Phedex injection")
-        dbsURL = getGlobalDBSURL()
+        globalReadURL, globalWriteUrl = getGlobalDBSURL()
+
         dsURL  = getPhedexDSURL()
         spec   = WorkflowSpec()
         try:
@@ -218,7 +218,7 @@ class StoreResultsAccountantComponent:
         peDict = {'endpoint' : dsURL,
                   'method'   : 'POST'}
         phedexAPI = PhEDEx(peDict)
-        reader = DBSReader(dbsURL)
+        reader = DBSReader(globalReadURL)
 
         blocks = reader.dbs.listBlocks(dataset = datasetName)
         blockNames = []
@@ -226,7 +226,7 @@ class StoreResultsAccountantComponent:
         for block in blocks:
             blockNames.append(block['Name'])
 
-        jsonOutput = phedexAPI.injectBlocks(dbsURL, injectNode, datasetName, 0 , 1, *blockNames)
+        jsonOutput = phedexAPI.injectBlocks(globalWriteUrl, injectNode, datasetName, 0 , 1, *blockNames)
         logging.info("Injection results: %s" % jsonOutput)
 
         sub = PhEDExSubscription(datasetName, destNode, phedexGroup)
@@ -234,7 +234,7 @@ class StoreResultsAccountantComponent:
         subList = SubscriptionList()
         subList.addSubscription(sub)
         for sub in subList.getSubscriptionList():
-            jsonOutput = phedexAPI.subscribe(dbsURL, sub)
+            jsonOutput = phedexAPI.subscribe(globalWriteUrl, sub)
             #logging.info("Subscription results: %s" % jsonOutput)
 
         return
