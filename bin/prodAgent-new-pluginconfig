@@ -120,6 +120,10 @@ creatorTemplate = {
     'SetupCommand': None,
     },
 
+	"PerformanceMonitor" {
+	'UsePerformanceMonitor' : "True",
+	},
+
     }
 
 creatorCfg = config.get("JobCreator", {})
