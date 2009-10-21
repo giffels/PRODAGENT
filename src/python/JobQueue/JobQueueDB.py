@@ -1245,7 +1245,7 @@ def insertJobSpec(dbInterface, jobSpecId, jobSpecFile, jobType, workflowId,
     else:
         siteQuery = """INSERT INTO jq_site (job_index, site_index) VALUES (
                        (SELECT job_index FROM jq_queue WHERE job_spec_id = :p_1),
-                       (SELECT site_index FROM rc_site WHERE site_name = :p_2))
+                       (SELECT site_index FROM rc_site WHERE se_name = :p_2))
                        """
         bindVars = {"p_1": jobSpecId, "p_2": siteName}
         dbInterface.processData(siteQuery, bindVars, transaction = True)
