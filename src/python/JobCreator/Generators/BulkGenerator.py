@@ -64,8 +64,7 @@ _StandardPackages = ["ShREEK", "IMProv", "StageOut", "ProdCommon.MCPayloads",
                      "ProdCommon.CMSConfigTools",
                      "ProdCommon.Core",
                      "RunRes", "ProdCommon.FwkJobRep",
-                     "ProdCommon.TrivialFileCatalog",
-                     "WMCore.Algorithms"]
+                     "ProdCommon.TrivialFileCatalog"]
 
 
 class TaskObjectMaker:
