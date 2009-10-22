@@ -9,8 +9,8 @@ Initially based on RelValInjector
 
 """
 
-__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.12 2009/10/19 16:24:45 ewv Exp $"
-__version__  = "$Revision: 1.12 $"
+__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.13 2009/10/20 17:48:20 ewv Exp $"
+__version__  = "$Revision: 1.13 $"
 __author__   = "ewv@fnal.gov"
 
 import os
@@ -271,7 +271,7 @@ class StoreResultsAccountantComponent:
             else:
                 logging.info("Migration is still going on")
 
-        except:
+        except Exception, ex:
             msg = "Error checking DBS\n"
             msg += str(ex)
             logging.error(msg)
