@@ -41,7 +41,7 @@ class StageInMgr:
         self.overrideConf = overrideParams
         if overrideParams != {}:
             self.override = True
-        
+
         self.fallbacks = []
         #  //
         # // Try an get the TFC for the site
@@ -49,22 +49,22 @@ class StageInMgr:
         self.tfc = None
 
 
-        
+
         self.numberOfRetries = 3
         self.retryPauseTime = 600
-        
+
         #  //
         # // If override isnt None, we dont need SiteCfg, if it is
         #//  then we need siteCfg otherwise we are dead.
 
         if self.override == False:
             self.siteCfg = loadSiteLocalConfig()
-            
+
         if self.override:
             self.initialiseOverride()
         else:
-            self.initialiseSiteConf()         
-            
+            self.initialiseSiteConf()
+
 
     def initialiseSiteConf(self):
         """
@@ -73,13 +73,13 @@ class StageInMgr:
         Extract required information from site conf and TFC
 
         """
-        
+
         implName = self.siteCfg.localStageOut.get("command", None)
         if implName == None:
             msg = "Unable to retrieve local stage out command\n"
             msg += "From site config file.\n"
             msg += "Unable to perform StageOut operation"
-            raise StageOutInitError( msg)
+            raise StageOutInitError(msg)
         msg = "Local Stage Out Implementation to be used is:"
         msg += "%s\n" % implName
 
@@ -88,16 +88,16 @@ class StageInMgr:
             msg = "Unable to retrieve local stage out se-name\n"
             msg += "From site config file.\n"
             msg += "Unable to perform StageOut operation"
-            raise StageOutInitError( msg)
+            raise StageOutInitError(msg)
         msg += "Local Stage Out SE Name to be used is %s\n" % seName
         catalog = self.siteCfg.localStageOut.get("catalog", None)
         if catalog == None:
             msg = "Unable to retrieve local stage out catalog\n"
             msg += "From site config file.\n"
             msg += "Unable to perform StageOut operation"
-            raise StageOutInitError( msg)
+            raise StageOutInitError(msg)
         msg += "Local Stage Out Catalog to be used is %s\n" % catalog
-        
+
         try:
             self.tfc = self.siteCfg.trivialFileCatalog()
             msg += "Trivial File Catalog has been loaded:\n"
@@ -106,11 +106,11 @@ class StageInMgr:
             msg = "Unable to load Trivial File Catalog:\n"
             msg += "Local stage out will not be attempted\n"
             msg += str(ex)
-            raise StageOutInitError( msg )
-        
+            raise StageOutInitError(msg)
+
         print msg
         return
-        
+
 
     def initialiseOverride(self):
         """
@@ -140,7 +140,7 @@ class StageInMgr:
                 overrideParams['option'] = overrideConf['option']
             else:
                 overrideParams['option'] = ""
-        
+
         msg = "=======StageIn Override Initialised:================\n"
         for key, val in overrideParams.items():
             msg += " %s : %s\n" % (key, val)
@@ -148,9 +148,9 @@ class StageInMgr:
         print msg
         self.fallbacks = []
         self.fallbacks.append(overrideParams)
-        return 
-        
-        
+        return
+
+
     def __call__(self, **fileToStage):
         """
         _operator()_
@@ -158,13 +158,13 @@ class StageInMgr:
         Use call to invoke transfers
 
         """
-            
-      
+
+
         try:
             print "==>Working on file: %s" % fileToStage['LFN']
-            
+
             lfn = fileToStage['LFN']
-            
+
             #  //
             # // No override => use local-stage-out from site conf
             #//  invoke for all files and check failures/successes
@@ -178,19 +178,19 @@ class StageInMgr:
                     msg = "===> Local Stage Out Failure for file:\n"
                     msg += "======>  %s\n" % fileToStage['LFN']
                     msg += str(ex)
-                    
+
             #  //
             # // Still here => override start using the fallback stage outs
             #//  If override is set, then that will be the only fallback available
             print "===> Attempting %s Override Stage Outs" % len(self.fallbacks)
             for fallback in self.fallbacks:
                 try:
-                    pfn = self.localStageIn(lfn, fallback) 
+                    pfn = self.localStageIn(lfn, fallback)
                     fileToStage['PFN'] = pfn
                     raise StageInSuccess
                 except StageOutFailure, ex:
                     continue
-                
+
         except StageInSuccess:
             msg = "===> Stage In Successful:\n"
             msg += "====> LFN: %s\n" % fileToStage['LFN']
@@ -201,7 +201,7 @@ class StageInMgr:
         msg += fileToStage['LFN']
         raise StageOutFailure(msg, **fileToStage)
 
-        
+
     def localStageIn(self, lfn, override = None):
         """
         _localStageOut_
@@ -218,7 +218,7 @@ class StageInMgr:
 
         """
         localPfn = os.path.join(os.getcwd(), os.path.basename(lfn))
-        
+
         if override:
             seName = override['se-name']
             command = override['command']
@@ -229,15 +229,25 @@ class StageInMgr:
             seName = self.siteCfg.localStageOut['se-name']
             command = self.siteCfg.localStageOut['command']
             options = self.siteCfg.localStageOut.get('option', None)
+            #TODO: This shouldn't be here - but this code shouldn't live long
+            # Needed for srmcp on dpm - should do fallback as well...
+            dpm_options = ' -access_latency=ONLINE -retention_policy=REPLICA '
+            if command.startswith("srmv2") and \
+                        self.siteCfg.eventData.get('rfioType') == 'dpm':
+                if options and options.find('-access_latency') < 0:
+                    options += dpm_options
+                else:
+                    options = dpm_options
+
             pfn = self.searchTFC(lfn)
             protocol = self.tfc.preferredProtocol
-            
+
         if pfn == None:
             msg = "Unable to match lfn to pfn: \n  %s" % lfn
             raise StageOutFailure(msg, LFN = lfn, TFC = str(self.tfc))
-        
+
         try:
-            impl = retrieveStageOutImpl(command, stagein=True)
+            impl = retrieveStageOutImpl(command, stagein = True)
         except Exception, ex:
             msg = "Unable to retrieve impl for local stage in:\n"
             msg += "Error retrieving StageOutImpl for command named: %s\n" % (
@@ -246,7 +256,7 @@ class StageInMgr:
                                   LFN = lfn, ExceptionDetail = str(ex))
         impl.numRetries = self.numberOfRetries
         impl.retryPause = self.retryPauseTime
-        
+
         try:
             impl(protocol, pfn, localPfn, options)
         except Exception, ex:
@@ -260,11 +270,11 @@ class StageInMgr:
             raise StageOutFailure(msg, Command = command, Protocol = protocol,
                                   LFN = lfn, InputPFN = localPfn,
                                   TargetPFN = pfn)
-        
+
         return localPfn
 
 
-    
+
 #    def reportStageOutFailure(self, stageOutExcep):
 #        """
 #        _reportStageOutFailure_
@@ -284,8 +294,8 @@ class StageInMgr:
 #        return
 
 
-        
-      
+
+
     def searchTFC(self, lfn):
         """
         _searchTFC_
@@ -305,7 +315,7 @@ class StageInMgr:
             msg += lfn
             print msg
             return None
-        
+
         pfn = self.tfc.matchLFN(self.tfc.preferredProtocol, lfn)
         if pfn == None:
             msg = "Unable to map LFN to PFN:\n"
@@ -321,19 +331,16 @@ class StageInMgr:
 
 if __name__ == '__main__':
     import StageOut.Impl
-    
+
     overrideParams = {
             "command" : 'srm',
             "option" : '-streams_num=1',
             "se-name" : None,
             "lfn-prefix" : 'srm://gfe02.hep.ph.ic.ac.uk:8443/srm/managerv1?SFN=/pnfs/hep.ph.ic.ac.uk/data/cms',
             }
-    
+
     #mgr = StageInMgr()
     mgr = StageInMgr(**overrideParams)
     lfn = "/store/mc/2008/1/28/JobRobot-QCD_Pt_80_120-1201523639/0034/E8C4470A-C8CD-DC11-BA7C-001617E30D4C.root"
 
     mgr(LFN = lfn, PFN = None, GUID = None)
-    
-    
-    

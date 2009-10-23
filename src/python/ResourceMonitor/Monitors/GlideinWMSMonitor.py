@@ -59,14 +59,20 @@ class GlideinWMSMonitor(MonitorInterface):
 
         #  //
         # // get totals per active site for merge and processing
-        #//  jobs
-        paJobs=CondorPAJobs(jobTypes=set(["Processing","Merge","CleanUp","Skim","Harvesting"]),load_on_create=True)
+        #// jobs
+        #\\
+        paJobs = CondorPAJobs(
+            jobTypes=set(
+                ["Processing", "Merge", "CleanUp", "Skim", "Harvesting",
+                 "LogCollect"]
+            ), load_on_create=True
+        )
         mergeInfo = getJobs(paJobs,'Merge',*activeSites)
         processingInfo = getJobs(paJobs,'Processing',*activeSites)
         cleanupInfo = getJobs(paJobs,'Cleanup',*activeSites)
         skimInfo = getJobs(paJobs,'Skim',*activeSites)
         harvestingInfo = getJobs(paJobs,'Harvesting',*activeSites)
-
+        logcollectInfo = getJobs(paJobs, 'LogCollect', *activeSites)
         #  //
         # // Calculate available merge slots
         #//
@@ -103,7 +109,7 @@ class GlideinWMSMonitor(MonitorInterface):
                 print str(constraint)
                 result.append(constraint)
 
-                        #  //
+        #  //
         # // Calculate available CleanUp slots
         # || Basically cloning the merge stuff here -- doesn't seem to make sense that this be a bulk thing
         # || Would expect in steady state for the jobs to just sort of dribble out behind successful merges
@@ -130,6 +136,32 @@ class GlideinWMSMonitor(MonitorInterface):
                 print str(constraint)
                 result.append(constraint)
 
+        #  //
+        # // Calculate available LogCollect slots
+        #// Basically cloning the merge stuff here -- doesn't seem to make sense that this be a bulk thing
+        #\\ Would expect in steady state for the jobs to just sort of dribble out behind successful merges
+        # \\
+        msg="logcollectInfo: %s"%str(logcollectInfo)
+        logging.debug(msg)
+
+        for site, jobcounts in logcollectInfo.items():
+            idle = jobcounts["Idle"]
+            running = jobcounts["Running"]
+            msg="site: %s"%site
+            logging.debug(msg)
+            if self.siteThresholds.has_key(site):
+              logcollectThresh = self.siteThresholds[site]["logcollectThreshold"]
+              test = idle - logcollectThresh
+              msg="GlideinWMSMonitor LogCollect: Site=%s, Idle=%s, Running=%s, Thresh=%s, Test=%s"%(site,idle,running,logcollectThresh,test)
+              logging.debug(msg)
+
+              if test < 0:
+                constraint = self.newConstraint()
+                constraint['count'] = abs(test)
+                constraint['type'] = "LogCollect"
+                constraint['site'] = self.allSites[site]['SiteIndex']
+                print str(constraint)
+                result.append(constraint)
 
         msg="processingInfo: %s"%str(processingInfo)
         logging.debug(msg)

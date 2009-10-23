@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.8 $"
-__revision__ = "$Id: BulkDashboardMonitor.py,v 1.8 2008/10/21 15:51:47 evansde Exp $"
+__version__ = "$Revision: 1.10 $"
+__revision__ = "$Id: BulkDashboardMonitor.py,v 1.10 2009/10/22 13:32:45 direyes Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -130,7 +130,9 @@ class PerformanceSummary:
 
                 try:
                     cpu_time.append(wall_time[-1] * \
-                    int(fjr.performance.summaries['PercentCPU']['AvgPercentCPU']))
+                    float(
+                    fjr.performance.summaries['PercentCPU']['AvgPercentCPU']
+                    ) / 100)
                 except:
                     pass
             if cpu_time: out['PAcmsswCpuTime'] = sum(cpu_time)
