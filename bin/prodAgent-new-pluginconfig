@@ -120,7 +120,7 @@ creatorTemplate = {
     'SetupCommand': None,
     },
 
-	"PerformanceMonitor" {
+	"PerformanceMonitor": {
 	'UsePerformanceMonitor' : "True",
 	},
 
