@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.21 2009/10/15 15:45:04 ewv Exp $"
-__version__  = "$Revision: 1.21 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.20 2009/10/13 01:36:08 ewv Exp $"
+__version__  = "$Revision: 1.20 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -27,15 +27,15 @@ from WorkflowInjector.Registry import registerPlugin
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
 
 from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
+from WMCore.Services.DBS.DBSWriter import DBSWriter
+from WMCore.Services.DBS.DBSWriter import DBSReader
 from ProdCommon.JobFactory.MergeJobFactory import MergeJobFactory
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 from ProdCommon.MCPayloads.WorkflowTools import addStageOutNode, addStageOutOverride
 
-from WMCore.Services.DBS.DBSWriter import DBSReader
-from WMCore.Services.DBS.DBSWriter import DBSWriter
-from WMCore.Services.JSONParser    import JSONParser
-from WMCore.Services.PhEDEx.PhEDEx import PhEDEx
-from WMCore.Services.UUID          import makeUUID
+from WMCore.Services.JSONParser import JSONParser
+from WMCore.Services.SiteDB.SiteDB import SiteDBJSON
+from WMCore.Services.UUID import makeUUID
 
 from dbsApiException import *
 
@@ -84,25 +84,6 @@ def getGlobalDBSURL():
 
     return dbsConfig.get("ReadDBSURL", None), dbsConfig.get("DBSURL", None)
 
-
-def getPhedexDSURL():
-    try:
-        config = loadProdAgentConfiguration()
-    except StandardError, ex:
-        msg = "Error reading configuration:\n"
-        msg += str(ex)
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    try:
-        dsConfig = config.getConfig("PhEDExDataserviceConfig")
-    except StandardError, ex:
-        msg = "Error reading configuration for PhEDExDataservice:\n"
-        msg += str(ex)
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    return dsConfig.get("DataserviceURL", None)
 
 
 class NodeFinder:
@@ -164,24 +145,18 @@ class ResultsFeeder(PluginInterface):
             self.dataType = 'mc'
 
         # Figure out what Phedex node we'll be injecting into
-
-        dict = {'endpoint' : self.phedexURL}
-        phedexApi = PhEDEx(dict)
+        # Assumes one node per site and all blocks are at one site
+        # (good for /store/user at Tier2?)
+        self.siteDBAPI = SiteDBJSON()
 
         blockList = reader.dbs.listBlocks(dataset = self.datasetName)
         seHost = blockList[0]['StorageElementList'][0]['Name']
+        siteHost = self.siteDBAPI.seToCMSName(seHost)
+        phedexNodes = self.siteDBAPI.cmsNametoPhEDExNode(siteHost)
+        logging.info("Data resides on %s" % phedexNodes[0])
 
-#         seHost = 'srm.test1.ch'
-        phedexNodes = phedexApi.getNodeNames(seHost)
-        phedexNode = None
-        if len(phedexNodes) > 0:
-            phedexNode = phedexNodes[0] # By default
-            for name in phedexNodes:    # Search for Buffer and prefer that
-                if name.find('Buffer') > -1:
-                    phedexNode = name
-
-        logging.info("Data resides on %s" % phedexNode)
-        self.workflow.parameters['InjectionNode'] = phedexNode
+        self.workflow.parameters['InjectionNode'] = phedexNodes[0]
+#         self.workflow.parameters['InjectionNode'] = 'TX_Test2_Buffer'
 
         logging.debug("Datatype = %s" % self.dataType)
 
@@ -341,9 +316,8 @@ class ResultsFeeder(PluginInterface):
             self.FNALOverride = True
         self.resultsDir = userParams.get('resultsDir',"/store/results")
 
-        self.localReadURL,  self.localWriteURL = getLocalDBSURLs()
-        self.globalReadURL, self.globalDbsUrl  = getGlobalDBSURL()
-        self.phedexURL                         = getPhedexDSURL()
+        self.localReadURL, self.localWriteURL = getLocalDBSURLs()
+        self.globalReadURL, self.globalDbsUrl = getGlobalDBSURL()
 
     def handleInput(self, payload):
         """
@@ -366,10 +340,10 @@ class ResultsFeeder(PluginInterface):
         self.publishWorkflow(self.workflowFile, self.workflow.workflowName())
         self.publishNewDataset(self.workflowFile)
 
-        jobFactory = MergeJobFactory(
+        adsFactory = MergeJobFactory(
             self.workflow, self.workingDir, self.localReadURL
             )
-        jobs = jobFactory()
+        jobs = adsFactory()
 
         for job in jobs:
             self.msRef.publish("CreateJob", job['JobSpecFile'])

@@ -7,8 +7,8 @@ table
 
 """
 
-__revision__ = "$Id: ResultsStatus.py,v 1.11 2009/10/21 12:40:07 ewv Exp $"
-__version__  = "$Revision: 1.11 $"
+__revision__ = "$Id: ResultsStatus.py,v 1.9 2009/10/15 15:45:04 ewv Exp $"
+__version__  = "$Revision: 1.9 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -74,9 +74,10 @@ class ResultsStatus:
                         dataset)
                     self.msgSvcRef.commit()
                 if self.doInjection:
-                    logging.debug("Publishing PollMigration for %s" % dataset)
-                    self.msgSvcRef.publish("StoreResultsAccountant:PollMigration",
-                                           self.workflowFile, "00:02:00")
+                    logging.debug(
+                        "Publishing PhEDExDataServiceInject for %s" % dataset)
+                    self.msgSvcRef.publish("PhEDExDataServiceInject",
+                                           self.workflowFile,"00:10:00")
                     self.msgSvcRef.commit()
 
             Session.commit_all()

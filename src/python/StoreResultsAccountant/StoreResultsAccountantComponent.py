@@ -9,8 +9,8 @@ Initially based on RelValInjector
 
 """
 
-__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.13 2009/10/20 17:48:20 ewv Exp $"
-__version__  = "$Revision: 1.13 $"
+__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.10 2009/10/09 22:00:57 ewv Exp $"
+__version__  = "$Revision: 1.10 $"
 __author__   = "ewv@fnal.gov"
 
 import os
@@ -36,32 +36,6 @@ from ProdCommon.MCPayloads.WorkflowSpec   import WorkflowSpec
 from ProdCommon.DataMgmt.DBS.DBSReader    import DBSReader
 from StoreResultsAccountant.ResultsStatus import ResultsStatus
 
-def getLocalDBSURLs():
-    """
-    _getInputDBSURL_
-
-    Return the input URL for DBS
-
-    """
-    try:
-        config = loadProdAgentConfiguration()
-    except StandardError, ex:
-        msg = "Error reading configuration:\n"
-        msg += str(ex)
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    try:
-        dbsConfig = config.getConfig("LocalDBS")
-    except StandardError, ex:
-        msg = "Error reading configuration for LocalDBS:\n"
-        msg += str(ex)
-        logging.error(msg)
-        raise RuntimeError, msg
-
-    return dbsConfig.get("ReadDBSURL", None), dbsConfig.get("DBSURL", None)
-
-
 def getGlobalDBSURL():
     try:
         config = loadProdAgentConfiguration()
@@ -79,7 +53,8 @@ def getGlobalDBSURL():
         logging.error(msg)
         raise RuntimeError, msg
 
-    return dbsConfig.get("ReadDBSURL", None), dbsConfig.get("DBSURL", None)
+    # FIXME: Return both reader and writer
+    return dbsConfig.get("ReadDBSURL", None)
 
 
 
@@ -138,7 +113,6 @@ class StoreResultsAccountantComponent:
         if self.args['MigrateToGlobal'] == False:
             # Cant inject without migration
             self.args['InjectToPhEDEx'] = False
-        self.localReadURL, self.localWriteURL = getLocalDBSURLs()
 
         LoggingUtils.installLogHandler(self)
         msg = "StoreResultsAccountant Component Started:\n"
@@ -163,16 +137,6 @@ class StoreResultsAccountantComponent:
         if message == "StoreResultsAccountant:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
             return
-
-        if message == "StoreResultsAccountant:PollMigration":
-            try:
-                self.pollMigration(payload)
-                return
-            except StandardError, ex:
-                logging.error("Failed to Poll Migration Status: %s" % payload)
-                msg =  traceback.format_exc()
-                logging.error("Details: \n%s" % msg)
-                return
 
         if message == "StoreResultsAccountant:Poll":
             try:
@@ -223,78 +187,12 @@ class StoreResultsAccountantComponent:
         return
 
 
-    def pollMigration(self, payload):
-        """
-        inject a dataset into Phedex using the dataservice
-        """
-        logging.info("Beginning Poll of Migration status")
-        doneMigrating = False
-
-        globalReadURL, globalWriteUrl = getGlobalDBSURL()
-
-        globalReader = DBSReader(globalReadURL)
-        localReader = DBSReader(self.localReadURL)
-
-        spec   = WorkflowSpec()
-        try:
-            spec.load(payload)
-        except Exception, ex:
-            msg = "Unable to read WorkflowSpec file:\n"
-            msg += "%s\n" % payload
-            msg += str(ex)
-            logging.error(msg)
-            msg =  traceback.format_exc()
-            logging.error("Details: \n%s" % msg)
-            return
-
-        datasetName = '/%s/%s/USER' % \
-             (spec.payload._OutputDatasets[0]['PrimaryDataset'],
-              spec.payload._OutputDatasets[0]['ProcessedDataset'])
-
-        localBlocks = localReader.dbs.listBlocks(dataset = datasetName)
-
-        globalBlocks = None
-        try:
-            nClosedBlocks = 0
-            globalBlocks = globalReader.dbs.listBlocks(dataset = datasetName)
-
-            for block in globalBlocks:
-                if not globalReader.blockIsOpen(block['Name']):
-                    logging.info("Block %s is closed" % block['Name'])
-                    nClosedBlocks += 1
-                else:
-                    logging.info("Block %s is still open" % block['Name'])
-
-            if nClosedBlocks == len(localBlocks):
-                logging.info("Migration has finished")
-                doneMigrating = True
-            else:
-                logging.info("Migration is still going on")
-
-        except Exception, ex:
-            msg = "Error checking DBS\n"
-            msg += str(ex)
-            logging.error(msg)
-            msg =  traceback.format_exc()
-            logging.error("Details: \n%s" % msg)
-            pass
-
-        if doneMigrating:
-            self.ms.publish("PhEDExDataServiceInject",
-                                    payload)
-        else:
-            self.ms.publish("StoreResultsAccountant:PollMigration",
-                                   payload,  self.args['PollInterval'])
-        self.ms.commit()
-
-
     def phedexInjectDataset(self, payload):
         """
         inject a dataset into Phedex using the dataservice
         """
         logging.info("Beginning Phedex injection")
-        globalReadURL, globalWriteUrl = getGlobalDBSURL()
-
+        dbsURL = getGlobalDBSURL()
         dsURL  = getPhedexDSURL()
         spec   = WorkflowSpec()
         try:
@@ -320,7 +218,7 @@ class StoreResultsAccountantComponent:
         peDict = {'endpoint' : dsURL,
                   'method'   : 'POST'}
         phedexAPI = PhEDEx(peDict)
-        reader = DBSReader(globalReadURL)
+        reader = DBSReader(dbsURL)
 
         blocks = reader.dbs.listBlocks(dataset = datasetName)
         blockNames = []
@@ -328,7 +226,7 @@ class StoreResultsAccountantComponent:
         for block in blocks:
             blockNames.append(block['Name'])
 
-        jsonOutput = phedexAPI.injectBlocks(globalWriteUrl, injectNode, datasetName, 0 , 1, *blockNames)
+        jsonOutput = phedexAPI.injectBlocks(dbsURL, injectNode, datasetName, 0 , 1, *blockNames)
         logging.info("Injection results: %s" % jsonOutput)
 
         sub = PhEDExSubscription(datasetName, destNode, phedexGroup)
@@ -336,7 +234,7 @@ class StoreResultsAccountantComponent:
         subList = SubscriptionList()
         subList.addSubscription(sub)
         for sub in subList.getSubscriptionList():
-            jsonOutput = phedexAPI.subscribe(globalWriteUrl, sub)
+            jsonOutput = phedexAPI.subscribe(dbsURL, sub)
             #logging.info("Subscription results: %s" % jsonOutput)
 
         return
@@ -361,7 +259,6 @@ class StoreResultsAccountantComponent:
         self.ms.subscribeTo("GeneralJobFailure")
 
         self.ms.subscribeTo("PhEDExDataServiceInject")
-        self.ms.subscribeTo("StoreResultsAccountant:PollMigration")
         self.ms.subscribeTo("StoreResultsAccountant:Poll")
 
         self.ms.remove("StoreResultsAccountant:Poll")
