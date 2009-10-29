@@ -4,8 +4,8 @@ from ProdCommon.Database import Session
 from JobQueue.JobQueueDB import JobQueueDB
 import sys, getopt
 
-__version__ = "$Revision: $"
-__revision__ = "$Id: $"
+__version__ = "$Revision: 1.1 $"
+__revision__ = "$Id: holdJobs.py,v 1.1 2009/10/29 17:59:58 direyes Exp $"
 
 
 valid = [
@@ -117,7 +117,7 @@ if n_jobs is None and action is not None:
     print msg
     sys.exit(1)
 
-if action is None and list is None:
+if action is None and not list_jobs:
     msg = 'You must provide any of --hold, --unhold or --list options.'
     print usage
     print msg
