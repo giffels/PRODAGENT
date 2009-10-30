@@ -127,6 +127,8 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         if not self.pluginConfig['LSF'].has_key('Resource'):
             self.pluginConfig['LSF']['Resource'] = "None"
 
+        if not self.pluginConfig['LSF'].has_key('ResourceRepack'):
+            self.pluginConfig['LSF']['ResourceRepack'] = "None"
         return
 
     
@@ -216,8 +218,10 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             lsfSubmitCommand = 'bsub'
 
             lsfSubmitCommand += ' -q %s' % self.pluginConfig['LSF']['Queue']
-        
-            if ( self.pluginConfig['LSF']['Resource'] != "None" ):
+
+            if ( jobSpec.startswith("Repack-") and self.pluginConfig['LSF']['ResourceRepack'] != "None" ):
+                lsfSubmitCommand += ' -R "%s"' % self.pluginConfig['LSF']['ResourceRepack']
+            elif ( self.pluginConfig['LSF']['Resource'] != "None" ):
                 lsfSubmitCommand += ' -R "%s"' % self.pluginConfig['LSF']['Resource']
             elif ( self.pluginConfig['LSF']['NodeType'] != "None" ):
                 lsfSubmitCommand += ' -R "type==%s"' % self.pluginConfig['LSF']['NodeType']
@@ -265,6 +269,9 @@ class T0LSFSubmitter(BulkSubmitterInterface):
 
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
+        # needed at some point to acces SLC5 head node over rfio
+        #script.append("export RFIO_PORT=5001\n")
+
         for fname in self.jobInputFiles:
             script.append("rfcp %s:%s . \n" % (hostname,fname))
 
@@ -281,6 +288,9 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             script.append("export STAGE_HOST=%s\n" % stageHost )
         script.append("( /usr/bin/time ./run.sh $JOB_SPEC_FILE 2>&1 ) | gzip > ./run.log.gz\n")
         script.append("rfcp ./FrameworkJobReport.xml %s:%s/FrameworkJobReport.xml\n" % (hostname,cacheDir))
+
+        # get back a lot of debug information to the head node
+        #script.append("find . -type f -name '*.log' -exec rfcp {} %s:%s/ \;\n" % (hostname,cacheDir))
 
         outputlogfile = jobName
         outputlogfile += '.`date +%s`.log.gz'
