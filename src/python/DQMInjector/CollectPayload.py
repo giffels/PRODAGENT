@@ -23,6 +23,7 @@ class CollectPayload(dict):
         self.setdefault("RunNumber", None)
         self.setdefault("Scenario", None)
         self.setdefault("GlobalTag", None)
+        self.setdefault("CMSSWVersion", None)
 
 
     def datasetPath(self):
@@ -61,6 +62,8 @@ class CollectPayload(dict):
                 self['Scenario'] = token.replace("scenario=", "")
             if token.startswith("tag="):
                 self['GlobalTag'] = token.replace("tag=", "")
+            if token.startswith("cmssw="):
+                self['CMSSWVersion'] = token.replace("cmssw=", "")
 
         return
 
@@ -83,6 +86,8 @@ class CollectPayload(dict):
             result += "scenario=%s;" % self['Scenario']
         if self['GlobalTag'] != None:
             result += "tag=%s;" % self['GlobalTag']
+        if self['CMSSWVersion'] != None:
+            result += "cmssw=%s;" % self['CMSSWVersion']
 
         return result
 

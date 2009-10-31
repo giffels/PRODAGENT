@@ -40,6 +40,7 @@ class DQMInjectorComponent:
         self.args['CmsPath'] = None
         self.args['ConfigFile'] = None
         self.args['OverrideCMSSW'] = None
+        self.args['CMSSWFallback'] = None
         self.args['OverrideGlobalTag'] = None
         self.args['GlobalTagFallback'] = None
         self.args['DQMServer'] = None
@@ -78,6 +79,9 @@ class DQMInjectorComponent:
                 self.args['OverrideCMSSW'],)
         else:
             msg += " => CMSSW Version looked up by Plugin\n"
+            if self.args['CMSSWFallback'] is not None:
+                msg += "  => CMSSW Version Fallback is: %s\n" % (
+                    self.args['CMSSWFallback'])
         if self.args['OverrideGlobalTag'] != None:
             msg += " => GlobalTag Version Overridden: %s\n" % (
                 self.args['OverrideGlobalTag'],)

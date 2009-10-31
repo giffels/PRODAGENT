@@ -38,21 +38,39 @@ def findVersionForDataset(dbsUrl, primary, processed, tier, run):
     except Exception, ex:
         msg = "Failed to get details from DBS for dataset:\n"
         msg += "%s for run %s\n" % (datasetName, run)
-        msg += "Cannot extract CMSSW Version from DBS"
-        raise RuntimeError, msg
+        msg += "Cannot extract CMSSW Version from DBS.\n"
+        msg += "Using fallback..."
+        if self.args.get('CMSSWFallback', None) is not None:
+            logging.info(msg)
+            return self.args['CMSSWFallback']
+        else:
+            msg += " No CMSSWFallback setting provided."
+            raise RuntimeError, msg
 
     if len(fileList) == 0:
         msg = "No files in Dataset %s\n for run %s\n" % (datasetName, run)
-        msg += "Cannot extract CMSSW Version from DBS"
-        raise RuntimeError, msg
+        msg += "Cannot extract CMSSW Version from DBS.\n"
+        msg += "Using fallback..."
+        if self.args.get('CMSSWFallback', None) is not None:
+            logging.info(msg)
+            return self.args['CMSSWFallback']
+        else:
+            msg += " No CMSSWFallback setting provided."
+            raise RuntimeError, msg
     lastFile = fileList[-1]
 
     algoList = lastFile['AlgoList']
     if len(algoList) == 0:
         msg = "No algorithm information in Dataset %si\n for run %s\n" % (
             datasetName, run)
-        msg += "Cannot extract CMSSW Version from DBS"
-        raise RuntimeError, msg
+        msg += "Cannot extract CMSSW Version from DBS.\n"
+        msg += "Using fallback..."
+        if self.args.get('CMSSWFallback', None) is not None:
+            logging.info(msg)
+            return self.args['CMSSWFallback']
+        else:
+            msg += " No CMSSWFallback setting provided."
+            raise RuntimeError, msg
     lastAlgo = lastFile['AlgoList'][-1]
 
     return lastAlgo['ApplicationVersion']
@@ -101,6 +119,9 @@ def findGlobalTagForDataset(dbsUrl, primary, processed, tier):
             msg += "No Global Tag fallback provided in the configuration "
             msg += "file. Can't process input dataset: %s" % datasetName
             raise RuntimeError, msg
+    else:
+        msg = "Global Tag found in DBS: %s" % globalTag
+        logging.info(msg)
 
     return globalTag
 
@@ -196,9 +217,13 @@ class RelValPlugin(BasePlugin):
             # Override Global Tag?
             if self.args.get("OverrideGlobalTag", None) is not None:
                 globalTag = self.args['OverrideGlobalTag']
+                msg = "Using Overrride for Global: %s" % globalTag
+                logging.info(msg)
             # Global Tag provided in the payload?
             elif collectPayload.get('GlobalTag', None) is not None:
                 globalTag = collectPayload['GlobalTag']
+                msg = "Global tag found in payload: %s" % globalTag
+                logging.info(msg)
             # Look up in DBS for Global Tag, use fallback GT as last resort
             else:
                 globalTag = findGlobalTagForDataset(
@@ -207,10 +232,16 @@ class RelValPlugin(BasePlugin):
                     collectPayload['ProcessedDataset'],
                     collectPayload['DataTier'])
 
+            # Override CMSSW Version
             if self.args.get("OverrideCMSSW", None) is not None:
                 cmsswVersion = self.args['OverrideCMSSW']
                 msg = "Using Override for CMSSW Version %s" % (
                     self.args['OverrideCMSSW'],)
+                logging.info(msg)
+            # CMSSW Version provided in the payload?
+            elif collectPayload.get('CMSSWVersion', None) is not None:
+                cmsswVersion = collectPayload['CMSSWVersion']
+                msg = "CMSSW Version found in payload: %s" % cmsswVersion
                 logging.info(msg)
             else:
                 cmsswVersion = findVersionForDataset(
@@ -219,7 +250,7 @@ class RelValPlugin(BasePlugin):
                     collectPayload['ProcessedDataset'],
                     collectPayload['DataTier'],
                     collectPayload['RunNumber'])
-                msg = "Found CMSSW Version for dataset/run\n"
+                msg = "CMSSW Version for dataset/run\n"
                 msg += " Dataset %s\n" % collectPayload.datasetPath()
                 msg += " CMSSW Version = %s\n " % cmsswVersion
                 logging.info(msg)
