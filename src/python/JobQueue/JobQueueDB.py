@@ -1216,8 +1216,9 @@ def validateJobSpecDict(dictInstance):
 
     return
 
-def insertJobSpec(dbInterface, jobSpecId, jobSpecFile, jobType, workflowId,
-                  workflowPriority, siteName = None, status = "new"):
+def insertJobSpec(dbInterface, dbConn, jobSpecId, jobSpecFile, jobType,
+                  workflowId, workflowPriority, siteName = None,
+                  status = "new"):
     """
     _insertJobSpec_
     
@@ -1235,20 +1236,23 @@ def insertJobSpec(dbInterface, jobSpecId, jobSpecFile, jobType, workflowId,
                     :p_4, :p_5, :p_6)"""
     bindVars = {"p_1": jobSpecId, "p_2": jobSpecFile, "p_3": jobType,
                 "p_4": workflowId, "p_5": workflowPriority, "p_6": status}
-    dbInterface.processData(queueQuery, bindVars, transaction = True)
+    dbInterface.processData(queueQuery, bindVars, conn = dbConn,
+                            transaction = True)
 
     if siteName == None:
         siteQuery = """INSERT INTO jq_site (job_index) SELECT job_index
                        FROM jq_queue WHERE job_spec_id = :p_1"""        
         bindVars = {"p_1": jobSpecId}
-        dbInterface.processData(siteQuery, bindVars, transaction = True)
+        dbInterface.processData(siteQuery, bindVars, conn = dbConn,
+                                transaction = True)
     else:
         siteQuery = """INSERT INTO jq_site (job_index, site_index) VALUES (
                        (SELECT job_index FROM jq_queue WHERE job_spec_id = :p_1),
                        (SELECT site_index FROM rc_site WHERE se_name = :p_2))
                        """
         bindVars = {"p_1": jobSpecId, "p_2": siteName}
-        dbInterface.processData(siteQuery, bindVars, transaction = True)
+        dbInterface.processData(siteQuery, bindVars, conn = dbConn,
+                                transaction = True)
 
     return
 
