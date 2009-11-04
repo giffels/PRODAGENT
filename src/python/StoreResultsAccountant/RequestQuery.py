@@ -49,14 +49,15 @@ class RequestQuery:
         if self.isLoggedIn:
             self.br.select_form(name="bug_form")
             
-            #control = self.br.find_control("custom_sb1",type="select")
-            #self.SiteByValueDict = self.getLabelByValueDict(control)
             control = self.br.find_control("custom_sb2",type="select")
             self.ReleaseByValueDict = self.getLabelByValueDict(control)
+
             control = self.br.find_control("custom_sb3",type="select")
             self.GroupByValueDict = self.getLabelByValueDict(control)
+
             control = self.br.find_control("custom_sb4",type="select")
             self.DBSByValueDict = self.getLabelByValueDict(control)
+
             control = self.br.find_control("resolution_id",type="select")
             self.StatusByValueDict = self.getLabelByValueDict(control)
 
@@ -89,10 +90,12 @@ class RequestQuery:
                     ## Get Information
                     self.br.select_form(name="item_form")
 
-                    ## Get old dataset name
+                    ## Get input dataset name
                     control = self.br.find_control("custom_tf1",type="text")
-                    old_dataset = control.value.split('/')
-
+                    input_dataset = control.value.split('/')
+                    input_primary_dataset = input_dataset[1].replace(' ','')
+                    input_processed_dataset = input_dataset[2].replace(' ','')
+                    
                     ## Get DBS URL by Drop Down
                     control = self.br.find_control("custom_sb4",type="select")
                     dbs_url = self.DBSByValueDict[control.value[0]]
@@ -100,21 +103,21 @@ class RequestQuery:
                     ## Get DBS URL by text field (for old entries)
                     if dbs_url=='None':
                         control = self.br.find_control("custom_tf4",type="text")
-                        dbs_url = control.value
-
-                    ## Get Site
-                    #control = self.br.find_control("custom_sb1",type="select")
-                    #site_id =  control.value
-
+                        dbs_url = control.value.replace(' ','')
+                        
                     ## Get Release
                     control = self.br.find_control("custom_sb2",type="select")
                     release_id = control.value
 
                     ## Get Physics Group
                     control = self.br.find_control("custom_sb3",type="select")
-                    group_id = control.value
-                    group_squad = 'cms-storeresults-'+self.GroupByValueDict[group_id[0]].replace("-","_")
-    
+                    group_id = control.value[0]
+                    group_squad = 'cms-storeresults-'+self.GroupByValueDict[group_id].replace("-","_")
+
+                    ## Get Dataset Version
+                    control = self.br.find_control("custom_tf3",type="text")
+                    dataset_version = control.value.replace(' ','')
+                                        
                     ## Get current status
                     control = self.br.find_control("resolution_id",type="select")
                     status_id = control.value
@@ -134,39 +137,36 @@ class RequestQuery:
                         control.value = [self.getValueByLabelDict(control)[group_squad]]
                         self.br.submit()
 
-                    ## Get new dataset name
-                    ##control = self.br.find_control("custom_tf2",type="text")
-                    ## remove leading hypernews name and add physics group name
+                    ## Construction of the new dataset name
+                    ## remove leading hypernews or physics group name and StoreResults+Version
+                        
+                    new_dataset = ""
 
-                    new_datatset = ""
-
-                    if old_dataset[2].find(self.GroupByValueDict[group_id[0]])==0:
-                        new_dataset = old_dataset[2].replace(self.GroupByValueDict[group_id[0]],"StoreResults",1)
+                    dataset_prefix = "StoreResults"+dataset_version
+                    
+                    if input_processed_dataset.find(self.GroupByValueDict[group_id])==0:
+                        new_dataset = input_processed_dataset.replace(self.GroupByValueDict[group_id],dataset_prefix,1)
                     else:
-                        stripped_dataset = old_dataset[2].split("-")[1:]
-                        new_dataset = 'StoreResults-'+'-'.join(stripped_dataset)
+                        stripped_dataset = input_processed_dataset.split("-")[1:]
+                        new_dataset = dataset_prefix+'-'+'-'.join(stripped_dataset)
                 
                     self.br.back()
 
-                    ## remove leading &nbsp and # from name
+                    ## remove leading &nbsp and # from task
                     task = link.text.replace('#','').decode('utf-8').strip()
 
                     infoDict = {}
                 
-                    infoDict["primaryDataset"] = old_dataset[1].replace(' ','')
-                    infoDict["processedDataset"] = old_dataset[2].replace(' ','')
-                    infoDict["outputDataset"] = new_dataset.replace(' ','')
-                    infoDict["physicsGroup"] = self.GroupByValueDict[group_id[0]]
-                    infoDict["inputDBSURL"] = dbs_url.replace(' ','')
+                    infoDict["primaryDataset"] = input_primary_dataset
+                    infoDict["processedDataset"] = input_processed_dataset
+                    infoDict["outputDataset"] = new_dataset
+                    infoDict["physicsGroup"] = self.GroupByValueDict[group_id]
+                    infoDict["inputDBSURL"] = dbs_url
                     infoDict["cmsswRelease"] = self.ReleaseByValueDict[release_id[0]]
-                    #infoDict["destinationSite"] = self.SiteByValueDict[site_id[0]]
-
+                    
                     #Fill json file, if status is done
                     if self.StatusByValueDict[status_id[0]]=='Done' and RequestStatusByValueDict[request_status_id[0]] != "Closed":
                         self.writeJSONFile('Ticket_'+task+'.json', infoDict)
-
-                    ##Not part of the bookeeping database
-                    #del infoDict["destinationSite"]
 
                     infoDict["task"] = int(task)
                     infoDict["ticketStatus"] = self.StatusByValueDict[status_id[0]]
@@ -232,16 +232,12 @@ class RequestQuery:
             ##check additional searching parameter
             for arg in kargs:
                 if arg == "approval_status":
-                    #temp = "%s, %s" % (arg,kargs[arg])
-                    #logging.info(temp)
                     control = self.br.find_control("resolution_id",type="select")
                     for item in control.items:
                         if item.attrs['label'] == kargs[arg].strip():
                             control.value = [item.attrs['value']]
 
                 elif arg == "task_status":
-                    #temp = "%s, %s" % (arg,kargs[arg])
-                    #logging.info(temp)
                     control = self.br.find_control("status_id",type="select")
                     for item in control.items:
                         if item.attrs['label'] == kargs[arg].strip():
