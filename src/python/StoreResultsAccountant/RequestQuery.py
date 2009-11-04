@@ -55,6 +55,8 @@ class RequestQuery:
             self.ReleaseByValueDict = self.getLabelByValueDict(control)
             control = self.br.find_control("custom_sb3",type="select")
             self.GroupByValueDict = self.getLabelByValueDict(control)
+            control = self.br.find_control("custom_sb4",type="select")
+            self.DBSByValueDict = self.getLabelByValueDict(control)
             control = self.br.find_control("resolution_id",type="select")
             self.StatusByValueDict = self.getLabelByValueDict(control)
 
@@ -91,9 +93,14 @@ class RequestQuery:
                     control = self.br.find_control("custom_tf1",type="text")
                     old_dataset = control.value.split('/')
 
-                    ## Get DBS URL
-                    control = self.br.find_control("custom_tf4",type="text")
-                    dbs_url = control.value
+                    ## Get DBS URL by Drop Down
+                    control = self.br.find_control("custom_sb4",type="select")
+                    dbs_url = self.DBSByValueDict[control.value[0]]
+
+                    ## Get DBS URL by text field (for old entries)
+                    if dbs_url=='None':
+                        control = self.br.find_control("custom_tf4",type="text")
+                        dbs_url = control.value
 
                     ## Get Site
                     #control = self.br.find_control("custom_sb1",type="select")
@@ -154,10 +161,10 @@ class RequestQuery:
                     infoDict["cmsswRelease"] = self.ReleaseByValueDict[release_id[0]]
                     #infoDict["destinationSite"] = self.SiteByValueDict[site_id[0]]
 
-                    ##Fill json file, if status is done
+                    #Fill json file, if status is done
                     if self.StatusByValueDict[status_id[0]]=='Done' and RequestStatusByValueDict[request_status_id[0]] != "Closed":
                         self.writeJSONFile('Ticket_'+task+'.json', infoDict)
-                        
+
                     ##Not part of the bookeeping database
                     #del infoDict["destinationSite"]
 
@@ -171,8 +178,6 @@ class RequestQuery:
                     requests.append(infoDict)
                     
         return requests
-
-            
 
     def getValueByLabelDict(self, control):
         d = {}
