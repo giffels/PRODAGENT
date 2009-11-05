@@ -30,17 +30,20 @@ class RequestQuery:
 
     def closeRequest(self,task):
         if self.isLoggedIn:
+            self.createValueDicts()
+            
             response = self.br.open('https://savannah.cern.ch/task/?'+str(task))
 
             html = response.read()
 
             self.br.select_form(name="item_form")
-                    
-            control = self.br.find_control("status_id",type="select")
-            TicketStatusByLabelDict = self.getValueByLabelDict(control)
-                
-            control.value = [TicketStatusByLabelDict["Closed"]]
 
+            control = self.br.find_control("status_id",type="select")
+            control.value = [self.TicketStatusByLabelDict["Closed"]]
+
+            #DBS Drop Down is a mandatory field, if set to None (for old requests), it is not possible to close the request
+            self.setDBSDropDown()
+                        
             self.br.submit()
             
         return
@@ -57,12 +60,37 @@ class RequestQuery:
 
             control = self.br.find_control("custom_sb4",type="select")
             self.DBSByValueDict = self.getLabelByValueDict(control)
+            self.DBSByLabelDict = self.getValueByLabelDict(control)
 
             control = self.br.find_control("resolution_id",type="select")
             self.StatusByValueDict = self.getLabelByValueDict(control)
 
+            control = self.br.find_control("status_id",type="select")
+            self.TicketStatusByLabelDict = self.getValueByLabelDict(control)
+
         return
-    
+
+    def setDBSDropDown(self):
+        ## Get DBS URL by Drop Down
+        control = self.br.find_control("custom_sb4",type="select")
+        dbs_url = self.DBSByValueDict[control.value[0]]
+
+        ## Get DBS URL by text field (for old entries)
+        if dbs_url=='None':
+            tmp = self.br.find_control("custom_tf4",type="text")
+            dbs_url = tmp.value.replace(' ','')
+
+            if dbs_url.find("analysis_02")!=-1:
+                control.value = [self.DBSByLabelDict["cms_dbs_ph_analysis_02"]]
+            elif dbs_url.find("analysis_01")!=-1:
+                control.value = [self.DBSByLabelDict["cms_dbs_ph_analysis_01"]]
+            else:
+                msg = 'DBS URL of the old request is neither analysis_01 nor analysis_02. Please, check!'
+                logging.error(msg)
+                raise RuntimeError, msg
+
+        return
+                
     def getLabelByValueDict(self, control):
         d = {}
         for item in control.items:
@@ -104,6 +132,8 @@ class RequestQuery:
                     if dbs_url=='None':
                         control = self.br.find_control("custom_tf4",type="text")
                         dbs_url = control.value.replace(' ','')
+                    else: # Transform input value to a valid DBS url
+                        dbs_url = "http://cmsdbsprod.cern.ch/"+dbs_url+"/servlet/DBSServlet"
                         
                     ## Get Release
                     control = self.br.find_control("custom_sb2",type="select")
