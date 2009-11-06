@@ -15,12 +15,15 @@ of sites where they need to go
 
 """
 
-__revision__ = "$Id: GlideInWMS.py,v 1.10 2008/10/21 15:52:21 gutsche Exp $"
+__revision__ = "$Id: GlideInWMS.py,v 1.11 2009/08/21 21:19:43 khahn Exp $"
 
 import os
 import logging
 import time
 import string
+import re
+
+import ShREEK.CMSPlugins.DashboardInfo as DashboardUtils
 
 from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
@@ -30,9 +33,12 @@ from JobSubmitter.Submitters.OSGUtils import standardScriptHeader
 from JobSubmitter.Submitters.OSGUtils import bulkUnpackerScript
 from JobSubmitter.Submitters.OSGUtils import missingJobReportCheck
 
-
-
 from ProdAgent.ResourceControl.ResourceControlAPI import createSiteNameMap
+
+from ResourceMonitor.Monitors.CondorQ import condorQ
+
+from ProdCommon.MCPayloads.JobSpec import JobSpec
+
 
 
 class GlideInWMS(BulkSubmitterInterface):
@@ -131,6 +137,7 @@ class GlideInWMS(BulkSubmitterInterface):
         # // Start the JDL for this batch of jobs
         #//
         self.jdl = self.initJDL()
+        submittedJobSpecs = []
         failureList = []
         for jobSpec, cacheDir in self.toSubmit.items():
             logging.debug("Submit: %s from %s" % (jobSpec, cacheDir) )
@@ -140,7 +147,8 @@ class GlideInWMS(BulkSubmitterInterface):
             #//
             self.jdl.extend(
                 self.makeJobJDL(jobSpec, cacheDir, self.specFiles[jobSpec]))
-            
+            # Storing jobSpecs in a list for ensure we keep te same order
+            submittedJobSpecs.append(jobSpec) 
             
         msg = ""
         for line in self.jdl:
@@ -172,6 +180,23 @@ class GlideInWMS(BulkSubmitterInterface):
         if len(failureList) > 0:
             raise JSException("Submission Failed", FailureList = failureList)
             #logging.debug("---> FailureList size = %s " % len(failureList))
+
+        # For Dashboard reporting we are relying on the fact that the
+        # condor_submit reports the cluster ids in the same order the jobs are
+        # in the jdl file
+
+        #  Reg. expr. for finding the cluster IDs from output
+        reg_cluster = re.compile(r'.*cluster\s+(?P<clusterID>\d+)\W')
+        clusterIds = reg_cluster.findall(output)
+        if len(clusterIds) != len(submittedJobSpecs):
+            msg = "Could not retrieve Cluster Ids."
+            msg = " Mismatch between jobs submitted and"
+            msg += " jobs reported by condor_submit."
+            logging.info(msg)
+        else:
+            self.submittedJobs = {}
+            for jobSpec, clusterId in zip(submittedJobSpecs, clusterIds):
+                self.submittedJobs[jobSpec] = clusterId
                        
         return
 
@@ -183,7 +208,7 @@ class GlideInWMS(BulkSubmitterInterface):
 
         Make common JDL header
         """
-        desiredSites = self.lookupDesiredSites()
+        self.desiredSites = self.lookupDesiredSites()
         
         inpFiles = []
 
@@ -197,8 +222,8 @@ class GlideInWMS(BulkSubmitterInterface):
         jdl.append("universe = vanilla\n")
         # Specify where are the jobs to run
         jdl.append('+DESIRED_Archs="INTEL,X86_64"\n')
-        if desiredSites!=None:
-            desiredSitesJDL = string.join(list(desiredSites),',')
+        if self.desiredSites!=None:
+            desiredSitesJDL = string.join(list(self.desiredSites),',')
             jdl.append('+DESIRED_Sites = "%s"\n' % desiredSitesJDL)
             jdl.append("Requirements = stringListMember(GLIDEIN_Site,DESIRED_Sites)&& stringListMember(Arch, DESIRED_Archs)\n")
         else:
@@ -402,7 +427,161 @@ echo "</FrameworkJobReport>" >> FrameworkJobReport.xml
                               ClassInstance = self,
                               Whitelist = self.whitelist)
         return matchedSites
-                
+
+
+    def publishSubmitToDashboard(self):
+        """
+        _publishSubmitToDashboard_
+
+        Publish the dashboard info to the appropriate destination
             
+        NOTE: should probably read destination from cfg file, hardcoding
+        it here for time being.
+                
+        """
+        #  // 
+        # // Check for dashboard usage
+        #//
+        self.usingDashboard = {'use' : 'True',
+                               'address' : 'cms-pamon.cern.ch',
+                               'port' : 8884}
+        try:
+            dashboardCfg = self.pluginConfig.get('Dashboard', {})
+            self.usingDashboard['use'] = dashboardCfg.get(
+                "UseDashboard", "False")
+            self.usingDashboard['address'] = dashboardCfg.get(
+                "DestinationHost")
+            self.usingDashboard['port'] = int(dashboardCfg.get(
+                "DestinationPort"))
+            logging.debug("dashboardCfg = " + str(self.usingDashboard) )
+        except:
+            logging.info("No Dashboard section in SubmitterPluginConfig")
+            logging.info("Taking default values:")
+            logging.info("dashboardCfg = " + str(self.usingDashboard))
+            
+        if self.usingDashboard['use'].lower().strip() == "false":
+            logging.info("Skipping Dasboard report.")
+            return
+
+        # Preliminary details
+        appData = ",".join(self.applicationVersions)
+        targetCE = ", ".join(list(self.desiredSites))
+
+        # Storing GlobalJobIds
+        try:
+            classads = condorQ("\"ProdAgent_JobID =!= UNDEFINED\"")
+        except:
+            classads = {}
+
+        # Getting ProdAgent Version
+        paVersion = os.environ.get('PRODAGENT_VERSION', '')
+        if not paVersion and os.environ.get('PAVERSION', ''):
+            paVersion = 'PRODAGENT_%s' % os.environ.get('PAVERSION')
+
+        # Composing dashboard information for each submitted job
+        for jobSpecId, jobCache in self.toSubmit.items():
+            jobSpecFile = self.specFiles[jobSpecId]
+            # Local Batch Id
+            clusterId = self.submittedJobs.get(jobSpecId)
+            # Finding GlobalJobId
+            globalJobId = ""
+            submissionTime = ""
+            for classad in classads:
+                if classad['ProdAgent_JobID'] == jobSpecId:
+                    globalJobId = classad.get('GlobalJobId', "")
+                    submissionTime = classad.get('QDate', "")
+                    break
+            # Finding executable
+            try:
+                jobSpec = JobSpec()
+                jobSpec.load(jobSpecFile)
+                executable = jobSpec.payload.application.get('Executable', '')
+            except:
+                executable = ''
+            dashInfoFile = os.path.join(jobCache, "DashboardInfo.xml")
+            if not os.path.exists(dashInfoFile):
+                msg = "Dashboard Info file not found\n"
+                msg += "%s\n" % dashInfoFile
+                msg += "Skipping publication for %s\n" % jobId
+                logging.warning(msg)
+                continue
+            dashData = DashboardUtils.DashboardInfo()
+            dashData.read(dashInfoFile)
+            dashData.task, dashData.job = \
+                           self.generateDashboardID(jobSpecFile, globalJobId)
+
+            dashData['ApplicationVersion'] = appData
+            dashData['TargetCE'] = targetCE
+            dashData['Scheduler'] = 'GLIDEINS'
+            dashData['JSToolUI'] = os.environ['HOSTNAME']
+            dashData['GridJobID'] = globalJobId
+            dashData['SubTimeStamp'] = submissionTime
+            dashData['RBname'] = os.environ.get('HOSTNAME', 'ProdAgent')
+            dashData['LocalBatchID'] = clusterId
+            dashData['JSToolVersion'] = paVersion
+            dashData['Executable'] = executable
+
+#            # Number of steps (only for processing Jobs)
+#            typeList = []
+#            getType = lambda x: typeList.append(x.type)
+#            jobSpec.payload.operate(getType)
+#            dashData['NSteps'] = typeList.count('CMSSW')
+
+            dashData.addDestination(self.usingDashboard['address'],
+                int(self.usingDashboard['port']))
+
+            logging.debug("Information published in Dashboard:")
+            msg = "\n - task: %s\n - job: %s" % (dashData.task, dashData.job)
+            for key, value in dashData.items():
+                msg += "\n - %s: %s" % (key, value)
+            logging.debug(msg)
+
+            # update dashboard info file
+            try:
+                dashData.write(dashInfoFile)
+                logging.info("Updated dashboardInfoFile " + dashInfoFile)
+            except Exception, ex:
+                logging.error("Error writing %s" % dashInfoFile)
+
+            # Publish to Dashboard
+            dashData.publish(1)
+
+        return
+
+
+    def generateDashboardID(self, jobSpecFile, globalJobId):
+        """
+        _generateDashboardID_
+
+        Generate a global job ID for the dashboard
+
+        """
+        jobSpec = JobSpec()
+        try:
+            jobSpec.load(jobSpecFile)
+        except Exception, ex:
+            msg = "Error loading JobSpec File: %s\n" % jobSpecFile
+            msg += str(ex)
+            logging.debug(msg)
+            return (None, None)
+
+        prodAgentName = jobSpec.parameters['ProdAgentName']
+        jobSpecId = jobSpec.parameters['JobName']
+        jobName = jobSpecId.replace("_", "-")    
+        jobName = "ProdAgent_%s_%s" %(
+            prodAgentName,
+            jobName,
+            )
+
+        workflowId = jobSpec.payload.workflow
+        workflowId = workflowId.replace("_", "-")
+        taskName = "ProdAgent_%s_%s" % (workflowId,
+                                         prodAgentName)
+        subCount = jobSpec.parameters.get('SubmissionCount', 0)
+        jobName = "%s_%s" % (jobName, subCount)
+        jobName = "_".join([jobName, globalJobId])
+    
+        return taskName, jobName
+
 
 registerSubmitter(GlideInWMS, GlideInWMS.__name__)
