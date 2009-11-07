@@ -107,7 +107,7 @@ class RFCPCERNImpl(StageOutImpl):
 
                 # check for correct naming convention in PFN
                 #regExpParser = re.compile('/castor/cern.ch/cms/store/data/[^/]+/[^/]+/[^/]+/')
-                regExpParser = re.compile('/castor/cern.ch/cms/T0/hufnagel/recotest/store/data/([^/]+)/([^/]+)/([^/]+)/')
+                regExpParser = re.compile('/castor/cern.ch/cms/store/data/([^/]+)/([^/]+)/([^/]+)/')
                 match = regExpParser.match(targetDir)
                 if ( match != None ):
 
@@ -117,7 +117,7 @@ class RFCPCERNImpl(StageOutImpl):
                     else:
                         fileclass = 'cms_production'
 
-                    fileclassDir = '/castor/cern.ch/cms/T0/hufnagel/recotest/store/data/%s/%s/%s' % match.group(1,2,3)
+                    fileclassDir = '/castor/cern.ch/cms/store/data/%s/%s/%s' % match.group(1,2,3)
 
                     print "DEBUG 444 want fileclass %s on %s" % (fileclass, fileclassDir)
 
