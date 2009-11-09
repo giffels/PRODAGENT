@@ -106,7 +106,7 @@ class CondorG(TrackerPlugin):
                 #\\
                 status = condorLog.condorStatus()
                 clusterId = condorLog['Cluster']
-                toDashboard['StatusValueReason'] = condorLog('Reason', '')
+                toDashboard['StatusValueReason'] = condorLog.get('Reason', '')
 
             else:
                 status = classad['JobStatus']
@@ -228,7 +228,7 @@ class CondorG(TrackerPlugin):
                 classad = {}
                 classad['JobStatus'] = condorLog.condorStatus()
                 classad['ClusterId'] = condorLog['Cluster']
-                toDashboard['StatusValueReason'] = condorLog('Reason', '')
+                toDashboard['StatusValueReason'] = condorLog.get('Reason', '')
                 
             status = classad['JobStatus']
             clusterId = classad['ClusterId']
