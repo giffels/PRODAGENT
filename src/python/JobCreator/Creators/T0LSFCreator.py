@@ -49,22 +49,6 @@ class T0LSFCreator(CreatorInterface):
             msg += self.__class__.__name__
             raise JCException(msg, ClassInstance = self)
            
-        if not self.pluginConfig.has_key('StageOut'):
-            self.pluginConfig.newBlock('StageOut')
-
-        if not self.pluginConfig['StageOut'].has_key('Command'):
-            self.pluginConfig['StageOut']['Command'] = "rfcp"
-
-        if not self.pluginConfig['StageOut'].has_key('LFNPrefix'):
-            self.pluginConfig['StageOut']['LFNPrefix'] = "None"
-
-        if not self.pluginConfig['StageOut'].has_key('SEName'):
-            self.pluginConfig['StageOut']['SEName'] = "srm.cern.ch"
-
-        if not self.pluginConfig['StageOut'].has_key('Option'):
-            self.pluginConfig['StageOut']['Option'] = "None"
-
-
 	if not self.pluginConfig.has_key('SoftwareSetup'):
             self.pluginConfig.newBlock('SoftwareSetup')
 
@@ -74,10 +58,8 @@ class T0LSFCreator(CreatorInterface):
         if not self.pluginConfig['SoftwareSetup'].has_key('ScramArch'):
             self.pluginConfig['SoftwareSetup']['ScramArch'] = "slc4_ia32_gcc345"
 
-
         if not self.pluginConfig.has_key('OverrideUserSandbox'):
             self.pluginConfig.newBlock('OverrideUserSandbox')
-
 
         return
 
@@ -293,24 +275,6 @@ class T0LSFCreator(CreatorInterface):
                 "export STAGE_HOST=%s\n" % stageHost
                 )
 
-        if ( self.pluginConfig['StageOut']['Command'] != "None" and \
-             self.pluginConfig['StageOut']['LFNPrefix'] != "None" and \
-             self.pluginConfig['StageOut']['SEName'] != "None" ):
-
-            option = self.pluginConfig['StageOut']['Option']
-            if ( option == "None" ):
-                option = ""
-
-            runres = taskObject['RunResDB']
-          
-            overrideBase = "/%s/StageOutParameters/Override" % 'stageOut1'
-
-            runres.addPath(overrideBase)
-            runres.addData("/%s/command" % overrideBase, self.pluginConfig['StageOut']['Command'])
-            runres.addData("/%s/option" % overrideBase, option)
-            runres.addData("/%s/se-name" % overrideBase, self.pluginConfig['StageOut']['SEName'])
-            runres.addData("/%s/lfn-prefix" % overrideBase, self.pluginConfig['StageOut']['LFNPrefix'])
-        
         return
     
     
