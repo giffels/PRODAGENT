@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 
 #MLM First we have to get the env variable for location of install.  We should pass this as an argument
 source $PBIN/env_mytestarea.sh;

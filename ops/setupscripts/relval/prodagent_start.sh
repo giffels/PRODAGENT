@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 
 mkdir -p $PRODAGENT_WORKDIR;
 

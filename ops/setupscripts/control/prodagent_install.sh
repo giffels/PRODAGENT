@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 
 #make directory
 mkdir -p $PRODAGENT_WORKDIR

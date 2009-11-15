@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 
 export STAGER_TRACE=3
 export PRODAGENT_USER=cmsprod

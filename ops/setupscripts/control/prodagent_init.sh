@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 
 source $PBIN/env_mytestarea.sh;
 

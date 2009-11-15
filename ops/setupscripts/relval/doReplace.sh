@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 
 
 #First check if the ProdAgentConfig.xml file already exists:
