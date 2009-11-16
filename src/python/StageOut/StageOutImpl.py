@@ -32,6 +32,8 @@ class StageOutImpl:
         self.stageIn = stagein
         # tuple of exit codes of copy when dest directory does not exist
         self.directoryErrorCodes = tuple()
+        # switches between using stageout that integrity checks stageout or not
+        self.useChecksumForStageout = False
     
 
     def deferDirectoryCreation(self):
@@ -122,6 +124,21 @@ class StageOutImpl:
         raise NotImplementedError, "StageOutImpl.createStageOutCommand"
 
 
+    def createStageOutCommandWithChecksum(self, sourcePFN, targetPFN, options = None, checksum = None):
+        """
+        _createStageOutCommandWithChecksum_
+
+        Build a shell command that will transfer the sourcePFN to the
+        targetPFN using the options provided if necessary
+
+        Difference to previous method is that the checksums are
+        used to integrity check the transfer (depends on support
+        for this feature from the storage system)
+        
+        """
+        raise NotImplementedError, "StageOutImpl.createStageOutCommandWithChecksum"
+
+
     def removeFile(self, pfnToRemove):
         """
         _removeFile_
@@ -134,7 +151,7 @@ class StageOutImpl:
         """
         raise NotImplementedError, "StageOutImpl.removeFile"
 
-
+    
     def createRemoveFileCommand(self, pfn):
         """
         return the command to delete a file after a failed copy
@@ -145,7 +162,7 @@ class StageOutImpl:
             return ""
 
 
-    def __call__(self, protocol, inputPFN, targetPFN, options = None):
+    def __call__(self, protocol, inputPFN, targetPFN, options = None, checksums = None):
         """
         _Operator()_
 
@@ -189,8 +206,12 @@ class StageOutImpl:
         #  //
         # // Create the command to be used.
         #//
-        command = self.createStageOutCommand(
-            sourcePFN, targetPFN, options)
+        if self.useChecksumForStageout:
+            command = self.createStageOutCommandWithChecksum(
+                sourcePFN, targetPFN, options, checksums)
+        else:
+            command = self.createStageOutCommand(
+                sourcePFN, targetPFN, options)
 
         #  //
         # // Run the command
