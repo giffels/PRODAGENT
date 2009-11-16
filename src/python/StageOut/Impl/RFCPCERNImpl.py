@@ -30,6 +30,9 @@ class RFCPCERNImpl(StageOutImpl):
         # permissions for target directory
         self.permissions = '775'
 
+        # use castor support to preset adler32 checksums before transfer
+        self.useChecksumForStageout = True
+
 
     def createSourceName(self, protocol, pfn):
         """
@@ -106,7 +109,6 @@ class RFCPCERNImpl(StageOutImpl):
                 print "DEBUG 333 checking PFN for fileclass override"
 
                 # check for correct naming convention in PFN
-                #regExpParser = re.compile('/castor/cern.ch/cms/store/data/[^/]+/[^/]+/[^/]+/')
                 regExpParser = re.compile('/castor/cern.ch/cms/store/data/([^/]+)/([^/]+)/([^/]+)/')
                 match = regExpParser.match(targetDir)
                 if ( match != None ):
@@ -160,14 +162,62 @@ class RFCPCERNImpl(StageOutImpl):
         return
 
 
-    def createStageOutCommand(self, sourcePFN, targetPFN, options = None):
+    def createStageOutCommandWithChecksum(self, sourcePFN, targetPFN, options = None, checksums = None):
         """
-        _createStageOutCommand_
+        _createStageOutCommandWithChecksum_
 
-        Build an rfcp command
+        If adler32 checksum is available and this feature is supported,
+        preset the checksum before the transfer to integrity check the transfer
+
+        Otherwise use standard rfcp stageout
 
         """
-        result = "rfcp "
+        useChecksum = False
+
+        if checksums != None and checksums.has_key('adler32') and not self.stageIn:
+
+            print "DEBUG running castor version check"
+
+            castorVersionCheck = "castor -v"
+            try:
+                castorVersionCheckExitCode, castorVersionCheckOutput = runCommandWithOutput(castorVersionCheck)
+            except Exception, ex:
+                msg = "Error: Exception while invoking command:\n"
+                msg += "%s\n" % castorVersionCheck
+                msg += "Exception: %s\n" % str(ex)
+                msg += "Fatal error, abort stageout..."
+                raise StageOutError(msg)
+
+            if not castorVersionCheckExitCode:
+
+                print "DEBUG castor version = %s" % castorVersionCheckOutput
+
+                regExpParser = re.compile('([0-9]+).([0-9]+).([0-9]+)-([0-9]+)')
+                match = regExpParser.match(castorVersionCheckOutput)
+
+                if ( match != None ):
+
+                    version1 = match.group(1)
+                    version2 = match.group(2)
+                    version3 = match.group(3)
+                    subversion = match.group(4)
+
+                    if ( ( version1 > 2 ) or \
+                         ( version1 == 2 and version2 >1 ) or \
+                         ( version1 == 2 and version2 == 1 and version3 > 8 ) or \
+                         ( version1 == 2 and version2 == 1 and version3 == 8 and subversion >= 12 ) ):
+                        useChecksum = True
+
+        result = ""
+
+        if useChecksum:
+
+            print "DEBUG using adler 32 checksum %s for stageout" % checksums['adler32']
+
+            result += "nstouch \"%s\" \n" % targetPFN
+            result += "nssetchecksum -n adler32 -k %s \"%s\" \n" % (checksums['adler32'], targetPFN)
+
+        result += "rfcp "
         if options != None:
             result += " %s " % options
         result += " \"%s\" " % sourcePFN
