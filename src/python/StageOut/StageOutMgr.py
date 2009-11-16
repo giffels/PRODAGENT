@@ -63,6 +63,7 @@ class StageOutMgr:
 
         if self.override == False:
             self.siteCfg = loadSiteLocalConfig()
+            #self.siteCfg.localStageOut['command'] = "rfcp-CERN"
 
         if self.override:
             self.initialiseOverride()
@@ -172,7 +173,6 @@ class StageOutMgr:
 
         """
 
-
         try:
             print "==>Working on file: %s" % fileToStage['LFN']
             lfn = fileToStage['LFN']
@@ -183,7 +183,7 @@ class StageOutMgr:
             if not self.override:
                 print "===> Attempting Local Stage Out."
                 try:
-                    pfn = self.localStageOut(lfn, fileToStage['PFN'])
+                    pfn = self.localStageOut(lfn, fileToStage['PFN'], fileToStage['Checksums'])
                     fileToStage['PFN'] = pfn
                     fileToStage['SEName'] = self.siteCfg.localStageOut['se-name']
                     fileToStage['StageOutCommand'] = self.siteCfg.localStageOut['command']
@@ -265,7 +265,7 @@ class StageOutMgr:
 
         return pfn
 
-    def localStageOut(self, lfn, localPfn):
+    def localStageOut(self, lfn, localPfn, checksums):
         """
         _localStageOut_
 
@@ -294,7 +294,7 @@ class StageOutMgr:
         impl.retryPause = self.retryPauseTime
 
         try:
-            impl(protocol, localPfn, pfn, options)
+            impl(protocol, localPfn, pfn, options, checksums)
         except Exception, ex:
             msg = "Failure for local stage out:\n"
             msg += str(ex)
