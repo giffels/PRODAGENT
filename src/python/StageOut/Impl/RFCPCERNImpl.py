@@ -16,6 +16,7 @@ from StageOut.StageOutError import StageOutError
 from StageOut.Execute import execute
 from StageOut.Execute import runCommandWithOutput
 
+
 class RFCPCERNImpl(StageOutImpl):
     """
     _RFCPCERNImpl_
@@ -49,36 +50,9 @@ class RFCPCERNImpl(StageOutImpl):
         _createOutputDirectory_
 
         create dir with group permission
+
         """
-
-        # check how the targetPFN looks like and parse out the target dir
-        targetDir = None
-
-        if targetDir == None:
-            regExpParser = re.compile('/+castor/(.*)')
-            match = regExpParser.match(targetPFN)
-            if ( match != None ):
-                targetDir = os.path.dirname(targetPFN)
-
-        if targetDir == None:
-            regExpParser = re.compile('rfio:/+castor/(.*)')
-            match = regExpParser.match(targetPFN)
-            if ( match != None ):
-                targetDir = os.path.dirname('/castor/' + match.group(1))
-
-        if targetDir == None:
-            regExpParser = re.compile('rfio:.*path=/+castor/(.*)')
-            match = regExpParser.match(targetPFN)
-            if ( match != None ):
-                targetDir = os.path.dirname('/castor/' + match.group(1))
-
-        # raise exception if we have no rule that can parse the target dir
-        if targetDir == None:
-            raise StageOutError("Cannot parse directory out of targetPFN")
-
-        # remove multi-slashes from path
-        while ( targetDir.find('//') > -1 ):
-            targetDir = targetDir.replace('//','/')
+        targetDir = os.path.dirname(self.parseCastorPath(targetPFN))
 
         print "DEBUG 111 before targetDir check"
 
@@ -214,8 +188,10 @@ class RFCPCERNImpl(StageOutImpl):
 
             print "DEBUG using adler 32 checksum %s for stageout" % checksums['adler32']
 
-            result += "nstouch \"%s\" \n" % targetPFN
-            result += "nssetchecksum -n adler32 -k %s \"%s\" \n" % (checksums['adler32'], targetPFN)
+            targetFile = self.parseCastorPath(targetPFN)
+
+            result += "nstouch %s\n" % targetFile
+            result += "nssetchecksum -n adler32 -k %s %s\n" % (checksums['adler32'], targetFile)
 
         result += "rfcp "
         if options != None:
@@ -233,7 +209,7 @@ class RFCPCERNImpl(StageOutImpl):
 
         return result
 
-    
+
     def removeFile(self, pfnToRemove):
         """
         _removeFile_
@@ -242,6 +218,7 @@ class RFCPCERNImpl(StageOutImpl):
         command = "stager_rm -M \"%s\" ; nsrm \"%s\"" % (pfnToRemove, pfnToRemove)
         execute(command)
         return
+
 
     def createDir(self, directory, mode):
         """
@@ -257,15 +234,58 @@ class RFCPCERNImpl(StageOutImpl):
 
     def setFileClass(self, directory, fileclass):
         """
-        _createDir_
+        _setFileClass_
 
         Sets fileclass for specified directory
 
         """
-        cmd = "nschclass %s \"%s\"" % (fileclass, directory)
+        cmd = "nschclass %s %s" % (fileclass, directory)
         execute(cmd)
 
         return
 
+
+    def parseCastorPath(self, complexCastorPath):
+        """
+        _parseCastorPath_
+
+        Castor filenames can be full URLs
+        with control statements for the rfcp
+
+        Some other castor command line tools do
+        not understand that syntax, so we need
+        to retrieve the short version
+        
+        """
+        simpleCastorPath = None
+
+        if simpleCastorPath == None:
+            regExpParser = re.compile('/+castor/(.*)')
+            match = regExpParser.match(complexCastorPath)
+            if ( match != None ):
+                simpleCastorPath = complexCastorPath
+
+        if simpleCastorPath == None:
+            regExpParser = re.compile('rfio:/+castor/(.*)')
+            match = regExpParser.match(complexCastorPath)
+            if ( match != None ):
+                simpleCastorPath = '/castor/' + match.group(1)
+
+        if simpleCastorPath == None:
+            regExpParser = re.compile('rfio:.*path=/+castor/(.*)')
+            match = regExpParser.match(complexCastorPath)
+            if ( match != None ):
+                simpleCastorPath = '/castor/' + match.group(1)
+
+        # raise exception if we have no rule that can parse the target dir
+        if simpleCastorPath == None:
+            raise StageOutError("Cannot parse directory out of path = %s" % complexCastorPath)
+
+        # remove multi-slashes from path
+        while ( simpleCastorPath.find('//') > -1 ):
+            simpleCastorPath = simpleCastorPath.replace('//','/')
+
+        return simpleCastorPath
+        
 
 registerStageOutImpl("rfcp-CERN", RFCPCERNImpl)
