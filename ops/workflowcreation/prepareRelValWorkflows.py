@@ -4,6 +4,7 @@ import sys
 import os
 import getopt
 import popen2
+import xml.sax, xml.sax.handler
 
 def main(argv) :
     """
@@ -23,7 +24,7 @@ def main(argv) :
     required parameters
     --samples <textfile>            : list of RelVal sample parameter-sets in plain text file, one sample per line, # marks comment
     --version <processing version>  : processing version (v1, v2, ... )
-    --DBSURL <URL>                  : URL of the local DBS (http://cmsdbsprod.cern.ch/cms_dbs_prod_local_07/servlet/DBSServlet | http://cmssrv46.fnal.gov:8080/DBSFNALT1206/servlet/DBSServlet)
+    --DBSURL <URL>                  : URL of the local DBS (http://cmsdbsprod.cern.ch/cms_dbs_prod_local_07/servlet/DBSServlet | http://cmssrv46.fnal.gov:8080/DBS208/servlet/DBSServlet)
     --only-sites                    : Site where dataset is going to be processed or where the input dataset is taken from. Usually srm-cms.cern.ch and cmssrm.fnal.gov
     
     optional parameters
@@ -177,6 +178,7 @@ def main(argv) :
                 output_name = ''
                 input_data = {}
                 input_blocks = ""
+                acq_era = version
                 
                 sample_info = line_parts[0].strip()
                 #  //
@@ -287,44 +289,87 @@ def main(argv) :
                     # // Parsing dataset details. The following details are
                     #// supported: REALDATA, RUN, LABEL, FILES, EVENTS, PDNAME
                     #\\
-                    for parameter in sample_info_parts[3].split(','):
-                        input_data[parameter.split(':')[0].strip()] = \
-                            parameter.split(':')[1].strip()
+                    # Producing tuples from the input options.
+                    data_options = [tuple(x.split(':')) \
+                        for x in sample_info_parts[3].split(',') if x.strip()]
+                    # Parsing tuples
+                    for arg_v in data_options:
+                        if len(arg_v) == 2:
+                            input_data[arg_v[0].strip()] = arg_v[1].strip()
+                        elif len(arg_v) == 1:
+                            input_data[arg_v[0].strip()] = None
+                        else:
+                            print "Line %s has an extra ','." % (line)
+                            sys.exit(7)
                     #  //
                     # // Verifiying optional arguments: LABEL, FILE, EVENTS,
-                    #// PDNAME
+                    #// PRIMARY
                     #\\
                     data_label = input_data.get('LABEL', '')
                     data_files = input_data.get('FILES', '')
                     data_events = input_data.get('EVENTS', '')
-                    data_pname = input_data.get('PDNAME', '')
+                    data_pname = input_data.get('PRIMARY', '')
                     if data_events:
                         data_events = int(data_events)
                     if data_files:
                         data_files = int(data_events)
                     #  //
-                    # // Extra tag: RelVal string should be in the processed
-                    #// dataset name. I will use the primary_prefix for now.
+                    # // Looking for best matching dataset. It should be just
+                    #// one, otherwise the script will exit.
                     #\\
-                    if data_label:
-                        special_tag = "_".join([primary_prefix, data_label])
-                    else:
-                        special_tag = primary_prefix
-                    #  //
-                    # // If true, it will use the conventional way for naming
-                    #// the primary and drop the processed dataset extra label
-                    #\\
-                    if data_pname and data_pname.lower() in ('y', 't', 'true'):
-                        primary = "".join([primary_prefix, sample_name])
-                        special_tag = ''
-                    else:
-                        primary = \
-                         [x for x in input_data['REALDATA'].split("/") if x][0]
+                    reader = DBSReader(readDBS)
+                    query = "find dataset where dataset like %s" % (
+                        input_data['REALDATA'])
+                    result_xml = reader.dbs.executeQuery(query)
+                    # XML Handler
+                    target_datasets = []
+                    global is_dataset
+                    is_dataset = False
+                    class Handler(xml.sax.handler.ContentHandler):
+                        def startElement(self, name, attrs):
+                            global is_dataset
+                            if name == 'dataset':
+                                is_dataset = True
+                        def characters(self, content):
+                            global is_dataset
+                            if is_dataset:      
+                                target_datasets.append(content)
+                        def endElement(self, name):
+                            global is_dataset
+                            if name == 'dataset':
+                                is_dataset = False
+                    xml.sax.parseString(result_xml, Handler())
+                    # If more than one dataset is found.
+                    if len(target_datasets) > 1:
+                        # Is this an input relval dataset produced in the
+                        # current release? (Release string in the dataset path)
+                        find_version = lambda x: x.find(version) != -1
+                        target_datasets = filter(find_version, target_datasets)
+                    # If more than one dataset is found, match the processing
+                    # version
+                    if len(target_datasets) > 1:
+                        find_version = \
+                            lambda x: x.find(processing_version) != -1
+                        target_datasets = filter(find_version, target_datasets)
+                    if len(target_datasets) > 1:
+                        msg = "Dataset pattern in line %s is too broad." % line
+                        msg += "These datasets were found: %s" % (
+                            " ".join(target_datasets))
+                        print msg
+                        sys.exit(8)
+                    if not target_datasets:
+                        msg = "Dataset pattern produced no match in line %s" % (
+                            line)
+                        print msg
+                        sys.exit(8)
+                    # Now I can look up the blocks for this dataset.
+                    target_dataset = target_datasets[0]
+                    input_data['REALDATA'] = target_dataset
                     #  //
                     # // Looking up the blocks for a given Dataset and a given run
                     #//
                     reader = DBSReader(readDBS)
-                    input_files = reader.dbs.listFiles(path=input_data['REALDATA'], \
+                    input_files = reader.dbs.listFiles(path=target_dataset, \
                         runNumber=input_data['RUN'])
                     blocks = {}
                     #  //
@@ -356,6 +401,41 @@ def main(argv) :
                             break
 
                     input_blocks = ",".join(blocks_to_process)
+
+                    #  //
+                    # // If PRIMARY is present or true, then it will use the 
+                    #// sample_name value as primary dataset name, else it 
+                    #\\ will use the input primary dataset name.
+                    # \\
+                    if data_pname is None or \
+                            data_pname.lower() in ('y', 't', 'true'):
+                        primary = "".join([primary_prefix, sample_name])
+                    else:
+                        primary = \
+                         [x for x in input_data['REALDATA'].split("/") if x][0]
+
+                    #   //
+                    #  // Seting special tag
+                    #//
+                    special_tag_parts = []
+                    # Add RelVal tag if not present.
+                    if target_dataset.find(primary_prefix) == -1:
+                        special_tag_parts.append(primary_prefix)
+                    # Add LABEL
+                    if data_label:
+                        special_tag_parts.append(data_label)
+                    special_tag = "_".join(special_tag_parts)
+
+                    #  //
+                    # // Setting Acq. Era
+                    #//
+                    processed_dataset = target_dataset.split('/')[2]
+                    dataset_acq_era = processed_dataset.split("-")[0]
+                    if dataset_acq_era.startswith(version):
+                        acq_era = version
+                    else:
+                        acq_era = dataset_acq_era
+
                 #  //
                 # // Composing a dictionary per sample
                 #//
@@ -373,6 +453,7 @@ def main(argv) :
                 dict['inputData'] = input_data
                 dict['inputBlocks'] = input_blocks
                 dict['steps'] = sample_steps
+                dict['AcqEra'] = acq_era
  
                 samples.append(dict)
 
@@ -492,6 +573,7 @@ def main(argv) :
             print 'Steps:', sample['steps']
             print 'PileUp:', sample['pileUp']
             print 'Special tag:', sample['specialTag']
+            print 'Acq. Era:', sample['AcqEra']
             print ''
         for i in range(2, max_step+1):
             print 'Collected information step %s' % i
@@ -636,20 +718,22 @@ def main(argv) :
         command += '--group=RelVal \\\n'
         command += '--category=relval \\\n'
         command += '--activity=RelVal \\\n'
-        command += '--acquisition_era=' + version + ' \\\n'
+        command += '--acquisition_era=' + sample['AcqEra'] + ' \\\n'
         command += '--only-sites=' + onlySites + ' \\\n'
         command += '--processing_version=' + processing_version + ' \\\n'
         #  //
-        # // processingString="Conditions"_"specialTag"_"extra-label"
-        #//
-        processing_string = conditions
+        # // processingString="CMSSWVersion"_"Conditions"_"specialTag"_"extra-label"
+        #// CMSSWVersion is appended only when the input dataset does not have it.
+        #\\
+        processing_string_parts = []
+        if sample['AcqEra'] != version:
+            processing_string_parts.append(version)
+        processing_string_parts.append(conditions)
         if sample['specialTag']:
-            processing_string = "_".join([processing_string, 
-                sample['specialTag']])
+            processing_string_parts.append(sample['specialTag'])
         if extra_label:
-            processing_string = "_".join([processing_string, 
-                extra_label])
-        command += '--processing_string=' + processing_string
+            processing_string_parts.append(extra_label)
+        command += '--processing_string=' + "_".join(processing_string_parts)
 
         if debug:
             print command
