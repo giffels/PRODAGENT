@@ -141,7 +141,7 @@ class OSGBulkCreator(CreatorInterface):
             self.pluginConfig['SoftwareSetup']['ScramArch'])
 
         taskObject['PreTaskCommands'].append(
-            swSetupCommand
+            setupScramEnvironment(swSetupCommand)
             )
         
         

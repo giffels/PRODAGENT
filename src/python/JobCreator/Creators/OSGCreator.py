@@ -177,7 +177,7 @@ class OSGCreator(CreatorInterface):
             self.pluginConfig['SoftwareSetup']['ScramArch'])
 
         taskObject['PreTaskCommands'].append(
-            swSetupCommand
+            setupScramEnvironment(swSetupCommand)
             )
         
         

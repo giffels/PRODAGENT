@@ -103,7 +103,7 @@ class InsertAppDetails:
     """
     def __init__(self, nodeType = "JobSpecNode"):
         self.nodeType = nodeType
-
+        
     def __call__(self, taskObject):
         """
         _operator()_
@@ -117,12 +117,12 @@ class InsertAppDetails:
         if jobSpec.type != "CMSSW":
             return
         appDetails = jobSpec.application
-
+        
         taskObject['CMSProjectName'] = jobSpec.application['Project']
         taskObject['CMSProjectVersion'] = jobSpec.application['Version']
         taskObject['CMSExecutable'] = jobSpec.application['Executable']
         taskObject['CMSPythonPSet'] = jobSpec.configuration
-
+        
         #  //
         # // Add an empty structured file to contain the PSet after
         #//  it is converted from the Python format. 
@@ -145,11 +145,11 @@ class InsertAppDetails:
         taskObject['PostAppCommands'] = []
 
         if taskObject['JobType'] == "Merge":
-            if taskObject['CMSExecutable'] == "EdmFastMerge":
+            if taskObject['CMSExecutable'] == "EdmFastMerge":  
                 installFastMerge(taskObject)
             else:
                 taskObject['CMSCommandLineArgs'] += " -j FrameworkJobReport.xml "
-
+                
         #  //
         # // Insert End Control Point check on exit status
         #//
@@ -160,10 +160,10 @@ class InsertAppDetails:
         exitAction.content = "logArchive"
         controlP.addConditional(exitCheck)
         controlP.addAction(exitAction)
-
+        
         return
 
-
+    
 class InsertBulkAppDetails:
     """
     _InsertAppDetails_
@@ -175,7 +175,7 @@ class InsertBulkAppDetails:
     """
     def __init__(self, nodeType = "JobSpecNode"):
         self.nodeType = nodeType
-
+        
     def __call__(self, taskObject):
         """
         _operator()_
@@ -189,12 +189,12 @@ class InsertBulkAppDetails:
         if jobSpec.type != "CMSSW":
             return
         appDetails = jobSpec.application
-
+        
         taskObject['CMSProjectName'] = jobSpec.application['Project']
         taskObject['CMSProjectVersion'] = jobSpec.application['Version']
         taskObject['CMSExecutable'] = jobSpec.application['Executable']
 
-
+        
         #  //
         # // Add an empty structured file to contain the PSet after
         #//  it is converted from the Python format. 
@@ -207,10 +207,10 @@ class InsertBulkAppDetails:
 
         if taskObject['JobType'] == "Merge":
             taskObject['CMSCommandLineArgs'] += " -j FrameworkJobReport.xml "
-
-
-
-
+            
+  
+            
+            
         #  //
         # // Add structures to enable manipulation of task main script
         #//  These fields are used to add commands and script calls
@@ -222,7 +222,7 @@ class InsertBulkAppDetails:
         taskObject['PreAppCommands'] = []
         taskObject['PostAppCommands'] = []
 
-
+      
         #  //
         # // Insert End Control Point check on exit status
         #//
@@ -233,9 +233,9 @@ class InsertBulkAppDetails:
         exitAction.content = "logArchive"
         controlP.addConditional(exitCheck)
         controlP.addAction(exitAction)
-
+        
         return
-
+        
 
 class PopulateMainScript:
     """
@@ -253,11 +253,11 @@ class PopulateMainScript:
         a standard task running script
         
         """
-        requireKeys = ['CMSProjectName',
+        requireKeys = ['CMSProjectName', 
                        'CMSProjectVersion',
                        'CMSExecutable',
                        'CMSCommandLineArgs']
-
+        
         for item in requireKeys:
             if not taskObject.has_key(item):
                 return
@@ -269,22 +269,25 @@ class PopulateMainScript:
         # // Install standard error handling command
         #//
         exeScript.append(_StandardPreamble)
-
+        
         envScript = taskObject[taskObject["BashEnvironment"]]
         envCommand = "%s %s" % (envScript.interpreter, envScript.name)
         exeScript.append(envCommand)
 
-        exeScript.append("( # Start Task Subshell")
         for item in taskObject['PreTaskCommands']:
             exeScript.append(item)
-            exeScript.append(_StandardAbortCheck)
-
+            # Removing this line, the AbortCheck will be done inside the
+            # subshell, so RuntimeFwkJobRep.py can handle the failure.
+            # exeScript.append(_StandardAbortCheck)
 
         exeScript.append("( # Start App Subshell")
+
+        exeScript.append(_StandardAbortCheck)
+
         for item in taskObject['PreAppCommands']:
             exeScript.append(item)
             exeScript.append(_StandardAbortCheck)
-
+            
         exeScript.append(_StandardAbortCheck)
         exeComm = "%s %s &" % (taskObject['CMSExecutable'],
                                taskObject['CMSCommandLineArgs'])
@@ -293,20 +296,14 @@ class PopulateMainScript:
         exeScript.append("echo $PROCID > process_id")
         exeScript.append("wait $PROCID")
         exeScript.append("EXIT_STATUS=$?")
-
+        exeScript.append(_StandardExitCodeCheck)
+        exeScript.append(
+            "if [ ! -e exit.status ]; then echo \"$EXIT_STATUS\" > exit.status; fi")
+        exeScript.append("echo \"App exit status: $EXIT_STATUS\"")
         for item in taskObject['PostAppCommands']:
             exeScript.append(item)
         exeScript.append("exit $EXIT_STATUS")
         exeScript.append(") # End of App Subshell")
-
-        exeScript.append("EXIT_STATUS=$?")
-        exeScript.append(_StandardExitCodeCheck)
-        exeScript.append(
-            "if [ ! -e exit.status ]; then echo \"$EXIT_STATUS\" > exit.status; fi")
-        exeScript.append("echo \"Task exit status: $EXIT_STATUS\"")
-        exeScript.append("exit $EXIT_STATUS")
-        exeScript.append(") # End of Task Subshell")
-
         exeScript.append("EXIT_STATUS=$?")
         exeScript.append("echo `date +%s` >| end.time")
         for item in taskObject['PostTaskCommands']:
@@ -314,10 +311,10 @@ class PopulateMainScript:
         exeScript.append("echo \"Ended: `date +%s`\"")
         exeScript.append("exit $EXIT_STATUS")
 
-
+      
         return
-
-
+        
+        
 
 class InsertPythonPSet:
     """
@@ -330,7 +327,7 @@ class InsertPythonPSet:
     {{{}}}cfg file, as well as the PreTaskCommand to invoke it
     
     """
-
+    
     def __call__(self, taskObject):
         """
         _operator()_
@@ -342,7 +339,7 @@ class InsertPythonPSet:
         """
         if taskObject['Type'] not in ("CMSSW",):
             return
-
+        
         #  //
         # // Install runtime script and add command to invoke it
         #//
@@ -351,12 +348,12 @@ class InsertPythonPSet:
         taskObject['PreAppCommands'].append(
             "./RuntimePSetPrep.py PSet.py PSet.cfg"
             )
-
+        
         return
+        
 
 
-
-
+        
 class InsertJobReportTools:
     """
     _InsertJobReportTools_
@@ -373,19 +370,19 @@ class InsertJobReportTools:
         processing script that runs after the executable.
 
         """
-        if taskObject['Type'] not in ("CMSSW",):
+        if taskObject['Type'] not in ("CMSSW", ):
             return
-
+        
         srcfile = inspect.getsourcefile(RuntimeFwkJobRep)
         if not os.access(srcfile, os.X_OK):
             os.system("chmod +x %s" % srcfile)
         taskObject.attachFile(srcfile)
-
+        
         taskObject['PostTaskCommands'].append(
             "./RuntimeFwkJobRep.py "
             )
-
-
+        
+        
         return
-
-
+    
+    
