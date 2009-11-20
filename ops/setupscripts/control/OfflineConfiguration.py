@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.20 2009/09/24 02:21:50 dmason Exp $"
-__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.21 2009/11/18 20:38:26 dmason Exp $"
+__version__ = "$Revision: 1.21 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -65,7 +65,7 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_3_3_3_patch1"
+defaultRecoVersion = "CMSSW_3_3_4"
 #defaultRecoVersion = "CMSSW_3_2_1"
 defaultAlcaVersion = defaultRecoVersion
 defaultDQMVersion = defaultRecoVersion
@@ -97,9 +97,9 @@ alcaConfig = {}
 #3_1_1 reco config with combined alca
 recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.8"
 
-#recoConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptCollisionReco_RAW2DIGI_L1Reco_RECO_DQM_ALCA.py?revision=1.5"
+recoConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptCollisionReco_RAW2DIGI_L1Reco_RECO_DQM_ALCA.py?revision=1.8"
 
-recoConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptCollisionReco_PixellessTesting_RAW2DIGI_L1Reco_RECO_DQM_ALCA.py?revision=1.1"
+#recoConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptCollisionReco_PixellessTesting_RAW2DIGI_L1Reco_RECO_DQM_ALCA.py?revision=1.1"
 
 recoConfig["hcalnzs"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptCollisionNZSReco_RAW2DIGI_L1Reco_RECO_DQM_ALCA.py?revision=1.1"
 
@@ -434,7 +434,7 @@ addExpressConfig(tier0Config, "HLTMON",
 
 
 #Mappings for 311 online running
-setExpressVersionMapping(tier0Config, "CMSSW_3_3_3", "CMSSW_3_3_3_patch1")
+setExpressVersionMapping(tier0Config, "CMSSW_3_3_3", "CMSSW_3_3_4")
 setExpressVersionMapping(tier0Config, "CMSSW_3_2_7", "CMSSW_3_2_8")
 setExpressVersionMapping(tier0Config, "CMSSW_3_2_4", "CMSSW_3_2_8")
 setExpressVersionMapping(tier0Config, "CMSSW_3_2_3", "CMSSW_3_2_8")
