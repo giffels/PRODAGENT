@@ -429,12 +429,12 @@ def main(argv) :
                     #  //
                     # // Setting Acq. Era
                     #//
-                    processed_dataset = target_dataset.split('/')[2]
-                    dataset_acq_era = processed_dataset.split("-")[0]
-                    if dataset_acq_era.startswith(version):
-                        acq_era = version
-                    else:
-                        acq_era = dataset_acq_era
+                    #processed_dataset = target_dataset.split('/')[2]
+                    #dataset_acq_era = processed_dataset.split("-")[0]
+                    #if dataset_acq_era.startswith(version):
+                    #    acq_era = version
+                    #else:
+                    #    acq_era = dataset_acq_era
 
                 #  //
                 # // Composing a dictionary per sample
