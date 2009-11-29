@@ -48,9 +48,9 @@ class SRMImpl(StageOutImpl):
         handle both srm and file pfn types
         """
         if pfn.startswith("srm://"):
-            return "/bin/rm -f %s" % self.createPnfsPath(pfn)
+            return "/bin/rm -fv %s" % self.createPnfsPath(pfn)
         elif pfn.startswith("file:"):
-            return "/bin/rm -f %s" % pfn.replace("file://", "", 1)
+            return "/bin/rm -fv %s" % pfn.replace("file://", "", 1)
         else:
             return StageOutImpl.createRemoveFileCommand(self, pfn)
 
@@ -126,12 +126,12 @@ class SRMImpl(StageOutImpl):
            else
               echo "Error: Size Mismatch between local and SE"
               echo "Cleaning up failed file:"
-              /bin/rm -f %s
+              /bin/rm -fv %s
               exit 60311
            fi 
         fi
         echo "Cleaning up failed file:"
-        /bin/rm -f %s 
+        /bin/rm -fv %s 
         exit 60311
 
         """ % ( targetPnfsPath, targetPnfsPath, targetPnfsPath)
@@ -147,7 +147,7 @@ class SRMImpl(StageOutImpl):
         CleanUp pfn provided
 
         """
-        command = "/bin/rm -f %s" % self.createPnfsPath(pfnToRemove)
+        command = "/bin/rm -fv %s" % self.createPnfsPath(pfnToRemove)
         self.executeCommand(command)
 
 

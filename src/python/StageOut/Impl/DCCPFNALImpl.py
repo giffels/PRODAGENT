@@ -113,7 +113,7 @@ echo "dccp exit status: $EXIT_STATUS"
 if [[ $EXIT_STATUS != 0 ]]; then
    echo "Non-zero dccp Exit status!!!"
    echo "Cleaning up failed file:"
-   /bin/rm %s
+   /bin/rm -fv %s
    exit 60311
 fi
 """  % pnfsPfn(targetPFN)
@@ -129,7 +129,7 @@ echo "CRC Check Exit status: $EXIT_STATUS"
 if [[ $EXIT_STATUS != 0 ]]; then
    echo "Non-zero CRC Check Exit status!!!"
    echo "Cleaning up failed file:"
-   /bin/rm %s
+   /bin/rm -fv %s
    exit 60311
 fi
 
@@ -152,7 +152,7 @@ fi
         """
         pfnSplit = pfnToRemove.split("/store/", 1)[1]
         filePath = "/pnfs/cms/WAX/11/store/%s" % pfnSplit
-        command = "rm  %s" %filePath
+        command = "rm -fv %s" %filePath
         self.executeCommand(command)
 
 
