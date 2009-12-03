@@ -5,8 +5,8 @@ _JobKillerComponent_
 ProdAgent Component that kills jobs by job spec or workflow Id
 
 """
-__version__ = "$Revision: 1.8 $"
-__revision__ = "$Id: JobKillerComponent.py,v 1.8 2008/08/21 15:08:18 ahmadh Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: JobKillerComponent.py,v 1.9 2009/08/03 12:13:34 farinafa Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -38,6 +38,7 @@ class JobKillerComponent:
         self.args['ComponentDir'] = None
         self.args['Logfile'] = None
         self.args['KillerName'] = None
+        self.args['glexecPath'] = None
         self.args.update(args)
 
         if self.args['Logfile'] == None:

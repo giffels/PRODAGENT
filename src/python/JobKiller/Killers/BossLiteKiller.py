@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.22 2008/12/01 10:33:42 gcodispo Exp $"
-__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.23 2009/01/06 10:35:16 gcodispo Exp $"
+__version__ = "$Revision: 1.23 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -45,6 +45,7 @@ class BossLiteKiller:
 
         try:
             self.componentDir = args['ComponentDir']
+            self.schedulerConfig.update({'glexec':args.get('glexecPath',None)})
         except KeyError:
             msg = "Component directory is not defined"
             logging.error(msg)
