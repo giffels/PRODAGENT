@@ -223,15 +223,27 @@ class T0LSFTracker(TrackerPlugin):
         report = self.findJobReport(jobSpecId)
         if report == None:
             return None
+
+        #
+        # Don't trust JobSuccess for now
+        #
         # If report has 'JobSuccess' then it's finished 
-        if ReportState.checkSuccess(report):
-            return LSFStatus.finished
+##         if ReportState.checkSuccess(report):
+##             return LSFStatus.finished
+
         # if checkSuccess returns False, check if it's a bad report file
         try:
             reports = readJobReport(report)
             # if reports is empty --> failed
-            if not reports:
+            if len(reports) == 0:
                 return LSFStatus.failed
+
+            for report in reports:
+                if len(report.files) == 0:
+                    if not jobSpecId.startswith("DQMHarvest-"):
+                        logging.debug("Non-DQM job with no output files, mark as failed")
+                        return LSFStatus.failed
+
             # if we are here, the report is good (JobFailed --> finished)
             return LSFStatus.finished
         except:
