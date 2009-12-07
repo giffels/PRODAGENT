@@ -50,7 +50,7 @@ class DCCPFNALImpl(StageOutImpl):
 
         """
         # only create dir on remote storage
-        if not targetPFN.find('/pnfs/'):
+        if targetPFN.find('/pnfs/') == -1:
             return
 
         pfnSplit = targetPFN.split("WAX/11/store/", 1)[1]
