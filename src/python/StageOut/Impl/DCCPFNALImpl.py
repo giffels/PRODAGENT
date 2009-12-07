@@ -21,6 +21,10 @@ def pnfsPfn(pfn):
     Convert a dcap PFN to a PNFS PFN
 
     """
+    # only change PFN on remote storage
+    if pfn.find('/pnfs/') == -1:
+        return pfn
+
     pfnSplit = pfn.split("WAX/11/store/", 1)[1]
     filePath = "/pnfs/cms/WAX/11/store/%s" % pfnSplit
     return filePath
