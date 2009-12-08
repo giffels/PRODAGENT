@@ -274,7 +274,7 @@ class CondorG(TrackerPlugin):
                 logging.debug("Job %s is complete, ClusterId=%s" % (runId,clusterId))
                 self.TrackerDB.jobComplete(runId)
             if status == 1:
-                oDashboard['StatusValue'] = 'Submitted'
+                toDashboard['StatusValue'] = 'Submitted'
                 self.publishStatusToDashboard(runId, toDashboard)
                 logging.debug("Job %s is idle? ClusterId=%s" % (runId,clusterId))
             if status > 6:
