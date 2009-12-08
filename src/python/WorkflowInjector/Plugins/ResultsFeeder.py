@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.21 2009/10/15 15:45:04 ewv Exp $"
-__version__  = "$Revision: 1.21 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.22 2009/10/21 15:44:20 ewv Exp $"
+__version__  = "$Revision: 1.22 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -104,6 +104,26 @@ def getPhedexDSURL():
 
     return dsConfig.get("DataserviceURL", None)
 
+def getX509Configuration():
+    try:
+        config = loadProdAgentConfiguration()
+        
+    except StandardError, ex:
+        msg = "Error reading configuration:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+    
+    try:
+        X509Config = config.getConfig("StoreResultsAccountant")
+         
+    except StandardError, ex:
+        msg = "Error reading configuration for StoreResultsAccoutant:\n"
+        msg += str(ex)
+        logging.error(msg)
+        raise RuntimeError, msg
+
+    return X509Config.get("X509_USER_CERT", None), X509Config.get("X509_USER_KEY", None)
 
 class NodeFinder:
     def __init__(self, name):
@@ -162,6 +182,20 @@ class ResultsFeeder(PluginInterface):
             self.dataType = primaries[0]['Type']
         except:
             self.dataType = 'mc'
+
+        #set enviroment to use X509 Authentication
+        X509_USER_CERT, X509_USER_KEY = getX509Configuration()
+
+        if X509_USER_CERT!=None:
+            os.environ["X509_USER_CERT"] = X509_USER_CERT
+
+        if X509_USER_KEY!=None:
+            os.environ["X509_USER_KEY"] = X509_USER_KEY
+            
+        msg = "Using following user certificate %s" % os.getenv("X509_USER_CERT")
+        logging.debug(msg)
+        msg = "Using following user key %s" % os.getenv("X509_USER_KEY")
+        logging.debug(msg)
 
         # Figure out what Phedex node we'll be injecting into
 
