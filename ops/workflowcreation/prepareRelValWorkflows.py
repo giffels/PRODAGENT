@@ -36,6 +36,7 @@ def main(argv) :
     --scripts-dir                   : Path to workflow creation scripts (default: $PUTIL)
     --skip-config                   : Is the configuration file was already created, it will skip cmsDriver command execution
     --extra-label                   : Extra label for identifying the datasets: /RelVal*/CMSSW_X_Y_Z-<Conditions>_<SpecialTag>_<ExtraLabel>_<FilterName>-<version>/TIER
+    --workflow-label                : Label for the workflows.
     --help (-h)                     : help
     --debug (-d)                    : debug statements
     
@@ -77,12 +78,14 @@ def main(argv) :
     scriptsDir = '$PUTIL'
     skip_config = False
     extra_label = ''
+    workflow_label = ''
 
     try:
         opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", 
                                                 "DBSURL=", "event=", "lumi=", "pileupdataset=", 
                                                 "store-fail=", "read-dbs=", "only-sites=", 
-                                                "scripts-dir=", "skip-config", "extra-label="])
+                                                "scripts-dir=", "skip-config", "extra-label=",
+                                                "workflow-label="])
     except getopt.GetoptError:
         print main.__doc__
         sys.exit(2)
@@ -135,6 +138,8 @@ def main(argv) :
             skip_config = True
         elif opt == "--extra-label":
             extra_label = arg
+        elif opt == "--workflow-label":
+            workflow_label = arg
 
     if initial_event == None :
 	print ""
@@ -721,6 +726,9 @@ def main(argv) :
         command += '--acquisition_era=' + sample['AcqEra'] + ' \\\n'
         command += '--only-sites=' + onlySites + ' \\\n'
         command += '--processing_version=' + processing_version + ' \\\n'
+        # Workflow label
+        if workflow_label:
+            command += '--workflow_tag=' + workflow_label + ' \\\n'
         #  //
         # // processingString="CMSSWVersion"_"Conditions"_"specialTag"_"extra-label"
         #// CMSSWVersion is appended only when the input dataset does not have it.
