@@ -158,6 +158,7 @@ def createHarvestingWorkflow(dataset, site, cmsPath, scramArch,
     maker.changeCategory(category)
     maker.setPSetHash("NO_HASH")
     maker.addInputDataset(dataset)
+    maker.setActivity('harvesting')
 
     spec = maker.makeWorkflow()
     spec.parameters['DBSURL'] = "http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet"
