@@ -30,7 +30,7 @@ def main(argv) :
     optional parameters
     --pileupdataset                 : input pileup dataset. It must be provided if the <samples> txt file contains PilepUp samples
     --lumi <number>                 : initial run for generation (default: 666666), set it to 777777 for high statistics samples
-    --event <number>                : initial event number
+    --event <number>                : initial event number (default: 1)
     --store-fail <True|False>       : store output files for failed jobs in chain processing.
     --read-dbs                      : DBS URL used for obtaining the list of available blocks for real data. Default: http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet
     --scripts-dir                   : Path to workflow creation scripts (default: $PUTIL)
@@ -68,7 +68,7 @@ def main(argv) :
     samplesFile = None
     processing_version = None
     initial_run = "666666"
-    initial_event = None
+    initial_event = "1"
     debug = False
     DBSURL = None
     pileup_dataset = None
@@ -140,11 +140,6 @@ def main(argv) :
             extra_label = arg
         elif opt == "--workflow-label":
             workflow_label = arg
-
-    if initial_event == None :
-	print ""
-	print "Warning: Initial Event Number is not set, output workflow will not have this block."
-	print ""
 
     if samplesFile == None or processing_version == None or DBSURL == None :
         print main.__doc__
@@ -327,7 +322,7 @@ def main(argv) :
                         input_data['REALDATA'])
                     result_xml = reader.dbs.executeQuery(query)
                     # XML Handler
-                    target_datasets = []
+                    parsed_datasets = []
                     global is_dataset
                     is_dataset = False
                     class Handler(xml.sax.handler.ContentHandler):
@@ -338,17 +333,23 @@ def main(argv) :
                         def characters(self, content):
                             global is_dataset
                             if is_dataset:      
-                                target_datasets.append(content)
+                                parsed_datasets.append(content)
                         def endElement(self, name):
                             global is_dataset
                             if name == 'dataset':
                                 is_dataset = False
                     xml.sax.parseString(result_xml, Handler())
+                    target_datasets = parsed_datasets
                     # If more than one dataset is found.
                     if len(target_datasets) > 1:
                         # Is this an input relval dataset produced in the
-                        # current release? (Release string in the dataset path)
-                        find_version = lambda x: x.find(version) != -1
+                        # current release?
+                        query = "find dataset where dataset like %s " % (
+                            input_data['REALDATA'])
+                        query += "and release=%s" % version
+                        parsed_datasets = []
+                        result_xml = reader.dbs.executeQuery(query)
+                        find_version = lambda x: x in parsed_datasets
                         target_datasets = filter(find_version, target_datasets)
                     # If more than one dataset is found, match the processing
                     # version
@@ -686,8 +687,7 @@ def main(argv) :
             command += '--channel=' + sample['primary'] + ' \\\n'
             conditions = sample['conditions']
             command += '--starting-run=' + initial_run + ' \\\n'
-            if initial_event != None:
-                command += '--starting-event=' + initial_event + ' \\\n'
+            command += '--starting-event=' + initial_event + ' \\\n'
             command += '--totalevents=' + sample['totalEvents'] + ' \\\n'
             command += '--eventsperjob=' + sample['eventsPerJob'] + ' \\\n'
             if sample['pileUp']:
