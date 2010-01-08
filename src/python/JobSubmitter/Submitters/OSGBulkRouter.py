@@ -174,7 +174,15 @@ class OSGBulkRouter(BulkSubmitterInterface):
         else:
             jdl.append("universe = globus\n")
             jdl.append("globusscheduler = %s\n" % globusScheduler)
-        jdl.append("transfer_input_files = %s\n" % inpFileJDL)
+
+        # Add FrameworkJobReport.xml to the input files as well, so we
+        # are guaranteed that at least a 0-sized copy of this file always
+        # exists on the CE when this job is submitted.  If we do not do this,
+        # then some types of failures cause us to get Globus error 155,
+        # which is a failure to stage out a file (the fjr).  It is difficult
+        # to debug this situation, because we do not get stdout/stderr.
+		
+        jdl.append("transfer_input_files = %s,FrameworkJobReport.xml\n" % inpFileJDL)
         jdl.append("transfer_output_files = FrameworkJobReport.xml\n")
         jdl.append("should_transfer_files = YES\n")
         jdl.append("when_to_transfer_output = ON_EXIT\n")
@@ -218,7 +226,12 @@ class OSGBulkRouter(BulkSubmitterInterface):
 
         jdl.append("Arguments = %s-JobSpec.xml \n" % jobID)
         jdl.append("Queue\n")
-        
+
+        # We need to create the FJR.xml in the cache dir because we are listing this
+        # as an input file for condor to check to avoid getting into the Globus error 155
+        # situation
+        file (cache+"/FrameworkJobReport.xml", "w")
+		
         return jdl
         
 
