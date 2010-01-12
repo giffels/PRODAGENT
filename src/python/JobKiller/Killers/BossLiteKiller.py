@@ -6,8 +6,8 @@ Killer plugin for killing BOSS jobs
 
 """
 
-__revision__ = "$Id: BossLiteKiller.py,v 1.23 2009/01/06 10:35:16 gcodispo Exp $"
-__version__ = "$Revision: 1.23 $"
+__revision__ = "$Id: BossLiteKiller.py,v 1.24 2009/12/03 17:58:20 ewv Exp $"
+__version__ = "$Revision: 1.24 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -321,8 +321,8 @@ class BossLiteKiller:
 
         jobsToKill = 'all'
         # Retrive jobs to kill from payload
-        if len(splittedPayload) == 3 and splittedPayload[2] != 'all':
-            jobsToKill = eval(str(splittedPayload[2]))
+        if len(splittedPayload) == 2 and splittedPayload[1] != 'all':
+            jobsToKill = eval(str(splittedPayload[1]))
             logging.info("Jobs Recovered by Payload = " + str(jobsToKill))
 
         # get task specification
