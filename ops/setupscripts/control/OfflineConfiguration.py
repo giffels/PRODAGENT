@@ -5,8 +5,8 @@ _OfflineConfiguration_
 Processing configuration for the Tier0.
 """
 
-__revision__ = "$Id: OfflineConfiguration.py,v 1.22 2009/11/20 04:19:17 dmason Exp $"
-__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: OfflineConfiguration.py,v 1.23 2009/12/05 17:35:21 dmason Exp $"
+__version__ = "$Revision: 1.23 $"
 
 from T0.RunConfigCache.Tier0Config import addDataset
 from T0.RunConfigCache.Tier0Config import addTier1Skim
@@ -65,8 +65,8 @@ setConfigVersion(tier0Config, __version__)
 ######################################################################
 
 
-defaultRecoVersion = "CMSSW_3_3_5_patch3"
-#experimentalRecoVersion = "CMSSW_3_3_5_patch1"
+defaultRecoVersion = "CMSSW_3_3_5_patch4"
+experimentalRecoVersion = "CMSSW_3_3_6_patch2"
 #defaultRecoVersion = "CMSSW_3_2_1"
 defaultAlcaVersion = defaultRecoVersion
 defaultDQMVersion = defaultRecoVersion
@@ -103,7 +103,7 @@ recoConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Config
 
 #recoConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptCollisionReco_RAW2DIGI_L1Reco_RECO_DQM_ALCA.py?revision=1.11"
 
-recoConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptCollisionReco_FirstCollisions_RAW2DIGI_L1Reco_RECO_DQM_ALCA.py?revision=1.4"
+recoConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptCollisionReco_FirstCollisions_RAW2DIGI_L1Reco_RECO_DQM_ALCA.py?revision=1.10"
 
 
 #recoConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/promptCollisionReco_PixellessTesting_RAW2DIGI_L1Reco_RECO_DQM_ALCA.py?revision=1.1"
@@ -112,7 +112,7 @@ recoConfig["hcalnzs"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Config
 
 
 #promptreco configs for alcaraw datasets
-recoConfig["AlCaP0"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alcareco_AlCaP0_cfg.py?revision=1.2"
+recoConfig["AlCaP0"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alcareco_AlCaP0_cfg.py?revision=1.3"
 recoConfig["AlCaPhiSymEcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alcareco_AlCaPhiSymEcal_cfg.py?revision=1.2"
 recoConfig["AlCaPhiSymHcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alcareco_AlCaPhiSymHcal_cfg.py?revision=1.2"
 
@@ -127,14 +127,14 @@ recoConfig["AlCaPhiSymHcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW
 
 #31X cosmics
 #alcaConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/AlCaRecoCosmics_cfg.py?revision=1.1"
-alcaConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_Cosmics_cfg.py?revision=1.1"
-alcaConfig["calo"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_prompt_Calo_cfg.py?revision=1.2"
-alcaConfig["minbias"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_MinimumBias_cfg.py?revision=1.1"
+alcaConfig["cosmics"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_Cosmics_cfg.py?revision=1.2"
+alcaConfig["calo"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_prompt_Calo_cfg.py?revision=1.3"
+alcaConfig["minbias"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_MinimumBias_cfg.py?revision=1.3"
 
 #for alcaraw streams
-alcaConfig["AlCaP0"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_AlCaP0_cfg.py?revision=1.3"
-alcaConfig["AlCaPhiSymEcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_AlCaPhiSymEcal_cfg.py?revision=1.2"
-alcaConfig["AlCaPhiSymHcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_AlCaPhiSymHcal_cfg.py?revision=1.3"
+alcaConfig["AlCaP0"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_AlCaP0_cfg.py?revision=1.4"
+alcaConfig["AlCaPhiSymEcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_AlCaPhiSymEcal_cfg.py?revision=1.3"
+alcaConfig["AlCaPhiSymHcal"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_AlCaPhiSymHcal_cfg.py?revision=1.4"
 
 #setProcessingStyle(tier0Config, "Default", "Bulk")
 addDataset(tier0Config, "Default",
@@ -192,9 +192,9 @@ addDataset(tier0Config, "Cosmics",
            do_reco = True, global_tag = cosmicsrecoGlobalTag,
            reco_configuration = recoConfig["cosmics"],
            reco_proc_ver = recoProcVersion,
-           reco_version = defaultRecoVersion,
-           do_dqm = True,dqm_version=defaultDQMVersion,
-           do_alca = True, alca_version= defaultAlcaVersion, 
+           reco_version = experimentalRecoVersion,
+           do_dqm = True,dqm_version=experimentalRecoVersion,
+           do_alca = True, alca_version= experimentalRecoVersion, 
            alca_proc_ver = recoProcVersion,
            alca_configuration=alcaConfig["cosmics"],
            custodial_node = "T1_US_FNAL_MSS",
@@ -263,7 +263,7 @@ addDataset(tier0Config, "ZeroBias",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config, "ZeroBiasB",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
-           do_reco = True, global_tag = promptrecoGlobalTag,
+           do_reco = False, global_tag = promptrecoGlobalTag,
            reco_proc_ver = recoProcVersion,
            reco_configuration = recoConfig["collision"],
            reco_version = defaultRecoVersion,
@@ -283,7 +283,7 @@ addDataset(tier0Config, "ZeroBiasBnotT0",
            do_alca = False, alca_version= defaultAlcaVersion,
            alca_proc_ver = recoProcVersion,
            alca_configuration=alcaConfig["calo"],
-#           custodial_node = "T1_DE_KIT_MSS",
+           custodial_node = "T1_UK_RAL_MSS",
            archival_node = "T0_CH_CERN_MSS")
 addDataset(tier0Config,"HcalHPDNoise",
            default_proc_ver = defaultProcVersion, scenario = "cosmics",
@@ -416,10 +416,10 @@ skimConfig["ZeroBias900SDSkim1"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/C
 
 # Currently active
 
-skimConfig["LucaMalgeri1"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/CosmicsPDSkim_cfg.py?revision=1.3"
-skimConfig["LucaMalgeri2"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/MinBiasPDSkim_cfg.py?revision=1.3"
-skimConfig["RobertoRossin1"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/skim900GeV_StreamA_ZeroBiasPD_cfg.py"
-skimConfig["RobertoRossin2"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/skim900GeV_StreamA_MinBiasPD_cfg.py"
+skimConfig["LucaMalgeri1"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/CosmicsPDSkim_cfg.py?revision=1.4"
+skimConfig["LucaMalgeri2"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/MinBiasPDSkim_cfg.py?revision=1.5"
+skimConfig["RobertoRossin1"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/skim900GeV_StreamA_ZeroBiasPD_cfg.py?revision=1.2"
+skimConfig["RobertoRossin2"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/skim900GeV_StreamA_MinBiasPD_cfg.py?revision=1.2"
 
 addTier1Skim(tier0Config, "RealSkim6", "RECO", "Cosmics", defaultRecoVersion, "PromptSkimCommissioning_v1",
              skimConfig["LucaMalgeri1"], True)
@@ -452,7 +452,7 @@ expressProcConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW
 
 #expressProcConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/expressCollisionReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.6"
 
-expressProcConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/expressCollisionReco_FirstCollisions_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.4"
+expressProcConfig["collision"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/expressCollisionReco_FirstCollisions_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.10"
 
 
 #expressProcConfig["hltmon"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/expressReco_RAW2DIGI_RECO_DQM_ALCA.py?revision=1.6"
@@ -466,7 +466,7 @@ expressMergePackConfig = {}
 
 #For 31x
 #expressMergePackConfig["default"] = "/data/cmsprod/CMSSW/CMSSW_3_1_0/src/recoAlcaMergePack.py"
-expressMergePackConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_express_cfg.py?revision=1.7"
+expressMergePackConfig["default"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/GlobalRuns/python/alCaRecoSplitting_express_cfg.py?revision=1.9"
 
 
 expressProcConfig["alca"] = "/data/cmsprod/CMSSW/CMSSW_2_2_13/src/step23_EcalCalPi0Calib_ALCA_CRAFT_processing.py"
@@ -507,9 +507,9 @@ addExpressConfig(tier0Config, "HLTMON",
 
 
 #Mappings for 311 online running
-setExpressVersionMapping(tier0Config, "CMSSW_3_3_5", "CMSSW_3_3_5_patch3")
-setExpressVersionMapping(tier0Config, "CMSSW_3_3_4", "CMSSW_3_3_5_patch3")
-setExpressVersionMapping(tier0Config, "CMSSW_3_3_3", "CMSSW_3_3_5_patch3")
+setExpressVersionMapping(tier0Config, "CMSSW_3_3_5", "CMSSW_3_3_5_patch4")
+setExpressVersionMapping(tier0Config, "CMSSW_3_3_4", "CMSSW_3_3_5_patch4")
+setExpressVersionMapping(tier0Config, "CMSSW_3_3_3", "CMSSW_3_3_5_patch4")
 setExpressVersionMapping(tier0Config, "CMSSW_3_2_7", "CMSSW_3_2_8")
 setExpressVersionMapping(tier0Config, "CMSSW_3_2_4", "CMSSW_3_2_8")
 setExpressVersionMapping(tier0Config, "CMSSW_3_2_3", "CMSSW_3_2_8")
