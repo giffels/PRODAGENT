@@ -142,7 +142,7 @@ class T0ASTPlugin(BasePlugin):
         job = {}
         job["JobSpecId"] = jobSpec.parameters["JobName"]
         job["JobSpecFile"] = jobSpecFile
-        job["JobType"] = "Processing"
+        job["JobType"] = "Harvesting"
         job["WorkflowSpecId"] = workflowSpec.workflowName(),
         job["WorkflowPriority"] = 10
         job["Sites"] = [self.site]

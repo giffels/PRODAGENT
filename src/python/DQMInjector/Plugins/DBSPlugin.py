@@ -196,7 +196,7 @@ class DBSPlugin(BasePlugin):
             )
 
         jobSpec.setJobName(jobName)
-        jobSpec.setJobType("Processing")
+        jobSpec.setJobType("Harvesting")
         jobSpec.parameters['RunNumber'] = collectPayload['RunNumber']
         jobSpec.addWhitelistSite(site)
         jobSpec.payload.operate(DefaultLFNMaker(jobSpec))

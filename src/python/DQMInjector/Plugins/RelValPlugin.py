@@ -315,7 +315,7 @@ class RelValPlugin(BasePlugin):
 
         job["JobSpecId"] = jobName
         job["JobSpecFile"] = jobSpecFile
-        job['JobType'] = "Processing"
+        job['JobType'] = "Harvesting"
         job["WorkflowSpecId"] = workflowSpec.workflowName(),
         job["WorkflowPriority"] = 10
         job["Sites"] = [site]
