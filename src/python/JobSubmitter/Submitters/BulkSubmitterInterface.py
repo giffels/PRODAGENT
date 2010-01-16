@@ -26,7 +26,7 @@ def makeNonBlocking(fd):
         fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NDELAY)
     except AttributeError:
 	fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
-    
+
 
 class BulkSubmitterInterface:
 
@@ -40,7 +40,7 @@ class BulkSubmitterInterface:
         self.blacklist = []
         self.applicationVersions = []
         self.publishToDashboard = []
-        
+
         #  //
         # // Load plugin configuration
         #//
@@ -59,9 +59,9 @@ class BulkSubmitterInterface:
 
         self.checkPluginConfig()
 
-        
-        
-    def __call__(self, workingDir = None, jobCreationArea = None, 
+
+
+    def __call__(self, workingDir = None, jobCreationArea = None,
                  jobname = None, **args):
         """
         _Operator()_
@@ -77,15 +77,15 @@ class BulkSubmitterInterface:
         logging.debug("BulkSubmitterInterface.__call__")
         logging.debug("Subclass:%s" % self.__class__.__name__)
         self.parameters.update(args)
-        
+
 
         self.primarySpecInstance = self.parameters['JobSpecInstance']
         jobSpecCaches = self.parameters.get("CacheMap", {})
         self.blacklist = self.primarySpecInstance.siteBlacklist
         self.whitelist = self.primarySpecInstance.siteWhitelist
         self.applicationVersions = self.primarySpecInstance.listApplicationVersions()
-                   
-        
+
+
         if not self.primarySpecInstance.isBulkSpec():
             logging.debug("Non Bulk Submission...")
             self.isBulk = False
@@ -94,7 +94,7 @@ class BulkSubmitterInterface:
             self.specFiles[nameOfJob] = "%s/%s-JobSpec.xml" % (
                 jobSpecCaches[nameOfJob], nameOfJob)
             logging.debug("self.toSubmit = %s" % self.toSubmit)
-            logging.debug("self.specFiles = %s" % self.specFiles) 
+            logging.debug("self.specFiles = %s" % self.specFiles)
         else:
             logging.debug("Bulk Submission...")
             self.isBulk = True
@@ -102,7 +102,7 @@ class BulkSubmitterInterface:
             self.specFiles.update(self.primarySpecInstance.bulkSpecs)
             logging.debug("self.toSubmit = %s" % self.toSubmit)
             logging.debug("self.specFiles = %s" % self.specFiles)
-            
+
         #  //
         # // Invoke whatever is needed to do the submission
         #//
@@ -116,7 +116,7 @@ class BulkSubmitterInterface:
             logging.error("Error publishing to dashboard: %s" % str(ex))
 
         return
-    
+
     def checkPluginConfig(self):
         """
         _checkPluginConfig_
@@ -129,7 +129,7 @@ class BulkSubmitterInterface:
 
         """
         pass
-    
+
     def doSubmit(self, wrapperScript, jobTarball):
         """
         _doSubmit_
@@ -141,15 +141,15 @@ class BulkSubmitterInterface:
         contains the actual job guts.
         
         """
-        msg =  "Virtual Method SubmitterInterface.doSubmit called"
+        msg = "Virtual Method SubmitterInterface.doSubmit called"
         raise RuntimeError, msg
-        
 
-    
 
-        
-    
-    
+
+
+
+
+    @classmethod
     def executeCommand(self, command):
         """
         _executeCommand_
@@ -161,7 +161,7 @@ class BulkSubmitterInterface:
 
         child = popen2.Popen3(command, 1) # capture stdout and stderr from command
         child.tochild.close()             # don't need to talk to child
-        outfile = child.fromchild 
+        outfile = child.fromchild
         outfd = outfile.fileno()
         errfile = child.childerr
         errfd = errfile.fileno()
@@ -172,7 +172,7 @@ class BulkSubmitterInterface:
         stdoutBuffer = ""
         stderrBuffer = ""
         while 1:
-            ready = select.select([outfd,errfd],[],[]) # wait for input
+            ready = select.select([outfd, errfd], [], []) # wait for input
             if outfd in ready[0]:
                 outchunk = outfile.read()
                 if outchunk == '': outeof = 1
@@ -184,7 +184,7 @@ class BulkSubmitterInterface:
                 stderrBuffer += errchunk
                 sys.stderr.write(errchunk)
             if outeof and erreof: break
-            select.select([],[],[],.1) # give a little time for buffers to fill
+            select.select([], [], [], .1) # give a little time for buffers to fill
 
         try:
             exitCode = child.poll()
@@ -206,7 +206,7 @@ class BulkSubmitterInterface:
             logging.error(msg)
             raise RuntimeError, msg
         return  stdoutBuffer
-    
+
     def publishSubmitToDashboard(self):
         """
         _publishSubmitToDashboard_
@@ -223,7 +223,7 @@ class BulkSubmitterInterface:
         whitelist = str(self.whitelist)
         whitelist = whitelist.replace("[", "")
         whitelist = whitelist.replace("]", "")
-        
+
         for jobId, jobCache in self.toSubmit.items():
             jobSpec = self.specFiles[jobId]
             dashInfoFile = os.path.join(jobCache, "DashboardInfo.xml")
@@ -237,10 +237,10 @@ class BulkSubmitterInterface:
             dashData.read(dashInfoFile)
             dashData.task, dashData.job = \
                            DashboardUtils.extractDashboardID(jobSpec)
-            
+
             dashData['ApplicationVersion'] = appData
             dashData['TargetCE'] = whitelist
             dashData.addDestination("cms-pamon.cern.ch", 8884)
             dashData.publish(1)
         return
-    
+
