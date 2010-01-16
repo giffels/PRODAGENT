@@ -6,8 +6,8 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.5 2009/08/14 10:42:39 gcodispo Exp $"
-__version__ = "$Revision: 1.5 $"
+__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.6 2009/08/17 07:41:18 gcodispo Exp $"
+__version__ = "$Revision: 1.6 $"
 
 import os
 import logging
@@ -27,7 +27,10 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
       
     """
 
-    scheduler  = "SchedulerGLiteAPI"
+    if BossLiteBulkInterface.executeCommand('glite-version').strip().startswith('3.1'):
+        scheduler = 'SchedulerGLiteAPI'
+    else:
+        scheduler = 'SchedulerGLite'
 
 
     def getSchedulerConfig(self) :
@@ -44,16 +47,16 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
                self.pluginConfig['GLITE']['WMSconfig'] is None \
                or self.pluginConfig['GLITE']['WMSconfig'] == 'None' :
 
-            schedulerConfig['config']  = ''
+            schedulerConfig['config'] = ''
 
-        elif os.path.exists( self.pluginConfig['GLITE']['WMSconfig'] ) :
+        elif os.path.exists(self.pluginConfig['GLITE']['WMSconfig']) :
             schedulerConfig['config'] = self.pluginConfig['GLITE']['WMSconfig']
         else :
             schedulerConfig['config'] = ''
-            logging.error( "WMSconfig File Not Found: %s" % \
-                           self.pluginConfig['GLITE']['WMSconfig'] )
+            logging.error("WMSconfig File Not Found: %s" % \
+                           self.pluginConfig['GLITE']['WMSconfig'])
 
-            
+
         schedulerConfig['proxyname'] = self.prodAgentName
 
         return schedulerConfig
@@ -79,8 +82,8 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
 
             try :
                 userReq = None
-                logging.debug( "createJDL: using JDLRequirementsFile " \
-                               + userJDLRequirementsFile )
+                logging.debug("createJDL: using JDLRequirementsFile " \
+                               + userJDLRequirementsFile)
                 fileuserjdl = open(userJDLRequirementsFile, 'r')
                 inlines = fileuserjdl.readlines()
                 for inline in inlines :
@@ -88,7 +91,7 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
                     if inline.find('Requirements') > -1 \
                            and inline.find('#') == -1:
                         userReq = \
-                                inline[ inline.find('=')+2 : inline.find(';') ]
+                                inline[ inline.find('=') + 2 : inline.find(';') ]
                     ## write the other user defined JDL lines as they are
                     else :
                         if inline.find('#') != 0 and len(inline) > 1 :
@@ -140,11 +143,11 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
         # // building jdl
         #//
 
-        requirements = "%s"% userRequirements
+        requirements = "%s" % userRequirements
         if swClause != "":
             if requirements != "":
                 requirements += " && "
-            requirements  += " %s " % swClause
+            requirements += " %s " % swClause
         if archrequirement != "" :
             if requirements != "":
                 requirements += " && "
@@ -154,7 +157,7 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
                 requirements += " && "
             requirements += " %s " % anyMatchrequirements
         # add requirement for CE in Production state
-        requirements += " && other.GlueCEStateStatus == \"Production\" " 
+        requirements += " && other.GlueCEStateStatus == \"Production\" "
 
         if requirements != "":
             requirements = "Requirements = %s ;\n" % requirements
@@ -179,7 +182,7 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
                 logging.debug("Whitelist element %s" % i)
                 sitelist += "Member(\"%s\" , other.GlueCESEBindGroupSEUniqueID)" % i + " || "
                 #sitelist+="target.GlueSEUniqueID==\"%s\""%i+" || "
-            sitelist = sitelist[:len(sitelist)-4]
+            sitelist = sitelist[:len(sitelist) - 4]
             anyMatchrequirements += sitelist + ")"
         return anyMatchrequirements
 
@@ -235,11 +238,11 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
         timestamp = 0
 
         if os.path.exists(filename) :
-            tsfile = open( filename, 'r' )
+            tsfile = open(filename, 'r')
             tsentry = tsfile.read().strip()
             try :
                 timestamp = time.time() - \
-                            time.mktime(time.strptime( tsentry, format ))
+                            time.mktime(time.strptime(tsentry, format))
                 timestamp /= 43200
             except ValueError:
                 pass
@@ -249,12 +252,12 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
         if timestamp > 0 and timestamp < 1:
             return
 
-        logging.info( 'delegating proxy to wms after %s hours' % \
-                      (timestamp*12 ) )
+        logging.info('delegating proxy to wms after %s hours' % \
+                      (timestamp * 12))
         schedSession.getSchedulerInterface().delegateProxy()
-        tsfile = open( filename, 'w' )
-        logging.info ( '%s' % time.strftime( format ) )
-        tsfile.write( time.strftime( format ) )
+        tsfile = open(filename, 'w')
+        logging.info ('%s' % time.strftime(format))
+        tsfile.write(time.strftime(format))
         tsfile.close()
 
         return

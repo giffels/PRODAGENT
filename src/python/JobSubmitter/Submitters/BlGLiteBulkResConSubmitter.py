@@ -6,8 +6,8 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id: BlGLiteBulkResConSubmitter.py,v 1.4 2009/03/17 14:11:59 gcodispo Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: BlGLiteBulkResConSubmitter.py,v 1.5 2009/04/17 15:08:25 swakef Exp $"
+__version__ = "$Revision: 1.5 $"
 
 import logging
 
@@ -24,8 +24,6 @@ class BlGLiteBulkResConSubmitter(BlGLiteBulkSubmitter):
     directly but one of its inherited classes.
       
     """
-
-    scheduler  = "SchedulerGLiteAPI"
 
     def __init__(self):
         #super(BlGLiteBulkSubmitter, self).__init__()
@@ -44,7 +42,7 @@ class BlGLiteBulkResConSubmitter(BlGLiteBulkSubmitter):
             anyMatchrequirements = " ("
             sitelist = ""
             for id in self.whitelist:
-                sites = self.jobQ.getSite(id)  
+                sites = self.jobQ.getSite(id)
                 for site in sites:
                     if site["SiteName"] in used_names:
                         continue
@@ -52,15 +50,15 @@ class BlGLiteBulkResConSubmitter(BlGLiteBulkSubmitter):
                         sitelist += "other.GlueCEUniqueID==\"%s\" || " % site['CEName']
                     else:
                         sitelist += " Member(\"%s\", other.GlueCESEBindGroupSEUniqueID) || " % site["SEName"]
-                    used_names.append(site["SiteName"])       
-            
+                    used_names.append(site["SiteName"])
+
             if not used_names:
-                raise RuntimeError, "Unable to map whitelist to site: %s" % str(self.whitelist)  
-                
+                raise RuntimeError, "Unable to map whitelist to site: %s" % str(self.whitelist)
+
             sitelist = sitelist[:-4]
-            anyMatchrequirements += sitelist+")"
+            anyMatchrequirements += sitelist + ")"
             self.whitelist = used_names # publish to dashboard later
-        
+
         return anyMatchrequirements
 
 
