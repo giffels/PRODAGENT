@@ -349,6 +349,7 @@ def main(argv) :
                         query += "and release=%s" % version
                         parsed_datasets = []
                         result_xml = reader.dbs.executeQuery(query)
+                        xml.sax.parseString(result_xml, Handler())
                         find_version = lambda x: x in parsed_datasets
                         target_datasets = filter(find_version, target_datasets)
                     # If more than one dataset is found, match the processing
