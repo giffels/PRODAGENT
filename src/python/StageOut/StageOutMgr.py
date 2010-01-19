@@ -183,7 +183,8 @@ class StageOutMgr:
             if not self.override:
                 print "===> Attempting Local Stage Out."
                 try:
-                    pfn = self.localStageOut(lfn, fileToStage['PFN'], fileToStage['Checksums'])
+                    checksums = fileToStage.get('Checksums', None)
+                    pfn = self.localStageOut(lfn, fileToStage['PFN'], checksums)
                     fileToStage['PFN'] = pfn
                     fileToStage['SEName'] = self.siteCfg.localStageOut['se-name']
                     fileToStage['StageOutCommand'] = self.siteCfg.localStageOut['command']
