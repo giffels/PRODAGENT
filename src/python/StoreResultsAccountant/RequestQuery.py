@@ -280,6 +280,12 @@ class RequestQuery:
                     for item in control.items:
                         if item.attrs['label'] == kargs[arg].strip():
                             control.value = [item.attrs['value']]
+                            
+                elif arg == "team":
+                    control = self.br.find_control("custom_sb5",type="select")
+                    for item in control.items:
+                        if item.attrs['label'] == kargs[arg].strip():
+                            control.value = [item.attrs['value']]
 
             response = self.br.submit()
             response.read()
