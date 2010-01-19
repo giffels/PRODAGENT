@@ -84,8 +84,10 @@ class RequestQuery:
                 control.value = [self.DBSByLabelDict["cms_dbs_ph_analysis_02"]]
             elif dbs_url.find("analysis_01")!=-1:
                 control.value = [self.DBSByLabelDict["cms_dbs_ph_analysis_01"]]
+            elif dbs_url.find("local_09")!=-1:
+                control.value = [self.DBSByLabelDict["cms_dbs_ph_prod_local_09"]]
             else:
-                msg = 'DBS URL of the old request is neither analysis_01 nor analysis_02. Please, check!'
+                msg = 'DBS URL of the old request is neither analysis_01, analysis_02 nor local_09. Please, check!'
                 logging.error(msg)
                 raise RuntimeError, msg
 
@@ -142,7 +144,7 @@ class RequestQuery:
                     ## Get Physics Group
                     control = self.br.find_control("custom_sb3",type="select")
                     group_id = control.value[0]
-                    group_squad = 'cms-storeresults-'+self.GroupByValueDict[group_id].replace("-","_")
+                    group_squad = 'cms-storeresults-'+self.GroupByValueDict[group_id].replace("-","_").lower()
 
                     ## Get Dataset Version
                     control = self.br.find_control("custom_tf3",type="text")
@@ -169,10 +171,11 @@ class RequestQuery:
 
                     ## Construction of the new dataset name
                     ## remove leading hypernews or physics group name and StoreResults+Version
-                        
-                    new_dataset = ""
 
-                    dataset_prefix = "StoreResults"+dataset_version
+                    if len(dataset_version)>0:
+                        dataset_prefix = "StoreResults-"+dataset_version
+                    else:
+                        dataset_prefix = "StoreResults"
                     
                     if input_processed_dataset.find(self.GroupByValueDict[group_id])==0:
                         new_dataset = input_processed_dataset.replace(self.GroupByValueDict[group_id],dataset_prefix,1)
@@ -192,7 +195,12 @@ class RequestQuery:
                     infoDict["outputDataset"] = new_dataset
                     infoDict["physicsGroup"] = self.GroupByValueDict[group_id]
                     infoDict["inputDBSURL"] = dbs_url
-                    infoDict["cmsswRelease"] = self.ReleaseByValueDict[release_id[0]]
+
+                    #fix me
+                    try:
+                        infoDict["cmsswRelease"] = self.ReleaseByValueDict[release_id[0]]
+                    except:
+                        continue
                     
                     #Fill json file, if status is done
                     if self.StatusByValueDict[status_id[0]]=='Done' and RequestStatusByValueDict[request_status_id[0]] != "Closed":
