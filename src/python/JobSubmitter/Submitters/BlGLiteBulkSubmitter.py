@@ -6,8 +6,8 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.6 2009/08/17 07:41:18 gcodispo Exp $"
-__version__ = "$Revision: 1.6 $"
+__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.7 2010/01/16 17:25:24 swakef Exp $"
+__version__ = "$Revision: 1.7 $"
 
 import os
 import logging
@@ -27,10 +27,13 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
       
     """
 
-    if BossLiteBulkInterface.executeCommand('glite-version').strip().startswith('3.1'):
-        scheduler = 'SchedulerGLiteAPI'
-    else:
-        scheduler = 'SchedulerGLite'
+    def __init__(self):
+        BossLiteBulkInterface.__init__(self)
+
+        if BossLiteBulkInterface.executeCommand('glite-version').strip().startswith('3.1'):
+            self.scheduler = 'SchedulerGLiteAPI'
+        else:
+            self.scheduler = 'SchedulerGLite'
 
 
     def getSchedulerConfig(self) :
