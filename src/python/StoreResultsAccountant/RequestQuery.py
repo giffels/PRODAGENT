@@ -28,7 +28,7 @@ class RequestQuery:
     def __del__(self):
         self.br.close()
 
-    def closeRequest(self,task):
+    def closeRequest(self,task,msg):
         if self.isLoggedIn:
             self.createValueDicts()
             
@@ -41,6 +41,10 @@ class RequestQuery:
             control = self.br.find_control("status_id",type="select")
             control.value = [self.TicketStatusByLabelDict["Closed"]]
 
+            #Put reason to the comment field
+            control = self.br.find_control("comment",type="textarea")
+            control.value = msg
+                        
             #DBS Drop Down is a mandatory field, if set to None (for old requests), it is not possible to close the request
             self.setDBSDropDown()
                         
@@ -196,11 +200,17 @@ class RequestQuery:
                     infoDict["physicsGroup"] = self.GroupByValueDict[group_id]
                     infoDict["inputDBSURL"] = dbs_url
 
-                    #fix me
+                    # close the request if deprecated release was used
                     try:
                         infoDict["cmsswRelease"] = self.ReleaseByValueDict[release_id[0]]
                     except:
-                        continue
+                        if len(self.ReleaseByValueDict)>0 and RequestStatusByValueDict[request_status_id[0]] != "Closed":
+                            msg = "Your request is not valid anymore, since the given CMSSW release is deprecated. If your request still should be processed, please create a new request with a more recent working CMSSW release.\n"
+                            msg+= "\n"
+                            msg+= "Thanks,\n"
+                            msg+= "Your StoreResults team"
+                            self.closeRequest(task,msg)
+            
                     
                     #Fill json file, if status is done
                     if self.StatusByValueDict[status_id[0]]=='Done' and RequestStatusByValueDict[request_status_id[0]] != "Closed":
