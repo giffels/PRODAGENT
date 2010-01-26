@@ -49,6 +49,9 @@ class RequestQuery:
             self.setDBSDropDown()
                         
             self.br.submit()
+
+            #remove JSON ticket
+            self.removeJSONFile(task)
             
         return
                 
@@ -205,7 +208,7 @@ class RequestQuery:
                         infoDict["cmsswRelease"] = self.ReleaseByValueDict[release_id[0]]
                     except:
                         if len(self.ReleaseByValueDict)>0 and RequestStatusByValueDict[request_status_id[0]] != "Closed":
-                            msg = "Your request is not valid anymore, since the given CMSSW release is deprecated. If your request still should be processed, please create a new request with a more recent working CMSSW release.\n"
+                            msg = "Your request is not valid anymore, since the given CMSSW release is deprecated. If your request should be still processed, please reopen the request and update the CMSSW release to a more recent *working* release.\n"
                             msg+= "\n"
                             msg+= "Thanks,\n"
                             msg+= "Your StoreResults team"
@@ -214,7 +217,7 @@ class RequestQuery:
                     
                     #Fill json file, if status is done
                     if self.StatusByValueDict[status_id[0]]=='Done' and RequestStatusByValueDict[request_status_id[0]] != "Closed":
-                        self.writeJSONFile('Ticket_'+task+'.json', infoDict)
+                        self.writeJSONFile(task, infoDict)
 
                     infoDict["task"] = int(task)
                     infoDict["ticketStatus"] = self.StatusByValueDict[status_id[0]]
@@ -301,10 +304,18 @@ class RequestQuery:
             response.read()
 
         return
-     
-    def writeJSONFile(self, name, infoDict):
+
+    def removeJSONFile(self,task):
+        filename = self.config["ComponentDir"]+'/Ticket_'+str(task)+'.json'
+
+        if os.access(filename,os.F_OK):
+            os.remove(filename)
+
+        return
+            
+    def writeJSONFile(self, task, infoDict):
         ##check if file already exists
-        filename = self.config["ComponentDir"]+'/'+name.strip()
+        filename = self.config["ComponentDir"]+'/Ticket_'+str(task)+'.json'
         if not os.access(filename,os.F_OK):
             jsonfile = open(filename,'w')
             jsonfile.write(json.dumps(infoDict,sort_keys=True, indent=4))
