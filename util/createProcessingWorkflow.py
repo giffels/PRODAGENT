@@ -5,14 +5,15 @@ _createProcessingWorkflow_
 Create a workflow that processes an input dataset with a cfg file
 
 """
-__version__ = "$Revision: 1.23 $"
-__revision__ = "$Id: createProcessingWorkflow.py,v 1.23 2009/08/31 11:06:53 direyes Exp $"
+__version__ = "$Revision: 1.24 $"
+__revision__ = "$Id: createProcessingWorkflow.py,v 1.24 2009/09/14 14:52:33 direyes Exp $"
 
 import os
 import sys
 import getopt
 import popen2
 import time
+import re
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
@@ -300,13 +301,19 @@ if not len(cfgFiles):
     raise RuntimeError, msg
 elif len(cfgFiles) > 1:
     print "%s cfgs listed - chaining them" % len(cfgFiles)
-
-if not len(versions):
+if not versions:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
 if len(versions) != len(cfgFiles):
     msg = "Need same number of --cfg and --version arguments"
     raise RuntimeError, msg
+regVerStr = r'CMSSW_\d_\d_\d+(_pre|_patch)\d+'
+regVer = re.compile(regVerStr)
+for item in versions:
+    if regVer.match(item) is None:
+        msg = "Provided --version argument (%s) seems to be invalid. " % item
+        msg += "It should satisfy this regular expression: %s" % regVerStr
+        raise RuntimeError, msg
 if len(stageoutOutputs) != len(cfgFiles) - 1:
     msg = "Need one less --stageout-intermediates than --cfg arguments"
     raise RuntimeError, msg

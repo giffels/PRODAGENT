@@ -5,8 +5,8 @@ _createProductionCmsGenWorkflow_
 Create a cmsGen and cmsRun workflow
 
 """
-__version__ = "$Revision: 1.15 $"
-__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.15 2009/07/29 15:22:45 direyes Exp $"
+__version__ = "$Revision: 1.16 $"
+__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.16 2009/09/14 14:52:33 direyes Exp $"
 
 
 
@@ -22,6 +22,7 @@ import getopt
 import sys
 import time
 import popen2
+import re
 
 valid = ['cmsRunCfg=', 'cmsGenCfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=', 'selection-efficiency=', 'help',
@@ -258,9 +259,21 @@ if cmsGenCfg == None:
     msg = "--cmsGenCfg option not provided: This is required"
     raise RuntimeError, msg
 
+if not versions:
+    msg = "--version option not provided: This is required"
+    raise RuntimeError, msg
+
 if len(versions) != len(cmsRunCfgs):
     msg = "Need same number of --cmsRunCfg and --version arguments"
     raise RuntimeError, msg
+
+regVerStr = r'CMSSW_\d_\d_\d+(_pre|_patch)\d+'
+regVer = re.compile(regVerStr)
+for item in versions:
+    if regVer.match(item) is None:
+        msg = "Provided --version argument (%s) seems to be invalid. " % item
+        msg += "It should satisfy this regular expression: %s" % regVerStr
+        raise RuntimeError, msg
 
 if channel == None:
     msg = "--channel option not provided: This is required"

@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.22 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.22 2009/07/29 15:22:45 direyes Exp $"
+__version__ = "$Revision: 1.23 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.23 2009/09/14 14:52:33 direyes Exp $"
 
 
 import os
@@ -17,6 +17,7 @@ import sys
 import getopt
 import popen2
 import time
+import re
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
@@ -259,12 +260,19 @@ if len(cfgFiles) == 0:
     raise RuntimeError, msg
 elif len(cfgFiles) > 1:
     print "%s cfgs listed - chaining them" % len(cfgFiles)
-if versions == []:
+if not versions:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
 if len(versions) != len(cfgFiles):
     msg = "Need same number of --cfg and --version arguments"
     raise RuntimeError, msg
+regVerStr = r'CMSSW_\d_\d_\d+(_pre|_patch)\d+'
+regVer = re.compile(regVerStr)
+for item in versions:
+    if regVer.match(item) is None:
+        msg = "Provided --version argument (%s) seems to be invalid. " % item
+        msg += "It should satisfy this regular expression: %s" % regVerStr
+        raise RuntimeError, msg
 if len(stageoutOutputs) != len(cfgFiles) - 1:
     msg = "Need one less --stageout-intermediates than --cfg arguments"
     raise RuntimeError, msg
