@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.28 2009/07/30 08:27:51 gcodispo Exp $"
-__revision__ = "$Revision: 1.28 $"
+__version__ = "$Id: JobOutput.py,v 1.29 2009/10/14 08:01:12 gcodispo Exp $"
+__revision__ = "$Revision: 1.29 $"
 
 import logging
 import os
@@ -393,7 +393,8 @@ class JobOutput:
                 job.runningJob['closed'] = 'Y'
 
             # not ready for GO: waiting for next round
-            elif err.message().find( "Job current status doesn" ) != -1:
+            elif err.message().find("Output not yet Ready") != -1 or \
+                     err.message().find( "Job current status doesn" ) != -1:
                 logging.error("%s in status %s: waiting next round" % \
                               (cls.fullId( job ), job.runningJob['status'])
                               )
