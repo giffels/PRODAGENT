@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.22 2009/10/21 15:44:20 ewv Exp $"
-__version__  = "$Revision: 1.22 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.23 2009/12/08 14:29:28 giffels Exp $"
+__version__  = "$Revision: 1.23 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -107,16 +107,16 @@ def getPhedexDSURL():
 def getX509Configuration():
     try:
         config = loadProdAgentConfiguration()
-        
+
     except StandardError, ex:
         msg = "Error reading configuration:\n"
         msg += str(ex)
         logging.error(msg)
         raise RuntimeError, msg
-    
+
     try:
         X509Config = config.getConfig("StoreResultsAccountant")
-         
+
     except StandardError, ex:
         msg = "Error reading configuration for StoreResultsAccoutant:\n"
         msg += str(ex)
@@ -191,7 +191,7 @@ class ResultsFeeder(PluginInterface):
 
         if X509_USER_KEY!=None:
             os.environ["X509_USER_KEY"] = X509_USER_KEY
-            
+
         msg = "Using following user certificate %s" % os.getenv("X509_USER_CERT")
         logging.debug(msg)
         msg = "Using following user key %s" % os.getenv("X509_USER_KEY")
@@ -210,8 +210,8 @@ class ResultsFeeder(PluginInterface):
         phedexNode = None
         if len(phedexNodes) > 0:
             phedexNode = phedexNodes[0] # By default
-            for name in phedexNodes:    # Search for Buffer and prefer that
-                if name.find('Buffer') > -1:
+            for name in phedexNodes:    # Search for MSS and prefer that
+                if name.find('MSS') > -1:
                     phedexNode = name
 
         logging.info("Data resides on %s" % phedexNode)
