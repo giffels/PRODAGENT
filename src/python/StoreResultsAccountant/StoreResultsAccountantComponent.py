@@ -9,8 +9,8 @@ Initially based on RelValInjector
 
 """
 
-__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.13 2009/10/20 17:48:20 ewv Exp $"
-__version__  = "$Revision: 1.13 $"
+__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.14 2009/10/22 12:56:50 ewv Exp $"
+__version__  = "$Revision: 1.14 $"
 __author__   = "ewv@fnal.gov"
 
 import os
@@ -35,6 +35,7 @@ from ProdCommon.Database                  import Session
 from ProdCommon.MCPayloads.WorkflowSpec   import WorkflowSpec
 from ProdCommon.DataMgmt.DBS.DBSReader    import DBSReader
 from StoreResultsAccountant.ResultsStatus import ResultsStatus
+from StoreResultsAccountant.RequestQuery  import RequestQuery
 
 def getLocalDBSURLs():
     """
@@ -116,8 +117,14 @@ class StoreResultsAccountantComponent:
         self.args = {}
         self.args['Logfile'] = None
         self.args['PollInterval'] = "00:02:00"
+        self.args['SavannahPollInterval'] = "00:10:00"
         self.args['MigrateToGlobal'] = True
         self.args['InjectToPhEDEx'] = True
+
+        self.args['X509_USER_CERT'] = None
+        self.args['X509_USER_KEY'] = None
+
+        self.args['StoreResultsTeam'] = None
 
         self.args.update(args)
 
@@ -144,6 +151,7 @@ class StoreResultsAccountantComponent:
         msg = "StoreResultsAccountant Component Started:\n"
         msg += " Migrate to Global DBS: %s\n" % self.args['MigrateToGlobal']
         msg += " Inject to PhEDEx:      %s\n" % self.args['InjectToPhEDEx']
+        msg += " StoreResultsTeam:      %s\n" % self.args['StoreResultsTeam']
         logging.info(msg)
 
 
@@ -184,16 +192,69 @@ class StoreResultsAccountantComponent:
                 logging.error("Details: \n%s" % msg)
                 return
 
+        if message == "StoreResultsAccountant:QuerySavannah":
+            try:
+                self.querySavannahRequestInterface()
+                return
+            except StandardError, ex:
+                logging.error("Failed to query Savannah: %s" % payload)
+                msg =  traceback.format_exc()
+                logging.error("Details: \n%s" % msg)
+                return
+
         if message == "PhEDExDataServiceInject":
             try:
                 self.phedexInjectDataset(payload)
-                return
             except StandardError, ex:
                 logging.error("Failed to Inject: %s" % payload)
                 msg =  traceback.format_exc()
                 logging.error("Details: \n%s" % msg)
                 return
 
+            # close request in Savannah
+            self.closeSavannahRequest(payload)
+            return
+
+    def closeSavannahRequest(self,payload):
+        """
+        When everything is done, close the Savannah request
+        """
+        spec   = WorkflowSpec()
+        try:
+            spec.load(payload)
+        except Exception, ex:
+            msg = "Unable to read WorkflowSpec file:\n"
+            msg += "%s\n" % payload
+            msg += str(ex)
+            logging.error(msg)
+            msg =  traceback.format_exc()
+            logging.error("Details: \n%s" % msg)
+            return
+        
+        sql_query = 'select task from StoreResults where primaryDataset="%s" and outputDataset="%s"' % (spec.payload._OutputDatasets[0]['PrimaryDataset'], spec.payload._OutputDatasets[0]['ProcessedDataset'])
+
+        logging.debug(sql_query)
+        
+        Session.execute(sql_query)
+
+        task = Session.fetchone()[0]
+        
+        msg = "Your dataset has been successfully migrated!\n"
+        msg+= "\n"
+        msg+= "With kind regards,\n"
+        msg+= "Your StoreResults team"
+                            
+        query = RequestQuery(self.args)
+        query.closeRequest(task,msg)
+        
+        ### StoreResults bookkeeping store finishing date and time in ProdAgentDB
+        sql_query = 'update StoreResults set finishedOn=NOW() where task=%s' % str(task)
+
+        logging.debug(sql_query)
+
+        Session.execute(sql_query)
+
+        return
 
     def poll(self):
         """
@@ -269,8 +330,9 @@ class StoreResultsAccountantComponent:
                 logging.info("Migration has finished")
                 doneMigrating = True
             else:
-                logging.info("Migration is still going on")
-
+                msg = "Migration is still going on %s/%s" % (nClosedBlocks,len(localBlocks))
+                logging.info(msg)
+                
         except Exception, ex:
             msg = "Error checking DBS\n"
             msg += str(ex)
@@ -308,6 +370,18 @@ class StoreResultsAccountantComponent:
             logging.error("Details: \n%s" % msg)
             return
 
+        ## set environment for Phedex injection
+        if self.args["X509_USER_CERT"]!=None:
+            os.environ["X509_USER_CERT"] = self.args["X509_USER_CERT"]
+
+        if self.args["X509_USER_KEY"]!=None:
+            os.environ["X509_USER_KEY"] = self.args["X509_USER_KEY"]
+            
+        msg = "Using following user certificate %s" % os.getenv("X509_USER_CERT")
+        logging.debug(msg)
+        msg = "Using following user key %s" % os.getenv("X509_USER_KEY")
+        logging.debug(msg)
+
         datasetName = '/%s/%s/USER' % \
              (spec.payload._OutputDatasets[0]['PrimaryDataset'],
               spec.payload._OutputDatasets[0]['ProcessedDataset'])
@@ -332,7 +406,7 @@ class StoreResultsAccountantComponent:
         logging.info("Injection results: %s" % jsonOutput)
 
         sub = PhEDExSubscription(datasetName, destNode, phedexGroup)
-        #logging.info("Subscribing dataset to: %s" % destNode)
+        logging.info("Subscribing dataset to: %s" % destNode)
         subList = SubscriptionList()
         subList.addSubscription(sub)
         for sub in subList.getSubscriptionList():
@@ -341,6 +415,57 @@ class StoreResultsAccountantComponent:
 
         return
 
+    def querySavannahRequestInterface(self):
+        """
+        Querying the Savannah Request interface. Get new datasets
+        queued for migration and create the corresponding JSON file.
+        """
+        logging.info("Querying Savannah request interface")
+    
+        ## Savannah interface is limited to 150 requests per page, split into several queries
+        query = RequestQuery(self.args)
+        
+        requests=""
+        
+        ## update closed tasks in DB 
+        try:
+            logging.info("Check ticket status closed!")
+            requests = query.getRequests(approval_status="Any",task_status="Closed",team=self.args['StoreResultsTeam'])
+        except:
+            logging.info( "Cannot check ticket status closed!")
+            
+        ## to assign task to conveners
+        try:
+            logging.info("Check ticket status None and Open!")
+            requests += query.getRequests(approval_status="None",task_status="Open",team=self.args['StoreResultsTeam']) 
+        except:
+            logging.info( "Cannot check ticket status None and Open!")
+
+        ## to get json config
+        try:
+            logging.info("Check ticket status Done and Open!")
+            requests += query.getRequests(approval_status="Done",task_status="Open",team=self.args['StoreResultsTeam']) 
+        except:
+            logging.info( "Cannot check ticket status Done and Open")
+
+        ## to update invalid requests in DB
+        try:
+            logging.info("Check ticket status Invalid and Open!")
+            requests += query.getRequests(approval_status="Invalid",task_status="Open",team=self.args['StoreResultsTeam']) 
+        except:
+            logging.info("Cannot check ticket status Invalid and Open!")
+        
+        for request in requests:
+            try:
+                Session.insert('StoreResults',request,duplicate=True)
+            except Exception,ex:
+                logging.error("Error inserting or updating a request : "+str(ex))
+
+        self.ms.publishUnique("StoreResultsAccountant:QuerySavannah", "",
+                              self.args['SavannahPollInterval'])
+        self.ms.commit()
+
+        return
 
     def startComponent(self):
         """
@@ -363,10 +488,14 @@ class StoreResultsAccountantComponent:
         self.ms.subscribeTo("PhEDExDataServiceInject")
         self.ms.subscribeTo("StoreResultsAccountant:PollMigration")
         self.ms.subscribeTo("StoreResultsAccountant:Poll")
+        self.ms.subscribeTo("StoreResultsAccountant:QuerySavannah")
 
         self.ms.remove("StoreResultsAccountant:Poll")
+        self.ms.remove("StoreResultsAccountant:QuerySavannah")
         self.ms.publishUnique("StoreResultsAccountant:Poll", "",
                         self.args['PollInterval'])
+        self.ms.publishUnique("StoreResultsAccountant:QuerySavannah","",
+                              self.args['SavannahPollInterval'])
         self.ms.commit()
 
         while True:
