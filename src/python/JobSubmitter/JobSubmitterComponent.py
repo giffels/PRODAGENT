@@ -15,8 +15,8 @@ Events Published:
 
 
 """
-__version__ = "$Revision: 1.18 $"
-__revision__ = "$Id: JobSubmitterComponent.py,v 1.18 2007/08/23 13:21:52 afanfani Exp $"
+__version__ = "$Revision: 1.19 $"
+__revision__ = "$Id: JobSubmitterComponent.py,v 1.19 2007/12/03 17:37:21 evansde Exp $"
 
 import os
 import logging
@@ -275,6 +275,16 @@ class JobSubmitterComponent:
         except ProdAgentException, ex:
             msg = "Submission Failed for job %s\n" % jobSpecId
             msg += str(ex)
+            logging.error(msg)
+            self.ms.publish("SubmissionFailed", jobSpecId)
+            self.ms.commit()
+            return False
+        except StandardError, ex:
+            msg = "Submission Failed for job %s\n" % jobSpecId
+            msg += "Unexpected error, details: %s" % str(ex)
+            import traceback, sys
+            for x in traceback.format_tb(sys.exc_info()[2]):
+                msg += str(x)
             logging.error(msg)
             self.ms.publish("SubmissionFailed", jobSpecId)
             self.ms.commit()
