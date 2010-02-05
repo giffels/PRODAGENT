@@ -4,8 +4,8 @@ from ProdCommon.Database import Session
 from JobQueue.JobQueueDB import JobQueueDB
 import sys, getopt
 
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: holdJobs.py,v 1.2 2009/10/29 18:12:20 direyes Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: holdJobs.py,v 1.3 2010/02/05 09:52:05 direyes Exp $"
 
 
 valid = [
@@ -29,7 +29,7 @@ action = None
 n_jobs = None
 
 usage = """
-holdJobs.py [--hold|--unhold] --list --njobs=<#> --workflow=<WorflowID> [--site=<Site> --type=<type> --released]
+holdJobs.py [--hold|--unhold] --list --njobs=<#> --workflow=<WorflowID> [--site=<Site> --type=<type>]
 
 Options description:
     hold                    : Take jobs out of the queue. Mark them as 'held'.
@@ -160,19 +160,22 @@ if action == 'hold':
     output = "%s jobs will be held." % len(job_ids)
     print output
 
-    sql_str = \
-        """UPDATE jq_queue SET status='held'
-        WHERE status = 'new' AND job_index IN %s;
-        """ % str(tuple(job_ids))
+    if not job_ids:
+        print "No jobs found in the JobQueue for %s" % workflow.strip()
+    else:
+        sql_str = \
+            """UPDATE jq_queue SET status='held'
+            WHERE status = 'new' AND job_index IN %s;
+            """ % str(tuple(job_ids))
 
-    try:
-        Session.execute(sql_str)
-    except StandardError, ex:
-        print "Couldn't update DB."
-        print ex
+        try:
+            Session.execute(sql_str)
+        except StandardError, ex:
+            print "Couldn't update DB."
+            print ex
 
-    output = "%s more jobs are now held." % len(job_ids)
-    print output
+        output = "%s more jobs are now held." % len(job_ids)
+        print output
 
 
 #  //
