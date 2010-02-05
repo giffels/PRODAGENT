@@ -4,8 +4,8 @@ from ProdCommon.Database import Session
 from JobQueue.JobQueueDB import JobQueueDB
 import sys, getopt
 
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: holdJobs.py,v 1.1 2009/10/29 17:59:58 direyes Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: holdJobs.py,v 1.2 2009/10/29 18:12:20 direyes Exp $"
 
 
 valid = [
@@ -167,7 +167,7 @@ if action == 'hold':
 
     try:
         Session.execute(sql_str)
-    except ex:
+    except StandardError, ex:
         print "Couldn't update DB."
         print ex
 
