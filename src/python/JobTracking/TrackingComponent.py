@@ -17,12 +17,13 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.65 2009/10/02 12:17:03 direyes Exp $"
-__version__ = "$Revision: 1.65 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.66 2009/10/06 18:03:49 spiga Exp $"
+__version__ = "$Revision: 1.66 $"
 
 import os
 import os.path
 import logging
+import re
 
 # PA configuration
 from MessageService.MessageService import MessageService
@@ -433,8 +434,15 @@ class TrackingComponent:
         # if the dashboardInfoFile is not there, this is a crab job
         if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
             task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
+            match = str(job.runningJob['schedulerId'])
+            m = re.search("glidein", match)
+
             dashboardInfo.task = task['name']
-            dashboardInfo.job = str(job['jobId']) + '_' + \
+            if m:
+               dashboardInfo.job = str(job['jobId']) + '_https://' + \
+                                job.runningJob['schedulerId']
+            else:
+               dashboardInfo.job = str(job['jobId']) + '_' + \
                                 job.runningJob['schedulerId']
             dashboardInfo['JSTool'] = 'crab'
             dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
