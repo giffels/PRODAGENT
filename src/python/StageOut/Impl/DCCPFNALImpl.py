@@ -102,6 +102,10 @@ class DCCPFNALImpl(StageOutImpl):
         Build a dccp command with a pnfs mkdir to generate the directory
 
         """
+
+        if getattr(self, 'stageIn', False):
+            return self.buildStageInCommand(sourcePFN, targetPFN, options)
+
         optionsStr = ""
         if options != None:
             optionsStr = str(options)
@@ -143,7 +147,47 @@ fi
         return result
 
 
+    def buildStageInCommand(self, sourcePFN, targetPFN, options = None):
+        """
+        _buildStageInCommand_
 
+        Create normal dccp commad for staging in files.
+        """
+        optionsStr = ""
+        if options != None:
+            optionsStr = str(options)
+        dirname = os.path.dirname(targetPFN)
+        result = "#!/bin/sh\n"
+        result += "dccp %s %s %s" % (optionsStr, pnfsPfn(sourcePFN), targetPFN)
+        result += \
+"""
+EXIT_STATUS=$?
+echo "dccp exit status: $EXIT_STATUS"
+if [[ $EXIT_STATUS != 0 ]]; then
+   echo "Non-zero dccp Exit status!!!"
+   echo "Cleaning up failed file:"
+   /bin/rm -fv %s
+   exit 60311
+fi
+"""  % targetPFN
+
+        #  //
+        # //  Size Check
+        #//
+        result += \
+"""
+DEST_SIZE=`ls -l %s | cut -d" " -f6`
+FILE_SIZE=`ls -l %s | cut -d" " -f6`
+if [ $FILE_SIZE != $DEST_SIZE ]; then
+    echo "Source and destination files do not have same file size."
+    echo "Cleaning up failed file:"
+   /bin/rm -fv %s
+   exit 60311
+fi
+""" % (pnfsPfn(targetPFN), pnfsPfn(sourcePFN), pnfsPfn(targetPFN))
+
+        print "Executing:\n", result
+        return result
 
 
 
