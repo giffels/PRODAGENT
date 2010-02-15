@@ -4,7 +4,11 @@ import sys
 import os
 import getopt
 import popen2
+import re
 import xml.sax, xml.sax.handler
+import time
+
+from Configuration.PyReleaseValidation.autoCond import autoCond
 
 def main(argv) :
     """
@@ -31,7 +35,7 @@ def main(argv) :
     --pileupdataset                 : input pileup dataset. It must be provided if the <samples> txt file contains PilepUp samples
     --lumi <number>                 : initial run for generation (default: 666666), set it to 777777 for high statistics samples
     --event <number>                : initial event number (default: 1)
-    --store-fail <True|False>       : store output files for failed jobs in chain processing.
+    --store-fail                    : store output files for failed jobs in chain processing.
     --read-dbs                      : DBS URL used for obtaining the list of available blocks for real data. Default: http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet
     --scripts-dir                   : Path to workflow creation scripts (default: $PUTIL)
     --skip-config                   : Is the configuration file was already created, it will skip cmsDriver command execution
@@ -43,6 +47,8 @@ def main(argv) :
     
     """
     
+    start_total_time = time.time()
+
     # default
     try:
         version = os.environ.get("CMSSW_VERSION")
@@ -83,7 +89,7 @@ def main(argv) :
     try:
         opts, args = getopt.getopt(argv, "", ["help", "debug", "samples=", "version=", 
                                                 "DBSURL=", "event=", "lumi=", "pileupdataset=", 
-                                                "store-fail=", "read-dbs=", "only-sites=", 
+                                                "store-fail", "read-dbs=", "only-sites=", 
                                                 "scripts-dir=", "skip-config", "extra-label=",
                                                 "workflow-label="])
     except getopt.GetoptError:
@@ -111,10 +117,7 @@ def main(argv) :
             pileup_dataset = arg
             print arg
         elif opt == '--store-fail':
-            if arg.lower() in ("true", "yes"):
-                storeFail = True
-            else:
-                storeFail = False
+            storeFail = True
         elif opt == '--read-dbs':
             readDBS = arg
         elif opt == '--only-sites':
@@ -144,7 +147,12 @@ def main(argv) :
     if samplesFile == None or processing_version == None or DBSURL == None :
         print main.__doc__
         sys.exit(2)
-    
+
+    if debug:
+        print "\nprepareRelValWorkflows.py was started with the following arguments: %s" % \
+            " ".join(argv)
+        print "\n"
+ 
     samples = []
     steps = {}
     primary_prefix = 'RelVal'    
@@ -157,6 +165,7 @@ def main(argv) :
         sys.exit(1)
     n_line = 0
     print 'Parsing input file...'
+    start_parse_time = time.time()
     for line in file.readlines():
         n_line += 1
         # Skipping lines with no info
@@ -164,6 +173,7 @@ def main(argv) :
             not line.strip().startswith("#") and \
             line.find('//') != 0: # I don't know what's the last condition for
             line_parts = [part.strip() for part in line.split('@@@') if part]
+            dqmData = {} # Keys: Scenario, Run
             #  //
             # // Parsing first step
             #//
@@ -212,15 +222,19 @@ def main(argv) :
                     if '--python_filename' in array:
                         del array[array.index('--python_filename'):\
                             array.index('--python_filename')+2]
-                    command = " ".join(array)
                     #  //
                     # // Parse conditions
                     #//
                     if '--conditions' in array:
                         conditions_arg = array[array.index('--conditions')+1]
+                        if conditions_arg.startswith('auto:'):
+                            conditions_key = conditions_arg.split('auto:')[1]
+                            conditions_value = autoCond[conditions_key]
+                        else:
+                            conditions_value = conditions_arg
                         conditions = [
                             x.strip() \
-                            for x in conditions_arg.split(',') \
+                            for x in conditions_value.split(',') \
                             if x.find("::") != -1
                             ][0].split('::')[0].strip()
                     else:
@@ -278,9 +292,17 @@ def main(argv) :
                     # // Add command options
                     #//
                     if command.find('no_exec') < 0:
-                        command += ' --no_exec'
+                        array.append('--no_exec')
                     if command.find('python_filename') < 0:
-                        command += ' --python_filename ' + output_name
+                        array.append('--python_filename')
+                        array.append(output_name)
+                    # Recomposing cmsDriver command
+                    command = " ".join(array)
+
+                    # Filling up DQM information
+                    dqmData['Run'] = 1
+                    dqmData['Scenario'] = getDQMScenario(command)
+
                 #  //
                 # // Collecting info for real data samples
                 #//
@@ -443,6 +465,9 @@ def main(argv) :
                     #else:
                     #    acq_era = dataset_acq_era
 
+                    # Filling up DQM information
+                    dqmData['Run'] = input_data['RUN']
+
                 #  //
                 # // Composing a dictionary per sample
                 #//
@@ -461,6 +486,7 @@ def main(argv) :
                 dict['inputBlocks'] = input_blocks
                 dict['steps'] = sample_steps
                 dict['AcqEra'] = acq_era
+                dict['DQMData'] = dqmData
  
                 samples.append(dict)
 
@@ -475,11 +501,12 @@ def main(argv) :
                     print 'Steps:', sample_steps
                     print 'PileUp:', pile_up
                     print 'Input data:', input_data
-                    print 'Input blocks', input_blocks
+                    print 'Input blocks:', input_blocks
+                    print 'DQMData:', dqmData
                     print ''
 
             #  //
-            # // No a first step command (secon HLT table, RECO, ALCA, etc)
+            # // No a first step command (second HLT table, RECO, ALCA, etc)
             #//
             else:
                 step_number = int(line_parts[0].split('++')[0].strip()[-1])
@@ -497,15 +524,19 @@ def main(argv) :
                 if '--python_filename' in array:
                     del array[array.index('--python_filename'):\
                         array.index('--python_filename')+2]
-                command = " ".join(array)
                 #  //
                 # // Parse conditions
                 #//
                 if '--conditions' in array:
                     conditions_arg = array[array.index('--conditions')+1]
+                    if conditions_arg.startswith('auto:'):
+                        conditions_key = conditions_arg.split('auto:')[1]
+                        conditions_value = autoCond[conditions_key]
+                    else:
+                        conditions_value = conditions_arg
                     conditions = [
                         x.strip() \
-                        for x in conditions_arg.split(',') \
+                        for x in conditions_value.split(',') \
                         if x.find("::") != -1
                         ][0].split('::')[0].strip()
                 else:
@@ -518,9 +549,12 @@ def main(argv) :
                 # // Add command options
                 #//
                 if command.find('no_exec') < 0:
-                    command += ' --no_exec'
+                    array.append('--no_exec')
                 if command.find('python_filename') < 0:
-                    command += ' --python_filename ' + output_name
+                    array.append('--python_filename')
+                    array.append(output_name)
+                # Recomposing cmsDriver command
+                command = " ".join(array)
                 #  //
                 # // Second trigger table? This may be changed, right now I am
                 #// assuming that all 4 steps workflows are like this.
@@ -545,6 +579,7 @@ def main(argv) :
                 dict['outputName'] = output_name
                 dict['conditions'] = conditions
                 dict['stagePrevious'] = stage_previous
+                dict['DQMData'] = {'Scenario': getDQMScenario(command)}
                 #  //
                 # // Step name should be unique
                 #//
@@ -561,8 +596,10 @@ def main(argv) :
                     print 'Command:', command
                     print 'Conditions:', conditions
                     print 'Stage previous:', stage_previous
+                    print 'DQM Data:', dict['DQMData']
                     print ''
 
+    parse_time = time.time() - start_parse_time
     file.close()
 
     if debug:
@@ -581,6 +618,7 @@ def main(argv) :
             print 'PileUp:', sample['pileUp']
             print 'Special tag:', sample['specialTag']
             print 'Acq. Era:', sample['AcqEra']
+            print 'DQM data:', sample['DQMData']
             print ''
         for i in range(2, max_step+1):
             print 'Collected information step %s' % i
@@ -590,6 +628,7 @@ def main(argv) :
                     print 'Command:', steps[step]['command']
                     print 'Conditions:', steps[step]['conditions']
                     print 'Stage previous:', steps[step]['stagePrevious']
+                    print 'DQM Data:', steps[step]['DQMData']
                     print ''
 
     #  //
@@ -598,6 +637,7 @@ def main(argv) :
     print ''
     print 'Executing cmsDriver commands for step 1 configurations'
     print ''
+    start_cmsDriver_time = time.time()
     for sample in samples:
         if not sample['isRealData']:
             #  //
@@ -652,9 +692,12 @@ def main(argv) :
                         'failed with ExitCode:', exitCode
                     sys.exit(1)
 
+    cmsDriver_time = time.time() - start_cmsDriver_time
+
     print ''
     print 'Workflow creation'
     print ''
+    start_workflow_time = time.time()
 
     datasets = []
     unmergedDatasets = []
@@ -711,6 +754,8 @@ def main(argv) :
                     command += '--stageout-intermediates=%s \\\n' % (
                         steps[step]['stagePrevious'])
                     command += '--chained-input=output \\\n'
+                else:
+                    dqmScenario = steps[step]['DQMData']['Scenario']
                 #  //
                 # // If a two-hlt tables workflow, will take conditions from
                 #// the second step information
@@ -747,10 +792,12 @@ def main(argv) :
         if debug:
             print command
             print ''
-        
+
+        start_command_time = time.time()
         proc = popen2.Popen3(command)
         exitCode = proc.wait()
         output = proc.fromchild.readlines()
+        command_time = time.time() - start_command_time
 
         if debug:
             print output
@@ -760,10 +807,20 @@ def main(argv) :
             #parse output
             tmp = []
             index = FindIndex(output,'Output Datasets')
-            for dataset in output[index+1:] : tmp.append(dataset.strip())
+            for dataset in output[index+1:]:
+                tmp.append(dataset.strip())
+            # DQM Data
+            dqmInfo = {}
+            dqmInfo['Run'] = sample['DQMData']['Run']
+            if sample['isRealData']:
+                dqmInfo['Scenario'] = dqmScenario
+            else:
+                dqmInfo['Scenario'] = sample['DQMData']['Scenario']
+                    
             datasets.append({'unmerged': tmp,
                             'totalEvents': sample['totalEvents'],
-                            'merged': [x.replace('-unmerged','') for x in tmp]
+                            'merged': [x.replace('-unmerged','') for x in tmp],
+                            'DQMData': dqmInfo
                             })
             unmergedDatasets.append(tmp)
             index = FindIndex(output,'Created')
@@ -771,7 +828,8 @@ def main(argv) :
                 print "No workflow was created by create*workflow.py"
                 sys.exit(1)
             workflow = output[index].split()[1].strip()
-            workflows[workflow] = sample['isRealData']
+            workflows.setdefault(workflow, {})['isRealData'] = sample['isRealData']
+            workflows[workflow]['time'] = command_time
             print 'workflow creation command for workflow:', workflow, \
                 'exited with ExitCode:', exitCode
         else :
@@ -794,6 +852,8 @@ def main(argv) :
             tmp.append(dataset.replace('-unmerged',''))
         mergedDatasets.append(tmp)
 
+    workflow_time = time.time() - start_workflow_time
+
     print ''
     print 'Write helper scripts'
     print ''
@@ -803,7 +863,7 @@ def main(argv) :
     inputScript.write('#!/bin/bash\n')
     feeder = 'None'
     for workflow in workflows.keys():
-        if workflows[workflow]:
+        if workflows[workflow]['isRealData']:
             if feeder.find('ReReco') < 0:
                 inputScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py WorkflowInjector:SetPlugin BlockFeeder\n')
                 feeder = 'ReReco'
@@ -871,13 +931,12 @@ def main(argv) :
     # DQMHarvesting
     DQMinputScript = open('DQMinput.sh','w')
     DQMinputScript.write("#!/bin/bash\n")
-    for sample in mergedDatasets :
-        for dataset in sample :
-            if dataset.find('RECO') != -1 :
-                primary = dataset.split("/")[1]
-                processed = dataset.split("/")[2]
-                tier = dataset.split("/")[3]
-                DQMinputScript.write('python2.4 $PRODAGENT_ROOT/util/harvestDQM.py  --run=1 --primary=' + primary  + ' --processed=' + processed + ' --tier=' + tier + '\n' )
+    reHarvest = re.compile(r'/.*/.*/(RECO|.*-RECO)') # Only RECO datasets for now.
+    for sample in datasets:
+        for dataset in sample['merged']:
+            if reHarvest.match(dataset):
+                DQMinputScript.write('python2.4 $PRODAGENT_ROOT/util/harvestDQM.py --run=%s --path=%s --scenario=%s\n' % (
+                    sample['DQMData']['Run'], dataset, sample['DQMData']['Scenario']))
     os.chmod('DQMinput.sh',0755)
     print 'Wrote DQMHarvesting script for merged datasets to:', os.path.join(os.getcwd(),'DQMinput.sh')
 
@@ -896,15 +955,68 @@ def main(argv) :
     numberOfEvents.close()
     print 'Wrote events per dataset to:', os.path.join(os.getcwd(),'eventsExpected.txt')
 
-    print ''
+    total_time = time.time() - start_total_time
 
-def FindIndex(output,string) :
+    # File with timing report (Parsing, cmsDriver comands, workflow creation)
+    timingInfo = open('timingInfo.txt', 'w')
+    timingInfo.write('Total time: %s s\n' % total_time)
+    timingInfo.write('Cofigs. creation time: %s s\n' % cmsDriver_time)
+    timingInfo.write('Workflows creation time: %s s\n' % workflow_time)
+    output_text = []
+    sum = 0
+    for workflow in workflows:
+        if sum == 0:
+            min = [workflow, workflows[workflow]['time']]
+            max = [workflow, workflows[workflow]['time']]
+        sum += workflows[workflow]['time']
+        output_text.append("%s: %s s" % (workflow, workflows[workflow]['time']))
+        if max[1] < workflows[workflow]['time']:
+            max = [workflow, workflows[workflow]['time']]
+        if min[1] > workflows[workflow]['time']:
+            min = [workflow, workflows[workflow]['time']]
+    timingInfo.write('Average time per workflow: %s s\n' % (int(sum) / int(len(workflows))))
+    timingInfo.write('Max. time on %s: %s s\n' % tuple(max))
+    timingInfo.write('Min. time on %s: %s s\n' % tuple(max))
+    timingInfo.write('=' * 10)
+    timingInfo.write('Details of time per workflow:\n%s\n' % "\n".join(output_text))
+
+
+def FindIndex(output, string):
+    """
+    Given a list of string, it find the list index where the string is
+    contained.
+    """
     index = -1
     counter = 0
-    for field in output :
+    for field in output:
         if field.find(string) != -1 : index = counter
         counter += 1
     return index
+
+
+def getDQMScenario(cmsDriverCmd):
+    """
+    Returns the scenario to use for DQM harvesting depending on the cmsDriver
+    command received as input argument
+    """
+    # FastSim
+    if cmsDriverCmd.count('FASTSIM'):
+        return 'relvalmcfs'
+
+    cmsDriverCmdParts = cmsDriverCmd.split()
+    if cmsDriverCmdParts.count('--scenario'):
+        scenario = cmsDriverCmdParts[cmsDriverCmdParts.index('--scenario') + 1]
+
+    # RealData
+    if cmsDriverCmdParts.count('--data'):
+        if scenario in ('cosmics', 'pp'):
+            return scenario
+        else:
+            return 'pp'
+
+    # If I am here, it's relvalmc
+    return 'relvalmc'
+
  
 if __name__ == '__main__' :
     main(sys.argv[1:])
