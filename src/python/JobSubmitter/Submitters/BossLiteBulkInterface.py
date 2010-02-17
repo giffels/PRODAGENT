@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.46 2009/08/14 12:37:51 gcodispo Exp $"
-__version__ = "$Revision: 1.46 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.47 2009/08/14 12:59:53 gcodispo Exp $"
+__version__ = "$Revision: 1.47 $"
 
 import os
 import logging
@@ -298,11 +298,30 @@ fi
             raise JSException(msg, FailureList = self.failedSubmission)
 
         # check if the wrapper is actually there
-        executable = os.path.join(self.workingDir, bossJob['executable'] )
-        if not os.path.exists( executable ):
+        executable = bossJob['executable']
+        executablePath = os.path.join(self.workingDir, executable)
+        updateJob = False
+        if not self.isBulk and not executable.count(self.singleSpecName):
+            executable = self.singleSpecName + '-submit'
+            executablePath = os.path.join(self.workingDir, executable)
+            msg = "This job %s was originally sumbitted as part of a Bulk " \
+                % self.singleSpecName
+            msg += "Submission. Making a new wrapping script %s for single submission." \
+                % executablePath
+            logging.info(msg)
+            self.makeWrapperScript( executablePath, "$1" )
+            msg = "I also need to update the input sandbox in the BossLite DB"
+            msg += " for this job..."
+            logging.info(msg)
+            self.jobInputFiles = [ self.specFiles[self.mainJobSpecName],
+                                   self.mainSandbox ]
+            inpSandbox = ','.join( self.jobInputFiles )
+            updateJob = True
+
+        if not os.path.exists( executablePath ):
             logging.info("missing wrapper script %s: recreating it!" \
-                          % executable)
-            self.makeWrapperScript( executable, "$1" )
+                          % executablePath)
+            self.makeWrapperScript( executablePath, "$1" )
 
         logging.debug( "BossLiteBulkInterface.doSubmit bossJobId = %s.%s" \
                        % (bossJob['taskId'], bossJob['jobId']) )
@@ -332,6 +351,9 @@ fi
             self.bossLiteSession.getNewRunningInstance( bossJob )
             bossJob.runningJob['outputDirectory'] = os.path.join(
                 self.singleJobDir, time.strftime('%Y%m%d_%H%M%S') )
+            # updating executable if needed
+            if updateJob:
+                bossJob['executable'] = executable                
             self.bossLiteSession.updateDB( bossJob )
             logging.warning(
                 "next RunningInstance %s.%s.%s " % \
@@ -344,6 +366,11 @@ fi
 
         # still no task? Something bad happened
         if self.bossTask is not None :
+            # updating sandbox if needed
+            if updateJob:
+                self.bossTask['globalSandbox'] = \
+                    executablePath + ',' + inpSandbox
+                self.bossLiteSession.updateDB( self.bossTask )
             logging.debug( "BossLiteBulkInterface: Submit bossTask = %s" \
                            % self.bossTask['id'] )
         else:
