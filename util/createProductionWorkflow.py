@@ -17,7 +17,6 @@ import sys
 import getopt
 import popen2
 import time
-import re
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
@@ -260,19 +259,16 @@ if len(cfgFiles) == 0:
     raise RuntimeError, msg
 elif len(cfgFiles) > 1:
     print "%s cfgs listed - chaining them" % len(cfgFiles)
-if not versions:
+if versions == []:
     msg = "--version option not provided: This is required"
     raise RuntimeError, msg
+for item in versions:
+    if item  in ("", None):
+        msg = "Version option appears to be empty."
+        raise RuntimeError, msg
 if len(versions) != len(cfgFiles):
     msg = "Need same number of --cfg and --version arguments"
     raise RuntimeError, msg
-regVerStr = r'CMSSW_\d_\d_\d+(_pre|_patch)\d+'
-regVer = re.compile(regVerStr)
-for item in versions:
-    if regVer.match(item) is None:
-        msg = "Provided --version argument (%s) seems to be invalid. " % item
-        msg += "It should satisfy this regular expression: %s" % regVerStr
-        raise RuntimeError, msg
 if len(stageoutOutputs) != len(cfgFiles) - 1:
     msg = "Need one less --stageout-intermediates than --cfg arguments"
     raise RuntimeError, msg
