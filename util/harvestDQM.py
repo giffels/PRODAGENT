@@ -43,7 +43,8 @@ Details:
 <SCENARIO>:
     Harvesting scenario. The following options are available:
     - cosmics: Cosmics data scenario
-    - relvalmc: MC/RelVal scenario. Overwrites <RUN> to 1.
+    - relvalmc: MC/RelVal scenario.
+    - relvalmcfs: RelVal FastSim scenario.
 <DATASET_PATH>:
     Full dataset path (/<PRIMARYDS>/<PROCDS>/<TIER>). Overwrittes <PRIMARYDS>,
     <PROCDS> and <TIER>.
@@ -73,7 +74,6 @@ for key in collect.keys():
 path = None
 plugin = None
 
-valid_scenarios = ('cosmics', 'relvalmc')
 valid_plugins = ('DBSPlugin', 'RelValPlugin', 'T0ASTPlugin')
 
 for opt, arg in opts:
@@ -113,18 +113,16 @@ elif collect['PrimaryDataset'] is None \
     print msg
     sys.exit(1)
 
-if collect['Scenario'] not in valid_scenarios:
-    msg = 'Scenario not provided or not a valid scenario.'
+if collect['Scenario'] is None:
+    msg = 'Scenario not provided.'
     print usage
     print msg
     sys.exit(1)
-elif collect['Scenario'] in ('cosmics', ) and collect['RunNumber'] is None:
-    msg = 'For cosmics scenario, you should provide --run.'
+if collect['RunNumber'] is None:
+    msg = 'You should provide --run.'
     print usage
     print msg
     sys.exit(1)
-elif collect['Scenario'] in ('relvalmc', ):
-    collect['RunNumber'] = '1'
 
 if plugin is not None and plugin not in valid_plugins:
     msg = 'Invalid plugin.'
