@@ -293,7 +293,7 @@ class RelValPlugin(BasePlugin):
             )
 
         jobSpec.setJobName(jobName)
-        jobSpec.setJobType("Processing")
+        jobSpec.setJobType("Harvesting")
         jobSpec.parameters['RunNumber'] = collectPayload['RunNumber']  # How should we manage the run numbers?
         jobSpec.parameters['Scenario'] = collectPayload['Scenario']
         jobSpec.addWhitelistSite(site)
