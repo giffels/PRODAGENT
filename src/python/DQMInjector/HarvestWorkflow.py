@@ -161,6 +161,7 @@ def createHarvestingWorkflow(dataset, site, cmsPath, scramArch,
     maker.setActivity('harvesting')
 
     spec = maker.makeWorkflow()
+    spec.parameters['WorkflowType'] = "Harvesting"
     spec.parameters['DBSURL'] = "http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet"
     spec.parameters['OnlySites'] = site
     if DQMServer != None :
