@@ -262,17 +262,18 @@ class RelValPlugin(BasePlugin):
                 self.args['ScramArch'],
                 cmsswVersion,
                 globalTag,
-                self.args['ConfigFile'],
-                self.args['DQMServer'],
-                self.args['proxyLocation'],
-                self.args['DQMCopyToCERN'],
-                self.args['DoStageOut'])
+                configFile=self.args['ConfigFile'],
+                DQMServer=self.args['DQMServer'],
+                proxyLocation=self.args['proxyLocation'],
+                DQMCopyToCERN=self.args['DQMCopyToCERN'],
+                doStageOut=self.args['DoStageOut'])
             
             workflowSpec.save(workflowFile)
             msg = "Created Harvesting Workflow:\n %s" % workflowFile
             msg += "\nThe following parameters were used:\n"
             msg += "DQMserver     ==> %s\n" % (self.args['DQMServer'])
             msg += "proxyLocation ==> %s\n" % (self.args['proxyLocation'])
+            msg += "Stage Out     ==> %s\n" % (self.args['DoStageOut'])
             msg += "DQMCopyToCERN ==> %s\n" % (self.args['DQMCopyToCERN'])
             logging.info(msg)
             self.publishWorkflow(workflowFile, workflowSpec.workflowName())

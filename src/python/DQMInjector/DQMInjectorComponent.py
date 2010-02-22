@@ -92,7 +92,7 @@ class DQMInjectorComponent:
                 msg += "  => GlobalTag Version Fallback is: %s\n" % (
                     self.args['GlobalTagFallback'])
         msg += " => Server: %s\n" % (self.args['DQMServer'])
-        msg += " => Stage Out root file: %s" % self.args['DoStageOut']
+        msg += " => Stage Out root file: %s\n" % self.args['DoStageOut']
         msg += " => proxyLocation: %s\n" % (self.args['proxyLocation'])
         msg += " => Copy to CERN: %s\n" % (self.args['DQMCopyToCERN'])
             

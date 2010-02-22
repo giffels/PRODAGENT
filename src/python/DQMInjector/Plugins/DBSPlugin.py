@@ -166,11 +166,11 @@ class DBSPlugin(BasePlugin):
                 self.args['ScramArch'],
                 cmsswVersion,
                 globalTag,
-                self.args['ConfigFile'],
-                self.args['DQMServer'],
-                self.args['proxyLocation'],
-                self.args['DQMCopyToCERN'],
-                self.args['DoStageOut'])
+                configFile=self.args['ConfigFile'],
+                DQMServer=self.args['DQMServer'],
+                proxyLocation=self.args['proxyLocation'],
+                DQMCopyToCERN=self.args['DQMCopyToCERN'],
+                doStageOut=self.args['DoStageOut'])
 
             workflowSpec.save(workflowFile)
             msg = "Created Harvesting Workflow:\n %s" % workflowFile
