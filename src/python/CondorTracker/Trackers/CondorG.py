@@ -73,9 +73,9 @@ class CondorG(TrackerPlugin):
                     msg = "Unable to find cache dir for job %s\n" % subId
                     msg += "Declaring job aborted"
                     logging.warning(msg)
+                    self.TrackerDB.jobFailed(subId)
                     toDashboard['StatusValue'] = 'Aborted'
                     self.publishStatusToDashboard(subId, toDashboard)
-                    self.TrackerDB.jobFailed(subId)
                     continue
                 # first check if shortened version exists...
                 condorLogFile = "%s/condor.log" % cache
@@ -85,9 +85,9 @@ class CondorG(TrackerPlugin):
                     msg = "Cannot find condor log file:\n%s\n" % condorLogFile
                     msg += "Declaring job aborted"
                     logging.warning(msg)
+                    self.TrackerDB.jobFailed(subId)
                     toDashboard['StatusValue'] = 'Aborted'
                     self.publishStatusToDashboard(subId, toDashboard)
-                    self.TrackerDB.jobFailed(subId)
                     continue
                 
                 condorLog = readCondorLog(condorLogFile)
@@ -96,9 +96,9 @@ class CondorG(TrackerPlugin):
                     msg += "Not an XML log??\n"
                     msg += "Declaring job aborted"
                     logging.warning(msg)
+                    self.TrackerDB.jobFailed(subId)
                     toDashboard['StatusValue'] = 'Aborted'
                     self.publishStatusToDashboard(subId, toDashboard)
-                    self.TrackerDB.jobFailed(subId)
                     continue
                 #  //
                 # // We have got the log file and computed an exit status 
@@ -121,18 +121,18 @@ class CondorG(TrackerPlugin):
                 
 
             if status == 1:
+                logging.debug("Job %s is pending" % (subId))
                 toDashboard['StatusValue'] = 'Submitted'
                 self.publishStatusToDashboard(subId, toDashboard)
-                logging.debug("Job %s is pending" % (subId))
                 continue 
             if status == 2:
                 #  //
                 # // Is running
                 #//
-                toDashboard['StatusValue'] = 'Running'
-                self.publishStatusToDashboard(subId, toDashboard)
                 self.TrackerDB.jobRunning(subId)
                 logging.debug("Job %s is running" % (subId))
+                toDashboard['StatusValue'] = 'Running'
+                self.publishStatusToDashboard(subId, toDashboard)
                 continue
             if status == 4:
                 #  //
@@ -152,18 +152,18 @@ class CondorG(TrackerPlugin):
                 logging.debug("Removing job from queue...")
                 logging.debug("Executing %s " % command)
                 os.system(command)
+                self.TrackerDB.jobFailed(subId)
                 toDashboard['StatusValue'] = 'Aborted'
                 self.publishStatusToDashboard(subId, toDashboard)
-                self.TrackerDB.jobFailed(subId)
                 continue
             if status in (3, 6):
                 #  //
                 # // Error or Removed
                 #//
-                toDashboard['StatusValue'] = 'Aborted'
-                self.publishStatusToDashboard(subId, toDashboard)
                 self.TrackerDB.jobFailed(subId)
                 logging.debug("Job %s has failed" % (subId))
+                toDashboard['StatusValue'] = 'Aborted'
+                self.publishStatusToDashboard(subId, toDashboard)
                 continue
 
                 
@@ -194,9 +194,9 @@ class CondorG(TrackerPlugin):
                     msg = "Unable to find cache dir for job %s\n" % runId
                     msg += "Declaring job aborted"
                     logging.warning(msg)
+                    self.TrackerDB.jobFailed(runId)
                     toDashboard['StatusValue'] = 'Aborted'
                     self.publishStatusToDashboard(runId, toDashboard)
-                    self.TrackerDB.jobFailed(runId)
                     continue
                 # first check if shortened version exists...
                 condorLogFile = "%s/condor.log" % cache
@@ -205,10 +205,10 @@ class CondorG(TrackerPlugin):
                 if not os.path.exists(condorLogFile):
                     msg = "Cannot find condor log file:\n%s\n" % condorLogFile
                     msg += "Declaring job aborted"
+                    self.TrackerDB.jobFailed(runId)
+                    logging.warning(msg)
                     toDashboard['StatusValue'] = 'Aborted'
                     self.publishStatusToDashboard(runId, toDashboard)
-                    logging.warning(msg)
-                    self.TrackerDB.jobFailed(runId)
                     continue
                 
                 condorLog = readCondorLog(condorLogFile)
@@ -217,9 +217,9 @@ class CondorG(TrackerPlugin):
                     msg += "Not an XML log??\n"
                     msg += "Declaring job aborted"
                     logging.warning(msg)
+                    self.TrackerDB.jobFailed(runId)
                     toDashboard['StatusValue'] = 'Aborted'
                     self.publishStatusToDashboard(runId, toDashboard)
-                    self.TrackerDB.jobFailed(runId)
                     continue
                 #  //
                 # // We have got the log file and computed an exit status 
@@ -244,14 +244,14 @@ class CondorG(TrackerPlugin):
                 #  //
                 # // Removed or Error
                 #//
-                toDashboard['StatusValue'] = 'Aborted'
-                self.publishStatusToDashboard(runId, toDashboard)
                 self.TrackerDB.jobFailed(runId)
                 if status == 3:
                      logging.debug("Job %s was removed, ClusterId=%s " % (runId,clusterId))
                 else:
                      logging.debug("Job %s had an error, ClusterId=%s " % (runId,clusterId))
-#                continue
+                toDashboard['StatusValue'] = 'Aborted'
+                self.publishStatusToDashboard(runId, toDashboard)
+
             if status == 5:
                 #  //
                 # // Held
@@ -261,22 +261,22 @@ class CondorG(TrackerPlugin):
                 logging.debug("Removing job from queue...")
                 logging.debug("Executing %s " % command)
                 os.system(command)
+                self.TrackerDB.jobFailed(runId)
                 toDashboard['StatusValue'] = 'Aborted'
                 self.publishStatusToDashboard(runId, toDashboard)
-                self.TrackerDB.jobFailed(runId)
             if status == 2:
+                logging.debug("Job %s is running, ClusterId=%s " % (runId,clusterId))
                 toDashboard['StatusValue'] = 'Running'
                 self.publishStatusToDashboard(runId, toDashboard)
-                logging.debug("Job %s is running, ClusterId=%s " % (runId,clusterId))
             if status == 4:
+                self.TrackerDB.jobComplete(runId)
+                logging.debug("Job %s is complete, ClusterId=%s" % (runId,clusterId))
                 toDashboard['StatusValue'] = 'Done'
                 self.publishStatusToDashboard(runId, toDashboard)
-                logging.debug("Job %s is complete, ClusterId=%s" % (runId,clusterId))
-                self.TrackerDB.jobComplete(runId)
             if status == 1:
+                logging.debug("Job %s is idle? ClusterId=%s" % (runId,clusterId))
                 toDashboard['StatusValue'] = 'Submitted'
                 self.publishStatusToDashboard(runId, toDashboard)
-                logging.debug("Job %s is idle? ClusterId=%s" % (runId,clusterId))
             if status > 6:
                 logging.debug("Job %s status was %i, ClusterId=%s" % (runId,status,clusterId))
             
@@ -391,7 +391,17 @@ class CondorG(TrackerPlugin):
             msg += "Skipping dashboard report for %s\n" % jobSpecId
             logging.debug(msg)
             return
-        dashboardInfo.read(dashboardInfoFile)
+        try:
+            dashboardInfo.read(dashboardInfoFile)
+        except Exception, msg:
+            logging.error(
+                "Couldn't read dashboardInfoFile for job %s. %s" % (
+                    jobSpecId, str(msg))
+            )
+            msg = "Skipping dashboard report for %s\n" % jobSpecId
+            logging.debug(msg)
+            return
+
 
         # Fill dashboard info
         oldStatus = dashboardInfo.get('StatusValue', '')
@@ -436,7 +446,13 @@ class CondorG(TrackerPlugin):
 
         # update DasboardInfo file
         logging.debug("Creating dashboardInfoFile %s." % dashboardInfoFile)
-        dashboardInfo.write(dashboardInfoFile)
+        try:
+            dashboardInfo.write(dashboardInfoFile)
+        except Exception, msg:
+            logging.error(
+                "Couldn't create dashboardInfoFile for job %s. %s" % (
+                    jobSpecId, str(msg))
+            )
 
         logging.debug("Information published in Dashboard:")
         msg = "\n - task: %s\n - job: %s" % (dashboardInfo.task,
