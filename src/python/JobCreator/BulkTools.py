@@ -10,7 +10,7 @@ import os
 import inspect
 import logging
 import JobCreator.RuntimeTools.RuntimeUnpackJobSpec as Unpacker
-
+from JobCreator.ScramSetupTools import setupRuntimeCfgGenerationScript
 
 
 class InstallUnpacker:
@@ -33,7 +33,9 @@ class InstallUnpacker:
         taskObject.attachFile(srcfile)
         
         taskObject['PreAppCommands'].append(
-            "./RuntimeUnpackJobSpec.py"
+            setupRuntimeCfgGenerationScript(
+                "./RuntimeUnpackJobSpec.py"
+                )
             )
         
         

@@ -24,6 +24,7 @@ The module is found by import/inspect and added to the TaskObject
 
 import inspect
 import os
+from JobCreator.ScramSetupTools import setupRuntimeCfgGenerationScript
 
 
 def findScriptSource(moduleName):
@@ -129,7 +130,8 @@ class InstallScriptControls:
                 sourceFile = findScriptSource(item)
                 taskObject.attachFile(sourceFile)
                 taskObject['PreAppCommands'].append(
-                    "./%s" % os.path.basename(sourceFile))
+                        setupRuntimeCfgGenerationScript(
+                            "./%s" % os.path.basename(sourceFile)))
             for item in scriptControls['PostExe']:
                 sourceFile = findScriptSource(item)
                 taskObject.attachFile(sourceFile)

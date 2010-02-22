@@ -8,6 +8,46 @@ the standard CMS error codes
 """
 
 #  //
+# // Standard check for cmsRun cfg. generation command
+#//
+_StandardCfgGeneratorExitCheck = \
+"""
+# Check command exit code is zero
+if [ $? -ne 0 ]; then
+   echo "ERROR: Cfg. Generation Command failed"
+   prodAgentFailure 10040
+else
+   echo "Scram Environment setup OK"
+fi 
+"""
+
+def setupRuntimeCfgGenerationScript(command):
+    """
+    _setupRuntimeCfgGenerationScript_
+
+    Wrap a Runtime tool script for generating a cmsRun cfg. file. Also add 
+    a standard exit code generation in event of a problem
+
+    """
+    result = []
+    #  //
+    # // Call the command and check its exit code
+    #//
+    result.append(command)
+    result.append(_StandardCfgGeneratorExitCheck)
+    #  //
+    # // Format the command
+    #//
+    commandString = ""
+    for item in result:
+        if not item.endswith("\n"):
+            item += "\n"
+        commandString += item
+    return commandString
+
+
+
+#  //
 # // Standard check for CMS_VO_SW_DIR command
 #//
 _StandardCMSVOSWDIR = \
