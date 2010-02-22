@@ -211,7 +211,8 @@ class T0ASTPlugin(BasePlugin):
                                                 self.args["ConfigFile"],
                                                 self.args['DQMServer'],
                                                 self.args['proxyLocation'],
-                                                self.args['DQMCopyToCERN'])
+                                                self.args['DQMCopyToCERN'],
+                                                self.args['DoStageOut'])
         
         
         workflowSpec.save(workflowSpecPath)

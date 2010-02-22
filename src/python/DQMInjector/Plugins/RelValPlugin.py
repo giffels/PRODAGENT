@@ -265,7 +265,8 @@ class RelValPlugin(BasePlugin):
                 self.args['ConfigFile'],
                 self.args['DQMServer'],
                 self.args['proxyLocation'],
-                self.args['DQMCopyToCERN'])
+                self.args['DQMCopyToCERN'],
+                self.args['DoStageOut'])
             
             workflowSpec.save(workflowFile)
             msg = "Created Harvesting Workflow:\n %s" % workflowFile

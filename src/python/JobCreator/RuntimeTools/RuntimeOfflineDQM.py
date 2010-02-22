@@ -45,8 +45,8 @@ CERNStageOut = {
     }
 
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.20 2009/08/05 14:24:14 sfoulkes Exp $"
-__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.21 2009/08/12 15:44:04 sfoulkes Exp $"
+__version__ = "$Revision: 1.21 $"
 
 
 HTTPS = httplib.HTTPS
@@ -158,7 +158,7 @@ class HarvesterImpl:
                 msg += str(ex)
                 raise RuntimeError, msg
         else:
-            msg = "Stage Out is disabled"
+            msg = "Attention: Stage Out is disabled."
             print msg
 
         storagePFN = stager.searchTFC(fileInfo['LFN'])
@@ -408,6 +408,11 @@ class OfflineDQMHarvester:
             if str(workflow.parameters['DQMCopyToCERN']).lower() == "true":
                 cernStageOut = True
 
+        doStageOut = False
+        if workflow.parameters.has_key("DoStageOut"):
+            if str(workflow.parameters['DoStageOut']).lower() == "true":
+                doStageOut = True
+
 
         #  //
         # // Lookup proxy, first from workflow for explicit path
@@ -459,6 +464,7 @@ class OfflineDQMHarvester:
         self.impl.thisSite = siteName
         self.impl.doCernCopy = cernStageOut
         self.impl.doHttpPost = doHttpPost
+        self.impl.doStageOut = doStageOut
 
 
 

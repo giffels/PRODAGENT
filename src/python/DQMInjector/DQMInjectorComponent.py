@@ -46,6 +46,7 @@ class DQMInjectorComponent:
         self.args['DQMServer'] = None
         self.args['proxyLocation'] = None
         self.args['DQMCopyToCERN'] = None
+        self.args['DoStageOut'] = None
         self.args['Site'] = "srm-cms.cern.ch"
         self.args.update(args)
         if self.args['Logfile'] == None:
@@ -91,6 +92,7 @@ class DQMInjectorComponent:
                 msg += "  => GlobalTag Version Fallback is: %s\n" % (
                     self.args['GlobalTagFallback'])
         msg += " => Server: %s\n" % (self.args['DQMServer'])
+        msg += " => Stage Out root file: %s" % self.args['DoStageOut']
         msg += " => proxyLocation: %s\n" % (self.args['proxyLocation'])
         msg += " => Copy to CERN: %s\n" % (self.args['DQMCopyToCERN'])
             
