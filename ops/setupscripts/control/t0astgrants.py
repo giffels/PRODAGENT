@@ -55,8 +55,14 @@ writerSuffix="WRITER"
 #writerDBPass=""
 
 # prodtest instance 2
+#DBInstance="CMS_T0AST"
+#Account="CMS_T0AST_2"
+#adminDBPass=""
+#readerDBPass=""
+#writerDBPass=""
+
 DBInstance="CMS_T0AST"
-Account="CMS_T0AST_2"
+Account="CMS_T0AST"
 adminDBPass=""
 readerDBPass=""
 writerDBPass=""

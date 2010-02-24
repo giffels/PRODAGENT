@@ -7,15 +7,18 @@ rm -rf $VO_CMS_SW_DIR
 mkdir -p $VO_CMS_SW_DIR
 
 wget -O $VO_CMS_SW_DIR/bootstrap.sh http://cmsrep.cern.ch/cmssw/cms/bootstrap.sh
+#cp $PBIN/bootstrap.sh $VO_CMS_SW_DIR/bootstrap.sh
+
 
 #sh -x $VO_CMS_SW_DIR/bootstrap.sh setup -repository comp -path $VO_CMS_SW_DIR -arch $SCRAM_ARCH_INSTALL >& $VO_CMS_SW_DIR/bootstrap_$SCRAM_ARCH.log
-sh -x $VO_CMS_SW_DIR/bootstrap.sh setup -repository comp -path $VO_CMS_SW_DIR -arch $SCRAM_ARCH_INSTALL
+sh -x $VO_CMS_SW_DIR/bootstrap.sh setup -repository comp -path $VO_CMS_SW_DIR -arch $SCRAM_ARCH_INSTALL -unsupported_distribution_hack
 
 source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/external/apt/$APT_VER/etc/profile.d/init.sh
 
 apt-get update
+
 #apt-get install cms+prodagent+PRODAGENT_$RPMVERSION-cmp
 apt-get install cms+prodagent+PRODAGENT_$RPMVERSION
 #apt-get install cms+PHEDEX-micro+PHEDEX_2_5_2-cmp
-apt-get install external+castor+$CASTORVERSION
+#apt-get install external+castor+$CASTORVERSION
 

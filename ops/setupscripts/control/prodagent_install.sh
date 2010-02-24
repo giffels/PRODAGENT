@@ -10,18 +10,7 @@ cd $MYTESTAREA
 cvs co -r PRODAGENT_$PAVERSION PRODAGENT
 
 # Place any PA patches here -- as in 
-# cvs update -r 1.8 PRODAGENT/src/python/DQMInjector/Plugins/T0ASTPlugin.py
 
-cvs update -r 1.8  PRODAGENT/util/createTier0ProductionWorkflow.py
-cvs update -r 1.11 PRODAGENT/util/resourceControl.py
-cvs update -r 1.5  PRODAGENT/util/jobQueue.py
-cvs update -r 1.19 PRODAGENT/src/python/JobCreator/RunResTools.py
-cvs update -r 1.13 PRODAGENT/src/python/ResourceMonitor/Monitors/T0LSFMonitor.py
-cvs update -r 1.3  PRODAGENT/src/python/ResourceMonitor/Monitors/GlideinWMSMonitor.py
-cvs update -r 1.10 PRODAGENT/src/python/DQMInjector/DQMInjectorComponent.py
-cvs update -r 1.4  PRODAGENT/src/python/JobCreator/RuntimeTools/RuntimeOfflineDQMSetup.py
-cvs update -r 1.11 PRODAGENT/src/python/ErrorHandler/Handlers/ProcessingRunFailureHandler.py 
-cvs update -r 1.9  PRODAGENT/src/python/ErrorHandler/Handlers/ProcessingSubmitFailureHandler.py
 
 echo PA CVS updates done...
 sleep 5
@@ -40,9 +29,6 @@ cvs co -r PRODCOMMON_$PCVERSION PRODCOMMON
 
 # place any PC patches here:
 
-
-cvs update -r 1.17 PRODCOMMON/src/python/ProdCommon/FwkJobRep/TaskState.py
-cvs update -r 1.12 PRODCOMMON/src/python/ProdCommon/MCPayloads/DatasetTools.py
 
 echo PC CVS updates done...
 sleep 5
@@ -69,7 +55,11 @@ fi
 
 cvs co -r T0_$T0VERSION T0
 
-cvs update -A T0/src/python/T0/RunConfigCache/RunConfig.py 
+cvs upd -r 1.59 T0/src/python/T0/AlcaSkimInjector/AlcaSkimInjectorComponent.py
+cvs upd -r 1.25 T0/src/python/T0/WorkflowFactory/ExpressWorkflow.py
+cvs upd -r 1.56 T0/src/python/T0/State/Database/Reader/ListFiles.py
+cvs upd -r 1.41 T0/src/python/T0/RepackerAuditor/RepackerAuditorComponent.py
+cvs upd -r 1.50 T0/src/python/T0/Tier0Merger/Tier0MergerComponent.py
 
 cvs co -r WMCORE_$WMCOREVERSION WMCORE
  

@@ -22,7 +22,7 @@ alias PAmysql='mysql -u root -p -S $PRODAGENT_WORKDIR/mysqldata/mysql.sock'
 #source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/cms/PHEDEX-micro/PHEDEX_3_0_4-cmp/etc/profile.d/init.sh
 
 # setup the castor commands needed by CleanupManager
-source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/external/castor/$CASTORVERSION/etc/profile.d/init.sh
+#source $VO_CMS_SW_DIR/$SCRAM_ARCH_INSTALL/external/castor/$CASTORVERSION/etc/profile.d/init.sh
 
 #and here we hack the DBS env
 # commented out DAM & Vijay

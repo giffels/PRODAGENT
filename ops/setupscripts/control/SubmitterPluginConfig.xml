@@ -35,8 +35,9 @@
 			<Parameter Name="Queue" Value="cmst0"/>
 			<Parameter Name="LsfLogDir" Value="/afs/cern.ch/user/c/cmsprod/scratch2/cmsprod/logs"/> 
 <!--			<Parameter Name="CmsRunLogDir" Value="cmslcgse01.cern.ch:/data1/cmsprod/T0/logs"/> -->
-                        <Parameter Name="Resource" Value="select[type==any] rusage[mem=1800]"/>
-			<Parameter Name="NodeType" Value="any"/>
+                        <Parameter Name="Resource" Value="select[type==SLC5_64] rusage[pool=15000,mem=1800]"/>
+                        <Parameter Name="ResourceRepack" Value="select[type==SLC5_64] rusage[pool=50000,mem=1800]"/>
+			<Parameter Name="NodeType" Value="SLC5_64"/>
 		</ConfigBlock>
 
 	</PluginConfiguration>

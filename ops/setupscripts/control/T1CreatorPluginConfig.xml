@@ -31,7 +31,7 @@
 		<ConfigBlock Name="SoftwareSetup">
 			<Parameter Name="ScramCommand" Value="scramv1"/>
 			<Parameter Name="SetupCommand" Value=". $OSG_APP/cmssoft/cms/cmsset_default.sh"/>
-			<Parameter Name="ScramArch" Value="slc4_ia32_gcc345"/>
+			<Parameter Name="ScramArch" Value="slc5_ia32_gcc434"/>
 		</ConfigBlock>
 	</PluginConfiguration>
 </ProdAgentPluginConfig>

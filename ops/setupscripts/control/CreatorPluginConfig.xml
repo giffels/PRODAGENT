@@ -35,7 +35,7 @@
 			<Parameter Name="ScramCommand" Value="scramv1"/>
 			<Parameter Name="SetupCommand" Value="None"/>
 			<!--<Parameter Name="ScramArch" Value="slc3_ia32_gcc323"/> -->			
-			<Parameter Name="ScramArch" Value="slc4_ia32_gcc345"/>			
+			<Parameter Name="ScramArch" Value="slc5_ia32_gcc434"/>			
 		</ConfigBlock>
 	</PluginConfiguration>
 </ProdAgentPluginConfig>
