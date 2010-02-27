@@ -242,7 +242,8 @@ class T0LSFTracker(TrackerPlugin):
                 # Only DQMHarvesting Jobs should fall into this category!
                 # LogCollector and CleanUp jobs also have no output files.
                 if len(report.files) == 0 and \
-                    report.jobType not in ("CleanUp", "LogCollect", "Harvesting"):
+                    report.jobType not in ("CleanUp", "LogCollect", "Harvesting") and \
+                    report.wasSuccess():
                     if not jobSpecId.startswith("DQMHarvest-"):
                         logging.debug("Non-DQM job with no output files, mark as failed")
                         return LSFStatus.failed
