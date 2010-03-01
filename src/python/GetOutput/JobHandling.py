@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.17 2009/02/13 11:41:35 gcodispo Exp $"
-__version__ = "$Revision: 1.17 $"
+__revision__ = "$Id: JobHandling.py,v 1.18 2009/10/14 08:01:12 gcodispo Exp $"
+__version__ = "$Revision: 1.18 $"
 
 import os
 import logging
@@ -29,6 +29,9 @@ from ProdCommon.FwkJobRep.ReportParser import readJobReport
 from ProdCommon.Storage.SEAPI.SElement import SElement
 from ProdCommon.Storage.SEAPI.SBinterface import SBinterface
 
+
+class InvalidReport(RuntimeError):
+    pass
 
 class JobHandling:
     """
@@ -106,17 +109,19 @@ class JobHandling:
         logging.debug("Job %s : report file name %s exists: %s" % \
                       (self.fullId(job), reportfilename, str(fwjrExists)) )
 
-        # is the FwkJobReport there?
-        if fwjrExists:
-
+        try:
+            # is the FwkJobReport there?
+            if not fwjrExists:
+                raise InvalidReport, "FrameworkJobReport missing"
+    
             # check success
             success = self.parseFinalReport(reportfilename, job)
 
             logging.debug("Job %s check Job Success: %s" % \
                           (self.fullId(job), str(success)) )
 
-        # FwkJobReport not there: create one based on db or assume failed
-        else:
+        # FJR missing or corrupt: create one based on db or assume failed
+        except InvalidReport:
             success = False
             job.runningJob["applicationReturnCode"] = str(50117)
             job.runningJob["wrapperReturnCode"] = str(50117)
@@ -234,8 +239,10 @@ class JobHandling:
             logging.error('Invalid Framework Job Report : %s' %str(err) )
             return False
 
+        if len(reports) < 1 :
+            raise InvalidReport, "Invalid FrameworkJobReport"
         # if more than one fwjr (chain jobs) is enough!
-        if len(reports) != 1 :
+        elif len(reports) != 1 :
             return success
 
         # read CS specific info
