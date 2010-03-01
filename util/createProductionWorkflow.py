@@ -8,9 +8,13 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.23 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.23 2009/09/14 14:52:33 direyes Exp $"
+__version__ = "$Revision: 1.25 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.25 2010/02/17 19:07:06 direyes Exp $"
 
+# Silence deprecation warnings since we moved to python2.6
+# Assume python2.6 will outlast prodagent
+import warnings
+warnings.filterwarnings("ignore", category = DeprecationWarning)
 
 import os
 import sys

@@ -6,6 +6,11 @@ Startup/Shutdown tool for prodAgent components.
 
 """
 
+# Silence deprecation warnings since we moved to python2.6
+# Assume python2.6 will outlast prodagent
+import warnings
+warnings.filterwarnings("ignore", category = DeprecationWarning)
+
 import os
 import sys
 import getopt
