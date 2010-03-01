@@ -150,61 +150,6 @@ class JobSpecExpander:
         raise NotImplementedError, "Havent implemented secondary source input links at present..."
 
 
-    def localCustomization(self, config, merge = False):
-        """
-        Apply site specific customizations to the config
-        """
-        site_config = self.taskState.getSiteConfig()
-
-        self.ioCustomization(config, site_config.io_config, merge)
-
-
-    def ioCustomization(self, config, custom_config, merge = False):
-        """
-        Apply site specific io customizations
-        """
-        # Don't do anything if no customization or job has no input files
-        if not custom_config or (merge is False and not config.inputFiles):
-            return config
-
-        import re
-        version = lambda x: tuple(int(x) for x in re.compile('(\d+)').findall(x))
-        cmssw_version = version(os.environ['CMSSW_VERSION'])
-
-        # Only implemented in CMSSW_2_1_8 and above
-        if cmssw_version < (2, 1, 8):
-            return config
-
-        print "Site specific IO parameters will be used:"
-
-        # cacheSize is a property of InputSource
-        cache_size = custom_config.get('cacheSize', None)
-        if cache_size:
-            # Merge pset creates process on fly so can't use CMSSWConfig object
-            if merge:
-                from ProdCommon.CMSConfigTools.ConfigAPI.InputSource import InputSource
-                InputSource(config.source)
-            config.sourceParams['cacheSize'] = cache_size
-
-        if merge:
-            from FWCore.ParameterSet.Modules import Service
-            config.add_(Service('AdaptorConfig'))
-
-        for param in custom_config:
-            print "  %s %s" % (param, custom_config[param])
-            if param == 'cacheSize':
-                continue
-
-            if merge:
-                import FWCore.ParameterSet.Types as CfgTypes
-                adaptor = config.services['AdaptorConfig']
-                setattr(adaptor, param,
-                        CfgTypes.untracked(CfgTypes.string(str(custom_config[param]))))
-            else:
-                config.tFileAdaptorConfig[param] = custom_config[param]
-        return config
-
-
     def createPSet(self):
         """
         _createPSet_
@@ -230,8 +175,9 @@ class JobSpecExpander:
 
            self.jobSpecNode.cfgInterface.rawCfg = pickle.dumps(rawCfg)
 
-        # Apply site specific customizations
-        self.localCustomization(self.jobSpecNode.cfgInterface)
+
+
+
 
         for inpLink in self.jobSpecNode._InputLinks:
             #  //
@@ -319,8 +265,6 @@ class JobSpecExpander:
 
         process.outputPath = EndPath(process.Merged)
 
-        # Apply site specific customizations
-        self.localCustomization(self.jobSpecNode.cfgInterface, merge = True)
 
         cfgDump = open("CfgFileDump.log", 'w')
         cfgDump.write(process.dumpConfig())
