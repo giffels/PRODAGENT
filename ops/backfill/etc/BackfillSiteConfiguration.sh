@@ -1,9 +1,9 @@
 cnaf()
 {
-    version='CMSSW_3_3_6_patch4'
+    version='CMSSW_3_3_5_patch4'
     site='storm-fe-cms.cr.cnaf.infn.it'
-    dataset='/ZeroBias/BeamCommissioning09-Dec19thReReco_336p3_v2/RECO'
-    cfg="${CMSSW_BASE}/src/DPGAnalysis/Skims/python/skim900GeV_StreamA_ZeroBiasPD_cfg.py"
+    dataset='/MinimumBias/BeamCommissioning09-v1/RAW'
+    cfg="/afs/cern.ch/user/c/cmst1/public/cfgs/rereco_FirstCollisions_33x.py"
 }
 
 
@@ -18,61 +18,42 @@ fnal()
 
 in2p3()
 {
-    version=''
+    version='CMSSW_3_3_5_patch4'
     site='ccsrm.in2p3.fr'
-    dataset='/MinimumBias/BeamCommissioning09-Dec19thReReco_336p3_v2/RECO'
-    cfg='DPGAnalysis/Skims/python/skim900GeV_StreamA_MinBiasPD_cfg.py'
-
-#    dataset='/Cosmics/Commissioning08_CRAFT_ALL_V9_225-v2/RECO'
-#    cfg='CMSSW_2_2_9/src/DPGAnalysis/Skims/python/SuperPointing_cfg.py'
+    dataset='/MinimumBias/BeamCommissioning09-v1/RAW'
+    cfg='/afs/cern.ch/user/c/cmst1/public/cfgs/rereco_FirstCollisions_33x.py'
 }
 
 ral()
 {
-#    site='srm-cms.gridpp.rl.ac.uk,cmssrm.fnal.gov'
+    version='CMSSW_3_3_5_patch4'
     site='srm-cms.gridpp.rl.ac.uk'
-    #dataset='/MinimumBias/Commissioning08-v1/RAW'
-    #cfg='CMSSW_3_1_1/Src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_38T_cfg.py'
-    #dataset='/MinimumBias/Commissioning08_CRAFT_ALL_V9_225-v1/RECO'
-    #cfg='CMSSW_3_1_1/src/DPGAnalysis/Skims/python/HCALHighEnergy_cfg.py'
-    #dataset='/Cosmics/Commissioning08_CRAFT_ALL_V9_225-v2/RECO'
-    #cfg='CMSSW_2_2_9/src/DPGAnalysis/Skims/python/SuperPointing_cfg.py'
-    #dataset='/Cosmics/Commissioning08-v1/RAW'                                                                                                         
-    #cfg='CMSSW_3_1_1/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_38T_cfg.py'
-    #dataset='/Calo/CRAFT09-v1/RAW' 
-    #cfg='CMSSW_3_2_5/src/Configuration/GlobalRuns/python/promptReco_RAW2DIGI_RECO_DQM_KHnoALCA.py'
-    dataset='/Calo/CRAFT09-v1/RAW'
-    cfg='step2_RAW2DIGI_L1Reco_RECO_DQM_ALCA_CRAFT09_KH.py'
-
-
+    dataset='/Cosmics/BeamCommissioning09-v1/RAW'
+    cfg='/afs/cern.ch/user/c/cmst1/public/cfgs/rereco_FirstCollisions_33x.py'
 }
 
 
 asgc()
 {
+    version='CMSSW_3_3_5_patch4'
     site='srm2.grid.sinica.edu.tw'
-#    dataset='/Cosmics/Commissioning08_CRAFT_ALL_V9_225-v2/RECO'
-    dataset='/Cosmics/Commissioning08-v1/RAW'
-    cfg='step2_RAW2DIGI_L1Reco_RECO_DQM_ALCA_CRAFT09_KH.py'
+    dataset='/Cosmics/Commissioning08-CRUZET4_v1/RAW'
+    cfg='/afs/cern.ch/user/c/cmst1/public/cfgs/rereco_FirstCollisions_33x.py'
 }
 
 
 kit()
 {
+    version='CMSSW_3_3_5_patch4'
     site='gridka-dCache.fzk.de'
-    #dataset='/Calo/Commissioning08-v1/RAW'
-    #cfg='CMSSW_3_1_1/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_38T_cfg.py'
-    dataset='/Calo/Commissioning08_CRAFT_ALL_V9_225-v3/RECO'
-    cfg='step2_RAW2DIGI_L1Reco_RECO_DQM_ALCA_CRAFT09_KH.py'
+    dataset='/ZeroBiasB/BeamCommissioning09-v1/RAW'
+    cfg='/afs/cern.ch/user/c/cmst1/public/cfgs/rereco_FirstCollisions_33x.py'
 }
 
 pic()
 {
+    version='CMSSW_3_3_5_patch4'
     site='srmcms.pic.es'
-#    dataset='/Cosmics/Commissioning08-v1/RAW'
-#    cfg='CMSSW_3_1_1/src/Configuration/GlobalRuns/python/recoT0DQM_EvContent_38T_cfg.py'
-    dataset='/Cosmics/Commissioning08_CRAFT_ALL_V9_225-v2/RECO'
-    cfg='step2_RAW2DIGI_L1Reco_RECO_DQM_ALCA_CRAFT09_KH.py'
-
+    dataset='/MinimumBias/BeamCommissioning09-v1/RAW'
+    cfg='/afs/cern.ch/user/c/cmst1/public/cfgs/rereco_FirstCollisions_33x.py'
 }
-
