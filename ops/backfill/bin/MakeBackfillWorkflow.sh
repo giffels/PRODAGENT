@@ -14,7 +14,7 @@ Usage \${0##*/} "-i,-s,-a,-v [-x]"
 # Defining the parameters to be parsed
 OptionWithArgument i shifter_initials shifter_initials 'Shifter initials.'
 OptionWithArgument s site site 'Site associated to the workflow.'
-OptionWithArgument a acquisition_era acquisition_era 'Acquisition era (1,2).'
+OptionWithArgument a acquisition_era acquisition_era 'Acquisition era (1,2,test01,test02).'
 Option x create create 'Create the workflow.'
 
 
