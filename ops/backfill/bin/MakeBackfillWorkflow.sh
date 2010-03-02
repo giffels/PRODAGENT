@@ -26,15 +26,15 @@ then
     Usage
 fi
 
+# KH, replacing incremental version with timestamp
 # Reading/Updating version map
-. scripts/VersionMapHelpers.sh
-
-if [ -f etc/VersionStatus ]
-then
-    ReadVersionMap ${site}_${acquisition_era}
-fi
-
-UpdateVersionMap ${site}_${acquisition_era}
+#. scripts/VersionMapHelpers.sh
+#if [ -f etc/VersionStatus ]
+#then
+#    ReadVersionMap ${site}_${acquisition_era}
+#fi
+#UpdateVersionMap ${site}_${acquisition_era}
+processing_version=backfill-`date "+%s"`
 
 # Workflow directory
 workflow_dir=workflows/$site/$acquisition_era
@@ -71,7 +71,6 @@ fi
      --split-size=1 \
      --only-sites=$site \
      --acquisition_era=$acquisition_era \
-     --conditions=GR09_P_V2 \
      --activity=backfill \
      --processing_version=$processing_version \
      --group=DataOps \
@@ -89,7 +88,8 @@ then
     echo $str
     eval $str
 
-    WriteVersionMap
+    # replacing with timestamp
+    #WriteVersionMap
 
     if [ -d $workflow_dir ]
     then
