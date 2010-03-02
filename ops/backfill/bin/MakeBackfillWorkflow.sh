@@ -39,6 +39,12 @@ processing_version=backfill-`date "+%s"`
 # Workflow directory
 workflow_dir=workflows/$site/$acquisition_era
 
+# make sure the path to the cfg files is setup
+if [[ "x${CFG_PATH}" == "x" ]]; then 
+    echo "Please set your CFG_PATH first ...";
+    exit 1;
+fi;
+
 # Lookup table to the site information
 . etc/BackfillSiteConfiguration.sh
 
