@@ -656,7 +656,8 @@ class JobQueueDB:
         sqlStr = \
         """
         DELETE FROM jq_queue WHERE status = 'released' 
-          AND time < ADDTIME(CURRENT_TIMESTAMP,'-%s')
+          AND time < ADDTIME(CURRENT_TIMESTAMP,'-%s') 
+          AND job_spec_id NOT IN (SELECT id FROM we_Job)
         """ % timeInterval
         Session.execute(sqlStr)
         return
