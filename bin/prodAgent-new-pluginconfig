@@ -54,7 +54,7 @@ creatorTemplate = {
     #//
     "SoftwareSetup": {
     "ScramCommand" : "scramv1",
-    "ScramArch" : "slc4_ia32_gcc345",
+    "ScramArch" : "slc5_ia32_gcc434",
     "SetupCommand" : "echo \"Setup Command goes here\"",
     },
 
@@ -116,7 +116,7 @@ creatorTemplate = {
     #//
     "SoftwareSetup": {
     'ScramCommand' : "scramv1",
-    'ScramArch' : "slc4_ia32_gcc345",
+    'ScramArch' : "slc5_ia32_gcc434",
     'SetupCommand': None,
     },
 
