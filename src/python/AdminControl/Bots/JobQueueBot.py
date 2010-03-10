@@ -37,9 +37,9 @@ class JobQueueBot(BotInterface):
 
         """
         logging.info(
-            "JobQueueBot Invoked: removing release jobs > 24:00:00 old")
+            "JobQueueBot Invoked: removing release jobs > 48:00:00 old")
         jobQ = JobQueueDB()
-        jobQ.cleanOut("24:00:00")
+        jobQ.cleanOut("48:00:00")
         Session.commit_all()
         
 
