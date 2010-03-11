@@ -6,8 +6,8 @@ Glite Collection class
 
 """
 
-__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.7 2010/01/16 17:25:24 swakef Exp $"
-__version__ = "$Revision: 1.7 $"
+__revision__ = "$Id: BlGLiteBulkSubmitter.py,v 1.8 2010/01/20 16:14:11 swakef Exp $"
+__version__ = "$Revision: 1.8 $"
 
 import os
 import logging
@@ -116,7 +116,7 @@ class BlGLiteBulkSubmitter(BossLiteBulkInterface):
         creatorPluginConfig = loadPluginConfig("JobCreator",
                                                   "Creator")
         if creatorPluginConfig['SoftwareSetup'].has_key('ScramArch'):
-            if creatorPluginConfig['SoftwareSetup']['ScramArch'].find("slc4") >= 0:
+            if creatorPluginConfig['SoftwareSetup']['ScramArch'].find("slc") >= 0:
                 swarch = creatorPluginConfig['SoftwareSetup']['ScramArch']
 
         if swarch:
