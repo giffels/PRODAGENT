@@ -100,7 +100,7 @@ class DashboardInfo(dict):
         self.setdefault("VO", "CMS")
         self.setdefault("TargetCE", None)
         self.setdefault("RBname", None)
-        self.setdefault("JSToolUI" , "ProdAgent")
+        self.setdefault("JSToolUI" , None) # Can't set here, see bug #64232
 
         
         
