@@ -185,7 +185,7 @@ componentFields = {
     "CleanUp" : "no",
     "MaxInputAccessFailures" : 1,
     "QueueJobMode": "True",
-    "MergePolicy": "SizePolicy",
+    "MergePolicy": "RunNumberPolicy",
     "RssFeed": "no",
     # Local DBS settings come from LocalDBS core block 
     },
