@@ -7,6 +7,7 @@ Submitter for ARC submissions
 
 """
 import os
+import re
 import logging
 import string
 import time
@@ -16,6 +17,7 @@ from JobSubmitter.Registry import registerSubmitter
 from JobSubmitter.Submitters.BulkSubmitterInterface import BulkSubmitterInterface
 from JobSubmitter.JSException import JSException
 from ProdAgent.Resources import ARC
+from ProdAgentCore.PluginConfiguration import loadPluginConfig
 
 import ProdAgent.ResourceControl.ResourceControlAPI as ResConAPI
 import ShREEK.CMSPlugins.DashboardInfo  as DashboardUtils
@@ -269,9 +271,28 @@ class ARCSubmitter(BulkSubmitterInterface):
         # Output files; leave everything at the CE until explicitely
         # retrieved/removed by ngget/ngclean. (Needed mainly for
         # debugging.)
-        code += "(outputFiles=(\"/\" \"\"))"
+        code += '(outputFiles=("/" ""))'
 
-        code += "(runTimeEnvironment=APPS/HEP/CMSSW-PA)"
+        # Choose an ScramArch runtime env.
+        creatorPluginConfig = loadPluginConfig("JobCreator", "Creator")
+        if creatorPluginConfig['SoftwareSetup'].has_key('ScramArch'):
+            rte = "(runTimeEnvironment=VO-cms-%s)" % creatorPluginConfig['SoftwareSetup']['ScramArch']
+            code += rte
+            logging.debug("Added '%s' to xRSL code" % rte)
+        else:
+            logging.warning("No ScramArch!")
+
+        # Choose CMSSW runtime env.
+        if self.applicationVersions:
+            for v in self.applicationVersions:
+                w = re.sub("_", "-", v, 1)      # CMSSW_X_Y_Z  ->  CMSSW-X_Y_Z
+                w = re.sub("_", ".", w)         #              ->  CMSSW-X.Y.Z
+                rte = "(runTimeEnvironment=APPS/HEP/%s)" % w
+                code += rte
+                logging.debug("Added '%s' to xRSL code" % rte)
+        else:
+            logging.warning("No applicationVersions!")
+
         code += "(jobName=%s)" % jobId
         code += "(stdout=output)(stderr=errors)(gmlog=gridlog)"
 
