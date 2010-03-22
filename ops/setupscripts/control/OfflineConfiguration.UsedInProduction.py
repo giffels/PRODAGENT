@@ -402,68 +402,20 @@ skimConfig = {}
 
 
 
-# Test SKIMS:
+# Test SKIMS left here for possible tests:
 
 skimConfig["T1SkimTester"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/DataOps/python/prescaleskimmer.py?revision=1.1"
 skimConfig["RawT1SkimTester"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/DataOps/python/rawprescaleskimmer.py?revision=1.2"
 skimConfig["RedneckT1SkimTester"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/DataOps/python/redneckskimmer.py?revision=1.1"
 skimConfig["CircularRedneckT1SkimTester"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/DataOps/python/circularredneckskimmer.py?revision=1.1"
 
-#addTier1Skim(tier0Config, "Skim1", "RECO", "Cosmics", defaultRecoVersion, "v12test",
-#             skimConfig["T1SkimTester"], True)
-#addTier1Skim(tier0Config, "Skim2", "RECO", "Calo", defaultRecoVersion, "v12test",
-#             skimConfig["T1SkimTester"], True)
-#addTier1Skim(tier0Config, "Skim3", "RECO", "MinimumBias", defaultRecoVersion, "v12test",
-#             skimConfig["T1SkimTester"], True)
-#addTier1Skim(tier0Config, "Skim4", "RECO", "MinimumBiasNoCalo", defaultRecoVersion, "v12test",
-#             skimConfig["T1SkimTester"], True)
-#addTier1Skim(tier0Config, "Skim5", "RECO", "BeamHalo", defaultRecoVersion, "v12test",
-#             skimConfig["T1SkimTester"], True)
-addTier1Skim(tier0Config, "Skim6", "RAW", "RandomTriggers", defaultRecoVersion, "v12test",
-             skimConfig["RawT1SkimTester"], skimGlobalTag,True)
 
+# Used in production:
 
+skimConfig["LucaMalgeri1"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/MinBiasPDSkim_cfg.py?revision=1.10"
 
-# Used in production but now deprecated:
-
-
-skimConfig["BeamHaloSkim"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/CSC_BeamHalo_cfg.py?revision=1.2"
-skimConfig["MinBias2TrackSkim"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/RecoTrack_cfg.py?revision=1.1"
-skimConfig["MinBias900SDSkim1"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/DataOps/python/skim900GeV_StreamA_MinBiasPD.py?revision=1.1"
-skimConfig["ZeroBias900SDSkim1"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/Configuration/DataOps/python/skim900GeV_StreamA_ZeroBiasPD.py?revision=1.1"
-
-#addTier1Skim(tier0Config, "RealSkim1", "RECO", "MinimumBias", defaultRecoVersion, "PromptSkimCommissioning_v1",
-#             skimConfig["BeamHaloSkim"], True)
-
-#addTier1Skim(tier0Config, "RealSkim2", "RECO", "Cosmics", defaultRecoVersion, "PromptSkimCommissioning_v1",
-#             skimConfig["BeamHaloSkim"], True)
-#addTier1Skim(tier0Config, "RealSkim3", "RECO", "MinimumBias", defaultRecoVersion, "PromptSkimCommissioning_v1",
-#             skimConfig["MinBias2TrackSkim"], True)
-#addTier1Skim(tier0Config, "RealSkim4", "RECO", "MinimumBias", defaultRecoVersion, "PromptSkimCommissioning_v1",
-#             skimConfig["MinBias900SDSkim1"], True)
-#addTier1Skim(tier0Config, "RealSkim5", "RECO", "ZeroBias", defaultRecoVersion, "PromptSkimCommissioning_v1",
-#             skimConfig["ZeroBias900SDSkim1"], True)
-
-
-# Currently active
-
-skimConfig["LucaMalgeri1"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/CosmicsPDSkim_cfg.py?revision=1.4"
-skimConfig["LucaMalgeri2"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/MinBiasPDSkim_cfg.py?revision=1.5"
-skimConfig["RobertoRossin1"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/skim900GeV_StreamA_ZeroBiasPD_cfg.py?revision=1.2"
-skimConfig["RobertoRossin2"] = "http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/DPGAnalysis/Skims/python/skim900GeV_StreamA_MinBiasPD_cfg.py?revision=1.2"
-
-addTier1Skim(tier0Config, "RealSkim6", "RECO", "Cosmics", defaultRecoVersion, "v12test",
-             skimConfig["RedneckT1SkimTester"], skimGlobalTag,True)
-
-#addTier1Skim(tier0Config, "RealSkim7", "RECO", "MinimumBias", defaultRecoVersion, "v12test",
-#             skimConfig["CircularRedneckT1SkimTester"], skimGlobalTag,True)
-
-
-addTier1Skim(tier0Config, "RealSkim8", "RECO", "MinimumBias", defaultRecoVersion, "v12test",
-             skimConfig["T1SkimTester"], skimGlobalTag,True)
-
-addTier1Skim(tier0Config, "RealSkim9", "RECO", "ZeroBias", defaultRecoVersion, "v12test",
-             skimConfig["T1SkimTester"], skimGlobalTag,True)
+addTier1Skim(tier0Config, "MinBiasSkim1", "RECO", "MinimumBias", defaultRecoVersion, "v13test",
+             skimConfig["LucaMalgeri1"], skimGlobalTag,True)
 
 
 
