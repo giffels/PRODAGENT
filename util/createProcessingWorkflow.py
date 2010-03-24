@@ -5,13 +5,8 @@ _createProcessingWorkflow_
 Create a workflow that processes an input dataset with a cfg file
 
 """
-__version__ = "$Revision: 1.26 $"
-__revision__ = "$Id: createProcessingWorkflow.py,v 1.26 2010/02/17 19:07:06 direyes Exp $"
-
-# Silence deprecation warnings since we moved to python2.6
-# Assume python2.6 will outlast prodagent
-import warnings
-warnings.filterwarnings("ignore", category = DeprecationWarning)
+__version__ = "$Revision: 1.24 $"
+__revision__ = "$Id: createProcessingWorkflow.py,v 1.24 2009/09/14 14:52:33 direyes Exp $"
 
 import os
 import sys
