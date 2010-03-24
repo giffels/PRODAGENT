@@ -127,7 +127,6 @@ class RFCPCERNImpl(StageOutImpl):
             self.createDir(targetDir, self.permissions)
 
         else:
-
             # check if this is a directory
             regExpParser = re.compile('Protection.*: d')
             if ( regExpParser.match(targetDirCheckOutput) == None):
@@ -260,26 +259,20 @@ class RFCPCERNImpl(StageOutImpl):
         simpleCastorPath = None
 
         if simpleCastorPath == None:
-            regExpParser = re.compile('/+castor/(.*)')
+            regExpParser = re.compile('/+castor/cern.ch/(.*)')
             match = regExpParser.match(complexCastorPath)
             if ( match != None ):
-                simpleCastorPath = complexCastorPath
+                simpleCastorPath = '/castor/cern.ch/' + match.group(1)
 
         if simpleCastorPath == None:
-            regExpParser = re.compile('rfio:/+castor/(.*)')
+            regExpParser = re.compile('rfio:.*/+castor/cern.ch/([^?]+).*')
             match = regExpParser.match(complexCastorPath)
             if ( match != None ):
-                simpleCastorPath = '/castor/' + match.group(1)
+                simpleCastorPath = '/castor/cern.ch/' + match.group(1)
 
+        # if that does not work just use as-is
         if simpleCastorPath == None:
-            regExpParser = re.compile('rfio:.*path=/+castor/(.*)')
-            match = regExpParser.match(complexCastorPath)
-            if ( match != None ):
-                simpleCastorPath = '/castor/' + match.group(1)
-
-        # raise exception if we have no rule that can parse the target dir
-        if simpleCastorPath == None:
-            raise StageOutError("Cannot parse directory out of path = %s" % complexCastorPath)
+            simpleCastorPath = complexCastorPath
 
         # remove multi-slashes from path
         while ( simpleCastorPath.find('//') > -1 ):
