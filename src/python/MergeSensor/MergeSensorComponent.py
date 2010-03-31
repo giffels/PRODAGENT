@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.75 2008/11/19 12:00:38 swakef Exp $"
-__version__ = "$Revision: 1.75 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.76 2009/05/23 22:04:37 direyes Exp $"
+__version__ = "$Revision: 1.76 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -81,6 +81,7 @@ class MergeSensorComponent:
         self.args.setdefault("MaxMergeFileSize", None)
         self.args.setdefault("MinMergeFileSize", None)
         self.args.setdefault("MaxInputAccessFailures", 1)
+        self.args.setdefault("FilesPerMergeJob", None)
 
         # default SE white/black lists are empty
         self.args.setdefault("MergeSiteWhitelist", None)
@@ -96,8 +97,8 @@ class MergeSensorComponent:
         self.args.setdefault('QueueJobMode', False)
         
         # merge policy plugin
-        self.args.setdefault('MergePolicy', 'SizePolicy')
-        #self.args.setdefault('MergePolicy', 'RunNumberPolicy')
+        #self.args.setdefault('MergePolicy', 'SizePolicy')
+        self.args.setdefault('MergePolicy', 'RunNumberPolicy')
 
         # update parameters
         self.args.update(args)
@@ -169,6 +170,16 @@ class MergeSensorComponent:
         if self.args["MaxMergeFileSize"] <=  self.args["MinMergeFileSize"]:
             logging.error("Wrong file size specifications, please check!") 
 
+        # files per merge job
+        if self.args["FilesPerMergeJob"] is None:
+            self.args["FilesPerMergeJob"] = -1
+        else:
+             self.args["FilesPerMergeJob"] = \
+                int(self.args["FilesPerMergeJob"])
+        if self.args["FilesPerMergeJob"] == 0:
+            logging.error(
+                "filesPerMergeJob paratemer cannot be equal to zero")
+
         # inital log information
         logging.info("MergeSensor starting... in >> %s << mode" % 
                      self.args["StartMode"])
@@ -176,6 +187,10 @@ class MergeSensorComponent:
                      self.args['MaxMergeFileSize'])
         logging.info("     MinMergeFileSize = %s" % \
                      self.args['MinMergeFileSize'])
+        if self.args["FilesPerMergeJob"] > 0:
+            logging.info("     MinFilesPerMergeJob = %s" % \
+                     self.args['FilesPerMergeJob'])
+            
         logging.info("     MergeSiteWhitelist = %s" % self.seWhitelist)
         logging.info("     MergeSiteBlacklist = %s" % self.seBlacklist)
         if self.fastMerge:
@@ -1516,6 +1531,9 @@ class MergeSensorComponent:
 
         # set maximum input file failures
         Dataset.setMaxInputFailures(int(self.args['MaxInputAccessFailures']))
+
+        # set minimum nuber of files for triggering a merge job
+        Dataset.setFilesPerMergeJob(int(self.args['FilesPerMergeJob']))
 
         # create message service instance
         self.ms = MessageService()

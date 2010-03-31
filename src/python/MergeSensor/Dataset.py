@@ -10,8 +10,8 @@ import time
 import re
 import MySQLdb
 
-__revision__ = "$Id: Dataset.py,v 1.32 2008/07/18 14:07:36 swakef Exp $"
-__version__ = "$Revision: 1.32 $"
+__revision__ = "$Id: Dataset.py,v 1.35 2009/05/19 16:44:30 swakef Exp $"
+__version__ = "$Revision: 1.35 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 # MergeSensor errors
@@ -42,6 +42,9 @@ class Dataset:
     
     # default minimum size for merged files (75% of maximum size)
     minMergeFileSize = 1500000000
+
+    # default minimum number of files for triggering a merge job (unbounded)
+    filesPerMergeJob = -1
 
     # logging instance
     logging = None
@@ -312,7 +315,34 @@ class Dataset:
 
         if min is not None: 
             cls.minMergeFileSize = minimum
-        
+
+    ##########################################################################
+    # set unmerged files per job
+    ##########################################################################
+
+    @classmethod
+    def setFilesPerMergeJob(cls, value):
+        """
+        _FilesPerMergeJob_
+
+        Set the target minimun number of unmerged files for triggering the
+        the creation of a Merge Job. Note that the this parameter is stored
+        in a class variable, meaning that its value is applicable to all
+        datasets.
+
+        Arguments:
+
+          value -- minimum number of files for triggering a Merge Job
+
+        Return:
+
+          none
+
+        """
+
+        if value is not None:
+            cls.filesPerMergeJob = value
+
     ##########################################################################
     # get components of a dataset name
     ##########################################################################
@@ -591,6 +621,7 @@ class Dataset:
         parameters = {}
         parameters['maxMergeFileSize'] = self.__class__.maxMergeFileSize
         parameters['minMergeFileSize'] = self.__class__.minMergeFileSize
+        parameters['filesPerMergeJob'] = self.__class__.filesPerMergeJob
 
         # get dataset id
         datasetId = self.database.getDatasetId(self.data['name'])

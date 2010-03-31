@@ -6,8 +6,8 @@ Policy for merge based on run numbers
 
 """
 
-__revision__ = "$Id: RunNumberPolicy.py,v 1.2 2007/06/08 10:30:47 ckavka Exp $"
-__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: RunNumberPolicy.py,v 1.3 2008/10/20 12:48:45 swakef Exp $"
+__version__ = "$Revision: 1.3 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import logging
@@ -63,6 +63,8 @@ class RunNumberPolicy:
         # get parameters
         maxMergeFileSize = parameters['maxMergeFileSize']
         minMergeFileSize = parameters['minMergeFileSize']
+        #mergeByFileCount = parameters.get('mergeByFileCount', False)
+        filesPerMergeJob = parameters['filesPerMergeJob']
 
         # check all file blocks in dataset
         for fileBlock in fileList:
@@ -86,7 +88,11 @@ class RunNumberPolicy:
             for files in run.values():
  
                 # select set of files with at least mergeFileSize size
+                # or select the number of files set by filesPerMergeJob
+                # in any case the merge size has to be less than
+                # maxMergeFileSize
                 totalSize = 0
+                fileCounter = 0
                 selectedSet = []
                 numFiles = len(files)
 
@@ -102,6 +108,7 @@ class RunNumberPolicy:
                     selectedSet = [files[startingFile]['name']]
                     totalSize = files[startingFile]['filesize']
                     leftIndex = startingFile + 1
+                    fileCounter = 1
 
                     # verify that the file is not larger that maximum
                     if totalSize > maxMergeFileSize:
@@ -115,7 +122,9 @@ class RunNumberPolicy:
                     # continue filling it
                     while totalSize < minMergeFileSize and \
                         totalSize < maxMergeFileSize and \
-                        leftIndex < numFiles:
+                        leftIndex < numFiles and \
+                        (filesPerMergeJob < 1 or \
+                            fileCounter < filesPerMergeJob):
 
                         # attempt to add other file
                         newSize = totalSize + files[leftIndex]['filesize']
@@ -129,12 +138,18 @@ class RunNumberPolicy:
 
                         # still space, try to add the next one
                         leftIndex = leftIndex + 1
+                        fileCounter = fileCounter + 1
 
                     # verify results
-                    if totalSize >= minMergeFileSize and \
-                      totalSize < maxMergeFileSize:
+                    if ((filesPerMergeJob > 0 and \
+                                fileCounter >= filesPerMergeJob) or \
+                            totalSize >= minMergeFileSize) and \
+                        totalSize < maxMergeFileSize:
 
                         # done
+                        logging.info("Merge Job will be created.")
+                        logging.info("Number of files: %s" % fileCounter)
+                        logging.info("Total Size: %s" % totalSize)
                         return (selectedSet, fileBlockId)
  
                     # try starting bin from second file
@@ -183,6 +198,9 @@ class RunNumberPolicy:
                     else:
 
                         # ok, return them
+                        logging.info("Merge Job will be created.")
+                        logging.info("Number of files: %s" % len(selectedSet))
+                        logging.info("Total Size: %s" % totalSize)
                         return(selectedSet, fileBlockId)
                 else:
 
