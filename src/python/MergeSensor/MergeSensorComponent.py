@@ -7,8 +7,8 @@ a dataset are ready the be merged.
 
 """
 
-__revision__ = "$Id: MergeSensorComponent.py,v 1.76 2009/05/23 22:04:37 direyes Exp $"
-__version__ = "$Revision: 1.76 $"
+__revision__ = "$Id: MergeSensorComponent.py,v 1.77 2010/03/31 16:19:33 direyes Exp $"
+__version__ = "$Revision: 1.77 $"
 __author__ = "Carlos.Kavka@ts.infn.it"
 
 import os
@@ -924,8 +924,8 @@ class MergeSensorComponent:
             outputDatasetsList = wfile.outputDatasets()
             
             outputDatasetsList = ["/%s/%s/%s" % (ds['PrimaryDataset'], \
-                                                    ds['DataTier'], \
-                                                    ds['ProcessedDataset']) \
+                                                    ds['ProcessedDataset'], \
+                                                    ds['DataTier']) \
                                    for ds in outputDatasetsList]
             
         except Exception, msg:
