@@ -29,7 +29,7 @@ def sizeUsed(pathname):
     Units are GB blocks
 
     """
-    output = subprocess.Popen(["df", pathname],
+    output = subprocess.Popen(["df", "-P", pathname],
                               stdout = subprocess.PIPE).communicate()[0]
     data = output.split("\n")[1]
     size = data.split()[1]
