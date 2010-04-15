@@ -4,6 +4,8 @@ import sys
 import os
 import getopt
 import popen2
+import subprocess
+import shlex
 import re
 import xml.sax, xml.sax.handler
 import time
@@ -130,6 +132,7 @@ def main(argv) :
             scriptsDirTemp = scriptsDir
             if scriptsDir.startswith('$') :
                 scriptsDirTemp = os.environ.get(scriptsDir[1:],None)
+                scriptsDir = os.path.expandvars(scriptsDirTemp)
             if scriptsDirTemp != None:
                 if not os.path.exists(scriptsDirTemp):
                     print "--scripts-dir argument does not exist, please verify."
@@ -649,8 +652,7 @@ def main(argv) :
                 print 'cmsDriver command for step 1 to produce:', \
                     sample['outputName'],'was already issued, skipping.'
                 continue
-            proc = popen2.Popen3(sample['command'])
-            exitCode = proc.wait()
+            exitCode, output, error = executeCommand(sample['command'])
             if exitCode == 0:
                 print 'cmsDriver command for step 1 to produce:', \
                     sample['outputName'],'exited with ExitCode:', exitCode
@@ -680,8 +682,7 @@ def main(argv) :
                     print 'cmsDriver command for step %s to produce:' % i, \
                         steps[step]['outputName'],'was already issued, skipping.'
                     continue
-                proc = popen2.Popen3(steps[step]['command'])
-                exitCode = proc.wait()
+                exitCode, output, error = executeCommand(steps[step]['command'])
                 if exitCode == 0:
                     print 'cmsDriver command for step %s to produce:' % i, \
                         steps[step]['outputName'], \
@@ -708,7 +709,7 @@ def main(argv) :
     # // Create workflows
     #//
     for sample in samples:
-        command = 'python2.4 ' + scriptsDir
+        command = 'python ' + scriptsDir
         conditions = '' # Conditions -> processingString
         #  //
         # // In case we are processing data
@@ -794,9 +795,7 @@ def main(argv) :
             print ''
 
         start_command_time = time.time()
-        proc = popen2.Popen3(command)
-        exitCode = proc.wait()
-        output = proc.fromchild.readlines()
+        exitCode, output, error = executeCommand(command)
         command_time = time.time() - start_command_time
 
         if debug:
@@ -865,13 +864,13 @@ def main(argv) :
     for workflow in workflows.keys():
         if workflows[workflow]['isRealData']:
             if feeder.find('ReReco') < 0:
-                inputScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py WorkflowInjector:SetPlugin BlockFeeder\n')
+                inputScript.write('python $PRODAGENT_ROOT/util/publish.py WorkflowInjector:SetPlugin BlockFeeder\n')
                 feeder = 'ReReco'
         else :
             if feeder.find('Request') < 0:
-                inputScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py WorkflowInjector:SetPlugin RequestFeeder\n')
+                inputScript.write('python $PRODAGENT_ROOT/util/publish.py WorkflowInjector:SetPlugin RequestFeeder\n')
                 feeder = 'Request'
-        inputScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py WorkflowInjector:Input ' + os.path.join(os.getcwd(), workflow) + '\n')
+        inputScript.write('python $PRODAGENT_ROOT/util/publish.py WorkflowInjector:Input ' + os.path.join(os.getcwd(), workflow) + '\n')
     inputScript.close()
     os.chmod('input.sh',0755)
     print 'Wrote WorkflowInjector:Input script to:',os.path.join(os.getcwd(),'input.sh') 
@@ -881,7 +880,7 @@ def main(argv) :
     forceMergeScript.write('#!/bin/bash\n')
     for sample in unmergedDatasets :
         for dataset in sample :
-            forceMergeScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py ForceMerge ' + dataset + '\n')
+            forceMergeScript.write('python $PRODAGENT_ROOT/util/publish.py ForceMerge ' + dataset + '\n')
     forceMergeScript.close()
     os.chmod('forceMerge.sh',0755)
     print 'Wrote ForceMerge script to:',os.path.join(os.getcwd(),'forceMerge.sh')
@@ -891,7 +890,7 @@ def main(argv) :
     migrateScript.write('#!/bin/bash\n')
     for sample in mergedDatasets :
         for dataset in sample :
-            migrateScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py DBSInterface:MigrateDatasetToGlobal ' + dataset + '\n')
+            migrateScript.write('python $PRODAGENT_ROOT/util/publish.py DBSInterface:MigrateDatasetToGlobal ' + dataset + '\n')
     migrateScript.close()
     os.chmod('migrateToGlobal.sh',0755)
     print 'Wrote DBSInterface:MigrateDatasetToGlobal script to:',os.path.join(os.getcwd(),'migrateToGlobal.sh')
@@ -901,7 +900,7 @@ def main(argv) :
     phedexScript.write('#!/bin/bash\n')
     for sample in mergedDatasets :
         for dataset in sample :
-            phedexScript.write('python2.4 $PRODAGENT_ROOT/util/publish.py PhEDExInjectDataset ' + dataset + '\n')
+            phedexScript.write('python $PRODAGENT_ROOT/util/publish.py PhEDExInjectDataset ' + dataset + '\n')
     phedexScript.close()
     os.chmod('injectIntoPhEDEx.sh',0755)
     print 'Wrote PhEDExInjectDataset script to:',os.path.join(os.getcwd(),'injectIntoPhEDEx.sh')
@@ -912,7 +911,7 @@ def main(argv) :
     for sample in unmergedDatasets :
         for dataset in sample :
             #if dataset.find('-RECO') == -1 or len(sample) == 1 :
-            queryUnmergedScript.write('python2.4 $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + dataset + ' | grep total\n')
+            queryUnmergedScript.write('python $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + dataset + ' | grep total\n')
     queryUnmergedScript.close()
     os.chmod('queryUnmerged.sh',0755)
     print 'Wrote DBS query script for unmerged datasets to:',os.path.join(os.getcwd(),'queryUnmerged.sh')
@@ -923,7 +922,7 @@ def main(argv) :
     for sample in mergedDatasets :
         for dataset in sample :
             #if dataset.find('-RECO') == -1 or len(sample) == 1 :
-            queryMergedScript.write('python2.4 $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + dataset + ' | grep total\n')
+            queryMergedScript.write('python $PRODAGENT_ROOT/util/InspectDBS2.py --DBSURL=' + DBSURL  + ' --datasetPath=' + dataset + ' | grep total\n')
     queryMergedScript.close()
     os.chmod('queryMerged.sh',0755)
     print 'Wrote DBS query script for merged datasets to:',os.path.join(os.getcwd(),'queryMerged.sh')
@@ -935,7 +934,7 @@ def main(argv) :
     for sample in datasets:
         for dataset in sample['merged']:
             if reHarvest.match(dataset):
-                DQMinputScript.write('python2.4 $PRODAGENT_ROOT/util/harvestDQM.py --run=%s --path=%s --scenario=%s\n' % (
+                DQMinputScript.write('python $PRODAGENT_ROOT/util/harvestDQM.py --run=%s --path=%s --scenario=%s\n' % (
                     sample['DQMData']['Run'], dataset, sample['DQMData']['Scenario']))
     os.chmod('DQMinput.sh',0755)
     print 'Wrote DQMHarvesting script for merged datasets to:', os.path.join(os.getcwd(),'DQMinput.sh')
@@ -1016,6 +1015,20 @@ def getDQMScenario(cmsDriverCmd):
 
     # If I am here, it's relvalmc
     return 'relvalmc'
+
+
+def executeCommand(cmd):
+    """
+    Uses subprocess module for executing a command in a subshell
+    """
+    args = shlex.split(cmd)
+    proc = subprocess.Popen(args,
+                            stdout = subprocess.PIPE,
+                            stderr = subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    exitCode = proc.returncode
+    return exitCode, stdout, stderr
+    
 
  
 if __name__ == '__main__' :
