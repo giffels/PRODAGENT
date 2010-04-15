@@ -77,6 +77,10 @@ print tables
 cur.execute("select sequence_name from user_sequences")
 sequences = cur.fetchall()
 print sequences
+cur.execute("select object_name from user_objects where object_type = 'FUNCTION'")
+functions = cur.fetchall()
+print functions
+
 user = "%s_%s" % (Account, writerSuffix)
 print user
 for t in tables:
@@ -87,6 +91,10 @@ for s in sequences:
  print s
  cur.execute("Grant alter,select on %s to %s" % (s[0], user))
 
+for f in functions:
+ print f
+ cur.execute("Grant execute on %s to %s" % (f[0], user))
+ 
 cur.execute("Grant select on all_tab_columns to %s" % (user))
 cur.execute("Grant select on all_constraints to %s" % (user))
 cur.execute("Grant select on all_cons_columns to %s" % (user))
@@ -103,6 +111,10 @@ for s in sequences:
  print s
  cur.execute("Grant select on %s to %s" % (s[0], user))
 
+for f in functions:
+ print f
+ cur.execute("Grant execute on %s to %s" % (f[0], user))
+ 
 cur.execute("Grant select on all_tab_columns to %s" % (user))
 cur.execute("Grant select on all_constraints to %s" % (user))
 cur.execute("Grant select on all_cons_columns to %s" % (user))
@@ -125,6 +137,11 @@ for s in sequences:
   cur.execute("Drop synonym %s " % s[0])
  except:
   print "%s is crap" % s[0]
+for f in functions:
+ try:
+  cur.execute("Drop synonym %s " % f[0])
+ except:
+  print "%s is crap" % f[0]
 con.commit()
 
 for t in tables:
@@ -132,6 +149,9 @@ for t in tables:
 
 for s in sequences:
  cur.execute("Create synonym %s for %s.%s" % (s[0],Account, s[0]))
+
+for f in functions:
+ cur.execute("Create synonym %s for %s.%s" % (f[0],Account, f[0]))
 
 con.commit()
 con.close()
@@ -150,6 +170,11 @@ for s in sequences:
   cur.execute("Drop synonym %s " % s[0])
  except:
   print "%s is crap" % s[0]
+for f in functions:
+ try:
+  cur.execute("Drop synonym %s " % f[0])
+ except:
+  print "%s is crap" % f[0]
 con.commit()
 
 for t in tables:
@@ -158,6 +183,9 @@ for t in tables:
 for s in sequences:
  cur.execute("Create synonym %s for %s.%s" % (s[0],Account, s[0]))
 
+for f in functions:
+ cur.execute("Create synonym %s for %s.%s" % (f[0],Account, f[0]))
+ 
 con.commit()
 con.close()
 
