@@ -28,8 +28,8 @@ alias PAmysql='mysql -u root -p -S $PRODAGENT_WORKDIR/mysqldata/mysql.sock'
 # commented out DAM & Vijay
 export DBS_CLIENT_CONFIG=$DBS_ROOT/Clients/Python/DBSAPI/dbs.config 
 
-export X509_HOST_CERT=/data/cmsprod/X509/tier0cert.pem
-export X509_HOST_KEY=/data/cmsprod/X509/tier0key.pem
+export X509_HOST_CERT=/data/cmsprod/X509/tier0v39cert.pem
+export X509_HOST_KEY=/data/cmsprod/X509/tier0v39key.pem
 
 #export X509_HOST_CERT=/afs/cern.ch/user/c/cmsprod/private/certs/tier0cert.pem
 #export X509_HOST_KEY=/afs/cern.ch/user/c/cmsprod/private/certs/tier0key.pem
