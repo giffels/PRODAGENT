@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.47 2009/08/14 12:59:53 gcodispo Exp $"
-__version__ = "$Revision: 1.47 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.48 2010/02/17 09:14:30 direyes Exp $"
+__version__ = "$Revision: 1.48 $"
 
 import os
 import logging
@@ -300,13 +300,24 @@ fi
         # check if the wrapper is actually there
         executable = bossJob['executable']
         executablePath = os.path.join(self.workingDir, executable)
+
+        # I decided to load the bossTask here because I need to check that the
+        # global sandbox has the correct files, otherwise, I need to update it
+        self.bossTask = self.bossLiteSession.loadTask(bossJob['taskId'],
+                                                      bossJob['jobId'])
+        oldGlobalSandbox = ''
+        if self.bossTask is not None:
+            oldGlobalSandbox = self.bossTask['globalSandbox']
+
         updateJob = False
-        if not self.isBulk and not executable.count(self.singleSpecName):
+        if not self.isBulk and (not executable.count(self.singleSpecName) or \
+                not oldGlobalSandbox.count(self.singleSpecName)):
             executable = self.singleSpecName + '-submit'
             executablePath = os.path.join(self.workingDir, executable)
             msg = "This job %s was originally sumbitted as part of a Bulk " \
                 % self.singleSpecName
-            msg += "Submission. Making a new wrapping script %s for single submission." \
+            msg += "Submission."
+            msg += " Making a new wrapping script %s for single submission." \
                 % executablePath
             logging.info(msg)
             self.makeWrapperScript( executablePath, "$1" )
@@ -359,10 +370,6 @@ fi
                 "next RunningInstance %s.%s.%s " % \
                 ( bossJob['taskId'], bossJob['jobId'], \
                   bossJob.runningJob['submission'] ) )
-
-        # load the task ans append the job
-        self.bossTask = self.bossLiteSession.loadTask(
-            bossJob['taskId'], bossJob['jobId'] )
 
         # still no task? Something bad happened
         if self.bossTask is not None :
