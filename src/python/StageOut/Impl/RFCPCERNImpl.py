@@ -123,7 +123,7 @@ class RFCPCERNImpl(StageOutImpl):
                             raise StageOutError("Output path is not a directory !")
 
             # now create targetDir
-            print "DEBUG 777 setting fileclass %s" % fileclass
+            print "DEBUG 777 creating %s" % targetDir
             self.createDir(targetDir, self.permissions)
 
         else:
