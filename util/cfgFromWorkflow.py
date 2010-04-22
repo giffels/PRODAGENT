@@ -42,7 +42,7 @@ for opt, arg in opts:
 
 
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
-from ProdCommon.CMSConfigTools.CfgInterface import CfgInterface
+from ProdCommon.CMSConfigTools.ConfigAPI.CMSSWConfig import CMSSWConfig
 
 
 
@@ -100,7 +100,7 @@ def indexDict(modName, modRef):
 
 
 
-def actOnCfg(nodename, cfgInt, hashValue):
+def actOnCfg(nodename, cfgInt):
     """
     _actOnCfg_
 
@@ -108,9 +108,9 @@ def actOnCfg(nodename, cfgInt, hashValue):
     if required.
 
     """
-    cfgFile = "%s.%s.cfg" % (os.path.basename(workflow), nodename)
+    cfgFile = "%s.%s.py" % (os.path.basename(workflow), nodename)
     handle = open(cfgFile, 'w')
-    handle.write(cfgInt.cmsConfig.asConfigurationString())
+    handle.write(cfgInt.dumpPython())
     handle.close()
     print "Wrote cfg file: %s" % cfgFile
 
@@ -147,13 +147,17 @@ def findCfgFiles(node):
 
     """
     try:
-        hash = node._OutputDatasets[0]['PSetHash'] 
-        cfg = CfgInterface(node.configuration, True)
+        #hash = node._OutputDatasets[0]['PSetHash'] 
+        #cfg = node.configuration
+        cfg = node.cfgInterface
+        cfgInter = cfg.makeConfiguration()
+        print node.name + ": Found cfg."
     except Exception, ex:
         # Not a cfg file
+        print node.name + ": No cfg. found."
         return
     
-    actOnCfg(node.name, cfg, hash)
+    actOnCfg(node.name, cfgInter)
     return
 
     
