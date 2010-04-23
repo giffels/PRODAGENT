@@ -17,6 +17,7 @@ from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
 from ProdCommon.FwkJobRep.MergeReports import mergeReports
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.FwkJobRep.MergeReports import combineReports
+from ProdCommon.FwkJobRep.ReportParser import readJobReport
 import ProdCommon.FwkJobRep.PerfLogParser as PerfReps
 from ShREEK.CMSPlugins.DashboardInfo import generateDashboardID
 
@@ -144,8 +145,63 @@ def processFrameworkJobReport():
     if report.name == None:
         taskName = state.taskAttrs['Name']
         report.name = taskName
-        
-        
+
+    #  //
+    # // Here, I am filling state.parentsForwarded list with all the input
+    #// files that should be replaced later on by its parent. This parent is
+    #\\ taken from the top level report. The final substitution if made when
+    # \\ the report is combined with the top level report.
+    #  \\ The parent forwarding will be done when AppearStandalone = True
+    #  //
+    toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
+                                  "FrameworkJobReport.xml") 
+    if state.jobSpecNode._InputLinks and \
+                state.jobSpecNode._InputLinks[0]["AppearStandalone"] and \
+                os.path.exists(toplevelReport):
+        parentForward = True
+        for link in state.jobSpecNode._InputLinks:
+            if not link["AppearStandalone"]:
+                # Reports will only be combined when all input
+                # links have AppearStandalone set to true
+                parentForward = False
+                break
+
+        inputTaskNames = [ getTaskState(x['InputNode']).taskName() \
+                          for x in state.jobSpecNode._InputLinks ]
+
+        # Reading the top level report, it should contain the input file used
+        # in the previous step.
+        existingReports = readJobReport(toplevelReport)
+        if parentForward:
+            for existingReport in existingReports:
+                if existingReport.name in inputTaskNames:
+                    print "Forwading input files from node: %s" % \
+                        existingReport.name
+                    # output file in this task's report
+                    for outputFile in report.files:
+                        # now loopin' on its inputfiles
+                        for inputFile in outputFile.inputFiles:
+                            foundParent = False
+                            # Removing 'file:' from PFN
+                            inputFile['PFN'] = \
+                                inputFile['PFN'].replace('file:', '')
+                            # Now, mathing against input node's files
+                            for previousFile in existingReport.files:
+                                # Removing 'file:' from PFN
+                                previousFile['PFN'] = \
+                                    previousFile['PFN'].replace('file:', '')
+                                # Are the PFN's the same?
+                                if inputFile['PFN'].count(previousFile['PFN']):
+                                    print "Keeping file for forwarding: %s" % \
+                                        inputFile
+                                    # Adding file to the files to be replaced
+                                    # by its parent
+                                    state.parentsForwarded.extend([inputFile])
+                                    foundParent = True
+            msg = "These input files will be replaced by previous step's input"
+            msg += " files: %s" % state.parentsForwarded
+            print msg
+
     #  //
     # // filter zero event output files
     #//  TODO: Make this configurable via ProdAgent config switch
@@ -154,13 +210,19 @@ def processFrameworkJobReport():
     #  //
     # // Filter out input files that are not globally known - i.e. no LFN and
     #// should not be propagated to DBS (can be left by a previous cmsGen step)
+    #\\
+    # \\ Files to be replaced by previous step input are kept 
+    #  \\ (state.parentsForwarded)
+    #  //
     if state.configurationDict().has_key('DropNonLFNInputs') and \
                     state.configurationDict()['DropNonLFNInputs'][0] == 'True':
         [report.inputFiles.remove(x) for x in report.inputFiles if \
-                                                        x['LFN'] in (None, '')]
+                        x['LFN'] in (None, '') and \
+                        x['PFN'] not in [y['PFN'] for y in state.parentsForwarded]]
         for outfile in report.files:
             [outfile.inputFiles.remove(x) for x in outfile.inputFiles if \
-                                                        x['LFN'] in (None, '')]
+                        x['LFN'] in (None, '') and \
+                        x['PFN'] not in [y['PFN'] for y in state.parentsForwarded]]
     
     #  //
     # // generate sizes and checksums
