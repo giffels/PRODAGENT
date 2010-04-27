@@ -1,4 +1,4 @@
- #!/usr/bin/env python
+#!/usr/bin/env python
 """
 _T0LSFTracker_
 
@@ -241,11 +241,14 @@ class T0LSFTracker(TrackerPlugin):
             for report in reports:
                 # Only DQMHarvesting Jobs should fall into this category!
                 # LogCollector and CleanUp jobs also have no output files.
+                # PromptCalib jobs also have no edm output, but should have
+                # report.analysisFiles != 0 
                 if len(report.files) == 0 and \
                     report.jobType not in ("CleanUp", "LogCollect", "Harvesting") and \
                     report.wasSuccess():
-                    if not jobSpecId.startswith("DQMHarvest-"):
-                        logging.debug("Non-DQM job with no output files, mark as failed")
+                    if not (jobSpecId.startswith("DQMHarvest-") or \
+                           jobSpecId.startswith("PromptCalib")):
+                        logging.debug("Non-DQM, Non-PromptCalib job with no output files, mark as failed")
                         return LSFStatus.failed
 
             # if we are here, the report is good (JobFailed --> finished)
