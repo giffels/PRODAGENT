@@ -15,7 +15,7 @@
 # If so configured, the cleanup will also
 # delete Indices and PR logs
 #
-export T0_BASE_DIR=/data/cmsprod/PAProd/test2/replayinject
+export T0_BASE_DIR=/data/cmsprod/PAProd/petri/replayinject
 
 if [ ! -d $T0_BASE_DIR ]; then
     echo "T0_BASE_DIR does not exist or is no directory"
@@ -25,7 +25,7 @@ fi
 #
 # Top directory of the T0 software
 #
-export T0ROOT=/data/cmsprod/PAProd/test2/install/T0
+export T0ROOT=/data/cmsprod/PAProd/petri/install/T0
 
 . /etc/init.d/functions
 
@@ -38,7 +38,7 @@ export T0_CONFIG=${T0_BASE_DIR}/TransferSystem_CERN.cfg
 # Setup extra PERL environment
 #
 
-export PERL5LIB=${T0ROOT}/perl_lib:/afs/cern.ch/user/c/cmsprod/public/TransferTest/ApMon_perl-2.2.6:/afs/cern.ch/user/c/cmsprod/public/TransferTest/perl
+export PERL5LIB=${T0ROOT}/perl_lib
 
 RETVAL=0
 
