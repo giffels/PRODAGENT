@@ -22,8 +22,8 @@ Example:
 
 
 """
-__version__ = "$Revision: 1.2 $"
-__revision__ = "$Id: setDatasetDescription.py,v 1.2 2010/05/04 14:24:23 direyes Exp $"
+__version__ = "$Revision: 1.3 $"
+__revision__ = "$Id: setDatasetDescription.py,v 1.3 2010/05/04 14:30:49 direyes Exp $"
 
 import sys
 from DBSAPI.dbsApi import DbsApi
@@ -41,6 +41,9 @@ try:
         sys.exit(1)
     if sys.argv[2].count("'"):
         print "%s" % __doc__  
+        sys.exit(1)
+    if len(sys.argv[2]) > 1000:
+        print "%s" % __doc__
         sys.exit(1)
     path = sys.argv[1];
     newDescription = sys.argv[2]
