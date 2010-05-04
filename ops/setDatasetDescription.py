@@ -22,8 +22,8 @@ Example:
 
 
 """
-__version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: setDatasetDescription.py,v 1.1 2010/05/04 14:22:47 direyes Exp $"
+__version__ = "$Revision: 1.2 $"
+__revision__ = "$Id: setDatasetDescription.py,v 1.2 2010/05/04 14:24:23 direyes Exp $"
 
 import sys
 from DBSAPI.dbsApi import DbsApi
@@ -39,7 +39,7 @@ try:
     if len(sys.argv) < 3 or opts.__dict__.get('url', None) is None:
         print "%s" % __doc__ 
         sys.exit(1)
-    if sys.argv[2].find("'"):
+    if sys.argv[2].count("'"):
         print "%s" % __doc__  
         sys.exit(1)
     path = sys.argv[1];
