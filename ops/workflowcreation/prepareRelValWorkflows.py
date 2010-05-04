@@ -3,7 +3,6 @@
 import sys
 import os
 import getopt
-import popen2
 import subprocess
 import shlex
 import re
@@ -52,16 +51,14 @@ def main(argv) :
     start_total_time = time.time()
 
     # default
-    try:
-        version = os.environ.get("CMSSW_VERSION")
-    except:
+    version = os.environ.get("CMSSW_VERSION")
+    if version is None:
         print ''
         print 'CMSSW version cannot be determined from $CMSSW_VERSION'
         sys.exit(2)
 
-    try:
-        architecture = os.environ.get("SCRAM_ARCH")
-    except:
+    architecture = os.environ.get("SCRAM_ARCH")
+    if architecture is None:
         print ''
         print 'CMSSW architecture cannot be determined from $SCRAM_ARCH'
         sys.exit(2)
@@ -83,7 +80,7 @@ def main(argv) :
     storeFail = False
     readDBS = 'http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet'
     onlySites = None
-    scriptsDir = '$PUTIL'
+    scriptsDir = os.path.expandvars(os.environ.get('PUTIL', None))
     skip_config = False
     extra_label = ''
     workflow_label = ''
@@ -801,6 +798,7 @@ def main(argv) :
         if debug:
             print output
             print ''
+        output = [x for x in output.split('\n') if x]
 
         if exitCode == 0:
             #parse output
@@ -834,7 +832,7 @@ def main(argv) :
         else :
             print 'workflow creation command:'
             print command
-            print 'failed'
+            print 'failed: %s' % error
             sys.exit(1)
 
     if debug:
@@ -1021,6 +1019,7 @@ def executeCommand(cmd):
     """
     Uses subprocess module for executing a command in a subshell
     """
+    cmd = cmd.replace('\\', '')
     args = shlex.split(cmd)
     proc = subprocess.Popen(args,
                             stdout = subprocess.PIPE,
