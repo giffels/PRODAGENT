@@ -15,15 +15,15 @@ python setDatasetDescription.py PATH 'DESCRIPTION' --url <DBSURL>
 
 Example:
 
-    python setDatasetDescription.py \
-    /RelValTTbar_Tauola/CMSSW_3_5_8-START3X_V26_E7TeV_AVE_2_BX156-v1/GEN-SIM-DIGI-RAW-HLTDEBUG \
-    '{"MixingModule": {"input": "/RelValMinBias/CMSSW_3_5_8-MC_3XY_V26-v1/GEN-SIM-DIGI-RAW-HLTDEBUG"}}' \
+    python setDatasetDescription.py \\
+    /RelValTTbar_Tauola/CMSSW_3_5_8-START3X_V26_E7TeV_AVE_2_BX156-v1/GEN-SIM-DIGI-RAW-HLTDEBUG \\
+    '{"MixingModule": {"input": "/RelValMinBias/CMSSW_3_5_8-MC_3XY_V26-v1/GEN-SIM-DIGI-RAW-HLTDEBUG"}}' \\
     --url https://cmsdbsprod.cern.ch:8443/cms_dbs_prod_global_writer/servlet/DBSServlet
 
 
 """
 __version__ = "$Revision: 1.1 $"
-__revision__ = "$Id: setDatasetStatus.py,v 1.1 2009/07/14 13:56:03 direyes Exp $"
+__revision__ = "$Id: setDatasetDescription.py,v 1.1 2010/05/04 14:22:47 direyes Exp $"
 
 import sys
 from DBSAPI.dbsApi import DbsApi
