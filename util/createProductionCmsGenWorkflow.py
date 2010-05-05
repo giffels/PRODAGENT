@@ -5,13 +5,8 @@ _createProductionCmsGenWorkflow_
 Create a cmsGen and cmsRun workflow
 
 """
-__version__ = "$Revision: 1.18 $"
-__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.18 2010/02/17 19:07:06 direyes Exp $"
-
-# Silence deprecation warnings since we moved to python2.6
-# Assume python2.6 will outlast prodagent
-import warnings
-warnings.filterwarnings("ignore", category = DeprecationWarning)
+__version__ = "$Revision: 1.19 $"
+__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.19 2010/03/01 14:26:54 swakef Exp $"
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
