@@ -9,8 +9,8 @@ for the job.
 
 
 """
-__version__ = "$Revision: 1.18 $"
-__revision__ = "$Id: RuntimeLogArch.py,v 1.18 2009/02/21 12:44:41 direyes Exp $"
+__version__ = "$Revision: 1.19 $"
+__revision__ = "$Id: RuntimeLogArch.py,v 1.19 2010/04/19 13:16:35 swakef Exp $"
 
 import sys
 import os
@@ -193,15 +193,9 @@ class LogArchMgr:
                 runPadding = str(runNum // 100).zfill(4)
                 break
         if runNum is None:
-            # no jobNumber - use day and hope for no collisions
-            runPadding = time.gmtime()[7] # what day is it?
+            runPadding = time.gmtime()[3] # hour
 
-        reqtime = self.state.jobSpec.parameters.get('RequestTimestamp', None)
-        if reqtime is not None:
-            reqtime = time.gmtime(int(reqtime))
-        else:
-            reqtime = time.gmtime()
-        year, month, day = reqtime[:3]
+        year, month, day= time.gmtime()[:3]
 
         fileInfo = {
             'LFN' : "/store/unmerged/logs/prod/%s/%s/%s/%s/%s/%s" % \
