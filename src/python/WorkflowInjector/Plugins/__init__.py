@@ -19,3 +19,4 @@ import OfflineDQMPerRun
 import ADSFeeder
 import TwoFileFeeder
 import ResultsFeeder
+import RecoveryFeeder
