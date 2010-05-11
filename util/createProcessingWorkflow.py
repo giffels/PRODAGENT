@@ -5,13 +5,12 @@ _createProcessingWorkflow_
 Create a workflow that processes an input dataset with a cfg file
 
 """
-__version__ = "$Revision: 1.27 $"
-__revision__ = "$Id: createProcessingWorkflow.py,v 1.27 2010/03/01 14:26:52 swakef Exp $"
+__version__ = "$Revision: 1.28 $"
+__revision__ = "$Id: createProcessingWorkflow.py,v 1.28 2010/05/05 18:16:49 swakef Exp $"
 
 import os
 import sys
 import getopt
-import popen2
 import time
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools

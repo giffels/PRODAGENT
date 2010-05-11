@@ -40,7 +40,11 @@ import os
 import logging
 
 import ProdCommon
+# Silence deprecation warnings until all runtime python > python2.6
+import warnings
+warnings.filterwarnings("ignore", category = DeprecationWarning)
 import ShREEK
+warnings.filterwarnings("default", category = DeprecationWarning)
 import IMProv
 import ProdCommon.CMSConfigTools 
 import ProdCommon.MCPayloads

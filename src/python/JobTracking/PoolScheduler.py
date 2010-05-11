@@ -6,12 +6,15 @@ Implements the pool thread scheduler
 
 """
 
-__revision__ = "$Id: PoolScheduler.py,v 1.4 2008/07/28 13:39:22 gcodispo Exp $"
-__version__ = "$Revision: 1.4 $"
+__revision__ = "$Id: PoolScheduler.py,v 1.5 2009/03/13 12:00:27 gcodispo Exp $"
+__version__ = "$Revision: 1.5 $"
 
 from threading import Thread
 from time import sleep
-from sets import Set
+try:
+    Set = set
+except NameError:
+    from sets import Set
 import logging
 # from random import shuffle
 

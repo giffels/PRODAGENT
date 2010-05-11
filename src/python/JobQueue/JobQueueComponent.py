@@ -8,7 +8,6 @@ _JobQueueComponent_
 
 import os
 import time
-import popen2
 from MessageService.MessageService import MessageService
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from ProdCommon.Database import Session

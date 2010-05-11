@@ -6,10 +6,10 @@ Standard tools for wrapping a job for submission and execution
 
 """
 
-__revision__ = "$Id:$"
+__revision__ = "$Id: SubmitTools.py,v 1.2 2006/05/02 12:31:14 elmer Exp $"
 
 import os
-from popen2 import Popen4
+from subprocess import Popen, PIPE, STDOUT
 
 def createTarball(targetDir, sourceDir, tarballName):
     """
@@ -28,16 +28,15 @@ def createTarball(targetDir, sourceDir, tarballName):
         os.path.basename(sourceDir)
         )
 
-    pop = Popen4(tarComm)
-    while pop.poll() == -1:
-            exitCode = pop.poll()
+    pop = Popen(tarComm, shell = True, output = PIPE, stderr = STDOUT)
+    output.pop.communicate()[0]
     exitCode = pop.poll()
 
     if exitCode:
         msg = "Error creating Tarfile:\n"
         msg += tarComm
         msg += "Exited with code: %s\n" % exitCode
-        msg += pop.fromchild.read()
+        msg += output
         raise RuntimeError, msg
     return tarballFile
 

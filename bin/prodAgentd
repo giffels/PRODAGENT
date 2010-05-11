@@ -11,7 +11,7 @@ import sys
 import getopt
 import inspect
 import time
-import popen2
+from subprocess import Popen, PIPE, STDOUT
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
 from ProdAgentCore.DaemonDetails import DaemonDetails
@@ -264,12 +264,10 @@ def shutdown():
             #//  for this component
             msg = "Removing %s/*\n" % compDir
             print msg
-            pop = popen2.Popen4("/bin/rm -rf %s/*" % compDir)
-            exitCode = pop.poll()
-            while pop.poll() == -1:
-                exitCode = pop.poll()
-            output = pop.fromchild.read()
-            if exitCode:
+            pop = Popen(["/bin/rm", "-rf",  "%s/*" % compDir],
+                        stdout = PIPE, stderr = STDOUT)
+            output = pop.communicate()[0]
+            if pop.wait():
                 msg = "Failed to clean up dir: %s\n" % compDir
                 msg += output
                 print msg

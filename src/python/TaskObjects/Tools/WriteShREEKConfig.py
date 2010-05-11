@@ -18,8 +18,11 @@ and writes it out into the Target directory
 
 """
 import os
+# Silence deprecation warnings until all runtime python > python2.6
+import warnings
+warnings.filterwarnings("ignore", category = DeprecationWarning)
 from ShREEK.ShREEKConfig import ShREEKConfig 
-
+warnings.filterwarnings("default", category = DeprecationWarning)
 
 def generateShREEKConfig(taskObject): 
     """

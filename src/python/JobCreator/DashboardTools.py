@@ -7,8 +7,11 @@ task objects for that job
 
 
 """
-
+# Silence deprecation warnings since we moved to python2.6
+import warnings
+warnings.filterwarnings("ignore", category = DeprecationWarning)
 import popen2
+warnings.filterwarnings("default", category = DeprecationWarning)
 import os
 import socket
 import time

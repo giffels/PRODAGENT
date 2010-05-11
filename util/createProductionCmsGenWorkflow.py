@@ -5,8 +5,8 @@ _createProductionCmsGenWorkflow_
 Create a cmsGen and cmsRun workflow
 
 """
-__version__ = "$Revision: 1.19 $"
-__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.19 2010/03/01 14:26:54 swakef Exp $"
+__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.20 2010/05/05 18:16:49 swakef Exp $"
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
@@ -19,7 +19,6 @@ import os
 import getopt
 import sys
 import time
-import popen2
 
 valid = ['cmsRunCfg=', 'cmsGenCfg=', 'version=', 'category=', "label=",
          'channel=', 'group=', 'request-id=', 'selection-efficiency=', 'help',

@@ -10,7 +10,7 @@ component
 """
 
 import logging
-import popen2
+from subprocess import Popen, PIPE
 import fcntl, select, sys, os
 
 from ProdAgentCore.Configuration import ProdAgentConfiguration
@@ -25,7 +25,7 @@ def makeNonBlocking(fd):
     try:
         fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NDELAY)
     except AttributeError:
-	fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
+        fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
 
 
 class BulkSubmitterInterface:
@@ -153,17 +153,17 @@ class BulkSubmitterInterface:
     def executeCommand(self, command):
         """
         _executeCommand_
-
+    
         Util it execute the command provided in a popen object
-
+    
         """
         logging.debug("SubmitterInterface.executeCommand:%s" % command)
-
-        child = popen2.Popen3(command, 1) # capture stdout and stderr from command
-        child.tochild.close()             # don't need to talk to child
-        outfile = child.fromchild
+    
+        child = Popen(command, shell = True, stdout = PIPE,
+                      stderr = PIPE) # capture stdout and stderr from command
+        outfile = child.stdout
         outfd = outfile.fileno()
-        errfile = child.childerr
+        errfile = child.stderr
         errfd = errfile.fileno()
         makeNonBlocking(outfd)            # don't deadlock!
         makeNonBlocking(errfd)
@@ -185,7 +185,7 @@ class BulkSubmitterInterface:
                 sys.stderr.write(errchunk)
             if outeof and erreof: break
             select.select([], [], [], .1) # give a little time for buffers to fill
-
+    
         try:
             exitCode = child.poll()
         except Exception, ex:

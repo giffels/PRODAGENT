@@ -8,13 +8,12 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.26 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.26 2010/03/01 14:26:52 swakef Exp $"
+__version__ = "$Revision: 1.27 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.27 2010/05/05 18:16:49 swakef Exp $"
 
 import os
 import sys
 import getopt
-import popen2
 import time
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools

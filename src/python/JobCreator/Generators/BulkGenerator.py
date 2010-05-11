@@ -8,7 +8,7 @@ parametrized on the job spec
 
 """
 import logging
-from popen2 import Popen4
+from subprocess import Popen, PIPE, STDOUT
 
 from JobCreator.GeneratorInterface import GeneratorInterface
 from JobCreator.Registry import registerGenerator
@@ -49,7 +49,11 @@ import inspect
 import os
 
 import ProdCommon
+# Silence deprecation warnings until all runtime python > python2.6
+import warnings
+warnings.filterwarnings("ignore", category = DeprecationWarning)
 import ShREEK
+warnings.filterwarnings("default", category = DeprecationWarning)
 import IMProv
 import ProdCommon.CMSConfigTools
 import ProdCommon.Core
@@ -345,15 +349,14 @@ def createTarball(dirName, tarballName):
         os.path.basename(dirName)
         )
     logging.info("Creating Tarball for workflow: %s" % tarComm)
-    pop = Popen4(tarComm)
-    while pop.poll() == -1:
-            exitCode = pop.poll()
+    pop = Popen(tarComm, shell = True, stdout = PIPE, stderr = STDOUT)
+    output = pop.communicate()[0]
     exitCode = pop.poll()
     if exitCode:
         msg = "Error creating Tarfile:\n"
         msg += tarComm
         msg += "Exited with code: %s\n" % exitCode
-        msg += pop.fromchild.read()
+        msg += output
         logging.error("createTarball: Tarball creation failed:")
         logging.error(msg)
         raise RuntimeError, msg

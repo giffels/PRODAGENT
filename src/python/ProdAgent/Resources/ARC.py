@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
 import logging
+# Silence deprecation warnings
+import warnings
+warnings.filterwarnings("ignore", category = DeprecationWarning)
 import popen2
+warnings.filterwarnings("default", category = DeprecationWarning)
 import fcntl, select, sys, os
 import re
 
