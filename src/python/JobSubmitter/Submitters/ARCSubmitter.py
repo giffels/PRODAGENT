@@ -287,7 +287,7 @@ class ARCSubmitter(BulkSubmitterInterface):
             for v in self.applicationVersions:
                 w = re.sub("_", "-", v, 1)      # CMSSW_X_Y_Z  ->  CMSSW-X_Y_Z
                 w = re.sub("_", ".", w)         #              ->  CMSSW-X.Y.Z
-                rte = "(runTimeEnvironment=APPS/HEP/%s)" % w
+                rte = "(runTimeEnvironment=APPS/HEP/%s)" % w.upper()
                 code += rte
                 logging.debug("Added '%s' to xRSL code" % rte)
         else:
