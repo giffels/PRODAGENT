@@ -126,7 +126,7 @@ def findGlobalTagForDataset(dbsUrl, primary, processed, tier):
     return globalTag
 
 
-def getLFNForDataset(dbsUrl, primary, processed, tier):
+def getLFNForDataset(dbsUrl, primary, processed, tier, run = ""):
     """
     _findGlobalTagForDataset_
 
@@ -137,7 +137,7 @@ def getLFNForDataset(dbsUrl, primary, processed, tier):
     datasetName = "/%s/%s/%s" % (primary, processed, tier)
 
     try:
-        fileList = reader.dbs.listFiles(path = datasetName)
+        fileList = reader.dbs.listFiles(path=datasetName, runNumber=run)
     except Exception, ex:
         msg = "Failed to get details from DBS for dataset:\n"
         msg += "%s\n" % (datasetName)
@@ -304,7 +304,8 @@ class RelValPlugin(BasePlugin):
             getLFNForDataset(self.dbsUrl,
                              collectPayload['PrimaryDataset'],
                              collectPayload['ProcessedDataset'],
-                             collectPayload['DataTier']))
+                             collectPayload['DataTier'],
+                             run=collectPayload['RunNumber']))
 
         specCacheDir =  os.path.join(
             datasetCache, str(int(collectPayload['RunNumber']) // 1000).zfill(4))
