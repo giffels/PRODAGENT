@@ -324,9 +324,10 @@ def main(argv) :
                             print "Line %s has an extra ','." % (line)
                             sys.exit(7)
                     #  //
-                    # // Verifiying optional arguments: LABEL, FILE, EVENTS,
+                    # // Verifiying optional arguments: RUN, LABEL, FILE, EVENTS,
                     #// PRIMARY
                     #\\
+                    data_run = input_data.get('RUN', '')
                     data_label = input_data.get('LABEL', '')
                     data_files = input_data.get('FILES', '')
                     data_events = input_data.get('EVENTS', '')
@@ -398,8 +399,13 @@ def main(argv) :
                     # // Looking up the blocks for a given Dataset and a given run
                     #//
                     reader = DBSReader(readDBS)
-                    input_files = reader.dbs.listFiles(path=target_dataset, \
-                        runNumber=input_data['RUN'])
+                    if data_run:
+                        input_files = reader.dbs.listFiles(
+                                        path=target_dataset,
+                                        runNumber=data_run)
+                    else:
+                        input_files = reader.dbs.listFiles(
+                                                path=target_dataset)
                     blocks = {}
                     #  //
                     # // Parsing input blocks
@@ -466,7 +472,7 @@ def main(argv) :
                     #    acq_era = dataset_acq_era
 
                     # Filling up DQM information
-                    dqmData['Run'] = input_data['RUN']
+                    dqmData['Run'] = data_run
 
                 #  //
                 # // Composing a dictionary per sample
