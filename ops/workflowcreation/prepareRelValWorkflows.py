@@ -7,6 +7,7 @@ import subprocess
 import shlex
 import re
 import xml.sax, xml.sax.handler
+from xml.sax.saxutils import escape
 import time
 
 from Configuration.PyReleaseValidation.autoCond import autoCond
@@ -127,9 +128,10 @@ def main(argv) :
             else:
                 scriptsDir = arg
             scriptsDirTemp = scriptsDir
-            if scriptsDir.startswith('$') :
-                scriptsDirTemp = os.environ.get(scriptsDir[1:],None)
-                scriptsDir = os.path.expandvars(scriptsDirTemp)
+            # There's no need to expand the shell variables anymore
+            #if scriptsDir.startswith('$') :
+            #    scriptsDirTemp = os.environ.get(scriptsDir[1:],None)
+            #    scriptsDir = os.path.expandvars(scriptsDirTemp)
             if scriptsDirTemp != None:
                 if not os.path.exists(scriptsDirTemp):
                     print "--scripts-dir argument does not exist, please verify."
@@ -300,7 +302,7 @@ def main(argv) :
                     command = " ".join(array)
 
                     # Filling up DQM information
-                    dqmData['Run'] = 1
+                    dqmData['Runs'] = '1'
                     dqmData['Scenario'] = getDQMScenario(command)
 
                 #  //
@@ -331,7 +333,7 @@ def main(argv) :
                     data_label = input_data.get('LABEL', '')
                     data_files = input_data.get('FILES', '')
                     data_events = input_data.get('EVENTS', '')
-                    data_pname = input_data.get('PRIMARY', '')
+                    data_pname = input_data.get('PRIMARY', None)
                     if data_events:
                         data_events = int(data_events)
                     if data_files:
@@ -396,38 +398,80 @@ def main(argv) :
                     target_dataset = target_datasets[0]
                     input_data['REALDATA'] = target_dataset
                     #  //
-                    # // Looking up the blocks for a given Dataset and a given run
-                    #//
-                    reader = DBSReader(readDBS)
-                    if data_run:
-                        input_files = reader.dbs.listFiles(
-                                        path=target_dataset,
-                                        runNumber=data_run)
-                    else:
-                        input_files = reader.dbs.listFiles(
-                                                path=target_dataset)
-                    blocks = {}
+                    # // Looking up the blocks for a given Dataset and the
+                    #// provided list of runs
+                    #\\
+                    runs_list = \
+                        [x.strip() for x in data_run.split('|') if x.strip()]
+                    query = \
+                        "find run where dataset = %s" % target_dataset
+                    is_the_first = True
+                    for run in runs_list:
+                        if is_the_first:
+                            query += " and ("
+                            is_the_first = False
+                        else:
+                            query += " or "
+                        # Run range: XXXXXX-XXXXXX
+                        if run.count("-"):
+                            run_limits = \
+                                [x.strip() for x in run.split('-') if x.strip()]
+                            query += "(run >= %s and run <= %s)" % (
+                                                run_limits[0], run_limits[1])
+                        else:
+                            query += "run = %s" % run
+                    if not is_the_first:
+                        query += ")"
+                    result_xml = reader.dbs.executeQuery(query)
+                    result_list = DBSXMLParser(result_xml)
+                    if not result_list:
+                        raise Exception, "query %s produced no results" % query
+                    target_runs = [x['run'] for x in result_list]
+                    input_files = reader.dbs.listFiles(
+                                                path=target_dataset,
+                                                retriveList=['retrive_run'])
                     #  //
                     # // Parsing input blocks
                     #//
+                    blocks = {}
                     for input_file in input_files:
+                        # Skip files with no events
+                        # A block will be skipped if all its files have 0
+                        # events
+                        if input_file['NumberOfEvents'] == 0:
+                            continue
+                        runs = \
+                            [str(x['RunNumber']) for x in input_file['RunsList']]
+                        for run in runs:
+                            if run in target_runs:
+                                break
+                        else:
+                            continue # skip file if it's not in the target_runs
                         cur_files = \
                             blocks.setdefault(input_file['Block']['Name'],
                                               {}).setdefault('Files', 0)
                         cur_events = \
                             blocks[input_file['Block']['Name']].setdefault(
                                 'Events', 0)
+                        cur_runs = \
+                            blocks[input_file['Block']['Name']].setdefault(
+                                'Runs', set())
                         blocks[input_file['Block']['Name']]['Files'] += 1
                         blocks[input_file['Block']['Name']]['Events'] += \
-                            input_file['NumberOfEvents']
+                                                    input_file['NumberOfEvents']
+                        blocks[input_file['Block']['Name']]['Runs'] = \
+                            cur_runs.union(runs)
+
                     #  //
                     # // Truncating blocks list
                     #//
                     total_events = 0
                     total_files = 0
                     blocks_to_process = []
+                    runs_to_process = []
                     for block in blocks:
                         blocks_to_process.append(block)
+                        runs_to_process.extend(list(blocks[block]['Runs']))
                         total_events += blocks[block]['Events']
                         total_files += blocks[block]['Files']
                         if data_events and (data_events < total_events):
@@ -438,11 +482,11 @@ def main(argv) :
                     input_blocks = ",".join(blocks_to_process)
 
                     #  //
-                    # // If PRIMARY is present or true, then it will use the 
+                    # // If PRIMARY is true, then it will use the 
                     #// sample_name value as primary dataset name, else it 
                     #\\ will use the input primary dataset name.
                     # \\
-                    if data_pname is None or \
+                    if data_pname is not None and \
                             data_pname.lower() in ('y', 't', 'true'):
                         primary = "".join([primary_prefix, sample_name])
                     else:
@@ -472,7 +516,7 @@ def main(argv) :
                     #    acq_era = dataset_acq_era
 
                     # Filling up DQM information
-                    dqmData['Run'] = data_run
+                    dqmData['Runs'] = ",".join(runs_to_process)
 
                 #  //
                 # // Composing a dictionary per sample
@@ -666,7 +710,7 @@ def main(argv) :
         else :
             msg = 'Real Data:\n'
             msg += 'Input dataset: %s\n' % (sample['inputData']['REALDATA'])
-            msg += 'Run: %s\n' % (sample['inputData']['RUN'])
+            msg += 'Run: %s\n' % (sample['inputData'].get('RUN', 'All'))
             msg += 'Input blocks: %s' % (sample['inputBlocks'])
             print msg
 
@@ -814,7 +858,7 @@ def main(argv) :
                 tmp.append(dataset.strip())
             # DQM Data
             dqmInfo = {}
-            dqmInfo['Run'] = sample['DQMData']['Run']
+            dqmInfo['Runs'] = sample['DQMData']['Runs']
             if sample['isRealData']:
                 dqmInfo['Scenario'] = dqmScenario
             else:
@@ -938,8 +982,9 @@ def main(argv) :
     for sample in datasets:
         for dataset in sample['merged']:
             if reHarvest.match(dataset):
-                DQMinputScript.write('python $PRODAGENT_ROOT/util/harvestDQM.py --run=%s --path=%s --scenario=%s\n' % (
-                    sample['DQMData']['Run'], dataset, sample['DQMData']['Scenario']))
+                for run in sample['DQMData']['Runs'].split(","):
+                    DQMinputScript.write('python $PRODAGENT_ROOT/util/harvestDQM.py --run=%s --path=%s --scenario=%s\n' % (
+                    run, dataset, sample['DQMData']['Scenario']))
     os.chmod('DQMinput.sh',0755)
     print 'Wrote DQMHarvesting script for merged datasets to:', os.path.join(os.getcwd(),'DQMinput.sh')
 
@@ -1025,16 +1070,53 @@ def executeCommand(cmd):
     """
     Uses subprocess module for executing a command in a subshell
     """
-    cmd = cmd.replace('\\', '')
-    args = shlex.split(cmd)
-    proc = subprocess.Popen(args,
-                            stdout = subprocess.PIPE,
-                            stderr = subprocess.PIPE)
-    stdout, stderr = proc.communicate()
-    exitCode = proc.returncode
+    popen = subprocess.Popen(cmd,
+                            shell=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+    exitCode = popen.wait()
+    (stdout, stderr) = popen.communicate()
     return exitCode, stdout, stderr
     
 
- 
-if __name__ == '__main__' :
+def DBSXMLParser(xml_string):
+    """
+    Rertuns a list of dictionaries. Where each row is the result from a DBS
+    query. The dictionary keys are the column names.
+    """
+    # xml parser
+    results = []
+    class Handler(xml.sax.handler.ContentHandler):
+        def __init__(self):
+            xml.sax.handler.ContentHandler.__init__(self)
+            self.buffer = ''
+            self.result = {}
+            self.in_row = False
+            self.current_item = ''
+        def startElement(self, name, attrs):
+            if name == 'row':
+                self.in_row = True
+                self.result = {}
+            elif self.in_row and not self.current_item:
+                self.current_item = name
+                self.buffer = ''
+        def characters(self, s):
+            if str(escape(s)).strip() in ('', '\n'):
+                return
+            if self.in_row and self.current_item:
+                self.buffer += str(escape(s))
+        def endElement(self, name):
+            if name == 'row':
+                self.in_row = False
+                results.append(self.result)
+            elif self.in_row and name == self.current_item:
+                self.result[self.current_item] = self.buffer
+                self.current_item = ''
+
+    xml.sax.parseString(xml_string, Handler())
+    return results
+
+
+################
+if __name__ == '__main__':
     main(sys.argv[1:])
