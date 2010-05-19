@@ -94,12 +94,12 @@ def installMySQLDB(schemaLocation,dbName,socketFileLocation,portNr,host,installU
    try:
       y=''
       if replace:
-          stdin,stdout=os.popen4('mysql '+updateData+' --exec \'DROP DATABASE IF EXISTS '+dbName+';\'')
+          stdout=os.popen('mysql '+updateData+' --exec \'DROP DATABASE IF EXISTS '+dbName+';\'')
           y+=str(stdout.read())
-          stdin,stdout=os.popen4('mysql '+updateData+' --exec \'CREATE DATABASE '+dbName+';\'')
+          stdout=os.popen('mysql '+updateData+' --exec \'CREATE DATABASE '+dbName+';\'')
           y+=str(stdout.read())
      
-      stdin,stdout=os.popen4('mysql '+updateData+' '+dbName+' < '+schemaLocation)
+      stdout=os.popen('mysql '+updateData+' '+dbName+' < '+schemaLocation)
       y+=str(stdout.read())
       if y!='':
           raise Exception('ERROR',str(y))
@@ -144,7 +144,7 @@ def grantUsers(dbName,socketFileLocation,portNr,host,users,installUser):
    
        try:
            command='mysql '+updateData+' --exec "'+grantCommand+'"'
-           stdin,stdout=os.popen4(command)
+           stdout=os.popen(command)
            y=''
            y=stdout.read()
            if y!='':
@@ -162,7 +162,7 @@ def grantUsers(dbName,socketFileLocation,portNr,host,users,installUser):
 
        try:
            command='mysql '+updateData+' --exec "'+grantCommand+'"'
-           stdin,stdout=os.popen4(command)
+           stdout=os.popen(command)
            y=''
            y=stdout.read()
            if y!='':
@@ -211,11 +211,11 @@ def installOracleDB(dbType, user, passwd, tnsName, schemaLocation):
                         /
                         """
 
-         stdin,stdout = os.popen4('sqlplus %s/%s@%s << ! %s' %(user, passwd, tnsName,removeSchema))
+         stdout = os.popen('sqlplus %s/%s@%s << ! %s' %(user, passwd, tnsName,removeSchema))
          print str(stdout.read())
          print 'Previously Installed  Schema deleted successfully'
          print '\nInstalling New Schema ...'
-         stdin, stdout=os.popen4('sqlplus %s/%s@%s < %s' %(user, passwd, tnsName, schemaLocation))
+         stdout=os.popen('sqlplus %s/%s@%s < %s' %(user, passwd, tnsName, schemaLocation))
          print str(stdout.read())
          print 'Schema Installed successfully'
       else:
