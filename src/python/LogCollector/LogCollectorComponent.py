@@ -200,60 +200,64 @@ class LogCollectorComponent:
         """
         look for logs to archive
         """
-        logging.debug("look for logs to archive")
-        
         try:
-            first_id, toArchive = getLogsToArchive(self.args['logLifetime'])
-        except StandardError, ex:
-            logging.error("Error talking to database: %s" % str(ex))
-            return
-        
-        if not toArchive:
-            logging.debug("no un-archived logs found")
-            return
-        
-        now = time.gmtime()
-        lfnBase = "%s/%s/%s/%s" % (self.args['logLfnBase'],
-                        now[0], now[1], prodAgentName())
-        
-        for wf, details in toArchive.items():
+            logging.debug("look for logs to archive")
             
-            logCollectorWorkflow = self.createArchiveWF(wf)
+            try:
+                first_id, toArchive = getLogsToArchive(self.args['logLifetime'])
+            except StandardError, ex:
+                logging.error("Error talking to database: %s" % str(ex))
+                return
             
-            for se, logs in details.items():
-                logging.info("Found logs to archive for %s at %s" % (wf, se))
+            if not toArchive:
+                logging.debug("no un-archived logs found")
+                return
+            
+            now = time.gmtime()
+            lfnBase = "%s/%s/%s/%s" % (self.args['logLfnBase'],
+                            now[0], now[1], prodAgentName())
+            
+            for wf, details in toArchive.items():
                 
-                # form job specs for this wf/site for max number of input log files
-                njobs = len(logs)/self.args['maxLogs']
-                if (len(logs) % self.args['maxLogs']) > 0 :               
-                    njobs = njobs + 1
-               
-                ref = 0
-                for i in range (0, njobs):
-                    runPadding = str(first_id + i // 1000).zfill(4)
+                logCollectorWorkflow = self.createArchiveWF(wf)
+                
+                for se, logs in details.items():
+                    logging.info("Found logs to archive for %s at %s" % (wf, se))
+                    
+                    # form job specs for this wf/site for max number of input log files
+                    njobs = len(logs)/self.args['maxLogs']
+                    if (len(logs) % self.args['maxLogs']) > 0 :               
+                        njobs = njobs + 1
+                   
+                    ref = 0
+                    for i in range (0, njobs):
+                        runPadding = str(first_id + i // 1000).zfill(4)
 
-                    # if we are running at the site we use local stageout
-                    if se == self.stageOutOverride['se-name']:
-                        stageOut = None
-                    else:
-                        stageOut =  self.stageOutOverride
-                    
-                    #create jobs
-                    spec = LogCollectorTools.createLogCollectorJobSpec(\
-                                    logCollectorWorkflow, 
-                                    wf, 
-                                    se,
-                                    "%s/%s/%s/%s" % (lfnBase, wf, runPadding, i),
-                                    stageOut,
-                                    *logs[ref:ref+self.args['maxLogs']])
-                    jobspec = os.path.join(self.args['LogArchiveSpecs'], \
-                                           spec.parameters["JobName"] + ".xml") 
-                    spec.save(jobspec)
-                    self.publishCreateJob(jobspec)
-                    logging.debug('JobSpec %s published' % spec.parameters["JobName"])
-                    
-                    ref = ref + self.args['maxLogs']
-                    
+                        # if we are running at the site we use local stageout
+                        if se == self.stageOutOverride['se-name']:
+                            stageOut = None
+                        else:
+                            stageOut =  self.stageOutOverride
+                        
+                        #create jobs
+                        spec = LogCollectorTools.createLogCollectorJobSpec(\
+                                        logCollectorWorkflow, 
+                                        wf, 
+                                        se,
+                                        "%s/%s/%s/%s" % (lfnBase, wf, runPadding, i),
+                                        stageOut,
+                                        *logs[ref:ref+self.args['maxLogs']])
+                        jobspec = os.path.join(self.args['LogArchiveSpecs'], \
+                                               spec.parameters["JobName"] + ".xml") 
+                        spec.save(jobspec)
+                        self.publishCreateJob(jobspec)
+                        logging.debug('JobSpec %s published' % spec.parameters["JobName"])
+                        
+                        ref = ref + self.args['maxLogs']
+        finally:
+            # generate new polling cycle
+            self.ms.publishUnique("LogCollector:Poll", "", self.args['pollInterval'])
+            self.ms.commit()                
                 
                 
     
