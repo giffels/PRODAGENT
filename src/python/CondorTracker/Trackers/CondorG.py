@@ -8,7 +8,6 @@ Tracker for CondorG submissions
 """
 
 import logging
-import popen2
 import os
 import time
 
