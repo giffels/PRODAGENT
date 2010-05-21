@@ -9,7 +9,6 @@ Tracker for Tier-0 LSF  submissions
 
 import time
 import logging
-import popen2
 import fcntl, select, sys, os
 
 
