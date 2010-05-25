@@ -38,6 +38,8 @@ from ProdCommon.FwkJobRep.TaskState import TaskState, getTaskState
 from ProdCommon.FwkJobRep.MergeReports import updateReport
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
+from ProdCommon.MCPayloads.JobSpec import JobSpec
+
 
 
 completedFiles = []
@@ -146,8 +148,17 @@ def stageOut():
     workflow = WorkflowSpec()
     workflow.load(os.environ['PRODAGENT_WORKFLOW_SPEC'])
 
+    jobSpecFile = os.environ.get('PRODAGENT_JOBSPEC')
+    jobSpecId = None
+    if jobSpecFile is not None:
+        jobSpec = JobSpec()
+        jobSpec.load(jobSpecFile)
+        jobSpecId = jobSpec.parameters.get('JobName')
+
+
     print workflow
     print state.taskName()
+    print jobSpecId
 
     stageOutFor, override, controls = StageOutUtils.getStageOutConfig(
         workflow, state.taskName())
@@ -177,6 +188,7 @@ def stageOut():
             # input state dir
             inputReport = FwkJobReport()
             inputReport.name = inputTask
+            inputReport.jobSpecId = jobSpecId
             exitCode = 60311
             errRep = inputReport.addError(
                 60311, "TaskStateError")
@@ -202,6 +214,7 @@ def stageOut():
             print msg
             inputReport = FwkJobReport()
             inputReport.name = inputTask
+            inputReport.jobSpecId = jobSpecId
             exitCode = 60311
             errRep = inputReport.addError(
                 60311, "InputReportError")
