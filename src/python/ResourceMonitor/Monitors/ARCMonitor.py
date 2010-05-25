@@ -15,8 +15,6 @@ from ProdAgent.Resources import ARC
 
 from ProdAgent.WorkflowEntities import Job
 
-from popen2 import Popen4
-
 
 # Mapping between job types and threshold types
 jobTypeMap = {"Processing":"processingThreshold",

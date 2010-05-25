@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 
 import logging
-# Silence deprecation warnings
-import warnings
-warnings.filterwarnings("ignore", category = DeprecationWarning)
-import popen2
-warnings.filterwarnings("default", category = DeprecationWarning)
-import fcntl, select, sys, os
+from subprocess import Popen, PIPE, STDOUT
+import os
 import re
 
 from ProdAgent.WorkflowEntities import Job
@@ -31,57 +27,27 @@ def findKey(dict, value, ifNotFound = None):
     return ifNotFound
         
 
-
-def makeNonBlocking(fd):
-    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-    try:
-        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NDELAY)
-    except AttributeError:
-        fcntl.fcntl(fd, fcntl.F_SETFL, fl | fcntl.FNDELAY)
-
-
 def executeCommand(command):
     """
-    Execute shell command 'command'.
-    Raise a CommandExecutionError if the command has non-zero exit status.
+    _executeCommand_
+
+    Util it execute the command provided in a popen object
 
     """
+    logging.debug("ProdAgent.Resources.ARC.executeCommand: %s" % command)
+    pop = Popen(command, shell = True, stdout = PIPE, stderr = STDOUT)
+    output = pop.communicate()[0]
+    exitCode = pop.poll()
 
-    logging.debug("executeCommand: %s" % command)
-
-    child = popen2.Popen3(command, 1) # capture stdout and stderr from command
-    child.tochild.close()             # don't need to talk to child
-    outfile = child.fromchild
-    outfd = outfile.fileno()
-    errfile = child.childerr
-    errfd = errfile.fileno()
-    makeNonBlocking(outfd)            # don't deadlock!
-    makeNonBlocking(errfd)
-    outdata = errdata = ''
-    outeof = erreof = 0
-    stdoutBuffer = ""
-    while 1:
-        ready = select.select([outfd,errfd],[],[]) # wait for input
-        if outfd in ready[0]:
-            outchunk = outfile.read()
-            if outchunk == '': outeof = 1
-            stdoutBuffer += outchunk
-            sys.stdout.write(outchunk)
-        if errfd in ready[0]:
-            errchunk = errfile.read()
-            if errchunk == '': erreof = 1
-            sys.stderr.write(errchunk)
-        if outeof and erreof: break
-        select.select([],[],[],.1) # give a little time for buffers to fill
-
-    exitCode = child.poll()
-
-    if exitCode != 0:
-        msg = "Error executing command: %s" % command
-        msg += "Exit code: %s\n" % exitCode
-        logging.debug(msg)
-        raise CommandExecutionError(exitCode)
-    return stdoutBuffer
+    if exitCode:
+        msg = "Error executing command:\n"
+        msg += command
+        msg += "Exited with code: %s\n" % exitCode
+        msg += output
+        logging.error("Failed to Execute Command")
+        logging.error(msg)
+        raise CommandExecutionError, msg
+    return output
 
 
 # 
