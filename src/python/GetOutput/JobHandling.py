@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.18 2009/10/14 08:01:12 gcodispo Exp $"
-__version__ = "$Revision: 1.18 $"
+__revision__ = "$Id: JobHandling.py,v 1.19 2010/03/01 16:15:00 swakef Exp $"
+__version__ = "$Revision: 1.19 $"
 
 import os
 import logging
@@ -112,7 +112,7 @@ class JobHandling:
         try:
             # is the FwkJobReport there?
             if not fwjrExists:
-                raise InvalidReport, "FrameworkJobReport missing"
+                raise InvalidReport, "FrameworkJobReport is missing."
     
             # check success
             success = self.parseFinalReport(reportfilename, job)
@@ -226,7 +226,7 @@ class JobHandling:
 
         # skip empty files
         if os.path.getsize(reportfilename) == 0 :
-            return False
+            raise InvalidReport, "FrameworkJobReport is empty."
 
         # check for success (needed for chain jobs
         success = checkSuccess(reportfilename)
@@ -237,10 +237,10 @@ class JobHandling:
             reports = readJobReport(reportfilename)
         except Exception, err:
             logging.error('Invalid Framework Job Report : %s' %str(err) )
-            return False
+            raise InvalidReport, "Invalid FrameworkJobReport."
 
         if len(reports) < 1 :
-            raise InvalidReport, "Invalid FrameworkJobReport"
+            raise InvalidReport, "Invalid FrameworkJobReport."
         # if more than one fwjr (chain jobs) is enough!
         elif len(reports) != 1 :
             return success
