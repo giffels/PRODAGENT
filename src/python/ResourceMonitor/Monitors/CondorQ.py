@@ -9,6 +9,7 @@ _CondorQ_
 import logging
 import os
 import string
+from subprocess import Popen, PIPE
 
 from xml.sax.handler import ContentHandler
 from xml.sax import make_parser
@@ -147,7 +148,8 @@ def condorQ(constraints):
     """
     command = "condor_q -xml -constraint %s  " % constraints
     logging.debug("condorQ command: '%s'"%command)
-    si, sout = os.popen2(command)
+    p = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, close_fds=True)
+    (si, sout) = (p.stdin, p.stdout)
     content = sout.read()
 
     #  // If we get invalid xml from condor_q the line below will throw an
