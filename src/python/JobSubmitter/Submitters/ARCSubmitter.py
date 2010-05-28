@@ -406,7 +406,7 @@ class ARCSubmitter(BulkSubmitterInterface):
             t = time.gmtime(self.subTime[jobId])
             dashData['SubTimeStamp'] = time.strftime('%Y-%m-%d %H:%M:%S', t)
             dashData['GridJobID'] = self.gridJobId[jobId]
-            dashData['JSToolUI'] = os.environ['HOSTNAME']
+            dashData['JSToolUI'] = os.environ.get('HOSTNAME', "unknown")
             dashData['Scheduler'] = self.__class__.__name__
 
             DashboardAddress = dashboardCfg.get("DestinationHost")
