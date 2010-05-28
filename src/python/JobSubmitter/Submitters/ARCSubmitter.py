@@ -300,14 +300,10 @@ class ARCSubmitter(BulkSubmitterInterface):
         code += "(jobName=%s)" % jobId
         code += "(stdout=output)(stderr=errors)(gmlog=gridlog)"
 
-        envVars = ""
         site, ce = self.getSite()
         if ce:
             code += "(cluster=%s)" % ce
-            envVars += "(NORDUGRID_CE %s)" % ce
             self.jobIdCEMap[jobId] = ce
-
-        code += "(environment=%s)" % envVars
 
         # Set wallTime to arbitrary large value, assumed to be enough for all jobs
         code += '(wallTime="2 days")'
