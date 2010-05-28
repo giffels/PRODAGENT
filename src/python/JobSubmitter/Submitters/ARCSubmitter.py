@@ -165,6 +165,7 @@ class ARCSubmitter(BulkSubmitterInterface):
         # there will be just one entry. If it is a bulk submit, there will
         # be multiple entries, plus self.isBulk will be True (?)
         failureList = []
+        subRe = re.compile("Job submitted with jobid: +(\w+://([a-zA-Z0-9.-]+)(:\d+)?(/.*)?/\d+)")
         for jobId, cacheDir in self.toSubmit.items():
             logging.debug("Submit: %s from %s" % (jobId, cacheDir) )
             logging.debug("SpecFile = %s" % self.specFiles[jobId])
@@ -173,13 +174,6 @@ class ARCSubmitter(BulkSubmitterInterface):
             t = time.time()
             self.subTime[jobId] = int(t)
 
-            # For Dashboard, we'll need unique a job id ('GridJobId' in
-            # Dashboard) of the form https://<something>:<something else>
-            # We'll use 
-            # https://nordugrid:<last part of jobId>/<timestamp>
-            s = jobId.split('-')[-1]
-            self.gridJobId[jobId] = "https://nordugrid:%s/%f" % (s, t)
-
             submitCommand = "ngsub -e '"
             submitCommand += self.xrslCode(cacheDir, "submit.sh", jobId)
             submitCommand += "'"
@@ -187,6 +181,16 @@ class ARCSubmitter(BulkSubmitterInterface):
                 logging.debug("Submission command: %s" % submitCommand)
                 output = ARC.executeCommand(submitCommand)
                 logging.debug("Submission command output: %s " % output)
+
+                # For Dashboard, we'll need unique a job id ('GridJobId' in
+                # Dashboard) of the form Can URL.
+                # We'll use the ARC job ID
+                m = re.match(subRe, output)
+                if not m:
+                    raise ARC.CommandExecutionError("Unexpected output og ngsub command: %s" % output)
+                self.gridJobId[jobId] = m.group(1)
+                logging.info("self.gridJobId[jobId] = %s for jobId = %s" % (self.gridJobId[jobId], jobId))
+
             except ARC.CommandExecutionError, s:
                 msg = "Submitting with command\n"
                 msg += "'%s'\n" % submitCommand
@@ -296,8 +300,7 @@ class ARCSubmitter(BulkSubmitterInterface):
         code += "(jobName=%s)" % jobId
         code += "(stdout=output)(stderr=errors)(gmlog=gridlog)"
 
-        envVars = "(ARCSUBMITTER_JOBID %s)" % self.gridJobId[jobId]
-
+        envVars = ""
         site, ce = self.getSite()
         if ce:
             code += "(cluster=%s)" % ce

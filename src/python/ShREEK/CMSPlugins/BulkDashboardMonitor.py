@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: BulkDashboardMonitor.py,v 1.10 2009/10/22 13:32:45 direyes Exp $"
+__version__ = "$Revision: 1.11 $"
+__revision__ = "$Id: BulkDashboardMonitor.py,v 1.11 2009/10/22 13:33:53 direyes Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -33,7 +33,7 @@ _GridJobIDPriority = [
     'GLITE_WMS_JOBID',
     'CONDOR_JOBID',
     'GLOBUS_GRAM_JOB_CONTACT',
-    'ARCSUBMITTER_JOBID',
+    'GRID_GLOBAL_JOBID',  # Used by NorduGrid/ARC
     ]
 
 
