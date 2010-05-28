@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.12 $"
-__revision__ = "$Id: BulkDashboardMonitor.py,v 1.12 2010/05/28 09:34:21 edelmann Exp $"
+__version__ = "$Revision: 1.13 $"
+__revision__ = "$Id: BulkDashboardMonitor.py,v 1.13 2010/05/28 09:43:54 edelmann Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -236,6 +236,7 @@ class BulkDashboardMonitor(ShREEKMonitor):
         self.dashboardInfo['GridJobID'] = gridJobId
         self.dashboardInfo['JobStarted'] = time.time()
         self.dashboardInfo['SyncCE'] = getSyncCE()
+        self.dashboardInfo['WNHostName'] = os.environ.get("HOSTNAME", "unknown")
         self.dashboardInfo.publish(1)
         return
 
