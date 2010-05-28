@@ -6,8 +6,8 @@ MonALISA ApMon based monitoring plugin for ShREEK to broadcast data to the
 CMS Dashboard
 
 """
-__version__ = "$Revision: 1.11 $"
-__revision__ = "$Id: BulkDashboardMonitor.py,v 1.11 2009/10/22 13:33:53 direyes Exp $"
+__version__ = "$Revision: 1.12 $"
+__revision__ = "$Id: BulkDashboardMonitor.py,v 1.12 2010/05/28 09:34:21 edelmann Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -78,7 +78,7 @@ def getSyncCE():
         #  //
         # // ARC, Sync CE from env. var. submitted with the job by JobSubmitter
         #//
-        return os.environ['NORDUGRID_CE']
+        return os.environ['NORDUGRID_CE'] + ":2811/nordugrid-GE-" + os.environ.get("QUEUE", "queue")
 
     return result
 
