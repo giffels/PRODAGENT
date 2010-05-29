@@ -468,10 +468,10 @@ def main(argv) :
                     total_events = 0
                     total_files = 0
                     blocks_to_process = []
-                    runs_to_process = []
+                    runs_to_process = set()
                     for block in blocks:
                         blocks_to_process.append(block)
-                        runs_to_process.extend(list(blocks[block]['Runs']))
+                        runs_to_process = runs_to_process.union(blocks[block]['Runs'])
                         total_events += blocks[block]['Events']
                         total_files += blocks[block]['Files']
                         if data_events and (data_events < total_events):
@@ -516,7 +516,7 @@ def main(argv) :
                     #    acq_era = dataset_acq_era
 
                     # Filling up DQM information
-                    dqmData['Runs'] = ",".join(runs_to_process)
+                    dqmData['Runs'] = ",".join(list(runs_to_process))
 
                 #  //
                 # // Composing a dictionary per sample
