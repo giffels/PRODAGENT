@@ -58,6 +58,8 @@ class LCGAdvanced(MonitorInterface):
         
         # filter out failing sites
         good_sites = self.sitesPassingTests(sites)
+
+        logging.debug('"good_sites: %s\nsiteinfo:%s"' % (good_sites, self.siteinfo))
         
         # check sites have required cmssw versions for active workflows
         wf_constraints = siteToNotWorkflows(good_sites, self.siteinfo)
@@ -321,7 +323,10 @@ class LCGAdvanced(MonitorInterface):
                     constraint['type'] = jobtype
                     constraint['site'] = site['SiteIndex']
                     ## workflow constraint, default is None
-                    if len(workflowContraints) > 0:
+                    ## We don't want to add workflow constraints for 
+                    ## LogCollect/CleanUp jobs
+                    if len(workflowContraints) > 0 \
+                                and jobtype not in ('LogCollect', 'CleanUp'):
                         constraint['workflow'] = ','.join(workflowContraints)
                     result.append(constraint)
         
