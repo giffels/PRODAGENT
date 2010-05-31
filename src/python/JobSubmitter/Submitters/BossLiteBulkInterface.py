@@ -6,8 +6,8 @@ BossLite interaction base class - should not be used directly.
 
 """
 
-__revision__ = "$Id: BossLiteBulkInterface.py,v 1.48 2010/02/17 09:14:30 direyes Exp $"
-__version__ = "$Revision: 1.48 $"
+__revision__ = "$Id: BossLiteBulkInterface.py,v 1.49 2010/04/18 16:05:03 direyes Exp $"
+__version__ = "$Revision: 1.49 $"
 
 import os
 import logging
@@ -371,6 +371,10 @@ fi
                 ( bossJob['taskId'], bossJob['jobId'], \
                   bossJob.runningJob['submission'] ) )
 
+        # load the task and append the job. I need to reload the task so I
+        # can get the updated version
+        self.bossTask = self.bossLiteSession.loadTask(      
+                                    bossJob['taskId'], bossJob['jobId'] )
         # still no task? Something bad happened
         if self.bossTask is not None :
             # updating sandbox if needed
