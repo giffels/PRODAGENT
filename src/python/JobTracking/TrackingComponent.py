@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.66 2009/10/06 18:03:49 spiga Exp $"
-__version__ = "$Revision: 1.66 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.67 2010/02/11 03:44:43 ewv Exp $"
+__version__ = "$Revision: 1.67 $"
 
 import os
 import os.path
@@ -250,17 +250,32 @@ class TrackingComponent:
             logging.info("Polled jobs : " + str( len(self.newJobs) ) )
 
             # exit if no more jobs to query
-            if self.newJobs == [] :
+            if self.newJobs == []: 
                 loop = False
                 break
             else :
                 offset += self.jobLimit
 
+            jobstoup = []
+            queryjobstoup = ''
+            for j in self.newJobs:
+                if j.runningJob['destination'] is not None and len(j.runningJob['destination']) > 0:
+                    jobstoup.append(j)
+                    queryjobstoup += str(j.runningJob['id']) + ','
+            logging.debug('All new jobs: [%s]'%str(len(self.newJobs)))
+            logging.debug('New jobs to send info: [%s]'%str(len(jobstoup))) 
+            logging.debug('New job in query format: [%s]'%str(queryjobstoup))
+            if jobstoup == []:
+                continue
+                
             try:
-                self.db.processBulkUpdate( self.newJobs, processStatus, \
+                #self.db.processBulkUpdate( self.newJobs, processStatus, \
+                #                           skipStatus )
+                self.db.processBulkUpdate( queryjobstoup[:-1], processStatus, \
                                            skipStatus )
-                logging.info( "Changed status to %s for %s loaded jobs" \
-                              % ( processStatus, str( len(self.newJobs) ) ) )
+                logging.info( "Changed status to %s for %s of %s loaded jobs" \
+                              % ( processStatus, str( len(jobstoup) ), str ( len(self.newJobs) ) ) )
+                            #  % ( processStatus, str( len(self.newJobs) ) ) )
 
             except BossLiteError, err:
                 logging.error(
@@ -268,18 +283,31 @@ class TrackingComponent:
                     % ( processStatus, str( err ) ) )
                 continue
 
-            while self.newJobs != [] :
+            #while self.newJobs != [] :
+            while jobstoup != [] :
 
-                job = self.newJobs.pop()
+                #job = self.newJobs.pop()
+                job = jobstoup.pop()
 
+                if processStatus == 'handled':
+                    pass
+                    logging.debug("Sending info for job at [%s]"%str(job.runningJob['destination']))
+                    if job.runningJob['destination'] is not None and len(job.runningJob['destination']) > 0:
+                        pass
+                        #logging.info("Sending...")
+                    else:
+                        continue       
                 # publish information to dashboard
                 try:
                     self.dashboardPublish( job )
                 except Exception, msg:
                     logging.error("Cannot publish to dashboard:%s" % msg)
+                    import traceback
+                    logging.error(str(msg.format_exc()))
 
                 del( job )
 
+            del jobstoup[:]
             del self.newJobs[:]
 
         del self.newJobs[:]
