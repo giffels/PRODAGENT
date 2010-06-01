@@ -7,11 +7,7 @@ task objects for that job
 
 
 """
-# Silence deprecation warnings since we moved to python2.6
-import warnings
-warnings.filterwarnings("ignore", category = DeprecationWarning)
-import popen2
-warnings.filterwarnings("default", category = DeprecationWarning)
+from subprocess import Popen, PIPE
 import os
 import socket
 import time
@@ -27,13 +23,16 @@ def gridProxySubject():
 
     Get subject of certificate using voms-proxy-info -subject
     """
-    pop = popen2.Popen4("voms-proxy-info -identity")
-    pop.tochild.close()
-    output = pop.fromchild.read()
+    pop = Popen("voms-proxy-info -identity",
+                shell=True,
+                stdin=PIPE,
+                stdout=PIPE,
+                close_fds=True)
     exitCode = pop.wait()
+    (output, std_in) = (pop.stdout, pop.stdin)
+    output = output.read()
     if exitCode > 0:
         return None
-
     for line in output.split("\n"):
         if not line.startswith("/"):
             continue
