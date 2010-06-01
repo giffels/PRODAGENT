@@ -9,11 +9,7 @@ handling of the LSF configuration
 """
 
 import logging
-# Silence deprecation warnings
-import warnings
-warnings.filterwarnings("ignore", category = DeprecationWarning)
-import popen2
-warnings.filterwarnings("default", category = DeprecationWarning)
+from subprocess import Popen, PIPE
 import fcntl, select, sys, os
 
 from ProdAgentCore.Configuration import loadProdAgentConfiguration
@@ -82,11 +78,12 @@ class LSFInterface:
         """
         logging.debug("SubmitterInterface.executeBjobs:%s" % command)
 
-        child = popen2.Popen3(command, 1) # capture stdout and stderr from command
-        child.tochild.close()             # don't need to talk to child
-        outfile = child.fromchild 
+        child = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+              close_fds=True, bufsize=1)
+
+        outfile = child.stdout
         outfd = outfile.fileno()
-        errfile = child.childerr
+        errfile = child.stderr
         errfd = errfile.fileno()
         makeNonBlocking(outfd)            # don't deadlock!
         makeNonBlocking(errfd)
