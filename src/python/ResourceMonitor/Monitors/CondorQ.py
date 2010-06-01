@@ -148,8 +148,9 @@ def condorQ(constraints):
     """
     command = "condor_q -xml -constraint %s  " % constraints
     logging.debug("condorQ command: '%s'"%command)
-    p = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, close_fds=True)
-    (si, sout) = (p.stdin, p.stdout)
+    p = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+              close_fds=True)
+    sout = p.stdout
     content = sout.read()
 
     #  // If we get invalid xml from condor_q the line below will throw an
