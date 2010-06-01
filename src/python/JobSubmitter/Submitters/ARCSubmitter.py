@@ -409,6 +409,7 @@ class ARCSubmitter(BulkSubmitterInterface):
             DashboardPort=dashboardCfg.get("DestinationPort")
             dashData.addDestination(DashboardAddress, int(DashboardPort))
             dashData.publish(5)
+            dashData.write(dashInfoFile)
             logging.debug("Dashboard data for %s: %s" % (jobId, str(dashData)))
         return
     
