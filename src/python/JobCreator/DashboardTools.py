@@ -27,9 +27,10 @@ def gridProxySubject():
                 shell=True,
                 stdin=PIPE,
                 stdout=PIPE,
+                stderr=PIPE,
                 close_fds=True)
     exitCode = pop.wait()
-    (output, std_in) = (pop.stdout, pop.stdin)
+    output = pop.stdout
     output = output.read()
     if exitCode > 0:
         return None
