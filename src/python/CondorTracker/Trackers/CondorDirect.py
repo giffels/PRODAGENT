@@ -8,7 +8,6 @@ Tracker for CondorDirect submissions
 """
 
 import logging
-import popen2
 import os
 from CondorTracker.TrackerPlugin import TrackerPlugin
 from CondorTracker.Registry import registerTracker
