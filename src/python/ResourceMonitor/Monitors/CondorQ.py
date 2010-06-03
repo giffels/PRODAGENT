@@ -146,7 +146,12 @@ def condorQ(constraints):
     of classad dictionaries 
 
     """
-    command = "condor_q -xml -constraint %s  " % constraints
+
+    command = "condor_q -xml -attributes JobStatus,ClusterId," \
+              "ProdAgent_JobID,EventTypeNumber,Reason,TerminatedNormally," \
+              "EnteredCurrentStatus,MATCH_GLIDEIN_Gatekeeper," \
+              "MATCH_GLIDEIN_Schedd,Cluster,GlobalJobId,QDATE," \
+              "ProdAgent_JobType -constraint %s  " % constraints
     logging.debug("condorQ command: '%s'"%command)
     p = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
               close_fds=True)
