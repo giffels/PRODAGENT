@@ -151,7 +151,7 @@ def condorQ(constraints):
               "ProdAgent_JobID,EventTypeNumber,Reason,TerminatedNormally," \
               "EnteredCurrentStatus,MATCH_GLIDEIN_Gatekeeper," \
               "MATCH_GLIDEIN_Schedd,Cluster,GlobalJobId,QDATE," \
-              "ProdAgent_JobType -constraint %s  " % constraints
+              "ProdAgent_JobType,DESIRED_Sites -constraint %s  " % constraints
     logging.debug("condorQ command: '%s'"%command)
     p = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
               close_fds=True)
