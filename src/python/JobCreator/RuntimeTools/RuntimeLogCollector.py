@@ -176,9 +176,10 @@ class LogCollectorMgr:
         except StandardError, ex:
             msg = "Unable to load StageIn/Out/Delete Impl: %s" % str(ex)
             print msg
-            self.report.exitCode = 60312
+            self.report.exitCode = 60314
             self.report.status = "Failed"
-            self.report.addError(msg, "StageOutError")
+            newError = self.report.addError(60314, "StageOutError")
+            newError['Description'] = msg
             self.saveFjr()
             return
             
@@ -196,9 +197,11 @@ class LogCollectorMgr:
             
         if not logs:
             print "No logs collected"
+            msg = "No logs collected\n" + msg
             self.report.exitCode = 60312
             self.report.status = "Failed"
-            self.report.addError(msg, "StageOutError")
+            newError = self.report.addError(60312, "StageInError")
+            newError['Description'] = msg
             self.saveFjr()
             return
             
@@ -219,7 +222,7 @@ class LogCollectorMgr:
             msg = "Unable to stage out log archive:\n"
             msg += str(ex)
             print msg
-            self.report.exitCode = 60312
+            self.report.exitCode = 60314
             self.report.status = "Failed"
             #self.report.addError(60312, "StageOutError")
             self.saveFjr()
@@ -268,3 +271,4 @@ if __name__ == "__main__":
     import StageOut.Impl
     mgr = LogCollectorMgr()
     mgr()
+
