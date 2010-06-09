@@ -168,7 +168,7 @@ componentFields = {
     "ComponentDir" : None,
     "PollInterval" : 300,
     "QueryInterval" : 3,
-    "jobsToPoll" : 3000,
+    "jobsToPoll" : 2000,
     "PoolThreadsSize" : 5,
     "RssFeed": "no",
     },
