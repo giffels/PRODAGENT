@@ -176,15 +176,30 @@ fi
         #//
         result += \
 """
-DEST_SIZE=`ls -l %s | cut -d" " -f6`
-FILE_SIZE=`ls -l %s | cut -d" " -f6`
+DEST_SIZE=`dcsize %s | cut -d" " -f1`
+FILE_SIZE=`dcsize %s | cut -d" " -f1`
+if [[ $DEST_SIZE == "" || $FILE_SIZE == "" ]]; then
+    echo "dcsize command is not available or produced an invalid result."
+    echo "Trying stat command:"
+    DEST_SIZE=`stat -c %s %s`
+    FILE_SIZE=`stat -c %s %s`
+fi
+if [[ $DEST_SIZE == "" || $FILE_SIZE == "" ]]; then
+    echo "stat command is not available or produced an invalid result."
+    echo "Trying ls command:"
+    DEST_SIZE=`/bin/ls -l %s | awk '{ print $5 }'`
+    FILE_SIZE=`/bin/ls -l %s | awk '{ print $5 }'`
+fi
 if [ $FILE_SIZE != $DEST_SIZE ]; then
     echo "Source and destination files do not have same file size."
     echo "Cleaning up failed file:"
-   /bin/rm -fv %s
-   exit 60311
+    /bin/rm -fv %s
+    exit 60311
 fi
-""" % (pnfsPfn(targetPFN), pnfsPfn(sourcePFN), pnfsPfn(targetPFN))
+""" % (pnfsPfn(targetPFN), pnfsPfn(sourcePFN),
+       '%s', pnfsPfn(targetPFN), '%s', pnfsPfn(sourcePFN),
+       pnfsPfn(targetPFN), pnfsPfn(sourcePFN),
+       pnfsPfn(targetPFN))
 
         print "Executing:\n", result
         return result
