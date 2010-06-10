@@ -12,6 +12,7 @@ import tarfile
 import time
 import urllib2
 import traceback
+from datetime import date
 
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
@@ -174,6 +175,7 @@ class JobCreatorComponent:
 
         wfname = spec.workflowName()
         wfCache = os.path.join(self.args['ComponentDir'],
+                               date.today().strftime('%Y%m%d'),
                                wfname)
         if not os.path.exists(wfCache):
             os.makedirs(wfCache)
