@@ -165,7 +165,7 @@ class JobSpecExpander:
         """
         # Don't do anything if no customization or job has no input files
         if not custom_config or (merge is False and not config.inputFiles):
-            return config
+            return
 
         import re
         version = lambda x: tuple(int(x) for x in re.compile('(\d+)').findall(x))
@@ -173,7 +173,7 @@ class JobSpecExpander:
 
         # Only implemented in CMSSW_2_1_8 and above
         if cmssw_version < (2, 1, 8):
-            return config
+            return
 
         print "Site specific IO parameters will be used:"
 
@@ -183,8 +183,10 @@ class JobSpecExpander:
             # Merge pset creates process on fly so can't use CMSSWConfig object
             if merge:
                 from ProdCommon.CMSConfigTools.ConfigAPI.InputSource import InputSource
-                InputSource(config.source)
-            config.sourceParams['cacheSize'] = cache_size
+                inputSource = InputSource(config.source)
+                inputSource.setCacheSize(cache_size)
+            else:
+                config.sourceParams['cacheSize'] = cache_size
 
         if merge:
             from FWCore.ParameterSet.Modules import Service
@@ -202,7 +204,7 @@ class JobSpecExpander:
                         CfgTypes.untracked(CfgTypes.string(str(custom_config[param]))))
             else:
                 config.tFileAdaptorConfig[param] = custom_config[param]
-        return config
+        return
 
 
     def createPSet(self):
@@ -320,7 +322,7 @@ class JobSpecExpander:
         process.outputPath = EndPath(process.Merged)
 
         # Apply site specific customizations
-        self.localCustomization(self.jobSpecNode.cfgInterface, merge = True)
+        self.localCustomization(process, merge=True)
 
         cfgDump = open("CfgFileDump.log", 'w')
         cfgDump.write(process.dumpConfig())
