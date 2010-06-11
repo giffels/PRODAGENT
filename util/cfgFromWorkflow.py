@@ -149,11 +149,12 @@ def findCfgFiles(node):
     try:
         #hash = node._OutputDatasets[0]['PSetHash'] 
         #cfg = node.configuration
-        cfgInter = node.cfgInterface
+        cfg = node.cfgInterface
         cfgInter = cfg.makeConfiguration()
         print node.name + ": Found cfg."
     except Exception, ex:
         # Not a cfg file
+        print ex
         print node.name + ": No cfg. found."
         return
     
