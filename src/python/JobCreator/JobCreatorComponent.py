@@ -12,7 +12,6 @@ import tarfile
 import time
 import urllib2
 import traceback
-from datetime import date
 
 from ProdCommon.MCPayloads.JobSpec import JobSpec
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
@@ -57,6 +56,7 @@ class JobCreatorComponent:
         self.args['MultipleJobsPerRun'] = False
         self.args['DropNonLFNInputs'] = True
         self.args['SizeBasedMerge'] = True
+        self.args['DateSortedFolderTree'] = False
 
         self.args.update(args)
         self.prodAgent = prodAgentName()
@@ -84,6 +84,11 @@ class JobCreatorComponent:
             self.args['DropNonLFNInputs'] = True
         else:
             self.args['DropNonLFNInputs'] = False
+
+        if str(self.args['DateSortedFolderTree']).lower() in ("true", "yes"):
+            self.args['DateSortedFolderTree'] = True
+        else:
+            self.args['DateSortedFolderTree'] = False
 
 
 
@@ -174,9 +179,19 @@ class JobCreatorComponent:
             return
 
         wfname = spec.workflowName()
-        wfCache = os.path.join(self.args['ComponentDir'],
-                               date.today().strftime('%Y%m%d'),
-                               wfname)
+        # Special treatment for T0 jobs, their workflow cache structure will
+        # include the RequestTimestamp. LogCollect and CleanUp jobs are always
+        # excluded from this special treatment
+        if self.args['DateSortedFolderTree'] and \
+                spec.parameters.get('WorkflowType') not in \
+                                            ('CleanUp', 'LogCollect'):
+            requestTime = spec.requestTimestamp()
+            wfCache = os.path.join(self.args['ComponentDir'],
+                                time.strftime("%Y%m%d", time.gmtime(requestTime)),
+                                wfname)
+        else:
+            wfCache = os.path.join(self.args['ComponentDir'],
+                                   wfname)
         if not os.path.exists(wfCache):
             os.makedirs(wfCache)
 
@@ -347,8 +362,18 @@ class JobCreatorComponent:
         jobType = jobSpec.parameters['JobType']
         jobSpec.parameters['ProdAgent'] = self.prodAgent
         workflowName = jobSpec.payload.workflow
-        wfCache = os.path.join(self.args['ComponentDir'],
-                               workflowName)
+        # Special treatment for T0 jobs, their workflow cache structure will
+        # include the RequestTimestamp. LogCollect and CleanUp jobs are always
+        # excluded from this special treatment
+        if self.args['DateSortedFolderTree'] and \
+                jobType not in ('CleanUp', 'LogCollect'):
+            requestTime = int(jobSpec.parameters['RequestTimestamp'])
+            wfCache = os.path.join(self.args['ComponentDir'],
+                                time.strftime("%Y%m%d", time.gmtime(requestTime)),
+                                workflowName)
+        else:
+            wfCache = os.path.join(self.args['ComponentDir'],
+                                   workflowName)
         wfBackup = os.path.join(
             wfCache,
             "%s-%s-Workflow.xml" % (workflowName, jobSpec.payload.jobType))
@@ -379,13 +404,11 @@ class JobCreatorComponent:
         #   ComponentDir/workflowName/NNNN/runNumber
         if self.args["MultipleJobsPerRun"] == True:
             jobSpecDirKey = str((abs(id(jobSpec)) % 1000)).zfill(4)
-            jobCache = os.path.join(self.args['ComponentDir'],
-                                    workflowName,
+            jobCache = os.path.join(wfCache,
                                     jobSpecDirKey,
                                     jobname)
         else:
-            jobCache = os.path.join(self.args['ComponentDir'],
-                                    workflowName,
+            jobCache = os.path.join(wfCache,
                                     "%s" % runPadding,
                                     str(runNum))
 
