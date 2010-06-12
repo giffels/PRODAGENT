@@ -4,8 +4,8 @@ _TrackingDB_
 
 """
 
-__version__ = "$Id: TrackingDB.py,v 1.7 2009/05/07 21:28:54 gcodispo Exp $"
-__revision__ = "$Revision: 1.7 $"
+__version__ = "$Id: TrackingDB.py,v 1.6 2009/02/13 09:37:48 gcodispo Exp $"
+__revision__ = "$Revision: 1.6 $"
 
 import time
 
@@ -232,19 +232,19 @@ class TrackingDB:
 
 
 
-    def processBulkUpdate( self, jlist, processStatus, skipStatus=None ) :
+    def processBulkUpdate( self, jobList, processStatus, skipStatus=None ) :
         """
         __setTaskGroup__
 
         assign tasks to a given group
         """
 
-        #jlist = ','.join( [ str(job.runningJob['id']) for job in jobList ] )
+        jlist = ','.join( [ str(job.runningJob['id']) for job in jobList ] )
 
         if skipStatus is not None:
             toSkip = " and status not in ('" +  "','".join( skipStatus ) + "')"
         else :
-            toSkip = ''
+            toSkip = '' 
 
         if processStatus in ['failed', 'output_requested'] :
             tsString = "', output_request_time='" + \
@@ -258,4 +258,3 @@ class TrackingDB:
               tsString + "' where id in (" + jlist + ")" + toSkip
 
         self.bossSession.modify(query)
-
