@@ -382,8 +382,16 @@ class CondorG(TrackerPlugin):
         dashboardInfo = DashboardInfo()
 
         # Get DashboardInfo file in jobCache dir
-        jobCache = self.getJobCache(jobSpecId)
-        dashboardInfoFile = os.path.join(jobCache, "DashboardInfo.xml")
+        try:
+            jobCache = self.getJobCache(jobSpecId)
+            dashboardInfoFile = os.path.join(jobCache, "DashboardInfo.xml")
+        except Exception, ex:
+            msg = "Couldn't retrieve a DashboardInfo.xml file. Please make"
+            msg += " sure we_Job table has this job registered: %s \n" % (
+                        str(jobSpecId))
+            msg += ex
+            logging.error(msg)
+            return
         if not os.path.exists(dashboardInfoFile):
             msg = "Dashboard Info file not found\n"
             msg += "%s\n" % dashboardInfoFile
