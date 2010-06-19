@@ -81,7 +81,7 @@ def main(argv) :
     storeFail = False
     readDBS = 'http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet'
     onlySites = None
-    scriptsDir = os.path.expandvars(os.environ.get('PUTIL', None))
+    scriptsDir = '$PUTIL' #os.path.expandvars(os.environ.get('PUTIL', None))
     skip_config = False
     extra_label = ''
     workflow_label = ''
@@ -264,9 +264,10 @@ def main(argv) :
                         if pileup_arg.lower().strip() != 'nopileup':
                             if special_tag:
                                 special_tag = "_".join(
-                                    [special_tag, pileup_arg.strip()])
+                                    [special_tag, "PU", pileup_arg.strip()])
                             else:
-                                special_tag = pileup_arg.strip()
+                                special_tag = "_".join(["PU", 
+                                                        pileup_arg.strip()])
                             pile_up = True
                             if pileup_dataset is None :
                                 print "You have to provide a pileup dataset."
@@ -347,24 +348,9 @@ def main(argv) :
                         input_data['REALDATA'])
                     result_xml = reader.dbs.executeQuery(query)
                     # XML Handler
-                    parsed_datasets = []
-                    global is_dataset
-                    is_dataset = False
-                    class Handler(xml.sax.handler.ContentHandler):
-                        def startElement(self, name, attrs):
-                            global is_dataset
-                            if name == 'dataset':
-                                is_dataset = True
-                        def characters(self, content):
-                            global is_dataset
-                            if is_dataset:      
-                                parsed_datasets.append(content)
-                        def endElement(self, name):
-                            global is_dataset
-                            if name == 'dataset':
-                                is_dataset = False
-                    xml.sax.parseString(result_xml, Handler())
-                    target_datasets = parsed_datasets
+                    result_list = DBSXMLParser(result_xml)
+                    target_datasets = [x['dataset'] for x in result_list]
+
                     # If more than one dataset is found.
                     if len(target_datasets) > 1:
                         # Is this an input relval dataset produced in the
@@ -372,23 +358,23 @@ def main(argv) :
                         query = "find dataset where dataset like %s " % (
                             input_data['REALDATA'])
                         query += "and release=%s" % version
-                        parsed_datasets = []
                         result_xml = reader.dbs.executeQuery(query)
-                        xml.sax.parseString(result_xml, Handler())
-                        find_version = lambda x: x in parsed_datasets
-                        target_datasets = filter(find_version, target_datasets)
+                        target_datasets = [x['dataset'] for x in result_list]
+
                     # If more than one dataset is found, match the processing
                     # version
                     if len(target_datasets) > 1:
                         find_version = \
                             lambda x: x.find(processing_version) != -1
                         target_datasets = filter(find_version, target_datasets)
+
                     if len(target_datasets) > 1:
                         msg = "Dataset pattern in line %s is too broad." % line
                         msg += "These datasets were found: %s" % (
                             " ".join(target_datasets))
                         print msg
                         sys.exit(8)
+
                     if not target_datasets:
                         msg = "Dataset pattern produced no match in line %s" % (
                             line)
@@ -620,6 +606,20 @@ def main(argv) :
 
                 if step_number > max_step:
                     max_step = step_number
+
+                #  //
+                # // HARVESTING cmsDriver commands should be ignored. RelVals
+                #// should not run any HARVESTING configuration. Harvestings
+                #\\ run independently after the datasets are produced.
+                # \\
+                skip_step = False
+                if '-s' in array:
+                    index = array.index('-s')
+                else:
+                    index = array.index('--step')
+                if array[index+1].count('HARVESTING') > 0:
+                    skip_step = True
+
                 #  //
                 # // Composing a dictionary per step
                 #//
@@ -630,6 +630,7 @@ def main(argv) :
                 dict['conditions'] = conditions
                 dict['stagePrevious'] = stage_previous
                 dict['DQMData'] = {'Scenario': getDQMScenario(command)}
+                dict['skipStep'] = skip_step
                 #  //
                 # // Step name should be unique
                 #//
@@ -729,6 +730,12 @@ def main(argv) :
                     print 'cmsDriver command for step %s to produce:' % i, \
                         steps[step]['outputName'],'was already issued, skipping.'
                     continue
+                #  //
+                # // Skip HARVESTING cmsDriver commands
+                #//
+                if steps[step]['skipStep']:
+                    print 'This is a HARVESTING cmsDriver command, skipping. '
+                    continue
                 exitCode, output, error = executeCommand(steps[step]['command'])
                 if exitCode == 0:
                     print 'cmsDriver command for step %s to produce:' % i, \
@@ -795,7 +802,12 @@ def main(argv) :
         # // Input configurations (Second step and further)
         #//
         if sample['steps'][0].lower().strip() != 'none':
-            for i, step in enumerate(sample['steps']):
+            i = 0
+            for step in sample['steps']:
+                # Is this a HARVESTING step? If so, skip it!
+                if steps[step]['skipStep']:
+                    continue
+                # Not a HARVESTING step, continue normally.
                 command += '--version=' + version + ' \\\n'
                 command += '--py-cfg=' + steps[step]['outputName'] + ' \\\n'
                 if i != 0 or not sample['isRealData']:
@@ -811,6 +823,7 @@ def main(argv) :
                 if not steps[step]['stagePrevious'] and \
                     i == 0:
                     conditions = steps[step]['conditions']
+                i += 1
         #  //
         # // Common options
         #//
