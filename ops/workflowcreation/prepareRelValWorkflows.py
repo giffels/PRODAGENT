@@ -359,6 +359,7 @@ def main(argv) :
                             input_data['REALDATA'])
                         query += "and release=%s" % version
                         result_xml = reader.dbs.executeQuery(query)
+                        result_list = DBSXMLParser(result_xml)
                         target_datasets = [x['dataset'] for x in result_list]
 
                     # If more than one dataset is found, match the processing
