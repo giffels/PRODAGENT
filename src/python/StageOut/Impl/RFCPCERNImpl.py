@@ -28,8 +28,9 @@ class RFCPCERNImpl(StageOutImpl):
         self.numRetries = 5
         self.retryPause = 300
 
-        # permissions for target directory
+        # permission and umask for directory creation
         self.permissions = '775'
+        self.umask = '002'
 
         # use castor support to preset adler32 checksums before transfer
         self.useChecksumForStageout = True
@@ -56,20 +57,8 @@ class RFCPCERNImpl(StageOutImpl):
 
         print "DEBUG 111 before targetDir check"
 
-        # check if targetDir exists
-        targetDirCheck = "rfstat %s 2> /dev/null | grep Protection" % targetDir
-        print "Check dir existence : %s" % targetDirCheck
-        try:
-            targetDirCheckExitCode, targetDirCheckOutput = runCommandWithOutput(targetDirCheck)
-        except Exception, ex:
-            msg = "Error: Exception while invoking command:\n"
-            msg += "%s\n" % targetDirCheck
-            msg += "Exception: %s\n" % str(ex)
-            msg += "Fatal error, abort stageout..."
-            raise StageOutError(msg)
-
-        # does not exist => create it
-        if targetDirCheckExitCode:
+        # targetDir does not exist => create it
+        if not self.checkDirExists(targetDir):
 
             print "DEBUG 222 have to create targetDir"
 
@@ -97,40 +86,17 @@ class RFCPCERNImpl(StageOutImpl):
 
                     print "DEBUG 444 want fileclass %s on %s" % (fileclass, fileclassDir)
 
-                    # check fileclassDir existance
-                    fileclassDirCheck = "rfstat %s 2> /dev/null | grep Protection" % fileclassDir
-                    print "Check dir existence : %s" % fileclassDirCheck
-                    try:
-                        fileclassDirCheckExitCode, fileclassDirCheckOutput = runCommandWithOutput(fileclassDirCheck)
-                    except Exception, ex:
-                        msg = "Error: Exception while invoking command:\n"
-                        msg += "%s\n" % rfstatCmd
-                        msg += "Exception: %s\n" % str(ex)
-                        msg += "Fatal error, abort stageout..."
-                        raise StageOutError(msg)
-
-                    # does not exist => create it
-                    if fileclassDirCheckExitCode:
+                    # fileclassDir does not exist => create it
+                    if not self.checkDirExists(fileclassDir):
                         print "DEBUG 555 creating %s" % fileclassDir
-                        self.createDir(fileclassDir, self.permissions)
+                        self.createDir(fileclassDir)
                         if ( fileclass != None ):
                             print "DEBUG 666 setting fileclass %s" % fileclass
                             self.setFileClass(fileclassDir,fileclass)
-                    else:
-                        # check if this is a directory
-                        regExpParser = re.compile('Protection.*: d')
-                        if ( regExpParser.match(fileclassDirCheckOutput) == None):
-                            raise StageOutError("Output path is not a directory !")
 
             # now create targetDir
             print "DEBUG 777 creating %s" % targetDir
-            self.createDir(targetDir, self.permissions)
-
-        else:
-            # check if this is a directory
-            regExpParser = re.compile('Protection.*: d')
-            if ( regExpParser.match(targetDirCheckOutput) == None):
-                raise StageOutError("Output path is not a directory !")
+            self.createDir(targetDir)
 
         return
 
@@ -219,15 +185,45 @@ class RFCPCERNImpl(StageOutImpl):
         return
 
 
-    def createDir(self, directory, mode):
+    def checkDirExists(self, directory):
+        """
+        _checkDirExists_
+
+        Check if directory exists (will fail if it exists as a file)
+
+        """
+        command = "rfstat %s 2> /dev/null | grep Protection" % directory
+        print "Check dir existence : %s" % command
+        try:
+            exitCode, output = runCommandWithOutput(command)
+        except Exception, ex:
+            msg = "Error: Exception while invoking command:\n"
+            msg += "%s\n" % command
+            msg += "Exception: %s\n" % str(ex)
+            msg += "Fatal error, abort stageout..."
+            raise StageOutError(msg)
+
+        if exitCode != 0:
+            return False
+        else:
+            regExpParser = re.compile('^Protection[ ]+: d')
+            if ( regExpParser.match(output) == None):
+                raise StageOutError("Output path is not a directory !")
+            else:
+                return True
+
+
+    def createDir(self, directory):
         """
         _createDir_
 
-        Creates directory with no permissions
+        Creates directory with correct permissions
 
         """
-        cmd = "nsmkdir -m %s -p \"%s\"" % (mode, directory)
-        execute(cmd)
+        command = "(umask %s ; nsmkdir -m %s -p \"%s\")" % (self.umask,
+                                                            self.permissions,
+                                                            directory)
+        execute(command)
         return
 
 
@@ -240,7 +236,6 @@ class RFCPCERNImpl(StageOutImpl):
         """
         cmd = "nschclass %s %s" % (fileclass, directory)
         execute(cmd)
-
         return
 
 
