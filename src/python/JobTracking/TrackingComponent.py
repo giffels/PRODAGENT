@@ -17,13 +17,15 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.67 2010/02/11 03:44:43 ewv Exp $"
-__version__ = "$Revision: 1.67 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.68 2010/06/01 12:02:33 mcinquil Exp $"
+__version__ = "$Revision: 1.68 $"
 
 import os
 import os.path
 import logging
 import re
+from datetime import datetime, timedelta
+
 
 # PA configuration
 from MessageService.MessageService import MessageService
@@ -74,7 +76,8 @@ class TrackingComponent:
                               'address' : 'cms-jobmon.cern.ch', \
                               'port' : 8884})
         self.args.setdefault("TimeOutEvent", None)
-        self.args.setdefault("TimeOut", 12)
+        self.args.setdefault("TimeOut", 12) # In hours
+        self.args.setdefault("DoneFailedTimeOut", None) # In hours
         self.args.update(args)
 
         # set up logging for this component
@@ -159,6 +162,13 @@ class TrackingComponent:
         self.toDelay = str(self.timeout).zfill(2) + ':00:00'
         self.timeout = self.timeout * 3600
 
+        # time out for Done(failed) jobs
+        if self.args['DoneFailedTimeOut'] is not None:
+            self.doneFailedTimeout = timedelta(
+                hours=int(self.args['DoneFailedTimeOut']))
+        else:
+            self.doneFailedTimeout = None
+
         # ended/failed attributes
         self.newAttrs = { 'processStatus' : 'not_handled',
                           'closed' : 'N' }
@@ -168,6 +178,8 @@ class TrackingComponent:
                              'status' : 'K', 'closed' : 'N' }
         self.finishedAttrs = { 'processStatus' : 'handled',
                                'status' : 'SD', 'closed' : 'N' }
+        self.doneFailedAttrs = { 'processStatus' : 'handled',
+                               'status' : 'DA', 'closed' : 'N' }
 
         # component running, display info
         logging.info("JobTracking Component Started...")
@@ -226,7 +238,7 @@ class TrackingComponent:
         self.ms.commit()
 
 
-    def pollJobs(self, runningAttrs, processStatus, skipStatus=None ):
+    def pollJobs(self, runningAttrs, processStatus, skipStatus=None, skipDelay=None):
         """
         __pollJobs__
 
@@ -256,12 +268,23 @@ class TrackingComponent:
             else :
                 offset += self.jobLimit
 
-            jobstoup = []
-            queryjobstoup = ''
-            for j in self.newJobs:
-                if j.runningJob['destination'] is not None and len(j.runningJob['destination']) > 0:
-                    jobstoup.append(j)
-                    queryjobstoup += str(j.runningJob['id']) + ','
+            jobstoup = self.newJobs
+            # Filter out jobs with status in skipStatus list
+            if skipStatus is not None:
+                skipStatusFilter = \
+                    lambda j: j.runningJob['status'] not in skipStatus
+                jobstoup = filter(skipStatusFilter, jobstoup)
+
+            # Filter out jobs with lb_timestamp not older than skipDelay
+            if skipDelay is not None:
+                now = datetime.utcnow()
+                timeoutFilter = \
+                    lambda j: now - j.runningJob['lbTimestamp'] > skipDelay
+                jobstoup = filter(timeoutFilter, jobstoup)
+
+            queryjobstoup = \
+                ",".join([str(j.runningJob['id']) for j in jobstoup])
+
             logging.debug('All new jobs: [%s]'%str(len(self.newJobs)))
             logging.debug('New jobs to send info: [%s]'%str(len(jobstoup))) 
             logging.debug('New job in query format: [%s]'%str(queryjobstoup))
@@ -271,7 +294,7 @@ class TrackingComponent:
             try:
                 #self.db.processBulkUpdate( self.newJobs, processStatus, \
                 #                           skipStatus )
-                self.db.processBulkUpdate( queryjobstoup[:-1], processStatus, \
+                self.db.processBulkUpdate( queryjobstoup, processStatus, \
                                            skipStatus )
                 logging.info( "Changed status to %s for %s of %s loaded jobs" \
                               % ( processStatus, str( len(jobstoup) ), str ( len(self.newJobs) ) ) )
@@ -289,14 +312,6 @@ class TrackingComponent:
                 #job = self.newJobs.pop()
                 job = jobstoup.pop()
 
-                if processStatus == 'handled':
-                    pass
-                    logging.debug("Sending info for job at [%s]"%str(job.runningJob['destination']))
-                    if job.runningJob['destination'] is not None and len(job.runningJob['destination']) > 0:
-                        pass
-                        #logging.info("Sending...")
-                    else:
-                        continue       
                 # publish information to dashboard
                 try:
                     self.dashboardPublish( job )
@@ -335,9 +350,17 @@ class TrackingComponent:
         logging.info( 'Load Killed Jobs' )
         self.pollJobs( self.killedAttrs, 'failed' )
 
-        # notify new jobs
+        # get timed out Done(failed) jobs
+        if self.doneFailedTimeout is not None:
+            logging.info( 'Load Done(failed) Jobs' ) 
+            self.pollJobs( self.doneFailedAttrs,
+                           'failed',
+                           skipDelay=self.doneFailedTimeout )
+
+        # notify new jobs (do not notify jobs if they haven't been assigned a
+        # destiation to run)
         logging.info( 'Load New Jobs' )
-        self.pollJobs( self.newAttrs, 'handled' , ['C', 'S'] )
+        self.pollJobs( self.newAttrs, 'handled' , ['C', 'S', 'SU', 'SW'] )
 
         # generate next polling cycle
         logging.info( "Waiting %s for next get output polling cycle" % \
