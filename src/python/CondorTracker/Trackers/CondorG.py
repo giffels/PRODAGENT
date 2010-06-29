@@ -389,7 +389,7 @@ class CondorG(TrackerPlugin):
             msg = "Couldn't retrieve a DashboardInfo.xml file. Please make"
             msg += " sure we_Job table has this job registered: %s \n" % (
                         str(jobSpecId))
-            msg += ex
+            msg += str(ex)
             logging.error(msg)
             return
         if not os.path.exists(dashboardInfoFile):
