@@ -1038,7 +1038,7 @@ def main(argv) :
             min = [workflow, workflows[workflow]['time']]
     timingInfo.write('Average time per workflow: %s s\n' % (int(sum) / int(len(workflows))))
     timingInfo.write('Max. time on %s: %s s\n' % tuple(max))
-    timingInfo.write('Min. time on %s: %s s\n' % tuple(max))
+    timingInfo.write('Min. time on %s: %s s\n' % tuple(min))
     timingInfo.write('=' * 10)
     timingInfo.write('Details of time per workflow:\n%s\n' % "\n".join(output_text))
 
