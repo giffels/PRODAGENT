@@ -8,8 +8,8 @@ This calls EdmConfigToPython and EdmConfigHash, so a scram
 runtime environment must be setup to use this script.
 
 """
-__version__ = "$Revision: 1.27 $"
-__revision__ = "$Id: createProductionWorkflow.py,v 1.27 2010/05/05 18:16:49 swakef Exp $"
+__version__ = "$Revision: 1.28 $"
+__revision__ = "$Id: createProductionWorkflow.py,v 1.28 2010/05/11 11:50:14 swakef Exp $"
 
 import os
 import sys
@@ -277,6 +277,36 @@ if len(chainedInputs) and len(chainedInputs) != len(cfgFiles) - 1:
 if channel == None:
     msg = "--channel option not provided: This is required"
     raise RuntimeError, msg
+
+
+#  //
+# // Checking arguments against naming conventions
+#//
+if not (re.findall("^v[0-9]+$", processingVersion)):
+    msg = "processing_version '" + processingVersion + \
+        " violates naming conventions!\n" + \
+
+        "Processing version should match this regexp ^v[0-9]+$ " \
+        "(see https://twiki.cern.ch/twiki/bin/view/CMS/DMWMPG_PrimaryDatasets)"
+    # processingVersion = re.sub("[^v0-9]+","",requestId)
+    raise RuntimeError, msg
+
+if re.findall("[-]+", acquisitionEra):
+    msg = "acquisition_era '" + acquisitionEra + \
+        " violates naming conventions!\n" + \
+
+        "Acquisition Era should not contain any ('-')" \
+        "(see https://twiki.cern.ch/twiki/bin/view/CMS/DMWMPG_PrimaryDatasets)"
+    raise RuntimeError, msg
+if re.findall("[-]+", processingString):
+    msg = "processing_string '" + processingString + \
+        " violates naming conventions!\n" + \
+
+        "Processing String should not contain any dash ('-')"
+        "(see https://twiki.cern.ch/twiki/bin/view/CMS/DMWMPG_PrimaryDatasets)"
+    raise RuntimeError, msg
+
+
 
 #  //
 # // Set requestId and label
