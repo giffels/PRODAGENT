@@ -390,30 +390,36 @@ def main(argv) :
                     #\\
                     runs_list = \
                         [x.strip() for x in data_run.split('|') if x.strip()]
-                    query = \
-                        "find run where dataset = %s" % target_dataset
+                    runs_in_dbs = [x['RunNumber'] for x in \
+                                        reader.dbs.listRuns(target_dataset)]
+                    runs_in_dbs.sort()
+                    # Creating lambda function for filtering runs.
+                    expr = ''
+                    # First a string expression to evaluate
                     is_the_first = True
                     for run in runs_list:
                         if is_the_first:
-                            query += " and ("
+                            expr += "("
                             is_the_first = False
                         else:
-                            query += " or "
+                            expr += " or "
                         # Run range: XXXXXX-XXXXXX
                         if run.count("-"):
                             run_limits = \
                                 [x.strip() for x in run.split('-') if x.strip()]
-                            query += "(run >= %s and run <= %s)" % (
+                            expr += "(x >= %s and x <= %s)" % (
                                                 run_limits[0], run_limits[1])
                         else:
-                            query += "run = %s" % run
+                            expr += "x == %s" % run
                     if not is_the_first:
-                        query += ")"
-                    result_xml = reader.dbs.executeQuery(query)
-                    result_list = DBSXMLParser(result_xml)
-                    if not result_list:
-                        raise Exception, "query %s produced no results" % query
-                    target_runs = [x['run'] for x in result_list]
+                        expr += ")"
+                    # Here comes the lambda funtion
+                    runs_filter = lambda x: eval(expr)
+                    # Filtering runs in DBS using the list provided in the
+                    # input file.
+                    target_runs = filter(runs_filter, runs_in_dbs)
+
+                    # Pulling up input files from DBS (including run info).
                     input_files = reader.dbs.listFiles(
                                                 path=target_dataset,
                                                 retriveList=['retrive_run'])
