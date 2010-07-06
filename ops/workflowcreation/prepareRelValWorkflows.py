@@ -434,7 +434,7 @@ def main(argv) :
                         if input_file['NumberOfEvents'] == 0:
                             continue
                         runs = \
-                            [str(x['RunNumber']) for x in input_file['RunsList']]
+                            [int(x['RunNumber']) for x in input_file['RunsList']]
                         for run in runs:
                             if run in target_runs:
                                 break
@@ -509,7 +509,8 @@ def main(argv) :
                     #    acq_era = dataset_acq_era
 
                     # Filling up DQM information
-                    dqmData['Runs'] = ",".join(list(runs_to_process))
+                    dqmData['Runs'] = \
+                        ",".join([str(x) for x in list(runs_to_process)])
 
                 #  //
                 # // Composing a dictionary per sample
