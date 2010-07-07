@@ -9,8 +9,8 @@ for the job.
 
 
 """
-__version__ = "$Revision: 1.19 $"
-__revision__ = "$Id: RuntimeLogArch.py,v 1.19 2010/04/19 13:16:35 swakef Exp $"
+__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: RuntimeLogArch.py,v 1.20 2010/05/05 18:12:45 swakef Exp $"
 
 import sys
 import os
@@ -189,7 +189,12 @@ class LogArchMgr:
         runNum2 = self.state.jobSpec.parameters.get('MergeJobNumber', None)
         for run in (runNum1, runNum2):
             if run is not None:
-                runNum = int(run)
+                # If this was a Merge job resubmitted from the archive
+                # it will have an instance number appended after a '_'
+                if run.count('_'):
+                    runNum = int(run.split('_')[0])
+                else:
+                    runNum = int(run)
                 runPadding = str(runNum // 100).zfill(4)
                 break
         if runNum is None:
