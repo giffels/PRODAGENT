@@ -46,8 +46,8 @@ CERNStageOut = {
     "lfn-prefix" : "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms/",
     }
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.22 2010/02/22 13:43:43 direyes Exp $"
-__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.23 2010/07/14 13:28:33 direyes Exp $"
+__version__ = "$Revision: 1.23 $"
 
 
 HTTPS = httplib.HTTPS
@@ -99,7 +99,7 @@ class HarvesterImpl:
                 msg += "For File: %s\n" % aFile['FileName']
                 msg += "%s\n" % str(ex)
                 print msg
-                return 1
+                raise RuntimeError, msg
         else:
             print "Info: doStageOut flag is set to False, not staging out.\n"
         
@@ -111,7 +111,7 @@ class HarvesterImpl:
                 msg += "For File: %s\n" % aFile['FileName']
                 msg += "%s\n" % str(ex)
                 print msg
-                return 2
+                raise RuntimeError, msg
         else :
             print "Info: doHttpPost flag is set to False, not posting.\n"
         
@@ -123,10 +123,9 @@ class HarvesterImpl:
                 msg += "For File: %s\n" % aFile['FileName']
                 msg += "%s\n" % str(ex)
                 print msg
-                return 3
+                raise RuntimeError, msg
         else :
             print "Info: doCernCopy flag is set to False, not copying files to CERN.\n"
-        return 0
 
 
     def stageOut(self, analysisFile):
