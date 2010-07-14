@@ -20,6 +20,8 @@ import httplib
 import urllib2
 
 from ProdCommon.FwkJobRep.TaskState import TaskState
+from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
+from ProdCommon.FwkJobRep.MergeReports import updateReport
 from ProdCommon.MCPayloads.UUID import makeUUID
 from ProdCommon.MCPayloads.WorkflowSpec import WorkflowSpec
 
@@ -27,12 +29,12 @@ from StageOut.StageOutMgr import StageOutMgr
 from StageOut.StageOutError import StageOutInitError
 import StageOut.Impl
 
+# Default parameters
 _DoHTTPPost = True
-_DoStageOut = True
+_DoStageOut = False
 _DoCERNCopy  = False
-_HTTPPostURL = 'https://vocms33.cern.ch/dqm/dev' #test instance
-#_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/tier-0/data/put' # prod instance
-#_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/relval/data/put' # RelVal instance
+_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/dev' #test instance
+#_HTTPPostURL = 'https://cmsweb.cern.ch/dqm/offline' # prod instance
 
 #  //
 # // Parameters used to control the stage out of DQM histograms back to CERN
@@ -44,9 +46,8 @@ CERNStageOut = {
     "lfn-prefix" : "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms/",
     }
 
-
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.21 2009/08/12 15:44:04 sfoulkes Exp $"
-__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.22 2010/02/22 13:43:43 direyes Exp $"
+__version__ = "$Revision: 1.22 $"
 
 
 HTTPS = httplib.HTTPS
@@ -90,14 +91,17 @@ class HarvesterImpl:
             msg += " => %s: %s\n" % (key, value)
         print msg
 
-        try:
-            self.stageOut(aFile)
-        except Exception, ex:
-            msg = "Failure processing stage out:\n"
-            msg += "For File: %s\n" % aFile['FileName']
-            msg += "%s\n" % str(ex)
-            print msg
-            return 1
+        if self.doStageOut:
+            try:
+                self.stageOut(aFile)
+            except Exception, ex:
+                msg = "Failure processing stage out:\n"
+                msg += "For File: %s\n" % aFile['FileName']
+                msg += "%s\n" % str(ex)
+                print msg
+                return 1
+        else:
+            print "Info: doStageOut flag is set to False, not staging out.\n"
         
         if self.doHttpPost:
             try:
@@ -150,16 +154,13 @@ class HarvesterImpl:
             'SEName' : None,
             'GUID' : filebasename,
             }
-        if self.doStageOut:
-            try:
-                stager(**fileInfo)
-            except Exception, ex:
-                msg = "Unable to stage out DQM File:\n"
-                msg += str(ex)
-                raise RuntimeError, msg
-        else:
-            msg = "Attention: Stage Out is disabled."
-            print msg
+
+        try:
+            stager(**fileInfo)
+        except Exception, ex:
+            msg = "Unable to stage out DQM File:\n"
+            msg += str(ex)
+            raise RuntimeError, msg
 
         storagePFN = stager.searchTFC(fileInfo['LFN'])
         self.mssNames[filename] = storagePFN
@@ -177,8 +178,9 @@ class HarvesterImpl:
         filename = analysisFile['FileName']
 
         #  //
-        # // In case the site is T1_US_FNAL, special options are added to the srmv2 command
-        #//
+        # // In case the site is T1_US_FNAL, special options are added to the 
+        #// srmv2 command
+        #\\
         if self.thisSite.lower().find('t1_us_fnal') > -1 :
             self.copyCommandParameters['option'] = \
             '-use_urlcopy_script -urlcopy=/opt/d-cache/srm/sbin/url-copy.sh'
@@ -259,13 +261,11 @@ class HarvesterImpl:
             print 'Status code: ', e.hdrs.get("Dqm-Status-Code", "None")
             print 'Message:     ', e.hdrs.get("Dqm-Status-Message", "None")
             print 'Detail:      ', e.hdrs.get("Dqm-Status-Detail", "None")
-            os.system("rm -f FrameworkJobReport.xml")
             raise RuntimeError, e
         except Exception, ex:
             print 'Automated upload of %s failed' % filename
             print 'problem unknown'
             print ex
-            os.system("rm -f FrameworkJobReport.xml")
             raise RuntimeError, ex
 
 
@@ -384,6 +384,9 @@ class OfflineDQMHarvester:
         self.config = self.state.configurationDict()
         self.workflowSpecId = self.config['WorkflowSpecID'][0]
         self.jobSpecId = self.config['JobSpecID'][0]
+        self.toplevelReport = os.path.join(os.environ['PRODAGENT_JOB_DIR'],
+                                  "FrameworkJobReport.xml")
+
 
         try:
             self.state.loadJobReport()
@@ -426,26 +429,25 @@ class OfflineDQMHarvester:
             if self.proxyLocation == None:
                 for ppv in possibleProxyVars:
                     value = os.environ.get(ppv, None)
-                    if value == None:
+                    if value is None:
                         continue
                     if not os.path.exists(value):
                         continue
                     self.proxyLocation = value
                     break
-            if self.proxyLocation == None:
+            if self.proxyLocation is None:
                 msg = "===PROXY FAIL===\n"
                 msg += "Unable to find proxy for HTTPS Upload\n"
                 msg += "Cannot determine location of proxy"
-                raise RuntimeError, msg
+                print msg
 
             if not os.path.exists(self.proxyLocation):
                 msg = "===PROXY FAIL===\n"
                 msg += "Proxy file does not exist:\n"
                 msg += "%s\n" % self.proxyLocation
                 msg += "Cannot proceed with HTTPS Upload without proxy\n"
-                raise RuntimeError, msg
-
-
+                print msg
+                self.proxyLocation = None
 
 
         jobSpecNode = self.state.jobSpecNode
@@ -453,7 +455,6 @@ class OfflineDQMHarvester:
 
         siteConf = self.state.getSiteConfig()
         siteName = siteConf.siteName
-
 
         self.impl = HarvesterImpl()
         self.impl.inputDataset = inputDataset.name()
@@ -475,24 +476,65 @@ class OfflineDQMHarvester:
         Invoke this object to find files and do stage out
 
         """
-        if self.state._JobReport == None:
-            msg = "No Job Report available\n"
-            msg += "Unable to process analysis files for offline DQM\n"
+        print "\n==> Preparing upload of analysis files to the DQM Server.\n"
+
+        if self.state._JobReport is None:
+            msg = "No Job Report available or could not be read.\n"
+            msg += "==> Unable to process analysis files for offline DQM\n"
             print msg
+            print "Creating JobReport by hand..."
+            self.state._JobReport = jobRep = FwkJobReport()
+            jobRep.name = self.state.taskAttrs['Name']
+            jobRep.workflowSpecId = self.state.taskAttrs['WorkflowSpecID']
+            jobRep.jobSpecId = self.state.jobSpec.parameters['JobName']
+            jobRep.jobType = self.state.taskAttrs['JobType']
+            error = jobRep.addError(50115, "DQMProxyError")
+            error['Description'] = msg
+            jobRep.status = "Failed"
+            jobRep.exitCode = 50115
+            self.state.saveJobReport()
+            updateReport(self.toplevelReport, jobRep)
             return 1
 
         jobRep = self.state._JobReport
 
+        if self.proxyLocation is None:
+            msg = "Proxy file does not exist or could not be found." \
+                  "\n ==> Unable to process analysis files for offline DQM\n"
+            print msg
+            error = jobRep.addError(60311, "DQMProxyError")
+            error['Description'] = msg
+            jobRep.status = "Failed"
+            jobRep.exitCode = 60311
+            self.state.saveJobReport()
+            updateReport(self.toplevelReport, jobRep)
+            return 1
+
+        # Do not upload files if the job failed
+        if not jobRep.wasSuccess():
+            msg = "FrameworkJobReport says the job has failed."
+            msg = "\n==> Not doing anything."
+            return 1
+
         for aFile in jobRep.analysisFiles:
-            self.impl(aFile)
+            try:
+                self.impl(aFile)
+            except Exception, ex:
+                msg = " ==> Failure while processing analysis file %s" % aFile
+                msg += "\n%s" % str(ex)
+                print msg
+                error = jobRep.addError(60311, "DQMUploadError")
+                error['Description'] = msg
+                jobRep.status = "Failed"
+                jobRep.exitCode = 60311
+                self.state.saveJobReport()
+                updateReport(self.toplevelReport, jobRep)
+                return 1
         return 0
 
 
 
 if __name__ == '__main__':
-
-
     harvester = OfflineDQMHarvester()
     status = harvester()
-
     sys.exit(status)
