@@ -46,8 +46,8 @@ CERNStageOut = {
     "lfn-prefix" : "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms/",
     }
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.23 2010/07/14 13:28:33 direyes Exp $"
-__version__ = "$Revision: 1.23 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.24 2010/07/14 13:33:55 direyes Exp $"
+__version__ = "$Revision: 1.24 $"
 
 
 HTTPS = httplib.HTTPS
@@ -98,6 +98,9 @@ class HarvesterImpl:
                 msg = "Failure processing stage out:\n"
                 msg += "For File: %s\n" % aFile['FileName']
                 msg += "%s\n" % str(ex)
+                msg += "\n".join([
+                    str(x) for x in traceback.format_exception(*sys.exc_info())
+                    ])
                 print msg
                 raise RuntimeError, msg
         else:
@@ -110,6 +113,9 @@ class HarvesterImpl:
                 msg = "Failure processing Http Post:\n"
                 msg += "For File: %s\n" % aFile['FileName']
                 msg += "%s\n" % str(ex)
+                msg += "\n".join([
+                    str(x) for x in traceback.format_exception(*sys.exc_info())
+                    ])
                 print msg
                 raise RuntimeError, msg
         else :
@@ -122,6 +128,9 @@ class HarvesterImpl:
                 msg = "Failure to do copy to CERN\n"
                 msg += "For File: %s\n" % aFile['FileName']
                 msg += "%s\n" % str(ex)
+                msg += "\n".join([
+                    str(x) for x in traceback.format_exception(*sys.exc_info())
+                    ])
                 print msg
                 raise RuntimeError, msg
         else :
@@ -236,11 +245,7 @@ class HarvesterImpl:
         filename = analysisFile['FileName']
 
         args = {}
-        args['producer'] = 'ProdSys'
-        args['step'] = 'Pass-1'
         args['url'] = self.uploadUrl
-        args['workflow'] = self.inputDataset
-        args['mssname'] = self.mssNames[filename]
 
         msg = "HTTP Upload of file commencing with args:\n"
         msg += " => Filename: %s\n" % filename
