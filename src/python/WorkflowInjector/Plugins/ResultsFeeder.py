@@ -13,8 +13,8 @@ Merges a /store/user dataset into /store/results. Input parameters are
 
 """
 
-__revision__ = "$Id: ResultsFeeder.py,v 1.23 2009/12/08 14:29:28 giffels Exp $"
-__version__  = "$Revision: 1.23 $"
+__revision__ = "$Id: ResultsFeeder.py,v 1.24 2010/02/01 17:53:54 ewv Exp $"
+__version__  = "$Revision: 1.24 $"
 __author__   = "ewv@fnal.gov"
 
 import logging
@@ -164,7 +164,6 @@ class ResultsFeeder(PluginInterface):
         self.workflow.parameters["WorkflowType"] = "Merge"
         self.workflow.parameters["DataTier"] = self.dataTier
         self.workflow.parameters['DBSURL'] = self.localWriteURL
-        self.workflow.parameters['SubscriptionNode'] = self.injectionNode
 
         self.inputDatasetName = self.workflow.payload.addInputDataset(
             self.primaryDataset, self.processedDataset
@@ -174,10 +173,10 @@ class ResultsFeeder(PluginInterface):
             })
 
         # Get info from input dataset
+        reader = DBSReader(self.inputDBSURL)
         try:
             logging.info("Listing dataset %s" %
                      (self.primaryDataset))
-            reader = DBSReader(self.inputDBSURL)
             primaries = reader.dbs.listPrimaryDatasets(self.primaryDataset)
             self.dataType = primaries[0]['Type']
         except:
@@ -216,7 +215,8 @@ class ResultsFeeder(PluginInterface):
 
         logging.info("Data resides on %s" % phedexNode)
         self.workflow.parameters['InjectionNode'] = phedexNode
-
+        self.workflow.parameters['SubscriptionNode'] = phedexNode
+        
         logging.debug("Datatype = %s" % self.dataType)
 
         # Migrate dataset from User's LocalDBS to StoreResults LocalDBS
@@ -231,8 +231,8 @@ class ResultsFeeder(PluginInterface):
         logging.info("Migrating dataset %s from %s to %s" %
                      (path, self.inputDBSURL, self.localWriteURL))
         try:
-            writer.dbs.migrateDatasetContents(self.inputDBSURL,
-                        self.localWriteURL, path, '', skipParents, readWrite)
+            writer.dbs.dbsMigrateDataset(self.inputDBSURL,
+                                      self.localWriteURL, path)
         except:
             logging.info("Migrating to local DBS failed:\n%s" % traceback.format_exc())
             raise RuntimeError("Migrating %s to local DBS failed" % path)
@@ -244,8 +244,8 @@ class ResultsFeeder(PluginInterface):
         logging.info("Migrating dataset %s from %s to %s" %
                      (path, self.inputDBSURL, self.globalDbsUrl))
         try:
-            writer.dbs.migrateDatasetContents(self.inputDBSURL,
-                        self.globalDbsUrl, path, '', skipParents, True)
+            writer.dbs.dbsMigrateDataset(self.inputDBSURL,
+                                      self.globalDbsUrl, path)
         except:
             logging.info("Migrating to global DBS failed:\n%s" % traceback.format_exc())
             raise RuntimeError("Migrating %s to global DBS failed" % path)
@@ -360,7 +360,6 @@ class ResultsFeeder(PluginInterface):
             self.cmsswRelease     = userParams['cmsswRelease']
             self.inputDBSURL      = userParams['inputDBSURL']
             self.physicsGroup     = userParams['physicsGroup']
-            self.injectionNode    = userParams['destinationSite']
         except KeyError:
             raise RuntimeError("Some parameters missing")
 
@@ -374,7 +373,7 @@ class ResultsFeeder(PluginInterface):
         if  userParams.get('FNALOverride','False') == 'True':
             self.FNALOverride = True
         self.resultsDir = userParams.get('resultsDir',"/store/results")
-
+        
         self.localReadURL,  self.localWriteURL = getLocalDBSURLs()
         self.globalReadURL, self.globalDbsUrl  = getGlobalDBSURL()
         self.phedexURL                         = getPhedexDSURL()
