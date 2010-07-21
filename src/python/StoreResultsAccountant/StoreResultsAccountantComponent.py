@@ -9,8 +9,8 @@ Initially based on RelValInjector
 
 """
 
-__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.14 2009/10/22 12:56:50 ewv Exp $"
-__version__  = "$Revision: 1.14 $"
+__revision__ = "$Id: StoreResultsAccountantComponent.py,v 1.15 2010/02/02 09:59:49 giffels Exp $"
+__version__  = "$Revision: 1.15 $"
 __author__   = "ewv@fnal.gov"
 
 import os
@@ -29,6 +29,7 @@ from ProdAgentCore.Configuration          import loadProdAgentConfiguration
 from WMCore.Services.PhEDEx.PhEDEx                       import PhEDEx
 from WMCore.Services.PhEDEx.DataStructs.SubscriptionList import PhEDExSubscription
 from WMCore.Services.PhEDEx.DataStructs.SubscriptionList import SubscriptionList
+from WMCore.Services.DBS                                 import XMLDrop
 
 from MessageService.MessageService        import MessageService
 from ProdCommon.Database                  import Session
@@ -340,7 +341,7 @@ class StoreResultsAccountantComponent:
             msg =  traceback.format_exc()
             logging.error("Details: \n%s" % msg)
             pass
-
+        
         if doneMigrating:
             self.ms.publish("PhEDExDataServiceInject",
                                     payload)
@@ -402,15 +403,19 @@ class StoreResultsAccountantComponent:
         for block in blocks:
             blockNames.append(block['Name'])
 
-        jsonOutput = phedexAPI.injectBlocks(globalWriteUrl, injectNode, datasetName, 0 , 1, *blockNames)
+        xmlData = XMLDrop.makePhEDExDrop(globalWriteUrl, datasetName, *blockNames)
+        jsonOutput = phedexAPI.injectBlocks(injectNode, xmlData, 0 , 1)
         logging.info("Injection results: %s" % jsonOutput)
 
-        sub = PhEDExSubscription(datasetName, destNode, phedexGroup)
+        sub = PhEDExSubscription(datasetPathList=datasetName,nodeList=destNode,group=phedexGroup,
+                                          level='dataset', priority='normal', move='n', static='n',
+                                          custodial='n', requestOnly='y')
         logging.info("Subscribing dataset to: %s" % destNode)
         subList = SubscriptionList()
         subList.addSubscription(sub)
         for sub in subList.getSubscriptionList():
-            jsonOutput = phedexAPI.subscribe(globalWriteUrl, sub)
+            xmlData = XMLDrop.makePhEDExXMLForDatasets(globalWriteUrl, sub.getDatasetPaths())
+            jsonOutput = phedexAPI.subscribe(sub,xmlData)
             #logging.info("Subscription results: %s" % jsonOutput)
 
         return
