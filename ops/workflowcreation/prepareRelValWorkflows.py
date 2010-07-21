@@ -394,30 +394,34 @@ def main(argv) :
                                         reader.dbs.listRuns(target_dataset)]
                     runs_in_dbs.sort()
                     # Creating lambda function for filtering runs.
-                    expr = ''
-                    # First a string expression to evaluate
-                    is_the_first = True
-                    for run in runs_list:
-                        if is_the_first:
-                            expr += "("
-                            is_the_first = False
-                        else:
-                            expr += " or "
-                        # Run range: XXXXXX-XXXXXX
-                        if run.count("-"):
-                            run_limits = \
-                                [x.strip() for x in run.split('-') if x.strip()]
-                            expr += "(x >= %s and x <= %s)" % (
-                                                run_limits[0], run_limits[1])
-                        else:
-                            expr += "x == %s" % run
-                    if not is_the_first:
-                        expr += ")"
-                    # Here comes the lambda funtion
-                    runs_filter = lambda x: eval(expr)
-                    # Filtering runs in DBS using the list provided in the
-                    # input file.
-                    target_runs = filter(runs_filter, runs_in_dbs)
+                    # Do filtering only if a run list was requested
+                    if runs_list:
+                        expr = ''
+                        # First a string expression to evaluate
+                        is_the_first = True
+                        for run in runs_list:
+                            if is_the_first:
+                                expr += "("
+                                is_the_first = False
+                            else:
+                                expr += " or "
+                            # Run range: XXXXXX-XXXXXX
+                            if run.count("-"):
+                                run_limits = \
+                                    [x.strip() for x in run.split('-') if x.strip()]
+                                expr += "(x >= %s and x <= %s)" % (
+                                                    run_limits[0], run_limits[1])
+                            else:
+                                expr += "x == %s" % run
+                        if not is_the_first:
+                            expr += ")"
+                        # Here comes the lambda funtion
+                        runs_filter = lambda x: eval(expr)
+                        # Filtering runs in DBS using the list provided in the
+                        # input file.
+                        target_runs = filter(runs_filter, runs_in_dbs)
+                    else:
+                        target_runs = runs_in_dbs
 
                     # Pulling up input files from DBS (including run info).
                     input_files = reader.dbs.listFiles(
