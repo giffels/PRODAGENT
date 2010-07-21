@@ -14,7 +14,10 @@ import logging
 import string
 
 from mechanize import Browser
-import simplejson as json
+try:
+    import json
+except:
+    import simplejson as json
 
 class RequestQuery:
 
