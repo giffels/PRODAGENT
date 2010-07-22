@@ -620,6 +620,25 @@ def main(argv) :
                     max_step = step_number
 
                 #  //
+                # // Selecting the output module to be taken from the 
+                #// previous step. By default, the output module to be
+                #\\ taken is 'output'
+                # \\
+                input_module = 'output'
+                if '--filein' in array:
+                    index = array.index('--filein')
+                    input_module = \
+                        array[index + 1].replace('file:', '').replace('.root', '')
+                    # FIXME: These lines are temporal. They should be removed
+                    # once files in Configuration/PyReleaseValidation/data use
+                    # the --filein argument to set the forwarding output module
+                    if not command.count('ALCA:') or \
+                            not command.count('ALCARECO'):
+                        input_module = 'output'
+                    if input_module == 'reco':
+                        input_module = 'output'
+
+                #  //
                 # // HARVESTING cmsDriver commands should be ignored. RelVals
                 #// should not run any HARVESTING configuration. Harvestings
                 #\\ run independently after the datasets are produced.
@@ -643,6 +662,7 @@ def main(argv) :
                 dict['stagePrevious'] = stage_previous
                 dict['DQMData'] = {'Scenario': getDQMScenario(command)}
                 dict['skipStep'] = skip_step
+                dict['inputModule'] = input_module
                 #  //
                 # // Step name should be unique
                 #//
@@ -660,6 +680,8 @@ def main(argv) :
                     print 'Conditions:', conditions
                     print 'Stage previous:', stage_previous
                     print 'DQM Data:', dict['DQMData']
+                    print 'Skip step:', skip_step
+                    print 'Input module:', input_module
                     print ''
 
     parse_time = time.time() - start_parse_time
@@ -692,6 +714,7 @@ def main(argv) :
                     print 'Conditions:', steps[step]['conditions']
                     print 'Stage previous:', steps[step]['stagePrevious']
                     print 'DQM Data:', steps[step]['DQMData']
+                    print 'Input module:', steps[step]['inputModule']
                     print ''
 
     #  //
@@ -825,7 +848,8 @@ def main(argv) :
                 if i != 0 or not sample['isRealData']:
                     command += '--stageout-intermediates=%s \\\n' % (
                         steps[step]['stagePrevious'])
-                    command += '--chained-input=output \\\n'
+                    command += '--chained-input=%s \\\n' % (
+                        steps[step]['inputModule'])
                 else:
                     dqmScenario = steps[step]['DQMData']['Scenario']
                 #  //
