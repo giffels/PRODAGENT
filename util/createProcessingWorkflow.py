@@ -5,13 +5,14 @@ _createProcessingWorkflow_
 Create a workflow that processes an input dataset with a cfg file
 
 """
-__version__ = "$Revision: 1.30 $"
-__revision__ = "$Id: createProcessingWorkflow.py,v 1.30 2010/07/03 19:57:56 aresh Exp $"
+__version__ = "$Revision: 1.31 $"
+__revision__ = "$Id: createProcessingWorkflow.py,v 1.31 2010/08/02 16:55:53 direyes Exp $"
 
 import os
 import sys
 import getopt
 import time
+import re
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
