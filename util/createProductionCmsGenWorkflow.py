@@ -5,8 +5,8 @@ _createProductionCmsGenWorkflow_
 Create a cmsGen and cmsRun workflow
 
 """
-__version__ = "$Revision: 1.21 $"
-__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.21 2010/05/11 11:50:14 swakef Exp $"
+__version__ = "$Revision: 1.22 $"
+__revision__ = "$Id: createProductionCmsGenWorkflow.py,v 1.22 2010/07/03 19:57:56 aresh Exp $"
 
 import ProdCommon.MCPayloads.WorkflowTools as WorkflowTools
 from ProdCommon.MCPayloads.WorkflowMaker import WorkflowMaker
@@ -285,25 +285,22 @@ if not os.path.exists(cmsGenCfg):
 #//
 if not (re.findall("^v[0-9]+$", processingVersion)):
     msg = "processing_version '" + processingVersion + \
-        " violates naming conventions!\n" + \
-
+        "' violates naming conventions!\n" \
         "Processing version should match this regexp ^v[0-9]+$ " \
         "(see https://twiki.cern.ch/twiki/bin/view/CMS/DMWMPG_PrimaryDatasets)"
-    # processingVersion = re.sub("[^v0-9]+","",requestId)
     raise RuntimeError, msg
 
 if re.findall("[-]+", acquisitionEra):
     msg = "acquisition_era '" + acquisitionEra + \
-        " violates naming conventions!\n" + \
-
+        "' violates naming conventions!\n" \
         "Acquisition Era should not contain any ('-')" \
         "(see https://twiki.cern.ch/twiki/bin/view/CMS/DMWMPG_PrimaryDatasets)"
     raise RuntimeError, msg
+
 if re.findall("[-]+", processingString):
     msg = "processing_string '" + processingString + \
-        " violates naming conventions!\n" + \
-
-        "Processing String should not contain any dash ('-')"
+        "' violates naming conventions!\n" \
+        "Processing String should not contain any dash ('-')" \
         "(see https://twiki.cern.ch/twiki/bin/view/CMS/DMWMPG_PrimaryDatasets)"
     raise RuntimeError, msg
 
