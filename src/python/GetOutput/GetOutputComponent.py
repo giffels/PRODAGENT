@@ -4,8 +4,8 @@ _GetOutputComponent_
 
 """
 
-__version__ = "$Id: GetOutputComponent.py,v 1.21 2009/07/30 08:35:53 gcodispo Exp $"
-__revision__ = "$Revision: 1.21 $"
+__version__ = "$Id: GetOutputComponent.py,v 1.22 2009/10/14 08:01:11 gcodispo Exp $"
+__revision__ = "$Revision: 1.22 $"
 
 import os
 import time
@@ -59,10 +59,16 @@ class GetOutputComponent:
         self.args.setdefault('maxGetOutputAttempts', 3)
         self.args.setdefault('timeout', 600)
         self.args.setdefault('skipWMSAuth', None)
+        self.args.setdefault("HeartBeatDelay", "00:05:00")
         self.args.update(args)
 
         ### setting global timeout for wms connection
         # socket.setGlobalTimeout(600)
+
+        if len(self.args["HeartBeatDelay"]) != 8:
+            self.HeartBeatDelay="00:05:00"
+        else:
+            self.HeartBeatDelay=self.args["HeartBeatDelay"]
 
         # set up logging for this component
         if self.args['Logfile'] == None:
@@ -179,7 +185,11 @@ class GetOutputComponent:
         elif event == "GetOutputComponent:pollDB":
             self.checkJobs()
             return
-
+        elif event == "GetOutputComponent:HeartBeat":
+            logging.info("HeartBeat: I'm alive ")
+            self.ms.publish("GetOutputComponent:HeartBeat","",self.HeartBeatDelay)
+            self.ms.commit()
+            return
         # wrong event
         logging.info("Unexpected event %s(%s), ignored" % \
                      (str(event), str(payload)))
@@ -523,6 +533,10 @@ class GetOutputComponent:
         self.ms.subscribeTo("GetOutputComponent:StartDebug")
         self.ms.subscribeTo("GetOutputComponent:EndDebug")
         self.ms.subscribeTo("GetOutputComponent:pollDB")
+        self.ms.subscribeTo("GetOutputComponent:HeartBeat")
+        self.ms.remove("GetOutputComponent:HeartBeat")
+        self.ms.publish("GetOutputComponent:HeartBeat","",self.HeartBeatDelay)
+        self.ms.commit()
 
         # generate first polling cycle
         self.ms.remove("GetOutputComponent:pollDB")

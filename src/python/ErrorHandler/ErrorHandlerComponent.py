@@ -65,8 +65,14 @@ class ErrorHandlerComponent:
          self.args['RunHandlerName'] = 'runFailureHandler'
          self.args['SubmitHandlerName'] = 'submitFailureHandler'
          self.args['CreateHandlerName'] = 'createFailureHandler'
+         self.args.setdefault("HeartBeatDelay", "00:05:00")
 
          self.args.update(args)
+
+         if len(self.args["HeartBeatDelay"]) != 8:
+             self.HeartBeatDelay="00:05:00"
+         else:
+             self.HeartBeatDelay=self.args["HeartBeatDelay"]
 
          if self.args['QueueFailures'].lower() in ('true', 'yes'):
              self.args['QueueFailures'] = True
@@ -114,16 +120,20 @@ class ErrorHandlerComponent:
 
          try:
               if event == "ErrorHandler:StartDebug":
-                   logging.getLogger().setLevel(logging.DEBUG)
-                   logging.info("logging level changed to DEBUG")
-                   return
+                  logging.getLogger().setLevel(logging.DEBUG)
+                  logging.info("logging level changed to DEBUG")
+                  return
               elif event == "ErrorHandler:EndDebug":
-                   logging.getLogger().setLevel(logging.INFO)
-                   logging.info("logging level changed to INFO")
-                   return
+                  logging.getLogger().setLevel(logging.INFO)
+                  logging.info("logging level changed to INFO")
+                  return
               elif event in self.args['Events'].keys():
                   handler=retrieveHandler(self.args['Events'][event],"ErrorHandler")
                   handler.handleError(payload)
+              elif event == "ErrorHandler:HeartBeat":
+                  logging.info("HeartBeat: I'm alive ")
+                  self.ms.publish("ErrorHandler:HeartBeat","",self.HeartBeatDelay)
+                  self.ms.commit()
               else:
                   logging.error("No handler available for %s event with payload: %s" \
                       %(event,str(payload)))
@@ -175,6 +185,9 @@ class ErrorHandlerComponent:
          # while alive
          self.ms.subscribeTo("ErrorHandler:StartDebug")
          self.ms.subscribeTo("ErrorHandler:EndDebug")
+         self.ms.subscribeTo("ErrorHandler:HeartBeat")
+         self.remove("ErrorHandler:HeartBeat")
+         self.ms.publish("ErrorHandler:HeartBeat","",self.HeartBeatDelay)
          self.ms.commit()
          # wait for messages
          while True:

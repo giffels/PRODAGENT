@@ -37,6 +37,7 @@ class AdminControlComponent:
         self.args['SendMail'] = False
         self.args['MaxDiskPercent'] = None
         self.args['MinDiskSpaceGB'] = None
+        self.args.setdefault("HeartBeatDelay", "00:05:00")
         self.args.update(args)
 
         if self.args['SendMail'] :
@@ -51,6 +52,11 @@ class AdminControlComponent:
         for botname in self.args['Bots'].split(','):
             if len(botname.strip()) > 0:
                 self.botList.append(botname.strip())
+
+        if len(self.args["HeartBeatDelay"]) != 8:
+            self.HeartBeatDelay="00:05:00"
+        else:
+            self.HeartBeatDelay=self.args["HeartBeatDelay"]
                 
         
         if self.args['Logfile'] == None:
@@ -78,6 +84,12 @@ class AdminControlComponent:
             logging.getLogger().setLevel(logging.INFO)
             return
 
+ 
+        if event == "AdminControl:HeartBeat":
+            logging.info("HeartBeat: I'm alive ")
+            self.ms.publish("AdminControl:HeartBeat","",self.HeartBeatDelay)
+            self.ms.commit()
+ 
         if event == "AdminControl:StartBots":
             self.startBots()
             return
@@ -252,6 +264,11 @@ class AdminControlComponent:
         self.ms.subscribeTo("AdminControl:ActivateBot")
         self.ms.subscribeTo("AdminControl:DeactivateBot")
         self.ms.subscribeTo("AdminControl:BotCycle")
+        self.ms.subscribeTo("AdminControl:HeartBeat")
+        self.ms.remove("AdminControl:HeartBeat")
+        self.ms.publish("AdminControl:HeartBeat","",self.HeartBeatDelay)
+        self.ms.commit()
+
 
         # forward messages to Bots
         for botName in self.botList:
