@@ -186,7 +186,7 @@ class ErrorHandlerComponent:
          self.ms.subscribeTo("ErrorHandler:StartDebug")
          self.ms.subscribeTo("ErrorHandler:EndDebug")
          self.ms.subscribeTo("ErrorHandler:HeartBeat")
-         self.remove("ErrorHandler:HeartBeat")
+         self.ms.remove("ErrorHandler:HeartBeat")
          self.ms.publish("ErrorHandler:HeartBeat","",self.HeartBeatDelay)
          self.ms.commit()
          # wait for messages
