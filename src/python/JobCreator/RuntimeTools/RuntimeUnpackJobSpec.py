@@ -55,7 +55,9 @@ class JobSpecExpander:
         self.workflowSpec.payload.operate(wffinder)
         self.workflowNode = wffinder.result
 
-        if self.jobSpecNode.jobType != "Merge":
+        tier0Merge = self.workflowSpec.parameters.get("Tier0Merge", "False")
+
+        if self.jobSpecNode.jobType != "Merge" or tier0Merge == "True":
 
             if self.config.has_key('Configuration'):
                 #try:
