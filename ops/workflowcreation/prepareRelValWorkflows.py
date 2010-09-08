@@ -1027,7 +1027,7 @@ def main(argv) :
     # DQMHarvesting
     DQMinputScript = open('DQMinput.sh','w')
     DQMinputScript.write("#!/bin/bash\n")
-    reHarvest = re.compile(r'/.*/.*/(RECO|.*-RECO)') # Only RECO datasets for now.
+    reHarvest = re.compile(r'/.*/.*/(RECO$|.*-RECO$|GEN$)') # Only RECO and GEN datasets.
     for sample in datasets:
         for dataset in sample['merged']:
             if reHarvest.match(dataset):
@@ -1103,6 +1103,11 @@ def getDQMScenario(cmsDriverCmd):
     cmsDriverCmdParts = cmsDriverCmd.split()
     if cmsDriverCmdParts.count('--scenario'):
         scenario = cmsDriverCmdParts[cmsDriverCmdParts.index('--scenario') + 1]
+
+    # only GEN
+    if cmsDriverCmdParts.count('--datatier'):
+        if cmsDriverCmdParts[cmsDriverCmdParts.index('--datatier') + 1].strip("'") == 'GEN':
+            return 'relvalgen'
 
     # RealData
     if cmsDriverCmdParts.count('--data'):
