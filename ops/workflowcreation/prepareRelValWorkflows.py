@@ -306,6 +306,18 @@ def main(argv) :
                     dqmData['Runs'] = '1'
                     dqmData['Scenario'] = getDQMScenario(command)
 
+                    # FIX: In CMSSW_3_8_3 the event content is part of the output
+                    # module name. So, I'm figuring out the eventcontent
+                    main_output = None
+                    if '--eventcontent' in array:
+                        index = array.index("--eventcontent")
+                        event_content = array[index + 1].strip()
+                        main_output = event_content + "output"
+                        # ALCARECO output modules will also have 'Stream'
+                        # Not like this case is going to happen
+                        if event_content.lower() == 'alcareco':
+                            main_output = None
+
                 #  //
                 # // Collecting info for real data samples
                 #//
@@ -535,6 +547,7 @@ def main(argv) :
                 dict['steps'] = sample_steps
                 dict['AcqEra'] = acq_era
                 dict['DQMData'] = dqmData
+                dict['outputModule'] = main_output
  
                 samples.append(dict)
 
@@ -551,6 +564,7 @@ def main(argv) :
                     print 'Input data:', input_data
                     print 'Input blocks:', input_blocks
                     print 'DQMData:', dqmData
+                    print 'Output Module:', main_output
                     print ''
 
             #  //
@@ -629,14 +643,30 @@ def main(argv) :
                     index = array.index('--filein')
                     input_module = \
                         array[index + 1].replace('file:', '').replace('.root', '')
+                    # FIXME: Awful hack to work around the fact that the ALCARECO output
+                    # modules have "ALCARECOStream"
+                    input_module = "ALCARECOStream" + input_module
                     # FIXME: These lines are temporal. They should be removed
                     # once files in Configuration/PyReleaseValidation/data use
                     # the --filein argument to set the forwarding output module
                     if not command.count('ALCA:') or \
                             not command.count('ALCARECO'):
                         input_module = 'output'
-                    if input_module == 'reco':
+                    if input_module.count('reco'):
                         input_module = 'output'
+
+                # FIX: In CMSSW_3_8_3 the event content is part of the output
+                # module name. So, I'm figuring out the eventcontent
+                main_output = None
+              	if '--eventcontent' in array:
+                    index = array.index("--eventcontent")
+                    event_content = array[index + 1].strip()
+                    main_output = event_content + "output"
+                    # ALCARECO output modules will also have 'Stream'
+                    # Not like this case is going to happen
+                    if event_content.lower() == 'alcareco':
+                        main_output = None
+
 
                 #  //
                 # // HARVESTING cmsDriver commands should be ignored. RelVals
@@ -648,7 +678,7 @@ def main(argv) :
                     index = array.index('-s')
                 else:
                     index = array.index('--step')
-                if array[index+1].count('HARVESTING') > 0:
+                if array[index+1].count('HARVESTING')  or array[index+1].count('ALCAHARVEST'):
                     skip_step = True
 
                 #  //
@@ -663,6 +693,7 @@ def main(argv) :
                 dict['DQMData'] = {'Scenario': getDQMScenario(command)}
                 dict['skipStep'] = skip_step
                 dict['inputModule'] = input_module
+                dict['outputModule'] = main_output
                 #  //
                 # // Step name should be unique
                 #//
@@ -682,6 +713,7 @@ def main(argv) :
                     print 'DQM Data:', dict['DQMData']
                     print 'Skip step:', skip_step
                     print 'Input module:', input_module
+                    print 'Output module:', main_output
                     print ''
 
     parse_time = time.time() - start_parse_time
@@ -715,6 +747,7 @@ def main(argv) :
                     print 'Stage previous:', steps[step]['stagePrevious']
                     print 'DQM Data:', steps[step]['DQMData']
                     print 'Input module:', steps[step]['inputModule']
+                    print 'Output module:', steps[step]['outputModule']
                     print ''
 
     #  //
@@ -848,8 +881,19 @@ def main(argv) :
                 if i != 0 or not sample['isRealData']:
                     command += '--stageout-intermediates=%s \\\n' % (
                         steps[step]['stagePrevious'])
-                    command += '--chained-input=%s \\\n' % (
-                        steps[step]['inputModule'])
+                    # If input module is 'output' then we need to put the
+                    # event content before it, i.e. fetching the main output
+                    # module from the previous step
+                    if steps[step]['inputModule'] == 'output':
+                        if i > 0:
+                            command += '--chained-input=%s \\\n' % (
+                                steps[sample['steps'][i - 1]]['outputModule'])
+                        else:
+                            command += '--chained-input=%s \\\n' % (
+                                sample['outputModule'])
+                    else:
+                        command += '--chained-input=%s \\\n' % (
+                            steps[step]['inputModule'])
                 else:
                     dqmScenario = steps[step]['DQMData']['Scenario']
                 #  //
