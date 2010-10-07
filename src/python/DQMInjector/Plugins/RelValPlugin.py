@@ -296,8 +296,13 @@ class RelValPlugin(BasePlugin):
 
         jobSpec.setJobName(jobName)
         jobSpec.setJobType("Harvesting")
+
+        # Adding specific parameters to the JobSpec
         jobSpec.parameters['RunNumber'] = collectPayload['RunNumber']  # How should we manage the run numbers?
         jobSpec.parameters['Scenario'] = collectPayload['Scenario']
+        if collectPayload.get('RefHistKey', None) is not None:
+            jobSpec.parameters['RefHistKey'] = collectPayload['RefHistKey']
+
         jobSpec.addWhitelistSite(site)
         jobSpec.payload.operate(DefaultLFNMaker(jobSpec))
         jobSpec.payload.cfgInterface.inputFiles.extend(

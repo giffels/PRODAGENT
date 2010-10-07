@@ -55,6 +55,7 @@ class OfflineDQMSetup:
         self.inputDataset = self.jobSpecNode._InputDatasets[0]
         self.runNumber = self.jobSpec.parameters['RunNumber']
         self.scenario = self.jobSpec.parameters.get('Scenario', 'relvalmc')
+        self.refHistKey = self.jobSpec.parameters.get('RefHistKey', None)
         
 
     def __call__(self):
@@ -95,6 +96,42 @@ class OfflineDQMSetup:
         handle.close()
         print "Wrote PSet.py for harvesting"
         return
+
+
+    def getReferenceHistogram(self):
+        """
+        _getReferenceHistogram_
+
+        If the reference histogram key is available, then it will pull the
+        harvesting reference file from the release.
+
+        """
+        if self.refHistKey is None:
+            msg = "==> No reference dictionary key was provided in the " \
+                  "workflow. Not adding reference histogram file."
+            print msg
+            return None
+
+        try:
+            from Configuration.PyReleaseValidation.refHist import refHist as ref_files_map
+        except Exception, ex:
+            msg = "Seems like Marco hasn't put the ref. dictionary in the release yet. " \
+                  "Expecting to have this package available:\n" \
+                  "Configuration.PyReleaseValidation.refHist"
+            print msg
+            return None
+
+        if self.refHistKey in ref_files_map:
+            msg = "==> Found reference histogram file %s for key %s" % (
+                            ref_files_map[self.refHistKey],
+                            self.refHistKey)
+            print msg
+            return ref_files_map[self.refHistKey]
+        else:
+            msg = "==> Reference histogram key %s was not found in " \
+                  "association map." % self.refHistKey
+            print msg
+            return None
 
 
     def importConfigurationLibrary(self):
@@ -140,6 +177,13 @@ class OfflineDQMSetup:
             raise RuntimeError, msg
 
         process.source.fileNames.extend(self.inputFiles)
+
+        #  //
+        # // Setting DQM reference file if available 
+        #//
+        reference_hist = self.getReferenceHistogram()
+        if reference_hist is not None:
+            process.DQMStore.referenceFileName.setValue(reference_hist)
 
         return process
 

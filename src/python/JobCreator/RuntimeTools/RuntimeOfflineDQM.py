@@ -15,6 +15,7 @@ from mimetypes import guess_type
 from gzip      import GzipFile
 from cStringIO import StringIO
 from md5       import md5
+import re
 import traceback
 import httplib
 import urllib2
@@ -46,8 +47,8 @@ CERNStageOut = {
     "lfn-prefix" : "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms/",
     }
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.24 2010/07/14 13:33:55 direyes Exp $"
-__version__ = "$Revision: 1.24 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.25 2010/07/16 14:15:07 direyes Exp $"
+__version__ = "$Revision: 1.25 $"
 
 
 HTTPS = httplib.HTTPS
@@ -137,6 +138,67 @@ class HarvesterImpl:
             print "Info: doCernCopy flag is set to False, not copying files to CERN.\n"
 
 
+    def buildLFN(self, analysisFile):
+        """
+        _buildLFN_
+
+        This method creates the LFN which the DQM files will be stage out with
+        The LFN will have the ofllowing structure:
+
+        /store/unmerged/dqm/[acq_era]/[sample_name]/[TIER]/[processing_string-processing_version]/[run_padding]/[analysis_file].root
+
+        The different parts of the LFN will be figure out from the analysis
+        file name which should match the following re:
+
+        ^(DQM)_V\d+(_[A-Za-z]+)?_R(\d+)(__.*)?\.root
+
+        where thelast group corresponds to the dataset name.
+        """
+
+        lfn_prefix = '/store/unmerged/dqm/'
+
+
+        file_name = analysisFile['FileName']
+        filebasename = os.path.basename(file_name)
+
+        m = re.match(r'^(DQM)_V\d+(_[A-Za-z]+)?_R(\d+)(__.*)?\.root', 
+                     filebasename)
+
+        if not m:
+            msg = "Unable to stage out DQM file %s: " \
+                  "It's name does not match the expected " \
+                  "convention." % filebasename
+            print msg
+            raise RuntimeError, msg
+
+        run_number = int(m.group(3))
+        #run_padding0 = str(run_number % 1000).zfill(3)
+        run_padding1 = str(run_number // 1000).zfill(3)
+
+        dataset_name = m.group(4).replace("__", "/")
+
+        if re.match(r'^(/[-A-Za-z0-9_]+){3}$', dataset_name) is None:
+            msg = "Unable to stage out DQM file %s: " \
+                  "Dataset %s It does not match the expected " \
+                  "convention." % (filebasename, dataset_name)
+            print msg
+            raise RuntimeError, msg
+
+        m1 = re.match(r'^/([-A-Za-z0-9_]+)/?([A-Za-z0-9_]+)-([-A-Za-z0-9_]+)/([-A-Za-z0-9_]+)',
+                      dataset_name)
+
+        acq_era = m1.group(2)
+        primary_ds = m1.group(1)
+        tier = m1.group(4)
+        proc_string = m1.group(3)
+
+        lfn = os.path.join(lfn_prefix, acq_era, primary_ds, tier, proc_string,
+                           run_padding1, filebasename)
+                           #run_padding1, run_padding0, filebasename)
+
+        return lfn
+
+
     def stageOut(self, analysisFile):
         """
         _stageOut_
@@ -151,16 +213,14 @@ class HarvesterImpl:
             msg = "Unable to stage out DQM File:\n"
             msg += str(ex)
             raise RuntimeError, msg
+
         filebasename = os.path.basename(filename)
-        filebasename = filebasename.replace(".root", "")
 
         fileInfo = {
-            'LFN' : "/store/unmerged/dqm/%s/%s/%s" % (self.workflowSpecId,
-                                                      self.jobSpecId,
-                                                      filebasename),
+            'LFN' : self.buildLFN(analysisFile),
             'PFN' : os.path.join(os.getcwd(), filename),
             'SEName' : None,
-            'GUID' : filebasename,
+            'GUID' : filebasename.replace(".root", ""),
             }
 
         try:

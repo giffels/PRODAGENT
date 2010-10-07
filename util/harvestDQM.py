@@ -14,7 +14,7 @@ from DQMInjector.CollectPayload import CollectPayload
 
 
 valid = ['run=', 'primary=', 'processed=', 'tier=' , 'scenario=', 'path=',
-         'tag=']
+         'tag=', 'ref-hist=']
 
 
 usage = \
@@ -29,6 +29,7 @@ harvestDQM.py --run=<RUN>
               --path=<DATASET_PATH>
               --plugin=<DQM_PLUGIN>
               --tag=<GLOBAL_TAG>
+              --ref-hist=<REF_HISTOGRAM_KEY>
 
 Details:
 
@@ -56,6 +57,9 @@ Details:
 <GLOBAL_TAG>:
     Optional paramenter that allows to select the Global Tag. It should be
     complete, i.e. MC_31X_V9::All, CRAFT0831X_V3::All
+<REF_HISTOGRAM_KEY>:
+    Optional parameter that allows to specify the reference histogram key in
+    the releasethat will point to the appropiate ref. file.
 
 """
 
@@ -93,6 +97,8 @@ for opt, arg in opts:
         path = arg
     if opt == "--plugin":
         plugin = arg
+    if opt == "--ref-hist":
+        collect['RefHistKey'] = arg
 
 if path is not None and len(path.split("/")) != 4 and not path.startswith('/'):
     msg = 'Invalid dataset path provided. '
