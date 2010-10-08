@@ -309,14 +309,30 @@ def main(argv) :
                     # FIX: In CMSSW_3_8_3 the event content is part of the output
                     # module name. So, I'm figuring out the eventcontent
                     main_output = None
-                    if '--eventcontent' in array:
+                    weird_output = False
+
+                    mat = re.match('^CMSSW_(\d+)_(\d+)_(\d+)(_pre\d+)?$',
+                                   version)
+                    test1 = int(mat.group(1) + mat.group(2) + mat.group(3))
+                    if test1 > 383:
+                        weird_output = True
+                    if test1 == 390 and mat.group(4):
+                        test2 = int(mat.group(4).replace('_pre', ''))
+                        if test2 < 4:
+                            weird_output = False
+                    
+                    if '--eventcontent' in array and weird_output:
                         index = array.index("--eventcontent")
-                        event_content = array[index + 1].strip()
+                        # remove AODSIM when eventcontent like "RECOSIM,AODSIM"
+                        event_content = array[index + 1].strip().split(",AODSIM")[0] 
                         main_output = event_content + "output"
                         # ALCARECO output modules will also have 'Stream'
                         # Not like this case is going to happen
                         if event_content.lower() == 'alcareco':
                             main_output = None
+                    else:
+                        main_output = "output"
+                       
 
                 #  //
                 # // Collecting info for real data samples
@@ -548,7 +564,7 @@ def main(argv) :
                 dict['AcqEra'] = acq_era
                 dict['DQMData'] = dqmData
                 dict['outputModule'] = main_output
- 
+
                 samples.append(dict)
 
                 if debug:
@@ -659,23 +675,22 @@ def main(argv) :
                 # is part of the output module name. So, I'm figuring out the
                 # eventcontent
                 weird_output = False
-                mat = re.match('^CMSSW_(\d+)_(\d+)_(\d+$|\d+_pre\d+$)',
-                               version)
-                test1 = int(mat.group(1)) * 100 + int(mat.group(2))
-                if test1 == 308:
-                    if int(mat.group(3)) >= 3:
-                        weird_output = True
-                elif test1 == 309:
-                    if mat.group(3).startswith('0_pre'):
-                        test2 = int(mat.group(3).replace('0_pre', ''))
-                        if test2 >= 4:
-                            weird_output = True
-                elif test1 > 308:
-                    weird_output = True
                 main_output = None
+
+                mat = re.match('^CMSSW_(\d+)_(\d+)_(\d+)(_pre\d+)?$',
+                               version)
+                test1 = int(mat.group(1) + mat.group(2) + mat.group(3))
+                if test1 > 383:
+                    weird_output = True
+                if test1 == 390 and mat.group(4):
+                    test2 = int(mat.group(4).replace('_pre', ''))
+                    if test2 < 4:
+                        weird_output = False
+
               	if '--eventcontent' in array and weird_output:
                     index = array.index("--eventcontent")
-                    event_content = array[index + 1].strip()
+                    # remove AODSIM when eventcontent like "RECOSIM,AODSIM"
+                    event_content = array[index + 1].strip().split(",AODSIM")[0]
                     main_output = event_content + "output"
                     # ALCARECO output modules will also have 'Stream'
                     # Not like this case is going to happen
