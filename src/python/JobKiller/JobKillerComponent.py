@@ -5,8 +5,8 @@ _JobKillerComponent_
 ProdAgent Component that kills jobs by job spec or workflow Id
 
 """
-__version__ = "$Revision: 1.10 $"
-__revision__ = "$Id: JobKillerComponent.py,v 1.10 2009/12/03 17:58:20 ewv Exp $"
+__version__ = "$Revision: 1.9 $"
+__revision__ = "$Id: JobKillerComponent.py,v 1.9 2009/08/03 12:13:34 farinafa Exp $"
 __author__ = "evansde@fnal.gov"
 
 
@@ -39,18 +39,12 @@ class JobKillerComponent:
         self.args['Logfile'] = None
         self.args['KillerName'] = None
         self.args['glexecPath'] = None
-        self.args.setdefault("HeartBeatDelay", "00:05:00")
         self.args.update(args)
 
         if self.args['Logfile'] == None:
             self.args['Logfile'] = os.path.join(self.args['ComponentDir'],
                                                 "ComponentLog")
 
-        if len(self.args["HeartBeatDelay"]) != 8:
-            self.HeartBeatDelay="00:05:00"
-        else:
-            self.HeartBeatDelay=self.args["HeartBeatDelay"]
-        
         LoggingUtils.installLogHandler(self)
         self.ms = None
 
@@ -71,11 +65,6 @@ class JobKillerComponent:
         logging.debug("Event: %s Payload: %s" % (event, payload))
         if event == "JobKiller:StartDebug":
             logging.getLogger().setLevel(logging.DEBUG)
-            return
-        if event == "JobKiller:HeartBeat":
-            logging.info("HeartBeat: I'm alive ")
-            self.ms.publish("JobKiller:HeartBeat","",self.HeartBeatDelay)
-            self.ms.commit()
             return
         if event == "JobKiller:EndDebug":
             logging.getLogger().setLevel(logging.INFO)
@@ -353,11 +342,7 @@ class JobKillerComponent:
         self.ms.subscribeTo("KillWorkflow")
         self.ms.subscribeTo("EraseWorkflow")
         self.ms.subscribeTo("KillTask")
-        self.ms.subscribeTo("JobKiller:HeartBeat")
-        self.ms.remove("JobKiller:HeartBeat")
-        self.ms.publish("JobKiller:HeartBeat","",self.HeartBeatDelay)
-        self.ms.commit()
-
+        
         # wait for messages
         while True:
             Session.set_database(dbConfig)
