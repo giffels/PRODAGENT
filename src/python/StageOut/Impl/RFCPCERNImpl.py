@@ -72,17 +72,17 @@ class RFCPCERNImpl(StageOutImpl):
                 print "DEBUG 333 checking PFN for fileclass override"
 
                 # check for correct naming convention in PFN
-                regExpParser = re.compile('/castor/cern.ch/cms/store/data/([^/]+)/([^/]+)/([^/]+)/')
+                regExpParser = re.compile('/castor/cern.ch/cms/store/([^/]*data)/([^/]+)/([^/]+)/([^/]+)/')
                 match = regExpParser.match(targetDir)
                 if ( match != None ):
 
                     # RAW data files use cms_raw, all others cms_production
-                    if match.group(3) == 'RAW':
+                    if match.group(4) == 'RAW':
                         fileclass = 'cms_raw'
                     else:
                         fileclass = 'cms_production'
 
-                    fileclassDir = '/castor/cern.ch/cms/store/data/%s/%s/%s' % match.group(1,2,3)
+                    fileclassDir = '/castor/cern.ch/cms/store/%s/%s/%s/%s' % match.group(1,2,3,4)
 
                     print "DEBUG 444 want fileclass %s on %s" % (fileclass, fileclassDir)
 
