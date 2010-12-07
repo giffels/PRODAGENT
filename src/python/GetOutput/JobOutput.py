@@ -12,8 +12,8 @@ on the subset of jobs assigned to them.
 
 """
 
-__version__ = "$Id: JobOutput.py,v 1.30 2010/01/28 16:31:10 gcodispo Exp $"
-__revision__ = "$Revision: 1.30 $"
+__version__ = "$Id: JobOutput.py,v 1.29 2009/10/14 08:01:12 gcodispo Exp $"
+__revision__ = "$Revision: 1.29 $"
 
 import logging
 import os
@@ -147,10 +147,6 @@ class JobOutput:
             if ret is not None:
                 job.runningJob['processStatus'] = 'processed'
                 job.runningJob['closed'] = 'Y'
-                # Fabio  # possible fix for SubSuccess bug
-                job.runningJob['status'] = 'E'
-                bossLiteSession.updateDB( job )
-                ##
 
             else:
                 # allow job to be reprocessed
