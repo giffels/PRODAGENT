@@ -29,7 +29,7 @@ class LCGAdvanced(MonitorInterface):
 
     """
 
-    SAMurl = "http://lxarda16.cern.ch/dashboard/request.py/latestresultssmry"
+    SAMurl = "http://dashb-cms-sam.cern.ch/dashboard/request.py/latestresultssmry"
     FCRurl = "http://lcg-fcr.cern.ch:8083/fcr-data/exclude.ldif"
     
     jobTypes = []
