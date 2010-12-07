@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.69 2010/06/29 08:34:57 direyes Exp $"
-__version__ = "$Revision: 1.69 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.68 2010/06/01 12:02:33 mcinquil Exp $"
+__version__ = "$Revision: 1.68 $"
 
 import os
 import os.path
@@ -78,8 +78,6 @@ class TrackingComponent:
         self.args.setdefault("TimeOutEvent", None)
         self.args.setdefault("TimeOut", 12) # In hours
         self.args.setdefault("DoneFailedTimeOut", None) # In hours
-        self.args.setdefault("HeartBeatDelay", "00:05:00")
-
         self.args.update(args)
 
         # set up logging for this component
@@ -90,11 +88,6 @@ class TrackingComponent:
         logging.getLogger().setLevel(logging.DEBUG)
 
         logging.info("JobTracking Component Initializing...")
-
-        if len(self.args["HeartBeatDelay"]) != 8:
-            self.HeartBeatDelay="00:05:00"
-        else:
-            self.HeartBeatDelay=self.args["HeartBeatDelay"]
 
         # compute delay for get output operations
         delay = int(self.args['PollInterval'])
@@ -211,11 +204,7 @@ class TrackingComponent:
         elif event == "TrackingComponent:CheckSubmitted":
             self.checkSubmitted()
             return
-        elif event == "TrackingComponent:HeartBeat":
-            logging.info("HeartBeat: I'm alive ")
-            self.ms.publish("TrackingComponent:HeartBeat","",self.HeartBeatDelay)
-            self.ms.commit()
-            return
+
         # wrong event
         logging.info("Unexpected event %s(%s), ignored" % \
                      (str(event), str(payload)))
@@ -449,11 +438,6 @@ class TrackingComponent:
         if self.timeoutEvent is not None:
             self.ms.subscribeTo("TrackingComponent:CheckSubmitted")
             self.ms.publish("TrackingComponent:CheckSubmitted", "")
-
-        self.ms.subscribeTo("TrackingComponent:HeartBeat")
-        self.ms.remove("TrackingComponent:HeartBeat")
-        self.ms.publish("TrackingComponent:HeartBeat","",self.HeartBeatDelay)
-        self.ms.commit()
 
         # generate first polling cycle
         self.ms.remove("TrackingComponent:pollDB")
