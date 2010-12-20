@@ -245,14 +245,7 @@ class JobSpecExpander:
 
         cmsProcess = self.jobSpecNode.cfgInterface.makeConfiguration()
 
-        cfgDump = open("CfgFileDump.log", 'w')
-        try:
-            cfgDump.write(cmsProcess.dumpConfig())
-        except Exception, ex:
-            msg = "Error writing CfgFile cfg format dump\n"
-            msg += "This feature is deprecated for CMSSW_2_1_X and higher"
-            cfgDump.write(msg)
-        cfgDump.close()
+
 
         pycfgDump = open("PyCfgFileDump.log", 'w')
         try:
@@ -326,12 +319,16 @@ class JobSpecExpander:
         # Apply site specific customizations
         self.localCustomization(process, merge=True)
 
-        cfgDump = open("CfgFileDump.log", 'w')
-        cfgDump.write(process.dumpConfig())
-        cfgDump.close()
+    
 
         pycfgDump = open("PyCfgFileDump.log", 'w')
-        pycfgDump.write(process.dumpPython())
+        try:
+            pycfgDump.write(process.dumpPython())    
+        except Exception, ex:
+            msg = "Error writing python format cfg dump:\n"
+            msg += "%s\n" % str(ex)
+            msg += "This needs to be reported to the framework team"
+            pycfgDump.write(msg)
         pycfgDump.close()
 
         handle = open(cfgFile, 'w')
