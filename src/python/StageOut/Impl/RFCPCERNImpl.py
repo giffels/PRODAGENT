@@ -29,7 +29,7 @@ class RFCPCERNImpl(StageOutImpl):
         self.retryPause = 300
 
         # permission and umask for directory creation
-        self.permissions = '775'
+        self.permissions = '755'
         self.umask = '002'
 
         # use castor support to preset adler32 checksums before transfer
