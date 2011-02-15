@@ -4,7 +4,7 @@ __QueryStatus__
 
 """
 
-__version__ = "$Id: QueryStatus.py,v 1.6 2009/03/13 12:00:27 gcodispo Exp $"
+__version__ = "$Id: QueryStatus.py,v 1.5 2008/10/07 17:07:27 gcodispo Exp $"
 __revision__ = "$Revision"
 __author__ = "Giuseppe.Codispoti@bo.infn.it"
 
@@ -66,8 +66,6 @@ for taskId in parseRange( taskRange ) :
     except SchedulerError, err:
         print "Error in ", taskId, " status query"
         print schedSession.getLogger()
-        print str(err)
-        print traceback.format_exc()
     except Exception, err :
         print "Error in ", taskId, " status query"
         print str(err)
