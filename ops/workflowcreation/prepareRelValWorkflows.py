@@ -209,6 +209,7 @@ def main(argv) :
                 #\\
                 if line_parts[0].find('REALDATA') > -1:
                     is_real_data = True
+                    main_output = None
                 else:
                     is_real_data = False
                     command = line_parts[1].strip()
@@ -313,26 +314,23 @@ def main(argv) :
 
                     mat = re.match('^CMSSW_(\d+)_(\d+)_(\d+)(_pre\d+)?$',
                                    version)
-                    test1 = int(mat.group(1) + mat.group(2) + mat.group(3))
+                    #test1 = int(mat.group(1) + mat.group(2) + mat.group(3))
+                    test1 = 400
                     if test1 > 383:
                         weird_output = True
                     if test1 == 390 and mat.group(4):
                         test2 = int(mat.group(4).replace('_pre', ''))
                         if test2 < 4:
                             weird_output = False
-                    
-                    if '--eventcontent' in array and weird_output:
+
+                    if '--eventcontent' in array:
                         index = array.index("--eventcontent")
-                        # remove AODSIM when eventcontent like "RECOSIM,AODSIM"
-                        event_content = array[index + 1].strip().split(",AODSIM")[0] 
+                        event_content = array[index + 1].strip().split(",AODSIM")[0]
                         main_output = event_content + "output"
                         # ALCARECO output modules will also have 'Stream'
                         # Not like this case is going to happen
                         if event_content.lower() == 'alcareco':
                             main_output = None
-                    else:
-                        main_output = "output"
-                       
 
                 #  //
                 # // Collecting info for real data samples
@@ -564,7 +562,7 @@ def main(argv) :
                 dict['AcqEra'] = acq_era
                 dict['DQMData'] = dqmData
                 dict['outputModule'] = main_output
-
+ 
                 samples.append(dict)
 
                 if debug:
@@ -677,9 +675,11 @@ def main(argv) :
                 weird_output = False
                 main_output = None
 
+                weird_output = False
                 mat = re.match('^CMSSW_(\d+)_(\d+)_(\d+)(_pre\d+)?$',
                                version)
-                test1 = int(mat.group(1) + mat.group(2) + mat.group(3))
+                #test1 = int(mat.group(1) + mat.group(2) + mat.group(3))
+                test1 = 400
                 if test1 > 383:
                     weird_output = True
                 if test1 == 390 and mat.group(4):
@@ -689,7 +689,6 @@ def main(argv) :
 
               	if '--eventcontent' in array and weird_output:
                     index = array.index("--eventcontent")
-                    # remove AODSIM when eventcontent like "RECOSIM,AODSIM"
                     event_content = array[index + 1].strip().split(",AODSIM")[0]
                     main_output = event_content + "output"
                     # ALCARECO output modules will also have 'Stream'
