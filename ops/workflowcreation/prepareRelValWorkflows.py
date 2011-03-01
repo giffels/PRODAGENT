@@ -325,7 +325,7 @@ def main(argv) :
 
                     if '--eventcontent' in array:
                         index = array.index("--eventcontent")
-                        event_content = array[index + 1].strip().split(",AODSIM")[0]
+                        event_content = array[index + 1].strip().split(",AODSIM")[0].split(",DQM")[0]
                         main_output = event_content + "output"
                         # ALCARECO output modules will also have 'Stream'
                         # Not like this case is going to happen
@@ -689,7 +689,7 @@ def main(argv) :
 
               	if '--eventcontent' in array and weird_output:
                     index = array.index("--eventcontent")
-                    event_content = array[index + 1].strip().split(",AODSIM")[0]
+                    event_content = array[index + 1].strip().split(",AODSIM")[0].split(",DQM")[0]
                     main_output = event_content + "output"
                     # ALCARECO output modules will also have 'Stream'
                     # Not like this case is going to happen
