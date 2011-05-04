@@ -47,8 +47,8 @@ CERNStageOut = {
     "lfn-prefix" : "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms/",
     }
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.25 2010/07/16 14:15:07 direyes Exp $"
-__version__ = "$Revision: 1.25 $"
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.26 2010/10/07 12:53:57 direyes Exp $"
+__version__ = "$Revision: 1.26 $"
 
 
 HTTPS = httplib.HTTPS
@@ -84,6 +84,10 @@ class HarvesterImpl:
         Do the upload for the file provided
 
         """
+        # only process DQM files
+        if aFile['FileClass'] != "DQM":
+            return
+
         if aFile['FileName'].startswith("./"):
             aFile['FileName'] = aFile['FileName'].replace("./", "")
 
