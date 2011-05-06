@@ -10,7 +10,8 @@ cd $MYTESTAREA
 cvs co -r PRODAGENT_$PAVERSION PRODAGENT
 
 # Place any PA patches here -- as in 
-
+cvs upd -r 1.13 PRODAGENT/src/python/StageOut/Impl/RFCPCERNImpl.py 
+cvs upd -r 1.27 PRODAGENT/src/python/JobCreator/RuntimeTools/RuntimeOfflineDQM.py 
 
 echo PA CVS updates done...
 sleep 5
@@ -55,12 +56,6 @@ fi
 
 cvs co -r T0_$T0VERSION T0
 
-cvs upd -r 1.59 T0/src/python/T0/AlcaSkimInjector/AlcaSkimInjectorComponent.py
-cvs upd -r 1.25 T0/src/python/T0/WorkflowFactory/ExpressWorkflow.py
-cvs upd -r 1.56 T0/src/python/T0/State/Database/Reader/ListFiles.py
-cvs upd -r 1.41 T0/src/python/T0/RepackerAuditor/RepackerAuditorComponent.py
-cvs upd -r 1.50 T0/src/python/T0/Tier0Merger/Tier0MergerComponent.py
-
 cvs co -r WMCORE_$WMCOREVERSION WMCORE
  
 # place any WMCORE patches here:
@@ -69,7 +64,3 @@ cvs co -r WMCORE_$WMCOREVERSION WMCORE
 cd WMCORE
 make
 cd $MYTESTAREA
-
-
-cvs co -r LUMIDB_0_0_2 LUMIDB/LumiWebService/Client/LumiWebClient
-
