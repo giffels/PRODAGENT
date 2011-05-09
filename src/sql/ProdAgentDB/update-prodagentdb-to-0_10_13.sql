@@ -1,1 +1,0 @@
-ALTER TABLE log_input MODIFY lfn TEXT;
