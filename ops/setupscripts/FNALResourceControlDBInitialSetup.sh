@@ -1,8 +1,0 @@
- python util/resourceControl.py --new --site=FNAL --se-name=cmssrm.fnal.gov --ce-name=cmsosgce.fnal.gov/jobmanager-condor --processing-threshold=100 --merge-threshold=50 --processing-throttle=100 --merge-throttle=100 --min-submit=10
-python util/resourceControl.py --new --site=RAL --se-name=ralsrma.rl.ac.uk --ce-name=lcgce02.gridpp.rl.ac.uk --processing-threshold=100 --merge-threshold=50 --processing-throttle=100 --merge-throttle=100 --min-submit=10
-python util/resourceControl.py --new --site=PIC --se-name=srm-disk.pic.es --ce-name=ce07.pic.es:2119/jobmanager-lcgpbs --processing-threshold=100 --merge-threshold=50 --processing-throttle=100 --merge-throttle=100 --min-submit=10
- python util/resourceControl.py --new --site=IN2P3 --se-name=ccsrm.in2p3.fr --ce-name=cclcgceli01.in2p3.fr:2119/jobmanager-bqs --processing-threshold=100 --merge-threshold=50 --processing-throttle=100 --merge-throttle=100 --min-submit=10
- python util/resourceControl.py --new --site=FZK --se-name=gridka-dCache.fzk.de --ce-name=a01-004-128.gridka.de:2119/jobmanager-pbspro --processing-threshold=100 --merge-threshold=50 --processing-throttle=100 --merge-throttle=100 --min-submit=10
- python util/resourceControl.py --new --site=CNAF --se-name=castorsrm.cr.cnaf.infn.it --ce-name=ce05-lcg.cr.cnaf.infn.it:2119/jobmanager-lcglsf --processing-threshold=100 --merge-threshold=50 --processing-throttle=100 --merge-throttle=100 --min-submit=10
- python util/resourceControl.py --new --site=ASGC --se-name=srm.grid.sinica.edu.tw --ce-name=f-ce01.grid.sinica.edu.tw:2119/jobmanager-lcgpbs --processing-threshold=100 --merge-threshold=50 --processing-throttle=100 --merge-throttle=100 --min-submit=10
-
