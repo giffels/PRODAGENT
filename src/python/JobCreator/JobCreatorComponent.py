@@ -459,11 +459,28 @@ class JobCreatorComponent:
                     JobState.register(jobname, 'Merge',\
                                         int(self.args['mergeMaxRetries']),\
                                         1, workflowName)
-
                 else:
-                    JobState.register(jobname, jobType,\
-                                        int(self.args['maxRetries']),\
-                                        1, workflowName)
+                    if self.args.has_key('repackMaxRetries') and jobname.startswith('Repack-Run'):
+                        JobState.register(jobname, jobType,\
+                                          int(self.args['repackMaxRetries']),\
+                                          1, workflowName)
+                    elif self.args.has_key('expressMaxRetries') and jobname.startswith('Express-Run'):
+                        JobState.register(jobname, jobType,\
+                                          int(self.args['expressMaxRetries']),\
+                                          1, workflowName)
+                    elif self.args.has_key('promptrecoMaxRetries') and jobname.startswith('PromptReco-Run'):
+                        JobState.register(jobname, jobType,\
+                                          int(self.args['promptrecoMaxRetries']),\
+                                          1, workflowName)
+                    elif self.args.has_key('mergeMaxRetries') and jobname.startswith('Merge'):
+                        JobState.register(jobname, jobType,\
+                                          int(self.args['mergeMaxRetries']),\
+                                          1, workflowName)
+                    else:
+                        JobState.register(jobname, jobType,\
+                                          int(self.args['maxRetries']),\
+                                          1, workflowName)
+                        
             logging.debug("job state has been  registered")
             JobState.create(jobname, jobCache)
             logging.debug("job state has been created")
