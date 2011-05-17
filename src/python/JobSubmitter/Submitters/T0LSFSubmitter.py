@@ -267,7 +267,8 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         script = ["#!/bin/sh\n"]
         #script.extend(standardScriptHeader(jobName))
 
-        script.append("export KRB5_CONFIG=/etc/krb5.conf")
+	# workaround for problem with LSF loosing kerberos token (no longer needed)
+        #script.append("export KRB5_CONFIG=/etc/krb5.conf")
 
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
@@ -290,8 +291,6 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             script.append("export STAGE_HOST=%s\n" % stageHost )
         script.append("( /usr/bin/time ./run.sh $JOB_SPEC_FILE 2>&1 ) | gzip > ./run.log.gz\n")
         script.append("rfcp ./FrameworkJobReport.xml %s:%s/FrameworkJobReport.xml\n" % (hostname,cacheDir))
-
-##         script.append("find . -type f -name '*.log' -exec rfcp {} %s:%s/ \;\n" % (hostname,cacheDir))
 
         # get back a lot of debug information to the head node
         #script.append("find . -type f -name '*.log' -exec rfcp {} %s:%s/ \;\n" % (hostname,cacheDir))
