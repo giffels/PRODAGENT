@@ -53,6 +53,11 @@ class RFCPCERNImpl(StageOutImpl):
         create dir with group permission
 
         """
+##         targetPFN = self.switchTargetToEOS(targetPFN)
+
+        if self.isEOS(targetPFN):
+            return
+
         targetDir = os.path.dirname(self.parseCastorPath(targetPFN))
 
         print "DEBUG 111 before targetDir check"
@@ -111,66 +116,70 @@ class RFCPCERNImpl(StageOutImpl):
         Otherwise use standard rfcp stageout
 
         """
-        useChecksum = False
+##         targetPFN = self.switchTargetToEOS(targetPFN)
 
-        if checksums != None and checksums.has_key('adler32') and not self.stageIn:
-
-            print "DEBUG running castor version check"
-
-            castorVersionCheck = "castor -v"
-            try:
-                castorVersionCheckExitCode, castorVersionCheckOutput = runCommandWithOutput(castorVersionCheck)
-            except Exception, ex:
-                msg = "Error: Exception while invoking command:\n"
-                msg += "%s\n" % castorVersionCheck
-                msg += "Exception: %s\n" % str(ex)
-                msg += "Fatal error, abort stageout..."
-                raise StageOutError(msg)
-
-            if not castorVersionCheckExitCode:
-
-                print "DEBUG castor version = %s" % castorVersionCheckOutput
-
-                regExpParser = re.compile('([0-9]+).([0-9]+).([0-9]+)-([0-9]+)')
-                match = regExpParser.match(castorVersionCheckOutput)
-
-                if ( match != None ):
-
-                    version1 = match.group(1)
-                    version2 = match.group(2)
-                    version3 = match.group(3)
-                    subversion = match.group(4)
-
-                    if ( ( version1 > 2 ) or \
-                         ( version1 == 2 and version2 >1 ) or \
-                         ( version1 == 2 and version2 == 1 and version3 > 8 ) or \
-                         ( version1 == 2 and version2 == 1 and version3 == 8 and subversion >= 12 ) ):
-                        useChecksum = True
+        isTargetEOS = self.isEOS(targetPFN)
 
         result = ""
 
-        if useChecksum:
+        if isTargetEOS:
 
-            print "DEBUG using adler 32 checksum %s for stageout" % checksums['adler32']
+            result += "source /afs/cern.ch/project/eos/installation/pro/etc/setup.sh\n"
+            result += "xrdcp -f -s "
 
-            targetFile = self.parseCastorPath(targetPFN)
+        else:
 
-            result += "nstouch %s\n" % targetFile
-            result += "nssetchecksum -n adler32 -k %s %s\n" % (checksums['adler32'], targetFile)
+            if checksums != None and checksums.has_key('adler32') and not self.stageIn:
 
-        result += "rfcp "
-        if options != None:
-            result += " %s " % options
+                print "DEBUG using adler 32 checksum %s for stageout" % checksums['adler32']
+
+                targetFile = self.parseCastorPath(targetPFN)
+
+                result += "nstouch %s\n" % targetFile
+                result += "nssetchecksum -n adler32 -k %s %s\n" % (checksums['adler32'], targetFile)
+
+            result += "rfcp "
+            if options != None:
+                result += " %s " % options
+
         result += " \"%s\" " % sourcePFN
-        result += " \"%s\" " % targetPFN
-        
+        result += " \"%s\" \n" % targetPFN
+
         if self.stageIn:
             remotePFN, localPFN = sourcePFN, targetPFN
         else:
             remotePFN, localPFN = targetPFN, sourcePFN
-        
-        result += "\nFILE_SIZE=`rfstat \"%s\" | grep Size | cut -f2 -d:`\n" % localPFN
-        result += " echo \"Local File Size is: $FILE_SIZE\"; DEST_SIZE=`rfstat '%s' | grep Size | cut -f2 -d:` ; if [ $DEST_SIZE ] && [ $FILE_SIZE == $DEST_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi " % remotePFN
+
+        result += "LOCAL_SIZE=`stat -c%%s \"%s\"`\n" % localPFN
+        result += "echo \"Local File Size is: $LOCAL_SIZE\"\n"
+
+        if isTargetEOS:
+
+            remotePFN = remotePFN.replace("root://eoscms//eos/cms/", "/eos/cms/", 1)
+
+            result += "REMOTE_SIZE=`eos fileinfo '%s' --size | grep size | cut -f2 -d: | tr -d ' '`\n" % remotePFN
+            result += "echo \"Remote File Size is: $REMOTE_SIZE\"\n"
+
+            if checksums != None and checksums.has_key('adler32') and not self.stageIn:
+
+                checksums['adler32'] = "%08x" % int(checksums['adler32'], 16)
+
+                result += "echo \"Local File Checksum is: %s\"\n" % checksums['adler32']
+                result += "REMOTE_XS=`eos fileinfo '%s' --checksum | grep adler | cut -f3 -d: | tr -d ' '`\n" % remotePFN
+                result += "echo \"Remote File Checksum is: $REMOTE_XS\"\n"
+
+                result += "if [ $REMOTE_SIZE ] && [ $REMOTE_XS ] && [ $LOCAL_SIZE == $REMOTE_SIZE ] && [ '%s' == $REMOTE_XS ]; then exit 0; " % checksums['adler32']
+                result += "else echo \"Error: Size or Checksum Mismatch between local and SE\"; eos rm '%s'; exit 60311 ; fi" % remotePFN
+            else:
+                result += "if [ $REMOTE_SIZE ] && [ $LOCAL_SIZE == $REMOTE_SIZE ]; then exit 0; "
+                result += "else echo \"Error: Size or Checksum Mismatch between local and SE\"; eos rm '%s'; exit 60311 ; fi" % remotePFN
+
+        else:
+
+            result += "REMOTE_SIZE=`rfstat '%s' | grep Size | cut -f2 -d: | tr -d ' '`\n" % remotePFN
+            result += "echo \"Remote File Size is: $REMOTE_SIZE\"\n"
+
+            result += "if [ $REMOTE_SIZE ] && [ $LOCAL_SIZE == $REMOTE_SIZE ]; then exit 0; else echo \"Error: Size Mismatch between local and SE\"; exit 60311 ; fi"
 
         return result
 
@@ -180,7 +189,13 @@ class RFCPCERNImpl(StageOutImpl):
         _removeFile_
 
         """
-        command = "stager_rm -M \"%s\" ; nsrm \"%s\"" % (pfnToRemove, pfnToRemove)
+##         pfnToRemove = self.switchTargetToEOS(pfnToRemove)
+
+        if self.isEOS(targetPFN):
+            command = "xrd eoscms rm %s" % pfnToRemove.replace("root://eoscms//eos/cms/", "/eos/cms/", 1)
+        else:
+            command = "stager_rm -M \"%s\" ; nsrm \"%s\"" % (pfnToRemove, pfnToRemove)
+
         execute(command)
         return
 
@@ -274,6 +289,31 @@ class RFCPCERNImpl(StageOutImpl):
             simpleCastorPath = simpleCastorPath.replace('//','/')
 
         return simpleCastorPath
-        
+
+
+    def isEOS(self, pfn):
+        """
+        _isEOS_
+
+        Check if the PFN is for EOS
+
+        """
+        return pfn.startswith("root://eoscms//")
+
+
+##     def switchTargetToEOS(self, pfn):
+##         """
+##         _switchTargetToEOS_
+
+##         HACK to simulate stagetout to EOS
+##         """
+
+##         if pfn.startswith("/castor/cern.ch/cms/T0/hufnagel/repacktest/store/t0temp/") \
+##                or pfn.startswith("/castor/cern.ch/cms/T0/hufnagel/repacktest/store/express/"):
+##             return pfn.replace("/castor/cern.ch/cms/T0/hufnagel/repacktest/",
+##                                "root://eoscms//eos/cms/store/eos/user/hufnagel/",
+##                                1)
+##         else:
+##             return pfn
 
 registerStageOutImpl("rfcp-CERN", RFCPCERNImpl)
