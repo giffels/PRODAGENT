@@ -28,10 +28,6 @@ class RFCPCERNImpl(StageOutImpl):
         self.numRetries = 5
         self.retryPause = 300
 
-        # permission and umask for directory creation
-        self.permissions = '755'
-        self.umask = '002'
-
         # use castor support to preset adler32 checksums before transfer
         self.useChecksumForStageout = True
 
@@ -235,9 +231,8 @@ class RFCPCERNImpl(StageOutImpl):
         Creates directory with correct permissions
 
         """
-        command = "(umask %s ; nsmkdir -m %s -p \"%s\")" % (self.umask,
-                                                            self.permissions,
-                                                            directory)
+        command = "nsmkdir -p \"%s\"" % directory
+
         execute(command)
         return
 
