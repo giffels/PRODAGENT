@@ -161,7 +161,7 @@ class RFCPCERNImpl(StageOutImpl):
                 checksums['adler32'] = "%08x" % int(checksums['adler32'], 16)
 
                 result += "echo \"Local File Checksum is: %s\"\n" % checksums['adler32']
-                result += "REMOTE_XS=`eos fileinfo '%s' --checksum | grep adler | cut -f3 -d: | tr -d ' '`\n" % remotePFN
+                result += "REMOTE_XS=`eos fileinfo '%s' --checksum | grep xs: | cut -d: -f 2 | tr -d ' '`\n" % remotePFN
                 result += "echo \"Remote File Checksum is: $REMOTE_XS\"\n"
 
                 result += "if [ $REMOTE_SIZE ] && [ $REMOTE_XS ] && [ $LOCAL_SIZE == $REMOTE_SIZE ] && [ '%s' == $REMOTE_XS ]; then exit 0; " % checksums['adler32']
