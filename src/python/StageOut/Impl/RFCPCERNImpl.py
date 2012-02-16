@@ -28,7 +28,6 @@ class RFCPCERNImpl(StageOutImpl):
         self.numRetries = 5
         self.retryPause = 300
 
-        # use castor support to preset adler32 checksums before transfer
         self.useChecksumForStageout = True
 
 
@@ -49,8 +48,6 @@ class RFCPCERNImpl(StageOutImpl):
         create dir with group permission
 
         """
-##         targetPFN = self.switchTargetToEOS(targetPFN)
-
         if self.isEOS(targetPFN):
             return
 
@@ -112,8 +109,6 @@ class RFCPCERNImpl(StageOutImpl):
         Otherwise use standard rfcp stageout
 
         """
-##         targetPFN = self.switchTargetToEOS(targetPFN)
-
         isTargetEOS = self.isEOS(targetPFN)
 
         result = ""
@@ -153,7 +148,8 @@ class RFCPCERNImpl(StageOutImpl):
 
             remotePFN = remotePFN.replace("root://eoscms//eos/cms/", "/eos/cms/", 1)
 
-            result += "REMOTE_SIZE=`eos fileinfo '%s' --size | grep size | cut -f2 -d: | tr -d ' '`\n" % remotePFN
+            result += "REMOTE_FILEINFO=`eos fileinfo '%s' -m`\n" % remotePFN
+            result += "REMOTE_SIZE=`echo \"$REMOTE_FILEINFO\" | sed -r 's/.* size=([0-9]+) .*/\\1/'`\n"
             result += "echo \"Remote File Size is: $REMOTE_SIZE\"\n"
 
             if checksums != None and checksums.has_key('adler32') and not self.stageIn:
@@ -161,7 +157,7 @@ class RFCPCERNImpl(StageOutImpl):
                 checksums['adler32'] = "%08x" % int(checksums['adler32'], 16)
 
                 result += "echo \"Local File Checksum is: %s\"\n" % checksums['adler32']
-                result += "REMOTE_XS=`eos fileinfo '%s' --checksum | grep xs: | cut -d: -f 2 | tr -d ' '`\n" % remotePFN
+                result += "REMOTE_XS=`echo \"$REMOTE_FILEINFO\" | sed -r 's/.* xstype=adler xs=([0-9a-fA-F]{8})[0]+ .*/\\1/'`\n"
                 result += "echo \"Remote File Checksum is: $REMOTE_XS\"\n"
 
                 result += "if [ $REMOTE_SIZE ] && [ $REMOTE_XS ] && [ $LOCAL_SIZE == $REMOTE_SIZE ] && [ '%s' == $REMOTE_XS ]; then exit 0; " % checksums['adler32']
@@ -185,8 +181,6 @@ class RFCPCERNImpl(StageOutImpl):
         _removeFile_
 
         """
-##         pfnToRemove = self.switchTargetToEOS(pfnToRemove)
-
         if self.isEOS(targetPFN):
             command = "xrd eoscms rm %s" % pfnToRemove.replace("root://eoscms//eos/cms/", "/eos/cms/", 1)
         else:
@@ -295,20 +289,5 @@ class RFCPCERNImpl(StageOutImpl):
         """
         return pfn.startswith("root://eoscms//")
 
-
-##     def switchTargetToEOS(self, pfn):
-##         """
-##         _switchTargetToEOS_
-
-##         HACK to simulate stagetout to EOS
-##         """
-
-##         if pfn.startswith("/castor/cern.ch/cms/T0/hufnagel/repacktest/store/t0temp/") \
-##                or pfn.startswith("/castor/cern.ch/cms/T0/hufnagel/repacktest/store/express/"):
-##             return pfn.replace("/castor/cern.ch/cms/T0/hufnagel/repacktest/",
-##                                "root://eoscms//eos/cms/store/eos/user/hufnagel/",
-##                                1)
-##         else:
-##             return pfn
 
 registerStageOutImpl("rfcp-CERN", RFCPCERNImpl)
