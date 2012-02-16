@@ -164,7 +164,7 @@ class RFCPCERNImpl(StageOutImpl):
                 result += "else echo \"Error: Size or Checksum Mismatch between local and SE\"; eos rm '%s'; exit 60311 ; fi" % remotePFN
             else:
                 result += "if [ $REMOTE_SIZE ] && [ $LOCAL_SIZE == $REMOTE_SIZE ]; then exit 0; "
-                result += "else echo \"Error: Size or Checksum Mismatch between local and SE\"; eos rm '%s'; exit 60311 ; fi" % remotePFN
+                result += "else echo \"Error: Size Mismatch between local and SE\"; eos rm '%s'; exit 60311 ; fi" % remotePFN
 
         else:
 
