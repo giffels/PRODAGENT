@@ -181,7 +181,7 @@ class RFCPCERNImpl(StageOutImpl):
         _removeFile_
 
         """
-        if self.isEOS(targetPFN):
+        if self.isEOS(pfnToRemove):
             command = "xrd eoscms rm %s" % pfnToRemove.replace("root://eoscms//eos/cms/", "/eos/cms/", 1)
         else:
             command = "stager_rm -M \"%s\" ; nsrm \"%s\"" % (pfnToRemove, pfnToRemove)
