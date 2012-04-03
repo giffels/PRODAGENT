@@ -10,7 +10,10 @@ import xml.sax, xml.sax.handler
 from xml.sax.saxutils import escape
 import time
 
-from Configuration.PyReleaseValidation.autoCond import autoCond
+try:
+  from Configuration.AlCa.autoCond import autoCond
+except:
+  from Configuration.PyReleaseValidation.autoCond import autoCond
 
 def main(argv) :
     """
@@ -695,6 +698,8 @@ def main(argv) :
                     # Not like this case is going to happen
                     if event_content.lower() == 'alcareco':
                         main_output = None
+                elif '--output' in array and weird_output:
+                    main_output = 'RAWoutput'
                 else:
                     main_output = "output"
 
@@ -1176,6 +1181,7 @@ def getDQMScenario(cmsDriverCmd):
         return 'relvalmcfs'
 
     cmsDriverCmdParts = cmsDriverCmd.split()
+    scenario = "pp"
     if cmsDriverCmdParts.count('--scenario'):
         scenario = cmsDriverCmdParts[cmsDriverCmdParts.index('--scenario') + 1]
 
