@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.20 2010/05/26 09:47:51 direyes Exp $"
-__version__ = "$Revision: 1.20 $"
+__revision__ = "$Id: JobHandling.py,v 1.21 2012/05/29 11:11:25 belforte Exp $"
+__version__ = "$Revision: 1.21 $"
 
 import os
 import logging
