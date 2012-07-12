@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.21 2012/05/29 11:11:25 belforte Exp $"
-__version__ = "$Revision: 1.21 $"
+__revision__ = "$Id: JobHandling.py,v 1.22 2012/05/29 11:15:10 belforte Exp $"
+__version__ = "$Revision: 1.22 $"
 
 import os
 import logging
@@ -427,7 +427,10 @@ class JobHandling:
         try:
             logging.debug( 'Job %s REBOUNCE DBG : %s, %s' % \
                            (self.fullId(job), source, dest) )
-            sbi.copy( source, dest, credential )
+#        Do not transfer via gridftp
+#            sbi.copy( source, dest, credential )
+            copy(source, dest)
+
         except Exception, e:
             logging.info("Job %s Report rebounce transfer fail : %s " \
                          % ( self.fullId(job), str(e) ) )
