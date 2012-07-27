@@ -238,6 +238,7 @@ def main(argv) :
                             conditions_value = autoCond[conditions_key]
                         else:
                             conditions_value = conditions_arg
+                        if type(conditions_value) is tuple: conditions_value = conditions_value[0]
                         conditions = [
                             x.strip() \
                             for x in conditions_value.split(',') \
@@ -613,6 +614,7 @@ def main(argv) :
                         conditions_value = autoCond[conditions_key]
                     else:
                         conditions_value = conditions_arg
+                    if type(conditions_value) is tuple: conditions_value = conditions_value[0]
                     conditions = [
                         x.strip() \
                         for x in conditions_value.split(',') \
