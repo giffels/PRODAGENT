@@ -502,14 +502,15 @@ class TrackingComponent:
         if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
             task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
             match = str(job.runningJob['schedulerId'])
-            m = re.search("submit", match)
+            # m = re.search("submit", match)
+            m = re.search("https", match)
 
             dashboardInfo.task = task['name']
             if m:
-               dashboardInfo.job = str(job['jobId']) + '_https://' + \
+               dashboardInfo.job = str(job['jobId']) + '_' + \
                                 job.runningJob['schedulerId']
             else:
-               dashboardInfo.job = str(job['jobId']) + '_' + \
+               dashboardInfo.job = str(job['jobId']) + '_https://' + \
                                 job.runningJob['schedulerId']
             dashboardInfo['JSTool'] = 'crab'
             dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']
