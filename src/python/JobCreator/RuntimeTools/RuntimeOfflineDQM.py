@@ -11,14 +11,25 @@ Will do one/both of the following:
 """
 import os
 import sys
-from mimetypes import guess_type
-from gzip      import GzipFile
-from cStringIO import StringIO
-from md5       import md5
-import re
-import traceback
 import httplib
 import urllib2
+import traceback
+import re
+
+from cStringIO import StringIO
+from mimetypes import guess_type
+from gzip import GzipFile
+
+# Compatibility with python2.3 or earlier
+HTTPS = httplib.HTTPS
+if sys.version_info[:3] >= (2, 4, 0):
+    HTTPS = httplib.HTTPSConnection
+
+# Compatibility with python2.4 or earlier
+try:
+    from hashlib import md5
+except ImportError:
+    from md5 import md5
 
 from ProdCommon.FwkJobRep.TaskState import TaskState
 from ProdCommon.FwkJobRep.FwkJobReport import FwkJobReport
@@ -47,13 +58,8 @@ CERNStageOut = {
     "lfn-prefix" : "srm://srm-cms.cern.ch:8443/srm/managerv2?SFN=/castor/cern.ch/cms/",
     }
 
-__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.26 2010/10/07 12:53:57 direyes Exp $"
-__version__ = "$Revision: 1.26 $"
-
-
-HTTPS = httplib.HTTPS
-if sys.version_info[:3] >= (2, 4, 0):
-    HTTPS = httplib.HTTPSConnection
+__revision__ = "$Id: RuntimeOfflineDQM.py,v 1.27 2011/05/04 00:51:10 hufnagel Exp $"
+__version__ = "$Revision: 1.27 $"
 
 
 class HarvesterImpl:
@@ -309,33 +315,52 @@ class HarvesterImpl:
         filename = analysisFile['FileName']
 
         args = {}
-        args['url'] = self.uploadUrl
 
-        msg = "HTTP Upload of file commencing with args:\n"
+        # Preparing a checksum
+        blockSize = 0x10000
+        def upd(m, data):
+            m.update(data)
+            return m
+        fd = open(filename, 'rb')
+        try:
+            contents = iter(lambda: fd.read(blockSize), '')
+            m = reduce(upd, contents, md5())
+        finally:
+            fd.close()
+            
+        args['checksum'] = 'md5:%s' % m.hexdigest()
+        #args['checksum'] = 'md5:%s' % md5.new(filename).read()).hexdigest()
+        args['size'] = os.path.getsize(filename)
+
+        msg = "HTTP Upload is about to start:\n"
+        msg += " => URL: %s\n" % self.uploadUrl
         msg += " => Filename: %s\n" % filename
-        for key, val in args.items():
-            msg += " => %s: %s\n" % (key, val)
         print msg
 
         try:
-            (headers, data) = self.upload(args, filename)
+            (headers, data) = self.upload(self.uploadUrl, args, filename)
+            print 'HTTP upload finished succesfully with response:'
             print 'Status code: ', headers.get("Dqm-Status-Code", "None")
-            print 'Message:     ', headers.get("Dqm-Status-Message", "None")
-            print 'Detail:      ', headers.get("Dqm-Status-Detail", "None")
-            print data
-        except urllib2.HTTPError, e:
-            print 'Automated upload of %s failed' % filename
-            print "ERROR", e
-            print 'Status code: ', e.hdrs.get("Dqm-Status-Code", "None")
-            print 'Message:     ', e.hdrs.get("Dqm-Status-Message", "None")
-            print 'Detail:      ', e.hdrs.get("Dqm-Status-Detail", "None")
-            raise RuntimeError, e
+            print 'Message: ', headers.get("Dqm-Status-Message", "None")
+            print 'Detail: ', headers.get("Dqm-Status-Detail", "None")
+            print 'Data: ', str(data)
+        except urllib2.HTTPError, ex:
+            print 'HTTP upload failed with response:'
+            print 'Status code: ', ex.hdrs.get("Dqm-Status-Code", "None")
+            print 'Message: ', ex.hdrs.get("Dqm-Status-Message", "None")
+            print 'Detail: ', ex.hdrs.get("Dqm-Status-Detail", "None")
+            print 'Error: ', str(ex)
+            raise RuntimeError, ex
         except Exception, ex:
-            print 'Automated upload of %s failed' % filename
-            print 'problem unknown'
-            print ex
+            print 'HTTP upload failed with response:'
+            print 'Problem unknown.'
+            print 'Error: ', str(ex)
             raise RuntimeError, ex
 
+        return
+
+    def filetype(self, filename):
+        return guess_type(filename)[0] or 'application/octet-stream'
 
     def encode(self, args, files):
         """
@@ -346,96 +371,74 @@ class HarvesterImpl:
         boundary = '----------=_DQM_FILE_BOUNDARY_=-----------'
         (body, crlf) = ('', '\r\n')
         for (key, value) in args.items():
+            payload = str(value)
             body += '--' + boundary + crlf
-            body += ('Content-disposition: form-data; name="%s"' % key) + crlf
-            body += crlf + str(value) + crlf
+            body += ('Content-Disposition: form-data; name="%s"' % key) + crlf
+            body += crlf + payload + crlf
         for (key, filename) in files.items():
-            filetype = guess_type(filename)[0] or 'application/octet-stream'
             body += '--' + boundary + crlf
             body += ('Content-Disposition: form-data; name="%s"; filename="%s"'
                      % (key, os.path.basename(filename))) + crlf
-            body += ('Content-Type: %s' % filetype) + crlf
+            body += ('Content-Type: %s' % self.filetype(filename)) + crlf
+            body += ('Content-Length: %d' % os.path.getsize(filename)) + crlf
             body += crlf + open(filename, "r").read() + crlf
-        body += '--' + boundary + '--' + crlf + crlf
+            body += '--' + boundary + '--' + crlf + crlf
         return ('multipart/form-data; boundary=' + boundary, body)
 
+    def marshall(self, args, files, request):
+        """
+        Marshalls the arguments to the CGI script as multi-part/form-data,
+        not the default application/x-www-form-url-encoded. This improves
+        the transfer of the large inputs and eases command line invocation
+        of the CGI script.
+        """
+        (type, body) = self.encode(args, files)
+        request.add_header('Content-Type', type)
+        request.add_header('Content-Length', str(len(body)))
+        request.add_data(body)
+        return
 
-    def upload(self, args, file):
+    def upload(self, url, args, filename):
         """
         _upload_
 
-        Perform a file upload to the dqm server using HTTPS auth with the service proxy provided
+        Perform a file upload to the dqm server using HTTPS auth with the
+        service proxy provided
 
         """
-        #preparing a checksum
-        blockSize = 0x10000
-        def upd(m, data):
-            m.update(data)
-            return m
-        fd = open(file, 'rb')
-        try:
-            contents = iter(lambda: fd.read(blockSize), '')
-            m = reduce(upd, contents,md5())
-        finally:
-            fd.close()
-
-        args['checksum'] = 'md5:' + m.hexdigest()
-        args['size']     = str(os.stat(file)[6])
-        proxyLoc = self.proxyLocation
+        uploadProxy = self.proxyLocation
 
         class HTTPSCertAuth(HTTPS):
-            def __init__(self, host):
+            def __init__(self, host, *args, **kwargs):
                 HTTPS.__init__(self, host,
-                               key_file = proxyLoc,
-                               cert_file = proxyLoc)
+                               key_file = uploadProxy,
+                               cert_file = uploadProxy,
+                               **kwargs)
 
         class HTTPSCertAuthenticate(urllib2.AbstractHTTPHandler):
             def default_open(self, req):
                 return self.do_open(HTTPSCertAuth, req)
 
-        #
-        # HTTPS see : http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/VisMonitoring/DQMServer/scripts/visDQMUpload?r1=1.1&r2=1.2
-        #
-        #
-        # Add user identification, ProdAgent or something like that
-        # Eg: ProdAgent python version, this modules __version__ attr
-        #
+        ident = "ProdAgent python/%d.%d.%d" % sys.version_info[:3]
 
-        ident = "ProdAgent Python %s.%s.%s %s" % (sys.version_info[0] ,
-                                                  sys.version_info[1] ,
-                                                  sys.version_info[2] ,
-                                                  __version__)
+        msg = "HTTP POST upload arguments:\n"
+        for arg in args:
+            msg += "  ==> %s: %s\n" % (arg, args[arg])
+        print msg
 
-        authreq = urllib2.Request(args['url'] + '/digest')
-        authreq.add_header('User-agent', ident)
-        result = urllib2.build_opener(HTTPSCertAuthenticate()).open(authreq)
-        cookie = result.headers.get('Set-Cookie')
-        if not cookie:
-            msg = "Unable to authenticate to DQM Server:\n"
-            msg += "%s\n" % self.args['url']
-            msg += "With Proxy from:\n"
-            msg += "%s\n" % self.proxyLocation
-            print msg
-            raise RuntimeError, msg
-        cookie = cookie.split(";")[0]
+        datareq = urllib2.Request(url + '/data/put')
+        datareq.add_header('Accept-encoding', 'gzip')
+        datareq.add_header('User-agent', ident)
+        self.marshall(args, {'file' : filename}, datareq)
+        if 'https://' in url:
+            result = urllib2.build_opener(HTTPSCertAuthenticate()).open(datareq)
+        else:
+            result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
 
-
-        # open a connection and upload the file
-        url = args.pop('url') + "/data/put"
-        request = urllib2.Request(url)
-        (type, body) = self.encode(args, {'file': file})
-        request.add_header('Accept-encoding', 'gzip')
-        request.add_header('User-agent', ident)
-        request.add_header('Cookie', cookie)
-        request.add_header('Content-type',    type)
-        request.add_header('Content-length',  str(len(body)))
-        request.add_data(body)
-        result = urllib2.build_opener().open(request)
-        data   = result.read()
+        data = result.read()
         if result.headers.get('Content-encoding', '') == 'gzip':
-            data = GzipFile(fileobj=StringIO(data)).read()
+            data = GzipFile(fileobj=StringIO(data)).read ()
         return (result.headers, data)
-
 
 
 class OfflineDQMHarvester:
