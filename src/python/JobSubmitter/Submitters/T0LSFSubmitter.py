@@ -270,6 +270,11 @@ class T0LSFSubmitter(BulkSubmitterInterface):
 	# workaround for problem with LSF loosing kerberos token (no longer needed)
         #script.append("export KRB5_CONFIG=/etc/krb5.conf")
 
+        # debug information to track down kerberos problems
+        script.append("date +%s\n")
+        script.append("klist -aef\n")
+        script.append("tokens\n")
+
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
         # needed at some point to acces SLC5 head node over rfio
