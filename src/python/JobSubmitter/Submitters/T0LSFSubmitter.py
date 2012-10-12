@@ -176,7 +176,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             now = datetime.datetime.today()
             lsfLogDir += '/%s' % now.strftime("%Y%m%d%H")
             try:
-                os.mkdir(lsfLogDir)
+                os.mkdir(lsfLogDir, 0755)
                 logging.debug("Created directory %s" % lsfLogDir)
             except OSError, err:
                 # suppress LSF log unless it's about an already exisiting directory
@@ -210,7 +210,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         for jobSpec, cacheDir in self.toSubmit.items():
             logging.debug("Submit: %s from %s" % (jobSpec, cacheDir) )
             logging.debug("SpecFile = %s" % self.specFiles[jobSpec])
-            self.makeWrapperScript(os.path.join(cacheDir,"lsfsubmit.sh"),jobSpec,cacheDir)
+            self.makeWrapperScript(os.path.join(cacheDir, "lsfsubmit.sh"), jobSpec, cacheDir, lsfLogDir)
 
             # //
             # // Submit LSF job
@@ -232,7 +232,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             if ( lsfLogDir == "None" ):
                 lsfSubmitCommand += ' -oo /dev/null'
             else:
-                lsfSubmitCommand += ' -oo %s/%s.lsf.log' % (lsfLogDir,jobSpec)
+                lsfSubmitCommand += ' -oo %s/%s.lsf.%%J.log' % (lsfLogDir, jobSpec)
 
             # lsfSubmitCommand += ' -oo /tmp/%s.log' % jobSpec
             # lsfSubmitCommand += ' -f "%s < /tmp/%s.log"' % ( os.path.join(cacheDir,"lsfsubmit.log"), jobSpec )
@@ -249,7 +249,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
             raise JSException("Submission Failed", FailureList = failureList)
 
 
-    def makeWrapperScript(self, filename, jobName, cacheDir):
+    def makeWrapperScript(self, filename, jobName, cacheDir, lsfLogDir):
         """
         _makeWrapperScript_
 
@@ -269,11 +269,6 @@ class T0LSFSubmitter(BulkSubmitterInterface):
 
 	# workaround for problem with LSF loosing kerberos token (no longer needed)
         #script.append("export KRB5_CONFIG=/etc/krb5.conf")
-
-        # debug information to track down kerberos problems
-        script.append("date +%s\n")
-        script.append("klist -aef\n")
-        script.append("tokens\n")
 
         script.append("export PRODAGENT_JOB_INITIALDIR=`pwd`\n")
 
@@ -309,6 +304,15 @@ class T0LSFSubmitter(BulkSubmitterInterface):
         #script.append("sleep 3600")
 
         #script.extend(missingJobReportCheck(jobName))
+
+        # debug information to track down kerberos problems
+        script.append("date +%s\n")
+        script.append("klist -aef\n")
+        script.append("tokens\n")
+
+        # debug information to see if LSF log file exists
+        if ( lsfLogDir != "None" ):
+            script.append("/bin/ls -l %s/%s.lsf.*.log 2> /dev/null\n" % (lsfLogDir, jobName))
 
         handle = open(filename, 'w')
         handle.writelines(script)
