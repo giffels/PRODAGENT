@@ -312,7 +312,7 @@ class T0LSFSubmitter(BulkSubmitterInterface):
 
         # debug information to see if LSF log file exists
         if ( lsfLogDir != "None" ):
-            script.append("/bin/ls -l %s/%s.lsf.*.log 2> /dev/null\n" % (lsfLogDir, jobName))
+            script.append("find %s -type f -name %s.lsf.%%J.log -exec stat {} \;\n" % (lsfLogDir, jobName))
 
         handle = open(filename, 'w')
         handle.writelines(script)
