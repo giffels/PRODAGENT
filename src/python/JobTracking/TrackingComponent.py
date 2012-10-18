@@ -17,8 +17,8 @@ payload of the JobFailure event
 
 """
 
-__revision__ = "$Id: TrackingComponent.py,v 1.69 2010/06/29 08:34:57 direyes Exp $"
-__version__ = "$Revision: 1.69 $"
+__revision__ = "$Id: TrackingComponent.py,v 1.70 2010/08/10 21:58:49 spiga Exp $"
+__version__ = "$Revision: 1.70 $"
 
 import os
 import os.path
@@ -502,14 +502,15 @@ class TrackingComponent:
         if dashboardInfoFile is None or not os.path.exists(dashboardInfoFile):
             task = self.bossLiteSession.loadTask(job['taskId'], deep=False)
             match = str(job.runningJob['schedulerId'])
-            m = re.search("glidein", match)
+            # m = re.search("submit", match)
+            m = re.search("https", match)
 
             dashboardInfo.task = task['name']
             if m:
-               dashboardInfo.job = str(job['jobId']) + '_https://' + \
+               dashboardInfo.job = str(job['jobId']) + '_' + \
                                 job.runningJob['schedulerId']
             else:
-               dashboardInfo.job = str(job['jobId']) + '_' + \
+               dashboardInfo.job = str(job['jobId']) + '_https://' + \
                                 job.runningJob['schedulerId']
             dashboardInfo['JSTool'] = 'crab'
             dashboardInfo['JSToolUI'] = os.environ['HOSTNAME']

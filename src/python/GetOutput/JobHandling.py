@@ -5,8 +5,8 @@ _JobHandling_
 """
 
 
-__revision__ = "$Id: JobHandling.py,v 1.19 2010/03/01 16:15:00 swakef Exp $"
-__version__ = "$Revision: 1.19 $"
+__revision__ = "$Id: JobHandling.py,v 1.25 2012/10/18 14:48:42 belforte Exp $"
+__version__ = "$Revision: 1.25 $"
 
 import os
 import logging
@@ -121,15 +121,20 @@ class JobHandling:
                           (self.fullId(job), str(success)) )
 
         # FJR missing or corrupt: create one based on db or assume failed
-        except InvalidReport:
+        except InvalidReport, msg:
+            logging.debug("Job %s : no valid FJR found: %s" % \
+                          (self.fullId(job), msg) )
             success = False
-            job.runningJob["applicationReturnCode"] = str(50117)
-            job.runningJob["wrapperReturnCode"] = str(50117)
-            exitCode = 50117
+            if str(msg) == "FrameworkJobReport is missing." :
+                exitCode=50700
+            else :
+                exitCode=50117
+            job.runningJob["applicationReturnCode"] = str(exitCode)
+            job.runningJob["wrapperReturnCode"] = str(exitCode)
 
             # write fake fwjr
-            logging.debug("Job %s : write fake fwjr: %s" % \
-                          (self.fullId(job), str(success)) )
+            logging.debug("Job %s : write fake fwjr with exitCode %s. Success flag is: %s" % \
+                          (self.fullId(job), str(exitCode), str(success)) )
             self.writeFwkJobReport( jobSpecId, exitCode, reportfilename )
 
 
@@ -422,7 +427,12 @@ class JobHandling:
         try:
             logging.debug( 'Job %s REBOUNCE DBG : %s, %s' % \
                            (self.fullId(job), source, dest) )
-            sbi.copy( source, dest, credential )
+#        try not to transfer via gridftp
+            if  os.access (source, os.R_OK) :
+                copy (source, dest)
+            else:
+                sbi.copy( source, dest, credential )
+
         except Exception, e:
             logging.info("Job %s Report rebounce transfer fail : %s " \
                          % ( self.fullId(job), str(e) ) )
